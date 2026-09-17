@@ -64,6 +64,34 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .defaultValue(false)
               .buildFeatureConfiguration();
 
+  /**
+   * When false (default), Iceberg REST {@code GET /v1/config} authorization checks are disabled:
+   * the endpoint is not hard-gated and catalog properties ({@code defaults}) are still returned to
+   * any authenticated caller. When true, {@code CATALOG_READ_CONFIG} (or a privilege that subsumes
+   * it) is required for the whole endpoint (403 if missing), and {@code CATALOG_READ_PROPERTIES}
+   * soft-hides {@code defaults}. Grant privileges (and update Ranger/OPA policies) before enabling;
+   * intended default flips to true in a future release, after which this flag is removed.
+   */
+  public static final FeatureConfiguration<Boolean> ENFORCE_CATALOG_CONFIG_AUTHORIZATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENFORCE_CATALOG_CONFIG_AUTHORIZATION")
+          .description(
+              "When true, enforce both Iceberg REST GET /v1/config authorization checks: "
+                  + "CATALOG_READ_CONFIG (or a privilege that subsumes it) hard-gates the endpoint, "
+                  + "and CATALOG_READ_PROPERTIES soft-hides catalog properties (defaults) in the "
+                  + "response. When false (default), neither check runs so upgrades do not empty "
+                  + "defaults or 403 bootstrap. Enable after granting CATALOG_READ_CONFIG (or "
+                  + "catalog-level content privileges) and CATALOG_READ_PROPERTIES to clients that "
+                  + "need defaults, and after updating Ranger/OPA policies for "
+                  + "GET_CATALOG_CONFIG / GET_CATALOG_CONFIG_PROPERTIES. Ranger currently maps both "
+                  + "operations to the existing catalog-properties-read access type; do not enable "
+                  + "this flag for Ranger until a dedicated catalog-config-read access type exists "
+                  + "(or accept that coarse mapping). This flag is temporary: the default is "
+                  + "expected to flip to true and the flag removed in subsequent releases. A "
+                  + "production-readiness warning is emitted while the flag remains false.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION =
       PolarisConfiguration.<Boolean>builder()
           .key("SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION")

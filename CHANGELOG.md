@@ -230,6 +230,18 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   UPDATE polaris_schema.version SET version_value = 5 WHERE version_key = 'version';
   ```
   See the Relational JDBC metastore documentation for details.
+- New privilege `CATALOG_READ_CONFIG` (authorizable operation `GET_CATALOG_CONFIG`) is available for
+  the Iceberg REST `GET /v1/config` endpoint. Both the endpoint hard-gate and the catalog-properties
+  soft-hide (`CATALOG_READ_PROPERTIES` / `GET_CATALOG_CONFIG_PROPERTIES`) are **off by default**
+  behind `polaris.features."ENFORCE_CATALOG_CONFIG_AUTHORIZATION"`, so upgrades do not empty
+  `defaults` or 403 bootstrap. Before enabling: grant `CATALOG_READ_CONFIG` (or a catalog-level
+  content privilege that subsumes it), grant `CATALOG_READ_PROPERTIES` to clients that need catalog
+  defaults, and update Ranger/OPA policies for the new actions. Ranger currently maps both config
+  operations to the existing `catalog-properties-read` access type — do not enable the flag for
+  Ranger until a dedicated `catalog-config-read` access type exists (or accept that coarse mapping).
+  A production-readiness warning is emitted while the flag remains false. The default is expected to
+  flip to `true` and the flag to be removed in subsequent releases. Table- or namespace-scoped grants
+  alone do not satisfy the catalog-path check used for `CATALOG_READ_CONFIG` once enforcement is on.
 
 ### Breaking changes
 
@@ -287,6 +299,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Fixes
 
 - Python CLI `setup` now preserves the catalog `storageName` field during export and apply, so named storage credential selection survives backup and migration round trips.
+- Iceberg REST `GET /v1/config` can optionally gate catalog properties (`defaults`) behind
+  `CATALOG_READ_PROPERTIES` (operation `GET_CATALOG_CONFIG_PROPERTIES`) and the whole endpoint
+  behind `CATALOG_READ_CONFIG`, matching management-plane `getCatalog` for the properties bit.
+  Both checks are off by default behind `ENFORCE_CATALOG_CONFIG_AUTHORIZATION`; when enabled,
+  callers without properties privilege still receive `prefix`, endpoints, and other bootstrap
+  fields. Previously any authenticated principal who knew a warehouse name could read
+  client-visible catalog properties with no AuthZ.
 - The NoSQL persistence commit log (`Commits.commitLog`) no longer stops early when a commit's recent-ancestor tail is shorter than the internal fetch page size. With a `polaris.persistence.reference-previous-head-count` smaller than the page size, the natural-order commit log previously truncated at the first short tail because trailing null entries in the fetch page were treated as end-of-history, which could also drop still-referenced objects during maintenance.
 - Python CLI REPL now shows a clear "Syntax error" message for malformed input instead of a generic "unexpected error" message.
 - Python CLI `setup apply` now exits with an error after any setup operation fails, while still attempting the remaining operations. Previously, individual failures were logged but the command reported success and exited with status 0.

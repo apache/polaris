@@ -356,6 +356,15 @@ When enabled, allows RBAC operations to create synthetic entities for entities i
 
 ---
 
+##### `polaris.features."ENFORCE_CATALOG_CONFIG_AUTHORIZATION"`
+
+When true, enforce both Iceberg REST GET /v1/config authorization checks: CATALOG_READ_CONFIG (or a privilege that subsumes it) hard-gates the endpoint, and CATALOG_READ_PROPERTIES soft-hides catalog properties (defaults) in the response. When false (default), neither check runs so upgrades do not empty defaults or 403 bootstrap. Enable after granting CATALOG_READ_CONFIG (or catalog-level content privileges) and CATALOG_READ_PROPERTIES to clients that need defaults, and after updating Ranger/OPA policies for GET_CATALOG_CONFIG / GET_CATALOG_CONFIG_PROPERTIES. Ranger currently maps both operations to the existing catalog-properties-read access type; do not enable this flag for Ranger until a dedicated catalog-config-read access type exists (or accept that coarse mapping). This flag is temporary: the default is expected to flip to true and the flag removed in subsequent releases. A production-readiness warning is emitted while the flag remains false.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING"`
 
 If set to true, require that principals must rotate their credentials before being used for anything else.
