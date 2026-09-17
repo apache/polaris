@@ -21,14 +21,24 @@ package org.apache.polaris.extensions.lineage;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.Objects;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.context.CallContext;
 
 @RequestScoped
 class DefaultPolarisLineageHandler implements PolarisLineageHandler {
   private final LineageConfiguration configuration;
+  private final CallContext callContext;
+  private final PolarisPrincipal polarisPrincipal;
 
   @Inject
-  DefaultPolarisLineageHandler(LineageConfiguration configuration) {
+  DefaultPolarisLineageHandler(
+      LineageConfiguration configuration,
+      CallContext callContext,
+      PolarisPrincipal polarisPrincipal) {
     this.configuration = Objects.requireNonNull(configuration, "configuration must be non-null");
+    this.callContext = Objects.requireNonNull(callContext, "callContext must be non-null");
+    this.polarisPrincipal =
+        Objects.requireNonNull(polarisPrincipal, "polarisPrincipal must be non-null");
   }
 
   @Override
