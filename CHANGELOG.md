@@ -130,6 +130,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- OPA authorizer HTTP client creation no longer silently falls back to a default client when
+  truststore or SSL setup fails. Misconfiguration (for example a bad truststore path) now fails
+  startup instead of continuing with system trust and no configured response timeout.
 - GCS credential vending no longer fails with HTTP 500 when a table's location or `write.data.path`
   / `write.metadata.path` points at a bucket root without a trailing slash (e.g. `gs://bucket`).
   Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
