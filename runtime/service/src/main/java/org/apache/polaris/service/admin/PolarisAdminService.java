@@ -111,7 +111,6 @@ import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
@@ -1210,20 +1209,13 @@ public class PolarisAdminService {
       throw new IllegalArgumentException(
           String.format("Failed to load current secrets for principal '%s'", principalName));
     }
-    PrincipalSecretsResult rotateResult;
-    try {
-      rotateResult =
-          metaStoreManager.rotatePrincipalSecrets(
-              getCurrentPolarisContext(),
-              currentPrincipalEntity.getClientId(),
-              currentPrincipalEntity.getId(),
-              shouldReset,
-              currentSecrets.getMainSecretHash());
-    } catch (RetryOnConcurrencyException e) {
-      throw new CommitConflictException(
-          "Failed to %s secrets for principal '%s' due to concurrent modification",
-          shouldReset ? "reset" : "rotate", principalName);
-    }
+    PrincipalSecretsResult rotateResult =
+        metaStoreManager.rotatePrincipalSecrets(
+            getCurrentPolarisContext(),
+            currentPrincipalEntity.getClientId(),
+            currentPrincipalEntity.getId(),
+            shouldReset,
+            currentSecrets.getMainSecretHash());
     if (rotateResult.getReturnStatus()
         == BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED) {
       throw new CommitConflictException(
