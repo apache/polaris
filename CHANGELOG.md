@@ -144,6 +144,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   matching `--credential` unless `--print-credentials` is given; otherwise the command names
   the realms that are missing credentials and exits without bootstrapping anything.
   `--credentials-file` is unaffected.
+- Table notifications (`CREATE`/`UPDATE`) that reference a metadata location outside the catalog's
+  allowed locations are now rejected before any missing parent namespaces are auto-created, so a
+  rejected notification no longer leaves orphaned namespaces behind.
 - GCS credential vending no longer fails with HTTP 500 when a table's location or `write.data.path`
   / `write.metadata.path` points at a bucket root without a trailing slash (e.g. `gs://bucket`).
   Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
