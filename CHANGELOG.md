@@ -31,6 +31,22 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+### Breaking changes
+
+### New Features
+
+### Changes
+
+### Deprecations
+
+### Fixes
+
+### Commits
+
+## [1.8.0]
+
+### Upgrade notes
+
 - Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
   (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris
   has no automated schema migrations, existing Postgres/CockroachDB deployments keep the old,
@@ -41,7 +57,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
     WHERE location_without_scheme IS NOT NULL;
   ```
   H2 is unaffected.
-
 - Relational JDBC: schema version 6 also declares `idx_grants_realm_grantee`,
   `idx_grants_realm_securable` and `idx_entities_catalog_id_id` on CockroachDB (see Fixes), which
   the Postgres and H2 schemas have declared since schema v4. Fresh bootstraps get them
@@ -86,7 +101,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Semantic models now support dedicated privileges for listing, creating, reading, updating,
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
-
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
@@ -135,7 +149,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
   while building the access-boundary rules; GCS now handles it like the AWS integration.
 - Return HTTP 404 instead of 204 when a generic table or its catalog path disappears after resolution and before deletion.
-
 - Deleting a semantic model now returns HTTP 404 instead of HTTP 500 when the model or its
   catalog path disappears after resolution and before the deletion is persisted.
 - Return HTTP 404 instead of 500 when a policy or its catalog path disappears after resolution and before deletion.
@@ -219,8 +232,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   backend, since `S3FileIO`, `GCSFileIO`, `ADLSFileIO` and `HadoopFileIO` all implement
   `DelegateFileIO`.
 - Async task retries no longer fail with a `NullPointerException` when the task entity has already been dropped by a previous attempt. Such a retry is now recognized as an already-completed task and exits cleanly, instead of exhausting all retry attempts and logging a `NullPointerException` on each one.
-  
-### Commits
 
 ## [1.7.0]
 
@@ -263,6 +274,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   storage provider, such as `s3.session-token-expires-at-ms` for S3.
 
 ### New Features
+
 - Added AWS KMS decryption-key access through the `decryptionKeys` catalog storage configuration property.
 - Added Kafka PolarisEventListener for publishing events to Kafka.
 - Added GCS principal attribution for vended credentials (the GCP counterpart of AWS STS session tags). Set `GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true` to activate; the feature flags `GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE`, `GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER`, and `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE` are then required (a missing value is a fatal configuration error). Also requires a `gcpServiceAccount` on the catalog StorageConfiguration. When enabled, credential vending chains a catalog-signed JWT through a Workload Identity Federation token exchange and service-account impersonation, so the Polaris principal appears in GCS Data Access audit logs (`serviceAccountDelegationInfo.principalSubject`) for any client. `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID` sets the JWT `kid` for JWKS key rotation. Attribution is keyed per-principal in the credential cache; when disabled (default), GCP vending behaviour is unchanged.
@@ -289,6 +301,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The field `clientSecret` of the Polaris management API type `ResetPrincipalRequest` is now using `format: password`. This does not change the wire format, but code generated from the OpenAPI may require downstream changes.
 
 ### Deprecations
+
 - The `currentKmsKey` and `allowedKmsKeys` AWS storage configuration properties are deprecated. Use `encryptionKeys` instead.
 - Deprecated `ALLOW_EXTERNAL_TABLE_LOCATION`. Use `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` for external metadata file locations, including catalog config `polaris.config.allow.external.metadata.file.location`.
 
@@ -625,7 +638,8 @@ Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
 
 Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release. Only the source distribution is available for this release.
 
-[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.7.0...HEAD
+[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.8.0...HEAD
+[1.8.0]: https://github.com/apache/polaris/compare/apache-polaris-1.7.0...apache-polaris-1.8.0
 [1.7.0]: https://github.com/apache/polaris/compare/apache-polaris-1.6.0...apache-polaris-1.7.0
 [1.6.0]: https://github.com/apache/polaris/compare/apache-polaris-1.5.0...apache-polaris-1.6.0
 [1.5.0]: https://github.com/apache/polaris/compare/apache-polaris-1.4.0...apache-polaris-1.5.0
