@@ -49,7 +49,7 @@ class MalformedPageTokenTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource
   void malformedTokenIsRejectedAsBadRequest(String description, String serializedToken) {
-    assertThatThrownBy(() -> PageToken.build(serializedToken, null, () -> true))
+    assertThatThrownBy(() -> PageToken.build(serializedToken, null, -1, () -> true))
         .as(description)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid page token");
@@ -83,7 +83,7 @@ class MalformedPageTokenTest {
   @ValueSource(ints = {0, 5})
   void nullTokenIsRejectedWithAndWithoutPageSize(Integer pageSize) {
     String nullToken = smile(null);
-    assertThatThrownBy(() -> PageToken.build(nullToken, pageSize, () -> true))
+    assertThatThrownBy(() -> PageToken.build(nullToken, pageSize, -1, () -> true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid page token");
   }
