@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, cast
 
 from apache_polaris.cli.command import Command
-from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.command.utils import get_catalog_api_client, paginate
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from apache_polaris.cli.options.option_tree import Argument
@@ -51,6 +51,7 @@ class TableCommand(Command):
     catalog_name: Optional[str] = None
     namespace: Optional[List[str]] = field(default_factory=list)
     table_name: Optional[str] = None
+    page_size: Optional[int] = None
 
     def validate(self) -> None:
         if not self.catalog_name:
@@ -77,9 +78,14 @@ class TableCommand(Command):
         ns_str = UNIT_SEPARATOR.join(namespace_list)
 
         if self.table_subcommand == Subcommands.LIST:
-            result = catalog_api.list_tables(prefix=catalog_name, namespace=ns_str)
-            for table_identifier in result.identifiers:
-                print(table_identifier.to_json())
+            for resp in paginate(
+                catalog_api.list_tables,
+                page_size=self.page_size,
+                prefix=catalog_name,
+                namespace=ns_str,
+            ):
+                for table_identifier in resp.identifiers or []:
+                    print(table_identifier.to_json())
         elif self.table_subcommand == Subcommands.GET:
             print(
                 catalog_api.load_table(
