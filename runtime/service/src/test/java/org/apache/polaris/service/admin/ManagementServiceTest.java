@@ -950,7 +950,7 @@ public class ManagementServiceTest {
   }
 
   @Test
-  public void anEmptyMechanismAndAnExplicitStsAreDifferentForTheFreeze() {
+  public void anEmptyMechanismCanBeUpdatedToAnExplicitSts() {
     TestServices svc = mechanismServices(List.of("STS"), false);
     AwsStorageConfigInfo empty =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
@@ -970,13 +970,15 @@ public class ManagementServiceTest {
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/empty-then-sts"),
             explicitSts);
-    assertThatThrownBy(
-            () ->
-                svc.catalogsApi()
-                    .updateCatalog(
-                        "empty-then-sts", toSts, svc.realmContext(), svc.securityContext()))
-        .isInstanceOf(BadRequestException.class)
-        .hasMessageStartingWith("Cannot modify credential vending mechanism");
+    try (Response response =
+        svc.catalogsApi()
+            .updateCatalog("empty-then-sts", toSts, svc.realmContext(), svc.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+    assertThat(
+            ((AwsStorageConfigInfo) fetch(svc, "empty-then-sts").getStorageConfigInfo())
+                .getCredentialVendingMechanism())
+        .isEqualTo("STS");
   }
 
   @Test
@@ -992,97 +994,48 @@ public class ManagementServiceTest {
   }
 
   @Test
-  public void changingTheMechanismIsRefused() {
-    TestServices enabled = mechanismServices(List.of("STS", TEST_MECHANISM), false);
-    try (Response response =
-        create(enabled, catalogNamed("second-frozen", secondMechanismConfig().build()))) {
-      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
-    }
-    Catalog fetched = fetch(enabled, "second-frozen");
-    Map<String, String> props =
-        Map.of("default-base-location", "s3://second-bucket/base/second-frozen");
-
-    // Omitting the mechanism selects the server default, a different mechanism from an explicit
-    // one, so the freeze refuses the change.
-    UpdateCatalogRequest omitMechanism =
-        new UpdateCatalogRequest(
-            fetched.getEntityVersion(),
-            props,
-            secondMechanismConfig().setCredentialVendingMechanism(null).setRoleArn(null).build());
-    assertThatThrownBy(
-            () ->
-                enabled
-                    .catalogsApi()
-                    .updateCatalog(
-                        "second-frozen",
-                        omitMechanism,
-                        enabled.realmContext(),
-                        enabled.securityContext()))
-        .isInstanceOf(BadRequestException.class)
-        .hasMessageStartingWith("Cannot modify credential vending mechanism");
-  }
-
-  /**
-   * A fresh {@code String} built at the same value as the stored one: the freeze check must use
-   * {@code Objects.equals}, never {@code ==} or {@code !=}, or a value rebuilt from a JSON request
-   * would look like a change on every update.
-   */
-  @Test
-  public void updatingACatalogWithTheSameMechanismValueIsNotAFreezeViolation() {
-    TestServices enabled = mechanismServices(List.of("STS", TEST_MECHANISM), false);
-    try (Response response =
-        create(enabled, catalogNamed("second-same", secondMechanismConfig().build()))) {
-      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
-    }
-    Catalog fetched = fetch(enabled, "second-same");
-    @SuppressWarnings("StringOperationCanBeSimplified")
-    String freshMechanismValue = new String(TEST_MECHANISM);
-    UpdateCatalogRequest sameMechanism =
-        new UpdateCatalogRequest(
-            fetched.getEntityVersion(),
-            Map.of("default-base-location", "s3://second-bucket/base/second-same"),
-            secondMechanismConfig().setCredentialVendingMechanism(freshMechanismValue).build());
-    try (Response response =
-        enabled
-            .catalogsApi()
-            .updateCatalog(
-                "second-same", sameMechanism, enabled.realmContext(), enabled.securityContext())) {
-      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-    }
-  }
-
-  @Test
-  public void testFreezeIsLiftedByTheUnrestrictedFlag() {
-    TestServices unrestricted = mechanismServices(List.of("STS", TEST_MECHANISM), true);
-    AwsStorageConfigInfo emptyMechanism =
+  public void changingTheMechanismIsAcceptedAndValidatedByTheNewMechanism() {
+    EndpointRequiringMechanism mechanism = new EndpointRequiringMechanism();
+    TestServices svc =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3"),
+                    "SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS", TEST_MECHANISM)))
+            .additionalVendingMechanisms(Map.of(TEST_MECHANISM, mechanism))
+            .build();
+    AwsStorageConfigInfo sts =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setCredentialVendingMechanism("STS")
             .setAllowedLocations(List.of("s3://second-bucket/base/"))
             .build();
-    try (Response response =
-        create(unrestricted, catalogNamed("empty-to-second", emptyMechanism))) {
+    try (Response response = create(svc, catalogNamed("mechanism-change", sts))) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
-    Catalog fetched = fetch(unrestricted, "empty-to-second");
-    UpdateCatalogRequest toSecond =
+    Catalog fetched = fetch(svc, "mechanism-change");
+    UpdateCatalogRequest toTestMechanism =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
-            Map.of("default-base-location", "s3://second-bucket/base/empty-to-second"),
-            secondMechanismConfig().build());
+            Map.of("default-base-location", "s3://second-bucket/base/mechanism-change"),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setCredentialVendingMechanism(TEST_MECHANISM)
+                .setAllowedLocations(List.of("s3://second-bucket/base/"))
+                .setEndpoint("https://s3.example.test")
+                .build());
     try (Response response =
-        unrestricted
-            .catalogsApi()
+        svc.catalogsApi()
             .updateCatalog(
-                "empty-to-second",
-                toSecond,
-                unrestricted.realmContext(),
-                unrestricted.securityContext())) {
+                "mechanism-change", toTestMechanism, svc.realmContext(), svc.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
     assertThat(
-            ((AwsStorageConfigInfo) fetch(unrestricted, "empty-to-second").getStorageConfigInfo())
+            ((AwsStorageConfigInfo) fetch(svc, "mechanism-change").getStorageConfigInfo())
                 .getCredentialVendingMechanism())
         .isEqualTo(TEST_MECHANISM);
+    assertThat(mechanism.currents).hasSize(1);
+    assertThat(mechanism.currents.get(0).getCredentialVendingMechanism()).isEqualTo("STS");
+    assertThat(mechanism.updateds).hasSize(1);
+    assertThat(mechanism.updateds.get(0).getCredentialVendingMechanism()).isEqualTo(TEST_MECHANISM);
   }
 
   @Test

@@ -971,14 +971,6 @@ public class PolarisAdminService {
               "Cannot modify ExternalId in storage config from %s to %s",
               currentStorageConfig, newStorageConfig);
         }
-
-        if (!Objects.equals(
-            currentAwsConfig.getCredentialVendingMechanism(),
-            newAwsConfig.getCredentialVendingMechanism())) {
-          throw new BadRequestException(
-              "Cannot modify credential vending mechanism in storage config from %s to %s",
-              currentStorageConfig, newStorageConfig);
-        }
       }
     } else if (currentStorageConfig instanceof AzureStorageConfigurationInfo currentAzureConfig
         && newStorageConfig instanceof AzureStorageConfigurationInfo newAzureConfig) {
