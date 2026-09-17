@@ -18,8 +18,11 @@
  */
 package org.apache.polaris.core.connection;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
@@ -28,6 +31,7 @@ import org.apache.iceberg.rest.auth.AuthProperties;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -37,7 +41,8 @@ import org.jspecify.annotations.Nullable;
  */
 public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDpo {
 
-  // The aws IAM role arn assumed by polaris userArn when signing requests
+  // The aws IAM role arn assumed by polaris userArn when signing requests. Null when static
+  // credentials are used instead.
   @JsonProperty(value = "roleArn")
   private final String roleArn;
 
@@ -62,13 +67,47 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
   @JsonProperty(value = "sessionPolicy")
   private final String sessionPolicy;
 
+  // Static access key id used for signing. Not a secret, so stored inline like OAuth's clientId.
+  @JsonProperty(value = "accessKeyId")
+  private final String accessKeyId;
+
+  // Offloaded to the user secrets manager, the way OAuth's client secret is.
+  @JsonProperty(value = "secretAccessKeyReference")
+  private final SecretReference secretAccessKeyReference;
+
+  /** Role-assumption form, for AWS services reached through STS. */
   public SigV4AuthenticationParametersDpo(
-      @JsonProperty(value = "roleArn", required = true) String roleArn,
-      @JsonProperty(value = "roleSessionName", required = false) String roleSessionName,
-      @JsonProperty(value = "externalId", required = false) String externalId,
+      String roleArn,
+      String roleSessionName,
+      String externalId,
+      String signingRegion,
+      String signingName,
+      String sessionPolicy) {
+    this(
+        roleArn,
+        roleSessionName,
+        externalId,
+        signingRegion,
+        signingName,
+        sessionPolicy,
+        null,
+        null);
+  }
+
+  @JsonCreator
+  public SigV4AuthenticationParametersDpo(
+      @JsonProperty(value = "roleArn", required = false) @Nullable String roleArn,
+      @JsonProperty(value = "roleSessionName", required = false) @Nullable String roleSessionName,
+      @JsonProperty(value = "externalId", required = false) @Nullable String externalId,
       @JsonProperty(value = "signingRegion", required = true) String signingRegion,
-      @JsonProperty(value = "signingName", required = false) String signingName,
-      @JsonProperty(value = "sessionPolicy", required = false) String sessionPolicy) {
+      @JsonProperty(value = "signingName", required = false) @Nullable String signingName,
+      @JsonProperty(value = "sessionPolicy", required = false) @Nullable String sessionPolicy,
+      @JsonProperty(value = "accessKeyId", required = false) @Nullable String accessKeyId,
+      @JsonProperty(value = "secretAccessKeyReference", required = false)
+          @Nullable SecretReference secretAccessKeyReference) {
+    // Deliberately unvalidated: this constructor is also the deserialization entry point, and a
+    // persistence object has to be able to read back anything that was ever written. Input is
+    // validated in validateAuthenticationParameters() on the way in instead.
     super(AuthenticationType.SIGV4.getCode());
     this.roleArn = roleArn;
     this.roleSessionName = roleSessionName;
@@ -76,10 +115,59 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
     this.signingRegion = signingRegion;
     this.signingName = signingName;
     this.sessionPolicy = sessionPolicy;
+    this.accessKeyId = accessKeyId;
+    this.secretAccessKeyReference = secretAccessKeyReference;
   }
 
-  public @NonNull String getRoleArn() {
+  /**
+   * Rejects a caller-supplied combination that is not usable: exactly one of roleArn or a complete
+   * static credential pair. Called on the write path, not on read.
+   */
+  public static void validateAuthenticationParameters(
+      @Nullable String roleArn,
+      @Nullable String accessKeyId,
+      @Nullable String secretAccessKey,
+      @Nullable String roleSessionName,
+      @Nullable String externalId,
+      @Nullable String sessionPolicy) {
+    boolean hasAccessKeyId = StringUtils.isNotEmpty(accessKeyId);
+    boolean hasSecretAccessKey = StringUtils.isNotEmpty(secretAccessKey);
+    boolean hasStaticCredentials = hasAccessKeyId || hasSecretAccessKey;
+    Preconditions.checkArgument(
+        !hasStaticCredentials || (hasAccessKeyId && hasSecretAccessKey),
+        "accessKeyId and secretAccessKey must be provided together");
+    Preconditions.checkArgument(
+        StringUtils.isNotEmpty(roleArn) || hasStaticCredentials,
+        "Either roleArn or static credentials (accessKeyId + secretAccessKey) must be provided");
+    Preconditions.checkArgument(
+        StringUtils.isEmpty(roleArn) || !hasStaticCredentials,
+        "roleArn and static credentials (accessKeyId + secretAccessKey) are mutually exclusive");
+    // These only shape an STS AssumeRole request. Accepting them alongside static credentials
+    // would silently ignore them, so they are rejected rather than quietly dropped.
+    Preconditions.checkArgument(
+        !hasStaticCredentials
+            || (StringUtils.isEmpty(roleSessionName)
+                && StringUtils.isEmpty(externalId)
+                && StringUtils.isEmpty(sessionPolicy)),
+        "roleSessionName, externalId and sessionPolicy apply to role assumption only and cannot be "
+            + "combined with static credentials");
+  }
+
+  public @Nullable String getRoleArn() {
     return roleArn;
+  }
+
+  public @Nullable String getAccessKeyId() {
+    return accessKeyId;
+  }
+
+  public @Nullable SecretReference getSecretAccessKeyReference() {
+    return secretAccessKeyReference;
+  }
+
+  @JsonIgnore
+  public boolean hasStaticCredentials() {
+    return accessKeyId != null && secretAccessKeyReference != null;
   }
 
   public @Nullable String getRoleSessionName() {
@@ -126,6 +214,8 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
         .setSigningRegion(getSigningRegion())
         .setSigningName(getSigningName())
         .setSessionPolicy(getSessionPolicy())
+        // Secret access key deliberately not echoed back, as with OAuth's client secret
+        .setAccessKeyId(getAccessKeyId())
         .build();
   }
 
@@ -139,6 +229,8 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
         .add("signingRegion", getSigningRegion())
         .add("signingName", getSigningName())
         .add("hasSessionPolicy", StringUtils.isNotEmpty(getSessionPolicy()))
+        .add("accessKeyId", getAccessKeyId())
+        .add("hasSecretAccessKey", getSecretAccessKeyReference() != null)
         .toString();
   }
 }
