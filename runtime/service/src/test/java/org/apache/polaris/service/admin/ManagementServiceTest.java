@@ -46,7 +46,6 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -1167,16 +1166,12 @@ public class ManagementServiceTest {
     final List<AwsStorageConfigurationInfo> updateds = new ArrayList<>();
 
     @Override
-    public PolarisStorageIntegration integrationFor(
-        AwsStorageConfigurationInfo storageConfig, RealmConfig realmConfig) {
-      return TestServices.fakeMechanism().integrationFor(storageConfig, realmConfig);
+    public PolarisStorageIntegration integrationFor(AwsStorageConfigurationInfo storageConfig) {
+      return TestServices.fakeMechanism().integrationFor(storageConfig);
     }
 
     @Override
-    public void validate(
-        AwsStorageConfigurationInfo current,
-        AwsStorageConfigurationInfo updated,
-        RealmConfig realmConfig) {
+    public void validate(AwsStorageConfigurationInfo current, AwsStorageConfigurationInfo updated) {
       currents.add(current);
       updateds.add(updated);
       if (updated.getEndpoint() == null) {

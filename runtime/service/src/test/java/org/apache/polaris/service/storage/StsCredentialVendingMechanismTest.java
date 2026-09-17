@@ -114,11 +114,12 @@ class StsCredentialVendingMechanismTest {
     when(stsClient.assumeRole(captor.capture())).thenReturn(assumeRoleResponse());
     StsClientProvider stsClientProvider = destination -> stsClient;
 
-    StsCredentialVendingMechanism mechanism =
-        new StsCredentialVendingMechanism(storageConfiguration, stsClientProvider, null);
     RealmConfig realmConfig = realmConfig(Map.of(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true));
+    StsCredentialVendingMechanism mechanism =
+        new StsCredentialVendingMechanism(
+            storageConfiguration, stsClientProvider, null, realmConfig);
     PolarisStorageIntegration integration =
-        mechanism.integrationFor(storageConfigWithName("named-storage"), realmConfig);
+        mechanism.integrationFor(storageConfigWithName("named-storage"));
 
     integration.getStorageAccessConfig(
         grants(), Optional.empty(), CredentialVendingContext.empty());
@@ -138,11 +139,12 @@ class StsCredentialVendingMechanismTest {
     when(stsClient.assumeRole(any(AssumeRoleRequest.class))).thenReturn(assumeRoleResponse());
     StsClientProvider stsClientProvider = destination -> stsClient;
 
-    StsCredentialVendingMechanism mechanism =
-        new StsCredentialVendingMechanism(storageConfiguration, stsClientProvider, null);
     RealmConfig realmConfig = realmConfig(Map.of(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), false));
+    StsCredentialVendingMechanism mechanism =
+        new StsCredentialVendingMechanism(
+            storageConfiguration, stsClientProvider, null, realmConfig);
     PolarisStorageIntegration integration =
-        mechanism.integrationFor(storageConfigWithName("named-storage"), realmConfig);
+        mechanism.integrationFor(storageConfigWithName("named-storage"));
 
     integration.getStorageAccessConfig(
         grants(), Optional.empty(), CredentialVendingContext.empty());
@@ -157,16 +159,17 @@ class StsCredentialVendingMechanismTest {
     StsClient stsClient = mock(StsClient.class);
     StsClientProvider stsClientProvider = destination -> stsClient;
 
-    StsCredentialVendingMechanism mechanism =
-        new StsCredentialVendingMechanism(storageConfiguration, stsClientProvider, null);
     RealmConfig realmConfig = realmConfig(Map.of());
+    StsCredentialVendingMechanism mechanism =
+        new StsCredentialVendingMechanism(
+            storageConfiguration, stsClientProvider, null, realmConfig);
     AwsStorageConfigurationInfo config =
         AwsStorageConfigurationInfo.builder()
             .roleARN(ROLE_ARN)
             .addAllowedLocation(LOCATION)
             .stsUnavailable(true)
             .build();
-    PolarisStorageIntegration integration = mechanism.integrationFor(config, realmConfig);
+    PolarisStorageIntegration integration = mechanism.integrationFor(config);
 
     StorageAccessConfig accessConfig =
         integration.getStorageAccessConfig(
@@ -190,19 +193,23 @@ class StsCredentialVendingMechanismTest {
     when(stsClient.assumeRole(captor.capture())).thenReturn(assumeRoleResponse());
     StsClientProvider stsClientProvider = destination -> stsClient;
 
-    StsCredentialVendingMechanism mechanism =
-        new StsCredentialVendingMechanism(storageConfiguration, stsClientProvider, null);
     AwsStorageConfigurationInfo config = storageConfig();
 
     RealmConfig shortDuration = realmConfig(Map.of(STORAGE_CREDENTIAL_DURATION_SECONDS.key(), 900));
     RealmConfig longDuration = realmConfig(Map.of(STORAGE_CREDENTIAL_DURATION_SECONDS.key(), 3600));
+    StsCredentialVendingMechanism shortMechanism =
+        new StsCredentialVendingMechanism(
+            storageConfiguration, stsClientProvider, null, shortDuration);
+    StsCredentialVendingMechanism longMechanism =
+        new StsCredentialVendingMechanism(
+            storageConfiguration, stsClientProvider, null, longDuration);
 
-    PolarisStorageIntegration shortIntegration = mechanism.integrationFor(config, shortDuration);
+    PolarisStorageIntegration shortIntegration = shortMechanism.integrationFor(config);
     shortIntegration.getStorageAccessConfig(
         grants(), Optional.empty(), CredentialVendingContext.empty());
     assertThat(captor.getValue().durationSeconds()).isEqualTo(900);
 
-    PolarisStorageIntegration longIntegration = mechanism.integrationFor(config, longDuration);
+    PolarisStorageIntegration longIntegration = longMechanism.integrationFor(config);
     longIntegration.getStorageAccessConfig(
         grants(), Optional.empty(), CredentialVendingContext.empty());
     assertThat(captor.getValue().durationSeconds()).isEqualTo(3600);
@@ -215,12 +222,14 @@ class StsCredentialVendingMechanismTest {
     RealmConfig realmConfig = realmConfig(Map.of());
 
     assertThat(
-            new DefaultCredentialVendingMechanism(stsClientProvider, Optional.empty(), null)
-                .integrationFor(config, realmConfig))
+            new DefaultCredentialVendingMechanism(
+                    stsClientProvider, Optional.empty(), null, realmConfig)
+                .integrationFor(config))
         .isInstanceOf(AwsCredentialsStorageIntegration.class);
     assertThat(
-            new StsCredentialVendingMechanism(stsClientProvider, Optional.empty(), null)
-                .integrationFor(config, realmConfig))
+            new StsCredentialVendingMechanism(
+                    stsClientProvider, Optional.empty(), null, realmConfig)
+                .integrationFor(config))
         .isInstanceOf(AwsCredentialsStorageIntegration.class);
   }
 }

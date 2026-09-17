@@ -304,7 +304,7 @@ public class PolarisAdminServiceTest {
     when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.deny("denied"));
     assertThatThrownBy(() -> adminService.createCatalog(stsCatalogRequest()))
         .isInstanceOf(ForbiddenException.class);
-    verify(stsMechanism, never()).validate(any(), any(), any());
+    verify(stsMechanism, never()).validate(any(), any());
   }
 
   @Test

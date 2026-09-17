@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -47,15 +48,22 @@ public final class PolarisAdminServiceTestSupport {
       PolarisPrincipal principal,
       PolarisAuthorizer authorizer,
       ReservedProperties reservedProperties) {
+    RealmConfig realmConfig = callContext.getRealmConfig();
     S3CredentialVendingMechanisms vendingMechanisms =
         new S3CredentialVendingMechanisms(
             Map.of(
                 S3CredentialVendingMechanism.STS,
                 new StsCredentialVendingMechanism(
-                    destination -> Mockito.mock(StsClient.class), Optional.empty(), null),
+                    destination -> Mockito.mock(StsClient.class),
+                    Optional.empty(),
+                    null,
+                    realmConfig),
                 S3CredentialVendingMechanism.DEFAULT,
                 new DefaultCredentialVendingMechanism(
-                    destination -> Mockito.mock(StsClient.class), Optional.empty(), null)));
+                    destination -> Mockito.mock(StsClient.class),
+                    Optional.empty(),
+                    null,
+                    realmConfig)));
     return new PolarisAdminService(
         callContext,
         resolutionManifestFactory,

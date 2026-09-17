@@ -121,7 +121,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
             realmConfig, awsConfig.getCredentialVendingMechanism());
         yield mechanisms
             .require(awsConfig.resolvedCredentialVendingMechanism())
-            .integrationFor(awsConfig, realmConfig);
+            .integrationFor(awsConfig);
       }
       case GCS -> gcpFactory.apply((GcpStorageConfigurationInfo) storageConfig);
       case AZURE -> azureFactory.apply((AzureStorageConfigurationInfo) storageConfig);

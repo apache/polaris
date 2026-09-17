@@ -52,14 +52,14 @@ class S3CredentialVendingMechanismDispatchTest {
     return new RealmConfigImpl((rc, name) -> config.get(name), REALM);
   }
 
-  private static S3CredentialVendingMechanism testStsMechanism() {
+  private static S3CredentialVendingMechanism testStsMechanism(RealmConfig realmConfig) {
     return new StsCredentialVendingMechanism(
-        destination -> Mockito.mock(StsClient.class), Optional.empty(), null);
+        destination -> Mockito.mock(StsClient.class), Optional.empty(), null, realmConfig);
   }
 
-  private static S3CredentialVendingMechanism testDefaultMechanism() {
+  private static S3CredentialVendingMechanism testDefaultMechanism(RealmConfig realmConfig) {
     return new DefaultCredentialVendingMechanism(
-        destination -> Mockito.mock(StsClient.class), Optional.empty(), null);
+        destination -> Mockito.mock(StsClient.class), Optional.empty(), null, realmConfig);
   }
 
   private static PolarisStorageIntegrationProviderImpl provider(
@@ -73,7 +73,8 @@ class S3CredentialVendingMechanismDispatchTest {
 
   private static PolarisStorageIntegrationProviderImpl provider(RealmConfig realmConfig) {
     return provider(
-        realmConfig, Map.of("STS", testStsMechanism(), "DEFAULT", testDefaultMechanism()));
+        realmConfig,
+        Map.of("STS", testStsMechanism(realmConfig), "DEFAULT", testDefaultMechanism(realmConfig)));
   }
 
   private static CatalogEntity catalog(RealmConfig realmConfig, AwsStorageConfigInfo model) {
@@ -144,12 +145,12 @@ class S3CredentialVendingMechanismDispatchTest {
     PolarisStorageIntegration expected = Mockito.mock(PolarisStorageIntegration.class);
     AtomicInteger factoryCalls = new AtomicInteger();
     S3CredentialVendingMechanism testMechanism =
-        (storageConfig, callerRealmConfig) -> {
+        storageConfig -> {
           factoryCalls.incrementAndGet();
           return expected;
         };
     PolarisStorageIntegrationProviderImpl provider =
-        provider(rc, Map.of("STS", testStsMechanism(), "TEST_MECHANISM", testMechanism));
+        provider(rc, Map.of("STS", testStsMechanism(rc), "TEST_MECHANISM", testMechanism));
 
     assertThat(
             provider.getStorageIntegration(List.of(catalog(rc, withMechanism("TEST_MECHANISM")))))
@@ -162,12 +163,12 @@ class S3CredentialVendingMechanismDispatchTest {
     RealmConfig rc = realmConfig(List.of("STS"));
     AtomicInteger factoryCalls = new AtomicInteger();
     S3CredentialVendingMechanism testMechanism =
-        (storageConfig, callerRealmConfig) -> {
+        storageConfig -> {
           factoryCalls.incrementAndGet();
           return Mockito.mock(PolarisStorageIntegration.class);
         };
     PolarisStorageIntegrationProviderImpl provider =
-        provider(rc, Map.of("STS", testStsMechanism(), "TEST_MECHANISM", testMechanism));
+        provider(rc, Map.of("STS", testStsMechanism(rc), "TEST_MECHANISM", testMechanism));
 
     assertThatThrownBy(
             () ->

@@ -19,7 +19,6 @@
 
 package org.apache.polaris.core.storage.aws;
 
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.jspecify.annotations.Nullable;
 
@@ -32,7 +31,9 @@ import org.jspecify.annotations.Nullable;
  * server replaces a mechanism, {@link #DEFAULT} included, with an {@code @Alternative} bean of a
  * higher {@code @Priority} that carries the same identifier. An implementation must be
  * application-scoped (or otherwise normal-scoped): the registry resolves every bean once at startup
- * and hands out the same instance for the lifetime of the server.
+ * and hands out the same instance for the lifetime of the server. An implementation that needs
+ * realm configuration injects {@code RealmConfig}; the request context is active wherever the
+ * server calls a mechanism, including task execution.
  */
 public interface S3CredentialVendingMechanism {
 
@@ -47,18 +48,15 @@ public interface S3CredentialVendingMechanism {
   String DEFAULT = "DEFAULT";
 
   /** The storage integration that vends for one S3 catalog under this mechanism. */
-  PolarisStorageIntegration integrationFor(
-      AwsStorageConfigurationInfo storageConfig, RealmConfig realmConfig);
+  PolarisStorageIntegration integrationFor(AwsStorageConfigurationInfo storageConfig);
 
   /**
    * Checks a storage config that selects this mechanism before it is stored. Called at catalog
    * create with {@code current} null, and at catalog update with the stored config as {@code
    * current}, after authorization, the realm allowlist and the availability check. Throw {@link
-   * IllegalArgumentException} or {@link org.apache.iceberg.exceptions.ValidationException} to
-   * refuse the request with HTTP 400. The default accepts every config.
+   * IllegalArgumentException} to refuse the request with HTTP 400. The default accepts every
+   * config.
    */
   default void validate(
-      @Nullable AwsStorageConfigurationInfo current,
-      AwsStorageConfigurationInfo updated,
-      RealmConfig realmConfig) {}
+      @Nullable AwsStorageConfigurationInfo current, AwsStorageConfigurationInfo updated) {}
 }

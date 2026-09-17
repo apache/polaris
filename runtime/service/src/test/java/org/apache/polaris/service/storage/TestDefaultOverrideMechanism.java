@@ -23,7 +23,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -44,8 +43,8 @@ public class TestDefaultOverrideMechanism implements S3CredentialVendingMechanis
   public static final String FAKE_SECRET = "DEFAULT_OVERRIDE_FAKE_SECRET";
   public static final String FAKE_TOKEN = "DEFAULT_OVERRIDE_FAKE_TOKEN";
 
-  /** One call: the storage config and realm config {@link #integrationFor} was given. */
-  public record Call(AwsStorageConfigurationInfo storageConfig, RealmConfig realmConfig) {}
+  /** One call: the storage config {@link #integrationFor} was given. */
+  public record Call(AwsStorageConfigurationInfo storageConfig) {}
 
   private final List<Call> calls = new CopyOnWriteArrayList<>();
 
@@ -58,9 +57,8 @@ public class TestDefaultOverrideMechanism implements S3CredentialVendingMechanis
   }
 
   @Override
-  public PolarisStorageIntegration integrationFor(
-      AwsStorageConfigurationInfo storageConfig, RealmConfig realmConfig) {
-    calls.add(new Call(storageConfig, realmConfig));
+  public PolarisStorageIntegration integrationFor(AwsStorageConfigurationInfo storageConfig) {
+    calls.add(new Call(storageConfig));
     return (grants, refreshEndpoint, context) ->
         StorageAccessConfig.builder()
             .putCredential(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), FAKE_KEY)

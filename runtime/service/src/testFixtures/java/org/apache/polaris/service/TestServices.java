@@ -289,11 +289,11 @@ public record TestServices(
       vendingMechanismsMap.put(
           S3CredentialVendingMechanism.STS,
           new StsCredentialVendingMechanism(
-              (destination) -> stsClient, Optional.empty(), storageCredentialCache));
+              (destination) -> stsClient, Optional.empty(), storageCredentialCache, realmConfig));
       vendingMechanismsMap.put(
           S3CredentialVendingMechanism.DEFAULT,
           new DefaultCredentialVendingMechanism(
-              (destination) -> stsClient, Optional.empty(), storageCredentialCache));
+              (destination) -> stsClient, Optional.empty(), storageCredentialCache, realmConfig));
       vendingMechanismsMap.putAll(additionalVendingMechanisms);
       S3CredentialVendingMechanisms vendingMechanisms =
           new S3CredentialVendingMechanisms(vendingMechanismsMap);
@@ -656,7 +656,7 @@ public record TestServices(
    * break table creation whenever credential subscoping is not skipped.
    */
   public static S3CredentialVendingMechanism fakeMechanism() {
-    return (storageConfig, realmConfig) ->
+    return storageConfig ->
         (grants, refreshEndpoint, context) ->
             StorageAccessConfig.builder()
                 .putCredential(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "FAKE_KEY")

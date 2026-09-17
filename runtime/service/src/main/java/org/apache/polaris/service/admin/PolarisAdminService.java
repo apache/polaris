@@ -786,8 +786,7 @@ public class PolarisAdminService {
     if (mechanism != null) {
       // Safe: CatalogEntity.Builder.processStorageConfigurationInfo always converts an
       // AwsStorageConfigInfo request to an AwsStorageConfigurationInfo.
-      mechanism.validate(
-          null, (AwsStorageConfigurationInfo) entity.getStorageConfigurationInfo(), realmConfig);
+      mechanism.validate(null, (AwsStorageConfigurationInfo) entity.getStorageConfigurationInfo());
     }
 
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
@@ -1045,8 +1044,7 @@ public class PolarisAdminService {
           currentStorageConfig instanceof AwsStorageConfigurationInfo currentAwsConfig
               ? currentAwsConfig
               : null,
-          (AwsStorageConfigurationInfo) updatedEntity.getStorageConfigurationInfo(),
-          realmConfig);
+          (AwsStorageConfigurationInfo) updatedEntity.getStorageConfigurationInfo());
     }
 
     if (catalogOverlapsWithExistingCatalog(updatedEntity)) {

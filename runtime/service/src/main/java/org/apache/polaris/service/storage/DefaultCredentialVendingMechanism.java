@@ -22,6 +22,7 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Optional;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -39,15 +40,17 @@ public class DefaultCredentialVendingMechanism extends AbstractStsCredentialVend
   public DefaultCredentialVendingMechanism(
       StorageConfiguration storageConfiguration,
       StsClientProvider stsClientProvider,
-      StorageCredentialCache cache) {
-    super(storageConfiguration, stsClientProvider, cache);
+      StorageCredentialCache cache,
+      RealmConfig realmConfig) {
+    super(storageConfiguration, stsClientProvider, cache, realmConfig);
   }
 
-  /** Test constructor: a fixed credentials provider, the realm config is never consulted. */
+  /** Test constructor: a fixed credentials provider and the realm config to vend under. */
   public DefaultCredentialVendingMechanism(
       StsClientProvider stsClientProvider,
       Optional<AwsCredentialsProvider> stsCredentials,
-      StorageCredentialCache cache) {
-    super(stsClientProvider, stsCredentials, cache);
+      StorageCredentialCache cache,
+      RealmConfig realmConfig) {
+    super(stsClientProvider, stsCredentials, cache, realmConfig);
   }
 }

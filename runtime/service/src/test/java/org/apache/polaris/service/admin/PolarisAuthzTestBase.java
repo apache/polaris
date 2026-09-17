@@ -196,10 +196,11 @@ public abstract class PolarisAuthzTestBase {
         new S3CredentialVendingMechanisms(
             Map.of(
                 "STS",
-                new StsCredentialVendingMechanism(destination -> stsClient, Optional.empty(), null),
+                new StsCredentialVendingMechanism(
+                    destination -> stsClient, Optional.empty(), null, null),
                 S3CredentialVendingMechanism.DEFAULT,
                 new DefaultCredentialVendingMechanism(
-                    destination -> stsClient, Optional.empty(), null)));
+                    destination -> stsClient, Optional.empty(), null, null)));
     PolarisStorageIntegrationProviderImpl mock =
         new PolarisStorageIntegrationProviderImpl(
             mechanisms,

@@ -23,7 +23,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -47,8 +46,8 @@ public class TestS3CredentialVendingMechanism implements S3CredentialVendingMech
   public static final String FAKE_SECRET = "TEST_MECHANISM_FAKE_SECRET";
   public static final String FAKE_TOKEN = "TEST_MECHANISM_FAKE_TOKEN";
 
-  /** One call: the storage config and realm config {@link #integrationFor} was given. */
-  public record Call(AwsStorageConfigurationInfo storageConfig, RealmConfig realmConfig) {}
+  /** One call: the storage config {@link #integrationFor} was given. */
+  public record Call(AwsStorageConfigurationInfo storageConfig) {}
 
   private final List<Call> calls = new CopyOnWriteArrayList<>();
 
@@ -72,9 +71,8 @@ public class TestS3CredentialVendingMechanism implements S3CredentialVendingMech
   }
 
   @Override
-  public PolarisStorageIntegration integrationFor(
-      AwsStorageConfigurationInfo storageConfig, RealmConfig realmConfig) {
-    calls.add(new Call(storageConfig, realmConfig));
+  public PolarisStorageIntegration integrationFor(AwsStorageConfigurationInfo storageConfig) {
+    calls.add(new Call(storageConfig));
     return (grants, refreshEndpoint, context) ->
         StorageAccessConfig.builder()
             .putCredential(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), FAKE_KEY)
@@ -85,9 +83,7 @@ public class TestS3CredentialVendingMechanism implements S3CredentialVendingMech
 
   @Override
   public void validate(
-      @Nullable AwsStorageConfigurationInfo current,
-      AwsStorageConfigurationInfo updated,
-      RealmConfig realmConfig) {
+      @Nullable AwsStorageConfigurationInfo current, AwsStorageConfigurationInfo updated) {
     validations.add(new Validation(current, updated));
     for (String location : updated.getAllowedLocations()) {
       if (location.contains("/refused/")) {
