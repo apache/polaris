@@ -391,12 +391,20 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         "Invalid metadata file location; metadata file location must be absolute and contain a '/': %s",
         metadataFileLocation);
 
-    if (viewExists(identifier)) {
+    PolarisResolvedPathWrapper resolvedTableLike =
+        resolvedEntityView.getPassthroughResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE);
+    PolarisEntity existingEntity =
+        resolvedTableLike == null ? null : resolvedTableLike.getRawLeafEntity();
+
+    if (existingEntity != null
+        && existingEntity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
       throw alreadyExistsExceptionWithSameNameForTableLikeEntity(
           identifier, PolarisEntitySubType.ICEBERG_VIEW);
     }
 
-    boolean tableExists = tableExists(identifier);
+    boolean tableExists =
+        existingEntity != null && existingEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE;
     if (!overwrite && tableExists) {
       throw alreadyExistsExceptionForTableLikeEntity(
           identifier, PolarisEntitySubType.ICEBERG_TABLE);
@@ -404,7 +412,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
     if (tableExists) {
-      return overwriteRegisteredTable(identifier, metadataFileLocation, locationDir);
+      return overwriteRegisteredTable(
+          identifier, metadataFileLocation, locationDir, resolvedTableLike);
     } else {
       return registerNewTable(identifier, metadataFileLocation, locationDir);
     }
@@ -442,10 +451,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   private Table overwriteRegisteredTable(
-      TableIdentifier identifier, String metadataFileLocation, String locationDir) {
-    PolarisResolvedPathWrapper resolvedPath =
-        resolvedEntityView.getPassthroughResolvedPath(
-            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE);
+      TableIdentifier identifier,
+      String metadataFileLocation,
+      String locationDir,
+      PolarisResolvedPathWrapper resolvedPath) {
     if (resolvedPath == null || resolvedPath.getRawLeafEntity() == null) {
       throw new NoSuchTableException("Table does not exist: %s", identifier);
     }

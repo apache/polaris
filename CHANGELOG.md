@@ -134,6 +134,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Registering a table whose stored metadata file is no longer readable no longer fails: with
+  overwrite it replaces the metadata location, and without overwrite it reports the table as
+  already existing.
 - OPA authorizer HTTP client creation no longer silently falls back to a default client when
   truststore or SSL setup fails. Misconfiguration (for example a bad truststore path) now fails
   startup instead of continuing with system trust and no configured response timeout.
