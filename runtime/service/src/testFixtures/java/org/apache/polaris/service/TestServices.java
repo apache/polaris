@@ -396,7 +396,7 @@ public record TestServices(
 
       StorageAccessConfigProvider storageAccessConfigProvider =
           new StorageAccessConfigProvider(
-              callContext, principal, realmContext, storageIntegrationProvider, vendingMechanisms);
+              callContext, principal, realmContext, storageIntegrationProvider);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
@@ -499,7 +499,6 @@ public record TestServices(
                         .catalogHandlerUtils(catalogHandlerUtils)
                         .federatedCatalogFactories(federatedCatalogFactory)
                         .storageAccessConfigProvider(storageAccessConfigProvider)
-                        .vendingMechanisms(vendingMechanisms)
                         .eventAttributeMap(eventAttributeMap)
                         .metricsReporter(envelope -> {})
                         .clock(clock)
@@ -562,7 +561,6 @@ public record TestServices(
                         .authorizer(authorizer)
                         .credentialManager(credentialManager)
                         .federatedCatalogFactories(federatedCatalogFactory)
-                        .vendingMechanisms(vendingMechanisms)
                         .build();
                   }
                 };

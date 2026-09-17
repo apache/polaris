@@ -35,10 +35,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   discovered by their `@Identifier` at startup, and each one can validate the catalogs that select
   it at create and update. A realm lists the explicit mechanisms it accepts in the new
   `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` feature (default `[STS]`), enforced at catalog create
-  and update, at catalog initialization on every request, when storage access is resolved, and in
-  the storage integration provider. A catalog that names a mechanism this server does not provide
-  is refused at create and update, and wherever it is used, with "S3 credential vending mechanism
-  `<id>` is not available in this server".
+  and update and when the server builds the storage integration that vends credentials for a
+  catalog. A catalog that names a mechanism this server does not provide is refused at create and
+  update, and whenever a credential is vended for it, with "S3 credential vending mechanism `<id>`
+  is not available in this server".
 
 ### Upgrade notes
 

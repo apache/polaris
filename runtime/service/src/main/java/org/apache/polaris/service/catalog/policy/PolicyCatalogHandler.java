@@ -45,8 +45,6 @@ import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
-import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
-import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
@@ -62,17 +60,10 @@ import org.jspecify.annotations.Nullable;
 @SuppressWarnings("immutables:incompat")
 public abstract class PolicyCatalogHandler extends CatalogHandler {
 
-  protected abstract S3CredentialVendingMechanisms vendingMechanisms();
-
   private PolicyCatalog policyCatalog;
 
   @Override
   protected void initializeCatalog() {
-    // The same gate the Iceberg and generic-table handlers apply.
-    IcebergPropertiesValidation.validateS3CredentialVendingMechanism(
-        realmConfig(),
-        resolutionManifest.getResolvedCatalogEntity().getStorageConfigurationInfo(),
-        vendingMechanisms());
     this.policyCatalog =
         new PolicyCatalog(metaStoreManager(), callContext(), this.resolutionManifest);
   }

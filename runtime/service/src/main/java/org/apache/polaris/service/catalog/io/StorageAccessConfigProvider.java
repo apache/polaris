@@ -40,12 +40,9 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
-import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
-import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,20 +61,17 @@ public class StorageAccessConfigProvider {
   private final PolarisPrincipal polarisPrincipal;
   private final RealmContext realmContext;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
-  private final S3CredentialVendingMechanisms vendingMechanisms;
 
   @Inject
   public StorageAccessConfigProvider(
       CallContext callContext,
       PolarisPrincipal polarisPrincipal,
       RealmContext realmContext,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
-      S3CredentialVendingMechanisms vendingMechanisms) {
+      PolarisStorageIntegrationProvider storageIntegrationProvider) {
     this.callContext = callContext;
     this.polarisPrincipal = polarisPrincipal;
     this.realmContext = realmContext;
     this.storageIntegrationProvider = storageIntegrationProvider;
-    this.vendingMechanisms = vendingMechanisms;
   }
 
   public StorageAccessConfig getStorageAccessConfig(
@@ -118,13 +112,6 @@ public class StorageAccessConfigProvider {
       @NonNull Optional<String> refreshCredentialsEndpoint) {
 
     RealmConfig realmConfig = callContext.getRealmConfig();
-
-    // Before the skip-subscoping return, so tasks and the skip path are gated.
-    PolarisStorageConfigurationInfo.findStorageConfigFromHierarchy(resolvedEntityPath)
-        .ifPresent(
-            storageConfig ->
-                IcebergPropertiesValidation.validateS3CredentialVendingMechanism(
-                    realmConfig, storageConfig, vendingMechanisms));
 
     boolean skipCredentialSubscopingIndirection =
         realmConfig.getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);

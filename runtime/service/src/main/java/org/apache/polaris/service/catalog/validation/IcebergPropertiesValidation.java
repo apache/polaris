@@ -29,8 +29,6 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
-import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -100,27 +98,6 @@ public class IcebergPropertiesValidation {
     if (!allowed.contains(mechanism)) {
       throw new ValidationException(
           "S3 credential vending mechanism %s is not enabled in this realm", mechanism);
-    }
-  }
-
-  /** {@link #validateS3CredentialVendingMechanismAllowed(RealmConfig, String)} for a config. */
-  public static void validateS3CredentialVendingMechanismAllowed(
-      @NonNull RealmConfig realmConfig, @Nullable PolarisStorageConfigurationInfo storageConfig) {
-    if (storageConfig instanceof AwsStorageConfigurationInfo awsConfig) {
-      validateS3CredentialVendingMechanismAllowed(
-          realmConfig, awsConfig.getCredentialVendingMechanism());
-    }
-  }
-
-  /** Allowlist on the explicit value, then availability of the resolved identifier. */
-  public static void validateS3CredentialVendingMechanism(
-      @NonNull RealmConfig realmConfig,
-      @Nullable PolarisStorageConfigurationInfo storageConfig,
-      @NonNull S3CredentialVendingMechanisms mechanisms) {
-    if (storageConfig instanceof AwsStorageConfigurationInfo awsConfig) {
-      validateS3CredentialVendingMechanismAllowed(
-          realmConfig, awsConfig.getCredentialVendingMechanism());
-      mechanisms.require(awsConfig.resolvedCredentialVendingMechanism());
     }
   }
 

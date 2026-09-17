@@ -114,9 +114,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     return switch (storageConfig.getStorageType()) {
       case S3 -> {
         AwsStorageConfigurationInfo awsConfig = (AwsStorageConfigurationInfo) storageConfig;
-        // The allowlist as defence in depth behind the initialization and access-config gates,
-        // then the registry, which returns the same 400 every other gate returns when the
-        // mechanism is allowlisted but not installed in this server.
+        // The only check at vending time: the realm allowlist on the explicit value, then the
+        // registry. Catalog create and update ran the same two checks before the config was stored.
         IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
             realmConfig, awsConfig.getCredentialVendingMechanism());
         yield mechanisms

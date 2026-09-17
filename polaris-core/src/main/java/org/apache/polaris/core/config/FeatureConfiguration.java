@@ -413,9 +413,10 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                       + "AWS STS AssumeRole; a server may provide further mechanisms. A catalog that leaves\n"
                       + "credentialVendingMechanism empty uses the server's default mechanism and is always\n"
                       + "allowed. Realm-level only; catalog properties cannot widen it. Enforced at catalog create\n"
-                      + "and update, at catalog initialization on every request, when storage access is resolved,\n"
-                      + "and in the storage integration provider. A listed mechanism with no implementation in\n"
-                      + "this server is reported at startup and refused wherever a catalog names it.")
+                      + "and update, and when the server builds the storage integration that vends credentials\n"
+                      + "for a catalog. A listed mechanism with no implementation in this server is reported at\n"
+                      + "startup and refused at catalog create and update and whenever a credential is vended\n"
+                      + "for a catalog that names it.")
               .defaultValue(List.of(S3CredentialVendingMechanism.STS))
               .buildFeatureConfiguration();
 

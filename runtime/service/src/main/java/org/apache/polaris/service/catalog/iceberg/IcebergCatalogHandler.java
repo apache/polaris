@@ -128,7 +128,6 @@ import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
-import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
@@ -138,7 +137,6 @@ import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.metrics.IcebergMetricsReporter;
 import org.apache.polaris.service.metrics.MetricType;
 import org.apache.polaris.service.metrics.MetricsReportEnvelope;
-import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -183,8 +181,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
 
-  protected abstract S3CredentialVendingMechanisms vendingMechanisms();
-
   protected abstract MutableAttributeMap eventAttributeMap();
 
   protected abstract IcebergMetricsReporter metricsReporter();
@@ -227,11 +223,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   @Override
   protected void initializeCatalog() {
     CatalogEntity resolvedCatalogEntity = getResolvedCatalogEntity();
-    // The allowlist then the registry, before the federated/local branch below, so an external
-    // catalog that carries an S3 storage config is gated on the same routes as a Polaris-managed
-    // one.
-    IcebergPropertiesValidation.validateS3CredentialVendingMechanism(
-        realmConfig(), resolvedCatalogEntity.getStorageConfigurationInfo(), vendingMechanisms());
     ConnectionConfigInfoDpo connectionConfigInfoDpo =
         resolvedCatalogEntity.getConnectionConfigInfoDpo();
     if (connectionConfigInfoDpo != null) {

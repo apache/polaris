@@ -321,11 +321,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         IcebergPropertiesValidation.determineFileIOClassName(
             realmConfig, properties, storageConfigurationInfo);
 
-    // Defence in depth behind the handlers and the access-config provider, which check
-    // availability first; this catalog has no registry to consult, so only the allowlist.
-    IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
-        realmConfig, storageConfigurationInfo);
-
     if (ioImplClassName == null) {
       LOGGER.warn(
           "Cannot resolve property '{}' for null storageConfiguration.",

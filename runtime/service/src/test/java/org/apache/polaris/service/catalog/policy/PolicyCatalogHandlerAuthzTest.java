@@ -30,7 +30,6 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
-import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
@@ -41,24 +40,15 @@ import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
 /**
- * Privilege-matrix coverage for {@link PolicyCatalogHandler}. The mechanism gate in {@code
- * initializeCatalog()} is not exercised here: this class's fixture provisions one shared,
- * FILE-backed {@code CATALOG_NAME} with catalog roles and grants set up only for that catalog, and
- * every handler built below targets it by name. Standing up a second, S3-backed catalog selecting a
- * mechanism the server never installs to reach the gate would need widening {@link
- * Profiles.PolarisAuthzBaseProfile}'s realm-wide allowlist (shared by every authz test class in
- * this package), a fresh catalog created with an installed test mechanism that is later removed
- * from a live registry the way the CDI test does it, and its own catalog roles and grants before an
- * authorized {@code listPolicies} call could ever reach {@code initializeCatalog()}, which is not a
- * cheap addition to this fixture. That case is already covered end-to-end, through the real REST
- * API and a stored catalog whose mechanism is removed from a live registry, by {@link
- * org.apache.polaris.service.storage.S3CredentialVendingMechanismCdiTest#anUninstalledMechanismIsRefusedAtCreateAndUpdateAndAStoredOneEverywhere}.
+ * Privilege-matrix coverage for {@link PolicyCatalogHandler}. {@code initializeCatalog()} carries
+ * no S3 credential vending mechanism check: that mechanism is checked only where a catalog is
+ * stored (create and update) and where it vends a credential, covered end-to-end, through the real
+ * REST API and a stored catalog whose mechanism is removed from a live registry, by {@link
+ * org.apache.polaris.service.storage.S3CredentialVendingMechanismCdiTest#anUninstalledMechanismIsRefusedAtCreateAndUpdateAndAStoredOneWhenItVends}.
  */
 @QuarkusTest
 @TestProfile(Profiles.PolarisAuthzBaseProfile.class)
 public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
-
-  @jakarta.inject.Inject S3CredentialVendingMechanisms vendingMechanisms;
 
   private PolicyCatalogHandler newHandler() {
     return newHandler(
@@ -88,7 +78,6 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         .resolutionManifestFactory(resolutionManifestFactory)
         .metaStoreManager(metaStoreManager)
         .authorizer(polarisAuthorizer)
-        .vendingMechanisms(vendingMechanisms)
         .build();
   }
 
