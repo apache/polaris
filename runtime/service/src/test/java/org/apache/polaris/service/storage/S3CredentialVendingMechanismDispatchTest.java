@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iceberg.exceptions.ValidationException;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.RealmConfig;
@@ -69,8 +68,7 @@ class S3CredentialVendingMechanismDispatchTest {
         new S3CredentialVendingMechanisms(mechanisms),
         () -> GoogleCredentials.create(new AccessToken("abc", new Date())),
         null,
-        realmConfig,
-        new PolarisDefaultDiagServiceImpl());
+        realmConfig);
   }
 
   private static PolarisStorageIntegrationProviderImpl provider(RealmConfig realmConfig) {

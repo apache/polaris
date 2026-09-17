@@ -21,10 +21,11 @@ package org.apache.polaris.service.it.test;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 
 import java.lang.reflect.Method;
-import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.util.LocationUtil;
 import org.apache.iceberg.view.BaseView;
 import org.apache.iceberg.view.View;
 import org.apache.iceberg.view.ViewCatalogTests;
@@ -162,6 +163,18 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
   protected abstract StorageConfigInfo getStorageConfigInfo();
 
   /**
+   * Builds the {@code allowedLocations} list for a catalog rooted at {@code baseLocation}.
+   *
+   * <p>Namespace creation validates the namespace's default location against the catalog's allowed
+   * locations with the namespace name appended. {@link #defaultBaseLocation} always resolves to
+   * {@code baseLocation/$USER/path/to/data}, so that variant must be present alongside the raw base
+   * location or top-level namespace creation is rejected.
+   */
+  protected static List<String> allowedLocations(String baseLocation) {
+    return List.of(baseLocation, baseLocation + "/" + System.getenv("USER") + "/path/to/data");
+  }
+
+  /**
    * @return Whether the tests should be skipped, for example due to environment variables not being
    *     specified.
    */
@@ -192,13 +205,54 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     return true;
   }
 
+  /**
+   * Roots view locations at the catalog's default base location instead of the {@code @TempDir}
+   * used by {@link ViewCatalogTests}.
+   *
+   * <p>The inherited implementation derives locations from a local temporary directory, which
+   * Polaris rejects because it falls outside the catalog's allowed locations, and which cloud
+   * storage backends cannot address at all. Anchoring on the base location keeps the requested
+   * locations valid for every storage type this class is subclassed for.
+   *
+   * <p>The file-based test base builds its base location via {@link java.nio.file.Path#toUri},
+   * which produces a {@code file:///} URI. Polaris normalises stored metadata paths to the
+   * single-slash form {@code file:/} used by {@link java.io.File#toURI}. Stripping the redundant
+   * authority component keeps the return value consistent with the stored form so that the {@code
+   * startsWith} assertions in {@link ViewCatalogTests} remain valid for file-backed catalogs. Cloud
+   * URI schemes (s3://, gs://, abfss://) are not affected by this normalisation.
+   */
+  @Override
+  protected String viewLocation(String... paths) {
+    StringBuilder location =
+        new StringBuilder(LocationUtil.stripTrailingSlash(defaultBaseLocation));
+    for (String path : paths) {
+      location.append("/").append(path);
+    }
+
+    return normalizeToStoredForm(location.toString());
+  }
+
+  /**
+   * Normalises a {@code file:///} URI to the single-slash {@code file:/} form that Polaris stores
+   * (see {@link #viewLocation} for the rationale). Cloud URI schemes (s3://, gs://, abfss://) are
+   * returned unchanged.
+   */
+  private static String normalizeToStoredForm(String location) {
+    if (location.startsWith("file:///")) {
+      return "file:/" + location.substring(8);
+    }
+    return location;
+  }
+
   @Test
   public void createViewWithCustomMetadataLocationUsingPolaris() {
     TableIdentifier identifier = TableIdentifier.of("ns", "view");
 
     String location = defaultBaseLocation + "/custom-view-location";
     String customLocation =
-        Paths.get(storageConfig.getAllowedLocations().getFirst(), "/custom-location1").toString();
+        normalizeToStoredForm(
+                LocationUtil.stripTrailingSlash(storageConfig.getAllowedLocations().getFirst()))
+            + "/custom-location1";
 
     catalog().createNamespace(identifier.namespace());
 

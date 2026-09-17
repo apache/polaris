@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -57,7 +56,6 @@ import org.jspecify.annotations.Nullable;
 @ApplicationScoped
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
-  private final PolarisDiagnostics diagnostics;
   private final S3CredentialVendingMechanisms mechanisms;
   private final Function<GcpStorageConfigurationInfo, GcpCredentialsStorageIntegration> gcpFactory;
   private final Function<AzureStorageConfigurationInfo, AzureCredentialsStorageIntegration>
@@ -71,9 +69,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       S3CredentialVendingMechanisms mechanisms,
       RealmConfig realmConfig,
       Clock clock,
-      StorageCredentialCache cache,
-      PolarisDiagnostics diagnostics) {
-    this.diagnostics = diagnostics;
+      StorageCredentialCache cache) {
     this.realmConfig = realmConfig;
     this.mechanisms = mechanisms;
     Supplier<GoogleCredentials> gcpCredsProvider =
@@ -92,9 +88,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       S3CredentialVendingMechanisms mechanisms,
       Supplier<GoogleCredentials> gcpCredsProvider,
       StorageCredentialCache cache,
-      RealmConfig realmConfig,
-      PolarisDiagnostics diagnostics) {
-    this.diagnostics = diagnostics;
+      RealmConfig realmConfig) {
     this.realmConfig = realmConfig;
     this.mechanisms = mechanisms;
     HttpTransportFactory gcpTransportFactory =

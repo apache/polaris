@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.task;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -42,8 +43,10 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(BatchFileCleanupTaskHandler.class);
 
   public BatchFileCleanupTaskHandler(
-      TaskFileIOSupplier fileIOSupplier, ExecutorService executorService) {
-    super(fileIOSupplier, executorService);
+      TaskFileIOSupplier fileIOSupplier,
+      ExecutorService executorService,
+      Duration fileDeletionTimeout) {
+    super(fileIOSupplier, executorService, fileDeletionTimeout);
   }
 
   @Override
@@ -85,12 +88,8 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
           tryDelete(
               tableId, authorizedFileIO, validFiles, cleanupTask.type().getValue(), true, null, 1);
 
-      try {
-        deleteFutures.join();
-      } catch (Exception e) {
-        LOGGER.error("Exception detected during batch files deletion", e);
-        throw new RuntimeException(e);
-      }
+      awaitCompletion(
+          deleteFutures, "batch deletion of " + validFiles.size() + " files for table " + tableId);
     }
   }
 

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -89,6 +90,7 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
@@ -220,7 +222,7 @@ class IcebergCatalogHandlerTest {
   private static boolean hasOperation(
       AuthorizationRequest request, PolarisAuthorizableOperation operation) {
     return request != null
-        && request.intents().stream().anyMatch(intent -> intent.getOperation().equals(operation));
+        && request.intents().stream().anyMatch(intent -> intent.operation().equals(operation));
   }
 
   @SuppressWarnings({"unchecked", "rawtypes"})
@@ -232,6 +234,49 @@ class IcebergCatalogHandlerTest {
         .getStorageAccessConfig(
             eq(TABLE2), any(), actionsCaptor.capture(), eq(Optional.empty()), eq(resolvedPath));
     assertThat(actionsCaptor.getValue()).containsExactlyInAnyOrder(actions);
+  }
+
+  /**
+   * When the resolver degrades a both-modes request to {@link AccessDelegationMode#REMOTE_SIGNING}
+   * (credential vending is not possible for the catalog) and remote signing is not implemented, the
+   * request fails fast with a message that tells the client what to do, matching how a
+   * vended-credentials-only request already behaves in that situation.
+   */
+  @Test
+  void bothModesRequestedAndResolverDegradesToRemoteSigningFailsWithActionableMessage() {
+    mockRegisterTableCatalog(false);
+    EnumSet<AccessDelegationMode> bothModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    when(accessDelegationModeResolver.resolve(eq(bothModes), any()))
+        .thenReturn(Optional.of(REMOTE_SIGNING));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatThrownBy(
+            () ->
+                handler.registerTable(
+                    NS1, registerTableRequest(false), bothModes, Optional.empty()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("This catalog cannot vend credentials or sign requests")
+        .hasMessageContaining("request without X-Iceberg-Access-Delegation");
+  }
+
+  @Test
+  void remoteSigningRequestedAloneFailsWithActionableMessage() {
+    mockRegisterTableCatalog(false);
+    EnumSet<AccessDelegationMode> remoteSigningOnly = EnumSet.of(REMOTE_SIGNING);
+    when(accessDelegationModeResolver.resolve(eq(remoteSigningOnly), any()))
+        .thenReturn(Optional.of(REMOTE_SIGNING));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatThrownBy(
+            () ->
+                handler.registerTable(
+                    NS1, registerTableRequest(false), remoteSigningOnly, Optional.empty()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("This catalog cannot vend credentials or sign requests");
   }
 
   @Test
@@ -334,7 +379,7 @@ class IcebergCatalogHandlerTest {
     verify(authorizer).resolveAuthorizationInputs(any(), resolveRequestCaptor.capture());
     assertThat(
             resolveRequestCaptor.getValue().intents().stream()
-                .map(intent -> intent.getOperation())
+                .map(intent -> intent.operation())
                 .toList())
         .containsExactly(
             PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
@@ -372,13 +417,13 @@ class IcebergCatalogHandlerTest {
 
     verify(authorizer).resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
     assertThat(stateCaptor.getValue().getResolutionManifest()).isSameAs(resolutionManifest);
-    assertThat(requestCaptor.getValue().intents().getFirst().getOperation())
+    assertThat(requestCaptor.getValue().intents().getFirst().operation())
         .isEqualTo(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION);
     verify(authorizer, org.mockito.Mockito.times(2))
         .authorize(any(), authorizeRequestCaptor.capture());
     assertThat(
             authorizeRequestCaptor.getAllValues().stream()
-                .map(request -> request.intents().getFirst().getOperation())
+                .map(request -> request.intents().getFirst().operation())
                 .toList())
         .containsExactly(
             PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION,
@@ -413,10 +458,10 @@ class IcebergCatalogHandlerTest {
 
     verify(authorizer).resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
     assertThat(stateCaptor.getValue().getResolutionManifest()).isSameAs(resolutionManifest);
-    assertThat(requestCaptor.getValue().intents().getFirst().getOperation())
+    assertThat(requestCaptor.getValue().intents().getFirst().operation())
         .isEqualTo(PolarisAuthorizableOperation.UPDATE_TABLE);
     verify(authorizer).authorize(any(), authorizeRequestCaptor.capture());
-    assertThat(authorizeRequestCaptor.getValue().intents().getFirst().getOperation())
+    assertThat(authorizeRequestCaptor.getValue().intents().getFirst().operation())
         .isEqualTo(PolarisAuthorizableOperation.SET_TABLE_PROPERTIES);
   }
 

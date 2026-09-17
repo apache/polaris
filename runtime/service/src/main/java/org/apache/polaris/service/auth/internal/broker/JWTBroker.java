@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth.internal.broker;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import com.google.common.annotations.VisibleForTesting;
@@ -91,17 +92,37 @@ public class JWTBroker implements TokenBroker {
 
   @Override
   public PolarisCredential verify(String token) {
-    return verifyInternal(token).token();
+    // Cheap pre-check without cryptographic verification: tokens not issued by Polaris are not
+    // ours to verify; return null so the caller can delegate to other mechanisms (mixed mode).
+    // Undecodable tokens cannot be Polaris-issued, so they count as foreign.
+    final DecodedJWT decodedJWT;
+    try {
+      decodedJWT = JWT.decode(token);
+    } catch (JWTDecodeException e) {
+      return null;
+    }
+    if (!ISSUER_KEY.equals(decodedJWT.getIssuer())) {
+      return null;
+    }
+    return verifyInternal(decodedJWT).token();
   }
 
   private VerifiedToken verifyInternal(String token) {
+    try {
+      return verifyInternal(JWT.decode(token));
+    } catch (JWTDecodeException e) {
+      throw (NotAuthorizedException)
+          new NotAuthorizedException("Failed to verify the token").initCause(e);
+    }
+  }
+
+  private VerifiedToken verifyInternal(DecodedJWT decodedJWT) {
     // Bearer verify is signature + claims only — no metastore IO. Credential-generation binding is
     // enforced on the token-exchange path. Token construction stays inside the try: a well-signed
     // token that misses a mandatory claim must not surface as a raw NPE.
-    final DecodedJWT decodedJWT;
     final InternalPolarisToken internalToken;
     try {
-      decodedJWT = verifier.verify(token);
+      verifier.verify(decodedJWT);
       internalToken =
           InternalPolarisToken.of(
               decodedJWT.getSubject(),

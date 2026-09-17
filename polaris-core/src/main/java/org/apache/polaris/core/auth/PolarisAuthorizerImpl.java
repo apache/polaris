@@ -773,7 +773,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       PolarisPrincipal polarisPrincipal,
       PolarisResolutionManifest resolutionManifest,
       AuthorizationIntent intent) {
-    RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(intent.getOperation());
+    RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(intent.operation());
     boolean prependRootContainer = semantics.rooting() == ResolvedPathRooting.ROOT;
     try {
       ResolvedIntent resolvedIntent =
@@ -781,7 +781,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       authorizeRbacOrThrow(
           polarisPrincipal,
           resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-          intent.getOperation(),
+          intent.operation(),
           resolvedIntent);
       return AuthorizationDecision.allow();
     } catch (ForbiddenException e) {

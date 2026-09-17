@@ -529,6 +529,22 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @Test
+  public void testGenerateAccessBoundaryHandlesBucketRootLocationWithoutTrailingSlash() {
+    // A bucket-root location (e.g. a table `location` or `write.data.path` of "gs://bucket")
+    // parses to an empty raw path; it must not throw and should match the trailing-slash form.
+    CredentialAccessBoundary bareBucket =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of("gs://bucket1"), Set.of("gs://bucket1"), Set.of("gs://bucket1"));
+    CredentialAccessBoundary bucketWithSlash =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of("gs://bucket1/"), Set.of("gs://bucket1/"), Set.of("gs://bucket1/"));
+
+    ObjectMapper mapper = JsonMapper.builder().build();
+    assertThat(mapper.convertValue(bareBucket, JsonNode.class))
+        .isEqualTo(mapper.convertValue(bucketWithSlash, JsonNode.class));
+  }
+
+  @Test
   public void testGenerateAccessBoundaryAppendsTrailingSlashToGuardAgainstSiblingAccess() {
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(

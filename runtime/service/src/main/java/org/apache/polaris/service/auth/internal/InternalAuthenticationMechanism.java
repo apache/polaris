@@ -94,13 +94,16 @@ class InternalAuthenticationMechanism implements HttpAuthenticationMechanism {
     try {
       token = tokenBroker.verify(credential);
     } catch (Exception e) {
-      return configuration.type() == AuthenticationType.MIXED
-          ? Uni.createFrom().nullItem() // let other auth mechanisms handle it
-          : Uni.createFrom().failure(new AuthenticationFailedException(e)); // stop here
+      // No special cases: invalid Polaris tokens and transient failures alike propagate as-is.
+      return Uni.createFrom().failure(e);
     }
 
     if (token == null) {
-      return Uni.createFrom().nullItem();
+      // Not a Polaris-issued token: delegate to other mechanisms in MIXED mode, fail otherwise.
+      return configuration.type() == AuthenticationType.MIXED
+          ? Uni.createFrom().nullItem() // let other auth mechanisms handle it
+          : Uni.createFrom()
+              .failure(new AuthenticationFailedException("Failed to verify the token"));
     }
 
     return identityProviderManager.authenticate(
