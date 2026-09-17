@@ -33,7 +33,6 @@ import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.junit.jupiter.api.Test;
 
@@ -121,7 +120,7 @@ class S3CredentialVendingMechanismsTest {
   }
 
   @Test
-  void requireOnAMissingIdentifierIsTheRefusalEveryGateReturns() {
+  void requireOnAMissingIdentifierIsAnIllegalArgument() {
     beans(bean(StsBean.class, Identifier.Literal.of("STS")));
     resolves("STS", mock(S3CredentialVendingMechanism.class));
     S3CredentialVendingMechanisms registry =
@@ -129,7 +128,7 @@ class S3CredentialVendingMechanismsTest {
 
     assertThat(registry.isAvailable("NOPE")).isFalse();
     assertThatThrownBy(() -> registry.require("NOPE"))
-        .isInstanceOf(ValidationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("S3 credential vending mechanism NOPE is not available in this server");
   }
 
@@ -147,7 +146,7 @@ class S3CredentialVendingMechanismsTest {
     live.remove("STS");
     assertThat(registry.isAvailable("STS")).isFalse();
     assertThatThrownBy(() -> registry.require("STS"))
-        .isInstanceOf(ValidationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("S3 credential vending mechanism STS is not available in this server");
   }
 

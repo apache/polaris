@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 
 /**
@@ -100,12 +99,16 @@ public class S3CredentialVendingMechanisms {
     return mechanisms.containsKey(id);
   }
 
-  /** The mechanism for an identifier, or the 400 every gate returns when the server lacks it. */
+  /**
+   * The mechanism for an identifier. A missing identifier is an {@link IllegalArgumentException},
+   * which the exception mapper turns into the same 400 that catalog create, catalog update and
+   * credential vending return for a mechanism this server lacks.
+   */
   public S3CredentialVendingMechanism require(String id) {
     S3CredentialVendingMechanism mechanism = mechanisms.get(id);
     if (mechanism == null) {
-      throw new ValidationException(
-          "S3 credential vending mechanism %s is not available in this server", id);
+      throw new IllegalArgumentException(
+          String.format("S3 credential vending mechanism %s is not available in this server", id));
     }
     return mechanism;
   }

@@ -1130,7 +1130,7 @@ public class ManagementServiceTest {
             .setAllowedLocations(List.of("s3://second-bucket/base/"))
             .build();
     assertThatThrownBy(() -> create(svc, catalogNamed("never-usable", uninstalled)))
-        .isInstanceOf(ValidationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "S3 credential vending mechanism UNINSTALLED_MECHANISM is not available in this server");
   }
@@ -1155,7 +1155,7 @@ public class ManagementServiceTest {
                 svc.catalogsApi()
                     .updateCatalog(
                         "empty-stays", toUninstalled, svc.realmContext(), svc.securityContext()))
-        .isInstanceOf(ValidationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "S3 credential vending mechanism UNINSTALLED_MECHANISM is not available in this server");
   }

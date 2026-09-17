@@ -290,7 +290,7 @@ public class PolarisAdminServiceTest {
     when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS))
         .thenReturn(List.of("STS", "SECOND_MECHANISM"));
     assertThatThrownBy(() -> adminService.createCatalog(secondMechanismCatalogRequest()))
-        .isInstanceOf(ValidationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "S3 credential vending mechanism SECOND_MECHANISM is not available in this server");
   }

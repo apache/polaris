@@ -134,7 +134,7 @@ class S3CredentialVendingMechanismDispatchTest {
     RealmConfig rc = realmConfig(List.of("STS", "UNINSTALLED_MECHANISM"));
     assertThatThrownBy(
             () -> provider(rc).getStorageIntegration(List.of(catalog(rc, uninstalled()))))
-        .isInstanceOf(ValidationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "S3 credential vending mechanism UNINSTALLED_MECHANISM is not available in this server");
   }
