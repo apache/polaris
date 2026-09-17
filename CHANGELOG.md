@@ -83,6 +83,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Semantic models now support dedicated privileges for listing, creating, reading, updating,
+  and dropping. Privileges can be granted to catalog roles on individual models or at namespace
+  or catalog scope, with separate controls for managing model grants.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
@@ -116,6 +119,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   does not supply a `pageToken` to receive the complete result with a null `next-page-token`: such
   a request is then truncated to the maximum and answered with a continuation token, so a client
   that does not follow continuations sees only the first page.
+- Table commits whose base metadata is already stale now fail before the new metadata file is
+  written, saving an object-storage write and delete per conflict and returning the `409` to the
+  client sooner.
 - `LIST_PAGINATION_ENABLED` now defaults to `true`, enabling pagination for APIs like `listTables` by default.
 
 ### Deprecations
