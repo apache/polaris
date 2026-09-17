@@ -82,8 +82,11 @@ class IcebergPropertiesValidationTest {
     allow("SECOND_MECHANISM"); // would refuse STS and DEFAULT if consulted
     AwsStorageConfigurationInfo empty =
         AwsStorageConfigurationInfo.builder().addAllowedLocation("s3://bucket/prefix/").build();
-    IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
-        realmConfig, (String) null);
+    assertThatCode(
+            () ->
+                IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
+                    realmConfig, (String) null))
+        .doesNotThrowAnyException();
     assertThat(empty.resolvedCredentialVendingMechanism())
         .isEqualTo(S3CredentialVendingMechanism.DEFAULT);
   }
