@@ -212,6 +212,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   backend, since `S3FileIO`, `GCSFileIO`, `ADLSFileIO` and `HadoopFileIO` all implement
   `DelegateFileIO`.
 - Async task retries no longer fail with a `NullPointerException` when the task entity has already been dropped by a previous attempt. Such a retry is now recognized as an already-completed task and exits cleanly, instead of exhausting all retry attempts and logging a `NullPointerException` on each one.
+- Honored pagination for generic table API
   
 ### Commits
 

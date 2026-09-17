@@ -56,6 +56,8 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -564,5 +566,41 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThat(icebergCatalog.dropView(TableIdentifier.of("ns", "t1"))).isFalse();
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
         .isNotNull();
+  }
+
+  @Test
+  public void testPaginatedListGenericTables() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    for (int i = 0; i < 5; i++) {
+      genericTableCatalog.createGenericTable(
+          TableIdentifier.of("ns", "t" + i), "format", null, "doc", Map.of());
+    }
+
+    // List without pagination
+    Assertions.assertThat(genericTableCatalog.listGenericTables(namespace)).hasSize(5);
+
+    // List with a limit
+    Page<TableIdentifier> result1 =
+        genericTableCatalog.listGenericTables(namespace, PageToken.fromLimit(2));
+    Assertions.assertThat(result1.items()).hasSize(2);
+    Assertions.assertThat(result1.encodedResponseToken()).isNotNull().isNotEmpty();
+
+    // List using previous token
+    Page<TableIdentifier> result2 =
+        genericTableCatalog.listGenericTables(namespace, nextRequest(result1));
+    Assertions.assertThat(result2.items()).hasSize(2);
+    Assertions.assertThat(result2.encodedResponseToken()).isNotNull().isNotEmpty();
+
+    // List using the final token
+    Page<TableIdentifier> result3 =
+        genericTableCatalog.listGenericTables(namespace, nextRequest(result2));
+    Assertions.assertThat(result3.items()).hasSize(1);
+    Assertions.assertThat(result3.encodedResponseToken()).isNull();
+  }
+
+  private static PageToken nextRequest(Page<?> previousPage) {
+    return PageToken.build(previousPage.encodedResponseToken(), null, -1, () -> true);
   }
 }

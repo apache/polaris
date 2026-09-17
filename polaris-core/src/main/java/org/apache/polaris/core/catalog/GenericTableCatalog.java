@@ -23,6 +23,8 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 
 /** A catalog for managing `GenericTableEntity` instances */
 public interface GenericTableCatalog {
@@ -46,4 +48,9 @@ public interface GenericTableCatalog {
 
   /** List all generic tables under a specific namespace */
   List<TableIdentifier> listGenericTables(Namespace namespace);
+
+  /** List generic tables under a specific namespace, paginated according to {@code pageToken} */
+  default Page<TableIdentifier> listGenericTables(Namespace namespace, PageToken pageToken) {
+    return Page.fromItems(listGenericTables(namespace));
+  }
 }

@@ -41,6 +41,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
@@ -186,6 +187,11 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
 
   @Override
   public List<TableIdentifier> listGenericTables(Namespace namespace) {
+    return listGenericTables(namespace, PageToken.readEverything()).items();
+  }
+
+  @Override
+  public Page<TableIdentifier> listGenericTables(Namespace namespace, PageToken pageToken) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(namespace));
     if (resolvedEntities == null) {
@@ -193,16 +199,15 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
-    List<PolarisEntity.NameAndId> entities =
-        PolarisEntity.toNameAndIdList(
-            this.metaStoreManager
-                .listEntities(
-                    this.callContext.getPolarisCallContext(),
-                    PolarisEntity.toCoreList(catalogPath),
-                    PolarisEntityType.TABLE_LIKE,
-                    PolarisEntitySubType.GENERIC_TABLE,
-                    PageToken.readEverything())
-                .getEntities());
-    return PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities);
+    Namespace parentNamespace = PolarisCatalogHelpers.parentNamespace(catalogPath);
+    return this.metaStoreManager
+        .listEntities(
+            this.callContext.getPolarisCallContext(),
+            PolarisEntity.toCoreList(catalogPath),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.GENERIC_TABLE,
+            pageToken)
+        .getPage()
+        .map(record -> TableIdentifier.of(parentNamespace, record.getName()));
   }
 }
