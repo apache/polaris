@@ -35,6 +35,7 @@ Global Options:
  --profile PROFILE Polaris profile name
  --proxy PROXY Proxy URL
  --debug Enable debug mode
+ --page-size PAGE_SIZE Upper bound on the number of entries returned per API request where pagination is supported. Requires the server-side LIST_PAGINATION_ENABLED feature flag. If not set, fetches all results in a single API request.
 &lt;/code&gt;&lt;/pre&gt;&lt;p&gt;&lt;code&gt;COMMAND&lt;/code&gt; must be one of the following:&lt;/p&gt;</description></item><item><title>Realm</title><link>https://polaris.apache.org/in-dev/unreleased/realm/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/realm/</guid><description>&lt;p&gt;This page explains what a realm is and what it is used for in Polaris.&lt;/p&gt;
 &lt;h3 id="what-is-it" id="what-is-it"&gt;What is it?&lt;a class="heading-anchor" href="#what-is-it" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h3&gt;
