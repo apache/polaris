@@ -72,7 +72,7 @@ abstract class InMemoryBufferEventListenerTestBase {
     producerInstance.destroy(producer);
     try (Connection connection = dataSource.get().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("DELETE FROM polaris_schema.events");
+      statement.execute("DELETE FROM events");
     }
   }
 
@@ -84,7 +84,7 @@ abstract class InMemoryBufferEventListenerTestBase {
 
   @SuppressWarnings("SqlSourceToSinkFlow")
   void assertRows(String realmId, int expected) {
-    String query = "SELECT COUNT(*) FROM polaris_schema.events WHERE realm_id = '" + realmId + "'";
+    String query = "SELECT COUNT(*) FROM events WHERE realm_id = '" + realmId + "'";
     await()
         .atMost(Duration.ofSeconds(10))
         .untilAsserted(
