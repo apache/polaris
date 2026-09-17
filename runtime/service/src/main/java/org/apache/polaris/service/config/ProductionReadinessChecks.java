@@ -318,9 +318,10 @@ public class ProductionReadinessChecks {
   /**
    * Every explicit name in {@code SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}, in the defaults and
    * in each realm override, must be installed in this server; DEFAULT is reserved and has no effect
-   * in the list. A listed-but-uninstalled mechanism is not severe: the mechanism is simply refused
-   * wherever a catalog selects it. Only the registry's own constructor (a bean with no
-   * {@code @Identifier}, or two beans sharing one) aborts startup.
+   * in the list. A listed-but-uninstalled mechanism is not severe: the mechanism is refused at
+   * catalog create and update, and whenever a credential is vended for a catalog that selects it.
+   * Only the registry's own constructor (a bean with no {@code @Identifier}, or two beans sharing
+   * one) aborts startup.
    */
   @Produces
   public ProductionReadinessCheck checkS3CredentialVendingMechanisms(
