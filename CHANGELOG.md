@@ -101,8 +101,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Semantic models now support dedicated privileges for listing, creating, reading, updating,
+  and dropping. Privileges can be granted to catalog roles on individual models or at namespace
+  or catalog scope, with separate controls for managing model grants.
+
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
+- Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
 - The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.additionalProperties.currentSchema` in the Helm chart.
 - Python CLI: `catalogs create` and `catalogs update` now support `--storage-name` to set an optional name referencing a server-side storage configuration.
 
@@ -121,6 +126,21 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `TokenBroker.verify` now returns `null` for tokens not recognized by the internal broker
   (instead of failing auth), so MIXED mode can delegate to other mechanisms. Exceptions from
   `verify` are forwarded as-is rather than mapped to auth failure or MIXED fallback.
+- Client-requested list page sizes can now be bounded by a server-side maximum, configured with
+  `LIST_PAGINATION_MAX_PAGE_SIZE` (overridable per catalog via
+  `polaris.config.list-pagination-max-page-size`). It defaults to `-1`, meaning unlimited, so the
+  maximum is opt-in. Once set, a request for a larger page is reduced to the maximum rather than
+  rejected, since the Iceberg REST specification treats the requested page size as an upper bound.
+  For local catalogs the maximum takes effect only when `LIST_PAGINATION_ENABLED` is true, since
+  with pagination disabled the requested page size is ignored and the full result set is returned;
+  for federated catalogs it always applies, because Polaris paginates those listings itself.
+  Setting a maximum deviates from the Iceberg REST specification, which requires a request that
+  does not supply a `pageToken` to receive the complete result with a null `next-page-token`: such
+  a request is then truncated to the maximum and answered with a continuation token, so a client
+  that does not follow continuations sees only the first page.
+- Table commits whose base metadata is already stale now fail before the new metadata file is
+  written, saving an object-storage write and delete per conflict and returning the `409` to the
+  client sooner.
 
 ### Deprecations
 
