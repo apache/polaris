@@ -172,7 +172,7 @@ public class TestCatalogMaintenance {
             callCtx, List.of(catalog), NAMESPACE, NULL_SUBTYPE, PageToken.fromLimit(2));
     assertThat(firstPage.items()).hasSize(2);
     assertThat(firstPage.encodedResponseToken()).isNotBlank();
-    var secondPageToken = PageToken.build(firstPage.encodedResponseToken(), null, () -> true);
+    var secondPageToken = PageToken.build(firstPage.encodedResponseToken(), null, -1, () -> true);
 
     // Supersede the exact catalog-state snapshot referenced by the token.
     assertThat(
@@ -227,7 +227,7 @@ public class TestCatalogMaintenance {
         .extracting(PolarisBaseEntity::getName)
         .containsExactly("catalog-a");
     assertThat(firstPage.encodedResponseToken()).isNotBlank();
-    var secondPageToken = PageToken.build(firstPage.encodedResponseToken(), null, () -> true);
+    var secondPageToken = PageToken.build(firstPage.encodedResponseToken(), null, -1, () -> true);
 
     var updatedProperties = new HashMap<>(nextPageCatalog.getPropertiesAsMap());
     updatedProperties.put("updated", "true");
