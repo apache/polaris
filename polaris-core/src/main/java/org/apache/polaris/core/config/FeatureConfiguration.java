@@ -481,7 +481,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("LIST_PAGINATION_ENABLED")
           .catalogConfig("polaris.config.list-pagination-enabled")
           .description("If set to true, pagination for APIs like listTables is enabled.")
-          .defaultValue(false)
+          .defaultValue(true)
           .buildFeatureConfiguration();
 
   public static final PolarisConfiguration<Integer> LIST_PAGINATION_MAX_PAGE_SIZE =

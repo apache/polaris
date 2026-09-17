@@ -116,6 +116,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   does not supply a `pageToken` to receive the complete result with a null `next-page-token`: such
   a request is then truncated to the maximum and answered with a continuation token, so a client
   that does not follow continuations sees only the first page.
+- `LIST_PAGINATION_ENABLED` now defaults to `true`, enabling pagination for APIs like `listTables` by default.
 
 ### Deprecations
 
