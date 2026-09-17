@@ -205,6 +205,11 @@ These metadata privileges do not confer grant management. Single-model grants re
 `CATALOG_MANAGE_ACCESS` can satisfy these grant-management checks within its scope.
 Namespace/catalog grants continue to use the existing namespace/catalog grant-management permissions.
 
+With built-in RBAC, granting or revoking privileges on a missing model still checks grants on
+its existing ancestors. If those grants authorize the operation, the request returns HTTP 404;
+otherwise it returns HTTP 403. Revocation also checks the recipient role's grant-management
+permissions, even when the model is missing.
+
 Model authorization is independent of source table/view privileges. Source-access authorization
 on create/update and propagated read-time checks are deferred. Model privileges do not grant
 access to the underlying tables or views.

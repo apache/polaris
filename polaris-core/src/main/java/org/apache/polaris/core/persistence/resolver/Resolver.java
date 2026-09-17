@@ -105,6 +105,7 @@ public class Resolver {
   private final Map<Long, ResolvedPolarisEntity> resolvedEntriesById;
 
   private ResolverStatus resolverStatus;
+  private boolean allowMissingEntities;
 
   // Set if we determine the reference catalog is a passthrough facade, which impacts
   // leniency of resolution of in-catalog paths
@@ -242,6 +243,28 @@ public class Resolver {
   }
 
   /**
+   * Resolves authorization inputs, retaining validated ancestors when a requested entity is
+   * missing. The returned status still reports the first missing entity or path.
+   */
+  public ResolverStatus resolveAllForAuthorization() {
+    diagnostics.check(resolverStatus == null, "resolver_called");
+    allowMissingEntities = true;
+    return resolveAll();
+  }
+
+  private void checkResolved() {
+    diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
+    diagnostics.check(
+        resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS
+            || (allowMissingEntities
+                && (resolverStatus.getStatus()
+                        == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED
+                    || resolverStatus.getStatus()
+                        == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED)),
+        "resolver_must_be_successful");
+  }
+
+  /**
    * Run the resolution process for a subset of resolvables.
    *
    * @param selections explicit selection of resolvables to resolve
@@ -287,11 +310,7 @@ public class Resolver {
    * @return the principal we resolved
    */
   public @NonNull ResolvedPolarisEntity getResolvedCallerPrincipal() {
-    // can only be called if the resolver has been called and was success
-    this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
-    this.diagnostics.check(
-        resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
-        "resolver_must_be_successful");
+    checkResolved();
     this.diagnostics.check(resolvedCallerPrincipal != null, "caller_principal_not_resolved");
 
     return resolvedCallerPrincipal;
@@ -301,11 +320,7 @@ public class Resolver {
    * @return all principal roles which were activated. The list can be empty
    */
   public @NonNull List<ResolvedPolarisEntity> getResolvedCallerPrincipalRoles() {
-    // can only be called if the resolver has been called and was success
-    this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
-    this.diagnostics.check(
-        resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
-        "resolver_must_be_successful");
+    checkResolved();
     return resolvedCallerPrincipalRoles;
   }
 
@@ -314,11 +329,7 @@ public class Resolver {
    *     the parameter referenceCatalogName when the Resolver was constructed.
    */
   public @Nullable ResolvedPolarisEntity getResolvedReferenceCatalog() {
-    // can only be called if the resolver has been called and was success
-    this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
-    this.diagnostics.check(
-        resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
-        "resolver_must_be_successful");
+    checkResolved();
 
     return resolvedReferenceCatalog;
   }
@@ -330,11 +341,7 @@ public class Resolver {
    * @return map of activated catalog roles or null if no referenceCatalogName was specified
    */
   public @Nullable Map<Long, ResolvedPolarisEntity> getResolvedCatalogRoles() {
-    // can only be called if the resolver has been called and was success
-    this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
-    this.diagnostics.check(
-        resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
-        "resolver_must_be_successful");
+    checkResolved();
 
     return resolvedCatalogRoles;
   }
@@ -347,11 +354,7 @@ public class Resolver {
    * @return single resolved path
    */
   public @NonNull List<ResolvedPolarisEntity> getResolvedPath() {
-    // can only be called if the resolver has been called and was success
-    this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
-    this.diagnostics.check(
-        resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
-        "resolver_must_be_successful");
+    checkResolved();
     this.diagnostics.check(this.resolvedPaths.size() == 1, "only_if_single");
 
     return resolvedPaths.get(0);
@@ -363,11 +366,7 @@ public class Resolver {
    * @return list of resolved path
    */
   public @NonNull List<List<ResolvedPolarisEntity>> getResolvedPaths() {
-    // can only be called if the resolver has been called and was success
-    this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
-    this.diagnostics.check(
-        resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
-        "resolver_must_be_successful");
+    checkResolved();
     this.diagnostics.check(!this.resolvedPaths.isEmpty(), "no_path_resolved");
 
     return resolvedPaths;
@@ -384,11 +383,7 @@ public class Resolver {
    */
   public @Nullable ResolvedPolarisEntity getResolvedEntity(
       @NonNull PolarisEntityType entityType, @NonNull String entityName) {
-    // can only be called if the resolver has been called and was success
-    this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
-    this.diagnostics.check(
-        resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
-        "resolver_must_be_successful");
+    checkResolved();
 
     // validate input
     diagnostics.check(
@@ -444,18 +439,26 @@ public class Resolver {
                 toValidate, this.referenceCatalogName, plan.resolveCallerCatalogRoles());
       }
 
-      // if success, continue resolving
-      if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
+      // Authorization also needs the root and remaining paths when a target is missing.
+      if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS || allowMissingEntities) {
         // then resolve all the additional entities we were asked to resolve
         if (plan.resolveRequestedTopLevelEntities()) {
-          status = this.resolveEntities(toValidate, this.entitiesToResolve);
+          ResolverStatus entityStatus = this.resolveEntities(toValidate, this.entitiesToResolve);
+          if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
+            status = entityStatus;
+          }
         }
 
         // if success, continue resolving
-        if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS
-            && plan.resolveRequestedPaths()) {
+        if ((status.getStatus() == ResolverStatus.StatusEnum.SUCCESS || allowMissingEntities)
+            && plan.resolveRequestedPaths()
+            && resolvedReferenceCatalog != null
+            && !resolvedReferenceCatalog.getEntity().isDropped()) {
           // finally, resolve all paths we need to resolve
-          status = this.resolvePaths(toValidate, this.pathsToResolve);
+          ResolverStatus pathStatus = this.resolvePaths(toValidate, this.pathsToResolve);
+          if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
+            status = pathStatus;
+          }
         }
       }
     }
@@ -687,8 +690,15 @@ public class Resolver {
    */
   private ResolverStatus resolveEntities(
       List<ResolvedPolarisEntity> toValidate, AbstractSet<ResolverEntityName> entitiesToResolve) {
+    ResolverStatus status = new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
     // resolve each
     for (ResolverEntityName entityName : entitiesToResolve) {
+      if (allowMissingEntities
+          && !entityName.entityType().isTopLevel()
+          && (resolvedReferenceCatalog == null
+              || resolvedReferenceCatalog.getEntity().isDropped())) {
+        continue;
+      }
       // resolve that entity
       ResolvedPolarisEntity resolvedEntity =
           this.resolveByName(toValidate, entityName.entityType(), entityName.entityName());
@@ -697,12 +707,16 @@ public class Resolver {
       // TODO: Consider how this interacts with CATALOG_ROLE in the isPassthroughFacade case.
       if (!entityName.optional()
           && (resolvedEntity == null || resolvedEntity.getEntity().isDropped())) {
-        return new ResolverStatus(entityName.entityType(), entityName.entityName());
+        if (!allowMissingEntities) {
+          return new ResolverStatus(entityName.entityType(), entityName.entityName());
+        }
+        if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
+          status = new ResolverStatus(entityName.entityType(), entityName.entityName());
+        }
       }
     }
 
-    // complete success
-    return new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
+    return status;
   }
 
   /**
@@ -716,6 +730,7 @@ public class Resolver {
    */
   private ResolverStatus resolvePaths(
       List<ResolvedPolarisEntity> toValidate, List<ResolverPath> pathsToResolve) {
+    ResolverStatus status = new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
     // id of the catalog for all these paths
     final long catalogId = this.resolvedReferenceCatalog.getEntity().getId();
 
@@ -749,6 +764,11 @@ public class Resolver {
           if (path.optional() || this.isPassthroughFacade) {
             // we have resolved as much as what we could have
             break;
+          } else if (allowMissingEntities) {
+            if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
+              status = new ResolverStatus(path, segmentIndex);
+            }
+            break;
           } else {
             return new ResolverStatus(path, segmentIndex);
           }
@@ -765,8 +785,7 @@ public class Resolver {
       this.resolvedPaths.add(resolvedPath);
     }
 
-    // complete success
-    return new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
+    return status;
   }
 
   /**

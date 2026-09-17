@@ -140,6 +140,16 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     return primaryResolverStatus;
   }
 
+  /** Resolves authorization inputs while retaining ancestors of missing targets. */
+  public ResolverStatus resolveAllForAuthorization() {
+    primaryResolverStatus = primaryResolver.resolveAllForAuthorization();
+    diagnostics.check(
+        primaryResolverStatus.getStatus()
+            != ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST,
+        "caller_principal_does_not_exist_at_resolution_time");
+    return primaryResolverStatus;
+  }
+
   /**
    * Resolves explicitly requested components.
    *
@@ -356,6 +366,36 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     }
     resolvedEntities.add(primaryResolver.getResolvedReferenceCatalog());
     resolvedPath.forEach(resolvedEntity -> resolvedEntities.add(resolvedEntity));
+    return new PolarisResolvedPathWrapper(resolvedEntities);
+  }
+
+  /**
+   * Returns the validated prefix of a registered path for authorization, including ancestors of a
+   * missing target. Call only after {@link #resolveAllForAuthorization()}; callers must still check
+   * the resolution status before accessing or modifying the target.
+   */
+  public PolarisResolvedPathWrapper getResolvedPathForAuthorization(
+      ResolvedPathKey key, boolean prependRootContainer) {
+    diagnostics.check(
+        pathLookup.containsKey(key),
+        "never_registered_key_for_resolved_path",
+        "key={} pathLookup={}",
+        key,
+        pathLookup);
+    List<ResolvedPolarisEntity> resolvedEntities = new ArrayList<>();
+    if (prependRootContainer) {
+      ResolvedPolarisEntity root =
+          primaryResolver.getResolvedEntity(
+              PolarisEntityType.ROOT, PolarisEntityConstants.getRootContainerName());
+      if (root != null && !root.getEntity().isDropped()) {
+        resolvedEntities.add(root);
+      }
+    }
+    ResolvedPolarisEntity catalog = primaryResolver.getResolvedReferenceCatalog();
+    if (catalog != null && !catalog.getEntity().isDropped()) {
+      resolvedEntities.add(catalog);
+      resolvedEntities.addAll(primaryResolver.getResolvedPaths().get(pathLookup.get(key)));
+    }
     return new PolarisResolvedPathWrapper(resolvedEntities);
   }
 
