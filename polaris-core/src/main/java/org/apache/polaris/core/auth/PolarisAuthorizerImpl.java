@@ -805,7 +805,18 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
-    resolutionManifest.resolveAll();
+    if (request.intents().stream()
+        .allMatch(
+            intent ->
+                intent.operation()
+                        == PolarisAuthorizableOperation.ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE
+                    || intent.operation()
+                        == PolarisAuthorizableOperation
+                            .REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE)) {
+      resolutionManifest.resolveAllForAuthorization();
+    } else {
+      resolutionManifest.resolveAll();
+    }
   }
 
   @Override

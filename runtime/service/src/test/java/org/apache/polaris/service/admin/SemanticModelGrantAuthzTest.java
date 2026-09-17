@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NotFoundException;
@@ -65,6 +66,7 @@ import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @QuarkusTest
 @TestProfile(Profiles.PolarisAuthzBaseProfile.class)
@@ -274,6 +276,168 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
         .isInstanceOf(ForbiddenException.class)
         .hasMessage("Not authorized");
     verify(authorizer).authorize(any(), any());
+  }
+
+  @ParameterizedTest
+  @MethodSource("grantOperationTargets")
+  void rbacDeniesGrantOperationsWithoutPrivileges(
+      boolean revoke, String catalogName, String roleName, TableIdentifier identifier) {
+    assertThatThrownBy(() -> changeGrant(caller(), revoke, catalogName, roleName, identifier))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageNotContaining("missing-");
+  }
+
+  static Stream<Arguments> missingGrantTargets() {
+    return Stream.of(false, true)
+        .flatMap(
+            revoke ->
+                Stream.of(
+                    Arguments.of(
+                        revoke, "missing-catalog", CATALOG_ROLE2, MODEL, ForbiddenException.class),
+                    Arguments.of(
+                        revoke, CATALOG_NAME, "missing-role", MODEL, NotFoundException.class),
+                    Arguments.of(
+                        revoke,
+                        CATALOG_NAME,
+                        CATALOG_ROLE2,
+                        TableIdentifier.of("missing-ns", "model"),
+                        NoSuchSemanticModelException.class),
+                    Arguments.of(
+                        revoke,
+                        CATALOG_NAME,
+                        CATALOG_ROLE2,
+                        TableIdentifier.of(NS1, "missing-model"),
+                        NoSuchSemanticModelException.class),
+                    Arguments.of(
+                        revoke,
+                        CATALOG_NAME,
+                        "missing-role",
+                        TableIdentifier.of(NS1, "missing-model"),
+                        NoSuchSemanticModelException.class)));
+  }
+
+  @ParameterizedTest
+  @MethodSource("missingGrantTargets")
+  void rbacRootChecksGrantsBeforeReportingMissingTargets(
+      boolean revoke,
+      String catalogName,
+      String roleName,
+      TableIdentifier identifier,
+      Class<? extends Exception> expectedException) {
+    assertThatThrownBy(
+            () -> changeGrant(newRootAdminService(), revoke, catalogName, roleName, identifier))
+        .isInstanceOf(expectedException);
+    assertThat(newRootAdminService().listGrantsForCatalogRole(CATALOG_NAME, CATALOG_ROLE2))
+        .isEmpty();
+  }
+
+  @ParameterizedTest
+  @MethodSource("missingGrantTargets")
+  void rbacCatalogAdminReportsOnlyMissingTargetsWithinItsCatalog(
+      boolean revoke,
+      String catalogName,
+      String roleName,
+      TableIdentifier identifier,
+      Class<? extends Exception> expectedException) {
+    assertSuccess(
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.CATALOG_MANAGE_ACCESS));
+    assertThatThrownBy(() -> changeGrant(caller(), revoke, catalogName, roleName, identifier))
+        .isInstanceOf(
+            CATALOG_NAME.equals(catalogName) ? expectedException : ForbiddenException.class);
+    assertThat(newRootAdminService().listGrantsForCatalogRole(CATALOG_NAME, CATALOG_ROLE2))
+        .isEmpty();
+  }
+
+  static Stream<Arguments> missingDescendants() {
+    return Stream.of(false, true)
+        .flatMap(
+            revoke ->
+                Stream.of(
+                    Arguments.of(revoke, TableIdentifier.of(NS1, "missing-model")),
+                    Arguments.of(revoke, TableIdentifier.of(NS1A, "missing-model")),
+                    Arguments.of(
+                        revoke,
+                        TableIdentifier.of(Namespace.of(NS1.level(0), "missing-ns"), "model"))));
+  }
+
+  @ParameterizedTest
+  @MethodSource("missingDescendants")
+  void rbacAuthorizesMissingDescendantsWithNamespaceGrants(
+      boolean revoke, TableIdentifier identifier) {
+    assertSuccess(
+        newRootAdminService()
+            .grantPrivilegeOnNamespaceToRole(
+                CATALOG_NAME,
+                CATALOG_ROLE1,
+                NS1,
+                PolarisPrivilege.SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE));
+    if (revoke) {
+      // The model's namespace grant must not satisfy the separate grantee-side requirement.
+      assertThatThrownBy(() -> changeGrant(caller(), true, CATALOG_NAME, CATALOG_ROLE2, identifier))
+          .isInstanceOf(ForbiddenException.class);
+      assertSuccess(
+          newRootAdminService()
+              .grantPrivilegeOnCatalogToRole(
+                  CATALOG_NAME,
+                  CATALOG_ROLE1,
+                  PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
+    }
+    assertThatThrownBy(() -> changeGrant(caller(), revoke, CATALOG_NAME, CATALOG_ROLE2, identifier))
+        .isInstanceOf(NoSuchSemanticModelException.class);
+    assertThat(newRootAdminService().listGrantsForCatalogRole(CATALOG_NAME, CATALOG_ROLE2))
+        .isEmpty();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void rbacDoesNotUseSiblingNamespaceGrantsForMissingTargets(boolean revoke) {
+    assertSuccess(
+        newRootAdminService()
+            .grantPrivilegeOnNamespaceToRole(
+                CATALOG_NAME,
+                CATALOG_ROLE1,
+                NS2,
+                PolarisPrivilege.SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE));
+    assertThatThrownBy(
+            () ->
+                changeGrant(
+                    caller(),
+                    revoke,
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    TableIdentifier.of(NS1, "missing-model")))
+        .isInstanceOf(ForbiddenException.class);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void rbacModelGrantManagerHandlesMissingRecipient(boolean revoke) {
+    assertSuccess(
+        newRootAdminService()
+            .grantPrivilegeOnSemanticModelToRole(
+                CATALOG_NAME,
+                CATALOG_ROLE1,
+                MODEL,
+                PolarisPrivilege.SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE));
+    assertThatThrownBy(() -> changeGrant(caller(), revoke, CATALOG_NAME, "missing-role", MODEL))
+        .isInstanceOf(revoke ? ForbiddenException.class : NotFoundException.class);
+  }
+
+  private static void changeGrant(
+      PolarisAdminService service,
+      boolean revoke,
+      String catalogName,
+      String roleName,
+      TableIdentifier identifier) {
+    if (revoke) {
+      service.revokePrivilegeOnSemanticModelFromRole(
+          catalogName, roleName, identifier, PolarisPrivilege.SEMANTIC_MODEL_READ);
+    } else {
+      service.grantPrivilegeOnSemanticModelToRole(
+          catalogName, roleName, identifier, PolarisPrivilege.SEMANTIC_MODEL_READ);
+    }
   }
 
   static Stream<GrantResource> scopedGrants() {
