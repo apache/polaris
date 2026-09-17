@@ -96,9 +96,7 @@ dependencies {
   implementation("software.amazon.awssdk:s3")
   implementation("software.amazon.awssdk:kms")
   implementation("software.amazon.awssdk:cloudwatchlogs")
-  implementation("software.amazon.awssdk:apache-client") {
-    exclude("commons-logging", "commons-logging")
-  }
+  implementation("software.amazon.awssdk:apache5-client")
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-core")
   implementation("com.azure:azure-storage-blob")
