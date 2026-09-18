@@ -97,6 +97,10 @@ dependencies {
   implementation("software.amazon.awssdk:kms")
   implementation("software.amazon.awssdk:cloudwatchlogs")
   implementation("software.amazon.awssdk:apache5-client")
+  // Iceberg 1.11.0 still requires Apache 4 for its default S3 HTTP client.
+  runtimeOnly("software.amazon.awssdk:apache-client") {
+    exclude("commons-logging", "commons-logging")
+  }
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-core")
   implementation("com.azure:azure-storage-blob")

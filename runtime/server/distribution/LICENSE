@@ -301,6 +301,7 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus.security:quarkus-security
 * Maven group:artifact IDs: io.quarkus.vertx.utils:quarkus-vertx-utils
 * Maven group:artifact IDs: io.quarkus:quarkus-agroal
+* Maven group:artifact IDs: io.quarkus:quarkus-apache-httpclient
 * Maven group:artifact IDs: io.quarkus:quarkus-arc
 * Maven group:artifact IDs: io.quarkus:quarkus-bootstrap-runner
 * Maven group:artifact IDs: io.quarkus:quarkus-classloader-commons
@@ -416,6 +417,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 This product bundles Quarkus Amazon Services.
 
+* Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-apache-client-internal
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-apache5-client-internal
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-common
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-common-spi
@@ -1950,6 +1952,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 This product bundles AWS SDK for Java.
 
 * Maven group:artifact IDs: software.amazon.awssdk:annotations
+* Maven group:artifact IDs: software.amazon.awssdk:apache-client
 * Maven group:artifact IDs: software.amazon.awssdk:apache5-client
 * Maven group:artifact IDs: software.amazon.awssdk:arns
 * Maven group:artifact IDs: software.amazon.awssdk:auth

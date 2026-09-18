@@ -31,6 +31,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- Polaris-managed AWS SDK clients now use Apache HttpClient 5, which disables HTTP
+  `Expect: 100-continue` by default. Set `polaris.storage.expect-continue-enabled=true`
+  to preserve the previous behavior. Iceberg S3 clients continue to use Apache HttpClient 4
+  and retain their existing default.
+
 - Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
   (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris
   has no automated schema migrations, existing Postgres/CockroachDB deployments keep the old,
