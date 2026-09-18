@@ -947,32 +947,35 @@ components:
       description: Configuration necessary for connecting to an Iceberg REST Catalog
       allOf:
         - $ref: '#/components/schemas/ConnectionConfigInfo'
-      properties:
-        remoteCatalogName:
-          type: string
-          description: The name of a remote catalog instance within the remote catalog service; in some older systems
-            this is specified as the 'warehouse' when multiple logical catalogs are served under the same base
-            uri, and often translates into a 'prefix' added to all REST resource paths
+        - type: object
+          properties:
+            remoteCatalogName:
+              type: string
+              description: The name of a remote catalog instance within the remote catalog service; in some older systems
+                this is specified as the 'warehouse' when multiple logical catalogs are served under the same base
+                uri, and often translates into a 'prefix' added to all REST resource paths
 
     HadoopConnectionConfigInfo:
       type: object
       description: Configuration necessary for connecting to a Hadoop Catalog
       allOf:
         - $ref: '#/components/schemas/ConnectionConfigInfo'
-      properties:
-        warehouse:
-          type: string
-          description: The file path to where this catalog should store tables
+        - type: object
+          properties:
+            warehouse:
+              type: string
+              description: The file path to where this catalog should store tables
     
     HiveConnectionConfigInfo:
       type: object
       description: Configuration necessary for connecting to a Hive Catalog
       allOf:
         - $ref: '#/components/schemas/ConnectionConfigInfo'
-      properties:
-        warehouse:
-          type: string
-          description: The warehouse location for the hive catalog.
+        - type: object
+          properties:
+            warehouse:
+              type: string
+              description: The warehouse location for the hive catalog.
     
     BigQueryMetastoreConnectionConfigInfo:
       type: object
