@@ -172,6 +172,24 @@ paths:
   /polaris/v1/{prefix}/namespaces/{namespace}/semantic-models/{semantic-model-name}:
     $ref: './polaris-catalog-apis/semantic-models-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1semantic-models~1{semantic-model-name}'
 
+  ###################
+  # Polaris Tag API #
+  ###################
+
+  /polaris/v1/{prefix}/tags:
+    $ref: './polaris-catalog-apis/tag-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1tags'
+
+  /polaris/v1/{prefix}/tags/{tag-name}:
+    $ref: './polaris-catalog-apis/tag-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1tags~1{tag-name}'
+
+  /polaris/v1/{prefix}/tags/{tag-name}/mappings:
+    $ref: './polaris-catalog-apis/tag-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1tags~1{tag-name}~1mappings'
+
+  /polaris/v1/{prefix}/tags/{tag-name}/objects:
+    $ref: './polaris-catalog-apis/tag-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1tags~1{tag-name}~1objects'
+
+  /polaris/v1/{prefix}/object-tags:
+    $ref: './polaris-catalog-apis/tag-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1object-tags'
 
 components:
   securitySchemes:
