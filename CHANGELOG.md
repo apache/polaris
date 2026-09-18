@@ -151,6 +151,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Registering a table whose stored metadata file is no longer readable no longer fails: with
   overwrite it replaces the metadata location, and without overwrite it reports the table as
   already existing.
+- Relational JDBC: the location-overlap check now escapes SQL `LIKE` wildcards (`%`, `_`) and the
+  escape character (`\`) that appear literally in a table or namespace location. Previously these
+  characters were interpreted as wildcards, which could over-fetch candidate rows and, for a literal
+  `\`, silently miss true descendants during the overlapping-siblings check.
 - OPA authorizer HTTP client creation no longer silently falls back to a default client when
   truststore or SSL setup fails. Misconfiguration (for example a bad truststore path) now fails
   startup instead of continuing with system trust and no configured response timeout.

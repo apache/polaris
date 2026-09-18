@@ -328,7 +328,7 @@ public class QueryGeneratorTest {
             + " ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR"
             + " location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR"
-            + " location_without_scheme LIKE ?)",
+            + " location_without_scheme LIKE ? ESCAPE '\\')",
         QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/tmp/location/").sql());
     Assertions.assertThatCollection(
             QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/tmp/location/")
@@ -370,7 +370,7 @@ public class QueryGeneratorTest {
             + " properties, internal_properties, grant_records_version, location_without_scheme FROM"
             + " ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR"
-            + " location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme LIKE ?)",
+            + " location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme LIKE ? ESCAPE '\\')",
         QueryGenerator.generateOverlapQuery("realmId", 2, -123, "/tmp/location/").sql());
     Assertions.assertThatCollection(
             QueryGenerator.generateOverlapQuery("realmId", 2, -123, "/tmp/location/").parameters())
@@ -391,7 +391,7 @@ public class QueryGeneratorTest {
             + " properties, internal_properties, grant_records_version, location_without_scheme"
             + " FROM ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR"
-            + " location_without_scheme = ? OR location_without_scheme LIKE ?)",
+            + " location_without_scheme = ? OR location_without_scheme LIKE ? ESCAPE '\\')",
         QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://バケツ/\"loc.ation\"/").sql());
     Assertions.assertThatCollection(
             QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://バケツ/\"loc.ation\"/")
@@ -429,6 +429,33 @@ public class QueryGeneratorTest {
                 .parameters())
         .contains("//", "///")
         .doesNotContain("/");
+  }
+
+  @Test
+  void generateOverlapQueryEscapesLikeWildcardsInPattern() {
+    // A location containing LIKE metacharacters (_ and %) must be escaped in the LIKE pattern (with
+    // an ESCAPE clause) so they match literally rather than as wildcards; the exact-match prefix
+    // terms use "=" and must keep the raw characters.
+    assertTrue(
+        QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/a_b/c%d/")
+            .sql()
+            .contains("location_without_scheme LIKE ? ESCAPE '\\'"));
+    Assertions.assertThat(
+            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/a_b/c%d/")
+                .parameters())
+        .endsWith("//bucket/a\\_b/c\\%d/%")
+        .contains("//bucket/a_b", "//bucket/a_b/c%d");
+  }
+
+  @Test
+  void generateOverlapQueryEscapesBackslashInPattern() {
+    // A literal backslash (the default LIKE escape character) in the location must itself be
+    // escaped
+    // so a descendant whose path contains a backslash is still matched rather than silently missed.
+    Assertions.assertThat(
+            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/a\\b/")
+                .parameters())
+        .endsWith("//bucket/a\\\\b/%");
   }
 
   @Test
