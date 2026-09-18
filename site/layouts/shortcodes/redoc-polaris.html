@@ -4,10 +4,11 @@ Apache Polaris custom redoc shortcode that takes just the file of the OpenAPI sp
 either the in-development version from the `main` branch or a released version from the corresponding
 Git tag.
 
-This is a copy of the original Docsy redoc shortcode, except the part to calculate the URL is adopted
-for Polaris in-dev/releases docs.
+This is a copy of the Docsy redoc shortcode (v0.14.3), except the URL resolution block is replaced
+with a Polaris-specific partial that resolves the spec to the correct raw GitHub URL.
 
-Copied from Docsy shortcodes/redoc.html.
+Copied from Docsy:
+https://github.com/google/docsy/blob/v0.14.3/layouts/_shortcodes/redoc.html
 
 */}}
 
@@ -83,11 +84,11 @@ Redoc doesn't change outer page styles
 <!--
 Redoc element with link to your OpenAPI definition
 -->
+<p><a href="https://editor-next.swagger.io/?url={{ $url | urlquery }}" target="_blank" rel="noopener">Open in Swagger Editor ↗</a></p>
 <div id="redoc-container">
 <redoc spec-url='{{ $url }}' hide-hostname="true" suppress-warnings="true" lazy-rendering  native-scrollbars scroll-y-offset=".js-navbar-scroll" {{ $otheroptions }}></redoc>
 </div>
 <!--
 Link to Redoc JavaScript on CDN for rendering standalone element
 -->
-
-<meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url={{ $url }}" />
+<script src="https://cdn.jsdelivr.net/npm/redoc@latest/bundles/redoc.standalone.js"></script>
