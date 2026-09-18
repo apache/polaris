@@ -112,7 +112,7 @@ public class SparkCatalogTest {
 
       this.deltaHelper = new DeltaHelper(options);
       this.hudiHelper = new HudiHelper(options);
-      this.paimonHelper = new PaimonHelper(options);
+      this.paimonHelper = new PaimonHelper(name, options);
     }
   }
 
@@ -134,6 +134,7 @@ public class SparkCatalogTest {
     catalogConfig.put(HudiHelper.HUDI_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopHudiCatalog");
     catalogConfig.put(
         PaimonHelper.PAIMON_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopPaimonCatalog");
+    catalogConfig.put(PaimonHelper.PAIMON_WAREHOUSE_KEY, "/tmp/test-paimon-warehouse");
     catalog = new InMemorySparkCatalog();
     Configuration conf = new Configuration();
 
@@ -302,6 +303,30 @@ public class SparkCatalogTest {
   }
 
   @Test
+  void testPaimonStageOperationsAreRejectedWithoutSideEffects() {
+    Identifier identifier = Identifier.of(defaultNS, "paimon-staged-table");
+    Map<String, String> properties = Maps.newHashMap();
+    properties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "paimon");
+
+    assertThatThrownBy(
+            () -> catalog.stageCreate(identifier, defaultSchema, new Transform[0], properties))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("CTAS and RTAS");
+    assertThatThrownBy(
+            () -> catalog.stageReplace(identifier, defaultSchema, new Transform[0], properties))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("CTAS and RTAS");
+    assertThatThrownBy(
+            () ->
+                catalog.stageCreateOrReplace(
+                    identifier, defaultSchema, new Transform[0], properties))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("CTAS and RTAS");
+
+    assertThat(catalog.listTables(defaultNS)).isEmpty();
+  }
+
+  @Test
   void testBasicViewOperations() throws Exception {
     Identifier viewIdentifier = Identifier.of(defaultNS, "test-view");
     String viewSql = "select id from test-table where id < 3";
@@ -459,6 +484,118 @@ public class SparkCatalogTest {
     assertThatThrownBy(() -> catalog.loadTable(identifier))
         .isInstanceOf(NoSuchTableException.class);
     assertThat(catalog.listTables(defaultNS)).isEmpty();
+  }
+
+  @Test
+  void testPaimonCreateRollsBackWhenCreatedTableHasNoLocation() throws Exception {
+    Identifier identifier = Identifier.of(defaultNS, "paimon-missing-location");
+    Map<String, String> properties = Maps.newHashMap();
+    properties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "paimon");
+
+    PaimonHelper originalHelper = catalog.paimonHelper;
+    originalHelper.ensureNamespaceExists(defaultNS);
+    TableCatalog paimonCatalog = Mockito.spy(originalHelper.loadPaimonCatalog());
+    PaimonHelper testHelper = Mockito.mock(PaimonHelper.class);
+    Mockito.when(testHelper.loadPaimonCatalog()).thenReturn(paimonCatalog);
+    PolarisSparkCatalog originalPolarisCatalog = catalog.polarisSparkCatalog;
+    PolarisSparkCatalog polarisCatalog = Mockito.spy(originalPolarisCatalog);
+    catalog.paimonHelper = testHelper;
+    catalog.polarisSparkCatalog = polarisCatalog;
+
+    try {
+      assertThatThrownBy(
+              () -> catalog.createTable(identifier, defaultSchema, new Transform[0], properties))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("do not contain a location");
+      Mockito.verify(paimonCatalog).dropTable(identifier);
+      Mockito.verify(polarisCatalog, Mockito.never())
+          .registerGenericTable(
+              Mockito.any(), Mockito.anyString(), Mockito.anyString(), Mockito.anyMap());
+      assertThat(paimonCatalog.tableExists(identifier)).isFalse();
+    } finally {
+      catalog.paimonHelper = originalHelper;
+      catalog.polarisSparkCatalog = originalPolarisCatalog;
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {TableAlreadyExistsException.class, NoSuchNamespaceException.class})
+  void testPaimonRegistrationDoesNotRetryNonRetryableFailures(
+      Class<? extends Exception> failureType) throws Exception {
+    Identifier identifier =
+        Identifier.of(defaultNS, "paimon-registration-" + failureType.getSimpleName());
+    Map<String, String> properties = Maps.newHashMap();
+    properties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "paimon");
+    properties.put(TableCatalog.PROP_LOCATION, "file:///tmp/paimon-registration/");
+
+    PaimonHelper originalHelper = catalog.paimonHelper;
+    originalHelper.ensureNamespaceExists(defaultNS);
+    TableCatalog paimonCatalog = Mockito.spy(originalHelper.loadPaimonCatalog());
+    PaimonHelper testHelper = Mockito.mock(PaimonHelper.class);
+    Mockito.when(testHelper.loadPaimonCatalog()).thenReturn(paimonCatalog);
+    PolarisSparkCatalog originalPolarisCatalog = catalog.polarisSparkCatalog;
+    PolarisSparkCatalog failingPolarisCatalog = Mockito.spy(originalPolarisCatalog);
+    Exception registrationFailure =
+        failureType == TableAlreadyExistsException.class
+            ? new TableAlreadyExistsException(identifier)
+            : new NoSuchNamespaceException(defaultNS);
+    Mockito.doThrow(registrationFailure)
+        .when(failingPolarisCatalog)
+        .registerGenericTable(
+            Mockito.eq(identifier), Mockito.eq("paimon"), Mockito.anyString(), Mockito.anyMap());
+    catalog.paimonHelper = testHelper;
+    catalog.polarisSparkCatalog = failingPolarisCatalog;
+
+    try {
+      assertThatThrownBy(
+              () -> catalog.createTable(identifier, defaultSchema, new Transform[0], properties))
+          .isSameAs(registrationFailure);
+      Mockito.verify(failingPolarisCatalog)
+          .registerGenericTable(
+              Mockito.eq(identifier), Mockito.eq("paimon"), Mockito.anyString(), Mockito.anyMap());
+      Mockito.verify(paimonCatalog).dropTable(identifier);
+      assertThat(paimonCatalog.tableExists(identifier)).isFalse();
+    } finally {
+      catalog.paimonHelper = originalHelper;
+      catalog.polarisSparkCatalog = originalPolarisCatalog;
+    }
+  }
+
+  @Test
+  void testPaimonRegistrationRetriesThreeTimesAndRollsBackOnce() throws Exception {
+    Identifier identifier = Identifier.of(defaultNS, "paimon-registration-retry");
+    Map<String, String> properties = Maps.newHashMap();
+    properties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "paimon");
+    properties.put(TableCatalog.PROP_LOCATION, "file:///tmp/paimon-registration-retry/");
+
+    PaimonHelper originalHelper = catalog.paimonHelper;
+    originalHelper.ensureNamespaceExists(defaultNS);
+    TableCatalog paimonCatalog = Mockito.spy(originalHelper.loadPaimonCatalog());
+    PaimonHelper testHelper = Mockito.mock(PaimonHelper.class);
+    Mockito.when(testHelper.loadPaimonCatalog()).thenReturn(paimonCatalog);
+    PolarisSparkCatalog originalPolarisCatalog = catalog.polarisSparkCatalog;
+    PolarisSparkCatalog failingPolarisCatalog = Mockito.spy(originalPolarisCatalog);
+    Mockito.doThrow(new RuntimeException("transient registration failure"))
+        .when(failingPolarisCatalog)
+        .registerGenericTable(
+            Mockito.eq(identifier), Mockito.eq("paimon"), Mockito.anyString(), Mockito.anyMap());
+    catalog.paimonHelper = testHelper;
+    catalog.polarisSparkCatalog = failingPolarisCatalog;
+
+    try {
+      assertThatThrownBy(
+              () -> catalog.createTable(identifier, defaultSchema, new Transform[0], properties))
+          .isInstanceOf(RuntimeException.class)
+          .hasMessageContaining("after 4 attempts");
+      Mockito.verify(failingPolarisCatalog, Mockito.times(4))
+          .registerGenericTable(
+              Mockito.eq(identifier), Mockito.eq("paimon"), Mockito.anyString(), Mockito.anyMap());
+      Mockito.verify(paimonCatalog).dropTable(identifier);
+      assertThat(paimonCatalog.tableExists(identifier)).isFalse();
+    } finally {
+      catalog.paimonHelper = originalHelper;
+      catalog.polarisSparkCatalog = originalPolarisCatalog;
+    }
   }
 
   @Test
@@ -626,6 +763,89 @@ public class SparkCatalogTest {
     assertThat(catalog.listTables(defaultNS).length).isEqualTo(0);
   }
 
+  @Test
+  void testPaimonPurgeRemovesBothCatalogEntries() throws Exception {
+    Identifier identifier = Identifier.of(defaultNS, "paimon-purge-table");
+    createAndValidateGenericTableWithLoad(catalog, identifier, defaultSchema, "paimon");
+    TableCatalog paimonCatalog = catalog.paimonHelper.loadPaimonCatalog();
+
+    assertThat(catalog.polarisSparkCatalog.getTableFormat(identifier)).isEqualTo("paimon");
+    assertThat(paimonCatalog.tableExists(identifier)).isTrue();
+    assertThat(catalog.purgeTable(identifier)).isTrue();
+    assertThatThrownBy(() -> catalog.polarisSparkCatalog.getTableFormat(identifier))
+        .isInstanceOf(NoSuchTableException.class);
+    assertThat(paimonCatalog.tableExists(identifier)).isFalse();
+  }
+
+  @Test
+  void testPaimonPurgePreservesPolarisMetadataWhenPhysicalPurgeFails() throws Exception {
+    Identifier identifier = Identifier.of(defaultNS, "paimon-purge-failure-table");
+    createAndValidateGenericTableWithLoad(catalog, identifier, defaultSchema, "paimon");
+
+    PaimonHelper originalHelper = catalog.paimonHelper;
+    TableCatalog paimonCatalog = originalHelper.loadPaimonCatalog();
+    TableCatalog failingPaimonCatalog = Mockito.mock(TableCatalog.class);
+    Mockito.when(failingPaimonCatalog.dropTable(identifier))
+        .thenThrow(new RuntimeException("physical purge failed"));
+    PaimonHelper failingHelper = Mockito.mock(PaimonHelper.class);
+    Mockito.when(failingHelper.loadPaimonCatalog()).thenReturn(failingPaimonCatalog);
+    catalog.paimonHelper = failingHelper;
+
+    try {
+      assertThatThrownBy(() -> catalog.purgeTable(identifier))
+          .isInstanceOf(RuntimeException.class)
+          .hasMessageContaining("Failed to purge Paimon table");
+      assertThat(catalog.polarisSparkCatalog.getTableFormat(identifier)).isEqualTo("paimon");
+      assertThat(paimonCatalog.tableExists(identifier)).isTrue();
+    } finally {
+      catalog.paimonHelper = originalHelper;
+      catalog.dropTable(identifier);
+    }
+  }
+
+  @Test
+  void testPaimonPurgeReportsPolarisCleanupFailure() throws Exception {
+    Identifier identifier = Identifier.of(defaultNS, "paimon-purge-polaris-failure-table");
+    createAndValidateGenericTableWithLoad(catalog, identifier, defaultSchema, "paimon");
+
+    TableCatalog paimonCatalog = catalog.paimonHelper.loadPaimonCatalog();
+    PolarisSparkCatalog originalPolarisCatalog = catalog.polarisSparkCatalog;
+    PolarisSparkCatalog failingPolarisCatalog = Mockito.spy(originalPolarisCatalog);
+    Mockito.doReturn(false).when(failingPolarisCatalog).purgeTable(identifier);
+    catalog.polarisSparkCatalog = failingPolarisCatalog;
+
+    try {
+      assertThat(catalog.purgeTable(identifier)).isFalse();
+      assertThat(paimonCatalog.tableExists(identifier)).isFalse();
+      assertThat(originalPolarisCatalog.getTableFormat(identifier)).isEqualTo("paimon");
+    } finally {
+      catalog.polarisSparkCatalog = originalPolarisCatalog;
+      originalPolarisCatalog.dropTable(identifier);
+    }
+  }
+
+  @Test
+  void testPaimonPurgeRethrowsPolarisCleanupException() throws Exception {
+    Identifier identifier = Identifier.of(defaultNS, "paimon-purge-polaris-exception-table");
+    createAndValidateGenericTableWithLoad(catalog, identifier, defaultSchema, "paimon");
+
+    TableCatalog paimonCatalog = catalog.paimonHelper.loadPaimonCatalog();
+    PolarisSparkCatalog originalPolarisCatalog = catalog.polarisSparkCatalog;
+    PolarisSparkCatalog failingPolarisCatalog = Mockito.spy(originalPolarisCatalog);
+    RuntimeException cleanupFailure = new RuntimeException("Polaris cleanup failed");
+    Mockito.doThrow(cleanupFailure).when(failingPolarisCatalog).purgeTable(identifier);
+    catalog.polarisSparkCatalog = failingPolarisCatalog;
+
+    try {
+      assertThatThrownBy(() -> catalog.purgeTable(identifier)).isSameAs(cleanupFailure);
+      assertThat(paimonCatalog.tableExists(identifier)).isFalse();
+      assertThat(originalPolarisCatalog.getTableFormat(identifier)).isEqualTo("paimon");
+    } finally {
+      catalog.polarisSparkCatalog = originalPolarisCatalog;
+      originalPolarisCatalog.dropTable(identifier);
+    }
+  }
+
   private void createAndValidateGenericTableWithLoad(
       InMemorySparkCatalog sparkCatalog, Identifier identifier, StructType schema, String format)
       throws Exception {
@@ -643,8 +863,15 @@ public class SparkCatalogTest {
       // verify iceberg SparkTable is returned for iceberg tables
       assertThat(createdTable).isInstanceOf(SparkTable.class);
       assertThat(loadedTable).isInstanceOf(SparkTable.class);
+    } else if (PolarisCatalogUtils.usePaimon(format)) {
+      Table createdTable =
+          sparkCatalog.createTable(identifier, schema, new Transform[0], properties);
+      Table loadedTable = sparkCatalog.loadTable(identifier);
+
+      assertThat(createdTable).isNotNull();
+      assertThat(loadedTable).isNotNull();
     } else {
-      // For non-Iceberg tables, use mocking
+      // For other non-Iceberg tables, use mocking
       try (MockedStatic<DataSource> mockedStaticDS = Mockito.mockStatic(DataSource.class);
           MockedStatic<DataSourceV2Utils> mockedStaticDSV2 =
               Mockito.mockStatic(DataSourceV2Utils.class);
