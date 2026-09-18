@@ -80,6 +80,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   depend on the previous combined-intent input shape may need to be updated. Same applies to other
   PolarisAuthorizer implementations.
 - Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
+- `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
+  invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
+  size or when a positive LIST_PAGINATION_MAX_PAGE_SIZE limits local catalog listings. Otherwise,
+  requests without pagination parameters still return all results. To keep the previous behavior,
+  set `LIST_PAGINATION_ENABLED=false` or the catalog property `polaris.config.list-pagination-enabled=false`.
 
 ### New Features
 
@@ -122,7 +127,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Table commits whose base metadata is already stale now fail before the new metadata file is
   written, saving an object-storage write and delete per conflict and returning the `409` to the
   client sooner.
-- `LIST_PAGINATION_ENABLED` now defaults to `true`, enabling pagination for APIs like `listTables` by default.
 
 ### Deprecations
 
