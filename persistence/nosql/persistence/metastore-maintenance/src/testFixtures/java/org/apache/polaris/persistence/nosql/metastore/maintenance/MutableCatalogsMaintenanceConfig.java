@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.persistence.nosql.metastore.maintenance;
 
-import java.util.Optional;
+import java.time.Duration;
 
 public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConfig {
 
@@ -30,42 +30,47 @@ public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConf
   }
 
   @Override
-  public Optional<String> principalsRetain() {
-    return current.principalsRetain();
+  public Duration minRetentionDuration() {
+    return current.minRetentionDuration();
   }
 
   @Override
-  public Optional<String> principalRolesRetain() {
-    return current.principalRolesRetain();
+  public RetentionConfig principalsRetention() {
+    return current.principalsRetention();
   }
 
   @Override
-  public Optional<String> grantsRetain() {
-    return current.grantsRetain();
+  public RetentionConfig principalRolesRetention() {
+    return current.principalRolesRetention();
   }
 
   @Override
-  public Optional<String> immediateTasksRetain() {
-    return current.immediateTasksRetain();
+  public RetentionConfig grantsRetention() {
+    return current.grantsRetention();
   }
 
   @Override
-  public Optional<String> catalogsHistoryRetain() {
-    return current.catalogsHistoryRetain();
+  public RetentionConfig immediateTasksRetention() {
+    return current.immediateTasksRetention();
   }
 
   @Override
-  public Optional<String> catalogRolesRetain() {
-    return current.catalogRolesRetain();
+  public RetentionConfig catalogsHistoryRetention() {
+    return current.catalogsHistoryRetention();
   }
 
   @Override
-  public Optional<String> catalogStateRetain() {
-    return current.catalogStateRetain();
+  public RetentionConfig catalogRolesRetention() {
+    return current.catalogRolesRetention();
   }
 
   @Override
-  public Optional<String> catalogPoliciesRetain() {
-    return current.catalogPoliciesRetain();
+  public RetentionConfig catalogPoliciesRetention() {
+    return current.catalogPoliciesRetention();
+  }
+
+  @Override
+  public RetentionConfig catalogStateRetention() {
+    return current.catalogStateRetention();
   }
 }

@@ -20,8 +20,11 @@ package org.apache.polaris.persistence.nosql.metastore.maintenance;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
-import java.util.Optional;
+import io.smallrye.config.WithName;
+import jakarta.validation.constraints.Min;
+import java.time.Duration;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 import tools.jackson.databind.annotation.JsonDeserialize;
 import tools.jackson.databind.annotation.JsonSerialize;
 
@@ -29,75 +32,157 @@ import tools.jackson.databind.annotation.JsonSerialize;
  * No SQL persistence implementation of Polaris stores a history of changes per kind of object
  * (principals, principal roles, grants, immediate tasks, catalog roles and catalog state).
  *
- * <p>The rules are defined using a <a href="https://github.com/projectnessie/cel-java/">CEL
- * script</a>. The default rules for all kinds of objects are to retain the history for 3 days, for
- * the catalog state for 30 days.
+ * <p>The per-history retention settings provide independent controls for each kind of history.
+ * Count and duration controls are combined, retaining commits required by either one. The
+ * per-history controls default to one commit, zero duration, and retain-all disabled.
  *
- * <p>The scripts have access to the following declared values:
- *
- * <ul>
- *   <li>{@code ref} (string) name of the reference
- *   <li>{@code commits} (64-bit int) number of the currently processed commit, starting at {@code
- *       1}
- *   <li>{@code ageDays} (64-bit int) age of currently processed commit in days
- *   <li>{@code ageHours} (64-bit int) age of currently processed commit in hours
- *   <li>{@code ageMinutes} (64-bit int) age of currently processed commit in minutes
- * </ul>
- *
- * <p>Scripts <em>must</em> return a {@code boolean} yielding whether the commit shall be retained.
- * Note that maintenance-service implementations can keep the first not-to-be-retained commit.
- *
- * <p>Example scripts
- *
- * <ul>
- *   <li>{@code ageDays < 30 || commits <= 10} retains the reference history with at least 10
- *       commits and commits that are younger than 30 days
- *   <li>{@code true} retains the whole reference history
- *   <li>{@code false} retains the most recent commit
- * </ul>
+ * <p>{@link #minRetentionDuration()} provides a global minimum retention duration for all kinds of
+ * history.
  */
 @ConfigMapping(prefix = "polaris.persistence.nosql.maintenance.catalog")
 @JsonSerialize(as = ImmutableBuildableCatalogsMaintenanceConfig.class)
 @JsonDeserialize(as = ImmutableBuildableCatalogsMaintenanceConfig.class)
 public interface CatalogsMaintenanceConfig {
 
-  String DEFAULT_PRINCIPALS_RETAIN = "false";
-  String DEFAULT_PRINCIPAL_ROLES_RETAIN = "false";
-  String DEFAULT_GRANTS_RETAIN = "false";
-  String DEFAULT_IMMEDIATE_TASKS_RETAIN = "false";
-  String DEFAULT_CATALOGS_HISTORY_RETAIN = "false";
-  String DEFAULT_CATALOG_ROLES_RETAIN = "false";
-  String DEFAULT_CATALOG_POLICIES_RETAIN = "false";
-  String DEFAULT_CATALOG_STATE_RETAIN = "false";
+  int DEFAULT_RETAIN_COMMITS = 1;
+  String DEFAULT_RETAIN_DURATION = "PT0S";
+  String DEFAULT_RETAIN_ALL = "false";
+  String DEFAULT_MIN_RETENTION_DURATION = "PT0S";
 
-  @WithDefault(DEFAULT_PRINCIPALS_RETAIN)
-  Optional<String> principalsRetain();
+  /**
+   * Minimum duration to retain commits for all kinds of history. This is combined with each
+   * per-history duration, retaining commits required by either setting.
+   */
+  @WithDefault(DEFAULT_MIN_RETENTION_DURATION)
+  Duration minRetentionDuration();
 
-  @WithDefault(DEFAULT_PRINCIPAL_ROLES_RETAIN)
-  Optional<String> principalRolesRetain();
+  @WithName("retention.principals")
+  RetentionConfig principalsRetention();
 
-  @WithDefault(DEFAULT_GRANTS_RETAIN)
-  Optional<String> grantsRetain();
+  @WithName("retention.principal-roles")
+  RetentionConfig principalRolesRetention();
 
-  @WithDefault(DEFAULT_IMMEDIATE_TASKS_RETAIN)
-  Optional<String> immediateTasksRetain();
+  @WithName("retention.grants")
+  RetentionConfig grantsRetention();
 
-  @WithDefault(DEFAULT_CATALOGS_HISTORY_RETAIN)
-  Optional<String> catalogsHistoryRetain();
+  @WithName("retention.immediate-tasks")
+  RetentionConfig immediateTasksRetention();
 
-  @WithDefault(DEFAULT_CATALOG_ROLES_RETAIN)
-  Optional<String> catalogRolesRetain();
+  @WithName("retention.catalogs-history")
+  RetentionConfig catalogsHistoryRetention();
 
-  @WithDefault(DEFAULT_CATALOG_POLICIES_RETAIN)
-  Optional<String> catalogPoliciesRetain();
+  @WithName("retention.catalog-roles")
+  RetentionConfig catalogRolesRetention();
 
-  @WithDefault(DEFAULT_CATALOG_STATE_RETAIN)
-  Optional<String> catalogStateRetain();
+  @WithName("retention.catalog-policies")
+  RetentionConfig catalogPoliciesRetention();
+
+  @WithName("retention.catalog-state")
+  RetentionConfig catalogStateRetention();
+
+  /** Retention settings shared by every kind of history. */
+  interface RetentionConfig {
+    /** Minimum number of latest commits to retain. */
+    @WithDefault("" + DEFAULT_RETAIN_COMMITS)
+    @Min(1)
+    int numCommits();
+
+    /** Minimum duration to retain commits after they are superseded. */
+    @WithDefault(DEFAULT_RETAIN_DURATION)
+    Duration duration();
+
+    /** Whether to retain all commits. */
+    @WithDefault(DEFAULT_RETAIN_ALL)
+    boolean all();
+  }
+
+  @PolarisImmutable
+  interface BuildableRetentionConfig extends RetentionConfig {
+    static ImmutableBuildableRetentionConfig.Builder builder() {
+      return ImmutableBuildableRetentionConfig.builder();
+    }
+
+    @Override
+    @Value.Default
+    default int numCommits() {
+      return DEFAULT_RETAIN_COMMITS;
+    }
+
+    @Override
+    @Value.Default
+    default Duration duration() {
+      return Duration.parse(DEFAULT_RETAIN_DURATION);
+    }
+
+    @Override
+    @Value.Default
+    default boolean all() {
+      return Boolean.parseBoolean(DEFAULT_RETAIN_ALL);
+    }
+  }
 
   @PolarisImmutable
   interface BuildableCatalogsMaintenanceConfig extends CatalogsMaintenanceConfig {
     static ImmutableBuildableCatalogsMaintenanceConfig.Builder builder() {
       return ImmutableBuildableCatalogsMaintenanceConfig.builder();
+    }
+
+    private static BuildableRetentionConfig defaultRetention() {
+      return BuildableRetentionConfig.builder().build();
+    }
+
+    @Override
+    @Value.Default
+    default Duration minRetentionDuration() {
+      return Duration.parse(DEFAULT_MIN_RETENTION_DURATION);
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig principalsRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig principalRolesRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig grantsRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig immediateTasksRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig catalogsHistoryRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig catalogRolesRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig catalogPoliciesRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig catalogStateRetention() {
+      return defaultRetention();
     }
   }
 }

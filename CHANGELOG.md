@@ -257,7 +257,16 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   See the Relational JDBC metastore documentation for details.
 
 ### Breaking changes
-
+- Under `polaris.persistence.nosql.maintenance.catalog`, the NoSQL catalog-history
+  `<history>-retain` settings that accepted CEL expressions have been replaced by
+  `retention.<history>.num-commits`, `retention.<history>.duration`, and
+  `retention.<history>.all`. Count and duration are combined as minimums. Before upgrading, replace
+  `<history>-retain=false` with `retention.<history>.num-commits=1`, map `commits < N` to
+  `retention.<history>.num-commits=N`, set `retention.<history>.num-commits` to `N + 1` for
+  `commits <= N`, map `ageDays < N` to `retention.<history>.duration=P<N>D`, and replace `true`
+  with `retention.<history>.all=true`. The new
+  `polaris.persistence.nosql.maintenance.catalog.min-retention-duration` setting (default `PT0S`)
+  provides an optional global minimum duration for all catalog histories.
 - Removed the `--schema-version` (`-v`) option from the admin tool's `bootstrap` command. New realms
   are now always bootstrapped with the latest available schema version.
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
