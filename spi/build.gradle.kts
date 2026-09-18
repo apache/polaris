@@ -16,20 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.metrics;
 
-import com.google.common.annotations.Beta;
-
-/**
- * Discriminator for the kind of Iceberg metrics report carried by a {@link MetricsReportEnvelope}.
- *
- * <p>Making the type explicit at the SPI boundary means {@link IcebergMetricsReporter}
- * implementations do not need to {@code instanceof}-check the raw Iceberg report.
- */
-@Beta
-public enum MetricType {
-  /** An Iceberg scan report ({@link org.apache.iceberg.metrics.ScanReport}). */
-  SCAN,
-  /** An Iceberg commit report ({@link org.apache.iceberg.metrics.CommitReport}). */
-  COMMIT
+plugins {
+  id("polaris-client")
+  id("org.kordamp.gradle.jandex")
 }
+
+description = "Polaris shared SPI contracts"
+
+dependencies {
+  implementation(platform(libs.iceberg.bom))
+  implementation("org.apache.iceberg:iceberg-api")
+
+  implementation(libs.guava)
+
+  compileOnly(libs.jspecify)
+}
+
+tasks.named("javadoc") { dependsOn("jandex") }
