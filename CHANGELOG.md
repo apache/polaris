@@ -226,7 +226,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   scheme stripping (e.g. `s3://bucket/path` → `//bucket/path`). `//` and `///` are retained so
   scheme-root ancestors remain visible to the overlap check.
 
->>>>>>> main
 ### Commits
 
 ## [1.7.0]
