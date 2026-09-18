@@ -83,6 +83,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Opt-in Iceberg table soft-delete (default off): when `TABLE_SOFT_DELETE_ENABLED` is true, `DROP TABLE` without purge keeps catalog metadata for a hold period (`TABLE_SOFT_DELETE_HOLD_PERIOD`, default `P7D`), hides the table from Iceberg REST list/load/HEAD, and reserves the identifier until permanent delete. `DROP TABLE PURGE` remains an immediate permanent delete. After the hold, a later list or create in the same namespace permanently removes catalog state; file cleanup is opt-in via `TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE`. INTERNAL catalogs only.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.additionalProperties.currentSchema` in the Helm chart.

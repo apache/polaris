@@ -1372,6 +1372,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
+    CatalogEntity catalog = getResolvedCatalogEntity();
+    if (realmConfig().getConfig(FeatureConfiguration.TABLE_SOFT_DELETE_ENABLED, catalog)
+        && (catalog.isExternal() || !(baseCatalog instanceof LocalIcebergCatalog))) {
+      throw new BadRequestException(
+          "Table soft-delete is only supported for INTERNAL Iceberg catalogs.");
+    }
+
     catalogHandlerUtils().dropTable(baseCatalog, tableIdentifier);
   }
 

@@ -147,11 +147,14 @@ public class InMemoryEntityCache implements EntityCache {
             cacheEntry,
             (oldValue, newValue) -> this.isNewer(newValue, oldValue) ? newValue : oldValue);
 
-    // only update the name key if this entity was not dropped
+    // only update the name key if this entity was not dropped. Soft-deleted entities stay in
+    // the by-id map (and in the active name index in persistence) but must not resolve by name.
     if (!cacheEntry.getEntity().isDropped()) {
       // here we don't really care about concurrent update to the key. Basically if we are
       // pointing to the wrong entry, we will detect this and fix the issue
       this.byName.put(nameKey, cacheEntry);
+    } else {
+      this.byName.remove(nameKey);
     }
 
     // remove old name if it has changed

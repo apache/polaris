@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
@@ -117,5 +118,14 @@ public class Page<T> {
    */
   public <R> Page<R> map(Function<T, R> mapper) {
     return new Page<>(request, nextToken, items.stream().map(mapper).collect(Collectors.toList()));
+  }
+
+  /**
+   * Returns this page with items that fail {@code predicate} removed. The next-page token is
+   * unchanged, so listing still advances past the original page of source data.
+   */
+  public Page<T> filter(Predicate<T> predicate) {
+    return new Page<>(
+        request, nextToken, items.stream().filter(predicate).collect(Collectors.toList()));
   }
 }

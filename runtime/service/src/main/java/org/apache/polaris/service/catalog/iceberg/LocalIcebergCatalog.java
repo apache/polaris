@@ -35,6 +35,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.DateTimeException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -110,6 +112,7 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -824,6 +827,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
     PolarisEntity leafEntity = resolvedEntities.getRawLeafEntity();
+
+    expireEligibleSoftDeletedTables(resolvedEntities.getRawFullPath());
 
     // drop if exists and is empty
     DropEntityResult dropEntityResult =
@@ -2861,6 +2866,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
+    expireEligibleSoftDeletedTables(catalogPath);
 
     if (icebergTableLikeEntity.getParentId() <= 0) {
       // TODO: Validate catalogPath size is at least 1 for catalog entity?
@@ -2986,6 +2992,19 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
 
+    if (!purge
+        && subType == PolarisEntitySubType.ICEBERG_TABLE
+        && realmConfig.getConfig(FeatureConfiguration.TABLE_SOFT_DELETE_ENABLED, catalogEntity)) {
+      long dropTimestamp = System.currentTimeMillis();
+      return getMetaStoreManager()
+          .softDeleteEntityIfExists(
+              getCurrentPolarisContext(),
+              PolarisEntity.toCoreList(catalogPath),
+              leafEntity,
+              dropTimestamp,
+              dropTimestamp + softDeleteHoldPeriodMillis());
+    }
+
     return getMetaStoreManager()
         .dropEntityIfExists(
             getCurrentPolarisContext(),
@@ -2993,6 +3012,71 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             leafEntity,
             storageProperties,
             purge);
+  }
+
+  private boolean tableSoftDeleteEnabled() {
+    return realmConfig.getConfig(FeatureConfiguration.TABLE_SOFT_DELETE_ENABLED, catalogEntity);
+  }
+
+  private long softDeleteHoldPeriodMillis() {
+    String spec =
+        realmConfig.getConfig(FeatureConfiguration.TABLE_SOFT_DELETE_HOLD_PERIOD, catalogEntity);
+    try {
+      long millis = Duration.parse(spec).toMillis();
+      if (millis < 0) {
+        throw new BadRequestException(
+            "Invalid table soft-delete hold period '%s'; duration must not be negative", spec);
+      }
+      return millis;
+    } catch (DateTimeException | ArithmeticException e) {
+      throw new BadRequestException(
+          "Invalid table soft-delete hold period '%s'; expected an ISO-8601 duration such as P7D",
+          spec);
+    }
+  }
+
+  /**
+   * Permanently delete soft-deleted Iceberg tables in {@code catalogPath} whose hold has expired.
+   * No-op when soft-delete is disabled. Catalog-only: files are purged only if configured.
+   */
+  private void expireEligibleSoftDeletedTables(List<PolarisEntity> catalogPath) {
+    if (!tableSoftDeleteEnabled()) {
+      return;
+    }
+    boolean cleanup =
+        realmConfig.getConfig(
+            FeatureConfiguration.TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE, catalogEntity);
+    Map<String, String> cleanupProperties =
+        cleanup ? new HashMap<>(catalogEntity.getInternalPropertiesAsMap()) : Map.of();
+    long now = System.currentTimeMillis();
+    List<PolarisBaseEntity> entities =
+        getMetaStoreManager()
+            .listFullEntitiesAll(
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(catalogPath),
+                PolarisEntityType.TABLE_LIKE,
+                PolarisEntitySubType.ICEBERG_TABLE);
+    for (PolarisBaseEntity entity : entities) {
+      if (entity.isDropped()
+          && entity.getToPurgeTimestamp() > 0
+          && now >= entity.getToPurgeTimestamp()) {
+        DropEntityResult expired =
+            getMetaStoreManager()
+                .dropEntityIfExists(
+                    getCurrentPolarisContext(),
+                    PolarisEntity.toCoreList(catalogPath),
+                    entity,
+                    cleanupProperties,
+                    cleanup);
+        if (expired.isSuccess() && expired.getCleanupTaskId() != null) {
+          LOGGER.info(
+              "Scheduled cleanup task {} for expired soft-deleted table {}",
+              expired.getCleanupTaskId(),
+              entity.getName());
+          taskExecutor.addTaskHandlerContext(expired.getCleanupTaskId(), callContext);
+        }
+      }
+    }
   }
 
   private boolean sendNotificationForTableLike(
@@ -3189,19 +3273,32 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
-    ListEntitiesResult listResult =
-        getMetaStoreManager()
-            .listEntities(
-                getCurrentPolarisContext(),
-                PolarisEntity.toCoreList(catalogPath),
-                PolarisEntityType.TABLE_LIKE,
-                subType,
-                pageToken);
+    expireEligibleSoftDeletedTables(catalogPath);
 
     Namespace parentNamespace = PolarisCatalogHelpers.parentNamespace(catalogPath);
-    return listResult
-        .getPage()
-        .map(record -> TableIdentifier.of(parentNamespace, record.getName()));
+    if (!tableSoftDeleteEnabled()) {
+      ListEntitiesResult listResult =
+          getMetaStoreManager()
+              .listEntities(
+                  getCurrentPolarisContext(),
+                  PolarisEntity.toCoreList(catalogPath),
+                  PolarisEntityType.TABLE_LIKE,
+                  subType,
+                  pageToken);
+      return listResult
+          .getPage()
+          .map(record -> TableIdentifier.of(parentNamespace, record.getName()));
+    }
+
+    return getMetaStoreManager()
+        .listFullEntities(
+            getCurrentPolarisContext(),
+            PolarisEntity.toCoreList(catalogPath),
+            PolarisEntityType.TABLE_LIKE,
+            subType,
+            pageToken)
+        .filter(entity -> !entity.isDropped())
+        .map(entity -> TableIdentifier.of(parentNamespace, entity.getName()));
   }
 
   private int getMaxMetadataRefreshRetries() {

@@ -585,3 +585,33 @@ Metadata batch size for tasks that clean up dropped tables' files.
 - **Default:** `10`
 
 ---
+
+##### `polaris.features."TABLE_SOFT_DELETE_ENABLED"`
+
+If set to true, DROP TABLE without purge marks an INTERNAL Iceberg table as soft-deleted for a hold period instead of permanently removing it. Soft-deleted tables are hidden from Iceberg REST list/load/HEAD, the identifier stays reserved until permanent delete, and data files are not deleted. Default is false (today's hard DROP). DROP TABLE with purge remains an immediate permanent delete.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+- **Catalog Config:** `polaris.config.table-soft-delete.enabled`
+
+---
+
+##### `polaris.features."TABLE_SOFT_DELETE_HOLD_PERIOD"`
+
+ISO-8601 duration to retain a soft-deleted Iceberg table before it becomes eligible for permanent delete. Used only when TABLE_SOFT_DELETE_ENABLED is true. Default is P7D (seven days).
+
+- **Type:** `String`
+- **Default:** `P7D`
+- **Catalog Config:** `polaris.config.table-soft-delete.hold-period`
+
+---
+
+##### `polaris.features."TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE"`
+
+If set to true, permanent delete of a previously soft-deleted Iceberg table enqueues the existing entity-cleanup task so data and metadata files may be removed. Used only when TABLE_SOFT_DELETE_ENABLED is true. Default is false (catalog state is removed; files are left in place).
+
+- **Type:** `Boolean`
+- **Default:** `false`
+- **Catalog Config:** `polaris.config.table-soft-delete.purge-data-on-permanent-delete`
+
+---

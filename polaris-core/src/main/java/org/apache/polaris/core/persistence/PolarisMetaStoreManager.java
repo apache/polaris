@@ -324,6 +324,30 @@ public interface PolarisMetaStoreManager
       boolean cleanup);
 
   /**
+   * Mark the entity as soft-deleted without removing it from the active name index and without
+   * deleting grants or data files. The identifier stays reserved. Subsequent Iceberg REST list,
+   * load, and HEAD calls treat the entity as not found because {@link
+   * PolarisBaseEntity#isDropped()} is true.
+   *
+   * <p>A later {@link #dropEntityIfExists} call permanently removes catalog state (and may enqueue
+   * file cleanup). If the entity is already soft-deleted, this is a successful no-op.
+   *
+   * @param callCtx call context
+   * @param catalogPath path to that entity
+   * @param entityToDrop entity to soft-delete, must have been resolved by the client
+   * @param dropTimestamp epoch millis when the entity was soft-deleted
+   * @param toPurgeTimestamp epoch millis when the entity becomes eligible for permanent delete
+   */
+  default @NonNull DropEntityResult softDeleteEntityIfExists(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop,
+      long dropTimestamp,
+      long toPurgeTimestamp) {
+    throw new UnsupportedOperationException("softDeleteEntityIfExists");
+  }
+
+  /**
    * Load the entity from backend store. Will return NULL if the entity does not exist, i.e. has
    * been purged. The entity being loaded might have been dropped
    *
