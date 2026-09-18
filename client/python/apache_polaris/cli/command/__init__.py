@@ -263,6 +263,7 @@ class Command(ABC):
                     Arguments.NAMESPACE, lambda x: x.split(".") if x else None
                 ),
                 generic_table_name=options_get(Arguments.GENERIC_TABLE),
+                page_size=options_get(Arguments.PAGE_SIZE),
             )
         elif options.command == Commands.FIND:
             from apache_polaris.cli.command.find import FindCommand
