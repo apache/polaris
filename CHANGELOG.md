@@ -80,13 +80,17 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   depend on the previous combined-intent input shape may need to be updated. Same applies to other
   PolarisAuthorizer implementations.
 - Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
+- `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
+  invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
+  size or when a positive LIST_PAGINATION_MAX_PAGE_SIZE limits local catalog listings. Otherwise,
+  requests without pagination parameters still return all results. To keep the previous behavior,
+  set `LIST_PAGINATION_ENABLED=false` or the catalog property `polaris.config.list-pagination-enabled=false`.
 
 ### New Features
 
 - Semantic models now support dedicated privileges for listing, creating, reading, updating,
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
-
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
