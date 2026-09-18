@@ -20,6 +20,7 @@ package org.apache.polaris.extension.auth.opa;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -448,6 +449,35 @@ public class OpaPolarisAuthorizerFactoryTest {
       }
     } finally {
       server.stop(0);
+    }
+  }
+
+  @Test
+  public void testInitializeFailsWhenTrustStorePathIsInvalid() {
+    Path missingTrustStore = tempDir.resolve("does-not-exist.jks");
+    OpaAuthorizationConfig opaConfig =
+        ImmutableOpaAuthorizationConfig.builder()
+            .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
+            .auth(
+                ImmutableAuthenticationConfig.builder()
+                    .type(OpaAuthorizationConfig.AuthenticationType.NONE)
+                    .build())
+            .http(
+                ImmutableHttpConfig.builder()
+                    .timeout(Duration.ofSeconds(2))
+                    .verifySsl(true)
+                    .trustStorePath(missingTrustStore)
+                    .build())
+            .build();
+
+    try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+      OpaPolarisAuthorizerFactory factory =
+          new OpaPolarisAuthorizerFactory(
+              opaConfig, Clock.systemUTC(), asyncExec, () -> null, () -> "test-realm");
+
+      assertThatThrownBy(factory::initialize)
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("Failed to create HTTP client for OPA communication");
     }
   }
 
