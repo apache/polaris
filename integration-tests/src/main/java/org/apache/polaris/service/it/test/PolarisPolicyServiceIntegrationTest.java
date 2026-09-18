@@ -476,6 +476,40 @@ public class PolarisPolicyServiceIntegrationTest {
   }
 
   @Test
+  public void testAttachAndDetachPolicyWithNonTrivialJsonParameters() {
+    // Round-trip coverage for non-trivial JSON policy parameters: the re-attach below only
+    // succeeds if the first detach actually removed the row. This does not reach a JSON column
+    // in a WHERE clause — `deleteFromPolicyMappingRecords` keys on the identity columns — so
+    // MySQL's `CAST(? AS JSON)` handling is covered by `MysqlJsonColumnPredicateIT` instead.
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
+
+    PolicyAttachmentTarget catalogTarget =
+        PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
+    Map<String, String> nonTrivialParameters =
+        Map.of("retention", "30days", "scope", "namespace-and-tables", "owner", "polaris-it");
+    policyApi.attachPolicy(currentCatalogName, NS1_P1, catalogTarget, nonTrivialParameters);
+
+    policyApi.detachPolicy(currentCatalogName, NS1_P1, catalogTarget);
+
+    // Re-attaching the same target with different non-trivial parameters must succeed
+    // (the previous row must have actually been deleted, not just orphaned).
+    policyApi.attachPolicy(
+        currentCatalogName,
+        NS1_P1,
+        catalogTarget,
+        Map.of("retention", "7days", "scope", "namespace-only"));
+    policyApi.detachPolicy(currentCatalogName, NS1_P1, catalogTarget);
+
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
   public void testDropNonExistingPolicy() {
     restCatalog.createNamespace(NS1);
     try (Response res =
