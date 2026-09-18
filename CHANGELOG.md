@@ -137,6 +137,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - OPA authorizer HTTP client creation no longer silently falls back to a default client when
   truststore or SSL setup fails. Misconfiguration (for example a bad truststore path) now fails
   startup instead of continuing with system trust and no configured response timeout.
+- `bootstrap` no longer creates realms whose root principal is unreachable. Credentials were
+  required only when none at all were supplied, so an invocation naming credentials for just
+  some of its realms bootstrapped the rest with randomly generated secrets that were never
+  printed, and reported them successfully bootstrapped. Every `--realm` must now have a
+  matching `--credential` unless `--print-credentials` is given; otherwise the command names
+  the realms that are missing credentials and exits without bootstrapping anything.
+  `--credentials-file` is unaffected.
 - GCS credential vending no longer fails with HTTP 500 when a table's location or `write.data.path`
   / `write.metadata.path` points at a bucket root without a trailing slash (e.g. `gs://bucket`).
   Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
