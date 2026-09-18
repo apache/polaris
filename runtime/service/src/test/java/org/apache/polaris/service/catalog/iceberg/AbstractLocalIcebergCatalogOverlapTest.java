@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
@@ -254,6 +255,33 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         fileIOFactory,
         polarisEventDispatcher,
         eventMetadataFactory);
+  }
+
+  @Test
+  public void testBufferedTableCommitActionsPreserveOptimizedLocationOverlapFailure() {
+    Namespace namespace = Namespace.of("ns-for-pending-commit-test");
+    catalog().createNamespace(namespace);
+    TableIdentifier identifier = TableIdentifier.of(namespace, "table");
+    Table table =
+        catalog()
+            .buildTable(identifier, SCHEMA)
+            .withLocation(STORAGE_LOCATION + "/pending-table")
+            .create();
+    catalog().setTableCommitActions(new BufferedTableCommitActions());
+
+    try {
+      assertThatThrownBy(
+              () ->
+                  table
+                      .updateLocation()
+                      .setLocation(STORAGE_LOCATION + "/pending-table-new-location")
+                      .commit())
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("illegal_method_in_transaction_workspace")
+          .hasMessageContaining("hasOverlappingSiblings");
+    } finally {
+      catalog().resetTableCommitActions();
+    }
   }
 
   @Test
