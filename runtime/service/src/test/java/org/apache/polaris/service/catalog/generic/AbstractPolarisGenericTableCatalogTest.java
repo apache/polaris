@@ -408,7 +408,8 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
           TableIdentifier.of("ns", "t" + i), "format", null, "doc", Map.of());
     }
 
-    List<TableIdentifier> listResult = genericTableCatalog.listGenericTables(namespace);
+    List<TableIdentifier> listResult =
+        genericTableCatalog.listGenericTables(namespace, PageToken.readEverything()).items();
 
     Assertions.assertThat(listResult.size()).isEqualTo(10);
     Assertions.assertThat(listResult.stream().map(TableIdentifier::toString).toList())
@@ -427,14 +428,17 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     }
 
     Assertions.assertThat(icebergCatalog.listTables(namespace).size()).isEqualTo(10);
-    Assertions.assertThat(genericTableCatalog.listGenericTables(namespace)).isEmpty();
+    Assertions.assertThat(
+            genericTableCatalog.listGenericTables(namespace, PageToken.readEverything()).items())
+        .isEmpty();
   }
 
   @Test
   public void testListTablesNoNamespace() {
     Namespace namespace = Namespace.of("ns");
 
-    Assertions.assertThatCode(() -> genericTableCatalog.listGenericTables(namespace))
+    Assertions.assertThatCode(
+            () -> genericTableCatalog.listGenericTables(namespace, PageToken.readEverything()))
         .hasMessageContaining("Namespace");
   }
 
@@ -453,7 +457,9 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThat(listResult.stream().map(TableIdentifier::toString).toList())
         .isEqualTo(listResult.stream().map(TableIdentifier::toString).sorted().toList());
 
-    Assertions.assertThat(genericTableCatalog.listGenericTables(namespace)).isEmpty();
+    Assertions.assertThat(
+            genericTableCatalog.listGenericTables(namespace, PageToken.readEverything()).items())
+        .isEmpty();
   }
 
   @Test
@@ -470,7 +476,12 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
           TableIdentifier.of("ns", "g" + i), "format", null, "doc", Map.of());
     }
 
-    Assertions.assertThat(genericTableCatalog.listGenericTables(namespace).size()).isEqualTo(10);
+    Assertions.assertThat(
+            genericTableCatalog
+                .listGenericTables(namespace, PageToken.readEverything())
+                .items()
+                .size())
+        .isEqualTo(10);
     Assertions.assertThat(icebergCatalog.listTables(namespace).size()).isEqualTo(10);
   }
 
@@ -579,7 +590,9 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     }
 
     // List without pagination
-    Assertions.assertThat(genericTableCatalog.listGenericTables(namespace)).hasSize(5);
+    Assertions.assertThat(
+            genericTableCatalog.listGenericTables(namespace, PageToken.readEverything()).items())
+        .hasSize(5);
 
     // List with a limit
     Page<TableIdentifier> result1 =

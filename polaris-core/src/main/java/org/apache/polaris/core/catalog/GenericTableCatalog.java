@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.catalog;
 
-import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -46,11 +45,6 @@ public interface GenericTableCatalog {
   /** Drop a generic table entity with a given identifier */
   boolean dropGenericTable(TableIdentifier tableIdentifier);
 
-  /** List all generic tables under a specific namespace */
-  List<TableIdentifier> listGenericTables(Namespace namespace);
-
   /** List generic tables under a specific namespace, paginated according to {@code pageToken} */
-  default Page<TableIdentifier> listGenericTables(Namespace namespace, PageToken pageToken) {
-    return Page.fromItems(listGenericTables(namespace));
-  }
+  Page<TableIdentifier> listGenericTables(Namespace namespace, PageToken pageToken);
 }

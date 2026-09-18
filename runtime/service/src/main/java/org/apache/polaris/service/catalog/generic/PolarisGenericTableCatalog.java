@@ -186,11 +186,6 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
   }
 
   @Override
-  public List<TableIdentifier> listGenericTables(Namespace namespace) {
-    return listGenericTables(namespace, PageToken.readEverything()).items();
-  }
-
-  @Override
   public Page<TableIdentifier> listGenericTables(Namespace namespace, PageToken pageToken) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(namespace));
