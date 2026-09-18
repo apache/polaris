@@ -27,6 +27,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogRole;
@@ -40,6 +42,7 @@ import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 
 public final class Serializers {
   private Serializers() {}
@@ -58,6 +61,8 @@ public final class Serializers {
         GrantCatalogRoleRequest.class, new GrantCatalogRoleRequestDeserializer());
     module.addDeserializer(AddGrantRequest.class, new AddGrantRequestDeserializer());
     module.addDeserializer(RevokeGrantRequest.class, new RevokeGrantRequestDeserializer());
+    module.addDeserializer(
+        StorageConfigInfo.class, new StorageConfigInfoDeserializer());
     mapper.registerModule(module);
   }
 
@@ -240,6 +245,31 @@ public final class Serializers {
             .setGrant(ctxt.readTreeAsValue((JsonNode) treeNode, GrantResource.class))
             .build();
       }
+    }
+  }
+
+  /**
+   * Deserializer for {@link StorageConfigInfo} that normalizes the {@code storageType} field to
+   * uppercase to support case-insensitive storage type values (e.g., "s3" and "S3" are treated the
+   * same).
+   */
+  public static final class StorageConfigInfoDeserializer
+      extends JsonDeserializer<StorageConfigInfo> {
+    @Override
+    public StorageConfigInfo deserialize(JsonParser p, DeserializationContext ctxt)
+        throws IOException {
+      JsonNode treeNode = p.readValueAsTree();
+      if (treeNode.isObject()) {
+        ObjectNode node = (ObjectNode) treeNode;
+        JsonNode storageTypeNode = node.get("storageType");
+        if (storageTypeNode != null && storageTypeNode.isTextual()) {
+          node.put("storageType", storageTypeNode.asText().toUpperCase());
+        }
+      }
+      // Use a new parser from the tree to avoid infinite recursion with the custom deserializer
+      JsonParser treeParser = treeNode.traverse(p.getCodec());
+      treeParser.nextToken();
+      return ctxt.readValue(treeParser, StorageConfigInfo.class);
     }
   }
 }
