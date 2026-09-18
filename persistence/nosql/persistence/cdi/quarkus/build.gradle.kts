@@ -27,8 +27,6 @@ description = "Polaris NoSQL persistence, providers for Quarkus."
 dependencies {
   implementation(project(":polaris-persistence-nosql-cdi-common"))
   implementation(project(":polaris-persistence-nosql-api"))
-  implementation(project(":polaris-persistence-nosql-inmemory"))
-  implementation(project(":polaris-persistence-nosql-mongodb"))
   implementation(project(":polaris-idgen-api"))
   runtimeOnly(project(":polaris-nodes-impl"))
   runtimeOnly(project(":polaris-nodes-store-nosql"))
@@ -44,8 +42,6 @@ dependencies {
   compileOnly(platform(libs.opentelemetry.instrumentation.bom.alpha))
   compileOnly("io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations")
 
-  compileOnly(libs.smallrye.config.core)
-
   compileOnly(platform(libs.jackson.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
@@ -53,8 +49,6 @@ dependencies {
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   implementation(platform(libs.quarkus.bom))
-  implementation("io.quarkus:quarkus-core")
-  implementation("io.quarkus:quarkus-mongodb-client")
   runtimeOnly("io.quarkus:quarkus-micrometer")
 
   implementation(libs.jakarta.ws.rs.api)
@@ -67,4 +61,6 @@ dependencies {
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
+
+  testImplementation(libs.jakarta.enterprise.cdi.api)
 }

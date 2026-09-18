@@ -17,4 +17,4 @@
 # under the License.
 #
 
-org.apache.polaris.persistence.nosql.quarkus.backend.MongoDBConfigSourceFactory
+org.apache.polaris.persistence.nosql.mongodb.quarkus.MongoDBConfigSourceFactory
