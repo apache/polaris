@@ -808,7 +808,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + " soft-deleted for a hold period instead of permanently removing it. Soft-deleted"
                   + " tables are hidden from Iceberg REST list/load/HEAD, the identifier stays"
                   + " reserved until permanent delete, and data files are not deleted. Default is"
-                  + " false (today's hard DROP). DROP TABLE with purge remains an immediate"
+                  + " false (hard DROP). DROP TABLE with purge remains an immediate"
                   + " permanent delete.")
           .defaultValue(false)
           .buildFeatureConfiguration();
@@ -820,7 +820,10 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "ISO-8601 duration to retain a soft-deleted Iceberg table before it becomes eligible"
                   + " for permanent delete. Used only when TABLE_SOFT_DELETE_ENABLED is true."
-                  + " Default is P7D (seven days).")
+                  + " Default is P7D (seven days). After the hold, the next list, create, or"
+                  + " drop-namespace in that namespace permanently removes catalog state for"
+                  + " eligible tables. There is no dedicated expiration task. When the feature is"
+                  + " off, this is a no-op.")
           .defaultValue("P7D")
           .buildFeatureConfiguration();
 
