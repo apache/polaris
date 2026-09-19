@@ -50,7 +50,7 @@ Apache Polaris provides the following OpenAPI specifications:
 The specification files in the generated folder are automatically created using OpenAPI bundling tools such as 
 [Redocly CLI](https://github.com/Redocly/redocly-cli).
 
-These files should not be manually edited (except adding license header). They are intended for preview purposes only, 
+These files should not be manually edited. They are intended for preview purposes only, 
 such as rendering a preview on a website.
 
 Whenever the source specification files are updated, the generated files must be re-generated to reflect those changes.
@@ -58,14 +58,16 @@ Whenever the source specification files are updated, the generated files must be
 Below are steps to generate `bundled-polaris-catalog-service.yaml`
 ### Install redocly-cli
 ```
-npm install @redocly/cli -g
+npm install -g @redocly/cli
 ```
+Without a global install, `make spec-bundle` falls back to `npx -y @redocly/cli`.
 
 ### Generate the Bundle
 ```
-redocly bundle spec/polaris-catalog-service.yaml -o spec/generated/bundled-polaris-catalog-service.yaml
+make spec-bundle
 ```
-Note: the license header will be removed after the bundle generation, please manually add it back.
+This runs redocly and then restores the license header, which redocly drops along with the rest of the
+leading comment block. The script behind the target is `spec/bundle.sh`.
 
 ### Updating the Iceberg specification
 
