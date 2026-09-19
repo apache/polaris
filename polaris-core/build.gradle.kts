@@ -47,6 +47,8 @@ dependencies {
   implementation(libs.caffeine)
   implementation(libs.guava)
   implementation(libs.slf4j.api)
+  implementation(platform(libs.micrometer.bom))
+  implementation("io.micrometer:micrometer-core")
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))

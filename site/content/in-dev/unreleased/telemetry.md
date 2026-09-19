@@ -66,6 +66,44 @@ default. If the number of unique realm IDs exceeds this value, a warning will be
 HTTP request metrics will be recorded. This threshold can be changed by setting the
 `polaris.metrics.realm-id-tag.http-metrics-max-cardinality` property.
 
+### Entity Cache Metrics
+
+When Polaris runs on the JDBC persistence backend, each realm gets its own in-memory entity cache,
+and each of those caches reports its state and effectiveness. These metrics are intended for tuning
+the cache size, which is set with the `ENTITY_CACHE_WEIGHER_TARGET` feature configuration and can be
+overridden per realm.
+
+The following meters are specific to the entity cache. They are tagged with `cache=polaris-entities`
+and with the `realm_id` of the cache that reports them:
+
+| Meter | Type | Description |
+|-------|------|-------------|
+| `polaris.entity-cache.capacity` | Gauge | Configured maximum weight of the cache |
+| `polaris.entity-cache.weight-reported` | Gauge | Weight currently held by the cache |
+| `polaris.entity-cache.entries` | Gauge | Entries in the cache, tagged `index=by-id` or `index=by-name` |
+| `polaris.entity-cache.gets.by-id` | Counter | Lookups by entity id, tagged `result=hit` or `result=miss` |
+| `polaris.entity-cache.gets.by-name` | Counter | Lookups by entity name, tagged `result=hit` or `result=miss` |
+
+The capacity and weight are expressed in the same heuristic unit as `ENTITY_CACHE_WEIGHER_TARGET`,
+which roughly correlates with the heap size of the cached values but is not an exact byte count.
+Comparing the two is what indicates whether a realm's cache is sized appropriately.
+
+The cache additionally reports Caffeine's own statistics, `cache.gets`, `cache.loads` and
+`cache.evictions`. Those meter names are shared with the other Caffeine caches of the service, which
+report them tagged with `cache` only, so they cannot carry a `realm_id` and are aggregated over all
+realms. Use `polaris.entity-cache.gets.by-id` and `polaris.entity-cache.gets.by-name` where a single
+realm's hit ratio is needed, for example:
+
+```promql
+sum by (realm_id) (rate(polaris_entity_cache_gets_by_id_total{result="hit"}[5m]))
+  / sum by (realm_id) (rate(polaris_entity_cache_gets_by_id_total[5m]))
+```
+
+Unlike the API and HTTP request metrics described above, the `realm_id` tag on these meters is
+always present and is not controlled by `polaris.metrics.realm-id-tag.*`. The cardinality they add
+is bounded by the number of realms that are actually used, and the meters of a realm are removed
+when that realm is purged.
+
 ### HTTP Request Histogram Buckets
 
 By default, the HTTP server request duration timer exports only the count, sum, and max series.
