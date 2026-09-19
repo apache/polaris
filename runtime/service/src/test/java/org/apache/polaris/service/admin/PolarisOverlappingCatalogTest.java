@@ -32,8 +32,10 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
+import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.TestServices;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -94,7 +96,8 @@ public class PolarisOverlappingCatalogTest {
             System.currentTimeMillis(),
             System.currentTimeMillis(),
             1,
-            config);
+            config,
+            null);
     return services
         .catalogsApi()
         .createCatalog(
@@ -212,5 +215,128 @@ public class PolarisOverlappingCatalogTest {
                 createCatalog(overlapScheme, prefix, "plays", false, Arrays.asList("rent", "cats")))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
+  }
+
+  // --- design.md D7: named-config locations participate in the overlap guard ---
+
+  private Catalog buildCatalogWithNamedConfig(
+      String name, String defaultBaseLocation, String namedLocation) {
+    return PolarisCatalog.builder()
+        .setType(Catalog.TypeEnum.INTERNAL)
+        .setName(name)
+        .setProperties(new CatalogProperties(defaultBaseLocation))
+        .setStorageConfigInfo(
+            AwsStorageConfigInfo.builder()
+                .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                .setAllowedLocations(List.of(defaultBaseLocation))
+                .build())
+        .setStorageConfigInfos(
+            List.of(
+                AwsStorageConfigInfo.builder()
+                    .setRoleArn("arn:aws:iam::123456789012:role/named-role")
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setAllowedLocations(List.of(namedLocation))
+                    .setStorageName("hot")
+                    .build()))
+        .build();
+  }
+
+  @Test
+  public void testNamedConfigLocationOverlappingAnotherCatalogRejected() {
+    String prefix = UUID.randomUUID().toString();
+    assertThat(createCatalog(prefix, "root", false))
+        .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+
+    String uuid = UUID.randomUUID().toString();
+    String baseLocation = String.format("s3://bucket/%s/named-catalog-base/", prefix);
+    // The named entry's own location overlaps the other catalog's default location; the default
+    // config here is entirely non-overlapping.
+    Catalog catalogWithOverlappingNamedConfig =
+        buildCatalogWithNamedConfig(
+            String.format("overlap_catalog_named_%s", uuid),
+            baseLocation,
+            String.format("s3://bucket/%s/root/child/", prefix));
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .createCatalog(
+                        new CreateCatalogRequest(catalogWithOverlappingNamedConfig),
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
+  }
+
+  @Test
+  public void testNamedConfigLocationOverlapAllowedWithOverlapFlag() {
+    TestServices overlapAllowedServices =
+        TestServices.builder().config(Map.of("ALLOW_OVERLAPPING_CATALOG_URLS", "true")).build();
+    String prefix = UUID.randomUUID().toString();
+    String rootBaseLocation = String.format("s3://bucket/%s/root/", prefix);
+
+    Catalog rootCatalog =
+        new Catalog(
+            Catalog.TypeEnum.INTERNAL,
+            String.format("overlap_catalog_root_%s", UUID.randomUUID()),
+            new CatalogProperties(rootBaseLocation),
+            System.currentTimeMillis(),
+            System.currentTimeMillis(),
+            1,
+            AwsStorageConfigInfo.builder()
+                .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                .setAllowedLocations(List.of(rootBaseLocation))
+                .build(),
+            null);
+    try (Response response =
+        overlapAllowedServices
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(rootCatalog),
+                overlapAllowedServices.realmContext(),
+                overlapAllowedServices.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog catalogWithOverlappingNamedConfig =
+        buildCatalogWithNamedConfig(
+            String.format("overlap_catalog_named_%s", UUID.randomUUID()),
+            String.format("s3://bucket/%s/named-catalog-base/", prefix),
+            String.format("s3://bucket/%s/root/child/", prefix));
+    try (Response response =
+        overlapAllowedServices
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalogWithOverlappingNamedConfig),
+                overlapAllowedServices.realmContext(),
+                overlapAllowedServices.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testNamedConfigLocationOverlappingOwnCatalogDefaultAllowed() {
+    String prefix = UUID.randomUUID().toString();
+    String baseLocation = String.format("s3://bucket/%s/root/", prefix);
+    // The named entry's location is a child of this same catalog's own default base location;
+    // the guard already skips comparing a catalog against itself.
+    Catalog catalog =
+        buildCatalogWithNamedConfig(
+            String.format("overlap_catalog_self_%s", UUID.randomUUID()),
+            baseLocation,
+            baseLocation + "child/");
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
   }
 }

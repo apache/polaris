@@ -96,6 +96,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
 - The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.additionalProperties.currentSchema` in the Helm chart.
 - Python CLI: `catalogs create` and `catalogs update` now support `--storage-name` to set an optional name referencing a server-side storage configuration.
+- Catalogs can now hold multiple named storage configurations alongside their default one, through
+  a new optional `storageConfigInfos` array on the catalog create, update, and read payloads. Each
+  entry is keyed by its own `storageName` and is validated independently (name syntax and
+  uniqueness, allowed-location count and prefix rules, and the same constrained-change rules the
+  default configuration is subject to on update). On update, a supplied array replaces the entire
+  set and an omitted one leaves it unchanged. Named configurations' allowed locations now also
+  participate in the cross-catalog overlap check. Nothing resolves a named configuration yet, so
+  credential vending is unchanged: tables and namespaces continue to use the catalog's default
+  configuration.
 
 ### Changes
 
