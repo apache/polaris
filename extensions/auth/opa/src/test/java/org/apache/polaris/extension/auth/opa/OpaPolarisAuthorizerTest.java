@@ -1355,12 +1355,16 @@ public class OpaPolarisAuthorizerTest {
       assertThatNoException()
           .isThrownBy(
               () ->
-                  authorizer.authorizeOrThrow(
-                      principal,
-                      Set.of(),
-                      PolarisAuthorizableOperation.LOAD_VIEW,
-                      target,
-                      secondary));
+                  authorizer
+                      .authorize(
+                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                          new AuthorizationRequest(
+                              principal,
+                              authorizationIntents(
+                                  PolarisAuthorizableOperation.LOAD_VIEW,
+                                  List.of(target),
+                                  List.of(secondary))))
+                      .throwIfDenied());
 
       ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
@@ -1409,12 +1413,16 @@ public class OpaPolarisAuthorizerTest {
       assertThatNoException()
           .isThrownBy(
               () ->
-                  authorizer.authorizeOrThrow(
-                      principal,
-                      Set.of(),
-                      PolarisAuthorizableOperation.LOAD_VIEW,
-                      target,
-                      secondary));
+                  authorizer
+                      .authorize(
+                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                          new AuthorizationRequest(
+                              principal,
+                              authorizationIntents(
+                                  PolarisAuthorizableOperation.LOAD_VIEW,
+                                  List.of(target),
+                                  List.of(secondary))))
+                      .throwIfDenied());
 
       ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
@@ -1467,12 +1475,16 @@ public class OpaPolarisAuthorizerTest {
       assertThatNoException()
           .isThrownBy(
               () ->
-                  authorizer.authorizeOrThrow(
-                      principal,
-                      Set.of(),
-                      PolarisAuthorizableOperation.LOAD_VIEW,
-                      target,
-                      secondary));
+                  authorizer
+                      .authorize(
+                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                          new AuthorizationRequest(
+                              principal,
+                              authorizationIntents(
+                                  PolarisAuthorizableOperation.LOAD_VIEW,
+                                  List.of(target),
+                                  List.of(secondary))))
+                      .throwIfDenied());
 
       ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
