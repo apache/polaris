@@ -72,6 +72,7 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
@@ -85,7 +86,10 @@ import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
+import org.apache.polaris.service.storage.DefaultCredentialVendingMechanism;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
+import org.apache.polaris.service.storage.StsCredentialVendingMechanism;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.assertj.core.api.Assertions;
@@ -188,10 +192,18 @@ public abstract class PolarisAuthzTestBase {
   @BeforeAll
   public static void setUpMocks() {
     StsClient stsClient = Mockito.mock(StsClient.class);
+    S3CredentialVendingMechanisms mechanisms =
+        new S3CredentialVendingMechanisms(
+            Map.of(
+                "STS",
+                new StsCredentialVendingMechanism(
+                    destination -> stsClient, Optional.empty(), null, null),
+                S3CredentialVendingMechanism.DEFAULT,
+                new DefaultCredentialVendingMechanism(
+                    destination -> stsClient, Optional.empty(), null, null)));
     PolarisStorageIntegrationProviderImpl mock =
         new PolarisStorageIntegrationProviderImpl(
-            destination -> stsClient,
-            Optional.empty(),
+            mechanisms,
             () -> GoogleCredentials.create(new AccessToken("abc", new Date())),
             null,
             null);

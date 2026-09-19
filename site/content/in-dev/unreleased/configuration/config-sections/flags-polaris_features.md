@@ -587,6 +587,15 @@ The list of supported authentication types for catalog federation
 
 ---
 
+##### `polaris.features."SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS"`
+
+The credential vending mechanisms an S3 catalog in this realm may name explicitly. STS is AWS STS AssumeRole; a server may provide further mechanisms. A catalog that leaves credentialVendingMechanism empty uses the server's default mechanism and is always allowed. Realm-level only; catalog properties cannot widen it. Enforced at catalog create and update, and when the server builds the storage integration that vends credentials for a catalog. A listed mechanism with no implementation in this server is reported at startup and refused at catalog create and update and whenever a credential is vended for a catalog that names it.
+
+- **Type:** `List<String>`
+- **Default:** `[STS]`
+
+---
+
 ##### `polaris.features."TABLE_METADATA_CLEANUP_BATCH_SIZE"`
 
 Metadata batch size for tasks that clean up dropped tables' files.

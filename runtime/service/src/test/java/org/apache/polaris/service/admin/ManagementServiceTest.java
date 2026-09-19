@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.ws.rs.core.Response;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,6 +57,9 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
@@ -388,7 +392,8 @@ public class ManagementServiceTest {
         new DefaultServiceIdentityProvider(),
         principal,
         new PolarisAuthorizerImpl(services.realmConfig()),
-        ReservedProperties.NONE);
+        ReservedProperties.NONE,
+        services.vendingMechanisms());
   }
 
   private PrincipalEntity createPrincipal(
@@ -748,5 +753,481 @@ public class ManagementServiceTest {
                 catalogName,
                 resultWithError.getReturnStatus(),
                 resultWithError.getExtraInformation()));
+  }
+
+  @Test
+  public void anEmptyMechanismIsReadBackAsEmpty() {
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("mechanism-default")
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog("mechanism-default", services.realmContext(), services.securityContext())) {
+      Catalog fetched = (Catalog) response.getEntity();
+      assertThat(
+              ((AwsStorageConfigInfo) fetched.getStorageConfigInfo())
+                  .getCredentialVendingMechanism())
+          .isNull();
+    }
+  }
+
+  private static final String TEST_MECHANISM = "TEST_MECHANISM";
+
+  private static TestServices mechanismServices(
+      List<String> mechanisms, boolean unrestrictedChanges) {
+    return TestServices.builder()
+        .config(
+            Map.of(
+                "SUPPORTED_CATALOG_STORAGE_TYPES",
+                List.of("S3", "GCS", "AZURE"),
+                "SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS",
+                mechanisms,
+                "ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES",
+                unrestrictedChanges))
+        .additionalVendingMechanisms(Map.of(TEST_MECHANISM, TestServices.fakeMechanism()))
+        .build();
+  }
+
+  private static AwsStorageConfigInfo.Builder secondMechanismConfig() {
+    return AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+        .setCredentialVendingMechanism(TEST_MECHANISM)
+        .setAllowedLocations(List.of("s3://second-bucket/base/"));
+  }
+
+  private static AwsStorageConfigInfo emptyMechanismConfig() {
+    return AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+        .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+        .setAllowedLocations(List.of("s3://second-bucket/base/"))
+        .build();
+  }
+
+  private static Catalog catalogNamed(String name, StorageConfigInfo storageConfig) {
+    return PolarisCatalog.builder()
+        .setType(Catalog.TypeEnum.INTERNAL)
+        .setName(name)
+        .setProperties(new CatalogProperties("s3://second-bucket/base/" + name))
+        .setStorageConfigInfo(storageConfig)
+        .build();
+  }
+
+  private static Response create(TestServices svc, Catalog catalog) {
+    return svc.catalogsApi()
+        .createCatalog(
+            new CreateCatalogRequest(catalog), svc.realmContext(), svc.securityContext());
+  }
+
+  private static Catalog fetch(TestServices svc, String name) {
+    try (Response response =
+        svc.catalogsApi().getCatalog(name, svc.realmContext(), svc.securityContext())) {
+      return (Catalog) response.getEntity();
+    }
+  }
+
+  @Test
+  public void testASecondMechanismIsRejectedByTheDefaultAllowlist() {
+    TestServices defaults = mechanismServices(List.of("STS"), false);
+    assertThatThrownBy(
+            () -> create(defaults, catalogNamed("second-off", secondMechanismConfig().build())))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(
+            "S3 credential vending mechanism " + TEST_MECHANISM + " is not enabled in this realm");
+  }
+
+  @Test
+  public void anExplicitStsIsRejectedWhenTheRealmListsOnlyASecondMechanism() {
+    TestServices secondOnly = mechanismServices(List.of(TEST_MECHANISM), false);
+    AwsStorageConfigInfo sts =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
+            .setCredentialVendingMechanism("STS")
+            .build();
+    assertThatThrownBy(() -> create(secondOnly, catalogNamed("sts-off", sts)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("S3 credential vending mechanism STS is not enabled in this realm");
+  }
+
+  @Test
+  public void anEmptyMechanismIsAcceptedWhenTheRealmListsOnlyASecondMechanism() {
+    TestServices secondOnly = mechanismServices(List.of(TEST_MECHANISM), false);
+    AwsStorageConfigInfo empty =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
+            .build();
+    try (Response response = create(secondOnly, catalogNamed("empty-allowed", empty))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+  }
+
+  @Test
+  public void testDisallowedMechanismIsRejectedOnUpdateToo() {
+    TestServices stsOnlyUnrestricted = mechanismServices(List.of("STS"), true);
+    AwsStorageConfigInfo emptyMechanism =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
+            .build();
+    try (Response response =
+        create(stsOnlyUnrestricted, catalogNamed("empty-stay", emptyMechanism))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched = fetch(stsOnlyUnrestricted, "empty-stay");
+    UpdateCatalogRequest toSecond =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://second-bucket/base/empty-stay"),
+            secondMechanismConfig().build());
+    assertThatThrownBy(
+            () ->
+                stsOnlyUnrestricted
+                    .catalogsApi()
+                    .updateCatalog(
+                        "empty-stay",
+                        toSecond,
+                        stsOnlyUnrestricted.realmContext(),
+                        stsOnlyUnrestricted.securityContext()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(
+            "S3 credential vending mechanism " + TEST_MECHANISM + " is not enabled in this realm");
+  }
+
+  @Test
+  public void theLiteralDefaultIsReservedAtCreateAndUpdate() {
+    TestServices svc = mechanismServices(List.of("STS"), true);
+    String reserved =
+        "S3 credential vending mechanism DEFAULT is reserved; leave the field empty to use the"
+            + " server default";
+    AwsStorageConfigInfo namesDefault =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setCredentialVendingMechanism("DEFAULT")
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
+            .build();
+    assertThatThrownBy(() -> create(svc, catalogNamed("names-default", namesDefault)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(reserved);
+
+    AwsStorageConfigInfo empty =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
+            .build();
+    try (Response response = create(svc, catalogNamed("stays-empty", empty))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched = fetch(svc, "stays-empty");
+    UpdateCatalogRequest toDefault =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://second-bucket/base/stays-empty"),
+            namesDefault);
+    assertThatThrownBy(
+            () ->
+                svc.catalogsApi()
+                    .updateCatalog(
+                        "stays-empty", toDefault, svc.realmContext(), svc.securityContext()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(reserved);
+  }
+
+  @Test
+  public void anEmptyMechanismCanBeUpdatedToAnExplicitSts() {
+    TestServices svc = mechanismServices(List.of("STS"), false);
+    AwsStorageConfigInfo empty =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
+            .build();
+    AwsStorageConfigInfo explicitSts =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setCredentialVendingMechanism("STS")
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
+            .build();
+    try (Response response = create(svc, catalogNamed("empty-then-sts", empty))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched = fetch(svc, "empty-then-sts");
+    UpdateCatalogRequest toSts =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://second-bucket/base/empty-then-sts"),
+            explicitSts);
+    try (Response response =
+        svc.catalogsApi()
+            .updateCatalog("empty-then-sts", toSts, svc.realmContext(), svc.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+    assertThat(
+            ((AwsStorageConfigInfo) fetch(svc, "empty-then-sts").getStorageConfigInfo())
+                .getCredentialVendingMechanism())
+        .isEqualTo("STS");
+  }
+
+  @Test
+  public void anExplicitStsCanBeUpdatedBackToTheEmptyDefault() {
+    EndpointRequiringMechanism recording = new EndpointRequiringMechanism();
+    TestServices svc =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3"),
+                    "SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS")))
+            .additionalVendingMechanisms(Map.of(S3CredentialVendingMechanism.DEFAULT, recording))
+            .build();
+    AwsStorageConfigInfo explicitSts =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setCredentialVendingMechanism("STS")
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("external-id")
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
+            .build();
+    try (Response response = create(svc, catalogNamed("sts-then-empty", explicitSts))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched = fetch(svc, "sts-then-empty");
+    AwsStorageConfigInfo backToDefault =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("external-id")
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
+            .setEndpoint("https://s3.example.test")
+            .build();
+    UpdateCatalogRequest toDefault =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://second-bucket/base/sts-then-empty"),
+            backToDefault);
+    try (Response response =
+        svc.catalogsApi()
+            .updateCatalog(
+                "sts-then-empty", toDefault, svc.realmContext(), svc.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+    assertThat(
+            ((AwsStorageConfigInfo) fetch(svc, "sts-then-empty").getStorageConfigInfo())
+                .getCredentialVendingMechanism())
+        .isNull();
+    assertThat(recording.currents).hasSize(1);
+    assertThat(recording.currents.get(0).getCredentialVendingMechanism()).isEqualTo("STS");
+    assertThat(recording.updateds).hasSize(1);
+    assertThat(recording.updateds.get(0).getCredentialVendingMechanism()).isNull();
+  }
+
+  @Test
+  public void testASecondMechanismCatalogIsCreatedAndReadBack() {
+    TestServices enabled = mechanismServices(List.of("STS", TEST_MECHANISM), false);
+    try (Response response =
+        create(enabled, catalogNamed("second-on", secondMechanismConfig().build()))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    AwsStorageConfigInfo fetched =
+        (AwsStorageConfigInfo) fetch(enabled, "second-on").getStorageConfigInfo();
+    assertThat(fetched.getCredentialVendingMechanism()).isEqualTo(TEST_MECHANISM);
+  }
+
+  @Test
+  public void changingTheMechanismIsAcceptedAndValidatedByTheNewMechanism() {
+    EndpointRequiringMechanism mechanism = new EndpointRequiringMechanism();
+    TestServices svc =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3"),
+                    "SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS", TEST_MECHANISM)))
+            .additionalVendingMechanisms(Map.of(TEST_MECHANISM, mechanism))
+            .build();
+    AwsStorageConfigInfo sts =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setCredentialVendingMechanism("STS")
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
+            .build();
+    try (Response response = create(svc, catalogNamed("mechanism-change", sts))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched = fetch(svc, "mechanism-change");
+    UpdateCatalogRequest toTestMechanism =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://second-bucket/base/mechanism-change"),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setCredentialVendingMechanism(TEST_MECHANISM)
+                .setAllowedLocations(List.of("s3://second-bucket/base/"))
+                .setEndpoint("https://s3.example.test")
+                .build());
+    try (Response response =
+        svc.catalogsApi()
+            .updateCatalog(
+                "mechanism-change", toTestMechanism, svc.realmContext(), svc.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+    assertThat(
+            ((AwsStorageConfigInfo) fetch(svc, "mechanism-change").getStorageConfigInfo())
+                .getCredentialVendingMechanism())
+        .isEqualTo(TEST_MECHANISM);
+    assertThat(mechanism.currents).hasSize(1);
+    assertThat(mechanism.currents.get(0).getCredentialVendingMechanism()).isEqualTo("STS");
+    assertThat(mechanism.updateds).hasSize(1);
+    assertThat(mechanism.updateds.get(0).getCredentialVendingMechanism()).isEqualTo(TEST_MECHANISM);
+  }
+
+  @Test
+  public void emptyMechanismCatalogEndpointStaysMutable() {
+    // An endpoint change on a catalog with an empty mechanism is accepted and read back.
+    TestServices svc = mechanismServices(List.of("STS"), false);
+    AwsStorageConfigInfo emptyMechanism =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
+            .setEndpoint("https://s3.example.com:1234")
+            .setPathStyleAccess(true)
+            .build();
+    try (Response response = create(svc, catalogNamed("empty-mutable", emptyMechanism))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched = fetch(svc, "empty-mutable");
+    UpdateCatalogRequest updateEndpoint =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://second-bucket/base/empty-mutable"),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                .setAllowedLocations(List.of("s3://second-bucket/base/"))
+                .setEndpoint("https://s3.other.example.com:1234")
+                .setPathStyleAccess(true)
+                .build());
+    try (Response response =
+        svc.catalogsApi()
+            .updateCatalog(
+                "empty-mutable", updateEndpoint, svc.realmContext(), svc.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+    AwsStorageConfigInfo updated =
+        (AwsStorageConfigInfo) fetch(svc, "empty-mutable").getStorageConfigInfo();
+    assertThat(updated.getEndpoint()).isEqualTo("https://s3.other.example.com:1234");
+  }
+
+  @Test
+  public void creatingACatalogWithAnAllowlistedButUninstalledMechanismIsRefused() {
+    TestServices svc = mechanismServices(List.of("STS", "UNINSTALLED_MECHANISM"), false);
+    AwsStorageConfigInfo uninstalled =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setCredentialVendingMechanism("UNINSTALLED_MECHANISM")
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
+            .build();
+    assertThatThrownBy(() -> create(svc, catalogNamed("never-usable", uninstalled)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "S3 credential vending mechanism UNINSTALLED_MECHANISM is not available in this server");
+  }
+
+  @Test
+  public void updatingACatalogToAnAllowlistedButUninstalledMechanismIsRefused() {
+    TestServices svc = mechanismServices(List.of("STS", "UNINSTALLED_MECHANISM"), true);
+    try (Response response = create(svc, catalogNamed("empty-stays", emptyMechanismConfig()))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched = fetch(svc, "empty-stays");
+    UpdateCatalogRequest toUninstalled =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://second-bucket/base/empty-stays"),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setCredentialVendingMechanism("UNINSTALLED_MECHANISM")
+                .setAllowedLocations(List.of("s3://second-bucket/base/"))
+                .build());
+    assertThatThrownBy(
+            () ->
+                svc.catalogsApi()
+                    .updateCatalog(
+                        "empty-stays", toUninstalled, svc.realmContext(), svc.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "S3 credential vending mechanism UNINSTALLED_MECHANISM is not available in this server");
+  }
+
+  /** A mechanism that refuses any config without an endpoint, and records what it was given. */
+  private static final class EndpointRequiringMechanism implements S3CredentialVendingMechanism {
+    final List<AwsStorageConfigurationInfo> currents = new ArrayList<>();
+    final List<AwsStorageConfigurationInfo> updateds = new ArrayList<>();
+
+    @Override
+    public PolarisStorageIntegration integrationFor(AwsStorageConfigurationInfo storageConfig) {
+      return TestServices.fakeMechanism().integrationFor(storageConfig);
+    }
+
+    @Override
+    public void validate(AwsStorageConfigurationInfo current, AwsStorageConfigurationInfo updated) {
+      currents.add(current);
+      updateds.add(updated);
+      if (updated.getEndpoint() == null) {
+        throw new IllegalArgumentException("endpoint is required for the TEST_MECHANISM mechanism");
+      }
+    }
+  }
+
+  @Test
+  public void theMechanismValidatesTheConfigAtCreateAndAtUpdate() {
+    EndpointRequiringMechanism mechanism = new EndpointRequiringMechanism();
+    TestServices svc =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3"),
+                    "SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS", TEST_MECHANISM)))
+            .additionalVendingMechanisms(Map.of(TEST_MECHANISM, mechanism))
+            .build();
+    AwsStorageConfigInfo.Builder base =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setCredentialVendingMechanism(TEST_MECHANISM)
+            .setAllowedLocations(List.of("s3://second-bucket/base/"));
+
+    assertThatThrownBy(() -> create(svc, catalogNamed("needs-endpoint", base.build())))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("endpoint is required for the TEST_MECHANISM mechanism");
+    assertThat(mechanism.currents).containsExactly((AwsStorageConfigurationInfo) null);
+
+    try (Response response =
+        create(
+            svc,
+            catalogNamed("needs-endpoint", base.setEndpoint("https://s3.example.test").build()))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    assertThat(mechanism.currents).hasSize(2);
+    assertThat(mechanism.updateds.get(1).getEndpoint()).isEqualTo("https://s3.example.test");
+
+    Catalog fetched = fetch(svc, "needs-endpoint");
+    UpdateCatalogRequest dropEndpoint =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://second-bucket/base/needs-endpoint"),
+            base.setEndpoint(null).build());
+    assertThatThrownBy(
+            () ->
+                svc.catalogsApi()
+                    .updateCatalog(
+                        "needs-endpoint", dropEndpoint, svc.realmContext(), svc.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("endpoint is required for the TEST_MECHANISM mechanism");
+    assertThat(mechanism.currents).hasSize(3);
+    assertThat(mechanism.currents.get(2)).isNotNull();
+    assertThat(mechanism.currents.get(2).getEndpoint()).isEqualTo("https://s3.example.test");
   }
 }

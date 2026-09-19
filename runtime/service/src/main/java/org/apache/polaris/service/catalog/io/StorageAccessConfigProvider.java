@@ -31,6 +31,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -110,10 +111,10 @@ public class StorageAccessConfigProvider {
       @NonNull Set<PolarisStorageActions> storageActions,
       @NonNull Optional<String> refreshCredentialsEndpoint) {
 
+    RealmConfig realmConfig = callContext.getRealmConfig();
+
     boolean skipCredentialSubscopingIndirection =
-        callContext
-            .getRealmConfig()
-            .getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
+        realmConfig.getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
     if (skipCredentialSubscopingIndirection) {
       return StorageAccessConfig.builder().supportsCredentialVending(false).build();
     }

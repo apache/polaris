@@ -1204,6 +1204,12 @@ components:
               type: boolean
               description: >-
                 if set to `true`, instructs Polaris Servers to avoid adding KMS key policies.
+            credentialVendingMechanism:
+              type: string
+              description: >-
+                How Polaris vends subscoped storage credentials for this catalog. Leave the field empty
+                to use the server's default mechanism. STS selects AWS STS AssumeRole against the
+                configured role. A server may provide further mechanisms. The value DEFAULT is reserved.
 
     AzureStorageConfigInfo:
       type: object

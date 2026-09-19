@@ -47,6 +47,7 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
@@ -68,6 +69,7 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.SemanticModelGrant;
 import org.apache.polaris.core.admin.model.SemanticModelPrivilege;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -134,9 +136,12 @@ import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
+import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -166,6 +171,7 @@ public class PolarisAdminService {
   private final UserSecretsManager userSecretsManager;
   private final ServiceIdentityProvider serviceIdentityProvider;
   private final ReservedProperties reservedProperties;
+  private final S3CredentialVendingMechanisms vendingMechanisms;
 
   @Inject
   public PolarisAdminService(
@@ -176,7 +182,8 @@ public class PolarisAdminService {
       @NonNull ServiceIdentityProvider serviceIdentityProvider,
       @NonNull PolarisPrincipal principal,
       @NonNull PolarisAuthorizer authorizer,
-      @NonNull ReservedProperties reservedProperties) {
+      @NonNull ReservedProperties reservedProperties,
+      @NonNull S3CredentialVendingMechanisms vendingMechanisms) {
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
@@ -186,6 +193,7 @@ public class PolarisAdminService {
     this.userSecretsManager = userSecretsManager;
     this.serviceIdentityProvider = serviceIdentityProvider;
     this.reservedProperties = reservedProperties;
+    this.vendingMechanisms = vendingMechanisms;
   }
 
   private PolarisCallContext getCurrentPolarisContext() {
@@ -814,8 +822,15 @@ public class PolarisAdminService {
   public PolarisEntity createCatalog(CreateCatalogRequest catalogRequest) {
     authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.CREATE_CATALOG);
     Catalog catalog = catalogRequest.getCatalog();
+    S3CredentialVendingMechanism mechanism =
+        validateS3CredentialVendingMechanism(catalog.getStorageConfigInfo());
 
     CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, catalog);
+    if (mechanism != null) {
+      // Safe: CatalogEntity.Builder.processStorageConfigurationInfo always converts an
+      // AwsStorageConfigInfo request to an AwsStorageConfigurationInfo.
+      mechanism.validate(null, (AwsStorageConfigurationInfo) entity.getStorageConfigurationInfo());
+    }
 
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
 
@@ -937,6 +952,29 @@ public class PolarisAdminService {
   }
 
   /**
+   * The mechanism checks that run after authorization, so an unauthorized caller learns nothing
+   * about the realm's configuration: the reserved DEFAULT identifier, the realm allowlist for an
+   * explicit value, then availability in this server. Returns the mechanism the catalog selects, or
+   * null for a storage config that is not S3.
+   */
+  private @Nullable S3CredentialVendingMechanism validateS3CredentialVendingMechanism(
+      @Nullable StorageConfigInfo storageConfigInfo) {
+    if (!(storageConfigInfo instanceof AwsStorageConfigInfo s3Config)) {
+      return null;
+    }
+    String requested = s3Config.getCredentialVendingMechanism();
+    if (S3CredentialVendingMechanism.DEFAULT.equals(requested)) {
+      throw new ValidationException(
+          "S3 credential vending mechanism DEFAULT is reserved; leave the field empty to use the"
+              + " server default");
+    }
+    String explicit = AwsStorageConfigurationInfo.credentialVendingMechanismOf(requested);
+    IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(realmConfig, explicit);
+    return vendingMechanisms.require(
+        explicit == null ? S3CredentialVendingMechanism.DEFAULT : explicit);
+  }
+
+  /**
    * Helper to validate business logic of what is allowed to be updated or throw a
    * BadRequestException.
    */
@@ -993,6 +1031,8 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_CATALOG;
     PolarisResolutionManifest resolutionManifest =
         authorizeBasicTopLevelEntityOperationOrThrow(op, name, PolarisEntityType.CATALOG);
+    S3CredentialVendingMechanism mechanism =
+        validateS3CredentialVendingMechanism(updateRequest.getStorageConfigInfo());
 
     CatalogEntity currentCatalogEntity = getCatalogByName(resolutionManifest, name);
 
@@ -1028,6 +1068,19 @@ public class PolarisAdminService {
     CatalogEntity updatedEntity = updateBuilder.build();
 
     validateUpdateCatalogDiffOrThrow(currentCatalogEntity, updatedEntity);
+
+    if (mechanism != null) {
+      PolarisStorageConfigurationInfo currentStorageConfig =
+          currentCatalogEntity.getStorageConfigurationInfo();
+      // Safe: CatalogEntity.Builder.processStorageConfigurationInfo always converts an
+      // AwsStorageConfigInfo request to an AwsStorageConfigurationInfo, and the storage-type
+      // freeze above has already refused a type change.
+      mechanism.validate(
+          currentStorageConfig instanceof AwsStorageConfigurationInfo currentAwsConfig
+              ? currentAwsConfig
+              : null,
+          (AwsStorageConfigurationInfo) updatedEntity.getStorageConfigurationInfo());
+    }
 
     if (catalogOverlapsWithExistingCatalog(updatedEntity)) {
       throw new ValidationException(

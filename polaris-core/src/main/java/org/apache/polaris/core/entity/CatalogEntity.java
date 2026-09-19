@@ -199,6 +199,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         .setStsUnavailable(awsConfig.getStsUnavailable())
         .setEndpointInternal(awsConfig.getEndpointInternal())
         .setKmsUnavailable(awsConfig.getKmsUnavailable())
+        .setCredentialVendingMechanism(awsConfig.getCredentialVendingMechanism())
         .build();
   }
 
@@ -419,6 +420,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       return AwsStorageConfigurationInfo.builder()
           .allowedLocations(allowedLocations)
           .storageName(awsConfigModel.getStorageName())
+          .credentialVendingMechanism(
+              AwsStorageConfigurationInfo.credentialVendingMechanismOf(
+                  awsConfigModel.getCredentialVendingMechanism()))
           .roleARN(awsConfigModel.getRoleArn())
           .encryptionKeys(encryptionKeys)
           .decryptionKeys(awsConfigModel.getDecryptionKeys())

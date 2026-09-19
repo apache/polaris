@@ -29,7 +29,25 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Highlights
 
+- S3 storage configurations gain an optional string field, `credentialVendingMechanism`. A catalog
+  that leaves it empty uses the server's default mechanism, AWS STS AssumeRole; `STS` selects the
+  same mechanism explicitly, and a server may provide further mechanisms. Mechanisms are CDI beans
+  discovered by their `@Identifier` at startup, and each one can validate the catalogs that select
+  it at create and update. A realm lists the explicit mechanisms it accepts in the new
+  `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` feature (default `[STS]`), enforced at catalog create
+  and update and when the server builds the storage integration that vends credentials for a
+  catalog. A catalog that names a mechanism this server does not provide is refused at create and
+  update, and whenever a credential is vended for it, with "S3 credential vending mechanism `<id>`
+  is not available in this server".
+
 ### Upgrade notes
+
+- Existing S3 catalogs keep using STS through the server's default mechanism; no stored configuration
+  changes, and management API responses omit `credentialVendingMechanism` for them.
+- `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists the explicit mechanisms a realm accepts; an empty
+  `credentialVendingMechanism` is always allowed. The value `DEFAULT` is reserved and cannot be set on
+  a catalog. Startup reports a listed mechanism with no installed bean, and a listed `DEFAULT`, as
+  non-severe readiness warnings.
 
 - Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
   (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris

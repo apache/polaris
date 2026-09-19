@@ -39,6 +39,13 @@ import org.apache.polaris.service.types.UpdatePolicyRequest;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
+/**
+ * Privilege-matrix coverage for {@link PolicyCatalogHandler}. {@code initializeCatalog()} carries
+ * no S3 credential vending mechanism check: that mechanism is checked only where a catalog is
+ * stored (create and update) and where it vends a credential, covered end-to-end, through the real
+ * REST API and a stored catalog whose mechanism is removed from a live registry, by {@link
+ * org.apache.polaris.service.storage.S3CredentialVendingMechanismCdiTest#anUninstalledMechanismIsRefusedAtCreateAndUpdateAndAStoredOneWhenItVends}.
+ */
 @QuarkusTest
 @TestProfile(Profiles.PolarisAuthzBaseProfile.class)
 public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
