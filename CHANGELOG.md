@@ -82,9 +82,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
 - `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
   invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
-  size or when a positive LIST_PAGINATION_MAX_PAGE_SIZE limits local catalog listings. Otherwise,
-  requests without pagination parameters still return all results. To keep the previous behavior,
-  set `LIST_PAGINATION_ENABLED=false` or the catalog property `polaris.config.list-pagination-enabled=false`.
+  size or supplying a page token. A request that supplies neither still returns all results, unless
+  a positive `LIST_PAGINATION_MAX_PAGE_SIZE` is configured and the result does not fit, in which
+  case it is rejected rather than truncated. To keep the previous behavior, set
+  `LIST_PAGINATION_ENABLED=false` or the catalog property `polaris.config.list-pagination-enabled=false`.
 
 ### New Features
 
@@ -120,10 +121,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   For local catalogs the maximum takes effect only when `LIST_PAGINATION_ENABLED` is true, since
   with pagination disabled the requested page size is ignored and the full result set is returned;
   for federated catalogs it always applies, because Polaris paginates those listings itself.
-  Setting a maximum deviates from the Iceberg REST specification, which requires a request that
-  does not supply a `pageToken` to receive the complete result with a null `next-page-token`: such
-  a request is then truncated to the maximum and answered with a continuation token, so a client
-  that does not follow continuations sees only the first page.
+  A request that supplies neither `pageToken` nor `pageSize` asks for the complete listing, so when
+  the result does not fit the maximum it is rejected rather than truncated and answered with a
+  continuation token. An empty `pageToken` starts a paginated listing and is capped like any other
+  paginated request. This applies to the Iceberg, generic-table and semantic-model listings alike.
 - Table commits whose base metadata is already stale now fail before the new metadata file is
   written, saving an object-storage write and delete per conflict and returning the `409` to the
   client sooner.

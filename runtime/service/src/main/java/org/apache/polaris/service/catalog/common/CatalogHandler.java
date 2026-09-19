@@ -27,9 +27,14 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundE
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.OptionalInt;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
@@ -39,20 +44,26 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.RenameAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PageTokenUtil;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.immutables.value.Value;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An ABC for catalog wrappers which provides authorize methods that should be called before a
@@ -90,6 +101,105 @@ public abstract class CatalogHandler {
   // Initialized in the authorize methods.
   @SuppressWarnings("immutables:incompat")
   protected PolarisResolutionManifest resolutionManifest = null;
+
+  private boolean shouldDecodeToken() {
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    return catalogEntity == null
+        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED)
+        : realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED, catalogEntity);
+  }
+
+  /** The configured page size ceiling; zero or less means unlimited. */
+  private int maxPageSize() {
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    return catalogEntity == null
+        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE)
+        : realmConfig()
+            .getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity);
+  }
+
+  /**
+   * Bounds the page size forwarded to a federated catalog, using the same rule as {@link
+   * PageTokenUtil#boundPageSize}. An absent page size becomes the maximum, so the remote result set
+   * is not returned whole.
+   */
+  private @Nullable Integer boundedPageSize(@Nullable Integer requestedPageSize) {
+    OptionalInt requested =
+        requestedPageSize == null ? OptionalInt.empty() : OptionalInt.of(requestedPageSize);
+    OptionalInt bounded = PageTokenUtil.boundPageSize(requested, maxPageSize());
+    return bounded.isPresent() ? bounded.getAsInt() : null;
+  }
+
+  /**
+   * The page token forwarded to a federated catalog. {@code CatalogHandlerUtils} returns the whole
+   * result set when no token is given, so when a maximum is configured the specification's initial
+   * page token is supplied instead. That bounds the response and surfaces a continuation token when
+   * the result would have overflowed, which {@link #rejectIncompleteListing} then turns into an
+   * error for a request that asked for the complete listing.
+   */
+  private @Nullable String boundedPageToken(@Nullable String pageToken) {
+    return pageToken == null && maxPageSize() > 0
+        ? CatalogHandlerUtils.INITIAL_PAGE_TOKEN
+        : pageToken;
+  }
+
+  /**
+   * A request that supplies neither {@code pageToken} nor {@code pageSize} asks for the complete
+   * listing, which the Iceberg REST specification answers with every result and a null
+   * next-page-token. When a configured maximum prevents that, fail rather than return a page that
+   * looks complete and is not. An empty {@code pageToken} starts a paginated listing, so it is
+   * capped like any other paginated request.
+   */
+  private void rejectIncompleteListing(
+      @Nullable String pageToken, @Nullable Integer pageSize, @Nullable String nextPageToken) {
+    if (pageToken == null && pageSize == null && nextPageToken != null) {
+      throw new BadRequestException(
+          "Listing does not fit the maximum page size of %s; supply a pageToken to paginate",
+          maxPageSize());
+    }
+  }
+
+  /**
+   * Runs a listing against a local catalog and checks the result. This is the only way to obtain a
+   * bounded {@link PageToken}, so a new listing endpoint cannot accidentally skip the completeness
+   * check that {@link #rejectIncompleteListing} performs.
+   */
+  protected <R> R paginatedListing(
+      @Nullable String pageToken,
+      @Nullable Integer pageSize,
+      Function<PageToken, R> listing,
+      Function<R, @Nullable String> nextPageToken) {
+    PageToken pageRequest =
+        PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
+    return checkedListing(pageToken, pageSize, () -> listing.apply(pageRequest), nextPageToken);
+  }
+
+  /**
+   * Runs a listing against a federated catalog and checks the result. The remote listing is bounded
+   * the same way, though {@code Catalog.listTables(Namespace)} takes no page size, so the whole
+   * remote result is materialized before it can be bounded.
+   */
+  protected <R> R federatedListing(
+      @Nullable String pageToken,
+      @Nullable Integer pageSize,
+      BiFunction<@Nullable String, @Nullable Integer, R> listing,
+      Function<R, @Nullable String> nextPageToken) {
+    return checkedListing(
+        pageToken,
+        pageSize,
+        () -> listing.apply(boundedPageToken(pageToken), boundedPageSize(pageSize)),
+        nextPageToken);
+  }
+
+  private <R> R checkedListing(
+      @Nullable String pageToken,
+      @Nullable Integer pageSize,
+      Supplier<R> listing,
+      Function<R, @Nullable String> nextPageToken) {
+    R result = listing.get();
+    rejectIncompleteListing(pageToken, pageSize, nextPageToken.apply(result));
+    return result;
+  }
 
   /** Initialize the catalog once authorized. Called after all `authorize...` methods. */
   protected abstract void initializeCatalog();

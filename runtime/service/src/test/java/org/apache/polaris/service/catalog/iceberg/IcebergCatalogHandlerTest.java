@@ -55,6 +55,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.catalog.ViewCatalog;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
@@ -863,6 +864,73 @@ class IcebergCatalogHandlerTest {
 
     verify((SupportsNamespaces) federated).namespaceExists(NS1);
     verify(catalogHandlerUtils, never()).loadNamespace(any(), any());
+  }
+
+  /**
+   * A request that supplies neither a page token nor a page size asks for the complete listing, so
+   * a result that does not fit the configured maximum is an error rather than a page that looks
+   * complete and is not.
+   */
+  @Test
+  void listTablesRejectsAnUnpagedRequestThatDoesNotFit() {
+    LocalIcebergCatalog catalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.listTables(eq(NS1), any(PageToken.class)))
+        .thenReturn(
+            Page.page(
+                PageToken.fromLimit(100),
+                new ArrayList<>(List.of(TABLE2)),
+                EntityIdToken.fromEntityId(1L)));
+    when(realmConfig.getConfig(LIST_PAGINATION_ENABLED, catalogEntity)).thenReturn(true);
+    when(realmConfig.getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity)).thenReturn(100);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    assertThatThrownBy(() -> handler.listTables(NS1, null, null))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("100");
+  }
+
+  /** The same request is answered in full, with no continuation token, when the result fits. */
+  @Test
+  void listTablesReturnsTheCompleteListWhenAnUnpagedRequestFits() {
+    LocalIcebergCatalog catalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.listTables(eq(NS1), any(PageToken.class)))
+        .thenReturn(Page.fromItems(new ArrayList<>(List.of(TABLE2))));
+    when(realmConfig.getConfig(LIST_PAGINATION_ENABLED, catalogEntity)).thenReturn(true);
+    when(realmConfig.getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity)).thenReturn(100);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    var response = handler.listTables(NS1, null, null);
+
+    assertThat(response.identifiers()).containsExactly(TABLE2);
+    assertThat(response.nextPageToken()).isNull();
+  }
+
+  /**
+   * An empty page token is how a client starts a paginated listing, so it is capped like any other
+   * paginated request rather than rejected.
+   */
+  @Test
+  void listTablesPaginatesAnEmptyPageTokenRatherThanRejectingIt() {
+    LocalIcebergCatalog catalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.listTables(eq(NS1), any(PageToken.class)))
+        .thenReturn(
+            Page.page(
+                PageToken.fromLimit(100),
+                new ArrayList<>(List.of(TABLE2)),
+                EntityIdToken.fromEntityId(1L)));
+    when(realmConfig.getConfig(LIST_PAGINATION_ENABLED, catalogEntity)).thenReturn(true);
+    when(realmConfig.getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity)).thenReturn(100);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    var response = handler.listTables(NS1, "", null);
+
+    assertThat(response.nextPageToken()).isNotNull();
   }
 
   /**
