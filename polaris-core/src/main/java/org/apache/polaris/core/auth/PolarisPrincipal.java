@@ -56,6 +56,21 @@ public interface PolarisPrincipal extends Principal {
   String PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY = "org.apache.polaris.core.auth.PRINCIPAL_ROLE:ALL";
 
   /**
+   * Attribute key, of type {@link Boolean}, used to mark a principal as external.
+   *
+   * <p>When present and true, the principal is external: it has no backing entity in the Polaris
+   * metastore, and its roles are resolved directly from the authentication result rather than from
+   * metastore grants.
+   *
+   * <p>Authenticators must set this attribute to {@code true} when they deliberately take the
+   * external-principal path. The resolver treats an explicit {@code true} as external and a missing
+   * or false marker as internal.
+   *
+   * <p>Note: Callers must not assume that this attribute is always present.
+   */
+  String EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY = "org.apache.polaris.core.auth.EXTERNAL_PRINCIPAL";
+
+  /**
    * Attribute key used to store or retrieve a JSON Web Token (JWT) associated with the {@link
    * PolarisPrincipal}, of type {@link String}.
    *
