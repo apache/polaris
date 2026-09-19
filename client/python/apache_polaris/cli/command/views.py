@@ -25,6 +25,7 @@ from apache_polaris.cli.command.utils import (
     format_timestamp,
     get_catalog_api_client,
     handle_api_exception,
+    paginate,
 )
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
@@ -50,6 +51,7 @@ class ViewCommand(Command):
     catalog_name: Optional[str] = None
     namespace: Optional[List[str]] = field(default_factory=list)
     view_name: Optional[str] = None
+    page_size: Optional[int] = None
 
     def validate(self) -> None:
         if not self.catalog_name:
@@ -76,9 +78,14 @@ class ViewCommand(Command):
         ns_str = UNIT_SEPARATOR.join(namespace_list)
 
         if self.views_subcommand == Subcommands.LIST:
-            result = catalog_api.list_views(prefix=catalog_name, namespace=ns_str)
-            for view_identifier in result.identifiers:
-                print(view_identifier.to_json())
+            for resp in paginate(
+                catalog_api.list_views,
+                page_size=self.page_size,
+                prefix=catalog_name,
+                namespace=ns_str,
+            ):
+                for view_identifier in resp.identifiers or []:
+                    print(view_identifier.to_json())
         elif self.views_subcommand == Subcommands.GET:
             print(
                 catalog_api.load_view(

@@ -3630,7 +3630,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   private static PageToken nextRequest(Page<?> previousPage) {
-    return PageToken.build(previousPage.encodedResponseToken(), null, () -> true);
+    return PageToken.build(previousPage.encodedResponseToken(), null, -1, () -> true);
   }
 
   @Test
@@ -3773,7 +3773,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   public void dropAfterRenameDoesntCorruptTable() {}
 
   @Test
-  public void testFailedTableCommitDeletesOrphanMetadataFile() {
+  public void testConflictingTableCommitDoesNotWriteMetadataFile() {
     LocalIcebergCatalog catalog = this.catalog();
     if (this.requiresNamespaceCreate()) {
       catalog.createNamespace(NS);
@@ -3804,9 +3804,59 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> spyOps.commit(staleBase, attempted))
         .isInstanceOf(CommitFailedException.class);
 
-    Assertions.assertThat(writtenLocations).isNotEmpty();
-    String orphanLocation = writtenLocations.get(writtenLocations.size() - 1);
-    Assertions.assertThat(fileIO.fileExists(orphanLocation)).isFalse();
+    Assertions.assertThat(writtenLocations).isEmpty();
+  }
+
+  @Test
+  public void testFailedTableCommitDeletesWrittenMetadataFile() {
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    LocalIcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    if (this.requiresNamespaceCreate()) {
+      spiedCatalog.createNamespace(NS);
+    }
+
+    spiedCatalog.buildTable(TABLE, SCHEMA).withPartitionSpec(SPEC).create();
+
+    List<String> writtenLocations = new ArrayList<>();
+    List<String> deletedLocations = new ArrayList<>();
+    FileIO spyIO = spy(fileIO);
+    doAnswer(
+            inv -> {
+              writtenLocations.add(inv.getArgument(0));
+              return inv.callRealMethod();
+            })
+        .when(spyIO)
+        .newOutputFile(anyString());
+    doAnswer(
+            inv -> {
+              deletedLocations.add(inv.getArgument(0));
+              return inv.callRealMethod();
+            })
+        .when(spyIO)
+        .deleteFile(anyString());
+
+    TableOperations realOps = ((BaseTable) spiedCatalog.loadTable(TABLE)).operations();
+    TableOperations spyOps = spy(realOps);
+    Mockito.when(spyOps.io()).thenReturn(spyIO);
+
+    TableMetadata base = realOps.current();
+    TableMetadata updated =
+        TableMetadata.buildFrom(base).setProperties(Map.of("cleanup-check", "v1")).build();
+
+    // Persistence fails after the pre-write conflict check passes and the metadata file is written.
+    doReturn(new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
+        .when(spiedManager)
+        .updateEntityPropertiesIfNotChanged(any(), anyList(), any());
+
+    Assertions.assertThatThrownBy(() -> spyOps.commit(base, updated))
+        .isInstanceOf(CommitConflictException.class);
+
+    Assertions.assertThat(writtenLocations).hasSize(1);
+    Assertions.assertThat(deletedLocations).containsExactlyElementsOf(writtenLocations);
   }
 
   @Test

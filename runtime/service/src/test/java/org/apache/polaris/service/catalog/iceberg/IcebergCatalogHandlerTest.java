@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
+import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE;
+import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -34,6 +37,7 @@ import static org.mockito.Mockito.withSettings;
 
 import jakarta.enterprise.inject.Instance;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -83,12 +87,16 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.pagination.EntityIdToken;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
@@ -98,6 +106,8 @@ import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.metrics.IcebergMetricsReporter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 
 class IcebergCatalogHandlerTest {
@@ -230,6 +240,49 @@ class IcebergCatalogHandlerTest {
         .getStorageAccessConfig(
             eq(TABLE2), any(), actionsCaptor.capture(), eq(Optional.empty()), eq(resolvedPath));
     assertThat(actionsCaptor.getValue()).containsExactlyInAnyOrder(actions);
+  }
+
+  /**
+   * When the resolver degrades a both-modes request to {@link AccessDelegationMode#REMOTE_SIGNING}
+   * (credential vending is not possible for the catalog) and remote signing is not implemented, the
+   * request fails fast with a message that tells the client what to do, matching how a
+   * vended-credentials-only request already behaves in that situation.
+   */
+  @Test
+  void bothModesRequestedAndResolverDegradesToRemoteSigningFailsWithActionableMessage() {
+    mockRegisterTableCatalog(false);
+    EnumSet<AccessDelegationMode> bothModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    when(accessDelegationModeResolver.resolve(eq(bothModes), any()))
+        .thenReturn(Optional.of(REMOTE_SIGNING));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatThrownBy(
+            () ->
+                handler.registerTable(
+                    NS1, registerTableRequest(false), bothModes, Optional.empty()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("This catalog cannot vend credentials or sign requests")
+        .hasMessageContaining("request without X-Iceberg-Access-Delegation");
+  }
+
+  @Test
+  void remoteSigningRequestedAloneFailsWithActionableMessage() {
+    mockRegisterTableCatalog(false);
+    EnumSet<AccessDelegationMode> remoteSigningOnly = EnumSet.of(REMOTE_SIGNING);
+    when(accessDelegationModeResolver.resolve(eq(remoteSigningOnly), any()))
+        .thenReturn(Optional.of(REMOTE_SIGNING));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatThrownBy(
+            () ->
+                handler.registerTable(
+                    NS1, registerTableRequest(false), remoteSigningOnly, Optional.empty()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("This catalog cannot vend credentials or sign requests");
   }
 
   @Test
@@ -810,5 +863,87 @@ class IcebergCatalogHandlerTest {
 
     verify((SupportsNamespaces) federated).namespaceExists(NS1);
     verify(catalogHandlerUtils, never()).loadNamespace(any(), any());
+  }
+
+  /**
+   * A page token carries the page size it was minted with, so a token issued before the limit was
+   * configured (or a hand-crafted one) must not be able to escape the bound.
+   */
+  @Test
+  void listTablesBoundsPageSizeEncodedInThePageToken() {
+    LocalIcebergCatalog catalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.listTables(eq(NS1), any(PageToken.class)))
+        .thenReturn(Page.fromItems(new ArrayList<>(List.of(TABLE2))));
+    when(realmConfig.getConfig(LIST_PAGINATION_ENABLED, catalogEntity)).thenReturn(true);
+    when(realmConfig.getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity)).thenReturn(100);
+
+    // A token minted with a page size well above the configured maximum, and no explicit pageSize
+    String oversizedToken =
+        Page.page(
+                PageToken.fromLimit(5000),
+                new ArrayList<>(List.of(TABLE2)),
+                EntityIdToken.fromEntityId(1L))
+            .encodedResponseToken();
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    handler.listTables(NS1, oversizedToken, null);
+
+    ArgumentCaptor<PageToken> pageTokenCaptor = ArgumentCaptor.forClass(PageToken.class);
+    verify(catalog).listTables(eq(NS1), pageTokenCaptor.capture());
+    assertThat(pageTokenCaptor.getValue().pageSize()).hasValue(100);
+  }
+
+  /** A non-positive maximum means unlimited, so a requested size passes through untouched. */
+  @ParameterizedTest
+  @CsvSource({"0", "-1"})
+  void listTablesTreatsNonPositiveConfiguredMaximumAsUnlimited(int unlimitedMax) {
+    LocalIcebergCatalog catalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.listTables(eq(NS1), any(PageToken.class)))
+        .thenReturn(Page.fromItems(new ArrayList<>(List.of(TABLE2))));
+    when(realmConfig.getConfig(LIST_PAGINATION_ENABLED, catalogEntity)).thenReturn(true);
+    when(realmConfig.getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity))
+        .thenReturn(unlimitedMax);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    handler.listTables(NS1, null, 50);
+
+    ArgumentCaptor<PageToken> pageTokenCaptor = ArgumentCaptor.forClass(PageToken.class);
+    verify(catalog).listTables(eq(NS1), pageTokenCaptor.capture());
+    assertThat(pageTokenCaptor.getValue().pageSize()).hasValue(50);
+  }
+
+  /**
+   * A client may ask for any page size, but the Iceberg REST specification treats it as an upper
+   * bound, so requests above the configured maximum must be reduced rather than rejected.
+   */
+  @ParameterizedTest
+  @CsvSource({
+    // requested, configured maximum, expected page size reaching the catalog
+    "5000, 100, 100",
+    "100, 100, 100",
+    "10, 100, 10",
+    "0, 100, 0",
+  })
+  void listTablesBoundsRequestedPageSizeByConfiguredMaximum(
+      int requestedPageSize, int maxPageSize, int expectedPageSize) {
+    LocalIcebergCatalog catalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.listTables(eq(NS1), any(PageToken.class)))
+        .thenReturn(Page.fromItems(new ArrayList<>(List.of(TABLE2))));
+    when(realmConfig.getConfig(LIST_PAGINATION_ENABLED, catalogEntity)).thenReturn(true);
+    when(realmConfig.getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity))
+        .thenReturn(maxPageSize);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    handler.listTables(NS1, null, requestedPageSize);
+
+    ArgumentCaptor<PageToken> pageTokenCaptor = ArgumentCaptor.forClass(PageToken.class);
+    verify(catalog).listTables(eq(NS1), pageTokenCaptor.capture());
+    assertThat(pageTokenCaptor.getValue().pageSize()).hasValue(expectedPageSize);
   }
 }

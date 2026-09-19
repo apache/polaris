@@ -81,7 +81,7 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
   @TestFactory
   Stream<DynamicNode> testListGenericTablesPrivileges() {
     return authzTestsBuilder("listGenericTables")
-        .action(() -> newWrapper().listGenericTables(NS1A))
+        .action(() -> newWrapper().listGenericTables(NS1A, null, null))
         .shouldPassWith(PolarisPrivilege.TABLE_LIST)
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)

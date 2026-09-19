@@ -24,7 +24,7 @@ iceberg = "1.11.0" # Ensure to update the iceberg version in regtests and gettin
 immutables = "2.12.2"
 jmh = "1.37"
 picocli = "4.7.7"
-quarkus = "3.39.3"
+quarkus = "3.39.4"
 ranger = "2.9.0"
 ranger-graalvm = "25.3.4.1"
 scala212 = "2.12.21"
@@ -41,7 +41,7 @@ swagger = "1.6.16"
 # If a dependency is removed, check whether the LICENSE and/or NOTICE files need to be adopted
 # (aka mention of the dependency removed).
 #
-agrona = { module = "org.agrona:agrona", version = "2.6.0" }
+agrona = { module = "org.agrona:agrona", version = "2.6.1" }
 antlr4-runtime-spark35 = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark 3.5 integration tests
 antlr4-runtime-spark40 = { module = "org.antlr:antlr4-runtime", version.strictly = "4.13.1" } # spark 4.0 integration tests
 apache-httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.6.4" }
@@ -95,7 +95,7 @@ micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.17.1" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.23.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.23.0" }
-mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version = "5.11.1" }
+mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version = "5.12.0" }
 openlineage-java = { module = "io.openlineage:openlineage-java", version = "1.53.0" }
 opentelemetry-instrumentation-bom-alpha = { module = "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha", version= "2.20.1-alpha" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
@@ -123,7 +123,7 @@ weld-junit5 = { module = "org.jboss.weld:weld-junit5", version = "5.0.3.Final" }
 weld-core-bom = { module = "org.jboss.weld:weld-core-bom", version = "6.0.4.Final" }
 
 [plugins]
-jcstress = { id = "io.github.reyerizo.gradle.jcstress", version = "0.9.0" }
+jcstress = { id = "io.github.reyerizo.gradle.jcstress", version = "1.0.0" }
 jetbrains-changelog = { id = "org.jetbrains.changelog",  version = "2.5.0" }
 jmh = { id = "me.champeau.jmh", version = "0.7.3" }
 openapi-generator = { id = "org.openapi.generator", version = "7.12.0" }

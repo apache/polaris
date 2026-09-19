@@ -80,12 +80,21 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   depend on the previous combined-intent input shape may need to be updated. Same applies to other
   PolarisAuthorizer implementations.
 - Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
+- `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
+  invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
+  size or when a positive LIST_PAGINATION_MAX_PAGE_SIZE limits local catalog listings. Otherwise,
+  requests without pagination parameters still return all results. To keep the previous behavior,
+  set `LIST_PAGINATION_ENABLED=false` or the catalog property `polaris.config.list-pagination-enabled=false`.
 
 ### New Features
 
-- Opt-in Iceberg table soft-delete (default off): when `TABLE_SOFT_DELETE_ENABLED` is true, `DROP TABLE` without purge keeps catalog metadata for a hold period (`TABLE_SOFT_DELETE_HOLD_PERIOD`, default `P7D`), hides the table from Iceberg REST list/load/HEAD, and reserves the identifier until permanent delete. `DROP TABLE PURGE` remains an immediate permanent delete. After the hold, a later list or create in the same namespace permanently removes catalog state; file cleanup is opt-in via `TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE`. INTERNAL catalogs only.
+- Opt-in Iceberg table soft-delete (default off): when `TABLE_SOFT_DELETE_ENABLED` is true, `DROP TABLE` without purge keeps catalog metadata for a hold period (`TABLE_SOFT_DELETE_HOLD_PERIOD`, default `P7D`), hides the table from Iceberg REST list/load/HEAD, and reserves the identifier until permanent delete. `DROP TABLE PURGE` remains an immediate permanent delete. After the hold, a later list, create, or drop-namespace in that namespace permanently removes catalog state; file cleanup is opt-in via `TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE`. INTERNAL catalogs only.
+- Semantic models now support dedicated privileges for listing, creating, reading, updating,
+  and dropping. Privileges can be granted to catalog roles on individual models or at namespace
+  or catalog scope, with separate controls for managing model grants.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
+- Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
 - The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.additionalProperties.currentSchema` in the Helm chart.
 - Python CLI: `catalogs create` and `catalogs update` now support `--storage-name` to set an optional name referencing a server-side storage configuration.
 
@@ -104,6 +113,21 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `TokenBroker.verify` now returns `null` for tokens not recognized by the internal broker
   (instead of failing auth), so MIXED mode can delegate to other mechanisms. Exceptions from
   `verify` are forwarded as-is rather than mapped to auth failure or MIXED fallback.
+- Client-requested list page sizes can now be bounded by a server-side maximum, configured with
+  `LIST_PAGINATION_MAX_PAGE_SIZE` (overridable per catalog via
+  `polaris.config.list-pagination-max-page-size`). It defaults to `-1`, meaning unlimited, so the
+  maximum is opt-in. Once set, a request for a larger page is reduced to the maximum rather than
+  rejected, since the Iceberg REST specification treats the requested page size as an upper bound.
+  For local catalogs the maximum takes effect only when `LIST_PAGINATION_ENABLED` is true, since
+  with pagination disabled the requested page size is ignored and the full result set is returned;
+  for federated catalogs it always applies, because Polaris paginates those listings itself.
+  Setting a maximum deviates from the Iceberg REST specification, which requires a request that
+  does not supply a `pageToken` to receive the complete result with a null `next-page-token`: such
+  a request is then truncated to the maximum and answered with a continuation token, so a client
+  that does not follow continuations sees only the first page.
+- Table commits whose base metadata is already stale now fail before the new metadata file is
+  written, saving an object-storage write and delete per conflict and returning the `409` to the
+  client sooner.
 
 ### Deprecations
 
@@ -111,6 +135,16 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- OPA authorizer HTTP client creation no longer silently falls back to a default client when
+  truststore or SSL setup fails. Misconfiguration (for example a bad truststore path) now fails
+  startup instead of continuing with system trust and no configured response timeout.
+- `bootstrap` no longer creates realms whose root principal is unreachable. Credentials were
+  required only when none at all were supplied, so an invocation naming credentials for just
+  some of its realms bootstrapped the rest with randomly generated secrets that were never
+  printed, and reported them successfully bootstrapped. Every `--realm` must now have a
+  matching `--credential` unless `--print-credentials` is given; otherwise the command names
+  the realms that are missing credentials and exits without bootstrapping anything.
+  `--credentials-file` is unaffected.
 - GCS credential vending no longer fails with HTTP 500 when a table's location or `write.data.path`
   / `write.metadata.path` points at a bucket root without a trailing slash (e.g. `gs://bucket`).
   Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
@@ -124,6 +158,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `400 Bad Request` (`Invalid page token`) instead of `500 Internal Server Error`. Tokens that are
   valid Base64 but not a serialized page token (garbage, truncated, or produced by an incompatible
   Polaris version) previously escaped as Jackson decoding exceptions.
+- Iceberg REST: when `X-Iceberg-Access-Delegation` resolves to remote signing (not implemented),
+  either because `remote-signing` was requested alone or because `vended-credentials,remote-signing`
+  was requested against a catalog that cannot vend credentials, the `400` response now explains the
+  situation and what to do (`This catalog cannot vend credentials or sign requests; request without
+  X-Iceberg-Access-Delegation and configure storage credentials on the client`) instead of the opaque
+  `Unsupported access delegation mode: REMOTE_SIGNING`.
 - Iceberg REST: renaming a table or view with a missing `source` or `destination` now returns `400 Bad Request` instead of `500 Internal Server Error`.
 - Async file-cleanup tasks now bound how long they wait for object-store deletions via the new `polaris.tasks.file-deletion-timeout` (default 1h), so a stalled storage endpoint can no longer pin a task-executor thread indefinitely; a timeout is terminal for the current run rather than immediately retried, so it does not stack more deletions onto the stalled endpoint.
 - Python CLI `catalogs create --type external` now validates `--storage-type` and `--default-base-location` up front, matching the behavior for internal catalogs and the flags' documented "(Required)" status. Previously, omitting either produced an opaque pydantic `ValidationError` at request-build time.
@@ -194,7 +234,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   backend, since `S3FileIO`, `GCSFileIO`, `ADLSFileIO` and `HadoopFileIO` all implement
   `DelegateFileIO`.
 - Async task retries no longer fail with a `NullPointerException` when the task entity has already been dropped by a previous attempt. Such a retry is now recognized as an already-completed task and exits cleanly, instead of exhausting all retry attempts and logging a `NullPointerException` on each one.
-  
+- Honored pagination for generic table API.
+- JDBC optimized location-overlap queries no longer include the lone `/` prefix term produced by
+  scheme stripping (e.g. `s3://bucket/path` → `//bucket/path`). `//` and `///` are retained so
+  scheme-root ancestors remain visible to the overlap check.
+
 ### Commits
 
 ## [1.7.0]
