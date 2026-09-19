@@ -490,6 +490,17 @@ jobs:
         # for 3.5 is 8, 11, and 17, we should run spark client with those compatible java versions.
         # TODO: add separate spark client CI and run with Java 8, 11 and 17.
         run: docker compose -f plugins/spark/v3.5/regtests/docker-compose.yml up --build --exit-code-from regtest
+      - name: Build Spark 4.0 plugin artifacts
+        env: *gradle_env_vars
+        run: |
+          ./gradlew \
+            :publishToMavenLocal \
+            :polaris-core:publishToMavenLocal \
+            :polaris-spark-4.0_2.13:publishToMavenLocal \
+            :polaris-spark-4.0_2.13:createPolarisSparkJar
+      - name: Spark 4.0 Bundle Regression Test
+        env: *gradle_env_vars
+        run: ./gradlew :polaris-spark-4.0_2.13-integration:sparkBundleTest --continue
 
   markdown-link-check:
     name: "Markdown Link Check"
