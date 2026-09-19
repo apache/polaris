@@ -273,6 +273,19 @@ public interface PolarisMetaStoreManager
       @NonNull PolarisBaseEntity entity);
 
   /**
+   * Updates an entity and reports an ambiguous auto-commit write instead of replaying it.
+   *
+   * <p>Callers must reconcile the persisted entity before treating an ambiguous result as success.
+   * The default is appropriate for transactional persistence implementations.
+   */
+  default @NonNull EntityResult updateEntityPropertiesIfNotChangedWithAmbiguousWriteDetection(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entity) {
+    return updateEntityPropertiesIfNotChanged(callCtx, catalogPath, entity);
+  }
+
+  /**
    * This works exactly like {@link #updateEntityPropertiesIfNotChanged(PolarisCallContext, List,
    * PolarisBaseEntity)} but allows to operate on multiple entities at once. Just loop through the
    * list, calling each entity update and return null if any of those fail.
