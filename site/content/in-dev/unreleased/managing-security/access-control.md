@@ -243,6 +243,13 @@ privileges must be granted at namespace or catalog scope.
 Grant revocation uses the same request body with `POST` to the role's grants endpoint.
 The existing role-grants listing returns grants with their model, namespace, or catalog scope.
 
+### Principal privileges
+
+| Privilege | Description |
+| --------- | ----------- |
+| PRINCIPAL_READ_PROPERTIES | Enables reading principal properties. |
+| PRINCIPAL_WRITE_PROPERTIES | Enables configuring principal properties. User-defined principal properties are projected as `polaris.user.*` attributes after authentication. OPA receives those keys as `actor.attributes` and can use them for ABAC. Ranger copies the same keys onto `RangerUserInfo`, but Apache Ranger 2.9.0's embedded authorizer evaluates only user name, groups, and roles, so these attributes cannot currently change a Ranger policy decision. |
+
 ## RBAC example
 
 The following diagram illustrates how RBAC works in Polaris and
