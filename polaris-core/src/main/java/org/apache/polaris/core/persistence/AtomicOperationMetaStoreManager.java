@@ -169,11 +169,13 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
    * Drop this entity. This will:
    *
    * <pre>
-   *   - validate that the entity has not yet been dropped
    *   - error out if this entity is undroppable
    *   - if this is a catalog or a namespace, error out if the entity still has children
    *   - we will fully delete the entity from persistence store
    * </pre>
+   *
+   * <p>Soft-deleted entities (non-zero dropTimestamp) may still occupy the active name index; this
+   * method is the permanent-delete path for those entities as well.
    *
    * @param callCtx call context
    * @param ms meta store
@@ -187,9 +189,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // validate the entity type and subtype
     getDiagnostics().checkNotNull(entity, "unexpected_null_dpo");
     getDiagnostics().checkNotNull(entity.getName(), "unexpected_null_name");
-
-    // creation timestamp must be filled
-    getDiagnostics().check(entity.getDropTimestamp() == 0, "already_dropped");
 
     // Remove the main entity itself first-thing; once its id no longer resolves successfully
     // it will be pruned out of any grant-record lookups anyways.
@@ -1238,6 +1237,41 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     // done, return success
+    return new DropEntityResult();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull DropEntityResult softDeleteEntityIfExists(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop,
+      long dropTimestamp,
+      long toPurgeTimestamp) {
+    BasePersistence ms = callCtx.getMetaStore();
+    getDiagnostics().checkNotNull(entityToDrop, "unexpected_null_entity");
+
+    PolarisBaseEntity refreshEntityToDrop =
+        ms.lookupEntity(
+            callCtx, entityToDrop.getCatalogId(), entityToDrop.getId(), entityToDrop.getTypeCode());
+    if (refreshEntityToDrop == null) {
+      return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+    if (refreshEntityToDrop.cannotBeDroppedOrRenamed()) {
+      return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, null);
+    }
+    if (refreshEntityToDrop.isDropped()) {
+      return new DropEntityResult();
+    }
+
+    PolarisBaseEntity softDeleted =
+        prepareToSoftDeleteEntity(refreshEntityToDrop, dropTimestamp, toPurgeTimestamp);
+    try {
+      ms.writeEntity(callCtx, softDeleted, false, refreshEntityToDrop);
+    } catch (RetryOnConcurrencyException e) {
+      return new DropEntityResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());
+    }
     return new DropEntityResult();
   }
 

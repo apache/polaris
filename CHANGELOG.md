@@ -88,6 +88,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Opt-in Iceberg table soft-delete (default off): when `TABLE_SOFT_DELETE_ENABLED` is true, `DROP TABLE` without purge keeps catalog metadata for a hold period (`TABLE_SOFT_DELETE_HOLD_PERIOD`, default `P7D`), hides the table from Iceberg REST list/load/HEAD, and reserves the identifier until permanent delete. `DROP TABLE PURGE` remains an immediate permanent delete. After the hold, a later list, create, or drop-namespace in that namespace permanently removes catalog state; file cleanup is opt-in via `TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE`. INTERNAL catalogs only.
 - Semantic models now support dedicated privileges for listing, creating, reading, updating,
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
