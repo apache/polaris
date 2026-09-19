@@ -879,6 +879,12 @@ components:
           description: The version of the catalog object used to determine if the catalog metadata has changed
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
+        storageConfigInfos:
+          type: array
+          nullable: true
+          description: Optional list of additional named storage configurations held by the catalog, alongside its default storageConfigInfo. Each entry must carry a non-empty storageName.
+          items:
+            $ref: "#/components/schemas/StorageConfigInfo"
       required:
         - name
         - type
@@ -1291,6 +1297,12 @@ components:
             type: string
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
+        storageConfigInfos:
+          type: array
+          nullable: true
+          description: Optional replacement set of named storage configurations. When present, replaces the catalog's entire set of named storage configurations (an empty array removes them all); when absent, the existing set is left unaltered.
+          items:
+            $ref: "#/components/schemas/StorageConfigInfo"
 
     Principals:
       description: A list of Principals

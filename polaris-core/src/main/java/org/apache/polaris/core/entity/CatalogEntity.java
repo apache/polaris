@@ -25,11 +25,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
@@ -94,6 +96,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     internalProperties.put(CATALOG_TYPE_PROPERTY, catalog.getType().name());
     builder.setInternalProperties(internalProperties);
     builder.setStorageConfigurationInfo(realmConfig, catalog.getStorageConfigInfo());
+    builder.setStorageConfigurationInfos(realmConfig, catalog.getStorageConfigInfos());
     return builder.build();
   }
 
@@ -118,6 +121,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         catalogType != Catalog.TypeEnum.EXTERNAL || serviceIdentityProvider != null,
         "%s catalog needs ServiceIdentityProvider to resolve service identities",
         Catalog.TypeEnum.EXTERNAL);
+    List<StorageConfigInfo> namedStorageConfigInfos = getNamedStorageInfosForResponse();
     return catalogType == Catalog.TypeEnum.EXTERNAL
         ? ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
@@ -127,6 +131,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setLastUpdateTimestamp(getLastUpdateTimestamp())
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
+            .setStorageConfigInfos(namedStorageConfigInfos)
             .setConnectionConfigInfo(getConnectionInfo(internalProperties, serviceIdentityProvider))
             .build()
         : PolarisCatalog.builder()
@@ -137,42 +142,58 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setLastUpdateTimestamp(getLastUpdateTimestamp())
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
+            .setStorageConfigInfos(namedStorageConfigInfos)
             .build();
   }
 
   private StorageConfigInfo getStorageInfo(Map<String, String> internalProperties) {
     if (internalProperties.containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName())) {
-      PolarisStorageConfigurationInfo configInfo = getStorageConfigurationInfo();
-      if (configInfo instanceof AwsStorageConfigurationInfo awsConfig) {
-        return getAwsStorageConfigInfo(awsConfig);
-      }
-      if (configInfo instanceof AzureStorageConfigurationInfo azureConfig) {
-        return AzureStorageConfigInfo.builder()
-            .setTenantId(azureConfig.getTenantId())
-            .setMultiTenantAppName(azureConfig.getMultiTenantAppName())
-            .setConsentUrl(azureConfig.getConsentUrl())
-            .setStorageType(AZURE)
-            .setAllowedLocations(azureConfig.getAllowedLocations())
-            .setStorageName(azureConfig.getStorageName())
-            .setHierarchical(azureConfig.isHierarchical())
-            .build();
-      }
-      if (configInfo instanceof GcpStorageConfigurationInfo gcpConfigModel) {
-        return GcpStorageConfigInfo.builder()
-            .setGcsServiceAccount(gcpConfigModel.getGcpServiceAccount())
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
-            .setAllowedLocations(gcpConfigModel.getAllowedLocations())
-            .setStorageName(gcpConfigModel.getStorageName())
-            .build();
-      }
-      if (configInfo instanceof FileStorageConfigurationInfo fileConfigModel) {
-        return FileStorageConfigInfo.builder()
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(fileConfigModel.getAllowedLocations())
-            .setStorageName(fileConfigModel.getStorageName())
-            .build();
-      }
+      return toStorageConfigInfoModel(getStorageConfigurationInfo());
+    }
+    return null;
+  }
+
+  // Null (not an empty list) when there are no named configs, so a catalog with none round-trips
+  // to a response byte-identical to one from before this capability existed: no
+  // `storageConfigInfos` key at all, since the generated model is annotated @JsonInclude(NON_NULL).
+
+  private @Nullable List<StorageConfigInfo> getNamedStorageInfosForResponse() {
+    Map<String, PolarisStorageConfigurationInfo> namedConfigs = getNamedStorageConfigurationInfos();
+    if (namedConfigs.isEmpty()) {
       return null;
+    }
+    return namedConfigs.values().stream().map(this::toStorageConfigInfoModel).toList();
+  }
+
+  private StorageConfigInfo toStorageConfigInfoModel(PolarisStorageConfigurationInfo configInfo) {
+    if (configInfo instanceof AwsStorageConfigurationInfo awsConfig) {
+      return getAwsStorageConfigInfo(awsConfig);
+    }
+    if (configInfo instanceof AzureStorageConfigurationInfo azureConfig) {
+      return AzureStorageConfigInfo.builder()
+          .setTenantId(azureConfig.getTenantId())
+          .setMultiTenantAppName(azureConfig.getMultiTenantAppName())
+          .setConsentUrl(azureConfig.getConsentUrl())
+          .setStorageType(AZURE)
+          .setAllowedLocations(azureConfig.getAllowedLocations())
+          .setStorageName(azureConfig.getStorageName())
+          .setHierarchical(azureConfig.isHierarchical())
+          .build();
+    }
+    if (configInfo instanceof GcpStorageConfigurationInfo gcpConfigModel) {
+      return GcpStorageConfigInfo.builder()
+          .setGcsServiceAccount(gcpConfigModel.getGcpServiceAccount())
+          .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+          .setAllowedLocations(gcpConfigModel.getAllowedLocations())
+          .setStorageName(gcpConfigModel.getStorageName())
+          .build();
+    }
+    if (configInfo instanceof FileStorageConfigurationInfo fileConfigModel) {
+      return FileStorageConfigInfo.builder()
+          .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+          .setAllowedLocations(fileConfigModel.getAllowedLocations())
+          .setStorageName(fileConfigModel.getStorageName())
+          .build();
     }
     return null;
   }
@@ -224,6 +245,16 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       return PolarisStorageConfigurationInfo.deserialize(configStr);
     }
     return null;
+  }
+
+  public Map<String, PolarisStorageConfigurationInfo> getNamedStorageConfigurationInfos() {
+    String configStr =
+        getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getStorageConfigInfosPropertyName());
+    if (configStr != null) {
+      return PolarisStorageConfigurationInfo.deserializeMap(configStr);
+    }
+    return Map.of();
   }
 
   public Catalog.TypeEnum getCatalogType() {
@@ -289,8 +320,15 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<CatalogEntity, Builder> {
+    // The accepted set matches PR #4023's `StorageNameValidator`: trimmed, non-empty, and made up
+    // only of alphanumerics, underscores, and hyphens, up to 128 characters.
+    private static final Pattern STORAGE_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_-]{1,128}$");
+
     private RealmConfig realmConfig;
     private StorageConfigInfo storageConfigModel;
+    // Nullable and distinct from "empty": null means "not supplied, leave the persisted named-map
+    // untouched"; empty means "supplied and empty, so remove every named entry" (design.md D6a).
+    private List<StorageConfigInfo> namedStorageConfigModels;
 
     public Builder() {
       super();
@@ -358,54 +396,123 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         } else {
           allowedLocations = new HashSet<>(userAllowedLocations);
         }
-        PolarisStorageConfigurationInfo config;
         validateMaxAllowedLocations(realmConfig, allowedLocations);
-        switch (storageConfigModel.getStorageType()) {
-          case S3:
-            config =
-                getAwsStorageConfigurationInfo(
-                    (AwsStorageConfigInfo) storageConfigModel, allowedLocations);
-            break;
-          case AZURE:
-            AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
-            config =
-                AzureStorageConfigurationInfo.builder()
-                    .allowedLocations(allowedLocations)
-                    .storageName(storageConfigModel.getStorageName())
-                    .tenantId(azureConfigModel.getTenantId())
-                    .multiTenantAppName(azureConfigModel.getMultiTenantAppName())
-                    .consentUrl(azureConfigModel.getConsentUrl())
-                    .hierarchical(azureConfigModel.getHierarchical())
-                    .build();
-            break;
-          case GCS:
-            config =
-                GcpStorageConfigurationInfo.builder()
-                    .allowedLocations(allowedLocations)
-                    .storageName(storageConfigModel.getStorageName())
-                    .gcpServiceAccount(
-                        ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount())
-                    .build();
-            break;
-          case FILE:
-            config =
-                FileStorageConfigurationInfo.builder()
-                    .allowedLocations(allowedLocations)
-                    .storageName(storageConfigModel.getStorageName())
-                    .build();
-            break;
-          default:
-            throw new IllegalStateException(
-                "Unsupported storage type: " + storageConfigModel.getStorageType());
-        }
+        PolarisStorageConfigurationInfo config =
+            toStorageConfigurationInfo(
+                storageConfigModel, storageConfigModel.getStorageName(), allowedLocations);
         internalProperties.put(
             PolarisEntityConstants.getStorageConfigInfoPropertyName(), config.serialize());
       }
     }
 
+    private static PolarisStorageConfigurationInfo toStorageConfigurationInfo(
+        StorageConfigInfo storageConfigModel, String storageName, Set<String> allowedLocations) {
+      PolarisStorageConfigurationInfo config;
+      switch (storageConfigModel.getStorageType()) {
+        case S3:
+          config =
+              getAwsStorageConfigurationInfo(
+                  (AwsStorageConfigInfo) storageConfigModel, storageName, allowedLocations);
+          break;
+        case AZURE:
+          AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
+          config =
+              AzureStorageConfigurationInfo.builder()
+                  .allowedLocations(allowedLocations)
+                  .storageName(storageName)
+                  .tenantId(azureConfigModel.getTenantId())
+                  .multiTenantAppName(azureConfigModel.getMultiTenantAppName())
+                  .consentUrl(azureConfigModel.getConsentUrl())
+                  .hierarchical(azureConfigModel.getHierarchical())
+                  .build();
+          break;
+        case GCS:
+          config =
+              GcpStorageConfigurationInfo.builder()
+                  .allowedLocations(allowedLocations)
+                  .storageName(storageName)
+                  .gcpServiceAccount(
+                      ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount())
+                  .build();
+          break;
+        case FILE:
+          config =
+              FileStorageConfigurationInfo.builder()
+                  .allowedLocations(allowedLocations)
+                  .storageName(storageName)
+                  .build();
+          break;
+        default:
+          throw new IllegalStateException(
+              "Unsupported storage type: " + storageConfigModel.getStorageType());
+      }
+      return config;
+    }
+
+    public Builder setStorageConfigurationInfos(
+        RealmConfig realmConfig, List<StorageConfigInfo> namedStorageConfigModels) {
+      Preconditions.checkNotNull(
+          realmConfig, "realmConfig must be provided when setting StorageConfigInfos");
+      this.realmConfig = realmConfig;
+      this.namedStorageConfigModels = namedStorageConfigModels;
+      return this;
+    }
+
+    /**
+     * Processes the named-config array (design.md D6a): {@code null} (never supplied) leaves {@code
+     * internalProperties} untouched, so an update omitting the field keeps the set carried forward
+     * by {@code Builder(CatalogEntity original)}; an empty list removes the key entirely rather
+     * than persisting {@code "{}"}; a non-empty list validates and replaces the whole set.
+     */
+    private void processStorageConfigurationInfos() {
+      if (namedStorageConfigModels == null) {
+        return;
+      }
+      if (namedStorageConfigModels.isEmpty()) {
+        internalProperties.remove(PolarisEntityConstants.getStorageConfigInfosPropertyName());
+        return;
+      }
+
+      Map<String, PolarisStorageConfigurationInfo> namedConfigs = new LinkedHashMap<>();
+      for (StorageConfigInfo model : namedStorageConfigModels) {
+        String rawName = model.getStorageName();
+        if (rawName == null || rawName.isBlank()) {
+          throw new BadRequestException(
+              "Each entry in storageConfigInfos must have a non-empty storageName");
+        }
+        String name = rawName.trim();
+        if (!STORAGE_NAME_PATTERN.matcher(name).matches()) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Invalid storage configuration name '%s': must match %s after trimming",
+                  name, STORAGE_NAME_PATTERN.pattern()));
+        }
+        // Names are compared for uniqueness exactly as written, without case folding.
+        if (namedConfigs.containsKey(name)) {
+          throw new IllegalArgumentException(
+              String.format("Duplicate named storage configuration name '%s'", name));
+        }
+
+        List<String> userAllowedLocations = model.getAllowedLocations();
+        if (userAllowedLocations == null || userAllowedLocations.isEmpty()) {
+          // Unlike the default config, a named entry has no catalog base location to fall back
+          // to, so an absent/empty allowedLocations is rejected rather than defaulted.
+          throw new BadRequestException(
+              "Named storage configuration '%s' must specify at least one allowed location", name);
+        }
+        Set<String> allowedLocations = new HashSet<>(userAllowedLocations);
+        validateMaxAllowedLocations(realmConfig, allowedLocations);
+        namedConfigs.put(name, toStorageConfigurationInfo(model, name, allowedLocations));
+      }
+
+      internalProperties.put(
+          PolarisEntityConstants.getStorageConfigInfosPropertyName(),
+          PolarisStorageConfigurationInfo.serializeMap(namedConfigs));
+    }
+
     @SuppressWarnings("deprecation")
     private static AwsStorageConfigurationInfo getAwsStorageConfigurationInfo(
-        AwsStorageConfigInfo awsConfigModel, Set<String> allowedLocations) {
+        AwsStorageConfigInfo awsConfigModel, String storageName, Set<String> allowedLocations) {
       List<String> encryptionKeys = new ArrayList<>(awsConfigModel.getEncryptionKeys());
       for (String allowedKmsKey : awsConfigModel.getAllowedKmsKeys()) {
         if (!encryptionKeys.contains(allowedKmsKey)) {
@@ -418,7 +525,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       }
       return AwsStorageConfigurationInfo.builder()
           .allowedLocations(allowedLocations)
-          .storageName(awsConfigModel.getStorageName())
+          .storageName(storageName)
           .roleARN(awsConfigModel.getRoleArn())
           .encryptionKeys(encryptionKeys)
           .decryptionKeys(awsConfigModel.getDecryptionKeys())
@@ -469,9 +576,42 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       return this;
     }
 
+    /**
+     * The default configuration's own storage name must not collide with a named configuration's
+     * name. This runs after both have been processed rather than inside either one, because an
+     * update may supply only one side while the other is carried forward from the existing entity:
+     * checking only while processing the named array would miss an update that renames the default
+     * config onto an existing named entry.
+     */
+    private void validateStorageConfigNamesDistinct() {
+      String defaultConfigStr =
+          internalProperties.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+      String namedConfigsStr =
+          internalProperties.get(PolarisEntityConstants.getStorageConfigInfosPropertyName());
+      if (defaultConfigStr == null || namedConfigsStr == null) {
+        return;
+      }
+      PolarisStorageConfigurationInfo defaultConfig =
+          PolarisStorageConfigurationInfo.deserialize(defaultConfigStr);
+      if (defaultConfig == null || defaultConfig.getStorageName() == null) {
+        return;
+      }
+      String defaultStorageName = defaultConfig.getStorageName().trim();
+      if (PolarisStorageConfigurationInfo.deserializeMap(namedConfigsStr)
+          .containsKey(defaultStorageName)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Named storage configuration name '%s' collides with the catalog's default storage"
+                    + " configuration name",
+                defaultStorageName));
+      }
+    }
+
     @Override
     public CatalogEntity build() {
       processStorageConfigurationInfo();
+      processStorageConfigurationInfos();
+      validateStorageConfigNamesDistinct();
       validateDefaultBaseLocation();
       return new CatalogEntity(buildBase());
     }
