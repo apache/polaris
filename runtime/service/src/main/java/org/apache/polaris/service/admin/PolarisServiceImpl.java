@@ -172,6 +172,7 @@ public class PolarisServiceImpl
         if (connectionConfigInfo != null) {
           validateConnectionConfigInfo(connectionConfigInfo);
           validateAuthenticationParameters(connectionConfigInfo.getAuthenticationParameters());
+          BigLakeCatalogValidator.validate(realmConfig, catalog);
         }
       }
     }
