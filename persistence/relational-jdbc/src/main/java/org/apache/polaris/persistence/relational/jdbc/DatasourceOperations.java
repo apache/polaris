@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -265,7 +264,7 @@ public class DatasourceOperations {
     return withRetries(
         () -> {
           logQuery(preparedQuery);
-          AtomicBoolean commitStarted = new AtomicBoolean(false);
+          boolean commitStarted = false;
           try (Connection connection = acquireConnection();
               PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
             List<Object> params = preparedQuery.parameters();
@@ -284,7 +283,7 @@ public class DatasourceOperations {
             } finally {
               try {
                 if (success) {
-                  commitStarted.set(true);
+                  commitStarted = true;
                   connection.commit();
                 } else {
                   connection.rollback();
@@ -295,7 +294,7 @@ public class DatasourceOperations {
             }
             return rowsUpdated;
           } catch (SQLException e) {
-            throw classifyByPhase(e, commitStarted.get());
+            throw classifyByPhase(e, commitStarted);
           }
         });
   }
@@ -317,7 +316,7 @@ public class DatasourceOperations {
     AtomicInteger successCount = new AtomicInteger();
     return withRetries(
         () -> {
-          AtomicBoolean commitStarted = new AtomicBoolean(false);
+          boolean commitStarted = false;
           try (Connection connection = acquireConnection();
               PreparedStatement statement = connection.prepareStatement(preparedQueries.sql())) {
             boolean autoCommit = connection.getAutoCommit();
@@ -347,7 +346,7 @@ public class DatasourceOperations {
                   // The batch is buffered until commit(); only commit() can leave an ambiguous
                   // outcome. A failure in executeBatch() above is uncommitted (a definite
                   // non-write).
-                  commitStarted.set(true);
+                  commitStarted = true;
                   connection.commit();
                 } else {
                   connection.rollback();
@@ -358,7 +357,7 @@ public class DatasourceOperations {
               }
             }
           } catch (SQLException e) {
-            throw classifyByPhase(e, commitStarted.get());
+            throw classifyByPhase(e, commitStarted);
           }
           return successCount.get();
         });
@@ -373,7 +372,7 @@ public class DatasourceOperations {
   public void runWithinTransaction(TransactionCallback callback) throws SQLException {
     withRetries(
         () -> {
-          AtomicBoolean commitStarted = new AtomicBoolean(false);
+          boolean commitStarted = false;
           try (Connection connection = acquireConnection()) {
             boolean autoCommit = connection.getAutoCommit();
             boolean success = false;
@@ -385,7 +384,7 @@ public class DatasourceOperations {
                 if (success) {
                   // Only commit() can leave an ambiguous outcome; a failure in the callback runs
                   // against an uncommitted transaction and is a definite non-write.
-                  commitStarted.set(true);
+                  commitStarted = true;
                   connection.commit();
                 } else {
                   connection.rollback();
@@ -395,7 +394,7 @@ public class DatasourceOperations {
               connection.setAutoCommit(autoCommit);
             }
           } catch (SQLException e) {
-            throw classifyByPhase(e, commitStarted.get());
+            throw classifyByPhase(e, commitStarted);
           }
           return null;
         });
