@@ -802,9 +802,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             || internalProps.get(
                     PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
                 != null;
-    PolarisPrincipalSecrets secrets =
-        ((IntegrationPersistence) ms)
-            .rotatePrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash);
+    PolarisPrincipalSecrets secrets;
+    try {
+      secrets =
+          ((IntegrationPersistence) ms)
+              .rotatePrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash);
+    } catch (RetryOnConcurrencyException e) {
+      return new PrincipalSecretsResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());
+    }
 
     PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
     if (reset
