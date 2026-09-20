@@ -23,6 +23,7 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNam
 import com.google.common.base.Strings;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -34,9 +35,13 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolicyAttachmentAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -68,12 +73,18 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
         new PolicyCatalog(metaStoreManager(), callContext(), this.resolutionManifest);
   }
 
-  public ListPoliciesResponse listPolicies(Namespace parent, @Nullable PolicyType policyType) {
+  public ListPoliciesResponse listPolicies(
+      Namespace parent, @Nullable PolicyType policyType, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_POLICY;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
+    PageToken pageRequest =
+        PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
+    Page<PolicyIdentifier> page = policyCatalog.listPolicies(parent, policyType, pageRequest);
+
     return ListPoliciesResponse.builder()
-        .setIdentifiers(new HashSet<>(policyCatalog.listPolicies(parent, policyType)))
+        .setIdentifiers(new LinkedHashSet<>(page.items()))
+        .setNextPageToken(page.encodedResponseToken())
         .build();
   }
 
@@ -347,5 +358,20 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
         default -> throw new IllegalStateException("Cannot resolve");
       }
     }
+  }
+
+  private boolean shouldDecodeToken() {
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    return catalogEntity == null
+        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED)
+        : realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED, catalogEntity);
+  }
+
+  private int maxPageSize() {
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    return catalogEntity == null
+        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE)
+        : realmConfig()
+            .getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity);
   }
 }

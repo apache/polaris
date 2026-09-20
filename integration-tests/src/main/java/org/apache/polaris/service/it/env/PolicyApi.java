@@ -22,6 +22,7 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +62,41 @@ public class PolicyApi extends PolarisRestApi {
     if (type != null) {
       queryParams.put("policyType", type.getName());
     }
+    List<PolicyIdentifier> identifiers = new ArrayList<>();
+    String nextPageToken = null;
+    do {
+      if (nextPageToken != null) {
+        queryParams.put("pageToken", nextPageToken);
+      }
+      try (Response res =
+          request(
+                  "polaris/v1/{cat}/namespaces/{ns}/policies",
+                  Map.of("cat", catalog, "ns", ns),
+                  queryParams)
+              .get()) {
+        Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+        ListPoliciesResponse response = res.readEntity(ListPoliciesResponse.class);
+        identifiers.addAll(response.getIdentifiers());
+        nextPageToken = response.getNextPageToken();
+      }
+    } while (nextPageToken != null);
+    return identifiers;
+  }
+
+  public ListPoliciesResponse listPolicies(
+      String catalog, Namespace namespace, String pageToken, String pageSize) {
+    return listPolicies(catalog, namespace, null, pageToken, pageSize);
+  }
+
+  public ListPoliciesResponse listPolicies(
+      String catalog, Namespace namespace, PolicyType type, String pageToken, String pageSize) {
+    String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    Map<String, String> queryParams = new HashMap<>();
+    if (type != null) {
+      queryParams.put("policyType", type.getName());
+    }
+    queryParams.put("pageToken", pageToken);
+    queryParams.put("pageSize", pageSize);
     try (Response res =
         request(
                 "polaris/v1/{cat}/namespaces/{ns}/policies",
@@ -68,7 +104,7 @@ public class PolicyApi extends PolarisRestApi {
                 queryParams)
             .get()) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-      return res.readEntity(ListPoliciesResponse.class).getIdentifiers().stream().toList();
+      return res.readEntity(ListPoliciesResponse.class);
     }
   }
 

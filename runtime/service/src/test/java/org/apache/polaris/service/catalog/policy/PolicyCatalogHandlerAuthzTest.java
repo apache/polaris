@@ -77,7 +77,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testListPoliciesPrivileges() {
     return authzTestsBuilder("listPolicies")
-        .action(() -> newHandler().listPolicies(NS1, null))
+        .action(() -> newHandler().listPolicies(NS1, null, null, null))
         .shouldPassWith(PolarisPrivilege.POLICY_LIST)
         .shouldPassWith(PolarisPrivilege.POLICY_CREATE)
         .shouldPassWith(PolarisPrivilege.POLICY_WRITE)
