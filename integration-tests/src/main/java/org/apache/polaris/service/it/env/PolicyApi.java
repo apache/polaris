@@ -95,8 +95,12 @@ public class PolicyApi extends PolarisRestApi {
     if (type != null) {
       queryParams.put("policyType", type.getName());
     }
-    queryParams.put("pageToken", pageToken);
-    queryParams.put("pageSize", pageSize);
+    if (pageToken != null) {
+      queryParams.put("pageToken", pageToken);
+    }
+    if (pageSize != null) {
+      queryParams.put("pageSize", pageSize);
+    }
     try (Response res =
         request(
                 "polaris/v1/{cat}/namespaces/{ns}/policies",

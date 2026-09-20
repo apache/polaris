@@ -95,7 +95,7 @@ class TestPoliciesCommand(CLITestBase):
                 "--namespace",
                 "ns1",
                 "--page-size",
-                "2"
+                "2",
             ],
         )
         self.assertEqual(mock_policy_api.list_policies.call_count, 2)
