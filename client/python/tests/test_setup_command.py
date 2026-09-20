@@ -388,6 +388,7 @@ class TestSetupCommand(CLITestBase):
             "apache_polaris.cli.command.setup.IcebergCatalogAPI"
         ) as mock_catalog_api:
             mock_catalog_api.return_value.list_namespaces.return_value.namespaces = []
+            mock_catalog_api.return_value.list_namespaces.return_value.next_page_token = None
             self.mock_execute(mock_client, ["setup", "export"])
         mock_client.list_principals.assert_called()
         mock_client.list_principal_roles.assert_called()

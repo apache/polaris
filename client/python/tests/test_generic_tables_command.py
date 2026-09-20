@@ -17,7 +17,8 @@
 # under the License.
 #
 
-from unittest.mock import patch, MagicMock
+import io
+from unittest.mock import patch, MagicMock, call
 from cli_test_utils import CLITestBase
 from apache_polaris.cli.constants import UNIT_SEPARATOR
 from apache_polaris.cli.exceptions import CLI_ERROR_EXIT_CODE
@@ -55,6 +56,7 @@ class TestGenericTablesCommand(CLITestBase):
         mock_client = self.build_mock_client()
         mock_generic_api = mock_generic_api_class.return_value
         mock_generic_api.list_generic_tables.return_value.identifiers = []
+        mock_generic_api.list_generic_tables.return_value.next_page_token = None
         self.mock_execute(
             mock_client,
             [
@@ -99,6 +101,45 @@ class TestGenericTablesCommand(CLITestBase):
         )
         mock_generic_api.list_generic_tables.assert_any_call(
             prefix="my-catalog", namespace="ns1", page_size=2, page_token="token"
+        )
+
+    @patch("apache_polaris.cli.command.generic_tables.GenericTableAPI")
+    def test_generic_table_list_follows_server_pagination_without_page_size(
+        self, mock_generic_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_generic_api = mock_generic_api_class.return_value
+        identifiers = [
+            MagicMock(to_json=MagicMock(return_value=f'{{"name":"t{i}"}}'))
+            for i in range(3)
+        ]
+        # A server-side maximum can split an unsized request into multiple pages.
+        mock_generic_api.list_generic_tables.side_effect = [
+            MagicMock(identifiers=identifiers[:2], next_page_token="next"),
+            MagicMock(identifiers=identifiers[2:], next_page_token=None),
+        ]
+        with patch("sys.stdout", new_callable=io.StringIO) as output:
+            self.mock_execute(
+                mock_client,
+                [
+                    "generic-tables",
+                    "list",
+                    "--catalog",
+                    "my-catalog",
+                    "--namespace",
+                    "ns1",
+                ],
+            )
+        self.assertEqual(
+            output.getvalue().splitlines(),
+            ['{"name":"t0"}', '{"name":"t1"}', '{"name":"t2"}'],
+        )
+        self.assertEqual(
+            mock_generic_api.list_generic_tables.call_args_list,
+            [
+                call(prefix="my-catalog", namespace="ns1"),
+                call(prefix="my-catalog", namespace="ns1", page_token="next"),
+            ],
         )
 
     @patch("apache_polaris.cli.command.generic_tables.GenericTableAPI")

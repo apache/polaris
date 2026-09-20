@@ -37,24 +37,24 @@ def paginate(
     """
     Yield responses from a paginated list endpoint.
 
-    When page_size is None, a full response is fetched within a single request.
+    When page_size is None, the first request omits pagination parameters, but
+    any continuation token returned by the server is still followed.
 
-    The first request sends an empty page_token to opt into pagination per the Iceberg
-    REST spec. When setting to None, this would be dropped by the SDK and disable
-    pagination on federated catalogs.
+    With an explicit page_size, the first request sends an empty page_token to opt
+    into pagination per the Iceberg REST spec. A None token would be dropped by
+    the SDK and disable pagination on federated catalogs.
     """
     if page_size is not None and page_size < 1:
         raise CliError(f"page-size must be a positive integer, got: {page_size}")
-    if page_size is None:
-        yield list_function(**kwargs)
-        return
-    page_token: Optional[str] = ""
+    if page_size is not None:
+        kwargs.update(page_size=page_size, page_token="")
     while True:
-        resp = list_function(page_size=page_size, page_token=page_token, **kwargs)
+        resp = list_function(**kwargs)
         yield resp
         page_token = getattr(resp, "next_page_token", None)
         if not page_token:
             return
+        kwargs["page_token"] = page_token
 
 
 def get_catalog_api_client(api: PolarisDefaultApi) -> ApiClient:

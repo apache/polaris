@@ -100,6 +100,7 @@ class TestViewsCommand(CLITestBase):
         mock_client = self.build_mock_client()
         mock_iceberg_api = mock_iceberg_api_class.return_value
         mock_iceberg_api.list_views.return_value.identifiers = []
+        mock_iceberg_api.list_views.return_value.next_page_token = None
         self.mock_execute(
             mock_client,
             ["views", "list", "--catalog", "my-catalog", "--namespace", "ns1.ns2"],
@@ -278,7 +279,5 @@ class TestViewsCommand(CLITestBase):
                 ],
             )
         output = mock_stdout.getvalue()
-        self.assertIn(
-            "No matching version found for the current version ID", output
-        )
+        self.assertIn("No matching version found for the current version ID", output)
         self.assertNotIn("Version History", output)

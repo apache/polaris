@@ -321,7 +321,8 @@ class TestCatalogsCommand(CLITestBase):
         self.assertEqual(call_args.catalog.name, "s3-catalog")
         self.assertEqual(call_args.catalog.storage_config_info.storage_type, "S3")
         self.assertEqual(
-            call_args.catalog.storage_config_info.endpoint, "https://s3.us-west-2.amazonaws.com"
+            call_args.catalog.storage_config_info.endpoint,
+            "https://s3.us-west-2.amazonaws.com",
         )
         self.assertEqual(
             call_args.catalog.storage_config_info.endpoint_internal,
@@ -1004,7 +1005,8 @@ class TestCatalogsCommand(CLITestBase):
         )
         mock_client.list_catalog_roles.return_value.roles = []
         mock_iceberg_api = mock_iceberg_api_class.return_value
-        mock_iceberg_api_class.list_namespaces.return_value.namespaces = []
+        mock_iceberg_api.list_namespaces.return_value.namespaces = []
+        mock_iceberg_api.list_namespaces.return_value.next_page_token = None
         mock_policy_api = mock_policy_api_class.return_value
         mock_policy_api.get_applicable_policies.return_value.applicable_policies = []
         self.mock_execute(mock_client, ["catalogs", "summarize", "foo"])
@@ -1035,7 +1037,11 @@ class TestCatalogsCommand(CLITestBase):
         mock_iceberg_api.list_namespaces.return_value = empty_page
         mock_policy_api = mock_policy_api_class.return_value
         mock_policy_api.get_applicable_policies.return_value.applicable_policies = []
-        self.mock_execute(mock_client, ["--page-size", "10",  "catalogs", "summarize", "foo"])
+        self.mock_execute(
+            mock_client, ["--page-size", "10", "catalogs", "summarize", "foo"]
+        )
         mock_client.get_catalog.assert_called_with("foo")
-        mock_iceberg_api.list_namespaces.assert_called_with(prefix="foo", parent=None, page_size=10, page_token="")
+        mock_iceberg_api.list_namespaces.assert_called_with(
+            prefix="foo", parent=None, page_size=10, page_token=""
+        )
         mock_policy_api.get_applicable_policies.assert_called_with(prefix="foo")

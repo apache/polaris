@@ -47,6 +47,7 @@ class TestTablesCommand(CLITestBase):
         mock_client = self.build_mock_client()
         mock_iceberg_api = mock_iceberg_api_class.return_value
         mock_iceberg_api.list_tables.return_value.identifiers = []
+        mock_iceberg_api.list_tables.return_value.next_page_token = None
         self.mock_execute(
             mock_client,
             ["tables", "list", "--catalog", "my-catalog", "--namespace", "ns1.ns2"],

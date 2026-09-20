@@ -85,6 +85,7 @@ class TestNamespacesCommand(CLITestBase):
     def test_namespace_list(self, mock_iceberg_api_class: MagicMock) -> None:
         mock_client = self.build_mock_client()
         mock_iceberg_api = mock_iceberg_api_class.return_value
+        mock_iceberg_api.list_namespaces.return_value.next_page_token = None
         self.mock_execute(
             mock_client, ["namespaces", "list", "--catalog", "my-catalog"]
         )
@@ -100,7 +101,6 @@ class TestNamespacesCommand(CLITestBase):
             prefix="my-catalog", parent="ns1"
         )
 
-
     @patch("apache_polaris.cli.command.namespaces.IcebergCatalogAPI")
     def test_namespace_with_paginate(self, mock_iceberg_api_class: MagicMock) -> None:
         mock_client = self.build_mock_client()
@@ -110,7 +110,8 @@ class TestNamespacesCommand(CLITestBase):
         mock_iceberg_api.list_namespaces.side_effect = [page1, page2]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             self.mock_execute(
-                mock_client, ["namespaces", "list", "--catalog", "my-catalog", "--page-size", "2"],
+                mock_client,
+                ["namespaces", "list", "--catalog", "my-catalog", "--page-size", "2"],
             )
         # First request opts into pagination with an empty page_token and the returned next_page_token
         # is used for the follow-up request.
@@ -129,7 +130,7 @@ class TestNamespacesCommand(CLITestBase):
                 '{"namespace": "a"}',
                 '{"namespace": "b"}',
                 '{"namespace": "c"}',
-            ]
+            ],
         )
 
     def test_namespace_rejects_invalid_page_size(self) -> None:
@@ -145,7 +146,7 @@ class TestNamespacesCommand(CLITestBase):
                             "namespaces",
                             "list",
                             "--catalog",
-                            "my-catalog"
+                            "my-catalog",
                         ],
                     ),
                     "page-size must be a positive integer",
@@ -181,6 +182,9 @@ class TestNamespacesCommand(CLITestBase):
         mock_client = self.build_mock_client()
         mock_iceberg_api = mock_iceberg_api_class.return_value
         mock_policy_api = mock_policy_api_class.return_value
+        mock_iceberg_api.list_namespaces.return_value.next_page_token = None
+        mock_iceberg_api.list_tables.return_value.next_page_token = None
+        mock_iceberg_api.list_views.return_value.next_page_token = None
         self.mock_execute(
             mock_client,
             ["namespaces", "summarize", "ns1.ns2", "--catalog", "my-catalog"],

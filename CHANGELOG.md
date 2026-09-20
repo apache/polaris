@@ -134,6 +134,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Python CLI listings now follow server continuation tokens when `--page-size` is omitted, preventing incomplete results when a server-side maximum page size is configured.
+
 - OPA authorizer HTTP client creation no longer silently falls back to a default client when
   truststore or SSL setup fails. Misconfiguration (for example a bad truststore path) now fails
   startup instead of continuing with system trust and no configured response timeout.

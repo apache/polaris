@@ -46,7 +46,8 @@ class TestFindCommand(CLITestBase):
         mock_catalog.name = "my-catalog"
         mock_client.get_catalog.return_value = mock_catalog
         mock_iceberg_api = mock_iceberg_api_class.return_value
-        mock_iceberg_api.list_namespaces.return_values.namespaces = []
+        mock_iceberg_api.list_namespaces.return_value.namespaces = []
+        mock_iceberg_api.list_namespaces.return_value.next_page_token = None
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             self.mock_execute(
                 mock_client,
@@ -71,6 +72,9 @@ class TestFindCommand(CLITestBase):
         mock_catalog.name = "test-catalog"
         mock_client.list_catalogs.return_value.catalogs = [mock_catalog]
         mock_iceberg_api = mock_iceberg_api_class.return_value
+        mock_iceberg_api.list_tables.return_value.next_page_token = None
+        mock_iceberg_api.list_views.return_value.next_page_token = None
+        mock_iceberg_api.list_namespaces.return_value.next_page_token = None
         self.mock_execute(mock_client, ["find", "ns1.ns2.my_tabe"])
         mock_client.list_catalogs.assert_called()
         mock_iceberg_api.list_tables.assert_called()
@@ -105,7 +109,16 @@ class TestFindCommand(CLITestBase):
         )
         self.mock_execute(
             mock_client,
-            ["--page-size", "10", "find", "my_table", "--catalog", "my-catalog", "--type", "table"],
+            [
+                "--page-size",
+                "10",
+                "find",
+                "my_table",
+                "--catalog",
+                "my-catalog",
+                "--type",
+                "table",
+            ],
         )
         mock_iceberg_api.list_namespaces.assert_called_with(
             prefix="my-catalog", page_size=10, page_token=""
