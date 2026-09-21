@@ -680,13 +680,6 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                           .map(contentObj -> mapToEntity(contentObj, catalogId))
                           .filter(
                               candidate -> {
-                                // The entity itself being re-created is an already-exists
-                                // condition for the create, not an overlap.
-                                if (candidate.getParentId() == entity.getParentId()
-                                    && candidate.getType() == entity.getType()
-                                    && candidate.getName().equals(entity.getName())) {
-                                  return false;
-                                }
                                 var candidateBaseLocation =
                                     candidate.getPropertiesAsMap().get(ENTITY_BASE_LOCATION);
                                 if (candidateBaseLocation == null

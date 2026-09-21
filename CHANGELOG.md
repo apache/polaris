@@ -190,7 +190,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   namespace creation and default-location table creation failed with `403 Forbidden`, and
   re-creating an existing namespace returned `403` instead of `409`. The JDBC, NoSQL, and in-memory
   implementations of `hasOverlappingSiblings` now exclude the entity's ancestors (when they strictly
-  contain it) and the entity itself before reporting an overlap, matching the legacy sibling check.
+  contain it) before reporting an overlap, matching the legacy sibling check. Namespace creation
+  checks for an existing namespace before validating locations, so re-creating a namespace returns
+  `409` rather than reporting the namespace or its children as conflicts.
 
 - Return HTTP 404 instead of 204 when a generic table or its catalog path disappears after resolution and before deletion.
 

@@ -676,13 +676,6 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       if (candidate.getCatalogId() != entity.getCatalogId()) {
         continue;
       }
-      // An entity with the same name under the same parent is the entity itself being
-      // re-created: an already-exists condition for the create, not an overlap.
-      if (candidate.getParentId() == entity.getParentId()
-          && candidate.getType() == entity.getType()
-          && candidate.getName().equals(entity.getName())) {
-        continue;
-      }
       Optional<StorageLocation> candidateLocation =
           PolarisEntityUtils.asLocationBasedEntity(PolarisEntity.of(candidate))
               .map(LocationBasedEntity::getBaseLocation)

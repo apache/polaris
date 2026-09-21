@@ -884,13 +884,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
       StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
       for (PolarisBaseEntity result : results) {
-        // An entity with the same name under the same parent is the entity itself being
-        // re-created: an already-exists condition for the create, not an overlap.
-        if (result.getParentId() == entity.getParentId()
-            && result.getType() == entity.getType()
-            && result.getName().equals(entity.getName())) {
-          continue;
-        }
         // JDBC materializes persisted rows as PolarisBaseEntity. Resolve the sibling location
         // via PolarisEntityUtils instead of casting to LocationBasedEntity.
         Optional<StorageLocation> resultLocation =
