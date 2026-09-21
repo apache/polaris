@@ -410,20 +410,17 @@ public class QueryGeneratorTest {
     // so an ancestor stored at the bare scheme root s3:// (ALLOW_NAMESPACE_CUSTOM_LOCATION mode)
     // is still matched. Regression pair: namespace at "//" with a table under "//bucket/ns/t".
     Assertions.assertThat(
-            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/ns/t/")
-                .parameters())
+            QueryGenerator.generateOverlapQuery("realmId", 2, "s3://bucket/ns/t/").parameters())
         .contains("//")
         .doesNotContain("/");
     // Same without a trailing slash (prefix walk normalizes; slash-only skip is unchanged).
     Assertions.assertThat(
-            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/ns/t")
-                .parameters())
+            QueryGenerator.generateOverlapQuery("realmId", 2, "s3://bucket/ns/t").parameters())
         .contains("//")
         .doesNotContain("/");
     // file: locations: the "///" root and "//" are kept, but "/" is not emitted.
     Assertions.assertThat(
-            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "file:///tmp/data/")
-                .parameters())
+            QueryGenerator.generateOverlapQuery("realmId", 2, "file:///tmp/data/").parameters())
         .contains("//", "///")
         .doesNotContain("/");
   }
