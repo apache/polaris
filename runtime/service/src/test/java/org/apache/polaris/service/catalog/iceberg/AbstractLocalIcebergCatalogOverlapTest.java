@@ -357,10 +357,9 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
     Namespace grandchild = Namespace.of("overlap-ancestor-parent", "child", "grandchild");
     assertThatCode(() -> catalog().createNamespace(grandchild)).doesNotThrowAnyException();
 
-    TableIdentifier table = TableIdentifier.of(grandchild, "table-at-default-location");
-    assertThatCode(() -> catalog().buildTable(table, SCHEMA).create()).doesNotThrowAnyException();
-
     // Being contained by an ancestor is fine; sitting at exactly an ancestor's location is not.
+    // Checked while the grandchild namespace is still empty, so the only entity that can conflict
+    // is the namespace itself.
     TableIdentifier tableAtNamespaceLocation =
         TableIdentifier.of(grandchild, "table-at-namespace-location");
     String grandchildLocation = STORAGE_LOCATION + "/overlap-ancestor-parent/child/grandchild";
@@ -371,7 +370,11 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
                     .withLocation(grandchildLocation)
                     .create())
         .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("conflicts with existing table or namespace");
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(grandchildLocation);
+
+    TableIdentifier table = TableIdentifier.of(grandchild, "table-at-default-location");
+    assertThatCode(() -> catalog().buildTable(table, SCHEMA).create()).doesNotThrowAnyException();
 
     // Real overlaps between siblings are still rejected: a second namespace whose explicit
     // location sits inside the child's default location.
