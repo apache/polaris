@@ -47,8 +47,6 @@ dependencies {
   runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
   runtimeOnly(project(":polaris-persistence-nosql-metastore-maintenance"))
 
-  runtimeOnly(project(":polaris-extensions-auth-opa"))
-
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
@@ -146,6 +144,7 @@ dependencies {
   testImplementation(enforcedPlatform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit")
   testImplementation("io.quarkus:quarkus-junit-mockito")
+  testImplementation("io.quarkus:quarkus-test-oidc-server")
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
   testImplementation("io.quarkus:quarkus-jdbc-h2")
@@ -155,11 +154,11 @@ dependencies {
   testImplementation("io.rest-assured:rest-assured")
 
   testImplementation(platform(libs.testcontainers.bom))
+  testImplementation("org.testcontainers:testcontainers")
+  testImplementation("org.testcontainers:testcontainers-postgresql")
   testImplementation(project(":polaris-floci-aws-testcontainer"))
   testImplementation(project(":polaris-floci-az-testcontainer"))
   testImplementation(project(":polaris-floci-gcp-testcontainer"))
-  testImplementation(project(":polaris-keycloak-testcontainer"))
-  testImplementation(project(":polaris-opa-testcontainer"))
   testImplementation(project(":polaris-rustfs-testcontainer"))
 
   testImplementation(project(":polaris-runtime-test-common"))
@@ -171,10 +170,6 @@ dependencies {
   testImplementation(libs.awaitility)
 
   testImplementation(libs.junit.pioneer)
-
-  testImplementation(platform(libs.testcontainers.bom))
-  testImplementation("org.testcontainers:testcontainers")
-  testImplementation("org.testcontainers:testcontainers-postgresql")
 
   testImplementation(project(":polaris-persistence-nosql-api"))
   testImplementation(testFixtures(project(":polaris-persistence-nosql-api")))

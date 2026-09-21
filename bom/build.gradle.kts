@@ -122,6 +122,7 @@ dependencies {
     api(project(":polaris-runtime-defaults"))
     api(project(":polaris-server"))
     api(project(":polaris-runtime-service"))
+    api(project(":polaris-runtime-service-it"))
     api(project(":polaris-runtime-spark-tests"))
 
     api(project(":polaris-tests"))
