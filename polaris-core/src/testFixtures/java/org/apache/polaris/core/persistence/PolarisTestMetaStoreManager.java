@@ -3368,6 +3368,14 @@ public class PolarisTestMetaStoreManager {
 
     detachPolicyFromTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N1), N1_P1);
     detachPolicyFromTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N5), N5_P3);
+
+    // detaching a policy that is not attached to the target must report the missing mapping
+    PolicyAttachmentResult detachResult =
+        polarisMetaStoreManager.detachPolicyFromEntity(
+            polarisCallContext, List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N1), N1_P1);
+    Assertions.assertThat(detachResult.isSuccess()).isFalse();
+    Assertions.assertThat(detachResult.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.POLICY_MAPPING_NOT_FOUND);
   }
 
   void testPolicyMappingCleanup() {

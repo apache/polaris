@@ -68,6 +68,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
+import org.apache.polaris.core.policy.exceptions.NoSuchMappingException;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
@@ -580,6 +581,20 @@ public abstract class AbstractPolicyCatalogTest {
     assertThat(policyCatalog.getApplicablePolicies(NS, null, null).size()).isEqualTo(1);
     policyCatalog.detachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS);
     assertThat(policyCatalog.getApplicablePolicies(NS, null, null).size()).isEqualTo(0);
+  }
+
+  @Test
+  public void testDetachPolicyWithoutMapping() {
+    icebergCatalog.createNamespace(NS);
+    policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+
+    // The policy and the target both exist, but the policy was never attached to the target.
+    assertThatThrownBy(() -> policyCatalog.detachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS))
+        .isInstanceOf(NoSuchMappingException.class)
+        .hasMessage(
+            String.format(
+                "The given mapping between policy %s and %s does not exist",
+                POLICY1, CATALOG_NAME + "." + String.join(".", NS.levels())));
   }
 
   @Test

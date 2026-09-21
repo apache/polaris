@@ -134,6 +134,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Policy API: detaching a policy from a target it was never attached to now returns
+  `404 Not Found` with error type `NoSuchMappingException`, as the policy API specification
+  requires, instead of `500 Internal Server Error`.
 - OPA authorizer HTTP client creation no longer silently falls back to a default client when
   truststore or SSL setup fails. Misconfiguration (for example a bad truststore path) now fails
   startup instead of continuing with system trust and no configured response timeout.
