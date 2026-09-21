@@ -18,9 +18,8 @@
  */
 package org.apache.polaris.service.it.ext;
 
-import static org.apache.polaris.service.it.ext.PolarisServerManagerLoader.polarisServerManager;
-
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.PlatformApiEndpoints;
@@ -40,6 +39,19 @@ import org.junit.platform.engine.UniqueId;
 public class PolarisIntegrationTestExtension implements ParameterResolver {
   private static final Namespace NAMESPACE =
       Namespace.create(PolarisIntegrationTestExtension.class);
+  private final Supplier<PolarisServerManager> serverManagerSupplier;
+
+  public PolarisIntegrationTestExtension() {
+    this(PolarisServerManagerLoader::polarisServerManager);
+  }
+
+  PolarisIntegrationTestExtension(PolarisServerManager serverManager) {
+    this(() -> serverManager);
+  }
+
+  private PolarisIntegrationTestExtension(Supplier<PolarisServerManager> serverManagerSupplier) {
+    this.serverManagerSupplier = serverManagerSupplier;
+  }
 
   @Override
   public boolean supportsParameter(
@@ -76,7 +88,9 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
     ExtensionContext classCtx = classContext(context);
     ExtensionContext.Store store = classCtx.getStore(NAMESPACE);
     return store.computeIfAbsent(
-        Env.class, (key) -> new Env(polarisServerManager().serverForContext(classCtx)), Env.class);
+        Env.class,
+        (key) -> new Env(serverManagerSupplier.get().serverForContext(classCtx)),
+        Env.class);
   }
 
   private ExtensionContext classContext(ExtensionContext context) {
@@ -95,12 +109,10 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
   private static class Env implements AutoCloseable {
     private final Server server;
     private final PolarisApiEndpoints endpoints;
-    private final Optional<PlatformApiEndpoints> platformEndpoints;
 
     private Env(Server server) {
       this.server = server;
       this.endpoints = new PolarisApiEndpoints(server::baseUri, server.realmId(), server.headers());
-      this.platformEndpoints = server.managementUri().map(PlatformApiEndpoints::new);
     }
 
     PolarisApiEndpoints endpoints() {
@@ -108,7 +120,7 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
     }
 
     Optional<PlatformApiEndpoints> quarkusEndpoints() {
-      return platformEndpoints;
+      return server.managementUri().map(PlatformApiEndpoints::new);
     }
 
     @Override
