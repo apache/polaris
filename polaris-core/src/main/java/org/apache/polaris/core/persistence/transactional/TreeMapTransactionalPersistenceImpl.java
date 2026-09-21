@@ -37,11 +37,11 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisEntityUtils;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
@@ -653,12 +653,33 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
         .readRange(this.store.buildPrefixKeyComposite(policyTypeCode, policyCatalogId, policyId));
   }
 
+  private Optional<String> getEntityLocationWithoutScheme(PolarisBaseEntity entity) {
+    if (entity.getType() == PolarisEntityType.TABLE_LIKE) {
+      if (entity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
+          || entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
+        return Optional.of(
+            StorageLocation.of(
+                    entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
+                .withoutScheme());
+      }
+    }
+    if (entity.getType() == PolarisEntityType.NAMESPACE) {
+      return Optional.of(
+          StorageLocation.of(
+                  entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
+              .withoutScheme());
+    }
+    return Optional.empty();
+  }
+
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext, T entity) {
     // TODO we could optimize this full scan
+    StorageLocation entityLocationWithoutScheme =
+        StorageLocation.of(StorageLocation.of(entity.getBaseLocation()).withoutScheme());
     List<PolarisBaseEntity> allEntities = this.store.getSliceEntities().readRange("");
 
     // The entity's own parent namespaces contain its location by construction; they are not
@@ -671,27 +692,21 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
         ancestor != null && ancestorIds.add(ancestor.getId());
         ancestor = entitiesById.get(ancestor.getParentId())) {}
 
-    StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
-    for (PolarisBaseEntity candidate : allEntities) {
-      if (candidate.getCatalogId() != entity.getCatalogId()) {
-        continue;
-      }
-      Optional<StorageLocation> candidateLocation =
-          PolarisEntityUtils.asLocationBasedEntity(PolarisEntity.of(candidate))
-              .map(LocationBasedEntity::getBaseLocation)
-              .filter(location -> location != null && !location.isBlank())
-              .map(StorageLocation::of);
-      if (candidateLocation.isEmpty()) {
-        continue;
-      }
-      boolean containsEntity = entityLocation.isChildOf(candidateLocation.get());
-      boolean containedByEntity = candidateLocation.get().isChildOf(entityLocation);
-      // An ancestor may contain the entity, but the entity may not sit at exactly its location.
-      if (containsEntity && !containedByEntity && ancestorIds.contains(candidate.getId())) {
-        continue;
-      }
-      if (containsEntity || containedByEntity) {
-        return Optional.of(Optional.of(candidateLocation.get().toString()));
+    for (PolarisBaseEntity siblingEntity : allEntities) {
+      Optional<StorageLocation> maybeSiblingLocationWithoutScheme =
+          getEntityLocationWithoutScheme(siblingEntity).map(StorageLocation::of);
+      if (maybeSiblingLocationWithoutScheme.isPresent()) {
+        boolean containsEntity =
+            entityLocationWithoutScheme.isChildOf(maybeSiblingLocationWithoutScheme.get());
+        boolean containedByEntity =
+            maybeSiblingLocationWithoutScheme.get().isChildOf(entityLocationWithoutScheme);
+        // An ancestor may contain the entity, but the entity may not sit at exactly its location.
+        if (containsEntity && !containedByEntity && ancestorIds.contains(siblingEntity.getId())) {
+          continue;
+        }
+        if (containsEntity || containedByEntity) {
+          return Optional.of(Optional.of(maybeSiblingLocationWithoutScheme.toString()));
+        }
       }
     }
     return Optional.of(Optional.empty());
