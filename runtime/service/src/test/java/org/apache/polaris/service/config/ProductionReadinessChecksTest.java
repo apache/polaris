@@ -145,6 +145,30 @@ class ProductionReadinessChecksTest {
   }
 
   @Test
+  void anUnconfiguredAllowlistChecksTheCodeDefault() {
+    ProductionReadinessCheck result =
+        checks.checkS3CredentialVendingMechanisms(
+            featuresConfig(Map.of(), Map.of()), installed("DEFAULT"));
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.severe()).isFalse();
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.features.\"" + MECHANISMS_KEY + "\"");
+              assertThat(error.message()).contains("STS");
+            });
+  }
+
+  @Test
+  void anUnconfiguredAllowlistIsReadyWhenTheDefaultMechanismIsInstalled() {
+    ProductionReadinessCheck result =
+        checks.checkS3CredentialVendingMechanisms(
+            featuresConfig(Map.of(), Map.of()), installed("STS", "DEFAULT"));
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
   void anAllowlistedUninstalledMechanismInARealmOverrideNamesTheRealm() {
     ProductionReadinessCheck result =
         checks.checkS3CredentialVendingMechanisms(

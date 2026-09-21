@@ -316,12 +316,12 @@ public class ProductionReadinessChecks {
   }
 
   /**
-   * Every explicit name in {@code SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}, in the defaults and
-   * in each realm override, must be installed in this server; DEFAULT is reserved and has no effect
-   * in the list. A listed-but-uninstalled mechanism is not severe: the mechanism is refused at
-   * catalog create and update, and whenever a credential is vended for a catalog that selects it.
-   * Only the registry's own constructor (a bean with no {@code @Identifier}, or two beans sharing
-   * one) aborts startup.
+   * Every explicit name in {@code SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}, in the defaults (or
+   * the flag's code default when the defaults do not set it) and in each realm override, must be
+   * installed in this server; DEFAULT is reserved and has no effect in the list. A
+   * listed-but-uninstalled mechanism is not severe: the mechanism is refused at catalog create and
+   * update, and whenever a credential is vended for a catalog that selects it. Only the registry's
+   * own constructor (a bean with no {@code @Identifier}, or two beans sharing one) aborts startup.
    */
   @Produces
   public ProductionReadinessCheck checkS3CredentialVendingMechanisms(
@@ -332,7 +332,9 @@ public class ProductionReadinessChecks {
     @SuppressWarnings("unchecked")
     var defaults =
         (List<String>)
-            featureConfiguration.parseDefaults(mapper).getOrDefault(flag.key(), List.of());
+            featureConfiguration
+                .parseDefaults(mapper)
+                .getOrDefault(flag.key(), flag.defaultValue());
     defaults.forEach(
         name ->
             checkMechanismAvailable(
