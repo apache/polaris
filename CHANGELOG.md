@@ -48,6 +48,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `credentialVendingMechanism` is always allowed. The value `DEFAULT` is reserved and cannot be set on
   a catalog. Startup reports a listed mechanism with no installed bean, and a listed `DEFAULT`, as
   non-severe readiness warnings.
+- Rolling upgrades: a node still running an earlier release does not know `credentialVendingMechanism`.
+  It ignores the field in a stored configuration and vends through STS, and it drops the field from
+  the catalog create and update requests it serves. Keep S3 storage configurations unchanged during
+  the upgrade and set `credentialVendingMechanism` only once every node runs this release.
 
 - Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
   (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris
