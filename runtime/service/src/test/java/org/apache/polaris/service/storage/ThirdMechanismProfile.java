@@ -23,9 +23,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Installs {@link TestS3CredentialVendingMechanism} as a CDI alternative and allowlists it for one
- * realm ({@code POLARIS}) but not a second ({@code POLARIS2}): proves that an installed, non-STS
- * mechanism vends when allowlisted and is refused, without ever being invoked, when it is not.
+ * Installs {@link RecordingThirdCredentialVendingMechanism} as a CDI alternative and allowlists it
+ * for one realm ({@code POLARIS}) but not a second ({@code POLARIS2}): proves that an installed,
+ * non-STS mechanism vends when allowlisted and is refused, without ever being invoked, when it is
+ * not.
  */
 public class ThirdMechanismProfile implements QuarkusTestProfile {
 
@@ -40,7 +41,7 @@ public class ThirdMechanismProfile implements QuarkusTestProfile {
 
   @Override
   public Set<Class<?>> getEnabledAlternatives() {
-    return Set.of(TestS3CredentialVendingMechanism.class);
+    return Set.of(RecordingThirdCredentialVendingMechanism.class);
   }
 
   @Override

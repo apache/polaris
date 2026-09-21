@@ -56,11 +56,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 /**
  * Proves that a server's enabled alternative for the DEFAULT identifier is what an empty {@code
  * credentialVendingMechanism} resolves to, and that the STS bean stays reachable alongside it. Runs
- * under {@link DefaultOverrideProfile}, which enables {@link TestDefaultOverrideMechanism} as a CDI
- * alternative carrying {@code @Identifier(DEFAULT)}.
+ * under {@link RecordingDefaultMechanismProfile}, which enables {@link
+ * RecordingDefaultCredentialVendingMechanism} as a CDI alternative carrying
+ * {@code @Identifier(DEFAULT)}.
  */
 @QuarkusTest
-@TestProfile(DefaultOverrideProfile.class)
+@TestProfile(RecordingDefaultMechanismProfile.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
 class S3CredentialVendingMechanismDefaultOverrideCdiTest {
 
@@ -68,14 +69,15 @@ class S3CredentialVendingMechanismDefaultOverrideCdiTest {
 
   @Inject
   @Identifier(S3CredentialVendingMechanism.DEFAULT)
-  TestDefaultOverrideMechanism override;
+  RecordingDefaultCredentialVendingMechanism override;
 
   @Test
   void anEmptyMechanismVendsThroughTheEnabledAlternativeAndStsStaysItself(
       PolarisApiEndpoints endpoints, ClientCredentials credentials) throws Exception {
     override.clear();
     assertThat(mechanisms.availableIds()).containsExactly("DEFAULT", "STS");
-    assertThat(mechanisms.require("DEFAULT")).isInstanceOf(TestDefaultOverrideMechanism.class);
+    assertThat(mechanisms.require("DEFAULT"))
+        .isInstanceOf(RecordingDefaultCredentialVendingMechanism.class);
     assertThat(mechanisms.require("STS")).isInstanceOf(StsCredentialVendingMechanism.class);
 
     try (PolarisClient client = PolarisClient.polarisClient(endpoints)) {
@@ -100,7 +102,7 @@ class S3CredentialVendingMechanismDefaultOverrideCdiTest {
       assertThat(loaded.credentials().get(0).config())
           .containsEntry(
               StorageAccessProperty.AWS_KEY_ID.getPropertyName(),
-              TestDefaultOverrideMechanism.FAKE_KEY);
+              RecordingDefaultCredentialVendingMechanism.FAKE_KEY_FOR_TEST);
       assertThat(override.calls()).isNotEmpty();
       assertThat(override.calls())
           .allSatisfy(

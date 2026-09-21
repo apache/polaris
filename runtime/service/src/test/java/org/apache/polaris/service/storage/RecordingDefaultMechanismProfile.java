@@ -23,15 +23,15 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Installs {@link TestDefaultOverrideMechanism} as a CDI alternative for the DEFAULT identifier.
- * Only {@code STS} is allowlisted explicitly: an empty {@code credentialVendingMechanism}, which
- * resolves to DEFAULT, needs no allowlist entry of its own.
+ * Installs {@link RecordingDefaultCredentialVendingMechanism} as a CDI alternative for the DEFAULT
+ * identifier. Only {@code STS} is allowlisted explicitly: an empty {@code
+ * credentialVendingMechanism}, which resolves to DEFAULT, needs no allowlist entry of its own.
  */
-public class DefaultOverrideProfile implements QuarkusTestProfile {
+public class RecordingDefaultMechanismProfile implements QuarkusTestProfile {
 
   @Override
   public Set<Class<?>> getEnabledAlternatives() {
-    return Set.of(TestDefaultOverrideMechanism.class);
+    return Set.of(RecordingDefaultCredentialVendingMechanism.class);
   }
 
   @Override

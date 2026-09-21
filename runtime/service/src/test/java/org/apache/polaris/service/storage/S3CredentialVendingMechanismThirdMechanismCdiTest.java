@@ -59,8 +59,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 /**
  * A third {@code S3CredentialVendingMechanism} the server does not ship: proves the registry and
  * the gates generalize past {@code STS}. Runs under {@link ThirdMechanismProfile}, which enables
- * {@link TestS3CredentialVendingMechanism} as a CDI alternative and allowlists it for one realm but
- * not a second.
+ * {@link RecordingThirdCredentialVendingMechanism} as a CDI alternative and allowlists it for one
+ * realm but not a second.
  *
  * <p>This is a separate top-level class, not a {@code @Nested} class inside {@link
  * S3CredentialVendingMechanismCdiTest}, because Quarkus rejects {@code @TestProfile} on
@@ -78,15 +78,15 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
   @Inject S3CredentialVendingMechanisms mechanisms;
 
   @Inject
-  @Identifier(TestS3CredentialVendingMechanism.ID)
-  TestS3CredentialVendingMechanism testMechanism;
+  @Identifier(RecordingThirdCredentialVendingMechanism.ID)
+  RecordingThirdCredentialVendingMechanism testMechanism;
 
   @Test
   void anInstalledThirdMechanismVendsWhenAllowlistedAndIsRefusedWithoutDispatchWhenNot(
       PolarisApiEndpoints endpoints, ClientCredentials credentials) throws Exception {
     testMechanism.clear();
     assertThat(mechanisms.availableIds())
-        .containsExactly("DEFAULT", "STS", TestS3CredentialVendingMechanism.ID);
+        .containsExactly("DEFAULT", "STS", RecordingThirdCredentialVendingMechanism.ID);
     try (PolarisClient client = PolarisClient.polarisClient(endpoints)) {
       String adminToken = client.obtainToken(credentials);
       ManagementApi managementApi = client.managementApi(adminToken);
@@ -97,7 +97,7 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
       assertThat(testMechanism.validations()).hasSize(1);
       assertThat(testMechanism.validations().get(0).current()).isNull();
       assertThat(testMechanism.validations().get(0).updated().getCredentialVendingMechanism())
-          .isEqualTo(TestS3CredentialVendingMechanism.ID);
+          .isEqualTo(RecordingThirdCredentialVendingMechanism.ID);
 
       // A config the mechanism itself refuses at validate() time: CatalogEntity accepts it (the
       // base location sits inside the one allowed location) and the refusal comes from validate().
@@ -131,13 +131,13 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
       assertThat(loaded.credentials().get(0).config())
           .containsEntry(
               StorageAccessProperty.AWS_KEY_ID.getPropertyName(),
-              TestS3CredentialVendingMechanism.FAKE_KEY)
+              RecordingThirdCredentialVendingMechanism.FAKE_KEY_FOR_TEST)
           .containsEntry(
               StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(),
-              TestS3CredentialVendingMechanism.FAKE_SECRET)
+              RecordingThirdCredentialVendingMechanism.FAKE_SECRET_FOR_TEST)
           .containsEntry(
               StorageAccessProperty.AWS_TOKEN.getPropertyName(),
-              TestS3CredentialVendingMechanism.FAKE_TOKEN);
+              RecordingThirdCredentialVendingMechanism.FAKE_TOKEN_FOR_TEST);
       // The end-to-end create-table-then-loadTable-with-delegation flow dispatches to the
       // mechanism more than once (once per storage action grouping FileIO and the credential
       // provider resolve internally); that fan-out is pre-existing StorageAccessConfigProvider
@@ -150,7 +150,7 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
           .allSatisfy(
               call -> {
                 assertThat(call.storageConfig().getCredentialVendingMechanism())
-                    .isEqualTo(TestS3CredentialVendingMechanism.ID);
+                    .isEqualTo(RecordingThirdCredentialVendingMechanism.ID);
                 assertThat(call.storageConfig().getAllowedLocations())
                     .containsExactly("s3://bucket/base/" + catalog + "/");
               });
@@ -182,7 +182,7 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
               fetched.getEntityVersion(),
               Map.of(),
               AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                  .setCredentialVendingMechanism(TestS3CredentialVendingMechanism.ID)
+                  .setCredentialVendingMechanism(RecordingThirdCredentialVendingMechanism.ID)
                   .setRoleArn("arn:aws:iam::123456789012:role/r")
                   .setAllowedLocations(
                       List.of(
@@ -211,7 +211,7 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
         .setProperties(new CatalogProperties(basePath))
         .setStorageConfigInfo(
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                .setCredentialVendingMechanism(TestS3CredentialVendingMechanism.ID)
+                .setCredentialVendingMechanism(RecordingThirdCredentialVendingMechanism.ID)
                 .setRoleArn("arn:aws:iam::123456789012:role/r")
                 .setAllowedLocations(List.of(basePath + "/"))
                 .build())

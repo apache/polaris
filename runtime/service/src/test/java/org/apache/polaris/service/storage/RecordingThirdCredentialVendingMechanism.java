@@ -28,20 +28,23 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
+import org.jspecify.annotations.Nullable;
 
 /**
- * A server's replacement for the DEFAULT mechanism, enabled only under {@link
- * DefaultOverrideProfile}: proves that an enabled alternative carrying the DEFAULT identifier is
- * what an empty credentialVendingMechanism resolves to, while the STS bean stays untouched.
+ * A recording third {@link S3CredentialVendingMechanism}, installed only under {@link
+ * ThirdMechanismProfile}, that records every call it receives and vends a fixed, fake AWS
+ * credential triple. Proves that the registry and the gates work for a mechanism the server itself
+ * does not ship, not only for {@code STS}.
  */
 @ApplicationScoped
 @Alternative
-@Identifier(S3CredentialVendingMechanism.DEFAULT)
-public class TestDefaultOverrideMechanism implements S3CredentialVendingMechanism {
+@Identifier(RecordingThirdCredentialVendingMechanism.ID)
+public class RecordingThirdCredentialVendingMechanism implements S3CredentialVendingMechanism {
 
-  public static final String FAKE_KEY = "DEFAULT_OVERRIDE_FAKE_KEY";
-  public static final String FAKE_SECRET = "DEFAULT_OVERRIDE_FAKE_SECRET";
-  public static final String FAKE_TOKEN = "DEFAULT_OVERRIDE_FAKE_TOKEN";
+  public static final String ID = "TEST_MECHANISM";
+  public static final String FAKE_KEY_FOR_TEST = "TEST_MECHANISM_FAKE_KEY";
+  public static final String FAKE_SECRET_FOR_TEST = "TEST_MECHANISM_FAKE_SECRET";
+  public static final String FAKE_TOKEN_FOR_TEST = "TEST_MECHANISM_FAKE_TOKEN";
 
   /** One call: the storage config {@link #integrationFor} was given. */
   public record Call(AwsStorageConfigurationInfo storageConfig) {}
@@ -52,8 +55,19 @@ public class TestDefaultOverrideMechanism implements S3CredentialVendingMechanis
     return List.copyOf(calls);
   }
 
+  /** One validation: the stored config, null at create, and the config being written. */
+  public record Validation(
+      @Nullable AwsStorageConfigurationInfo current, AwsStorageConfigurationInfo updated) {}
+
+  private final List<Validation> validations = new CopyOnWriteArrayList<>();
+
+  public List<Validation> validations() {
+    return List.copyOf(validations);
+  }
+
   public void clear() {
     calls.clear();
+    validations.clear();
   }
 
   @Override
@@ -61,9 +75,22 @@ public class TestDefaultOverrideMechanism implements S3CredentialVendingMechanis
     calls.add(new Call(storageConfig));
     return (grants, refreshEndpoint, context) ->
         StorageAccessConfig.builder()
-            .putCredential(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), FAKE_KEY)
-            .putCredential(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), FAKE_SECRET)
-            .putCredential(StorageAccessProperty.AWS_TOKEN.getPropertyName(), FAKE_TOKEN)
+            .putCredential(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), FAKE_KEY_FOR_TEST)
+            .putCredential(
+                StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), FAKE_SECRET_FOR_TEST)
+            .putCredential(StorageAccessProperty.AWS_TOKEN.getPropertyName(), FAKE_TOKEN_FOR_TEST)
             .build();
+  }
+
+  @Override
+  public void validate(
+      @Nullable AwsStorageConfigurationInfo current, AwsStorageConfigurationInfo updated) {
+    validations.add(new Validation(current, updated));
+    for (String location : updated.getAllowedLocations()) {
+      if (location.contains("/refused/")) {
+        throw new IllegalArgumentException(
+            "TEST_MECHANISM refuses the allowed location " + location);
+      }
+    }
   }
 }
