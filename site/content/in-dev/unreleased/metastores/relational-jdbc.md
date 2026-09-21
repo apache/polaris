@@ -255,11 +255,9 @@ CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id
 ### Migration From Schema v4 to v5
 
 ```sql
-DROP INDEX IF EXISTS idx_idemp_realm_expires;
 DROP TABLE IF EXISTS idempotency_records;
 ALTER TABLE events ALTER COLUMN catalog_id DROP NOT NULL;
 UPDATE events SET catalog_id = NULL WHERE catalog_id = '__realm__';
-DROP TABLE IF EXISTS idempotency_records;
 UPDATE version SET version_value = 5 WHERE version_key = 'version';
 ```
 
