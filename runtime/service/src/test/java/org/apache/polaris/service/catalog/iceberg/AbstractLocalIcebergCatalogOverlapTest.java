@@ -318,6 +318,18 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         .isInstanceOf(AlreadyExistsException.class)
         .hasMessageContaining("Namespace already exists");
 
+    // Children at their default locations sit under the namespace's own location, as in #5521.
+    Namespace child = Namespace.of("overlap-recreate-parent", "child");
+    catalog().createNamespace(child);
+    catalog().buildTable(TableIdentifier.of(parent, "default-location-table"), SCHEMA).create();
+
+    assertThatThrownBy(() -> catalog().createNamespace(parent))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("Namespace already exists");
+    assertThatThrownBy(() -> catalog().createNamespace(child))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("Namespace already exists");
+
     // A new namespace at the existing namespace's location is still an overlap.
     Namespace intruder = Namespace.of("overlap-recreate-intruder");
     String parentLocation = STORAGE_LOCATION + "/overlap-recreate-parent";
