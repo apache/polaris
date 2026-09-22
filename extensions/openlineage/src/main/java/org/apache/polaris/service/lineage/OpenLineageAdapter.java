@@ -28,6 +28,8 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.service.lineage.api.OpenLineageBatchIngestResponse;
 import org.apache.polaris.service.lineage.api.PolarisLineageEvent;
 import org.apache.polaris.service.lineage.api.PolarisOpenLineageApiService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Adapter between the JAX-RS OpenLineage resource and the {@link OpenLineageIngestProvider}.
@@ -51,6 +53,8 @@ import org.apache.polaris.service.lineage.api.PolarisOpenLineageApiService;
  */
 @RequestScoped
 public class OpenLineageAdapter implements PolarisOpenLineageApiService {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(OpenLineageAdapter.class);
 
   private final OpenLineageIngestProvider provider;
   private final RealmConfig realmConfig;
@@ -79,7 +83,24 @@ public class OpenLineageAdapter implements PolarisOpenLineageApiService {
     List<OpenLineageBatchIngestResponse.FailedEvent> failed = new ArrayList<>();
 
     for (int i = 0; i < events.size(); i++) {
-      OpenLineageIngestResult result = ingestOne(events.get(i));
+      OpenLineageIngestResult result;
+      try {
+        result = ingestOne(events.get(i));
+      } catch (RuntimeException e) {
+        // One bad event must not abort the batch. The ingest provider is a pluggable SPI that can
+        // throw anything, and the Iceberg exception mapper is registered globally across
+        // /api/openlineage/v1, so an escaping RuntimeException would otherwise be mapped into a
+        // single error response for the whole batch, losing the outcomes of every other event.
+        // Reported as non-retriable because the provider already models the transient case as
+        // UNAVAILABLE, so an unexpected throw is more likely deterministic; calling it retriable
+        // would invite a client to replay the batch forever. The exception is logged rather than
+        // returned, so provider internals are not disclosed to the caller.
+        LOGGER.warn("Lineage event at batch index {} failed unexpectedly", i, e);
+        failed.add(
+            new OpenLineageBatchIngestResponse.FailedEvent(
+                i, false, "Event could not be processed"));
+        continue;
+      }
       switch (result) {
         case ACCEPTED -> successful++;
         case REJECTED ->

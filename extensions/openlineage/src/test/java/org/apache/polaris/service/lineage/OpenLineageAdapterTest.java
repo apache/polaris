@@ -19,6 +19,7 @@
 package org.apache.polaris.service.lineage;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -129,6 +130,62 @@ class OpenLineageAdapterTest {
     assertThat(unavailable.index()).isEqualTo(2);
     assertThat(unavailable.retriable()).isTrue();
     assertThat(unavailable.message()).isEqualTo("Ingest backend unavailable");
+  }
+
+  @Test
+  void batchIsolatesAnEventThatThrows() {
+    // A provider is a pluggable SPI and may throw anything. Without per-event isolation the
+    // globally registered Iceberg exception mapper turns that throw into one error response for the
+    // whole batch, discarding the outcomes of every other event.
+    when(provider.ingest(any()))
+        .thenReturn(OpenLineageIngestResult.ACCEPTED)
+        .thenThrow(new IllegalStateException("provider blew up"))
+        .thenReturn(OpenLineageIngestResult.ACCEPTED);
+
+    Response response = adapter.sendLineageEventBatch(List.of(event(), event(), event()));
+
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    OpenLineageBatchIngestResponse body = (OpenLineageBatchIngestResponse) response.getEntity();
+    assertThat(body.status()).isEqualTo(OpenLineageBatchIngestResponse.Status.PARTIAL);
+    assertThat(body.summary().received()).isEqualTo(3);
+    // The two surrounding events still counted, which is the point of the isolation.
+    assertThat(body.summary().successful()).isEqualTo(2);
+    assertThat(body.summary().failed()).isEqualTo(1);
+
+    assertThat(body.failedEvents()).hasSize(1);
+    OpenLineageBatchIngestResponse.FailedEvent threw = body.failedEvents().getFirst();
+    assertThat(threw.index()).isEqualTo(1);
+    // Non-retriable: the provider models the transient case as UNAVAILABLE, so an unexpected throw
+    // is more likely deterministic and replaying it would loop.
+    assertThat(threw.retriable()).isFalse();
+    // The exception is logged server-side, never echoed to the caller.
+    assertThat(threw.message()).isEqualTo("Event could not be processed");
+    assertThat(threw.message()).doesNotContain("provider blew up");
+  }
+
+  @Test
+  void batchOfOnlyThrowingEventsIsFailure() {
+    when(provider.ingest(any())).thenThrow(new IllegalStateException("provider blew up"));
+
+    Response response = adapter.sendLineageEventBatch(List.of(event(), event()));
+
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    OpenLineageBatchIngestResponse body = (OpenLineageBatchIngestResponse) response.getEntity();
+    assertThat(body.status()).isEqualTo(OpenLineageBatchIngestResponse.Status.FAILURE);
+    assertThat(body.summary().successful()).isZero();
+    assertThat(body.summary().failed()).isEqualTo(2);
+  }
+
+  @Test
+  void singleEventThrowIsNotSwallowed() {
+    // Isolation is a batch-only concern. The single-event endpoint has no sibling outcomes to
+    // protect, so an unexpected throw must keep propagating to the exception mapper rather than be
+    // quietly converted into a success.
+    when(provider.ingest(any())).thenThrow(new IllegalStateException("provider blew up"));
+
+    assertThatThrownBy(() -> adapter.sendLineageEvent(event()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("provider blew up");
   }
 
   @Test
