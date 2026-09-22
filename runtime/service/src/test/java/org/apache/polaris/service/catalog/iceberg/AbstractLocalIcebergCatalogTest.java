@@ -2545,6 +2545,40 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testRegisterTableTreatsTableAsExistingWhenStoredMetadataIsMissing() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_overwrite_missing_metadata");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table created = catalog.buildTable(table, SCHEMA).create();
+    TableMetadata currentMetadata = ((BaseTable) created).operations().current();
+    String staleMetadataLocation = currentMetadata.metadataFileLocation();
+    String metadataDir =
+        staleMetadataLocation.substring(0, staleMetadataLocation.lastIndexOf('/') + 1);
+    String newMetadataLocation = metadataDir + "recovered-v1.metadata.json";
+    fileIO.addFile(
+        newMetadataLocation, TableMetadataParser.toJson(currentMetadata).getBytes(UTF_8));
+
+    // The metadata file the table still points at is gone; re-registering is how that is repaired,
+    // so the existence check must not depend on reading it.
+    fileIO.deleteFile(staleMetadataLocation);
+
+    // The table is still there, so a register without overwrite must report it as existing
+    // rather than fail on the unreadable file.
+    Assertions.assertThatThrownBy(() -> catalog.registerTable(table, newMetadataLocation, false))
+        .isInstanceOf(AlreadyExistsException.class);
+
+    catalog.registerTable(table, newMetadataLocation, true);
+
+    Assertions.assertThat(
+            ((BaseTable) catalog.loadTable(table)).operations().current().metadataFileLocation())
+        .isEqualTo(newMetadataLocation);
+  }
+
+  @Test
   public void testRegisterTableOverwriteCreatesWhenMissing() {
     LocalIcebergCatalog catalog = catalog();
     Namespace namespace = Namespace.of("register_overwrite_create");
