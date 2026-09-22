@@ -80,6 +80,7 @@ public class NumericQueryParameterTest {
         .get(path)
         .then()
         .statusCode(404)
+        .body("error.message", is("Namespace does not exist: ''"))
         .body("error.type", is("NoSuchNamespaceException"))
         .body("error.code", is(404));
   }
@@ -137,15 +138,15 @@ public class NumericQueryParameterTest {
         .get(ICEBERG + "/no-such-subresource")
         .then()
         .statusCode(404)
+        .body("error.message", is("Unable to find matching target resource method"))
         .body("error.type", is("NotFoundException"))
         .body("error.code", is(404));
   }
 
   @Test
   public void testAPageSizeBelowTheMinimumIsStillRejectedByValidation() {
-    // The converter reads 0 successfully and hands it on; the minimum declared on this route is
-    // what
-    // refuses it. This pins that path so the converter cannot quietly take it over.
+    // The converter reads 0 successfully and hands it on. The minimum declared on this route is
+    // what refuses it, so this pins that path and the converter cannot quietly take it over.
     authenticated()
         .when()
         .get(POLARIS + "/namespaces/ns/policies?pageSize=0")
