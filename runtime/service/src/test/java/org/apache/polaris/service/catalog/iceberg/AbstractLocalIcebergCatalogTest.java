@@ -1255,6 +1255,51 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testNotificationInDisallowedLocationCreatesNoNamespaces() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    // A notification whose metadata location is outside the catalog's allowed locations must be
+    // rejected before any parent namespaces are auto-created, so it cannot leave orphaned
+    // namespaces behind.
+    final String tableLocation = "s3://forbidden-table-location/table/";
+    final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
+    LocalIcebergCatalog catalog = catalog();
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.UPDATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(tableMetadataLocation);
+    update.setTableName(table.name());
+    update.setTableUuid(UUID.randomUUID().toString());
+    update.setTimestamp(230950845L);
+    request.setPayload(update);
+
+    fileIO.addFile(
+        tableMetadataLocation,
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
+
+    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid location");
+
+    Assertions.assertThat(catalog.namespaceExists(namespace))
+        .as("Child namespace must not be created when the notification location is disallowed")
+        .isFalse();
+    Assertions.assertThat(catalog.namespaceExists(Namespace.of("parent")))
+        .as("Parent namespace must not be created when the notification location is disallowed")
+        .isFalse();
+  }
+
+  @Test
   public void testCreateNotificationCreateTableInExternalLocation() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
