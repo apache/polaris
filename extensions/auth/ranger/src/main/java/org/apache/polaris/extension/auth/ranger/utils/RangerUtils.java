@@ -28,9 +28,9 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.ranger.authz.model.RangerAccessInfo;
@@ -52,6 +52,14 @@ public class RangerUtils {
     };
   }
 
+  /**
+   * Builds the Ranger authz-api user DTO, including derived namespaced principal attributes.
+   *
+   * <p>Apache Ranger 2.9.0's embedded authorizer constructs {@code RangerAccessRequestImpl} from
+   * the user name, groups, and roles only and does not copy {@link RangerUserInfo#getAttributes()}
+   * onto the request that policy evaluation uses. These attributes are still populated so the DTO
+   * matches the authz-api contract; they cannot currently change a Ranger policy decision.
+   */
   public static RangerUserInfo toUserInfo(PolarisPrincipal principal) {
     return new RangerUserInfo(
         principal.getName(), getUserAttributes(principal), null, principal.getRoles());
@@ -128,12 +136,8 @@ public class RangerUtils {
   }
 
   private static Map<String, Object> getUserAttributes(PolarisPrincipal principal) {
-    Map<String, String> properties =
-        principal
-            .getAttribute(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, PrincipalEntity.class)
-            .map(PrincipalEntity::getInternalPropertiesAsMap)
-            .orElse(Collections.emptyMap());
-
-    return properties.isEmpty() ? Collections.emptyMap() : new HashMap<>(properties);
+    Map<String, String> derived =
+        PolarisPrincipalAttributeNamespaces.derivedStringAttributes(principal);
+    return derived.isEmpty() ? Collections.emptyMap() : new HashMap<>(derived);
   }
 }
