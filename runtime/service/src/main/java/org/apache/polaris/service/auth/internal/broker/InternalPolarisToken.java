@@ -27,8 +27,7 @@ import org.immutables.value.Value;
 import org.jspecify.annotations.NonNull;
 
 /**
- * A specialized {@link org.apache.polaris.service.auth.PolarisCredential} produced by Polaris
- * default internal token broker.
+ * A specialized {@link PolarisCredential} produced by Polaris default internal token broker.
  *
  * <p>Such credentials are created by the Polaris service itself, from a JWT token previously issued
  * by Polaris itself.
