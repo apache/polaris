@@ -147,8 +147,10 @@ public class ExceptionMapperTest {
             StsException.builder()
                 .message("is not authorized to perform: sts:AssumeRole")
                 .build(),
-            403),
-        Arguments.of(StsException.builder().message("Request failed").build(), 500));
+            Response.Status.FORBIDDEN.getStatusCode()),
+        Arguments.of(
+            StsException.builder().message("Request failed").build(),
+            Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()));
   }
 
   @ParameterizedTest
