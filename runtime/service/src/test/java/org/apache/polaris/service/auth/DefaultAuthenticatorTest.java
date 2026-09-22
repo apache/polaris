@@ -56,9 +56,6 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisAdminServiceTestSupport;
-import org.apache.polaris.service.auth.external.ExternalPolarisCredential;
-import org.apache.polaris.service.auth.internal.InternalPolarisCredential;
-import org.apache.polaris.service.auth.internal.broker.TokenBroker;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -121,7 +118,7 @@ public class DefaultAuthenticatorTest {
   void testNullPrincipalIdAndName() {
     // Given: internal credentials with both null principal ID and name
     PolarisCredential credentials =
-        InternalPolarisCredential.of(null, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(null, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When/Then: authentication should fail with AuthenticationFailedException
     assertUnauthorized(credentials);
@@ -131,7 +128,7 @@ public class DefaultAuthenticatorTest {
   void testPrincipalNotFoundByName() {
     // Given: internal credentials with a non-existent principal name
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
+        PolarisCredential.of(
             null, "non-existent-principal", Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When/Then: authentication should fail with AuthenticationFailedException
@@ -142,8 +139,7 @@ public class DefaultAuthenticatorTest {
   void testPrincipalNotFoundById() {
     // Given: internal credentials with a non-existent principal ID
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
-            999999L, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(999999L, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When/Then: authentication should fail with AuthenticationFailedException
     assertUnauthorized(credentials);
@@ -154,7 +150,7 @@ public class DefaultAuthenticatorTest {
 
     // Given: internal credentials with a non-existent principal ID
     PolarisCredential credentials =
-        InternalPolarisCredential.of(123L, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(123L, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
     when(metaStoreManagerSpy.findPrincipalById(callContext.getPolarisCallContext(), 123L))
@@ -175,7 +171,7 @@ public class DefaultAuthenticatorTest {
   void testLoadGrantsThrowsServiceExceptionOnMetastoreException() {
     // Given: a metastore that fails while loading the principal's grants
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
+        PolarisCredential.of(
             principalEntity.getId(), null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
@@ -214,8 +210,7 @@ public class DefaultAuthenticatorTest {
         .loadEntity(any(), anyLong(), anyLong(), Mockito.eq(PolarisEntityType.PRINCIPAL_ROLE));
 
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
-            null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     DefaultAuthenticator standaloneAuthenticator = newStandaloneAuthenticator(metaStoreManagerSpy);
 
@@ -233,7 +228,7 @@ public class DefaultAuthenticatorTest {
   void testAuthenticationByPrincipalId() {
     // Given: credentials with principal ID instead of name
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
+        PolarisCredential.of(
             principalEntity.getId(), null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When: authenticating the principal
@@ -248,8 +243,7 @@ public class DefaultAuthenticatorTest {
 
     // Given: credentials with existing principal name
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
-            null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When: authenticating the principal
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
@@ -262,8 +256,7 @@ public class DefaultAuthenticatorTest {
   void testPrincipalFoundWithAllRolesRequested() {
     // Given: credentials requesting all roles for an existing principal
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
-            null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When: authenticating the principal
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
@@ -279,7 +272,7 @@ public class DefaultAuthenticatorTest {
   void testPrincipalFoundWithSubsetOfRolesRequested() {
     // Given: credentials requesting only a subset of the principal's roles
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
+        PolarisCredential.of(
             null,
             PRINCIPAL_NAME,
             Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE1));
@@ -298,7 +291,7 @@ public class DefaultAuthenticatorTest {
   void testPrincipalFoundWithMultipleSpecificRolesRequested() {
     // Given: credentials requesting multiple specific roles
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
+        PolarisCredential.of(
             null,
             PRINCIPAL_NAME,
             Set.of(
@@ -316,7 +309,7 @@ public class DefaultAuthenticatorTest {
   void testPrincipalFoundButHasNoRolesAssigned() {
     // Given: credentials for a principal with no assigned roles
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
+        PolarisCredential.of(
             null, PRINCIPAL_NAME_NO_ROLES, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When: authenticating the principal
@@ -330,7 +323,7 @@ public class DefaultAuthenticatorTest {
   void testRequestedRolesDoNotMapToSystemRoles() {
     // Given: credentials requesting roles that don't exist in the system
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
+        PolarisCredential.of(
             null,
             PRINCIPAL_NAME,
             Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + "non-existent-role"));
@@ -343,7 +336,7 @@ public class DefaultAuthenticatorTest {
   void testMixedValidAndInvalidRolesRequested() {
     // Given: credentials requesting both valid and invalid roles
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
+        PolarisCredential.of(
             null,
             PRINCIPAL_NAME,
             Set.of(
@@ -358,7 +351,7 @@ public class DefaultAuthenticatorTest {
   void testRolesWithoutPrefixAreIgnored() {
     // Given: credentials with roles that don't have the required prefix
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
+        PolarisCredential.of(
             null,
             PRINCIPAL_NAME,
             Set.of(
@@ -378,7 +371,7 @@ public class DefaultAuthenticatorTest {
   void testEmptyRolesRequestedReturnsEmptyRoles() {
     // Given: credentials with empty roles set
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
+        PolarisCredential.of(
             null, PRINCIPAL_NAME, Set.of() // Empty roles set
             );
 
@@ -403,8 +396,7 @@ public class DefaultAuthenticatorTest {
 
     PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
-            null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     PolarisPrincipal result =
         newStandaloneAuthenticator(metaStoreManagerSpy).authenticate(identityFor(credentials));
@@ -436,8 +428,7 @@ public class DefaultAuthenticatorTest {
             any(), Mockito.argThat(p -> p != null && p.getId() == principalEntity.getId()));
 
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
-            null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     PolarisPrincipal result =
         newStandaloneAuthenticator(metaStoreManagerSpy).authenticate(identityFor(credentials));
@@ -453,7 +444,7 @@ public class DefaultAuthenticatorTest {
   void testPrincipalIdTakesPrecedenceOverName() {
     // Given: credentials with both principal ID and name (ID should take precedence)
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
+        PolarisCredential.of(
             principalEntity.getId(),
             "wrong-name", // This should be ignored since ID is provided
             Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
@@ -469,8 +460,7 @@ public class DefaultAuthenticatorTest {
   void testJwtAttributeAbsentWhenNoJwtPrincipal() {
     // Given: a normal (non-JWT) identity
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
-            null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When: authenticating the principal
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
@@ -484,8 +474,7 @@ public class DefaultAuthenticatorTest {
   void testJwtAttributePresentWhenJwtPrincipal() {
     // Given: an identity whose principal is a JsonWebToken
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
-            null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
     JsonWebToken jwt = Mockito.mock(JsonWebToken.class);
     Mockito.when(jwt.getName()).thenReturn(PRINCIPAL_NAME);
     Mockito.when(jwt.getRawToken()).thenReturn("raw.jwt.token");
@@ -508,8 +497,7 @@ public class DefaultAuthenticatorTest {
   void testInputIdentityAttributesNotMerged() {
     // Given: an identity that already carries a custom attribute
     PolarisCredential credentials =
-        InternalPolarisCredential.of(
-            null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
     SecurityIdentity identityWithAttrs =
         QuarkusSecurityIdentity.builder()
             .setAnonymous(true)
@@ -527,7 +515,7 @@ public class DefaultAuthenticatorTest {
 
   @Test
   void testExternalPrincipal() {
-    // Given: an ExternalPolarisCredential carries name + roles,
+    // Given: an external credential (isExternal=true) carries name + roles,
     // so the authenticator takes the external path with no metastore lookup
     PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
     DefaultAuthenticator sa = newStandaloneAuthenticator(metaStoreManagerSpy);
@@ -536,7 +524,7 @@ public class DefaultAuthenticatorTest {
     Mockito.when(jwt.getRawToken()).thenReturn("raw.jwt.token");
 
     PolarisCredential credentials =
-        ExternalPolarisCredential.of("ext-user", Set.of("ext-role1", "ext-role2"));
+        PolarisCredential.ofExternal("ext-user", Set.of("ext-role1", "ext-role2"));
     SecurityIdentity jwtIdentity =
         QuarkusSecurityIdentity.builder()
             .setAnonymous(false)
@@ -565,11 +553,11 @@ public class DefaultAuthenticatorTest {
 
   @Test
   void testExternalPrincipalWithoutName() {
-    // Given: an ExternalPolarisCredential with no principal name (e.g. an id-only OIDC mapping)
+    // Given: an external credential with no principal name (e.g. an id-only OIDC mapping)
     PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
     DefaultAuthenticator sa = newStandaloneAuthenticator(metaStoreManagerSpy);
     JsonWebToken jwt = Mockito.mock(JsonWebToken.class);
-    PolarisCredential credentials = ExternalPolarisCredential.of(null, Set.of("ext-role1"));
+    PolarisCredential credentials = PolarisCredential.ofExternal(null, Set.of("ext-role1"));
     SecurityIdentity jwtIdentity =
         QuarkusSecurityIdentity.builder()
             .setAnonymous(false)
@@ -582,39 +570,6 @@ public class DefaultAuthenticatorTest {
     assertThatThrownBy(() -> sa.authenticate(jwtIdentity))
         .isInstanceOf(AuthenticationFailedException.class);
     Mockito.verifyNoInteractions(metaStoreManagerSpy);
-  }
-
-  @Test
-  void testCustomBrokerCredentialTreatedAsInternal() {
-    // A custom TokenBroker that returns a plain PolarisCredential (neither
-    // InternalPolarisCredential nor ExternalPolarisCredential) must still be treated as internal,
-    // i.e. resolved against the metastore.
-    TokenBroker customBroker = Mockito.mock(TokenBroker.class);
-    Mockito.when(customBroker.verify("token"))
-        .thenReturn(
-            new PolarisCredential() {
-              @Override
-              public String getPrincipalName() {
-                return PRINCIPAL_NAME;
-              }
-
-              @Override
-              public Set<String> getPrincipalRoles() {
-                return Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL);
-              }
-            });
-
-    PolarisCredential credentials = customBroker.verify("token");
-    assertThat(credentials)
-        .isNotInstanceOf(InternalPolarisCredential.class)
-        .isNotInstanceOf(ExternalPolarisCredential.class);
-
-    // When: authenticating with the plain credential
-    PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
-
-    // Then: the principal is resolved from the metastore, just like before the external-principal
-    // change, with its roles derived from the backing entity's grants
-    assertInternalPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
   }
 
   private PrincipalEntity createPrincipal(String name, String... roles) {

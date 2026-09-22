@@ -22,7 +22,7 @@ import com.google.common.base.Splitter;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.immutables.PolarisImmutable;
-import org.apache.polaris.service.auth.internal.InternalPolarisCredential;
+import org.apache.polaris.service.auth.PolarisCredential;
 import org.immutables.value.Value;
 import org.jspecify.annotations.NonNull;
 
@@ -36,7 +36,7 @@ import org.jspecify.annotations.NonNull;
  * @see JWTBroker
  */
 @PolarisImmutable
-public abstract class InternalPolarisToken implements InternalPolarisCredential {
+abstract class InternalPolarisToken implements PolarisCredential {
 
   private static final Splitter SCOPE_SPLITTER = Splitter.on(' ').omitEmptyStrings().trimResults();
 
@@ -48,6 +48,11 @@ public abstract class InternalPolarisToken implements InternalPolarisCredential 
         .clientId(clientId)
         .scope(scope)
         .build();
+  }
+
+  @Override
+  public final boolean isExternal() {
+    return false;
   }
 
   @NonNull // switch from nullable to non-nullable
@@ -65,7 +70,7 @@ public abstract class InternalPolarisToken implements InternalPolarisCredential 
     return SCOPE_SPLITTER.splitToStream(getScope()).collect(Collectors.toSet());
   }
 
-  public abstract String getClientId();
+  abstract String getClientId();
 
-  public abstract String getScope();
+  abstract String getScope();
 }

@@ -37,6 +37,7 @@ import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.auth.DefaultAuthenticator;
+import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.apache.polaris.service.types.TokenType;
 import org.jspecify.annotations.Nullable;
@@ -90,8 +91,7 @@ public class JWTBroker implements TokenBroker {
   }
 
   @Override
-  @Nullable
-  public InternalPolarisToken verify(String token) {
+  public PolarisCredential verify(String token) {
     // Cheap pre-check without cryptographic verification: tokens not issued by Polaris are not
     // ours to verify; return null so the caller can delegate to other mechanisms (mixed mode).
     // Undecodable tokens cannot be Polaris-issued, so they count as foreign.

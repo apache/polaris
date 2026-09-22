@@ -38,7 +38,6 @@ import org.apache.polaris.service.auth.PrincipalMode;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration.PrincipalMapper;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration.PrincipalRolesMapper;
-import org.apache.polaris.service.auth.internal.InternalPolarisCredential;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -128,7 +127,7 @@ class OidcPolarisCredentialAugmentorTest {
     assertThat(result).isNotNull();
     assertThat(result.getPrincipal()).isSameAs(oidcPrincipal);
     assertThat(result.getCredential(PolarisCredential.class))
-        .isEqualTo(InternalPolarisCredential.of(123L, "root", Set.of("MAPPED_ROLE1")));
+        .isEqualTo(PolarisCredential.of(123L, "root", Set.of("MAPPED_ROLE1")));
     // the identity roles should not change, since this is done by the ActiveRolesAugmentor
     assertThat(result.getRoles()).containsExactlyInAnyOrder("ROLE1");
   }
@@ -155,7 +154,7 @@ class OidcPolarisCredentialAugmentorTest {
     assertThat(result).isNotNull();
     assertThat(result.getPrincipal()).isSameAs(oidcPrincipal);
     assertThat(result.getCredential(PolarisCredential.class))
-        .isEqualTo(ExternalPolarisCredential.of("alice", Set.of("MAPPED_ROLE1")));
+        .isEqualTo(PolarisCredential.ofExternal("alice", Set.of("MAPPED_ROLE1")));
     // the identity roles should not change, since this is done by the ActiveRolesAugmentor
     assertThat(result.getRoles()).containsExactlyInAnyOrder("ROLE1");
   }
@@ -181,6 +180,6 @@ class OidcPolarisCredentialAugmentorTest {
 
     // Then
     assertThat(result.getCredential(PolarisCredential.class))
-        .isEqualTo(ExternalPolarisCredential.of(null, Set.of("MAPPED_ROLE1")));
+        .isEqualTo(PolarisCredential.ofExternal(null, Set.of("MAPPED_ROLE1")));
   }
 }

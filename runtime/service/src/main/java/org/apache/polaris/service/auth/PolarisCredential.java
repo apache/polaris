@@ -20,19 +20,66 @@ package org.apache.polaris.service.auth;
 
 import io.quarkus.security.credential.Credential;
 import java.util.Set;
+import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 import org.jspecify.annotations.Nullable;
 
 /**
  * A Quarkus Security {@link Credential} exposing Polaris-specific attributes.
  *
- * <p>Unless a credential implements {@link
- * org.apache.polaris.service.auth.external.ExternalPolarisCredential}, it is treated as internal by
- * the authenticator and requires a backing principal entity in the Polaris metastore.
- *
- * @see org.apache.polaris.service.auth.internal.InternalPolarisCredential
- * @see org.apache.polaris.service.auth.external.ExternalPolarisCredential
+ * <p>Credentials where {@link #isExternal()} returns {@code true} represent externally-managed
+ * principals: the authenticator takes the principal name and roles as-is without performing a
+ * metastore lookup. All other credentials — including plain {@link PolarisCredential} instances
+ * returned by a custom token broker — are treated as internal and require a backing principal
+ * entity in the Polaris metastore.
  */
+@PolarisImmutable
 public interface PolarisCredential extends Credential {
+
+  /**
+   * Creates a new {@link PolarisCredential} with the given principal id, name and roles. The
+   * returned credential is considered internal, and therefore requires a backing principal entity
+   * in the Polaris metastore.
+   */
+  static PolarisCredential of(
+      @Nullable Long principalId, @Nullable String principalName, Set<String> principalRoles) {
+    return ImmutablePolarisCredential.builder()
+        .principalId(principalId)
+        .principalName(principalName)
+        .principalRoles(principalRoles)
+        .build();
+  }
+
+  /**
+   * Creates a new {@link PolarisCredential} with the given principal name and roles. The returned
+   * credential is considered external, and therefore does not require a backing principal entity in
+   * the Polaris metastore.
+   */
+  static PolarisCredential ofExternal(@Nullable String principalName, Set<String> principalRoles) {
+    return ImmutablePolarisCredential.builder()
+        .principalName(principalName)
+        .principalRoles(principalRoles)
+        .external(true)
+        .build();
+  }
+
+  /**
+   * Whether this credential represents an externally-managed principal not backed by the Polaris
+   * metastore. Defaults to {@code false}.
+   */
+  @Value.Default
+  default boolean isExternal() {
+    return false;
+  }
+
+  /**
+   * The principal id, or null if the credential does not carry one.
+   *
+   * <p>Principal IDs are used solely for principal entity lookups by id in the metastore. Such
+   * lookups are only relevant for internal principals; therefore, the value returned by this method
+   * is always ignored when {@link #isExternal()} is true.
+   */
+  @Nullable Long getPrincipalId();
 
   /**
    * The principal name, or null if the credential does not carry one. A name is not guaranteed to

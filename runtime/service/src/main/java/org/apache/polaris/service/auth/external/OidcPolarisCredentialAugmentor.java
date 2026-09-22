@@ -38,7 +38,6 @@ import org.apache.polaris.service.auth.PrincipalMode;
 import org.apache.polaris.service.auth.external.mapping.PrincipalMapper;
 import org.apache.polaris.service.auth.external.mapping.PrincipalRolesMapper;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
-import org.apache.polaris.service.auth.internal.InternalPolarisCredential;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 /**
@@ -100,9 +99,9 @@ public class OidcPolarisCredentialAugmentor implements SecurityIdentityAugmentor
     if (authConfig.principalMode() == PrincipalMode.INTERNAL) {
       Long principalId =
           principalMapper.mapPrincipalId(identity).stream().boxed().findFirst().orElse(null);
-      credential = InternalPolarisCredential.of(principalId, principalName, principalRoles);
+      credential = PolarisCredential.of(principalId, principalName, principalRoles);
     } else {
-      credential = ExternalPolarisCredential.of(principalName, principalRoles);
+      credential = PolarisCredential.ofExternal(principalName, principalRoles);
     }
     // Note: we don't change the identity roles here, this will be done later on
     // by the AuthenticatingAugmentor, which will also validate them.
