@@ -85,6 +85,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   size or when a positive LIST_PAGINATION_MAX_PAGE_SIZE limits local catalog listings. Otherwise,
   requests without pagination parameters still return all results. To keep the previous behavior,
   set `LIST_PAGINATION_ENABLED=false` or the catalog property `polaris.config.list-pagination-enabled=false`.
+- The `PolarisPrincipal` interface has evolved. The `getAttributes()` method now returns 
+  `org.apache.polaris.core.collection.ImmutableAttributeMap`. The attribute keys were moved to a
+  new `org.apache.polaris.core.auth.PolarisPrincipalAttributes` class.
 
 ### New Features
 
