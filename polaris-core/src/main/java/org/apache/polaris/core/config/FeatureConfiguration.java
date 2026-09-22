@@ -570,6 +570,20 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<List<String>> LINEAGE_NAMESPACE_CATALOGS =
+      PolarisConfiguration.<List<String>>builder()
+          .key("LINEAGE_NAMESPACE_CATALOGS")
+          .description(
+              "Maps OpenLineage dataset namespaces to Polaris catalog names, as a list of "
+                  + "\"<dataset-namespace>=<catalog-name>\" entries. A dataset whose namespace is "
+                  + "listed names a table in the mapped catalog. An unlisted namespace is only "
+                  + "treated as Polaris when it looks like a Polaris Iceberg REST catalog endpoint, "
+                  + "in which case the dataset name must carry the catalog itself as "
+                  + "\"<catalog>.<namespace>.<table>\". Every other dataset is recorded as external. "
+                  + "Set this for any deployment that serves the catalog from a non-default path.")
+          .defaultValue(List.of())
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_CONNECTION_TYPES")
