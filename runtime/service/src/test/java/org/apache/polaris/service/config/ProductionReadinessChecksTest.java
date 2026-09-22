@@ -24,11 +24,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.PrincipalMode;
+import org.apache.polaris.service.auth.external.OidcConfiguration;
+import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
 import org.junit.jupiter.api.BeforeEach;
@@ -153,6 +156,203 @@ class ProductionReadinessChecksTest {
                   .isEqualTo("polaris.authentication.principal-mode");
               assertThat(error.severe()).isTrue();
             });
+  }
+
+  @Test
+  void oidcMappingWithInternalAuthTypeReturnsOk() {
+    // OIDC is not involved; the check should be skipped regardless of claim-path config
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.INTERNAL, PrincipalMode.INTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.empty(),
+                Optional.empty()));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void oidcMappingExternalModeWithNameClaimPathReturnsOk() {
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.of("preferred_username"),
+                Optional.empty()));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void oidcMappingExternalModeWithoutNameClaimPathReturnsSevereError() {
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.empty(),
+                Optional.empty()));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.oidc.principal-mapper.name-claim-path");
+              assertThat(error.severe()).isTrue();
+            });
+  }
+
+  @Test
+  void oidcMappingExternalModeWithIdClaimPathPresentReturnsWarning() {
+    // name-claim-path is set (required) but id-claim-path is also set (ignored in external mode)
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.of("preferred_username"),
+                Optional.of("sub")));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.oidc.principal-mapper.id-claim-path");
+              assertThat(error.severe()).isFalse();
+            });
+  }
+
+  @Test
+  void oidcMappingInternalModeWithNameClaimPathReturnsOk() {
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.INTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.of("preferred_username"),
+                Optional.empty()));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void oidcMappingInternalModeWithIdClaimPathReturnsOk() {
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.INTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.empty(),
+                Optional.of("sub")));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void oidcMappingInternalModeWithoutAnyPathReturnsSevereError() {
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.INTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.empty(),
+                Optional.empty()));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.oidc.principal-mapper.name-claim-path");
+              assertThat(error.severe()).isTrue();
+            });
+  }
+
+  @Test
+  void oidcMappingNamedTenantWithoutNameClaimPathReturnsWarningNotSevere() {
+    // Named tenants are only activated at runtime; misconfiguration is a warning, not a blocker
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            oidcConfig("idp1", "default", Optional.empty(), Optional.empty()));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.oidc.idp1.principal-mapper.name-claim-path");
+              assertThat(error.severe()).isFalse();
+            });
+  }
+
+  @Test
+  void oidcMappingWithCustomMapperTypeSkipsValidation() {
+    // Custom mappers handle their own name resolution; no check is applied
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "custom",
+                Optional.empty(),
+                Optional.empty()));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void oidcMappingMixedAuthTypeExternalModeWithoutNameClaimPathReturnsSevereError() {
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.MIXED, PrincipalMode.EXTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.empty(),
+                Optional.empty()));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.oidc.principal-mapper.name-claim-path");
+              assertThat(error.severe()).isTrue();
+            });
+  }
+
+  private static OidcConfiguration oidcConfig(
+      String tenantId,
+      String mapperType,
+      Optional<String> nameClaimPath,
+      Optional<String> idClaimPath) {
+    OidcTenantConfiguration.PrincipalMapper pm =
+        mock(OidcTenantConfiguration.PrincipalMapper.class);
+    lenient().when(pm.type()).thenReturn(mapperType);
+    lenient().when(pm.nameClaimPath()).thenReturn(nameClaimPath);
+    lenient().when(pm.idClaimPath()).thenReturn(idClaimPath);
+    OidcTenantConfiguration tenant = mock(OidcTenantConfiguration.class);
+    lenient().when(tenant.principalMapper()).thenReturn(pm);
+    OidcConfiguration config = mock(OidcConfiguration.class);
+    lenient().when(config.tenants()).thenReturn(Map.of(tenantId, tenant));
+    return config;
   }
 
   private static AuthorizationConfiguration authorizationConfig(String type) {

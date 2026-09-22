@@ -41,6 +41,7 @@ import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBro
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.PrincipalMode;
+import org.apache.polaris.service.auth.external.OidcConfiguration;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.context.DefaultRealmContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
@@ -239,6 +240,95 @@ public class ProductionReadinessChecks {
               });
     }
     return ProductionReadinessCheck.of(errors);
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkOidcPrincipalMapping(
+      AuthenticationConfiguration authConfig, OidcConfiguration oidcConfig) {
+    // Only validate OIDC claim mapping when at least one realm actually uses OIDC (i.e. auth type
+    // is EXTERNAL or MIXED). A purely INTERNAL realm never activates the OIDC augmentor.
+    boolean anyOidc =
+        authConfig.realms().values().stream()
+            .anyMatch(
+                r ->
+                    r.type() == AuthenticationType.EXTERNAL
+                        || r.type() == AuthenticationType.MIXED);
+    if (!anyOidc) {
+      return ProductionReadinessCheck.OK;
+    }
+    boolean anyExternal =
+        authConfig.realms().values().stream()
+            .anyMatch(
+                r ->
+                    (r.type() == AuthenticationType.EXTERNAL
+                            || r.type() == AuthenticationType.MIXED)
+                        && r.principalMode() == PrincipalMode.EXTERNAL);
+    boolean anyInternal =
+        authConfig.realms().values().stream()
+            .anyMatch(
+                r ->
+                    (r.type() == AuthenticationType.EXTERNAL
+                            || r.type() == AuthenticationType.MIXED)
+                        && r.principalMode() != PrincipalMode.EXTERNAL);
+    List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
+    oidcConfig
+        .tenants()
+        .forEach(
+            (tenantId, tenant) -> {
+              if (!"default".equals(tenant.principalMapper().type())) {
+                return;
+              }
+              var pm = tenant.principalMapper();
+              String propPrefix = oidcTenantPropPrefix(tenantId);
+              // Named tenants are only activated at runtime by the tenant resolver; a named tenant
+              // that is never resolved is harmless. Downgrade its findings to warnings so that a
+              // partially-configured named tenant does not block startup.
+              boolean isDefault = OidcConfiguration.DEFAULT_TENANT_KEY.equals(tenantId);
+              if (anyExternal) {
+                if (pm.nameClaimPath().isEmpty()) {
+                  errors.add(
+                      isDefault
+                          ? Error.ofSevere(
+                              "name-claim-path must be configured when principal-mode is EXTERNAL,"
+                                  + " since external principals are identified exclusively by name.",
+                              propPrefix + ".name-claim-path")
+                          : Error.of(
+                              "name-claim-path should be configured when principal-mode is EXTERNAL,"
+                                  + " since external principals are identified exclusively by name."
+                                  + " Requests resolved to this tenant will be rejected.",
+                              propPrefix + ".name-claim-path"));
+                }
+                if (pm.idClaimPath().isPresent()) {
+                  errors.add(
+                      Error.of(
+                          "id-claim-path is ignored when principal-mode is EXTERNAL and should be"
+                              + " removed to avoid confusion.",
+                          propPrefix + ".id-claim-path"));
+                }
+              }
+              if (anyInternal) {
+                if (pm.nameClaimPath().isEmpty() && pm.idClaimPath().isEmpty()) {
+                  errors.add(
+                      isDefault
+                          ? Error.ofSevere(
+                              "Either name-claim-path or id-claim-path must be configured so that"
+                                  + " internal principals can be resolved.",
+                              propPrefix + ".name-claim-path")
+                          : Error.of(
+                              "Either name-claim-path or id-claim-path should be configured so that"
+                                  + " internal principals can be resolved."
+                                  + " Requests resolved to this tenant will be rejected.",
+                              propPrefix + ".name-claim-path"));
+                }
+              }
+            });
+    return ProductionReadinessCheck.of(errors);
+  }
+
+  private static String oidcTenantPropPrefix(String tenantId) {
+    return OidcConfiguration.DEFAULT_TENANT_KEY.equals(tenantId)
+        ? "polaris.oidc.principal-mapper"
+        : "polaris.oidc." + tenantId + ".principal-mapper";
   }
 
   @Produces
