@@ -118,7 +118,11 @@ public class ResolverTest extends BaseResolverTest {
             callCtx(),
             metaStoreManager(),
             PolarisPrincipal.of(
-                "P1", Map.of(PolarisPrincipal.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true), Set.of()),
+                "P1",
+                ImmutableAttributeMap.builder()
+                    .put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true)
+                    .build(),
+                Set.of()),
             null,
             null);
     resolver.addEntityByName(PolarisEntityType.PRINCIPAL, "P1");
@@ -143,7 +147,9 @@ public class ResolverTest extends BaseResolverTest {
             metaStoreManager(),
             PolarisPrincipal.of(
                 "ext-user",
-                Map.of(PolarisPrincipal.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true),
+                ImmutableAttributeMap.builder()
+                    .put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true)
+                    .build(),
                 Set.of("PR1")),
             null,
             null);

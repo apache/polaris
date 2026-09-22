@@ -82,6 +82,7 @@ import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.auth.PrivilegeGrantAuthorizationIntent;
 import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
@@ -304,7 +305,8 @@ public class PolarisAdminService {
     // shortcut forces such callers through the authorizer.
     boolean externalPrincipal =
         polarisPrincipal
-            .getAttribute(PolarisPrincipal.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, Boolean.class)
+            .getAttributes()
+            .getOptional(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY)
             .orElse(false);
     if (externalPrincipal) {
       return false;

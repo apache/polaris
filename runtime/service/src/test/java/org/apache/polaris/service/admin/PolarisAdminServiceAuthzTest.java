@@ -72,7 +72,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
     final PolarisPrincipal externalPrincipal =
         PolarisPrincipal.of(
             principalName,
-            Map.of(PolarisPrincipal.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true)
+                .build(),
             Set.of());
     return new PolarisAdminService(
         callContext,

@@ -795,7 +795,8 @@ public class Resolver {
     boolean externalPrincipal =
         polarisPrincipal
             .getAttributes()
-            .getOrDefault(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, false);
+            .getOptional(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY)
+            .orElse(false);
     if (externalPrincipal) {
       return resolveExternalCallerPrincipalAndPrincipalRoles(resolvePrincipalRoles);
     }
