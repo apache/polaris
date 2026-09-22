@@ -134,6 +134,22 @@ class LocalIcebergCatalogTest {
   }
 
   @Test
+  void parentOrSelfLocationRemovesOnlyTheFileName() {
+    assertThat(LocalIcebergCatalog.parentOrSelfLocation("s3://bucket/table/metadata/snap.avro"))
+        .isEqualTo("s3://bucket/table/metadata/");
+    assertThat(LocalIcebergCatalog.parentOrSelfLocation("file:///tmp/table/metadata/snap.avro"))
+        .isEqualTo("file:///tmp/table/metadata/");
+    assertThat(LocalIcebergCatalog.parentOrSelfLocation("s3://bucket/table/metadata/"))
+        .isEqualTo("s3://bucket/table/metadata/");
+    assertThat(LocalIcebergCatalog.parentOrSelfLocation("s3://bucket/table/metadata"))
+        .isEqualTo("s3://bucket/table/");
+    assertThat(LocalIcebergCatalog.parentOrSelfLocation("snap.avro")).isEqualTo("snap.avro");
+    assertThat(LocalIcebergCatalog.parentOrSelfLocation("s3://bucket")).isEqualTo("s3://bucket");
+    assertThat(LocalIcebergCatalog.parentOrSelfLocation("file:///tmp")).isEqualTo("file:///");
+    assertThat(LocalIcebergCatalog.parentOrSelfLocation(null)).isNull();
+  }
+
+  @Test
   void testFailedLocationSiblingResolutionException() {
     when(resolver.resolveAll())
         .thenReturn(new ResolverStatus(PolarisEntityType.TABLE_LIKE, "test-name"));

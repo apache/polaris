@@ -33,6 +33,7 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import java.io.Closeable;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -1374,13 +1375,43 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
   private Set<String> getDirectMetadataFileReferences(TableMetadata metadata) {
     Set<String> locations = new HashSet<>();
-    metadata.snapshots().stream().map(Snapshot::manifestListLocation).forEach(locations::add);
-    metadata.statisticsFiles().stream().map(StatisticsFile::path).forEach(locations::add);
+    metadata.snapshots().stream()
+        .map(Snapshot::manifestListLocation)
+        .map(LocalIcebergCatalog::parentOrSelfLocation)
+        .forEach(locations::add);
+    metadata.statisticsFiles().stream()
+        .map(StatisticsFile::path)
+        .map(LocalIcebergCatalog::parentOrSelfLocation)
+        .forEach(locations::add);
     metadata.partitionStatisticsFiles().stream()
         .map(PartitionStatisticsFile::path)
+        .map(LocalIcebergCatalog::parentOrSelfLocation)
         .forEach(locations::add);
     locations.remove(null);
     return locations;
+  }
+
+  /**
+   * Returns the directory containing a metadata file, preserving the URI scheme and authority. A
+   * location that already ends in {@code /}, has no URI path, or has no path separator is returned
+   * unchanged so that it is still validated rather than silently discarded.
+   */
+  @VisibleForTesting
+  static String parentOrSelfLocation(String fileLocation) {
+    if (fileLocation == null) {
+      return null;
+    }
+    URI location = URI.create(fileLocation);
+    String path = location.getRawPath();
+    if (path == null || path.isEmpty() || path.endsWith("/")) {
+      return fileLocation;
+    }
+    int separator = path.lastIndexOf('/');
+    if (separator < 0) {
+      return fileLocation;
+    }
+    int pathStart = fileLocation.indexOf(path);
+    return fileLocation.substring(0, pathStart) + path.substring(0, separator + 1);
   }
 
   private void validateTableMetadataLocations(
