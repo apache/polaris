@@ -27,6 +27,7 @@ import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
@@ -81,11 +82,12 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_SEMANTIC_MODEL;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    return paginatedListing(
-        pageToken,
-        pageSize,
-        request -> semanticModelCatalog.listSemanticModels(namespace, request),
-        ListSemanticModelsResponse::getNextPageToken);
+    PageToken pageRequest =
+        PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
+    ListSemanticModelsResponse response =
+        semanticModelCatalog.listSemanticModels(namespace, pageRequest);
+    rejectIncompleteListing(pageToken, pageSize, response.getNextPageToken());
+    return response;
   }
 
   public LoadSemanticModelResponse loadSemanticModel(SemanticModelIdentifier identifier) {

@@ -36,6 +36,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.types.GenericTable;
@@ -103,12 +104,10 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
-    Page<TableIdentifier> page =
-        paginatedListing(
-            pageToken,
-            pageSize,
-            request -> genericTableCatalog.listGenericTables(parent, request),
-            Page::encodedResponseToken);
+    PageToken pageRequest =
+        PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
+    Page<TableIdentifier> page = genericTableCatalog.listGenericTables(parent, pageRequest);
+    rejectIncompleteListing(pageToken, pageSize, page.encodedResponseToken());
     return ListGenericTablesResponse.builder()
         .setIdentifiers(new LinkedHashSet<>(page.items()))
         .setNextPageToken(page.encodedResponseToken())
