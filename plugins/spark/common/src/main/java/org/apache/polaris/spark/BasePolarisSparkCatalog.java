@@ -351,6 +351,10 @@ public abstract class BasePolarisSparkCatalog
 
   @Override
   public boolean purgeTable(Identifier ident) {
+    if (this.icebergsSparkCatalog.tableExists(ident)) {
+      return this.icebergsSparkCatalog.purgeTable(ident);
+    }
+
     String provider;
     try {
       provider = this.polarisSparkCatalog.getTableFormat(ident);

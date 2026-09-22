@@ -764,6 +764,36 @@ public class SparkCatalogTest {
   }
 
   @Test
+  void testPurgeIcebergTableWhenGenericTablesDisabled() throws Exception {
+    Identifier identifier = Identifier.of(defaultNS, "iceberg-purge-without-generic-tables");
+    createAndValidateGenericTableWithLoad(catalog, identifier, defaultSchema, "iceberg");
+
+    PolarisSparkCatalog originalPolarisCatalog = catalog.polarisSparkCatalog;
+    PolarisSparkCatalog disabledGenericTablesCatalog = Mockito.spy(originalPolarisCatalog);
+    Mockito.doThrow(new UnsupportedOperationException("Generic Table endpoint is disabled"))
+        .when(disabledGenericTablesCatalog)
+        .getTableFormat(identifier);
+    catalog.polarisSparkCatalog = disabledGenericTablesCatalog;
+
+    try (MockedStatic<SparkActions> mockedStaticActions = Mockito.mockStatic(SparkActions.class)) {
+      SparkActions actions = Mockito.mock(SparkActions.class);
+      DeleteReachableFilesSparkAction deleteAction =
+          Mockito.mock(DeleteReachableFilesSparkAction.class);
+      mockedStaticActions.when(SparkActions::get).thenReturn(actions);
+      Mockito.when(actions.deleteReachableFiles(Mockito.any())).thenReturn(deleteAction);
+      Mockito.when(deleteAction.io(Mockito.any())).thenReturn(deleteAction);
+      Mockito.when(deleteAction.execute())
+          .thenReturn(Mockito.mock(DeleteReachableFiles.Result.class));
+
+      assertThat(catalog.purgeTable(identifier)).isTrue();
+      Mockito.verify(disabledGenericTablesCatalog, Mockito.never()).getTableFormat(identifier);
+    } finally {
+      catalog.polarisSparkCatalog = originalPolarisCatalog;
+    }
+    assertThat(catalog.icebergsSparkCatalog.tableExists(identifier)).isFalse();
+  }
+
+  @Test
   void testPaimonPurgeRemovesBothCatalogEntries() throws Exception {
     Identifier identifier = Identifier.of(defaultNS, "paimon-purge-table");
     createAndValidateGenericTableWithLoad(catalog, identifier, defaultSchema, "paimon");
