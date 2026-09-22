@@ -33,6 +33,7 @@ import java.util.stream.Stream;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration.PrincipalMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -69,7 +70,28 @@ class DefaultPrincipalMapperTest {
   }
 
   static Stream<Arguments> mapPrincipalId() {
-    return Stream.of(Arguments.of(123L, 123L), Arguments.of("123", 123L), Arguments.of(null, -1));
+    return Stream.of(
+        Arguments.of(123L, 123L),
+        Arguments.of("123", 123L),
+        Arguments.of((short) 123, 123L),
+        // Non-numeric identities, e.g. the UUID "sub" claim issued by Keycloak, are not valid
+        // Polaris principal IDs and must not fail the mapping: the principal is resolved by name.
+        Arguments.of("3f6a1a4e-1b4a-4d5e-9f6a-2b3c4d5e6f70", -1),
+        Arguments.of("", -1),
+        Arguments.of("not-a-long", -1),
+        // Too large to fit into a long.
+        Arguments.of("9223372036854775808", -1),
+        Arguments.of(null, -1));
+  }
+
+  @Test
+  public void mapPrincipalIdWithUuidSubClaimFallsBackToName() {
+    when(claimsLocator.locateClaim(eq("id_path"), any()))
+        .thenReturn("3f6a1a4e-1b4a-4d5e-9f6a-2b3c4d5e6f70");
+    when(claimsLocator.locateClaim(eq("name_path"), any())).thenReturn("testUser");
+
+    assertThat(mapper.mapPrincipalId(identity)).isEmpty();
+    assertThat(mapper.mapPrincipalName(identity)).contains("testUser");
   }
 
   @ParameterizedTest

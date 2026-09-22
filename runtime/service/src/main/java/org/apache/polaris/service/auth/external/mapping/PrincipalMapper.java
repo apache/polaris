@@ -36,15 +36,25 @@ import java.util.OptionalLong;
 public interface PrincipalMapper {
 
   /**
-   * Maps the {@link SecurityIdentity} to a Polaris principal.
+   * Maps the {@link SecurityIdentity} to a Polaris principal ID.
+   *
+   * <p>This mapping can only be used for principals whose ID is a numeric value, as Polaris
+   * principal IDs are {@code long} values. For identity providers issuing non-numeric IDs, such as
+   * UUIDs, {@link #mapPrincipalName(SecurityIdentity) the name mapping} must be used instead.
    *
    * @param identity the {@link SecurityIdentity} of the user
-   * @return the Polaris principal, or an empty optional if no mapping is available
+   * @return the numeric Polaris principal ID, or an empty optional if no numeric mapping is
+   *     available
    */
   OptionalLong mapPrincipalId(SecurityIdentity identity);
 
   /**
    * Maps the {@link SecurityIdentity} to a Polaris principal name.
+   *
+   * <p>The returned value is used as the principal identifier in Polaris, which must match the name
+   * of an existing principal in Polaris if the mapping is the only one available. For this reason,
+   * implementations must return an empty optional rather than a value that cannot be a Polaris
+   * principal name.
    *
    * @param identity the {@link SecurityIdentity} of the user
    * @return the Polaris principal name, or an empty optional if no mapping is available

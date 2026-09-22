@@ -46,6 +46,11 @@ public interface OidcTenantConfiguration {
      * as a separator, e.g. {@code "resource_access/client1/roles"} would look for the "roles" field
      * inside the "client1" object inside the "resource_access" object in the token claims.
      *
+     * <p>The claim must carry a numeric value, since Polaris principal IDs are {@code long} values.
+     * A non-numeric value, such as the UUID-based {@code sub} claim issued by Keycloak, is ignored
+     * and the principal is resolved using {@link #nameClaimPath()} instead, so a name claim must be
+     * configured for identity providers that issue non-numeric IDs.
+     *
      * <p>Optional. Either this option or {@link #nameClaimPath()} must be provided.
      */
     Optional<String> idClaimPath();
