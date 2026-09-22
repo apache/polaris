@@ -155,6 +155,17 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added `namespaces update` to set and remove namespace properties
 - NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
+- New `LINEAGE_READ` and `LINEAGE_INGEST` privileges authorize querying the lineage graph and
+  submitting OpenLineage events, respectively. Both are grantable to catalog roles at catalog,
+  namespace, and table scope. They are also conferred by the described entity's existing grants:
+  `LINEAGE_READ` by the table read and write grants, `LINEAGE_INGEST` by the write ones.
+  `LINEAGE_INGEST` does not confer `LINEAGE_READ`. Within an OpenLineage event, output datasets
+  require `LINEAGE_INGEST` (falling back to the parent namespace when the output table does not
+  exist yet, as with CREATE TABLE AS SELECT), while input datasets require only read access to the
+  table, so ordinary readers can record lineage from the sources they read without being granted
+  write-level privileges on them. Deployments using the Ranger authorizer must define the
+  `lineage-query` and `lineage-ingest` access types in their Polaris service definition; citing a
+  table as a lineage input reuses the existing `table-properties-read` access type.
 
 ### Changes
 

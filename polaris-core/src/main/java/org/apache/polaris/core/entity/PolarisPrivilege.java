@@ -279,6 +279,8 @@ public enum PolarisPrivilege {
       PolarisEntityType.TABLE_LIKE,
       List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
       PolarisEntityType.CATALOG_ROLE),
+  LINEAGE_READ(111, PolarisEntityType.TABLE_LIKE),
+  LINEAGE_INGEST(112, PolarisEntityType.TABLE_LIKE),
   ;
 
   /**
