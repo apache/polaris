@@ -17,11 +17,6 @@
  * under the License.
  */
 
-import org.gradle.api.attributes.Bundling
-import org.gradle.api.attributes.Category
-import org.gradle.api.attributes.LibraryElements
-import org.gradle.api.attributes.Usage
-import org.gradle.api.attributes.java.TargetJvmVersion
 import org.gradle.api.component.AdhocComponentWithVariants
 
 plugins {
@@ -31,7 +26,6 @@ plugins {
 
 description = "Polaris NoSQL persistence, in-memory implementation"
 
-val quarkusJarLibraryElements = objects.named(LibraryElements::class.java, LibraryElements.JAR)
 val quarkusRuntimeOnly =
   configurations.dependencyScope("quarkusRuntimeOnly") {
     extendsFrom(configurations.implementation.get(), configurations.runtimeOnly.get())
@@ -40,11 +34,7 @@ val quarkusRuntimeElements =
   configurations.consumable("quarkusRuntimeElements") {
     extendsFrom(quarkusRuntimeOnly.get())
     attributes {
-      attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage::class.java, Usage.JAVA_RUNTIME))
-      attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category::class.java, Category.LIBRARY))
-      attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, quarkusJarLibraryElements)
-      attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling::class.java, Bundling.EXTERNAL))
-      attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21)
+      addAllLater(configurations.runtimeElements.get().attributes)
     }
     outgoing {
       artifact(tasks.named("jar"))
