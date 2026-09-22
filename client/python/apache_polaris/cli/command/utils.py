@@ -22,6 +22,7 @@ import datetime
 from typing import List, Optional, Tuple, Deque, Generator, Callable, Any
 from collections import deque
 from difflib import SequenceMatcher
+from urllib.parse import urlparse
 
 from apache_polaris.sdk.catalog.api_client import ApiClient
 from apache_polaris.sdk.catalog.configuration import Configuration
@@ -148,6 +149,16 @@ def handle_api_exception(entity_label: str, e: Exception) -> None:
         print(f"  [x] {entity_label:<30} ERROR (HTTP {status}: {e})", file=sys.stderr)
     else:
         print(f"  [x] {entity_label:<30} Error: {e}", file=sys.stderr)
+
+
+def validate_metadata_location(location: Optional[str]) -> None:
+    """
+    Validate a --metadata-location argument. Raises CliError on failure.
+    """
+    if not location or not location.strip():
+        raise CliError("Missing required argument: --metadata-location")
+    if not urlparse(location).scheme:
+        raise CliError(f"--metadata-location must include a scheme; got {location}")
 
 
 def format_iceberg_type(obj: Any) -> str:
