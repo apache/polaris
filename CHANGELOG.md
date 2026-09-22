@@ -137,6 +137,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Policy API: detaching a policy from a target it was never attached to now returns
   `404 Not Found` with error type `NoSuchMappingException`, as the policy API specification
   requires, instead of `500 Internal Server Error`.
+- A single failing event no longer aborts an entire OpenLineage batch ingest request. The batch
+  endpoint invoked the ingest provider without isolating per-event failures, so an unexpected
+  exception from one event was mapped into one error response for the whole request and the
+  outcomes of every other event were lost, including events that had already been ingested
+  successfully. Each event is now attempted independently and an unexpected failure is reported as
+  a non-retriable entry for that event, so the existing `SUCCESS`/`PARTIAL`/`FAILURE` summary
+  reflects what actually happened. The single-event endpoint is unchanged.
 - OPA authorizer HTTP client creation no longer silently falls back to a default client when
   truststore or SSL setup fails. Misconfiguration (for example a bad truststore path) now fails
   startup instead of continuing with system trust and no configured response timeout.
