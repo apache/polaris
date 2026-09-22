@@ -121,6 +121,9 @@ public record RangerPolarisOperationSemantics(
   private static final String POLICY_ATTACH = "policy-attach";
   private static final String POLICY_DETACH = "policy-detach";
 
+  private static final String LINEAGE_QUERY = "lineage-query";
+  private static final String LINEAGE_INGEST = "lineage-ingest";
+
   private static final EnumMap<PolarisAuthorizableOperation, RangerPolarisOperationSemantics>
       RBAC_SEMANTICS_BY_OPERATION = new EnumMap<>(PolarisAuthorizableOperation.class);
 
@@ -432,6 +435,17 @@ public record RangerPolarisOperationSemantics(
         PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS,
         new RangerPolarisOperationSemantics(
             toSet(TABLE_REMOVE_PARTITION_SPECS), null, ResolvedPathRooting.ROOT));
+
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.QUERY_LINEAGE,
+        new RangerPolarisOperationSemantics(toSet(LINEAGE_QUERY), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.INGEST_LINEAGE,
+        new RangerPolarisOperationSemantics(toSet(LINEAGE_INGEST), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REFERENCE_LINEAGE_INPUT_TABLE,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
 
     if (LOG.isDebugEnabled()) {
       EnumSet<PolarisAuthorizableOperation> missing =

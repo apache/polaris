@@ -91,6 +91,17 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Semantic models now support dedicated privileges for listing, creating, reading, updating,
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
+- New `LINEAGE_READ` and `LINEAGE_INGEST` privileges authorize querying the lineage graph and
+  submitting OpenLineage events, respectively. Both are grantable to catalog roles at catalog,
+  namespace, and table scope. They are also conferred by the described entity's existing grants:
+  `LINEAGE_READ` by the table read and write grants, `LINEAGE_INGEST` by the write ones.
+  `LINEAGE_INGEST` does not confer `LINEAGE_READ`. Within an OpenLineage event, output datasets
+  require `LINEAGE_INGEST` (falling back to the parent namespace when the output table does not
+  exist yet, as with CREATE TABLE AS SELECT), while input datasets require only read access to the
+  table, so ordinary readers can record lineage from the sources they read without being granted
+  write-level privileges on them. Deployments using the Ranger authorizer must define the
+  `lineage-query` and `lineage-ingest` access types in their Polaris service definition; citing a
+  table as a lineage input reuses the existing `table-properties-read` access type.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
