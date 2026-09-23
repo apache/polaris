@@ -454,4 +454,9 @@ public class QueryGenerator {
             null);
     return new PreparedQuery(query.sql(), where.parameters());
   }
+
+  public static String getFullyQualifiedTableName(String tableName) {
+    // TODO: make schema name configurable.
+    return "POLARIS_SCHEMA." + tableName;
+  }
 }

@@ -18,25 +18,27 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.jspecify.annotations.Nullable;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.json.JsonMapper;
 
-/** Model class for scan_metrics_report table - stores scan metrics as first-class entities. */
+/** JDBC model for the {@code SCAN_METRICS_REPORT} table. */
 @PolarisImmutable
 public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport> {
   String TABLE_NAME = "SCAN_METRICS_REPORT";
 
-  // Column names
   String REPORT_ID = "report_id";
   String REALM_ID = "realm_id";
   String CATALOG_ID = "catalog_id";
@@ -104,7 +106,6 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
           TOTAL_DELETE_FILE_SIZE_BYTES,
           METADATA);
 
-  // Getters
   String getReportId();
 
   String getRealmId();
@@ -240,7 +241,6 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
     map.put(POSITIONAL_DELETE_FILES, getPositionalDeleteFiles());
     map.put(INDEXED_DELETE_FILES, getIndexedDeleteFiles());
     map.put(TOTAL_DELETE_FILE_SIZE_BYTES, getTotalDeleteFileSizeBytes());
-
     if (databaseType.equals(DatabaseType.POSTGRES)) {
       map.put(METADATA, toJsonbPGobject(getMetadata() != null ? getMetadata() : "{}"));
     } else {
@@ -249,22 +249,8 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
     return map;
   }
 
-  // === Static conversion methods (following ModelEntity pattern) ===
-
-  /**
-   * Converts a ScanMetricsRecord (SPI) to ModelScanMetricsReport (JDBC).
-   *
-   * <p>Request context fields (principalName, requestId, otelTraceId, otelSpanId) are read directly
-   * from the record, which should have been populated by the service layer.
-   *
-   * @param record the SPI record containing all metrics and request context
-   * @param realmId the realm ID for multi-tenancy
-   * @return the JDBC model
-   */
   static ModelScanMetricsReport fromRecord(ScanMetricsRecord record, String realmId) {
-    // Extract client-provided report trace ID from metadata
     String reportTraceId = record.metadata().get("report-trace-id");
-
     return ImmutableModelScanMetricsReport.builder()
         .reportId(record.reportId())
         .realmId(realmId)
@@ -280,7 +266,7 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
         .schemaId(record.schemaId().orElse(null))
         .filterExpression(record.filterExpression().orElse(null))
         .projectedFieldIds(toCommaSeparated(record.projectedFieldIds()))
-        .projectedFieldNames(toCommaSeparated(record.projectedFieldNames()))
+        .projectedFieldNames(MetricsModelUtils.toJsonArray(record.projectedFieldNames()))
         .resultDataFiles(record.resultDataFiles())
         .resultDeleteFiles(record.resultDeleteFiles())
         .totalFileSizeBytes(record.totalFileSizeBytes())
@@ -301,27 +287,59 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
         .build();
   }
 
-  // === Helper Methods ===
-
-  private static String toCommaSeparated(List<?> list) {
-    if (list == null || list.isEmpty()) {
-      return null;
-    }
-    return list.stream().map(Object::toString).collect(Collectors.joining(","));
+  default ScanMetricsRecord toRecord() {
+    String rawFieldIds = getProjectedFieldIds();
+    String rawFieldNames = getProjectedFieldNames();
+    List<Integer> fieldIds =
+        rawFieldIds == null || rawFieldIds.isEmpty()
+            ? Collections.emptyList()
+            : Arrays.stream(rawFieldIds.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .flatMap(
+                    s -> {
+                      try {
+                        return java.util.stream.Stream.of(Integer.parseInt(s));
+                      } catch (NumberFormatException e) {
+                        return java.util.stream.Stream.empty();
+                      }
+                    })
+                .collect(Collectors.toList());
+    List<String> fieldNames = MetricsModelUtils.parseJsonArray(rawFieldNames);
+    return ScanMetricsRecord.builder()
+        .reportId(getReportId())
+        .catalogId(getCatalogId())
+        .tableId(getTableId())
+        .timestamp(Instant.ofEpochMilli(getTimestampMs()))
+        .metadata(MetricsModelUtils.parseMetadata(getMetadata()))
+        .principalName(getPrincipalName())
+        .requestId(getRequestId())
+        .otelTraceId(getOtelTraceId())
+        .otelSpanId(getOtelSpanId())
+        .snapshotId(Optional.ofNullable(getSnapshotId()))
+        .schemaId(Optional.ofNullable(getSchemaId()))
+        .filterExpression(Optional.ofNullable(getFilterExpression()))
+        .projectedFieldIds(fieldIds)
+        .projectedFieldNames(fieldNames)
+        .resultDataFiles(getResultDataFiles())
+        .resultDeleteFiles(getResultDeleteFiles())
+        .totalFileSizeBytes(getTotalFileSizeBytes())
+        .totalDataManifests(getTotalDataManifests())
+        .totalDeleteManifests(getTotalDeleteManifests())
+        .scannedDataManifests(getScannedDataManifests())
+        .scannedDeleteManifests(getScannedDeleteManifests())
+        .skippedDataManifests(getSkippedDataManifests())
+        .skippedDeleteManifests(getSkippedDeleteManifests())
+        .skippedDataFiles(getSkippedDataFiles())
+        .skippedDeleteFiles(getSkippedDeleteFiles())
+        .totalPlanningDurationMs(getTotalPlanningDurationMs())
+        .equalityDeleteFiles(getEqualityDeleteFiles())
+        .positionalDeleteFiles(getPositionalDeleteFiles())
+        .indexedDeleteFiles(getIndexedDeleteFiles())
+        .totalDeleteFileSizeBytes(getTotalDeleteFileSizeBytes())
+        .build();
   }
 
-  private static String toJsonString(Map<String, String> map) {
-    if (map == null || map.isEmpty()) {
-      return "{}";
-    }
-    try {
-      return JsonMapper.shared().writeValueAsString(map);
-    } catch (JacksonException e) {
-      return "{}";
-    }
-  }
-
-  /** Dummy instance to be used as a Converter when calling fromResultSet(). */
   ModelScanMetricsReport CONVERTER =
       ImmutableModelScanMetricsReport.builder()
           .reportId("")
@@ -346,4 +364,18 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
           .indexedDeleteFiles(0L)
           .totalDeleteFileSizeBytes(0L)
           .build();
+
+  private static String toCommaSeparated(List<?> list) {
+    if (list == null || list.isEmpty()) return null;
+    return list.stream().map(Object::toString).collect(Collectors.joining(","));
+  }
+
+  private static String toJsonString(Map<String, String> map) {
+    if (map == null || map.isEmpty()) return "{}";
+    try {
+      return MetricsModelUtils.OBJECT_MAPPER.writeValueAsString(map);
+    } catch (JsonProcessingException e) {
+      return "{}";
+    }
+  }
 }
