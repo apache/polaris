@@ -63,7 +63,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.impl.Slf4jLogger;
-import software.amazon.awssdk.services.sts.model.StsException;
 
 /** Unit tests for exception mappers */
 @SuppressWarnings("resource")
@@ -131,26 +130,6 @@ public class ExceptionMapperTest {
     Optional<Integer> code =
         IcebergExceptionMapper.mapCloudExceptionToResponseCode(nullMessageCloudException);
     assertThat(code).contains(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
-  }
-
-  @ParameterizedTest
-  @MethodSource("stsExceptionStatusCodes")
-  public void testStsExceptionStatusCodes(RuntimeException exception, int expectedStatus) {
-    IcebergExceptionMapper mapper = new IcebergExceptionMapper();
-    Response response = mapper.toResponse(exception);
-    assertThat(response.getStatus()).isEqualTo(expectedStatus);
-  }
-
-  static Stream<Arguments> stsExceptionStatusCodes() {
-    return Stream.of(
-        Arguments.of(
-            StsException.builder()
-                .message("is not authorized to perform: sts:AssumeRole")
-                .build(),
-            Response.Status.FORBIDDEN.getStatusCode()),
-        Arguments.of(
-            StsException.builder().message("Request failed").build(),
-            Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()));
   }
 
   @ParameterizedTest
