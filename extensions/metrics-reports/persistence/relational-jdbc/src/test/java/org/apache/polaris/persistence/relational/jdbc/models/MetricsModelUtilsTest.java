@@ -33,9 +33,22 @@ public class MetricsModelUtilsTest {
 
   @Test
   public void parseJsonArrayReadsPreUpgradeCommaDelimitedRows() {
-    // Rows written by Polaris 1.7.0, before this field switched to JSON encoding.
+    // Rows written by an earlier iteration of this PR, before this field switched to JSON
+    // encoding.
     assertThat(MetricsModelUtils.parseJsonArray("id,name,value"))
         .containsExactly("id", "name", "value");
+  }
+
+  @Test
+  public void parseJsonArrayReadsLegacyFieldLiterallyNamedNull() {
+    // "null" parses as the JSON null literal, not an array; must fall back to the legacy
+    // comma-delimited decoder rather than propagate a null list.
+    assertThat(MetricsModelUtils.parseJsonArray("null")).containsExactly("null");
+  }
+
+  @Test
+  public void parseJsonArrayReadsLegacyFieldNamedNullFollowedByAnotherField() {
+    assertThat(MetricsModelUtils.parseJsonArray("null,id")).containsExactly("null", "id");
   }
 
   @Test

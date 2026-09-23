@@ -23,6 +23,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,8 +50,8 @@ public final class MetricsModelUtils {
   }
 
   /**
-   * Serializes a list of strings as a JSON array, unlike a delimiter-joined string this is safe
-   * for elements containing arbitrary punctuation (e.g. field names with commas).
+   * Serializes a list of strings as a JSON array, unlike a delimiter-joined string this is safe for
+   * elements containing arbitrary punctuation (e.g. field names with commas).
    */
   public static @Nullable String toJsonArray(List<String> list) {
     if (list == null || list.isEmpty()) {
@@ -65,19 +66,26 @@ public final class MetricsModelUtils {
   }
 
   /**
-   * Parses a projected-field-names value written either by this reader (a JSON array) or by
-   * Polaris 1.7.0, which persisted it as a comma-delimited string. JSON is tried first; a value
-   * that isn't valid JSON is assumed to be the legacy comma-delimited format rather than treated
-   * as empty, so pre-upgrade rows keep their field names.
+   * Parses a projected-field-names value written either by this reader (a JSON array) or by an
+   * earlier reader, which persisted it as a comma-delimited string. JSON is tried first; a value
+   * that isn't a complete JSON array of non-null strings is assumed to be the legacy
+   * comma-delimited format rather than treated as empty, so pre-upgrade rows keep their field
+   * names. This also covers a legacy field literally named "null": Jackson parses that as the JSON
+   * null literal (not an array), so it is rejected here and falls through to the legacy decoder
+   * instead of propagating a null list to callers.
    */
   public static List<String> parseJsonArray(String value) {
     if (value == null || value.isEmpty()) {
       return List.of();
     }
     try {
-      return OBJECT_MAPPER.readValue(value, new TypeReference<List<String>>() {});
+      List<String> parsed = OBJECT_MAPPER.readValue(value, new TypeReference<List<String>>() {});
+      if (parsed != null && parsed.stream().noneMatch(Objects::isNull)) {
+        return parsed;
+      }
     } catch (JsonProcessingException e) {
-      return List.of(value.split(",", -1));
+      // fall through to the legacy comma-delimited decoder
     }
+    return List.of(value.split(",", -1));
   }
 }
