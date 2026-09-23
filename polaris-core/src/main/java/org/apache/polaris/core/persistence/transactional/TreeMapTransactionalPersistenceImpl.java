@@ -675,7 +675,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> catalogPath,
+          @NonNull List<PolarisEntityCore> parentPath,
           T entity) {
     // TODO we could optimize this full scan
     StorageLocation entityLocationWithoutScheme =
@@ -685,7 +685,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     // The entity's own parent namespaces may contain its location: they always do when locations
     // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
     Set<Long> ancestorIds =
-        catalogPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
+        parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
 
     for (PolarisBaseEntity siblingEntity : allEntities) {
       Optional<StorageLocation> maybeSiblingLocationWithoutScheme =

@@ -625,7 +625,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   <T extends PolarisEntity & LocationBasedEntity> Optional<String> hasOverlappingSiblings(
-      List<PolarisEntityCore> catalogPath, T entity) {
+      List<PolarisEntityCore> parentPath, T entity) {
     var baseLocation = entity.getBaseLocation();
     if (baseLocation == null) {
       return Optional.empty();
@@ -636,8 +636,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
     // The entity's own parent namespaces may contain its location: they always do when locations
     // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
-    var ancestorIds =
-        catalogPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
+    var ancestorIds = parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
 
     return hasOverlappingSiblings(catalogId, checkLocation, ancestorIds);
   }

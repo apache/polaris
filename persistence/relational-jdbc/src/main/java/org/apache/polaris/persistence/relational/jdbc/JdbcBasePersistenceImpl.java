@@ -841,7 +841,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> catalogPath,
+          @NonNull List<PolarisEntityCore> parentPath,
           T entity) {
     if (this.schemaVersion < 2) {
       return Optional.empty();
@@ -864,7 +864,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       // they always do when locations follow the namespace tree, as default locations do. Such an
       // ancestor is not a sibling.
       Set<Long> ancestorIds =
-          catalogPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
+          parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
 
       StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
       for (PolarisBaseEntity result : results) {

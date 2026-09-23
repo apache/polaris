@@ -144,7 +144,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   written, saving an object-storage write and delete per conflict and returning the `409` to the
   client sooner.
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
-  take the entity's resolved catalog path, so implementations exclude the entity's own ancestors
+  take the entity's resolved parent path, so implementations exclude the entity's own ancestors
   without re-reading the parent chain from the metastore.
 
 ### Deprecations
