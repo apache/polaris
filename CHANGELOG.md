@@ -142,6 +142,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- A list request whose `pageSize` is not a number now returns `400 Bad Request` naming the
+  parameter, instead of `404 Not Found`. The status is now the same on every API that accepts
+  `pageSize`.
 - Policy API: detaching a policy from a target it was never attached to now returns
   `404 Not Found` with error type `NoSuchMappingException`, as the policy API specification
   requires, instead of `500 Internal Server Error`.
