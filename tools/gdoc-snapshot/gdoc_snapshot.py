@@ -498,13 +498,14 @@ def build_manifest(path):
                           and entry.get("google_revision") == selected), None)
             if match:
                 entry = dict(match)
+                entry["snapshot_md"] = list(match["snapshot_md"])
             else:
                 pointer = archive_bundle(path.parent, doc_id, selected, url)
                 entry = make_entry(doc_id, selected, pointer)
             entry["google_doc_url"] = url
             entries[version] = entry
         publish_proposal(path, original_bytes, proposal)
-        return {**check(path), "status": "generated", "versions": pending}
+        return {**check(path), "status": "generated", "mode": "capture", "versions": pending}
 
 
 def git_result(root, *args):

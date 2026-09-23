@@ -31,9 +31,10 @@ The original tool version, hash, and source metadata remain in the
 [bundle manifest](snapshots/6a14366e76ccb3b8614d25bdc22e350abd90233ef6c1147989b5485c7bc859dd/manifest.json).
 
 `rev2` was submitted as a link-only entry to exercise the revised branch CI.
-Its generated fields in `manifest.yaml` record the revision selected when that
-build ran. If the live Doc still has the same Google revision, the build reuses
-the existing bundle. These labels demonstrate capture behavior and do not mark
+The [successful run](https://github.com/flyingImer/polaris/actions/runs/35818121693)
+selected Google revision `3625`, reused the existing bundle, and
+[committed the generated fields](https://github.com/flyingImer/polaris/commit/d1a25e3545ed79a92effdcdceadc53b9e3963aa6)
+back to the branch. These labels demonstrate capture behavior and do not mark
 an accepted Tag design.
 
 From the repository root, after installing the tool's Python dependency:

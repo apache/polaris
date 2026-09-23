@@ -124,6 +124,8 @@ class SnapshotBuild(unittest.TestCase):
             g.build_all(self.root)
         entries = g.load_proposal(self.path)["revisions"]
         self.assertEqual(entries["rev1"]["snapshot_md"], entries["rev2"]["snapshot_md"])
+        self.assertNotIn("&id", self.path.read_text())
+        self.assertNotIn("*id", self.path.read_text())
 
     def test_multiple_pending_labels_for_one_document_share_one_capture(self):
         self.pending()
