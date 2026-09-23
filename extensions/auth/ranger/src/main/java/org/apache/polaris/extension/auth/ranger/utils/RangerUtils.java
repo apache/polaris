@@ -19,6 +19,7 @@
 
 package org.apache.polaris.extension.auth.ranger.utils;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -34,12 +35,23 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.ranger.authz.api.RangerAuthzException;
 import org.apache.ranger.authz.model.RangerAccessInfo;
 import org.apache.ranger.authz.model.RangerResourceInfo;
 import org.apache.ranger.authz.model.RangerUserInfo;
 import org.apache.ranger.authz.util.RangerResourceNameParser;
 
 public class RangerUtils {
+
+  // the resource hierarchy of the Polaris service-def, keyed by the type of the leaf resource
+  private static final Map<String, RangerResourceNameParser> RRN_PARSERS =
+      Map.of(
+          "root", rrnParser("root"),
+          "principal", rrnParser("root/principal"),
+          "catalog", rrnParser("root/catalog"),
+          "namespace", rrnParser("root/catalog/namespace"),
+          "table", rrnParser("root/catalog/namespace/table"),
+          "policy", rrnParser("root/catalog/namespace/policy"));
 
   public static String toResourceType(PolarisEntityType entityType) {
     return switch (entityType) {
@@ -76,27 +88,57 @@ public class RangerUtils {
 
   public static String toResourcePath(
       PolarisResolvedPathWrapper resolvedPath, String realmContextId) {
-    StringBuilder sb = new StringBuilder();
     String resourceType =
         toResourceType(resolvedPath.getResolvedLeafEntity().getEntity().getType());
 
-    sb.append(resourceType).append(RangerResourceNameParser.RRN_RESOURCE_TYPE_SEP);
+    List<String> values = new ArrayList<>();
+    values.add(realmContextId);
 
-    boolean isFirst = true;
-    for (ResolvedPolarisEntity entity : resolvedPath.getResolvedFullPath()) {
-      if (isFirst) {
-        sb.append(realmContextId);
-        isFirst = false;
-        if (entity.getEntity().getType() != PolarisEntityType.ROOT) {
-          sb.append(RangerResourceNameParser.DEFAULT_RRN_RESOURCE_SEP)
-              .append(entity.getEntity().getName());
+    // A Polaris path carries one entity per namespace level, while the hierarchy above has a
+    // single namespace resource. Every level therefore collapses into one value, and
+    // toResourceName() escapes the separator between them so that the value is not read back
+    // as several resources.
+    StringBuilder namespaceLevels = null;
+    for (ResolvedPolarisEntity resolved : resolvedPath.getResolvedFullPath()) {
+      PolarisEntity entity = resolved.getEntity();
+
+      if (entity.getType() == PolarisEntityType.ROOT) {
+        continue;
+      } else if (entity.getType() == PolarisEntityType.NAMESPACE) {
+        if (namespaceLevels == null) {
+          namespaceLevels = new StringBuilder(entity.getName());
+        } else {
+          namespaceLevels
+              .append(RangerResourceNameParser.DEFAULT_RRN_RESOURCE_SEP)
+              .append(entity.getName());
         }
-      } else {
-        sb.append(RangerResourceNameParser.DEFAULT_RRN_RESOURCE_SEP)
-            .append(entity.getEntity().getName());
+
+        continue;
       }
+
+      if (namespaceLevels != null) {
+        values.add(namespaceLevels.toString());
+        namespaceLevels = null;
+      }
+
+      values.add(entity.getName());
     }
-    return sb.toString();
+
+    if (namespaceLevels != null) {
+      values.add(namespaceLevels.toString());
+    }
+
+    return resourceType
+        + RangerResourceNameParser.RRN_RESOURCE_TYPE_SEP
+        + RRN_PARSERS.get(resourceType).toResourceName(values.toArray(new String[0]));
+  }
+
+  private static RangerResourceNameParser rrnParser(String template) {
+    try {
+      return new RangerResourceNameParser(template);
+    } catch (RangerAuthzException excp) {
+      throw new IllegalStateException(template + ": invalid resource template", excp);
+    }
   }
 
   private static RangerResourceInfo toResourceInfo(
