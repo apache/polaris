@@ -160,8 +160,8 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
 
   /**
    * Builds a stable fingerprint of the query scope (realm, metric type, catalog, tables, and
-   * filters). Used to reject a pagination cursor that was produced by a different query,
-   * including one issued against a different realm.
+   * filters). Used to reject a pagination cursor that was produced by a different query, including
+   * one issued against a different realm.
    */
   private static String scopeKey(
       String realmId,
