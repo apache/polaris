@@ -35,6 +35,8 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.types.GenericTable;
@@ -97,12 +99,17 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     }
   }
 
-  public ListGenericTablesResponse listGenericTables(Namespace parent) {
+  public ListGenericTablesResponse listGenericTables(
+      Namespace parent, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
+    PageToken pageRequest =
+        PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
+    Page<TableIdentifier> page = genericTableCatalog.listGenericTables(parent, pageRequest);
     return ListGenericTablesResponse.builder()
-        .setIdentifiers(new LinkedHashSet<>(genericTableCatalog.listGenericTables(parent)))
+        .setIdentifiers(new LinkedHashSet<>(page.items()))
+        .setNextPageToken(page.encodedResponseToken())
         .build();
   }
 
@@ -154,5 +161,20 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             .build();
 
     return LoadGenericTableResponse.builder().setTable(loadedTable).build();
+  }
+
+  private boolean shouldDecodeToken() {
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    return catalogEntity == null
+        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED)
+        : realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED, catalogEntity);
+  }
+
+  private int maxPageSize() {
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    return catalogEntity == null
+        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE)
+        : realmConfig()
+            .getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity);
   }
 }

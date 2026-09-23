@@ -293,7 +293,7 @@ jobs:
           exit-code: '0'
       - name: Upload SARIF to GitHub Code Scanning
         if: ${{ startsWith(github.ref, 'refs/heads/') }}
-        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
           sarif_file: trivy-results.sarif
           category: trivy-image
@@ -593,7 +593,7 @@ jobs:
 
   store-gradle-cache:
     name: Store Gradle Cache
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -639,7 +639,7 @@ jobs:
     # Potential results for each "needed" job are: `success`, `failure`, `cancelled`, `skipped`.
     # We consider `success` and `skipped` as "ok", `failure` and `cancelled` as "not ok".
     if: ${{ always() }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions: {}
     steps:
       - env:

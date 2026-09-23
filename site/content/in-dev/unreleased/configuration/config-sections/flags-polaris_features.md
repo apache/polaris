@@ -453,7 +453,7 @@ If set to true, principal name will be included in temporary subscoped credentia
 If set to true, pagination for APIs like listTables is enabled.
 
 - **Type:** `Boolean`
-- **Default:** `false`
+- **Default:** `true`
 - **Catalog Config:** `polaris.config.list-pagination-enabled`
 
 ---

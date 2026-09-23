@@ -116,11 +116,11 @@ abstract class AbstractSemanticModelCatalogHandlerTest {
   }
 
   protected static SemanticModelDocument doc(String model) {
-    return SemanticModelDocument.builder().setVersion("0.1.1").setSemanticModel(model).build();
+    return SemanticModelDocument.builder().setVersion("0.2.0.dev0").setSemanticModel(model).build();
   }
 
   protected static String modelJson(String source) {
-    return "[{\"name\":\"m\",\"datasets\":[{\"name\":\"d\",\"source\":\"" + source + "\"}]}]";
+    return "{\"name\":\"m\",\"datasets\":[{\"name\":\"d\",\"source\":\"" + source + "\"}]}";
   }
 
   private void createCatalogNamespaceAndTable() {

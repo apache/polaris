@@ -450,6 +450,35 @@ public class PolarisPolicyServiceIntegrationTest {
   }
 
   @Test
+  public void testDetachPolicyWithoutMapping() {
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
+    // The policy and the target both exist, but the policy was never attached to the target.
+    var namespaceTarget =
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(NS1.levels()));
+
+    DetachPolicyRequest request = DetachPolicyRequest.builder().setTarget(namespaceTarget).build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy-name}/mappings",
+                Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy-name", NS1_P1.name()))
+            .post(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains("NoSuchMappingException")
+          .contains("The given mapping between policy");
+    }
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
   public void testDropPolicy() {
     restCatalog.createNamespace(NS1);
     policyApi.createPolicy(

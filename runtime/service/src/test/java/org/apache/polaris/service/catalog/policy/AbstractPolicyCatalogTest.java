@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
@@ -51,6 +50,8 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -68,6 +69,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
+import org.apache.polaris.core.policy.exceptions.NoSuchMappingException;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
@@ -182,11 +184,10 @@ public abstract class AbstractPolicyCatalogTest {
     authenticatedRoot =
         PolarisPrincipal.of(
             rootPrincipal.getName(),
-            Map.of(
-                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-                rootPrincipal,
-                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
-                true),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, rootPrincipal)
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
             Set.of());
     polarisPrincipalHolder.set(authenticatedRoot);
 
@@ -580,6 +581,20 @@ public abstract class AbstractPolicyCatalogTest {
     assertThat(policyCatalog.getApplicablePolicies(NS, null, null).size()).isEqualTo(1);
     policyCatalog.detachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS);
     assertThat(policyCatalog.getApplicablePolicies(NS, null, null).size()).isEqualTo(0);
+  }
+
+  @Test
+  public void testDetachPolicyWithoutMapping() {
+    icebergCatalog.createNamespace(NS);
+    policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+
+    // The policy and the target both exist, but the policy was never attached to the target.
+    assertThatThrownBy(() -> policyCatalog.detachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS))
+        .isInstanceOf(NoSuchMappingException.class)
+        .hasMessage(
+            String.format(
+                "The given mapping between policy %s and %s does not exist",
+                POLICY1, CATALOG_NAME + "." + String.join(".", NS.levels())));
   }
 
   @Test
