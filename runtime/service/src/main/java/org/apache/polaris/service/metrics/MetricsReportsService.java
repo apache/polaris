@@ -141,7 +141,7 @@ public class MetricsReportsService implements PolarisMetricsApiService {
     }
 
     MetricsQuerySpi.MetricType type = parseMetricType(request.getMetricType().toString());
-    PageToken pt = PageToken.build(request.getPageToken(), request.getPageSize(), () -> true);
+    PageToken pt = PageToken.build(request.getPageToken(), request.getPageSize(), -1, () -> true);
     MetricsQuerySpi provider = queryProvider.get();
 
     MetricsQuerySpi.QueryResult result =
