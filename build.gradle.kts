@@ -140,11 +140,7 @@ tasks.named<RatTask>("rat").configure {
 
   // Google Docs capture bytes and JSON manifests must remain unchanged for hash verification.
   // Provenance is documented in proposals/tag-management/README.md.
-  excludes.add("proposals/*/manifest.json")
   excludes.add("proposals/*/snapshots/**")
-  // Synthetic legacy snapshot fixtures also exercise byte-preserving migration.
-  excludes.add("tools/gdoc-snapshot/fixtures/*/source.json")
-  excludes.add("tools/gdoc-snapshot/fixtures/*/snapshots/**")
 
   // Jupyter
   excludes.add("**/*.ipynb")

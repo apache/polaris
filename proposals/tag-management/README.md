@@ -19,35 +19,34 @@
 
 # Tag management: real capture example
 
-This is an archival example from EJ Wang's
+This PoC uses EJ Wang's
 [Polaris Tag proposal](https://docs.google.com/document/d/1rIJGzcsmGhfrBiRXPac51hr-jeJuuKQQBYjgBdOb9-k/edit).
-It demonstrates the snapshot workflow. It does not designate a final or accepted
-Tag design, and it is not a fresh capture of the current live Doc.
+Its single proposal definition is [manifest.yaml](manifest.yaml).
 
-| Reference | Value |
-| --- | --- |
-| Proposal version in this PoC | `rev1` |
-| Google revision | `3625` |
-| Proposal manifest | [manifest.json](manifest.json) |
-| Read the snapshot | [document.md](snapshots/6a14366e76ccb3b8614d25bdc22e350abd90233ef6c1147989b5485c7bc859dd/document.md) |
-| Capture metadata and hashes | [bundle manifest](snapshots/6a14366e76ccb3b8614d25bdc22e350abd90233ef6c1147989b5485c7bc859dd/manifest.json) |
+`rev1` preserves the previously captured Google revision `3625`. Its
+[readable Markdown](snapshots/6a14366e76ccb3b8614d25bdc22e350abd90233ef6c1147989b5485c7bc859dd/document.md)
+and all original capture bytes remain unchanged. The capture has one local PNG
+and 65 tables, with no detected image gaps. It was made with prototype `0.4.0`.
+The original tool version, hash, and source metadata remain in the
+[bundle manifest](snapshots/6a14366e76ccb3b8614d25bdc22e350abd90233ef6c1147989b5485c7bc859dd/manifest.json).
 
-The capture contains one local PNG and 65 Markdown tables, matching the image and
-table counts in the HTML export. No image gaps were detected. Count checks do not
-establish full fidelity; comments and discussions are not included.
+`rev2` was submitted as a link-only entry to exercise the revised branch CI.
+Its generated fields in `manifest.yaml` record the revision selected when that
+build ran. If the live Doc still has the same Google revision, the build reuses
+the existing bundle. These labels demonstrate capture behavior and do not mark
+an accepted Tag design.
 
-The bundle was captured by prototype `0.4.0` and registered in the proposal manifest
-by `0.5.0`. Its original tool version, tool hash, raw export, readable Markdown,
-image bytes, and bundle hash are retained. Adding ASF headers inside these
-archived files would change the evidence, so their provenance is recorded here
-and the generated capture files are excluded from the header audit.
-
-To verify every archived byte from the repository root:
+From the repository root, after installing the tool's Python dependency:
 
 ```sh
-python3 tools/gdoc-snapshot/gdoc_snapshot.py check proposals/tag-management/manifest.json
+make proposal-snapshots
+make proposal-snapshots-check
 ```
 
-To exercise a new live import without altering this example, follow the
-[tool instructions](../../tools/gdoc-snapshot/README.md) with a new proposal
-directory and the live Tag Doc URL above.
+To experiment with another capture, add a new link-only version or create a new
+proposal directory using the [setup instructions](../../tools/gdoc-snapshot/README.md).
+
+Raw capture bytes are excluded from the source-header audit because inserting a
+header would alter their recorded hashes. Provenance is recorded here and in
+each bundle. Count checks do not establish full fidelity, and comments and
+Google Docs discussions are not archived.

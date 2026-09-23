@@ -19,132 +19,152 @@
 
 # Google Docs proposal snapshots (PoC)
 
-Keep drafting and reviewing in Google Docs, then archive a selected version in
-Git as Markdown with local images. Each proposal has a manifest connecting its
-version label, ordinary Google Doc link, Google revision, and snapshot paths.
-Readers can open the committed Markdown without a Google account.
+A proposal owner maintains one `manifest.yaml`. Add a version label and an ordinary
+Google Doc link. The build fills in the Google revision and local snapshot paths
+in that same entry. Existing versions stay frozen.
 
-This is a PoC for the [proposal-docs discussion](https://lists.apache.org/thread/yto2wp982t43h1mqjwnslswhws5z47cy).
-The [Tag proposal example](../../proposals/tag-management/README.md) contains a
-real captured export. Archiving a document does not mark the proposal accepted.
-Community decisions and discussion summaries still belong on the dev list.
+This PoC follows the [proposal-docs discussion](https://lists.apache.org/thread/yto2wp982t43h1mqjwnslswhws5z47cy).
+The [Tag example](../../proposals/tag-management/README.md) uses a real proposal.
+Capturing content does not mark a proposal accepted. Community decisions and
+discussion summaries still belong on the dev list.
 
-## Try the included example offline
+## Owner workflow
 
-From the repository root, on Linux or macOS with Python 3.10 or newer:
+In Google Docs, set **Share / General access / Anyone with the link / Editor**.
+The anonymous importer requires this setting. Anyone holding the link can edit
+the live Doc. The tool never changes sharing permissions or requires Google OAuth.
+Organization restrictions may prevent this setup.
+
+Create `proposals/my-proposal/manifest.yaml` with the repository's ASF comment
+header and this content:
+
+```yaml
+proposal: my-proposal
+revisions:
+  rev1:
+    google_doc_url: https://docs.google.com/document/d/YOUR_DOCUMENT_ID/edit
+```
+
+Commit and push it to a topic branch in your fork. With GitHub Actions enabled,
+branch CI captures pending entries and pushes a generated commit to that same
+branch. Pull that commit before continuing locally. No separate import command,
+input file, or manually created snapshot directory is needed.
+
+For a local preview, use Python 3.10+ on Linux or macOS:
 
 ```sh
-python3 tools/gdoc-snapshot/gdoc_snapshot.py check proposals/tag-management/manifest.json
+python3 -m venv .venv
+. .venv/bin/activate
+python3 -m pip install -r tools/gdoc-snapshot/requirements.txt
+make proposal-snapshots
+make proposal-snapshots-check
+```
+
+The local build writes files for review and does not commit automatically. Commit
+the filled YAML and snapshots with your change if you want those exact preview
+bytes preserved. If you push only the pending YAML, CI captures what the Doc
+contains when CI runs. PyYAML is the only Python dependency.
+
+After the live Doc changes, add another label with only `google_doc_url`:
+
+```yaml
+  rev2:
+    google_doc_url: https://docs.google.com/document/d/YOUR_DOCUMENT_ID/edit
+```
+
+Do not copy the generated fields from the previous entry. Multiple pending labels
+for the same Doc in one build select the same revision. To archive different
+moments, complete one capture before adding the next version.
+
+## One manifest, two entry states
+
+| Entry | Build behavior |
+| --- | --- |
+| Only `google_doc_url` | Capture once and add all generated fields |
+| All generated fields present | Verify the archived bytes offline |
+| Partial generated fields or unknown fields | Fail with an explicit error |
+
+The generated fields are `google_revision`, `snapshot_md`, and
+`snapshot_manifest`. Both paths are relative to the directory containing the YAML.
+A completed entry looks like this (paths abbreviated):
+
+```yaml
+  rev1:
+    google_doc_url: https://docs.google.com/document/d/YOUR_DOCUMENT_ID/edit
+    google_revision: '3625'
+    snapshot_md:
+      - snapshots/<hash>/document.md
+    snapshot_manifest: snapshots/<hash>/manifest.json
+```
+
+The YAML is reformatted when entries are filled, so free-form YAML comments are
+not retained. Put narrative notes in README.md. A build with no pending entries
+does not rewrite the YAML or fetch Google. Duplicate YAML keys are rejected.
+
+Builds compare frozen entries with Git `HEAD` by default. CI supplies the previous
+push commit or PR base commit. Clearing generated fields, changing a frozen entry,
+or removing an archived proposal fails rather than recapturing it. For an explicit
+comparison, use `make proposal-snapshots PROPOSAL_BASE_REF=<commit>`.
+
+## Capture and validation
+
+The importer discovers one numeric Google revision from the anonymous document
+page, then requests Google's Markdown and HTML exports at that revision. These
+are observed web endpoints, not a stable public API. Discovery or fixed-revision
+export failure stops the build without an unversioned fallback.
+
+Each bundle contains readable `document.md`, the original Markdown export as
+`source.md`, local images, and a JSON manifest with provenance, coverage, and file
+hashes. That JSON is generated bundle metadata, not a second owner-maintained
+proposal definition. The bundle directory is the SHA-256 of its manifest bytes.
+The whole exported document currently becomes one Markdown file, including tabs.
+
+The ordinary Doc link opens the live document. The committed snapshot is the
+fixed reference. No Google historical-view or published-revision link is needed.
+Google may later change its exporter or stop serving an old revision, so builds
+reuse existing captured bytes.
+
+Embedded PNG, JPEG, GIF, and WebP images become local assets. The importer compares
+image and table counts with the HTML export from the same revision. Missing image
+occurrences and Google Drawings produce visible warnings in Markdown, bundle
+metadata, and CLI output. Unfreezable external images, mismatched table counts,
+and recognized unsupported embeds stop capture. Comments are not archived.
+Count checks do not prove semantic or visual fidelity. Review generated content
+before using it as a design reference.
+
+All input manifests and existing bundles are checked before network access. Within
+each proposal, all pending entries must succeed before its YAML is atomically
+replaced. A failure can leave an unreferenced bundle, or completed output for an
+earlier proposal. CI commits nothing unless the entire build and check succeed.
+
+## CI setup and scope
+
+Enable GitHub Actions in your fork. The workflow requests `contents: write` only
+for its capture job, which runs on pushes to non-default branches in that same
+repository. Repository or organization policy can still prohibit writes. The
+capture job uses the repository's `GITHUB_TOKEN`, not a personal access token.
+
+PR jobs only validate and have read permissions. An upstream PR workflow cannot
+write back to a contributor's fork. This is why automatic capture runs in the
+owner's fork before or alongside opening the PR. A fork with Actions disabled must
+use the local build instead. The workflow never runs PR code with upstream write
+credentials, and never force-pushes over a branch that advanced during capture.
+
+Bot pushes do not recursively start push workflows. GitHub may require a maintainer
+to approve PR workflows after a bot update. See
+[GitHub's token behavior](https://docs.github.com/en/actions/concepts/security/github_token)
+and [fork PR permissions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request).
+
+The dedicated workflow runs only proposal tests, capture, and offline validation.
+It does not compile Polaris. Website publication, proposal acceptance, and comment
+archival are outside this PoC.
+
+To run the controlled behavior tests:
+
+```sh
 python3 -m unittest discover -s tools/gdoc-snapshot -p 'test_*.py' -v
 ```
 
-No third-party Python packages, Google login, or network access are needed for
-these checks. `check` verifies all recorded revisions, source metadata, relative
-paths, bundle hashes, and every file hash, including images.
-
-## Capture your own proposal
-
-1. In Google Docs, set **Share → General access → Anyone with the link → Editor**.
-   This PoC requires that setting for anonymous revision discovery and export.
-   Anyone holding the link can modify the live document. Organization sharing
-   restrictions may prevent this setup. The tool never changes permissions.
-2. Create a proposal manifest and import the ordinary Google Doc URL:
-
-   ```sh
-   mkdir -p proposals/my-proposal
-   cat > proposals/my-proposal/manifest.json <<'JSON'
-   {"format": 1, "proposal": "my-proposal", "revisions": {}}
-   JSON
-   python3 tools/gdoc-snapshot/gdoc_snapshot.py import \
-     proposals/my-proposal/manifest.json --version rev1 \
-     --url 'https://docs.google.com/document/d/YOUR_DOCUMENT_ID/edit'
-   ```
-
-3. Review the generated `document.md`, its images, and the reported coverage
-   warnings. Commit the manifest and the complete `snapshots/` directory together.
-   Share the committed snapshot link alongside the live Doc in the proposal issue
-   or dev-list thread.
-
-The importer reads the anonymous page, discovers one consistent numeric revision,
-and requests both Markdown and HTML exports at that revision. It uses Google's
-web exporter, not an authenticated Drive API. No OAuth setup, browser cookies,
-or credentials are used. These observed web endpoints are not a stable API.
-Discovery or fixed-revision export failure stops the import without falling back
-to an unversioned download. The import probes access by fetching content, rather
-than auditing the document's sharing settings.
-
-After editing the live Doc, capture another proposal version:
-
-```sh
-python3 tools/gdoc-snapshot/gdoc_snapshot.py import \
-  proposals/my-proposal/manifest.json --version rev2
-```
-
-This discovers the current Google revision. To select an available revision
-explicitly, add `--google-revision 123`. An existing label is immutable: importing
-`rev1` again checks and reuses its committed bytes offline. Asking that label to
-refer to another document or revision fails. Two labels selecting an already
-captured Google revision reuse the same bundle.
-
-## What is recorded
-
-| Field | Meaning |
-| --- | --- |
-| `rev1` | Author-chosen proposal version, independent of Google's numbering |
-| `google_doc_url` | Ordinary live Google Doc link for continued collaboration |
-| `google_revision` | Numeric Google revision selected for both exports |
-| `snapshot_md` | Markdown paths relative to this proposal's directory |
-| `snapshot_manifest` | Relative path to source metadata, coverage, and file hashes |
-
-Each bundle contains `document.md` for reading, `source.md` with the original
-Markdown export bytes, local image assets, and its own `manifest.json`. The bundle
-directory is the SHA-256 of that manifest. A single `document.md` currently contains
-the whole exported document, including tabs; tabs are not split into files.
-
-The Git snapshot preserves the imported bytes. Google may change its exporter or
-stop serving an old revision. The ordinary Doc link opens the live document and
-is not a historical-view link. Neither a published revision link nor a Google
-history viewer is required to read the fixed snapshot.
-
-## Fidelity and failure behavior
-
-Embedded PNG, JPEG, GIF, and WebP images become local files. The importer compares
-image and table counts with the HTML export from the same revision. Missing image
-occurrences and Google Drawings produce visible warnings in Markdown, bundle
-metadata, and CLI output. They do not cause the importer to invent replacement
-text. Unfreezable external images, mismatched table counts, and recognized
-unsupported embeds stop the import.
-
-These checks do not prove visual or semantic equivalence. Google's Markdown
-export may alter formatting, and comments and discussions are not archived.
-Review the snapshot before presenting it as a design reference. The Tag example
-has one local image and 65 tables, with no detected image gaps.
-
-Before adding a version, the tool verifies every existing entry. It writes a
-complete bundle before atomically replacing the proposal manifest. A failed
-publication leaves existing entries intact and may leave a complete, unreferenced
-bundle. Do not manually edit a committed snapshot to fix export fidelity; capture
-an explicitly named new version instead. Hash verification detects accidental
-changes, but does not authenticate a maliciously rewritten manifest and bundle.
-
-## Older prototype snapshots
-
-`migrate` can register a pinned legacy `source.json` snapshot without downloading
-or changing its bytes. Create an empty proposal manifest beside `source.json`,
-then run:
-
-```sh
-python3 tools/gdoc-snapshot/gdoc_snapshot.py migrate \
-  proposals/my-proposal/source.json proposals/my-proposal/manifest.json --version rev1
-```
-
-Snapshots captured without a Google revision cannot be relabelled as pinned.
-
-## PoC scope
-
-The tool and example live in Polaris for this experiment. The workflow verifies
-committed snapshots offline; it never imports from Google or automatically updates
-proposals. Website publication, proposal acceptance, and comment archival are
-outside this PoC. Source exports and JSON manifests are excluded from the header
-audit so their recorded bytes remain intact; provenance is recorded beside the
-Tag example.
+The raw capture files have narrow RAT exclusions to preserve their recorded bytes.
+The YAML and all new code and documentation carry ASF headers. There is no legacy
+`source.json` migration interface or fixture set.

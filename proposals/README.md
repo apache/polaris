@@ -19,18 +19,19 @@
 
 # Proposal snapshot experiment
 
-This directory demonstrates storing Google Docs proposal snapshots in the Polaris
-repository. It is a PoC for community feedback, not an adopted proposal process.
+Maintain one `manifest.yaml` per proposal. Add a version and its Google Doc link.
+The proposal build fills in its Google revision and relative snapshot paths.
+Later builds verify frozen versions offline and only capture new entries.
 
-| Example | Live source | Captured version | Read in Git |
-| --- | --- | --- | --- |
-| [Tag management](tag-management/README.md) | [Google Doc](https://docs.google.com/document/d/1rIJGzcsmGhfrBiRXPac51hr-jeJuuKQQBYjgBdOb9-k/edit) | `rev1` / Google revision `3625` | [Markdown snapshot](tag-management/snapshots/6a14366e76ccb3b8614d25bdc22e350abd90233ef6c1147989b5485c7bc859dd/document.md) |
+| Example | Owner-maintained manifest | Read an archived version |
+| --- | --- | --- |
+| [Tag management](tag-management/README.md) | [manifest.yaml](tag-management/manifest.yaml) | [rev1 Markdown](tag-management/snapshots/6a14366e76ccb3b8614d25bdc22e350abd90233ef6c1147989b5485c7bc859dd/document.md) |
 
-See the [tool's setup and commands](../tools/gdoc-snapshot/README.md) to try it.
-The [Tag manifest](tag-management/manifest.json) maps the live document and Google
-revision to files relative to the proposal directory. Existing version labels and
-snapshot files stay unchanged when a new version is added.
+See [setup and commands](../tools/gdoc-snapshot/README.md). Run
+`make proposal-snapshots` to preview locally, or push pending entries to a topic
+branch with Actions enabled and let CI commit the generated output. README files
+are documentation and are not parsed by the tool.
 
-Keep community decisions and discussion summaries on the dev list. A snapshot
-records content at capture time and does not imply proposal acceptance or describe
-the current implementation.
+This is a PoC, not an adopted proposal process. Capturing a document does not imply
+community acceptance or describe the current implementation. Keep decisions and
+discussion summaries on the dev list.

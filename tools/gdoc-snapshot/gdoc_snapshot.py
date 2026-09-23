@@ -20,7 +20,7 @@
 
 """PROTOTYPE: anonymously freeze a public Google Doc; check snapshots offline.
 
-Python 3.10+, standard library only. This is not an official Google API client.
+Python 3.10+, PyYAML. This is not an official Google API client.
 """
 import argparse
 import base64
@@ -32,6 +32,9 @@ import os
 import re
 import shutil
 import sys
+import subprocess
+
+import yaml
 import tempfile
 import urllib.error
 import urllib.parse
@@ -39,7 +42,7 @@ import urllib.request
 from html.parser import HTMLParser
 from pathlib import Path
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 MAX_BYTES = 32 * 1024 * 1024
 
 
@@ -285,30 +288,58 @@ def validate_source(bundle_manifest, doc_id, revision):
         fail("SOURCE_MISMATCH", "Snapshot original URL refers to a different document.")
 
 
-def check_legacy_source(source_path):
-    source = read_json(source_path)
-    pointer = source.get("snapshot")
-    if not isinstance(pointer, str) or not re.fullmatch(r"snapshots/[0-9a-f]{64}", pointer):
-        fail("NO_SNAPSHOT", "No valid legacy snapshot pointer.")
-    bundle = validate_bundle(safe_child(source_path.parent, pointer))
-    doc_id, revision = parse_url(source.get("url"))
-    validate_source(bundle, doc_id, revision)
-    if source.get("original_url") != bundle["source"]["original_url"]:
-        fail("SOURCE_MISMATCH", "Legacy source URL does not match the snapshot.")
-    return source, bundle
-
-
 def validate_version(version):
     if not isinstance(version, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", version):
         fail("INVALID_VERSION", "Use a proposal version such as rev1 (letters, digits, dot, underscore or hyphen).")
 
 
-def load_proposal(path):
-    proposal = read_json(path)
-    if (proposal.get("format") != 1 or not isinstance(proposal.get("proposal"), str)
-            or not proposal["proposal"].strip() or not isinstance(proposal.get("revisions"), dict)):
-        fail("INVALID_PROPOSAL", 'Expected {"format": 1, "proposal": "name", "revisions": {}}. Migrate source.json separately.')
+class UniqueSafeLoader(yaml.SafeLoader):
+    """Reject duplicate keys rather than silently losing a proposal version."""
+
+
+def yaml_mapping(loader, node):
+    loader.flatten_mapping(node)
+    result = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node)
+        if not isinstance(key, str) or key in result:
+            fail("INVALID_YAML", "Manifest keys must be unique strings.")
+        result[key] = loader.construct_object(value_node)
+    return result
+
+
+UniqueSafeLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, yaml_mapping)
+GENERATED_FIELDS = {"google_revision", "snapshot_md", "snapshot_manifest"}
+YAML_HEADER = "\n".join(line for line in Path(__file__).read_text().splitlines()[1:19]) + "\n\n"
+
+
+def parse_proposal(data):
+    try:
+        proposal = yaml.load(data, Loader=UniqueSafeLoader)
+    except yaml.YAMLError as e:
+        fail("INVALID_YAML", str(e))
+    if (not isinstance(proposal, dict) or set(proposal) != {"proposal", "revisions"}
+            or not isinstance(proposal["proposal"], str) or not proposal["proposal"].strip()
+            or not isinstance(proposal["revisions"], dict) or not proposal["revisions"]):
+        fail("INVALID_PROPOSAL", "Expected proposal: <name> and a nonempty revisions mapping.")
+    for version, entry in proposal["revisions"].items():
+        validate_version(version)
+        if not isinstance(entry, dict) or "google_doc_url" not in entry:
+            fail("INVALID_PROPOSAL", f"{version}: expected google_doc_url.")
+        if set(entry) not in ({"google_doc_url"}, {"google_doc_url"} | GENERATED_FIELDS):
+            fail("PARTIAL_ENTRY", f"{version}: supply only google_doc_url, or retain all generated fields. Partial or unknown fields are not accepted.")
+        _, revision = parse_url(entry["google_doc_url"])
+        if revision is not None:
+            fail("INVALID_URL", "Use the ordinary Google Doc link. Google revisions are recorded by the build.")
     return proposal
+
+
+def load_proposal(path):
+    return parse_proposal(path.read_bytes())
+
+
+def proposal_bytes(proposal):
+    return (YAML_HEADER + yaml.safe_dump(proposal, allow_unicode=True, sort_keys=False, width=120)).encode()
 
 
 def check_entry(root, version, entry):
@@ -316,8 +347,8 @@ def check_entry(root, version, entry):
     if not isinstance(entry, dict):
         fail("INVALID_PROPOSAL", "Each proposal version must be an object.")
     doc_id, url_revision = parse_url(entry.get("google_doc_url"))
-    if url_revision is not None or entry["google_doc_url"] != f"https://docs.google.com/document/d/{doc_id}/edit":
-        fail("SOURCE_MISMATCH", "google_doc_url must be the ordinary canonical document link; use google_revision for the version.")
+    if url_revision is not None:
+        fail("SOURCE_MISMATCH", "google_doc_url must be the ordinary document link; use google_revision for the version.")
     revision = entry.get("google_revision")
     if not isinstance(revision, str) or not re.fullmatch(r"[1-9][0-9]*", revision):
         fail("INVALID_REVISION", "google_revision must be a positive numeric string.")
@@ -334,15 +365,20 @@ def check_entry(root, version, entry):
             "files": len(bundle["files"]), "warnings": bundle.get("coverage", {}).get("warnings", [])}
 
 
-def check_proposal(path, proposal):
-    return {version: check_entry(path.parent, version, entry)
-            for version, entry in proposal["revisions"].items()}
+def check_proposal(path, proposal, allow_pending=False):
+    results = {}
+    for version, entry in proposal["revisions"].items():
+        if not GENERATED_FIELDS.intersection(entry):
+            if not allow_pending:
+                fail("PENDING_SNAPSHOT", f"{version}: snapshot is pending. Run make proposal-snapshots or allow branch CI to capture it.")
+            results[version] = {"status": "pending"}
+        else:
+            results[version] = check_entry(path.parent, version, entry)
+    return results
 
 
 def check(path):
     proposal = load_proposal(path)
-    if not proposal["revisions"]:
-        fail("NO_SNAPSHOT", "No proposal versions have been imported.")
     return {"status": "ok", "mode": "offline", "proposal": proposal["proposal"],
             "revisions": check_proposal(path, proposal)}
 
@@ -384,7 +420,7 @@ def publish_proposal(path, original_bytes, proposal):
     os.close(fd)
     temporary = Path(name)
     try:
-        sync_file(temporary, canonical(proposal))
+        sync_file(temporary, proposal_bytes(proposal))
         if path.is_symlink() or path.read_bytes() != original_bytes:
             fail("SOURCE_CHANGED", "Proposal manifest changed during import; it was not overwritten.")
         os.replace(temporary, path)
@@ -439,96 +475,96 @@ def make_entry(doc_id, revision, pointer):
             "snapshot_manifest": f"{pointer}/manifest.json"}
 
 
-def select_source(url, revision):
-    doc_id, url_revision = parse_url(url)
-    if revision is not None and (not isinstance(revision, str) or not re.fullmatch(r"[1-9][0-9]*", revision)):
-        fail("INVALID_REVISION", "--google-revision must be a positive numeric ID.")
-    if revision is not None and url_revision is not None and revision != url_revision:
-        fail("REVISION_CONFLICT", "The URL and --google-revision select different revisions.")
-    return doc_id, revision or url_revision
-
-
-def import_doc(path, version, url=None, revision=None):
-    validate_version(version)
+def build_manifest(path):
+    """Fill all pending versions, publishing this manifest only after all succeed."""
     with proposal_lock(path):
         original_bytes = path.read_bytes()
-        proposal = load_proposal(path)
-        checked = check_proposal(path, proposal)
+        proposal = parse_proposal(original_bytes)
+        checked = check_proposal(path, proposal, allow_pending=True)
+        pending = [version for version, result in checked.items() if result.get("status") == "pending"]
+        if not pending:
+            return {"status": "unchanged", "mode": "offline", "revisions": checked}
         entries = proposal["revisions"]
-        if version in entries:
-            existing = entries[version]
-            doc_id, selected = select_source(url or existing["google_doc_url"], revision)
-            if (doc_id != parse_url(existing["google_doc_url"])[0]
-                    or selected not in (None, existing["google_revision"])):
-                fail("VERSION_EXISTS", f"{version} is already recorded. Use a new proposal version.")
-            return {"status": "unchanged", "mode": "offline", "version": version, **checked[version]}
-        if url is None:
-            urls = {entry["google_doc_url"] for entry in entries.values()}
-            if len(urls) != 1:
-                fail("SOURCE_REQUIRED", "Supply --url for the first import or when prior versions reference different documents.")
-            url = urls.pop()
-        doc_id, selected = select_source(url, revision)
-        if selected is None:
-            page = fetch(f"https://docs.google.com/document/d/{doc_id}/edit", "page").decode("utf-8")
-            selected = resolve_revision(page)
-        # Reuse recorded bytes if another proposal label selects the same source revision.
-        match = next((entry for entry in entries.values()
-                      if parse_url(entry["google_doc_url"])[0] == doc_id
-                      and entry["google_revision"] == selected), None)
-        if match:
-            entry = dict(match)
-        else:
-            pointer = archive_bundle(path.parent, doc_id, selected, url)
-            entry = make_entry(doc_id, selected, pointer)
-        entries[version] = entry
+        selected_revisions = {}
+        for version in pending:
+            url = entries[version]["google_doc_url"]
+            doc_id, _ = parse_url(url)
+            if doc_id not in selected_revisions:
+                page = fetch(f"https://docs.google.com/document/d/{doc_id}/edit", "page").decode("utf-8")
+                selected_revisions[doc_id] = resolve_revision(page)
+            selected = selected_revisions[doc_id]
+            match = next((entry for entry in entries.values()
+                          if parse_url(entry["google_doc_url"])[0] == doc_id
+                          and entry.get("google_revision") == selected), None)
+            if match:
+                entry = dict(match)
+            else:
+                pointer = archive_bundle(path.parent, doc_id, selected, url)
+                entry = make_entry(doc_id, selected, pointer)
+            entry["google_doc_url"] = url
+            entries[version] = entry
         publish_proposal(path, original_bytes, proposal)
-        return {"status": "imported", "mode": "anonymous-import", "version": version,
-                "reused_snapshot": match is not None, **check_entry(path.parent, version, entry)}
+        return {**check(path), "status": "generated", "versions": pending}
 
 
-def migrate(source_path, path, version):
-    validate_version(version)
-    if source_path.resolve() == path.resolve() or source_path.parent.resolve() != path.parent.resolve():
-        fail("INVALID_PATH", "Create a separate proposal manifest beside the legacy source.json.")
-    with proposal_lock(path):
-        original_bytes = path.read_bytes()
+def git_result(root, *args):
+    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=False)
+
+
+def protect_history(root, proposals, base_ref):
+    """A cleared frozen entry must never become a new capture request."""
+    found = git_result(root, "rev-parse", "--show-toplevel")
+    if found.returncode:
+        if base_ref:
+            fail("INVALID_BASE", "--base-ref requires a Git repository.")
+        return
+    repo = Path(os.fsdecode(found.stdout).strip())
+    ref = base_ref or "HEAD"
+    if git_result(repo, "rev-parse", "--verify", ref + "^{commit}").returncode:
+        fail("INVALID_BASE", f"Unknown base commit: {ref}")
+    prefix = root.resolve().relative_to(repo.resolve()).as_posix()
+    listing = git_result(repo, "ls-tree", "-r", "--name-only", ref, "--", prefix)
+    for name in os.fsdecode(listing.stdout).splitlines():
+        path = repo / name
+        if path.name != "manifest.yaml" or path.parent.parent.resolve() != root.resolve():
+            continue
+        previous = parse_proposal(git_result(repo, "show", f"{ref}:{name}").stdout)
+        frozen = {version: entry for version, entry in previous["revisions"].items()
+                  if GENERATED_FIELDS.intersection(entry)}
+        if not frozen:
+            continue
+        current = proposals.get(path.resolve())
+        if current is None or current["proposal"] != previous["proposal"]:
+            fail("FROZEN_VERSION_CHANGED", f"Archived proposal removed or renamed: {name}")
+        for version, entry in frozen.items():
+            if current["revisions"].get(version) != entry:
+                fail("FROZEN_VERSION_CHANGED", f"{name}: {version} is already archived. Add a new version instead.")
+
+
+def build_all(root, check_only=False, base_ref=None):
+    if not root.is_dir() or root.is_symlink():
+        fail("INVALID_PATH", "Expected a real proposals directory.")
+    paths = sorted(root.glob("*/manifest.yaml"))
+    proposals = {}
+    # Preflight every manifest and old bundle before any network or publication.
+    for path in paths:
+        if path.is_symlink() or path.parent.is_symlink():
+            fail("INVALID_PATH", "Proposal manifests and directories cannot be symlinks.")
         proposal = load_proposal(path)
-        check_proposal(path, proposal)
-        source, bundle = check_legacy_source(source_path)
-        entry = make_entry(bundle["source"]["document_id"], bundle["source"]["revision"], source["snapshot"])
-        existing = proposal["revisions"].get(version)
-        if existing is not None:
-            if existing != entry:
-                fail("VERSION_EXISTS", f"{version} is already recorded. Use a new proposal version.")
-            return {"status": "unchanged", "mode": "offline", "version": version}
-        proposal["revisions"][version] = entry
-        publish_proposal(path, original_bytes, proposal)
-        return {"status": "migrated", "mode": "offline", "version": version,
-                **check_entry(path.parent, version, entry)}
+        check_proposal(path, proposal, allow_pending=not check_only)
+        proposals[path.resolve()] = proposal
+    protect_history(root, proposals, base_ref)
+    return {str(path): check(path) if check_only else build_manifest(path) for path in paths}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    sub = parser.add_subparsers(dest="command", required=True)
-    imp = sub.add_parser("import", help="Add an immutable proposal version from a Google Doc")
-    imp.add_argument("manifest", type=Path)
-    imp.add_argument("--version", required=True, help="Proposal version label, e.g. rev1")
-    imp.add_argument("--url", help="Google Doc URL; optional if recorded versions share one document")
-    imp.add_argument("--google-revision", help="Export this Google revision; otherwise discover current revision")
-    chk = sub.add_parser("check", help="Verify every recorded proposal version without network access")
-    chk.add_argument("manifest", type=Path)
-    mig = sub.add_parser("migrate", help="Register a verified legacy source.json snapshot without downloading")
-    mig.add_argument("source", type=Path)
-    mig.add_argument("manifest", type=Path)
-    mig.add_argument("--version", required=True)
+    parser.add_argument("command", choices=("build", "check"))
+    parser.add_argument("directory", nargs="?", type=Path, default=Path("proposals"))
+    parser.add_argument("--base-ref", help="Git commit whose frozen entries must remain unchanged; defaults to HEAD")
     args = parser.parse_args()
     try:
-        if args.command == "import":
-            result = import_doc(args.manifest, args.version, args.url, args.google_revision)
-        elif args.command == "migrate":
-            result = migrate(args.source, args.manifest, args.version)
-        else:
-            result = check(args.manifest)
+        result = build_all(args.directory, args.command == "check", args.base_ref)
         print(json.dumps(result, ensure_ascii=False, indent=2))
     except Failure as e:
         print(json.dumps({"status": "error", "code": e.code, "message": str(e)}, ensure_ascii=False), file=sys.stderr)
