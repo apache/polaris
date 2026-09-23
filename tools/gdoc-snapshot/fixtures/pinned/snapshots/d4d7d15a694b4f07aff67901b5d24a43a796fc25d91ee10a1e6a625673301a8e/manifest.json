@@ -1,0 +1,14 @@
+{
+  "files": {
+    "document.md": "8906ef2fa97c1cdcb80094f63d9f9b579641567114320fc6e96ff1352eb363f0",
+    "source.md": "8906ef2fa97c1cdcb80094f63d9f9b579641567114320fc6e96ff1352eb363f0"
+  },
+  "format": 1,
+  "source": {
+    "capture_mode": "revision-export",
+    "document_id": "example_doc",
+    "download_url": "https://docs.google.com/document/d/example_doc/export?format=md&revision=12",
+    "original_url": "https://docs.google.com/document/d/example_doc/edit",
+    "revision": "12"
+  }
+}
