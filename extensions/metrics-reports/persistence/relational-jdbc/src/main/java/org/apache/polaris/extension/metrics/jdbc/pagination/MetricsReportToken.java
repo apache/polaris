@@ -34,8 +34,8 @@ import org.apache.polaris.immutables.PolarisImmutable;
  * the last-seen pair, enabling stable keyset pagination under concurrent inserts.
  *
  * <p>The cursor also carries a {@link #scope()} fingerprint of the query that produced it (metric
- * type, catalog, tables, and filters). A cursor is only honored against a subsequent request with
- * a matching scope; otherwise it is rejected rather than silently reused against a different query
+ * type, catalog, tables, and filters). A cursor is only honored against a subsequent request with a
+ * matching scope; otherwise it is rejected rather than silently reused against a different query
  * and silently skipping rows.
  */
 @PolarisImmutable
