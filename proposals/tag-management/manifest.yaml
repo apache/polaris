@@ -23,7 +23,10 @@ revisions:
     google_doc_url: https://docs.google.com/document/d/1rIJGzcsmGhfrBiRXPac51hr-jeJuuKQQBYjgBdOb9-k/edit
     google_revision: '3625'
     snapshot_manifest: snapshots/6a14366e76ccb3b8614d25bdc22e350abd90233ef6c1147989b5485c7bc859dd/manifest.json
-    snapshot_md:
+    snapshot_md: &id001
     - snapshots/6a14366e76ccb3b8614d25bdc22e350abd90233ef6c1147989b5485c7bc859dd/document.md
   rev2:
     google_doc_url: https://docs.google.com/document/d/1rIJGzcsmGhfrBiRXPac51hr-jeJuuKQQBYjgBdOb9-k/edit
+    google_revision: '3625'
+    snapshot_manifest: snapshots/6a14366e76ccb3b8614d25bdc22e350abd90233ef6c1147989b5485c7bc859dd/manifest.json
+    snapshot_md: *id001
