@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
@@ -51,6 +50,8 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -63,10 +64,12 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
+import org.apache.polaris.core.policy.exceptions.NoSuchMappingException;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
@@ -97,6 +100,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -179,11 +184,10 @@ public abstract class AbstractPolicyCatalogTest {
     authenticatedRoot =
         PolarisPrincipal.of(
             rootPrincipal.getName(),
-            Map.of(
-                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-                rootPrincipal,
-                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
-                true),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, rootPrincipal)
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
             Set.of());
     polarisPrincipalHolder.set(authenticatedRoot);
 
@@ -478,6 +482,37 @@ public abstract class AbstractPolicyCatalogTest {
         .isInstanceOf(NoSuchPolicyException.class);
   }
 
+  @ParameterizedTest
+  @CsvSource({
+    "ENTITY_NOT_FOUND, false",
+    "ENTITY_NOT_FOUND, true",
+    "CATALOG_PATH_CANNOT_BE_RESOLVED, false",
+    "CATALOG_PATH_CANNOT_BE_RESOLVED, true"
+  })
+  public void testDropPolicyDisappearsAfterResolution(
+      BaseResult.ReturnStatus status, boolean detachAll) {
+    icebergCatalog.createNamespace(NS);
+    policyCatalog.createPolicy(
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+
+    // Resolve the existing policy normally, then simulate a concurrent deletion at persistence.
+    PolarisMetaStoreManager concurrentlyDeleted = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(new DropEntityResult(status, "simulated"))
+        .when(concurrentlyDeleted)
+        .dropEntityIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.eq(detachAll));
+    PolicyCatalog catalog =
+        new PolicyCatalog(
+            concurrentlyDeleted,
+            polarisContext,
+            new PolarisPassthroughResolutionView(
+                resolutionManifestFactory, authenticatedRoot, CATALOG_NAME));
+
+    assertThatThrownBy(() -> catalog.dropPolicy(POLICY1, detachAll))
+        .isInstanceOf(NoSuchPolicyException.class)
+        .hasMessage("Policy does not exist: %s", POLICY1);
+  }
+
   @Test
   public void testDropPolicyInUse() {
     icebergCatalog.createNamespace(NS);
@@ -546,6 +581,20 @@ public abstract class AbstractPolicyCatalogTest {
     assertThat(policyCatalog.getApplicablePolicies(NS, null, null).size()).isEqualTo(1);
     policyCatalog.detachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS);
     assertThat(policyCatalog.getApplicablePolicies(NS, null, null).size()).isEqualTo(0);
+  }
+
+  @Test
+  public void testDetachPolicyWithoutMapping() {
+    icebergCatalog.createNamespace(NS);
+    policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+
+    // The policy and the target both exist, but the policy was never attached to the target.
+    assertThatThrownBy(() -> policyCatalog.detachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS))
+        .isInstanceOf(NoSuchMappingException.class)
+        .hasMessage(
+            String.format(
+                "The given mapping between policy %s and %s does not exist",
+                POLICY1, CATALOG_NAME + "." + String.join(".", NS.levels())));
   }
 
   @Test

@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, cast
 
 from apache_polaris.cli.command import Command
-from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.command.utils import get_catalog_api_client, paginate
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from apache_polaris.cli.options.option_tree import Argument
@@ -43,6 +43,7 @@ class GenericTableCommand(Command):
     catalog_name: Optional[str] = None
     namespace: Optional[List[str]] = field(default_factory=list)
     generic_table_name: Optional[str] = None
+    page_size: Optional[int] = None
 
     def validate(self) -> None:
         if not self.catalog_name:
@@ -68,11 +69,14 @@ class GenericTableCommand(Command):
         ns_str = UNIT_SEPARATOR.join(namespace_list)
 
         if self.generic_tables_subcommand == Subcommands.LIST:
-            result = generic_api.list_generic_tables(
-                prefix=catalog_name, namespace=ns_str
-            )
-            for table_identifier in result.identifiers:
-                print(table_identifier.to_json())
+            for resp in paginate(
+                generic_api.list_generic_tables,
+                page_size=self.page_size,
+                prefix=catalog_name,
+                namespace=ns_str,
+            ):
+                for table_identifier in resp.identifiers or []:
+                    print(table_identifier.to_json())
         elif self.generic_tables_subcommand == Subcommands.GET:
             print(
                 generic_api.load_generic_table(

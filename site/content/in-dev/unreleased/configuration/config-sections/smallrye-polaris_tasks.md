@@ -27,3 +27,4 @@ build:
 |----------|---------------|------|-------------|
 | `polaris.tasks.max-concurrent-tasks` | `-1` | `int` |  |
 | `polaris.tasks.max-queued-tasks` | `-1` | `int` |  |
+| `polaris.tasks.file-deletion-timeout` | `PT1H` | `duration` | Maximum time a file-cleanup task will wait for its asynchronous object-store deletions to  complete before giving up and failing the task (which then follows the normal retry path).  This  bounds the task-executor thread so that a stalled storage endpoint cannot pin it indefinitely.  A zero or negative value disables the deadline and waits indefinitely.  |

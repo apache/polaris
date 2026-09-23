@@ -31,6 +31,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- Polaris-managed AWS SDK clients now use Apache HttpClient 5, which disables HTTP
+  `Expect: 100-continue` by default. Set `polaris.storage.expect-continue-enabled=true`
+  to preserve the previous behavior. Iceberg S3 clients continue to use Apache HttpClient 4
+  and retain their existing default.
+
 - Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
   (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris
   has no automated schema migrations, existing Postgres/CockroachDB deployments keep the old,
@@ -80,11 +85,23 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   depend on the previous combined-intent input shape may need to be updated. Same applies to other
   PolarisAuthorizer implementations.
 - Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
+- `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
+  invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
+  size or when a positive LIST_PAGINATION_MAX_PAGE_SIZE limits local catalog listings. Otherwise,
+  requests without pagination parameters still return all results. To keep the previous behavior,
+  set `LIST_PAGINATION_ENABLED=false` or the catalog property `polaris.config.list-pagination-enabled=false`.
+- The `PolarisPrincipal` interface has evolved. The `getAttributes()` method now returns 
+  `org.apache.polaris.core.collection.ImmutableAttributeMap`. The attribute keys were moved to a
+  new `org.apache.polaris.core.auth.PolarisPrincipalAttributes` class.
 
 ### New Features
 
+- Semantic models now support dedicated privileges for listing, creating, reading, updating,
+  and dropping. Privileges can be granted to catalog roles on individual models or at namespace
+  or catalog scope, with separate controls for managing model grants.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
+- Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
 - The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.additionalProperties.currentSchema` in the Helm chart.
 - Python CLI: `catalogs create` and `catalogs update` now support `--storage-name` to set an optional name referencing a server-side storage configuration.
 
@@ -100,6 +117,24 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `PURGE_VIEW_METADATA_ON_DROP` defaulting to `true`, dropping any view failed with HTTP 403 under
   the default configuration. A view drop is now governed by `PURGE_VIEW_METADATA_ON_DROP` alone,
   while the guard continues to protect a client-requested Iceberg table purge.
+- `TokenBroker.verify` now returns `null` for tokens not recognized by the internal broker
+  (instead of failing auth), so MIXED mode can delegate to other mechanisms. Exceptions from
+  `verify` are forwarded as-is rather than mapped to auth failure or MIXED fallback.
+- Client-requested list page sizes can now be bounded by a server-side maximum, configured with
+  `LIST_PAGINATION_MAX_PAGE_SIZE` (overridable per catalog via
+  `polaris.config.list-pagination-max-page-size`). It defaults to `-1`, meaning unlimited, so the
+  maximum is opt-in. Once set, a request for a larger page is reduced to the maximum rather than
+  rejected, since the Iceberg REST specification treats the requested page size as an upper bound.
+  For local catalogs the maximum takes effect only when `LIST_PAGINATION_ENABLED` is true, since
+  with pagination disabled the requested page size is ignored and the full result set is returned;
+  for federated catalogs it always applies, because Polaris paginates those listings itself.
+  Setting a maximum deviates from the Iceberg REST specification, which requires a request that
+  does not supply a `pageToken` to receive the complete result with a null `next-page-token`: such
+  a request is then truncated to the maximum and answered with a continuation token, so a client
+  that does not follow continuations sees only the first page.
+- Table commits whose base metadata is already stale now fail before the new metadata file is
+  written, saving an object-storage write and delete per conflict and returning the `409` to the
+  client sooner.
 
 ### Deprecations
 
@@ -107,7 +142,54 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- A list request whose `pageSize` is not a number now returns `400 Bad Request` naming the
+  parameter, instead of `404 Not Found`. The status is now the same on every API that accepts
+  `pageSize`.
+- Policy API: detaching a policy from a target it was never attached to now returns
+  `404 Not Found` with error type `NoSuchMappingException`, as the policy API specification
+  requires, instead of `500 Internal Server Error`.
+- Registering a table whose stored metadata file is no longer readable no longer fails: with
+  overwrite it replaces the metadata location, and without overwrite it reports the table as
+  already existing.
+- OPA authorizer HTTP client creation no longer silently falls back to a default client when
+  truststore or SSL setup fails. Misconfiguration (for example a bad truststore path) now fails
+  startup instead of continuing with system trust and no configured response timeout.
+- `bootstrap` no longer creates realms whose root principal is unreachable. Credentials were
+  required only when none at all were supplied, so an invocation naming credentials for just
+  some of its realms bootstrapped the rest with randomly generated secrets that were never
+  printed, and reported them successfully bootstrapped. Every `--realm` must now have a
+  matching `--credential` unless `--print-credentials` is given; otherwise the command names
+  the realms that are missing credentials and exits without bootstrapping anything.
+  `--credentials-file` is unaffected.
+- Table notifications (`CREATE`/`UPDATE`) that reference a metadata location outside the catalog's
+  allowed locations are now rejected before any missing parent namespaces are auto-created, so a
+  rejected notification no longer leaves orphaned namespaces behind.
+- GCS credential vending no longer fails with HTTP 500 when a table's location or `write.data.path`
+  / `write.metadata.path` points at a bucket root without a trailing slash (e.g. `gs://bucket`).
+  Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
+  while building the access-boundary rules; GCS now handles it like the AWS integration.
+- Return HTTP 404 instead of 204 when a generic table or its catalog path disappears after resolution and before deletion.
+
+- Deleting a semantic model now returns HTTP 404 instead of HTTP 500 when the model or its
+  catalog path disappears after resolution and before the deletion is persisted.
+- Return HTTP 404 instead of 500 when a policy or its catalog path disappears after resolution and before deletion.
+- Iceberg REST: a malformed `pageToken` on the namespace, table and view list endpoints now returns
+  `400 Bad Request` (`Invalid page token`) instead of `500 Internal Server Error`. Tokens that are
+  valid Base64 but not a serialized page token (garbage, truncated, or produced by an incompatible
+  Polaris version) previously escaped as Jackson decoding exceptions.
+- Iceberg REST: when `X-Iceberg-Access-Delegation` resolves to remote signing (not implemented),
+  either because `remote-signing` was requested alone or because `vended-credentials,remote-signing`
+  was requested against a catalog that cannot vend credentials, the `400` response now explains the
+  situation and what to do (`This catalog cannot vend credentials or sign requests; request without
+  X-Iceberg-Access-Delegation and configure storage credentials on the client`) instead of the opaque
+  `Unsupported access delegation mode: REMOTE_SIGNING`.
 - Iceberg REST: renaming a table or view with a missing `source` or `destination` now returns `400 Bad Request` instead of `500 Internal Server Error`.
+- Async file-cleanup tasks now bound how long they wait for object-store deletions via the new `polaris.tasks.file-deletion-timeout` (default 1h), so a stalled storage endpoint can no longer pin a task-executor thread indefinitely; a timeout is terminal for the current run rather than immediately retried, so it does not stack more deletions onto the stalled endpoint.
+- Semantic-model create and update requests now require `semantic_model` JSON to be an object and
+  validate every dataset source. Previously, invalid root shapes could bypass source validation or
+  be accepted under the obsolete array contract.
+- Python client deserialization and CLI `setup export` now preserve the remote catalog name and
+  warehouse for Iceberg REST, Hadoop, and Hive external catalogs.
 - Python CLI `catalogs create --type external` now validates `--storage-type` and `--default-base-location` up front, matching the behavior for internal catalogs and the flags' documented "(Required)" status. Previously, omitting either produced an opaque pydantic `ValidationError` at request-build time.
 - Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
   error envelope (`{"error": {...}}`) instead of a flat `{"code", "message"}` body, so Iceberg
@@ -158,10 +240,28 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   directly under an allowed location, at `s3://b1/ns`, and rejected it as a custom location even
   though the request asked for none. The namespace location is now compared against the
   catalog's `default-base-location`, which is what it is derived from.
+- Setting a namespace's `location` property no longer fails with HTTP 400. With custom namespace
+  locations disabled, which is the default, every `updateNamespaceProperties` request carrying a
+  `location` was rejected, including one that simply repeated the location the namespace already
+  had. The error also named an expected location one level too deep: a namespace at `s3://b1/ns`
+  was told it should be at `s3://b1/ns/ns`.
 - Internal JWTs are bound to principal secret generation via `polaris-cv` (no secret material in the
   token). Credential-generation is enforced on token exchange; bearer verify is signature and claims
   only. Secrets-load failures during exchange return service unavailable.
-
+- The Policy API now rejects an unknown `policyType` query parameter on `listPolicies` and `getApplicablePolicies` with HTTP 400. Previously an unrecognized value (for example `system.data_compaction`, misspelling `system.data-compaction` with an underscore) was silently treated as "no filter", so the request returned policies of every type with HTTP 200, and clients could not tell a filtered result from an unfiltered one. An absent or empty `policyType` still means "no filter", as the API specification allows.
+- File cleanup tasks now issue batched object-storage deletes again. `CatalogUtil.deleteFiles`
+  batches only when the `FileIO` is an `instanceof SupportsBulkOperations`, but the `FileIO` reaching
+  the cleanup tasks is wrapped by `ExceptionMappingFileIO` and, on Azure, by
+  `WasbTranslatingFileIO`. Neither wrapper declared the capability held by the wrapped `FileIO`, so
+  the check always failed and every file was deleted individually. Both wrappers now propagate
+  `SupportsBulkOperations` when the wrapped `FileIO` supports it, which affects every storage
+  backend, since `S3FileIO`, `GCSFileIO`, `ADLSFileIO` and `HadoopFileIO` all implement
+  `DelegateFileIO`.
+- Async task retries no longer fail with a `NullPointerException` when the task entity has already been dropped by a previous attempt. Such a retry is now recognized as an already-completed task and exits cleanly, instead of exhausting all retry attempts and logging a `NullPointerException` on each one.
+- Honored pagination for generic table API.
+- JDBC optimized location-overlap queries no longer include the lone `/` prefix term produced by
+  scheme stripping (e.g. `s3://bucket/path` → `//bucket/path`). `//` and `///` are retained so
+  scheme-root ancestors remain visible to the overlap check.
 
 ### Commits
 

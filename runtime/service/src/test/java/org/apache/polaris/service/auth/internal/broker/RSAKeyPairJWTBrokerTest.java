@@ -19,7 +19,6 @@
 package org.apache.polaris.service.auth.internal.broker;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
@@ -94,7 +93,7 @@ public class RSAKeyPairJWTBrokerTest {
   }
 
   @Test
-  public void testVerifyRejectsTokenWithWrongIssuer() throws Exception {
+  public void testVerifyReturnsNotRecognizedForForeignIssuer() throws Exception {
     var keyPair = PemUtils.generateKeyPair();
 
     PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
@@ -120,13 +119,13 @@ public class RSAKeyPairJWTBrokerTest {
                 Algorithm.RSA256(
                     (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey()));
 
-    assertThatThrownBy(() -> tokenBroker.verify(tokenWithWrongIssuer))
-        .isInstanceOf(org.apache.iceberg.exceptions.NotAuthorizedException.class)
-        .hasMessageContaining("Failed to verify the token");
+    // Foreign tokens are not ours to verify; the caller delegates to other mechanisms.
+    assertThat(tokenBroker.verify(tokenWithWrongIssuer))
+        .isInstanceOf(TokenVerificationResult.NotRecognized.class);
   }
 
   @Test
-  public void testVerifyRejectsTokenWithMissingIssuer() throws Exception {
+  public void testVerifyReturnsNotRecognizedForMissingIssuer() throws Exception {
     var keyPair = PemUtils.generateKeyPair();
 
     PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
@@ -151,8 +150,43 @@ public class RSAKeyPairJWTBrokerTest {
                 Algorithm.RSA256(
                     (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey()));
 
-    assertThatThrownBy(() -> tokenBroker.verify(tokenWithoutIssuer))
-        .isInstanceOf(org.apache.iceberg.exceptions.NotAuthorizedException.class)
-        .hasMessageContaining("Failed to verify the token");
+    assertThat(tokenBroker.verify(tokenWithoutIssuer))
+        .isInstanceOf(TokenVerificationResult.NotRecognized.class);
+  }
+
+  @Test
+  public void testVerifyRejectsPolarisTokenWithBadSignature() throws Exception {
+    var keyPair = PemUtils.generateKeyPair();
+    var otherKeyPair = PemUtils.generateKeyPair();
+
+    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
+    PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
+    KeyProvider provider = new LocalRSAKeyProvider(keyPair);
+    Algorithm algorithm =
+        Algorithm.RSA256(
+            (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey());
+    TokenBroker tokenBroker =
+        new JWTBroker(
+            metastoreManager,
+            polarisCallContext,
+            420,
+            algorithm,
+            JWTBroker.buildVerifier(algorithm));
+
+    // Polaris-issued (issuer claim) but signed with a different key: still an auth failure.
+    String tokenWithBadSignature =
+        JWT.create()
+            .withIssuer("polaris")
+            .withSubject("principal")
+            .withClaim("active", true)
+            .sign(
+                Algorithm.RSA256(
+                    (RSAPublicKey) otherKeyPair.getPublic(),
+                    (RSAPrivateKey) otherKeyPair.getPrivate()));
+
+    TokenVerificationResult result = tokenBroker.verify(tokenWithBadSignature);
+    assertThat(result).isInstanceOf(TokenVerificationResult.Invalid.class);
+    assertThat(((TokenVerificationResult.Invalid) result).message())
+        .contains("Failed to verify the token");
   }
 }

@@ -45,6 +45,7 @@ import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
 import org.apache.polaris.core.exceptions.PolarisException;
 import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
+import org.apache.polaris.core.policy.exceptions.NoSuchMappingException;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
@@ -181,6 +182,7 @@ public class ExceptionMapperTest {
         Arguments.of(new PolicyAttachException("msg"), 400),
         Arguments.of(new PolicyInUseException("msg"), 400),
         Arguments.of(new NoSuchPolicyException("msg"), 404),
+        Arguments.of(new NoSuchMappingException("msg"), 404),
         Arguments.of(new PolicyVersionMismatchException("msg"), 409),
         Arguments.of(new PolicyMappingAlreadyExistsException("msg"), 409),
         Arguments.of(new NoSuchSemanticModelException("msg"), 404),

@@ -59,6 +59,7 @@ import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
 import org.apache.polaris.core.auth.RootPrivilegeGrantAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -149,7 +150,8 @@ public class RangerPolarisAuthorizerTest {
             "ns",
             PolarisEntityType.TABLE_LIKE,
             "table");
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Collections.emptySet());
+    PolarisPrincipal principal =
+        PolarisPrincipal.of("alice", AttributeMap.EMPTY, Collections.emptySet());
     AuthorizationRequest request =
         new AuthorizationRequest(
             principal,
@@ -193,7 +195,8 @@ public class RangerPolarisAuthorizerTest {
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     PolarisResolvedPathWrapper catalogPath =
         resolvedPath(PolarisEntityType.ROOT, "root", PolarisEntityType.CATALOG, "catalog");
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Collections.emptySet());
+    PolarisPrincipal principal =
+        PolarisPrincipal.of("alice", AttributeMap.EMPTY, Collections.emptySet());
     AuthorizationRequest request =
         new AuthorizationRequest(
             principal,
@@ -426,7 +429,7 @@ public class RangerPolarisAuthorizerTest {
 
       String name = nameNode != null ? nameNode.asString() : null;
 
-      return PolarisPrincipal.of(name, Collections.emptyMap(), Collections.emptySet());
+      return PolarisPrincipal.of(name, AttributeMap.EMPTY, Collections.emptySet());
     }
   }
 

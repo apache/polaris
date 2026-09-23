@@ -32,9 +32,4 @@ public record PolicyAttachmentAuthorizationIntent(
     Preconditions.checkNotNull(policy, "policy must be non-null");
     Preconditions.checkNotNull(attachedTo, "attachedTo must be non-null");
   }
-
-  @Override
-  public @NonNull PolarisAuthorizableOperation getOperation() {
-    return operation;
-  }
 }

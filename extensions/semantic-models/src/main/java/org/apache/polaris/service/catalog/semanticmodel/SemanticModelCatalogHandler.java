@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.semanticmodel;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE;
+
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -46,10 +48,8 @@ import org.apache.polaris.service.catalog.semanticmodel.types.UpdateSemanticMode
  * Authorizes and delegates Apache Ossie semantic-model operations to {@link SemanticModelCatalog}.
  * Mirrors {@link org.apache.polaris.service.catalog.policy.PolicyCatalogHandler}.
  *
- * <p>Authorization is intentionally minimal in this phase: operations are gated by the coarse
- * {@code CATALOG_MANAGE_CONTENT} privilege (see {@code RbacOperationSemantics}). The dedicated
- * {@code SEMANTIC_MODEL_*} privilege matrix, the write-time source-access check, and the
- * independent/propagated read-time enforcement modes land in the authorization phase.
+ * <p>Operations use dedicated {@code SEMANTIC_MODEL_*} privileges. Source-access authorization is
+ * deferred.
  */
 @PolarisImmutable
 @SuppressWarnings("immutables:incompat")
@@ -86,7 +86,8 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_SEMANTIC_MODEL;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
+    PageToken pageRequest =
+        PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
     return semanticModelCatalog.listSemanticModels(namespace, pageRequest);
   }
 
@@ -108,6 +109,13 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_SEMANTIC_MODEL;
     authorizeBasicSemanticModelOperationOrThrow(op, identifier);
     semanticModelCatalog.dropSemanticModel(identifier);
+  }
+
+  private int maxPageSize() {
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    return catalogEntity == null
+        ? realmConfig().getConfig(LIST_PAGINATION_MAX_PAGE_SIZE)
+        : realmConfig().getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity);
   }
 
   private boolean shouldDecodeToken() {

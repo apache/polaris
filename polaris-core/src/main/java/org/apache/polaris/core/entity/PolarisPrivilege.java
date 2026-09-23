@@ -256,6 +256,13 @@ public enum PolarisPrivilege {
       PolarisEntityType.TABLE_LIKE,
       List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
       PolarisEntityType.CATALOG_ROLE),
+  SEMANTIC_MODEL_LIST(103, PolarisEntityType.NAMESPACE),
+  SEMANTIC_MODEL_CREATE(104, PolarisEntityType.NAMESPACE),
+  SEMANTIC_MODEL_READ(105, PolarisEntityType.SEMANTIC_MODEL),
+  SEMANTIC_MODEL_WRITE(106, PolarisEntityType.SEMANTIC_MODEL),
+  SEMANTIC_MODEL_DROP(107, PolarisEntityType.SEMANTIC_MODEL),
+  SEMANTIC_MODEL_FULL_METADATA(108, PolarisEntityType.SEMANTIC_MODEL),
+  SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE(109, PolarisEntityType.SEMANTIC_MODEL),
   /**
    * Read-only access to table scan and commit metrics reports. Does not grant access to table data.
    * Implied by TABLE_FULL_METADATA.
@@ -265,7 +272,7 @@ public enum PolarisPrivilege {
    * privilege authorize successfully while returning no reports.
    */
   TABLE_READ_METRICS(
-      103,
+      110,
       PolarisEntityType.TABLE_LIKE,
       List.of(PolarisEntitySubType.ICEBERG_TABLE),
       PolarisEntityType.CATALOG_ROLE),

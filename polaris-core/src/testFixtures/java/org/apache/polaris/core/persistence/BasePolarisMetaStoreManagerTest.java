@@ -295,6 +295,12 @@ public abstract class BasePolarisMetaStoreManagerTest {
     polarisTestMetaStoreManager.testRename();
   }
 
+  /** test that a rename cannot move an entity into a different catalog */
+  @Test
+  protected void testRenameAcrossCatalogsIsRejected() {
+    polarisTestMetaStoreManager.testRenameAcrossCatalogsIsRejected();
+  }
+
   /** test entity lookup */
   @Test
   protected void testLookup() {

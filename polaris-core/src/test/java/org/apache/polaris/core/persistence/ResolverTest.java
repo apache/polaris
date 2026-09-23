@@ -22,10 +22,10 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 
 import java.time.Clock;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -81,7 +81,7 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of("missing", AttributeMap.EMPTY, Set.of()),
             null,
             "test");
     ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.REFERENCE_CATALOG));
@@ -95,7 +95,7 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of("missing", AttributeMap.EMPTY, Set.of()),
             null,
             "test");
     pathResolver.addPath(new ResolverPath(List.of("N1"), PolarisEntityType.NAMESPACE));
@@ -110,7 +110,7 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of("missing", AttributeMap.EMPTY, Set.of()),
             null,
             null);
     entityResolver.addEntityByName(PolarisEntityType.PRINCIPAL, "P1");
@@ -126,7 +126,7 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of("missing", AttributeMap.EMPTY, Set.of()),
             null,
             "test");
     ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CALLER_CATALOG_ROLES));
@@ -142,7 +142,7 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of("missing", AttributeMap.EMPTY, Set.of()),
             null,
             "test");
     resolver.addOptionalEntityByName(PolarisEntityType.CATALOG_ROLE, "role1");
@@ -161,7 +161,7 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of("missing", AttributeMap.EMPTY, Set.of()),
             null,
             "test");
     ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CALLER_PRINCIPAL));
@@ -176,7 +176,7 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of("missing", AttributeMap.EMPTY, Set.of()),
             null,
             "test");
     ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CALLER_PRINCIPAL_ROLES));
@@ -191,7 +191,7 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of("missing", AttributeMap.EMPTY, Set.of()),
             null,
             "test");
     ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.REFERENCE_CATALOG));

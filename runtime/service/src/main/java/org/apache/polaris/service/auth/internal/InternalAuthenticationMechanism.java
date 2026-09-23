@@ -36,10 +36,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Collections;
 import java.util.Set;
+import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
-import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.internal.broker.TokenBroker;
+import org.apache.polaris.service.auth.internal.broker.TokenVerificationResult;
 
 /**
  * A custom {@link HttpAuthenticationMechanism} that handles internal token authentication, that is,
@@ -90,22 +91,38 @@ class InternalAuthenticationMechanism implements HttpAuthenticationMechanism {
 
     String credential = authHeader.substring(spaceIdx + 1);
 
-    PolarisCredential token;
+    TokenVerificationResult result;
     try {
-      token = tokenBroker.verify(credential);
+      result = tokenBroker.verify(credential);
     } catch (Exception e) {
-      return configuration.type() == AuthenticationType.MIXED
-          ? Uni.createFrom().nullItem() // let other auth mechanisms handle it
-          : Uni.createFrom().failure(new AuthenticationFailedException(e)); // stop here
+      // verify() throws only for transient or unexpected failures (for example service
+      // unavailable); forward them as-is so they surface as such rather than as an authentication
+      // failure.
+      return Uni.createFrom().failure(e);
     }
 
-    if (token == null) {
-      return Uni.createFrom().nullItem();
-    }
-
-    return identityProviderManager.authenticate(
-        HttpSecurityUtils.setRoutingContextAttribute(
-            new InternalAuthenticationRequest(token), context));
+    return switch (result) {
+      case TokenVerificationResult.Recognized recognized ->
+          identityProviderManager.authenticate(
+              HttpSecurityUtils.setRoutingContextAttribute(
+                  new InternalAuthenticationRequest(recognized.credential()), context));
+      case TokenVerificationResult.NotRecognized ignored ->
+          // Not a Polaris-issued token: delegate to other mechanisms in MIXED mode, fail otherwise.
+          configuration.type() == AuthenticationType.MIXED
+              ? Uni.createFrom().nullItem() // let other auth mechanisms handle it
+              : Uni.createFrom()
+                  .failure(new AuthenticationFailedException("Failed to verify the token"));
+      case TokenVerificationResult.Invalid invalid -> {
+        // Recognized but invalid: a definitive failure that does not fall through in MIXED mode.
+        // Preserve the previous wire behavior (a 401 via the exception mapper); mapping this to a
+        // Bearer challenge is left for a follow-up.
+        NotAuthorizedException failure = new NotAuthorizedException("%s", invalid.message());
+        if (invalid.cause() != null) {
+          failure.initCause(invalid.cause());
+        }
+        yield Uni.createFrom().failure(failure);
+      }
+    };
   }
 
   @Override

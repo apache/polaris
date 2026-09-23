@@ -123,6 +123,6 @@ public class DefaultFileIOFactory implements FileIOFactory {
   @VisibleForTesting
   FileIO loadFileIOInternal(
       @NonNull String ioImplClassName, @NonNull Map<String, String> properties) {
-    return new ExceptionMappingFileIO(CatalogUtil.loadFileIO(ioImplClassName, properties, null));
+    return ExceptionMappingFileIO.wrap(CatalogUtil.loadFileIO(ioImplClassName, properties, null));
   }
 }
