@@ -44,6 +44,18 @@ class AccessDelegationModeTest {
   }
 
   @Test
+  void testCommaSeparatedInSingleElement() {
+    // When JAX-RS @HeaderParam List<String> receives a comma-separated header as a single line,
+    // it delivers it as one list element; fromProtocolValuesList must still split on commas.
+    assertThat(fromProtocolValuesList(List.of("vended-credentials,remote-signing")))
+        .isEqualTo(EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING));
+    assertThat(fromProtocolValuesList(List.of("remote-signing,vended-credentials")))
+        .isEqualTo(EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING));
+    assertThat(fromProtocolValuesList(List.of("vended-credentials, remote-signing")))
+        .isEqualTo(EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING));
+  }
+
+  @Test
   void testEmpty() {
     assertThat(fromProtocolValuesList(null)).isEqualTo(EnumSet.noneOf(AccessDelegationMode.class));
     assertThat(fromProtocolValuesList(List.of()))

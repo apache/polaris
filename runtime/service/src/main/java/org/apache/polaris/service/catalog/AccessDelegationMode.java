@@ -65,6 +65,8 @@ public enum AccessDelegationMode {
 
     EnumSet<AccessDelegationMode> set = EnumSet.noneOf(AccessDelegationMode.class);
     protocolValues.stream() // per Iceberg REST Catalog spec
+        // handle comma-separated values in a single header; JAX-RS doesn't automatically split them
+        .flatMap(s -> Arrays.stream(s.split(",")))
         .map(String::trim)
         .map(Mapper::map)
         .filter(Objects::nonNull)
