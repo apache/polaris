@@ -1446,7 +1446,15 @@ This product bundles Apache Hadoop.
 * Maven group:artifact IDs: org.apache.hadoop:hadoop-client-api
 * Maven group:artifact IDs: org.apache.hadoop:hadoop-client-runtime
 * Maven group:artifact IDs: org.apache.hadoop:hadoop-common
+* Maven group:artifact IDs: org.apache.hadoop:hadoop-hdfs-client
+* Maven group:artifact IDs: org.apache.hadoop:hadoop-mapreduce-client-common
+* Maven group:artifact IDs: org.apache.hadoop:hadoop-mapreduce-client-core
+* Maven group:artifact IDs: org.apache.hadoop:hadoop-mapreduce-client-jobclient
+* Maven group:artifact IDs: org.apache.hadoop:hadoop-yarn-api
+* Maven group:artifact IDs: org.apache.hadoop:hadoop-yarn-client
+* Maven group:artifact IDs: org.apache.hadoop:hadoop-yarn-common
 * Maven group:artifact IDs: org.apache.hadoop.thirdparty:hadoop-shaded-guava
+* Maven group:artifact IDs: org.apache.hadoop.thirdparty:hadoop-shaded-protobuf_3_25
 
 Project URL: https://hadoop.apache.org/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1723,6 +1731,13 @@ This product bundles JBoss (logmanager, transaction, narayana).
 * Maven group:artifact IDs: org.jboss.logging:commons-logging-jboss-logging
 * Maven group:artifact IDs: org.jboss.narayana.jta:narayana-jta
 * Maven group:artifact IDs: org.jboss.narayana.jts:narayana-jts-integration
+* Maven group:artifact IDs: org.jboss.narayana:common
+* Maven group:artifact IDs: org.jboss.narayana.arjunacore:arjuna
+* Maven group:artifact IDs: org.jboss.narayana.arjunacore:txoj
+* Maven group:artifact IDs: org.jboss.narayana.jta:cdi
+* Maven group:artifact IDs: org.jboss.narayana.jta:jdbc
+* Maven group:artifact IDs: org.jboss.narayana.jta:jms
+* Maven group:artifact IDs: org.jboss.narayana.jta:jta
 * Maven group:artifact IDs: org.jboss.slf4j:slf4j-jboss-logmanager
 * Maven group:artifact IDs: org.jboss.threads:jboss-threads
 * Maven group:artifact IDs: org.wildfly.common:wildfly-common
@@ -2026,6 +2041,205 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
+This product bundles ANTLR 4 Runtime.
+
+* Maven group:artifact IDs: org.antlr:antlr4-runtime
+
+Project URL: https://github.com/antlr/antlr4
+License: BSD 3-Clause
+| Copyright (c) 2012-2022 The ANTLR Project. All rights reserved.
+| 
+| Redistribution and use in source and binary forms, with or without
+| modification, are permitted provided that the following conditions
+| are met:
+| 
+| 1. Redistributions of source code must retain the above copyright
+| notice, this list of conditions and the following disclaimer.
+| 2. Redistributions in binary form must reproduce the above copyright
+| notice, this list of conditions and the following disclaimer in the
+| documentation and/or other materials provided with the distribution.
+| 
+| 3. Neither name of copyright holders nor the names of its contributors
+| may be used to endorse or promote products derived from this software
+| without specific prior written permission.
+| THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+| ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+| LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+| A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR
+| CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+| EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+| PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+| PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+| LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+| NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+| SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+
+This product bundles JLine3.
+
+* Maven group:artifact IDs: org.jline:jline
+* Maven group:artifact IDs: org.jline:jline-builtins
+* Maven group:artifact IDs: org.jline:jline-reader
+* Maven group:artifact IDs: org.jline:jline-remote-ssh
+* Maven group:artifact IDs: org.jline:jline-remote-telnet
+* Maven group:artifact IDs: org.jline:jline-style
+* Maven group:artifact IDs: org.jline:jline-terminal
+* Maven group:artifact IDs: org.jline:jline-terminal-jansi
+* Maven group:artifact IDs: org.jline:jline-terminal-jna
+
+Project URL: https://github.com/jline/jline3
+License: BSD License
+| Copyright (c) 2002-2020, the original author(s).
+| All rights reserved.
+| 
+| Redistribution and use in source and binary forms, with or without
+| modification, are permitted provided that the following conditions are met:
+| 1. Redistributions of source code must retain the above copyright notice,
+| this list of conditions and the following disclaimer.
+| 2. Redistributions in binary form must reproduce the above copyright notice,
+| this list of conditions and the following disclaimer in the documentation
+| and/or other materials provided with the distribution.
+| 3. Neither the name of JLine nor the names of its contributors may be used to
+| endorse or promote products derived from this software without specific prior
+| written permission.
+| THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+| AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+| IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+| DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+| FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+| DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+| SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+| CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+| OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+| OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+
+This product bundles jsch.
+
+* Maven group:artifact ID: com.jcraft:jsch:0.1.55
+
+Project URL: http://www.jcraft.com/jsch/
+License: Revised BSD License
+| Copyright (c) 2002-2015 Atsuhiko Yamanaka, JCraft,Inc.
+| All rights reserved.
+| 
+| Redistribution and use in source and binary forms, with or without
+| modification, are permitted provided that the following conditions are met:
+| 1. Redistributions of source code must retain the above copyright notice,
+| this list of conditions and the following disclaimer.
+| 2. Redistributions in binary form must reproduce the above copyright
+| notice, this list of conditions and the following disclaimer in the
+| documentation and/or other materials provided with the distribution.
+| 3. The names of the authors may not be used to endorse or promote products
+| derived from this software without specific prior written permission.
+| THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED WARRANTIES,
+| INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+| FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL JCRAFT,
+| INC. OR ANY CONTRIBUTORS TO THIS SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT,
+| INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+| LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+| OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+| LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+| NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+| EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+
+This product bundles MSV.
+
+* Maven group:artifact IDs: net.java.dev.msv:msv-core:2022.7
+* Maven group:artifact IDs: net.java.dev.msv:xsdlib:2022.7
+
+Project URL: https://github.com/xmlark/msv
+License: BSD
+| Copyright (c) 2001-2009 Sun Microsystems, Inc. All Rights Reserved.
+| 
+| Redistribution and use in source and binary forms, with or without
+| modification, are permitted provided that the following conditions are met:
+| - Redistributions of source code must retain the above copyright notice,
+| this list of conditions and the following disclaimer.
+| - Redistribution in binary form must reproduce the above copyright notice,
+| this list of conditions and the following disclaimer in the documentation
+| and/or other materials provided with the distribution.
+| Neither the name of Sun Microsystems, Inc. nor the names of contributors may
+| be used to endorse or promote products derived from this software without
+| specific prior written permission.
+| This software is provided "AS IS," without a warranty of any kind. ALL EXPRESS
+| OR IMPLIED CONDITIONS, REPRESENTATIONS AND WARRANTIES, INCLUDING ANY IMPLIED
+| WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR
+| NON-INFRINGEMENT, ARE HEREBY EXCLUDED. SUN AND ITS LICENSORS SHALL NOT BE
+| LIABLE FOR ANY DAMAGES OR LIABILITIES SUFFERED BY LICENSEE AS A RESULT OF OR
+| RELATING TO USE, MODIFICATION OR DISTRIBUTION OF THE SOFTWARE OR ITS
+| DERIVATIVES. IN NO EVENT WILL SUN OR ITS LICENSORS BE LIABLE FOR ANY LOST
+| REVENUE, PROFIT OR DATA, OR FOR DIRECT, INDIRECT, SPECIAL, CONSEQUENTIAL,
+| INCIDENTAL OR PUNITIVE DAMAGES, HOWEVER CAUSED AND REGARDLESS OF THE THEORY OF
+| LIABILITY, ARISING OUT OF THE USE OF OR INABILITY TO USE SOFTWARE, EVEN IF SUN
+| HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+--------------------------------------------------------------------------------
+
+This product bundles Relaxng Datatype.
+
+* Maven group:artifact ID: relaxngDatatype:relaxngDatatype:20020414
+
+License: BSD 3-Clause
+| Copyright (c) 2001-2002, SourceForge ISO-RELAX Project.
+| Copyright (c) 2001-2003, Thai Open Source Software Center Ltd.
+| All rights reserved.
+| 
+| Redistribution and use in source and binary forms, with or without
+| modification, are permitted provided that the following conditions are met:
+| 1. Redistributions of source code must retain the above copyright notice,
+| this list of conditions and the following disclaimer.
+| 2. Redistributions in binary form must reproduce the above copyright notice,
+| this list of conditions and the following disclaimer in the documentation
+| and/or other materials provided with the distribution.
+| 3. Neither the name of the copyright holders nor the names of their
+| contributors may be used to endorse or promote products derived from this
+| software without specific prior written permission.
+| THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+| AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+| IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+| DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+| FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+| DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+| SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+| CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+| OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+| OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+
+This product bundles ISO-Relax.
+
+* Maven group:artifact ID: com.sun.xml.bind.jaxb:isorelax:20090621
+
+Project URL: https://sourceforge.net/projects/iso-relax/
+License: CDDL 1.1
+License text: https://glassfish.java.net/public/CDDL+GPL_1_1.html
+
+--------------------------------------------------------------------------------
+
+This product bundles JCIP Annotations.
+
+* Maven group:artifact IDs: com.github.stephenc.jcip:jcip-annotations
+
+Project URL: https://github.com/stephenc/jcip-annotations
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Error Prone Annotations.
+
+* Maven group:artifact IDs: com.google.errorprone:error_prone_annotations
+
+Project URL: https://errorprone.info/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
 This product bundles Agrona.
 
 * Maven group:artifact IDs: org.agrona:agrona
@@ -2058,6 +2272,12 @@ This product bundles Jetty libraries.
 * Maven group:artifact IDs: org.eclipse.jetty:jetty-http
 * Maven group:artifact IDs: org.eclipse.jetty:jetty-io
 * Maven group:artifact IDs: org.eclipse.jetty:jetty-util
+* Maven group:artifact IDs: org.eclipse.jetty:jetty-util-ajax
+* Maven group:artifact IDs: org.eclipse.jetty:jetty-webapp
+* Maven group:artifact IDs: org.eclipse.jetty:jetty-xml
+* Maven group:artifact IDs: org.eclipse.jetty.websocket:websocket-api
+* Maven group:artifact IDs: org.eclipse.jetty.websocket:websocket-client
+* Maven group:artifact IDs: org.eclipse.jetty.websocket:websocket-common
 
 Home page: https://github.com/jetty/jetty.project/
 License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
@@ -2165,7 +2385,31 @@ This product bundles ASM library.
 * Maven group:artifact IDs: org.ow2.asm:asm
 
 Home page: https://gitlab.ow2.org/asm/asm
-License: BSD 3-Clause - https://gitlab.ow2.org/asm/asm/-/blob/master/LICENSE.txt
+License: BSD 3-Clause
+ASM: a very small and fast Java bytecode manipulation framework
+Copyright (c) 2000-2011 INRIA, France Telecom
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+1. Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+3. Neither the name of the copyright holders nor the names of its
+contributors may be used to endorse or promote products derived from this
+software without specific prior written permission.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 
@@ -2184,7 +2428,7 @@ This product bundles JAXB API library.
 * Maven group:artifact IDs: javax.xml.bind:jaxb-api
 
 Home page: https://javaee.github.io/jaxb-v2/
-License: CDDL - https://javaee.github.io/jaxb-v2/LICENSE
+License: CDDL 1.1 - https://glassfish.java.net/public/CDDL+GPL_1_1.html
 
 --------------------------------------------------------------------------------
 
