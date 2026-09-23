@@ -31,7 +31,6 @@ dependencies {
   implementation(project(":polaris-idgen-api"))
   implementation(project(":polaris-persistence-nosql-maintenance-api"))
   implementation(project(":polaris-persistence-nosql-maintenance-spi"))
-  implementation(project(":polaris-persistence-nosql-maintenance-cel"))
   implementation(project(":polaris-persistence-nosql-metastore-types"))
 
   implementation(libs.guava)
