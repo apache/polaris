@@ -158,7 +158,7 @@ public abstract class AbstractMetricsQuerySpiContractTest {
         .containsExactly(newest.reportId(), middle.reportId());
     assertThat(firstPage.encodedResponseToken()).isNotNull();
 
-    PageToken nextPageToken = PageToken.build(firstPage.encodedResponseToken(), 2, () -> true);
+    PageToken nextPageToken = PageToken.build(firstPage.encodedResponseToken(), 2, -1, () -> true);
     Page<? extends MetricsRecordIdentity> secondPage =
         querySpi(realm)
             .listReports(
@@ -201,7 +201,7 @@ public abstract class AbstractMetricsQuerySpiContractTest {
         .extracting(MetricsRecordIdentity::reportId)
         .containsExactly(second.reportId());
 
-    PageToken nextPageToken = PageToken.build(firstPage.encodedResponseToken(), 1, () -> true);
+    PageToken nextPageToken = PageToken.build(firstPage.encodedResponseToken(), 1, -1, () -> true);
     Page<? extends MetricsRecordIdentity> secondPage =
         querySpi(realm)
             .listReports(
@@ -270,7 +270,7 @@ public abstract class AbstractMetricsQuerySpiContractTest {
     // A cursor minted while listing realm A must not be honored when replayed against realm B,
     // even though catalog/table ids are identical: otherwise realm B's query would apply realm
     // A's keyset predicate to realm B's result set.
-    PageToken replayedToken = PageToken.build(firstPage.encodedResponseToken(), 1, () -> true);
+    PageToken replayedToken = PageToken.build(firstPage.encodedResponseToken(), 1, -1, () -> true);
     assertThatThrownBy(
             () ->
                 querySpi(realmB)
