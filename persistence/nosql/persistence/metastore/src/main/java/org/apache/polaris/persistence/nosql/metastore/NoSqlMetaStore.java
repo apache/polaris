@@ -634,8 +634,9 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     var catalogId = entity.getCatalogId();
     var checkLocation = StorageLocation.of(baseLocation).withoutScheme();
 
-    // The entity's own parent namespaces contain its location by construction; they are not
-    // siblings. Resolve the parent chain up front via the (memoized) id index.
+    // The entity's own parent namespaces may contain its location: they always do when locations
+    // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
+    // Resolve the parent chain up front via the (memoized) id index.
     var ancestorIds = new HashSet<Long>();
     for (var id = entity.getParentId();
         id != PolarisEntityConstants.getNullId() && id != catalogId && ancestorIds.add(id); ) {
@@ -712,8 +713,9 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                 var prefixKey = prefix.toIndexKey();
                 var entry = locationsIndex.get(prefixKey);
                 if (entry != null) {
-                  // An ancestor at a strict prefix contains the entity by construction and is not
-                  // a sibling. An ancestor at exactly the entity's location still conflicts.
+                  // An ancestor found at a strict prefix is the expected layout when locations
+                  // follow the namespace tree, not a sibling conflict. An ancestor at exactly the
+                  // entity's location still conflicts.
                   var strictPrefix = i < locationIdentifier.length();
                   var conflicting =
                       entry.entityIds().stream()

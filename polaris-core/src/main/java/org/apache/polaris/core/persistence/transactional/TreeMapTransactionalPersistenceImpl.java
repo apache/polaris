@@ -682,8 +682,9 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
         StorageLocation.of(StorageLocation.of(entity.getBaseLocation()).withoutScheme());
     List<PolarisBaseEntity> allEntities = this.store.getSliceEntities().readRange("");
 
-    // The entity's own parent namespaces contain its location by construction; they are not
-    // siblings. Every entity is in memory, so the parent chain is resolved from the scan itself.
+    // The entity's own parent namespaces may contain its location: they always do when locations
+    // follow the namespace tree, as default locations do. Such an ancestor is not a sibling. Every
+    // entity is in memory, so the parent chain is resolved from the scan itself.
     Map<Long, PolarisBaseEntity> entitiesById =
         allEntities.stream()
             .collect(Collectors.toMap(PolarisBaseEntity::getId, Function.identity(), (a, b) -> a));

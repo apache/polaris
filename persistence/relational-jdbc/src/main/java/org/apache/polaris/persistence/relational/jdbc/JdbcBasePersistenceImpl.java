@@ -860,9 +860,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         return Optional.of(Optional.empty());
       }
       // The query matches every entity whose location is an ancestor of, equal to, or a descendant
-      // of the entity's location. The entity's own parent namespaces always match the ancestor
-      // terms; they are not siblings. Their rows are normally in the result set, so walking the
-      // parent chain rarely needs an extra lookup.
+      // of the entity's location. The entity's own parent namespaces may match the ancestor terms:
+      // they always do when locations follow the namespace tree, as default locations do. Such an
+      // ancestor is not a sibling. Its row is then in the result set, so walking the parent chain
+      // rarely needs an extra lookup.
       Map<Long, PolarisBaseEntity> resultsById = new HashMap<>();
       results.forEach(result -> resultsById.putIfAbsent(result.getId(), result));
       Set<Long> ancestorIds = new HashSet<>();
