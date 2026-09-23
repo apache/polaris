@@ -449,6 +449,8 @@ public interface PolarisMetaStoreManager
    * BasePersistence#hasOverlappingSiblings} for the exact semantics.
    *
    * @param callContext the polaris call context
+   * @param catalogPath the resolved path of the entity's ancestors: the catalog first, then each
+   *     parent namespace
    * @param entity the entity whose base location to check
    * @return Optional.of(Optional.of(location)) with the base location of a conflicting entity,
    *     Optional.of(Optional.empty()) if there is no conflict, and Optional.empty() if the
@@ -456,7 +458,9 @@ public interface PolarisMetaStoreManager
    */
   default <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> catalogPath,
+          T entity) {
     return Optional.empty();
   }
 

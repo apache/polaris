@@ -143,6 +143,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Table commits whose base metadata is already stale now fail before the new metadata file is
   written, saving an object-storage write and delete per conflict and returning the `409` to the
   client sooner.
+- `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
+  take the entity's resolved catalog path, so implementations exclude the entity's own ancestors
+  without re-reading the parent chain from the metastore.
 
 ### Deprecations
 

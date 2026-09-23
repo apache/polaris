@@ -27,7 +27,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +46,6 @@ import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -842,7 +840,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> catalogPath,
+          T entity) {
     if (this.schemaVersion < 2) {
       return Optional.empty();
     }
@@ -862,26 +862,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       // The query matches every entity whose location is an ancestor of, equal to, or a descendant
       // of the entity's location. The entity's own parent namespaces may match the ancestor terms:
       // they always do when locations follow the namespace tree, as default locations do. Such an
-      // ancestor is not a sibling. Its row is then in the result set, so walking the parent chain
-      // rarely needs an extra lookup.
-      Map<Long, PolarisBaseEntity> resultsById = new HashMap<>();
-      results.forEach(result -> resultsById.putIfAbsent(result.getId(), result));
-      Set<Long> ancestorIds = new HashSet<>();
-      for (long id = entity.getParentId();
-          id != PolarisEntityConstants.getNullId()
-              && id != entity.getCatalogId()
-              && ancestorIds.add(id); ) {
-        PolarisBaseEntity ancestor = resultsById.get(id);
-        if (ancestor == null) {
-          ancestor =
-              lookupEntity(
-                  callContext, entity.getCatalogId(), id, PolarisEntityType.NAMESPACE.getCode());
-        }
-        if (ancestor == null) {
-          break;
-        }
-        id = ancestor.getParentId();
-      }
+      // ancestor is not a sibling.
+      Set<Long> ancestorIds =
+          catalogPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
 
       StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
       for (PolarisBaseEntity result : results) {

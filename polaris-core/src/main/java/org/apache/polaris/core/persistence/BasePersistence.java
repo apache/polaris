@@ -406,12 +406,14 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * OPTIMIZED_SIBLING_CHECK}; the fallback used when that flag is off inspects only the entities
    * directly under the same parent.
    *
-   * <p>The entity's own ancestors are excluded: a parent namespace whose location strictly contains
-   * the entity's location is not reported, because default locations nest under the parent's
-   * location by construction. An ancestor whose location equals the entity's location is still
-   * reported.
+   * <p>The entity's own ancestors, given by {@code catalogPath}, are excluded: a parent namespace
+   * whose location strictly contains the entity's location is not reported, since default locations
+   * nest under the parent's location. An ancestor whose location equals the entity's location is
+   * still reported.
    *
    * @param callContext the polaris call context
+   * @param catalogPath the resolved path of the entity's ancestors: the catalog first, then each
+   *     parent namespace
    * @param entity the entity whose base location to check
    * @return Optional.of(Optional.of(location)) with the base location of a conflicting entity,
    *     Optional.of(Optional.empty()) if there is no conflict, and Optional.empty() if the
@@ -419,7 +421,9 @@ public interface BasePersistence extends PolicyMappingPersistence {
    */
   default <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> catalogPath,
+          T entity) {
     return Optional.empty();
   }
 

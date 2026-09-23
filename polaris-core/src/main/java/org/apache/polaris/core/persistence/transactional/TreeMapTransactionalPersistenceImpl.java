@@ -19,9 +19,7 @@
 package org.apache.polaris.core.persistence.transactional;
 
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -676,22 +674,18 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> catalogPath,
+          T entity) {
     // TODO we could optimize this full scan
     StorageLocation entityLocationWithoutScheme =
         StorageLocation.of(StorageLocation.of(entity.getBaseLocation()).withoutScheme());
     List<PolarisBaseEntity> allEntities = this.store.getSliceEntities().readRange("");
 
     // The entity's own parent namespaces may contain its location: they always do when locations
-    // follow the namespace tree, as default locations do. Such an ancestor is not a sibling. Every
-    // entity is in memory, so the parent chain is resolved from the scan itself.
-    Map<Long, PolarisBaseEntity> entitiesById =
-        allEntities.stream()
-            .collect(Collectors.toMap(PolarisBaseEntity::getId, Function.identity(), (a, b) -> a));
-    Set<Long> ancestorIds = new HashSet<>();
-    for (PolarisBaseEntity ancestor = entitiesById.get(entity.getParentId());
-        ancestor != null && ancestorIds.add(ancestor.getId());
-        ancestor = entitiesById.get(ancestor.getParentId())) {}
+    // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
+    Set<Long> ancestorIds =
+        catalogPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
 
     for (PolarisBaseEntity siblingEntity : allEntities) {
       Optional<StorageLocation> maybeSiblingLocationWithoutScheme =
