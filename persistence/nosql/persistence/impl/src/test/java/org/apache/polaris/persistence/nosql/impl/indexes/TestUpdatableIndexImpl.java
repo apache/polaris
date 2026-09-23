@@ -148,6 +148,30 @@ public class TestUpdatableIndexImpl {
   }
 
   @Test
+  public void putAfterRemoveOfKeyInReference() {
+    var foo = key("foo");
+    var bar = key("bar");
+    var baz = key("baz");
+    var id1 = randomObjId();
+    var id2 = randomObjId();
+    var id3 = randomObjId();
+    var newId = randomObjId();
+
+    var updatable =
+        updatableIndexForTest(Map.of(foo, id1, bar, id2, baz, id3), Map.of(), OBJ_REF_SERIALIZER);
+
+    soft.assertThat(updatable.remove(baz)).isTrue();
+
+    // The key was removed in this change, so it is logically absent and putting it back must be
+    // reported as a new key, even though the reference index still holds it.
+    soft.assertThat(updatable.put(baz, newId)).isTrue();
+    soft.assertThat(updatable.get(baz)).isEqualTo(newId);
+
+    // A key that is still present must continue to be reported as already existing.
+    soft.assertThat(updatable.put(foo, newId)).isFalse();
+  }
+
+  @Test
   public void removeExistsInReference() {
     var foo = key("foo");
     var bar = key("bar");

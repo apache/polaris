@@ -19,20 +19,29 @@
 package org.apache.polaris.persistence.nosql.metastore;
 
 import static org.apache.polaris.core.entity.PolarisEntityConstants.ENTITY_BASE_LOCATION;
+import static org.apache.polaris.core.entity.PolarisEntitySubType.NULL_SUBTYPE;
+import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
+import static org.apache.polaris.persistence.nosql.api.index.IndexKey.key;
+import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping.POLICY_MAPPING_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.metastore.mutation.PolicyMutation.MAX_POLICY_MAPPING_INDEX_VALUE_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.InstanceOfAssertFactories.BOOLEAN;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.PolarisCallContext;
@@ -45,6 +54,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -52,13 +62,21 @@ import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
+import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.ids.api.MonotonicClock;
+import org.apache.polaris.persistence.nosql.api.Persistence;
+import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
+import org.apache.polaris.persistence.nosql.authz.api.Privileges;
+import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogsObj;
+import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
@@ -85,7 +103,9 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   @Identifier("nosql")
   MetaStoreManagerFactory metaStoreManagerFactory;
 
+  @Inject RealmPersistenceFactory realmPersistenceFactory;
   @Inject RealmConfigurationSource configurationSource;
+  @Inject Privileges privileges;
   @Inject MonotonicClock monotonicClock;
 
   String realmId;
@@ -139,6 +159,75 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   void setup() {
     this.metaStore = polarisTestMetaStoreManager.polarisMetaStoreManager();
     this.callContext = polarisTestMetaStoreManager.polarisCallContext();
+  }
+
+  @Test
+  public void rejectsPaginationTokenWhenReferencedSnapshotDoesNotExist() {
+    var noSqlToken =
+        NoSqlPaginationToken.paginationToken(
+            objRef(CatalogsObj.TYPE, Long.MAX_VALUE), key("catalog"));
+    var responsePage = Page.page(PageToken.fromLimit(1), List.of("catalog"), noSqlToken);
+    var pageToken = PageToken.build(responsePage.encodedResponseToken(), null, -1, () -> true);
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                metaStore.listFullEntities(
+                    callContext, List.of(), CATALOG, NULL_SUBTYPE, pageToken))
+        .withMessage("Invalid or expired NoSQL pagination token");
+  }
+
+  @Test
+  public void rotatePrincipalSecretsWhenClientIdIndexIsStriped() {
+    Persistence persistence = realmPersistenceFactory.newBuilder().realmId(realmId).build();
+
+    // Create principals until the by-client-id index spills out of the embedded region, so that
+    // client-id keys of existing principals live in stripes rather than in the embedded index.
+    CreatePrincipalResult first = null;
+    int created = 0;
+    while (created < 4000) {
+      PrincipalEntity entity =
+          new PrincipalEntity.Builder()
+              .setId(metaStore.generateNewEntityId(callContext).getId())
+              .setName("rotate_principal_" + created)
+              .setCreateTimestamp(System.currentTimeMillis())
+              .build();
+      CreatePrincipalResult result = metaStore.createPrincipal(callContext, entity);
+      assertThat(result.isSuccess()).isTrue();
+      if (first == null) {
+        first = result;
+      }
+      created++;
+      if (created % 50 == 0 && clientIdIndexIsStriped(persistence)) {
+        break;
+      }
+    }
+
+    assertThat(clientIdIndexIsStriped(persistence))
+        .describedAs(
+            "by-client-id index should have spilled to stripes after %d principals", created)
+        .isTrue();
+
+    // Rotating keeps the same client ID, so the mutation removes and re-adds the same index key.
+    var secrets = first.getPrincipalSecrets();
+    var rotated =
+        metaStore.rotatePrincipalSecrets(
+            callContext,
+            secrets.getPrincipalClientId(),
+            first.getPrincipal().getId(),
+            false,
+            secrets.getMainSecretHash());
+
+    assertThat(rotated.isSuccess()).isTrue();
+    assertThat(rotated.getPrincipalSecrets().getPrincipalClientId())
+        .isEqualTo(secrets.getPrincipalClientId());
+  }
+
+  private static boolean clientIdIndexIsStriped(Persistence persistence) {
+    return persistence
+        .fetchReferenceHead(PrincipalsObj.PRINCIPALS_REF_NAME, PrincipalsObj.class)
+        .map(principals -> !principals.byClientId().stripes().isEmpty())
+        .orElse(false);
   }
 
   @Test
@@ -646,4 +735,93 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
           + "because both the creation and modification timestamps are enforced by the implementation and "
           + "cannot be tweaked by call sites")
   protected void testCreatePrincipalReturnedEntitySameAsPersisted() {}
+
+  @Test
+  public void testLoadGrantsToGranteeDoesNotFetchPerGrant() {
+    var few = loadGrantsForGrantee(UUID.randomUUID().toString(), 5);
+    var many = loadGrantsForGrantee(UUID.randomUUID().toString(), 25);
+
+    soft.assertThat(many.bulkFetches()).describedAs("grant targets are bulk-fetched").isPositive();
+    soft.assertThat(many)
+        .describedAs("every kind of backend round-trip is independent of the grant count")
+        .isEqualTo(few);
+  }
+
+  private FetchCounts loadGrantsForGrantee(String grantsRealmId, int grantCount) {
+    metaStoreManagerFactory.bootstrapRealms(List.of(grantsRealmId), RootCredentialsSet.EMPTY);
+
+    var counters = new HashMap<String, AtomicInteger>();
+    var persistence =
+        countingPersistence(
+            realmPersistenceFactory.newBuilder().realmId(grantsRealmId).build(), counters);
+
+    RealmContext grantsRealmContext = () -> grantsRealmId;
+    var callCtx =
+        new PolarisCallContext(
+            grantsRealmContext, new NoSqlMetaStore(persistence, privileges), configurationSource);
+    var manager = metaStoreManagerFactory.getOrCreateMetaStoreManager(grantsRealmContext);
+
+    var principal =
+        manager
+            .createPrincipal(
+                callCtx,
+                new PrincipalEntity.Builder()
+                    .setId(manager.generateNewEntityId(callCtx).getId())
+                    .setName("principal")
+                    .setCreateTimestamp(1L)
+                    .build())
+            .getPrincipal();
+
+    for (int i = 0; i < grantCount; i++) {
+      var principalRole =
+          new PolarisBaseEntity.Builder()
+              .catalogId(PolarisEntityConstants.getNullId())
+              .id(manager.generateNewEntityId(callCtx).getId())
+              .typeCode(PolarisEntityType.PRINCIPAL_ROLE.getCode())
+              .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+              .parentId(PolarisEntityConstants.getRootEntityId())
+              .name("principalRole_" + i)
+              .createTimestamp(1L)
+              .build();
+      principalRole = manager.createEntityIfNotExists(callCtx, null, principalRole).getEntity();
+      manager.grantUsageOnRoleToGrantee(callCtx, null, principalRole, principal);
+    }
+
+    counters.clear();
+    var grants = manager.loadGrantsToGrantee(callCtx, principal);
+
+    soft.assertThat(grants.getEntities())
+        .describedAs("every granted principal role is resolved")
+        .hasSize(grantCount);
+
+    return new FetchCounts(
+        counterValue(counters, "fetch"),
+        counterValue(counters, "bucketizedBulkFetches"),
+        counterValue(counters, "fetchReference"));
+  }
+
+  private static int counterValue(Map<String, AtomicInteger> counters, String method) {
+    var counter = counters.get(method);
+    return counter == null ? 0 : counter.get();
+  }
+
+  private static Persistence countingPersistence(
+      Persistence delegate, Map<String, AtomicInteger> counters) {
+    return (Persistence)
+        Proxy.newProxyInstance(
+            Persistence.class.getClassLoader(),
+            new Class<?>[] {Persistence.class},
+            (proxy, method, args) -> {
+              counters
+                  .computeIfAbsent(method.getName(), k -> new AtomicInteger())
+                  .incrementAndGet();
+              try {
+                return method.invoke(delegate, args);
+              } catch (InvocationTargetException e) {
+                throw e.getCause();
+              }
+            });
+  }
+
+  private record FetchCounts(int fetch, int bulkFetches, int fetchReference) {}
 }

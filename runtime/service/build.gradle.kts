@@ -98,7 +98,9 @@ dependencies {
   implementation("software.amazon.awssdk:s3")
   implementation("software.amazon.awssdk:kms")
   implementation("software.amazon.awssdk:cloudwatchlogs")
-  implementation("software.amazon.awssdk:apache-client") {
+  implementation("software.amazon.awssdk:apache5-client")
+  // Iceberg 1.11.0 still requires Apache 4 for its default S3 HTTP client.
+  runtimeOnly("software.amazon.awssdk:apache-client") {
     exclude("commons-logging", "commons-logging")
   }
   implementation(platform(libs.azuresdk.bom))
@@ -136,7 +138,6 @@ dependencies {
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(project(":polaris-relational-jdbc"))
 
-  testImplementation(project(":polaris-minio-testcontainer"))
   testImplementation(project(":polaris-rustfs-testcontainer"))
 
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")

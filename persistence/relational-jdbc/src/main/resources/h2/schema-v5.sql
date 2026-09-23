@@ -22,8 +22,6 @@
 --    backed was never wired into any request path and has been removed)
 --  * `events.catalog_id` is nullable; events that are not catalog-scoped store NULL (issue #4674)
 
-CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
-SET SCHEMA POLARIS_SCHEMA;
 
 CREATE TABLE IF NOT EXISTS version (
     version_key VARCHAR PRIMARY KEY,

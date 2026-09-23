@@ -52,9 +52,7 @@ dependencies {
   implementation("io.quarkus:quarkus-container-image-docker")
 
   implementation(platform(libs.awssdk.bom))
-  implementation("software.amazon.awssdk:apache-client") {
-    exclude("commons-logging", "commons-logging")
-  }
+  implementation("software.amazon.awssdk:apache5-client")
 
   implementation(project(":polaris-runtime-common"))
 

@@ -34,6 +34,7 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -43,6 +44,8 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -53,6 +56,10 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -79,6 +86,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
@@ -154,11 +162,10 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     authenticatedRoot =
         PolarisPrincipal.of(
             rootPrincipal.getName(),
-            Map.of(
-                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-                rootPrincipal,
-                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
-                true),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, rootPrincipal)
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
             Set.of());
     polarisPrincipalHolder.set(authenticatedRoot);
 
@@ -402,7 +409,8 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
           TableIdentifier.of("ns", "t" + i), "format", null, "doc", Map.of());
     }
 
-    List<TableIdentifier> listResult = genericTableCatalog.listGenericTables(namespace);
+    List<TableIdentifier> listResult =
+        genericTableCatalog.listGenericTables(namespace, PageToken.readEverything()).items();
 
     Assertions.assertThat(listResult.size()).isEqualTo(10);
     Assertions.assertThat(listResult.stream().map(TableIdentifier::toString).toList())
@@ -421,14 +429,17 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     }
 
     Assertions.assertThat(icebergCatalog.listTables(namespace).size()).isEqualTo(10);
-    Assertions.assertThat(genericTableCatalog.listGenericTables(namespace)).isEmpty();
+    Assertions.assertThat(
+            genericTableCatalog.listGenericTables(namespace, PageToken.readEverything()).items())
+        .isEmpty();
   }
 
   @Test
   public void testListTablesNoNamespace() {
     Namespace namespace = Namespace.of("ns");
 
-    Assertions.assertThatCode(() -> genericTableCatalog.listGenericTables(namespace))
+    Assertions.assertThatCode(
+            () -> genericTableCatalog.listGenericTables(namespace, PageToken.readEverything()))
         .hasMessageContaining("Namespace");
   }
 
@@ -447,7 +458,9 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThat(listResult.stream().map(TableIdentifier::toString).toList())
         .isEqualTo(listResult.stream().map(TableIdentifier::toString).sorted().toList());
 
-    Assertions.assertThat(genericTableCatalog.listGenericTables(namespace)).isEmpty();
+    Assertions.assertThat(
+            genericTableCatalog.listGenericTables(namespace, PageToken.readEverything()).items())
+        .isEmpty();
   }
 
   @Test
@@ -464,8 +477,49 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
           TableIdentifier.of("ns", "g" + i), "format", null, "doc", Map.of());
     }
 
-    Assertions.assertThat(genericTableCatalog.listGenericTables(namespace).size()).isEqualTo(10);
+    Assertions.assertThat(
+            genericTableCatalog
+                .listGenericTables(namespace, PageToken.readEverything())
+                .items()
+                .size())
+        .isEqualTo(10);
     Assertions.assertThat(icebergCatalog.listTables(namespace).size()).isEqualTo(10);
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = BaseResult.ReturnStatus.class,
+      names = {"ENTITY_NOT_FOUND", "CATALOG_PATH_CANNOT_BE_RESOLVED"})
+  public void testDropGenericTableDisappearsAfterResolution(BaseResult.ReturnStatus status) {
+    icebergCatalog.createNamespace(NS);
+    genericTableCatalog.createGenericTable(TABLE, "format", null, "doc", Map.of());
+
+    // Resolve the existing table normally, then simulate a concurrent deletion at persistence.
+    PolarisMetaStoreManager concurrentlyDeleted = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(new DropEntityResult(status, "simulated"))
+        .when(concurrentlyDeleted)
+        .dropEntityIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.eq(false));
+    PolarisGenericTableCatalog catalog =
+        new PolarisGenericTableCatalog(
+            concurrentlyDeleted,
+            polarisContext,
+            new PolarisPassthroughResolutionView(
+                resolutionManifestFactory, authenticatedRoot, CATALOG_NAME));
+
+    Assertions.assertThatThrownBy(() -> catalog.dropGenericTable(TABLE))
+        .isInstanceOf(NoSuchTableException.class)
+        .hasMessage("Generic table does not exist: %s", TABLE);
+  }
+
+  @Test
+  public void testDropGenericTable() {
+    icebergCatalog.createNamespace(NS);
+    genericTableCatalog.createGenericTable(TABLE, "format", null, "doc", Map.of());
+
+    Assertions.assertThat(genericTableCatalog.dropGenericTable(TABLE)).isTrue();
+    Assertions.assertThatThrownBy(() -> genericTableCatalog.loadGenericTable(TABLE))
+        .isInstanceOf(NoSuchTableException.class);
   }
 
   @Test
@@ -524,5 +578,43 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThat(icebergCatalog.dropView(TableIdentifier.of("ns", "t1"))).isFalse();
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
         .isNotNull();
+  }
+
+  @Test
+  public void testPaginatedListGenericTables() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    for (int i = 0; i < 5; i++) {
+      genericTableCatalog.createGenericTable(
+          TableIdentifier.of("ns", "t" + i), "format", null, "doc", Map.of());
+    }
+
+    // List without pagination
+    Assertions.assertThat(
+            genericTableCatalog.listGenericTables(namespace, PageToken.readEverything()).items())
+        .hasSize(5);
+
+    // List with a limit
+    Page<TableIdentifier> result1 =
+        genericTableCatalog.listGenericTables(namespace, PageToken.fromLimit(2));
+    Assertions.assertThat(result1.items()).hasSize(2);
+    Assertions.assertThat(result1.encodedResponseToken()).isNotNull().isNotEmpty();
+
+    // List using previous token
+    Page<TableIdentifier> result2 =
+        genericTableCatalog.listGenericTables(namespace, nextRequest(result1));
+    Assertions.assertThat(result2.items()).hasSize(2);
+    Assertions.assertThat(result2.encodedResponseToken()).isNotNull().isNotEmpty();
+
+    // List using the final token
+    Page<TableIdentifier> result3 =
+        genericTableCatalog.listGenericTables(namespace, nextRequest(result2));
+    Assertions.assertThat(result3.items()).hasSize(1);
+    Assertions.assertThat(result3.encodedResponseToken()).isNull();
+  }
+
+  private static PageToken nextRequest(Page<?> previousPage) {
+    return PageToken.build(previousPage.encodedResponseToken(), null, -1, () -> true);
   }
 }

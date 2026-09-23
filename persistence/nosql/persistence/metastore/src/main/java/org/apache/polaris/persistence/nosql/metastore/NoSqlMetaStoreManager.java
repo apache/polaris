@@ -50,6 +50,7 @@ import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
+import org.apache.polaris.core.persistence.RenameEntityUtil;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
@@ -153,6 +154,7 @@ record NoSqlMetaStoreManager(
       @NonNull PolarisBaseEntity entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
       @NonNull PolarisEntity renamedEntity) {
+    RenameEntityUtil.checkRenameStaysWithinCatalog(entityToRename, newCatalogPath);
     if (newCatalogPath != null && !newCatalogPath.isEmpty()) {
       var last = newCatalogPath.getLast();
       // At least BasePolarisMetaStoreManagerTest comes with the wrong parentId in renamedEntity

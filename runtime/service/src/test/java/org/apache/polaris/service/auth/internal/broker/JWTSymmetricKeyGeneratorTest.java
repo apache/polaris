@@ -78,6 +78,12 @@ public class JWTSymmetricKeyGeneratorTest {
     assertThat(token.getExpiresIn()).isEqualTo(666);
     assertThat(decodedJWT.getClaim("scope").asString()).isEqualTo("PRINCIPAL_ROLE:TEST");
     assertThat(decodedJWT.getClaim("client_id").asString()).isEqualTo(clientId);
+    assertThat(decodedJWT.getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION).asString())
+        .isEqualTo(principalSecrets.getCredentialsVersion());
+    TokenVerificationResult verified = generator.verify(token.getAccessToken());
+    assertThat(verified).isInstanceOf(TokenVerificationResult.Recognized.class);
+    assertThat(((TokenVerificationResult.Recognized) verified).credential().getPrincipalId())
+        .isEqualTo(principalId);
   }
 
   @Test

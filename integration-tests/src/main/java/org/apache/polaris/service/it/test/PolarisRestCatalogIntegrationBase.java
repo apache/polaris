@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -82,6 +83,7 @@ import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
+import org.apache.iceberg.view.BaseView;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogPrivilege;
@@ -114,10 +116,12 @@ import org.apache.polaris.service.it.env.RestCatalogConfig;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
+import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.configuration.PreferredAssumptionException;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -129,6 +133,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
@@ -209,6 +214,26 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   protected <T extends FileIO> T initializeClientFileIO(T fileIO) {
     fileIO.initialize(clientFileIOProperties().build());
     return fileIO;
+  }
+
+  private void assertViewMetadataFileExists(String metadataLocation, boolean shouldBeDeleted) {
+    try (ResolvingFileIO fileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(fileIO);
+      fileIO.setConf(new Configuration());
+      if (shouldBeDeleted) {
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(20))
+            .untilAsserted(
+                () ->
+                    assertThat(fileIO.newInputFile(metadataLocation).exists())
+                        .as("View metadata file should be deleted when purge is enabled")
+                        .isFalse());
+      } else {
+        assertThat(fileIO.newInputFile(metadataLocation).exists())
+            .as("View metadata file should remain when purge is disabled")
+            .isTrue();
+      }
+    }
   }
 
   /**
@@ -1886,8 +1911,37 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testDropViewWithPurge(boolean purgeViewMetadataOnDrop) {
+    restCatalog.createNamespace(Namespace.of("ns1"));
+    TableIdentifier id = TableIdentifier.of(Namespace.of("ns1"), "view1");
+    restCatalog
+        .buildView(id)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(Namespace.of("ns1"))
+        .withQuery("spark", VIEW_QUERY)
+        .create();
+
+    String metadataLocation =
+        ((BaseView) restCatalog.loadView(id)).operations().current().metadataFileLocation();
+
+    Catalog catalog = managementApi.getCatalog(currentCatalogName);
+    Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
+    // DROP_WITH_PURGE_ENABLED guards client-requested table purges, not view drops.
+    catalogProps.put(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false");
+    catalogProps.put(
+        FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(),
+        Boolean.toString(purgeViewMetadataOnDrop));
+    managementApi.updateCatalog(catalog, catalogProps);
+
+    assertThatCode(() -> restCatalog.dropView(id)).doesNotThrowAnyException();
+
+    assertViewMetadataFileExists(metadataLocation, purgeViewMetadataOnDrop);
+  }
+
   @Test
-  public void testDropViewWithPurge() {
+  public void testDropViewWithDefaultPurgeViewMetadataOnDrop() {
     restCatalog.createNamespace(Namespace.of("ns1"));
     TableIdentifier id = TableIdentifier.of(Namespace.of("ns1"), "view1");
     restCatalog
@@ -1899,14 +1953,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
     Catalog catalog = managementApi.getCatalog(currentCatalogName);
     Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
-    catalogProps.put(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false");
-    catalogProps.put(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(), "true");
-    managementApi.updateCatalog(catalog, catalogProps);
-
-    assertThatThrownBy(() -> restCatalog.dropView(id)).isInstanceOf(ForbiddenException.class);
-
-    catalog = managementApi.getCatalog(currentCatalogName);
-    catalogProps.put(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(), "false");
+    // Remove the purge related configs so defaults are used.
+    catalogProps.remove(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig());
+    catalogProps.remove(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig());
     managementApi.updateCatalog(catalog, catalogProps);
 
     assertThatCode(() -> restCatalog.dropView(id)).doesNotThrowAnyException();
@@ -2814,6 +2863,25 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
   }
 
+  // Valid url-safe base64 that is not a serialized page token, plain text, and not base64 at all.
+  // Client input, so the server must answer 400, not 500.
+  @ParameterizedTest
+  @ValueSource(strings = {"AAAA", "aGVsbG8gd29ybGQ=", "%%%not-base64%%%"})
+  public void testMalformedPageTokenIsBadRequest(String badToken) {
+    try (Response response =
+        catalogApi
+            .request(
+                "v1/{cat}/namespaces",
+                Map.of("cat", currentCatalogName),
+                Map.of("pageToken", badToken, "pageSize", "5"))
+            .get()) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
+          .extracting(r -> r.readEntity(ErrorResponse.class))
+          .returns("Invalid page token", ErrorResponse::message);
+    }
+  }
+
   @Test
   public void testPaginatedListTables() {
     String prefix = "testPaginatedListTables";
@@ -2892,6 +2960,36 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     nsResponse = catalogApi.listNamespaces(currentCatalogName, namespace, "fake-token", null);
     assertThat(nsResponse.namespaces()).hasSize(5);
     assertThat(nsResponse.nextPageToken()).isNull();
+  }
+
+  @Test
+  public void testPaginatedListGenericTables() {
+    String prefix = "testPaginatedListGenericTables";
+    Namespace namespace = Namespace.of(prefix);
+    restCatalog.createNamespace(namespace);
+    for (int i = 0; i < 30; i++) {
+      genericTableApi.createGenericTable(
+          currentCatalogName, TableIdentifier.of(namespace, prefix + i), "format", Map.of());
+    }
+
+    try {
+      assertThat(genericTableApi.listGenericTables(currentCatalogName, namespace)).hasSize(30);
+      for (var pageSize : List.of(1, 2, 3, 9, 10, 11, 19, 20, 21, 25, 2000)) {
+        int total = 0;
+        String pageToken = null;
+        do {
+          ListGenericTablesResponse response =
+              genericTableApi.listGenericTables(
+                  currentCatalogName, namespace, pageToken, String.valueOf(pageSize));
+          assertThat(response.getIdentifiers().size()).isLessThanOrEqualTo(pageSize);
+          total += response.getIdentifiers().size();
+          pageToken = response.getNextPageToken();
+        } while (pageToken != null);
+        assertThat(total).as("Total paginated results for pageSize = " + pageSize).isEqualTo(30);
+      }
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
   }
 
   @ParameterizedTest

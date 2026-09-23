@@ -67,9 +67,15 @@ bin/spark-shell \
 --conf spark.sql.catalog.<spark-catalog-name>=org.apache.polaris.spark.SparkCatalog \
 --conf spark.sql.catalog.<spark-catalog-name>.uri=<polaris-service-uri> \
 --conf spark.sql.catalog.<spark-catalog-name>.credential='<client-id>:<client-secret>' \
+--conf spark.redaction.regex='(?i)secret|password|token|access[.]?key|credential' \
 --conf spark.sql.catalog.<spark-catalog-name>.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.<spark-catalog-name>.token-refresh-enabled=true
 ```
+
+The `spark.redaction.regex` line redacts the `credential` secret from the Spark UI and logs, since
+Spark's default redaction pattern does not cover `credential`. Newer Spark releases redact this key
+by default; the line keeps it redacted on earlier versions.
+
 Assume the released Polaris Spark client you want to use is `org.apache.polaris:polaris-spark-3.5_2.12:1.0.0`,
 replace the `polaris-spark-client-package` field with the release.
 
@@ -94,6 +100,7 @@ spark = SparkSession.builder
   .config("spark.sql.catalog.<spark-catalog-name>.uri", <polaris-service-uri>)
   .config("spark.sql.catalog.<spark-catalog-name>.token-refresh-enabled", "true")
   .config("spark.sql.catalog.<spark-catalog-name>.credential", "<client-id>:<client_secret>")
+  .config("spark.redaction.regex", "(?i)secret|password|token|access[.]?key|credential")
   .config("spark.sql.catalog.<spark-catalog-name>.warehouse", <polaris_catalog_name>)
   .config("spark.sql.catalog.polaris.scope", 'PRINCIPAL_ROLE:ALL')
   .config("spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation", 'vended-credentials')

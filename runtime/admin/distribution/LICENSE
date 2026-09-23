@@ -285,7 +285,6 @@ This product bundles Quarkus.
 
 * Maven group:artifact IDs: io.quarkus.arc:arc
 * Maven group:artifact IDs: io.quarkus:quarkus-agroal
-* Maven group:artifact IDs: io.quarkus:quarkus-apache-httpclient
 * Maven group:artifact IDs: io.quarkus:quarkus-arc
 * Maven group:artifact IDs: io.quarkus:quarkus-bootstrap-runner
 * Maven group:artifact IDs: io.quarkus:quarkus-classloader-commons
@@ -369,7 +368,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 This product bundles Quarkus Amazon Services.
 
-* Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-apache-client-internal
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-apache5-client-internal
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-common
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-common-spi
@@ -1643,7 +1641,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 This product bundles AWS SDK for Java.
 
 * Maven group:artifact IDs: software.amazon.awssdk:annotations
-* Maven group:artifact IDs: software.amazon.awssdk:apache-client
 * Maven group:artifact IDs: software.amazon.awssdk:apache5-client
 * Maven group:artifact IDs: software.amazon.awssdk:arns
 * Maven group:artifact IDs: software.amazon.awssdk:auth
@@ -1722,5 +1719,51 @@ This product bundles Agrona.
 
 Project URL: https://github.com/aeron-io/agrona
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Common Expression Language for Java.
+
+* Maven group:artifact IDs: dev.cel:common
+* Maven group:artifact IDs: dev.cel:protobuf
+* Maven group:artifact IDs: dev.cel:runtime
+
+Project URL: https://github.com/cel-expr/cel-java
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles ThreeTen-Extra.
+
+* Maven group:artifact IDs: org.threeten:threeten-extra
+
+Project URL: https://github.com/ThreeTen/threeten-extra
+License: BSD 3-Clause
+| Copyright 2016, Google Inc.
+| Redistribution and use in source and binary forms, with or without
+| modification, are permitted provided that the following conditions are
+| met:
+| 
+|    * Redistributions of source code must retain the above copyright
+| notice, this list of conditions and the following disclaimer.
+|    * Redistributions in binary form must reproduce the above
+| copyright notice, this list of conditions and the following disclaimer
+| in the documentation and/or other materials provided with the
+| distribution.
+|    * Neither the name of Google Inc. nor the names of its
+| contributors may be used to endorse or promote products derived from
+| this software without specific prior written permission.
+| 
+| THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+| "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+| LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+| A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+| OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+| SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+| LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+| DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+| THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+| (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+| OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------

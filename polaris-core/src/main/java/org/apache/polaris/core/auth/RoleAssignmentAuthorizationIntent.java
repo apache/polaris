@@ -32,9 +32,4 @@ public record RoleAssignmentAuthorizationIntent(
     Preconditions.checkNotNull(role, "role must be non-null");
     Preconditions.checkNotNull(assignee, "assignee must be non-null");
   }
-
-  @Override
-  public @NonNull PolarisAuthorizableOperation getOperation() {
-    return operation;
-  }
 }

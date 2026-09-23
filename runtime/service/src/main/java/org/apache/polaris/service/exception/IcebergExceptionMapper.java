@@ -118,6 +118,9 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   }
 
   public static boolean containsAnyAccessDeniedHint(String message) {
+    if (message == null) {
+      return false;
+    }
     String messageLower = message.toLowerCase(Locale.ENGLISH);
     return ACCESS_DENIED_HINTS.stream().anyMatch(messageLower::contains);
   }
@@ -133,7 +136,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       return false;
     }
 
-    if (t.getMessage() != null && containsAnyAccessDeniedHint(t.getMessage())) {
+    if (containsAnyAccessDeniedHint(t.getMessage())) {
       return false;
     }
 

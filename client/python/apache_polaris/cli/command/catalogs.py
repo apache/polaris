@@ -31,6 +31,7 @@ from apache_polaris.cli.constants import (
 )
 from apache_polaris.cli.options.option_tree import Argument
 
+import logging
 from dataclasses import dataclass, field
 from pydantic import StrictStr, SecretStr
 from typing import Dict, List, Optional, Union, Tuple, Callable, cast
@@ -56,9 +57,15 @@ from apache_polaris.sdk.management import (
     IcebergRestConnectionConfigInfo,
     AwsIamServiceIdentityInfo,
 )
-from apache_polaris.cli.command.utils import get_catalog_api_client, format_timestamp
+from apache_polaris.cli.command.utils import (
+    get_catalog_api_client,
+    format_timestamp,
+    paginate,
+)
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
 from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -78,6 +85,7 @@ class CatalogsCommand(Command):
     catalog_type: Optional[str] = None
     default_base_location: Optional[str] = None
     storage_type: Optional[str] = None
+    storage_name: Optional[str] = None
     allowed_locations: Optional[List[str]] = None
     role_arn: Optional[str] = None
     external_id: Optional[str] = None
@@ -103,6 +111,8 @@ class CatalogsCommand(Command):
     path_style_access: Optional[bool] = None
     current_kms_key: Optional[str] = None
     allowed_kms_keys: Optional[List[str]] = None
+    encryption_keys: Optional[List[str]] = None
+    decryption_keys: Optional[List[str]] = None
     catalog_connection_type: Optional[str] = None
     catalog_authentication_type: Optional[str] = None
     catalog_service_identity_type: Optional[str] = None
@@ -118,6 +128,7 @@ class CatalogsCommand(Command):
     catalog_external_id: Optional[str] = None
     catalog_signing_region: Optional[str] = None
     catalog_signing_name: Optional[str] = None
+    page_size: Optional[int] = None
 
     def __post_init__(self) -> None:
         if self.properties is None:
@@ -134,6 +145,19 @@ class CatalogsCommand(Command):
             self.path_style_access = False
 
     def validate(self) -> None:
+        if self.current_kms_key:
+            logger.warning(
+                "%s is deprecated; use %s instead.",
+                Argument.to_flag_name(Arguments.KMS_KEY_CURRENT),
+                Argument.to_flag_name(Arguments.KMS_KEY_ENCRYPTION),
+            )
+        if self.allowed_kms_keys:
+            logger.warning(
+                "%s is deprecated; use %s instead.",
+                Argument.to_flag_name(Arguments.KMS_KEY_ALLOWED),
+                Argument.to_flag_name(Arguments.KMS_KEY_ENCRYPTION),
+            )
+
         if self.catalogs_subcommand in {
             Subcommands.CREATE,
             Subcommands.DELETE,
@@ -147,18 +171,17 @@ class CatalogsCommand(Command):
                 )
 
         if self.catalogs_subcommand == Subcommands.CREATE:
-            if self.catalog_type != CatalogType.EXTERNAL.value:
-                if not self.storage_type:
-                    raise CliError(
-                        f"Missing required argument:"
-                        f" {Argument.to_flag_name(Arguments.STORAGE_TYPE)}"
-                    )
-                if not self.default_base_location:
-                    raise CliError(
-                        f"Missing required argument:"
-                        f" {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}"
-                    )
-            else:
+            if not self.storage_type:
+                raise CliError(
+                    f"Missing required argument:"
+                    f" {Argument.to_flag_name(Arguments.STORAGE_TYPE)}"
+                )
+            if not self.default_base_location:
+                raise CliError(
+                    f"Missing required argument:"
+                    f" {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}"
+                )
+            if self.catalog_type == CatalogType.EXTERNAL.value:
                 if self.catalog_authentication_type == AuthenticationType.OAUTH.value:
                     if (
                         not self.catalog_token_uri
@@ -222,10 +245,13 @@ class CatalogsCommand(Command):
                     f" {Argument.to_flag_name(Arguments.ENDPOINT_INTERNAL)},"
                     f" {Argument.to_flag_name(Arguments.KMS_KEY_CURRENT)},"
                     f" {Argument.to_flag_name(Arguments.KMS_KEY_ALLOWED)},"
+                    f" {Argument.to_flag_name(Arguments.KMS_KEY_ENCRYPTION)},"
+                    f" {Argument.to_flag_name(Arguments.KMS_KEY_DECRYPTION)},"
                     f" {Argument.to_flag_name(Arguments.STS_ENDPOINT)},"
                     f" {Argument.to_flag_name(Arguments.STS_UNAVAILABLE)},"
-                    f" {Argument.to_flag_name(Arguments.KMS_UNAVAILABLE)}, and"
-                    f" {Argument.to_flag_name(Arguments.PATH_STYLE_ACCESS)}"
+                    f" {Argument.to_flag_name(Arguments.KMS_UNAVAILABLE)},"
+                    f" {Argument.to_flag_name(Arguments.PATH_STYLE_ACCESS)}, and"
+                    f" {Argument.to_flag_name(Arguments.STORAGE_NAME)}"
                 )
         elif self.storage_type == StorageType.AZURE.value:
             if not self.tenant_id:
@@ -237,14 +263,16 @@ class CatalogsCommand(Command):
                 raise CliError(
                     "Storage type 'azure' supports the options"
                     f" {Argument.to_flag_name(Arguments.TENANT_ID)},"
-                    f" {Argument.to_flag_name(Arguments.MULTI_TENANT_APP_NAME)}, and"
-                    f" {Argument.to_flag_name(Arguments.CONSENT_URL)}"
+                    f" {Argument.to_flag_name(Arguments.MULTI_TENANT_APP_NAME)},"
+                    f" {Argument.to_flag_name(Arguments.CONSENT_URL)}, and"
+                    f" {Argument.to_flag_name(Arguments.STORAGE_NAME)}"
                 )
         elif self.storage_type == StorageType.GCS.value:
             if self._has_aws_storage_info() or self._has_azure_storage_info():
                 raise CliError(
                     "Storage type 'gcs' supports the storage credential"
-                    f" {Argument.to_flag_name(Arguments.SERVICE_ACCOUNT)}"
+                    f" {Argument.to_flag_name(Arguments.SERVICE_ACCOUNT)} and"
+                    f" {Argument.to_flag_name(Arguments.STORAGE_NAME)}"
                 )
         elif self.storage_type == StorageType.FILE.value:
             if (
@@ -267,6 +295,8 @@ class CatalogsCommand(Command):
             or self.sts_endpoint
             or self.current_kms_key
             or self.allowed_kms_keys
+            or self.encryption_keys
+            or self.decryption_keys
             or self.path_style_access
             or self.sts_unavailable
             or self.kms_unavailable
@@ -296,6 +326,7 @@ class CatalogsCommand(Command):
         if self.storage_type == StorageType.S3.value:
             config = AwsStorageConfigInfo(
                 storage_type=self.storage_type.upper(),
+                storage_name=self.storage_name,
                 allowed_locations=self.allowed_locations,
                 role_arn=self.role_arn,
                 external_id=self.external_id,
@@ -309,10 +340,13 @@ class CatalogsCommand(Command):
                 path_style_access=self.path_style_access,
                 current_kms_key=self.current_kms_key,
                 allowed_kms_keys=self.allowed_kms_keys,
+                encryption_keys=self.encryption_keys,
+                decryption_keys=self.decryption_keys,
             )
         elif self.storage_type == StorageType.AZURE.value:
             config = AzureStorageConfigInfo(
                 storage_type=self.storage_type.upper(),
+                storage_name=self.storage_name,
                 allowed_locations=self.allowed_locations,
                 tenant_id=self.tenant_id,
                 multi_tenant_app_name=self.multi_tenant_app_name,
@@ -322,12 +356,14 @@ class CatalogsCommand(Command):
         elif self.storage_type == StorageType.GCS.value:
             config = GcpStorageConfigInfo(
                 storage_type=self.storage_type.upper(),
+                storage_name=self.storage_name,
                 allowed_locations=self.allowed_locations,
                 gcs_service_account=self.service_account,
             )
         elif self.storage_type == StorageType.FILE.value:
             config = StorageConfigInfo(
                 storage_type=self.storage_type.upper(),
+                storage_name=self.storage_name,
                 allowed_locations=self.allowed_locations,
             )
         return config
@@ -501,6 +537,7 @@ class CatalogsCommand(Command):
                 or self._has_azure_storage_info()
                 or self._has_gcs_storage_info()
                 or self.allowed_locations
+                or self.storage_name is not None
             ):
                 # We must first reconstitute local storage-config related settings from the existing
                 # catalog to properly construct the complete updated storage-config
@@ -510,10 +547,12 @@ class CatalogsCommand(Command):
                 # _build_storage_config_info helper; instead, each allowed updatable field defined
                 # in option_tree.py should be applied individually against the existing
                 # storage_config_info here.
+                if self.storage_name:
+                    updated_storage_info.storage_name = self.storage_name
                 if self.allowed_locations:
-                    updated_storage_info.allowed_locations.extend(
-                        self.allowed_locations
-                    )
+                    updated_storage_info.allowed_locations = (
+                        updated_storage_info.allowed_locations or []
+                    ) + self.allowed_locations
 
                 if self.region:
                     self._require_s3(updated_storage_info, "--region")
@@ -603,8 +642,15 @@ class CatalogsCommand(Command):
 
         def count_entities(func: Callable, ns_str: str) -> int:
             try:
-                resp = func(prefix=catalog_name, namespace=ns_str)
-                return len(resp.identifiers or [])
+                total = 0
+                for resp in paginate(
+                    func,
+                    page_size=self.page_size,
+                    prefix=catalog_name,
+                    namespace=ns_str,
+                ):
+                    total += len(resp.identifiers or [])
+                return total
             except Exception as e:
                 print(
                     f"Warning: Could not list entity for namespace {ns_str}: {e}",
@@ -612,17 +658,22 @@ class CatalogsCommand(Command):
                 return 0
 
         def recursive(parent: Optional[str] = None) -> Tuple[int, int, int]:
-            ns_resp = catalog_api.list_namespaces(prefix=catalog_name, parent=parent)
-            namespaces = ns_resp.namespaces or []
-            total_ns, total_tables, total_views = len(namespaces), 0, 0
-            for ns in namespaces:
-                ns_str = UNIT_SEPARATOR.join(ns)
-                total_tables += count_entities(catalog_api.list_tables, ns_str)
-                total_views += count_entities(catalog_api.list_views, ns_str)
-                ns_cnt, tables_cnt, views_cnt = recursive(ns_str)
-                total_ns += ns_cnt
-                total_tables += tables_cnt
-                total_views += views_cnt
+            total_ns, total_tables, total_views = 0, 0, 0
+            for resp in paginate(
+                catalog_api.list_namespaces,
+                page_size=self.page_size,
+                prefix=catalog_name,
+                parent=parent,
+            ):
+                for ns in resp.namespaces or []:
+                    total_ns += 1
+                    ns_str = UNIT_SEPARATOR.join(ns)
+                    total_tables += count_entities(catalog_api.list_tables, ns_str)
+                    total_views += count_entities(catalog_api.list_views, ns_str)
+                    ns_cnt, tables_cnt, views_cnt = recursive(ns_str)
+                    total_ns += ns_cnt
+                    total_tables += tables_cnt
+                    total_views += views_cnt
             return total_ns, total_tables, total_views
 
         return recursive()

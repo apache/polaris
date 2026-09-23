@@ -19,6 +19,7 @@
 #
 linkTitle: "Client: Apache Spark"
 title: "Getting Started with Apache Polaris and Apache Spark"
+description: "Uses Apache Spark with a Jupyter notebook for PySpark, with Polaris as the Iceberg REST Catalog and an in-memory metastore."
 tags:
   - spark
 weight: 300

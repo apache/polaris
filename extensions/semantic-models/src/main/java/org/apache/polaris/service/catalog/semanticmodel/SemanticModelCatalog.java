@@ -249,10 +249,16 @@ public class SemanticModelCatalog {
             Map.of(),
             false);
     if (!result.isSuccess()) {
-      throw new IllegalStateException(
-          String.format(
-              "Failed to drop semantic model %s error status: %s with extraInfo: %s",
-              identifier, result.getReturnStatus(), result.getExtraInformation()));
+      switch (result.getReturnStatus()) {
+        case ENTITY_NOT_FOUND, CATALOG_PATH_CANNOT_BE_RESOLVED ->
+            throw new NoSuchSemanticModelException(
+                String.format("Semantic model does not exist: %s", identifier.getName()));
+        default ->
+            throw new IllegalStateException(
+                String.format(
+                    "Failed to drop semantic model %s error status: %s with extraInfo: %s",
+                    identifier, result.getReturnStatus(), result.getExtraInformation()));
+      }
     }
   }
 
@@ -304,25 +310,22 @@ public class SemanticModelCatalog {
    * to the offending dataset.
    */
   private void resolveAndValidateSources(JsonNode semanticModel) {
-    if (!semanticModel.isArray()) {
-      return;
+    if (!semanticModel.isObject()) {
+      throw new BadRequestException("Field 'semantic_model' must be a JSON object");
     }
 
-    for (int modelIdx = 0; modelIdx < semanticModel.size(); modelIdx++) {
-      JsonNode datasets = semanticModel.get(modelIdx).get("datasets");
-      if (datasets == null || !datasets.isArray()) {
-        continue;
+    JsonNode datasets = semanticModel.get("datasets");
+    if (datasets == null || !datasets.isArray()) {
+      return;
+    }
+    for (int datasetIdx = 0; datasetIdx < datasets.size(); datasetIdx++) {
+      String pointer = String.format("/semantic_model/datasets/%d/source", datasetIdx);
+      JsonNode source = datasets.get(datasetIdx).get("source");
+      if (source == null || !source.isTextual()) {
+        throw new BadRequestException(
+            "Semantic model dataset at %s must define a string 'source'", pointer);
       }
-      for (int datasetIdx = 0; datasetIdx < datasets.size(); datasetIdx++) {
-        String pointer =
-            String.format("/semantic_model/%d/datasets/%d/source", modelIdx, datasetIdx);
-        JsonNode source = datasets.get(datasetIdx).get("source");
-        if (source == null || !source.isTextual()) {
-          throw new BadRequestException(
-              "Semantic model dataset at %s must define a string 'source'", pointer);
-        }
-        resolveSourceOrThrow(source.asText(), pointer);
-      }
+      resolveSourceOrThrow(source.asText(), pointer);
     }
   }
 

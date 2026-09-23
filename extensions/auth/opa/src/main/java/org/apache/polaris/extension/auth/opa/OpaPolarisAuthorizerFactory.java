@@ -30,7 +30,6 @@ import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.RealmConfig;
@@ -143,9 +142,10 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
   private CloseableHttpClient createHttpClient() {
     try {
       return OpaHttpClientFactory.createHttpClient(opaConfig.http());
-    } catch (Exception e) {
-      // Fallback to simple client
-      return HttpClients.custom().build();
+    } catch (RuntimeException e) {
+      // Misconfigured truststore/timeout/SSL must fail startup rather than silently falling back
+      // to a default client (system trust, no response timeout).
+      throw new IllegalStateException("Failed to create HTTP client for OPA communication", e);
     }
   }
 

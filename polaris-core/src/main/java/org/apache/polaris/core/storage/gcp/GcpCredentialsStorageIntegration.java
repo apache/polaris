@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage.gcp;
 
 import static org.apache.polaris.core.storage.StorageLocation.ensureTrailingSlash;
+import static org.apache.polaris.core.storage.StorageLocation.trimLeadingSlash;
 
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
@@ -465,7 +466,7 @@ public class GcpCredentialsStorageIntegration
               // that the downstream startsWith() CEL conditions cannot be satisfied by sibling
               // objects or list prefixes that merely share the granted path as a string prefix
               // (e.g. a grant on "data/" must not authorize access to "data_foo/*)".
-              String path = ensureTrailingSlash(uri.rawPath().substring(1));
+              String path = ensureTrailingSlash(trimLeadingSlash(uri.rawPath()));
               readConditionsByBucket
                   .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
                   .add(resourceNameStartsWithExpression(bucket, path));
@@ -475,7 +476,7 @@ public class GcpCredentialsStorageIntegration
         location -> {
           StorageUri uri = StorageUri.parse(location);
           String bucket = uri.authority();
-          String path = ensureTrailingSlash(uri.rawPath().substring(1));
+          String path = ensureTrailingSlash(trimLeadingSlash(uri.rawPath()));
           readConditionsByBucket
               .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
               .add(objectListPrefixStartsWithExpression(path));
@@ -486,7 +487,7 @@ public class GcpCredentialsStorageIntegration
         location -> {
           StorageUri uri = StorageUri.parse(location);
           String bucket = uri.authority();
-          String path = ensureTrailingSlash(uri.rawPath().substring(1));
+          String path = ensureTrailingSlash(trimLeadingSlash(uri.rawPath()));
           writeConditionsByBucket
               .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
               .add(resourceNameStartsWithExpression(bucket, path));

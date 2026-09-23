@@ -427,7 +427,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .catalogConfig("polaris.config.drop-with-purge.enabled")
           .legacyCatalogConfig("drop-with-purge.enabled")
           .description(
-              "If set to true, allows tables to be dropped with the purge parameter set to true.")
+              "If set to true, allows Iceberg tables to be dropped with the purge parameter set to"
+                  + " true.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
@@ -480,7 +481,27 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("LIST_PAGINATION_ENABLED")
           .catalogConfig("polaris.config.list-pagination-enabled")
           .description("If set to true, pagination for APIs like listTables is enabled.")
-          .defaultValue(false)
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
+  public static final PolarisConfiguration<Integer> LIST_PAGINATION_MAX_PAGE_SIZE =
+      PolarisConfiguration.<Integer>builder()
+          .key("LIST_PAGINATION_MAX_PAGE_SIZE")
+          .catalogConfig("polaris.config.list-pagination-max-page-size")
+          .description(
+              "The largest page size a client may request for APIs like listTables. Larger requested"
+                  + " page sizes are reduced to this value. The Iceberg REST specification treats the"
+                  + " requested page size as an upper bound. For local catalogs this takes effect only"
+                  + " when LIST_PAGINATION_ENABLED is true; with pagination disabled the requested page"
+                  + " size is ignored and the full result set is returned. For federated catalogs it"
+                  + " always applies, because Polaris paginates those listings itself. Values <= 0 mean"
+                  + " unlimited (no max page size enforced), which is the default. Setting a maximum"
+                  + " deviates from the Iceberg REST specification, which requires a request that"
+                  + " does not supply a pageToken to receive the complete result with a null"
+                  + " next-page-token: such a request is then truncated to the maximum and answered"
+                  + " with a continuation token, so a client that does not follow continuations sees"
+                  + " only the first page.")
+          .defaultValue(-1)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =
@@ -535,6 +556,18 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "way. It is disabled by default; enable it with caution and report any issues "
                   + "encountered.")
           .defaultValue(false) // beta feature, keep it off by default
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_OPENLINEAGE_INGEST =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_OPENLINEAGE_INGEST")
+          .description(
+              "If true, the OpenLineage ingest endpoints are enabled and advertised to clients in "
+                  + "the catalog configuration response during endpoint discovery. If false, the "
+                  + "endpoints return 501 Not Implemented and are not advertised. The routes are "
+                  + "always mounted when the OpenLineage extension is assembled into the server; "
+                  + "this flag is the runtime switch that turns the feature on or off.")
+          .defaultValue(true)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
@@ -595,12 +628,26 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  /**
+   * @deprecated since 1.8.0, for removal. Polaris now always appends a trailing slash to table and
+   *     namespace base locations, so this flag no longer changes behavior. The configuration key is
+   *     retained only so existing catalog properties and feature-config entries continue to be
+   *     accepted (and ignored) instead of rejected. A production-readiness warning is emitted when
+   *     it is explicitly set to {@code false} in the server feature configuration — the {@code
+   *     polaris.features} defaults or a realm override — since that is the surface {@code
+   *     ProductionReadinessChecks} inspects at startup; the equivalent per-catalog property ({@code
+   *     polaris.config.add-trailing-slash-to-location}) is accepted and ignored without a warning.
+   *     Scheduled for removal in a future release.
+   */
+  @Deprecated(since = "1.8.0", forRemoval = true)
   public static final FeatureConfiguration<Boolean> ADD_TRAILING_SLASH_TO_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ADD_TRAILING_SLASH_TO_LOCATION")
           .catalogConfig("polaris.config.add-trailing-slash-to-location")
           .description(
-              "When set, the base location for a table or namespace will have `/` added as a suffix if not present")
+              "Deprecated and ignored: Polaris always appends a trailing slash to table and "
+                  + "namespace base locations. Retained so existing configuration remains accepted "
+                  + "rather than rejected.")
           .defaultValue(true)
           .buildFeatureConfiguration();
 
@@ -625,9 +672,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "views, and namespaces. This is not a bypass mode, but enabling or disabling "
                   + "it can change overlap-detection coverage for non-standard location layouts. "
                   + "Only enable it when the required index and backfill state is known to be "
-                  + "correct. For correct results, locations should end with a slash; see "
-                  + "ADD_TRAILING_SLASH_TO_LOCATION. Supported by the JDBC and NoSQL metastore "
-                  + "implementations.")
+                  + "correct. Locations written by Polaris always end with a slash; locations "
+                  + "stored by older versions without one are still handled. Supported by the "
+                  + "JDBC and NoSQL metastore implementations.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 

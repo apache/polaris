@@ -44,8 +44,6 @@ public class LocalIcebergCatalogOverlapTest extends AbstractLocalIcebergCatalogO
       overrides.put("polaris.features.\"ALLOW_TABLE_LOCATION_OVERLAP\"", "false");
       overrides.put("polaris.features.\"OPTIMIZED_SIBLING_CHECK\"", "true");
       overrides.put("polaris.features.\"ALLOW_OPTIMIZED_SIBLING_CHECK\"", "true");
-      // Keep locations as written so slash-less base locations are stored as-is.
-      overrides.put("polaris.features.\"ADD_TRAILING_SLASH_TO_LOCATION\"", "false");
       return overrides;
     }
   }

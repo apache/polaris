@@ -30,7 +30,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -38,6 +37,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -61,9 +61,12 @@ public class DatasourceOperations {
   private static final String RELATION_DOES_NOT_EXIST = "42P01";
 
   // H2 STATUS CODES
-  // 90079 = Schema not found, 42S02 = Table or view not found
+  // 90079 = Schema not found, 42S02 = Table or view not found, 42S04 = Table or view not found
+  // (database empty). The latter surfaces for unqualified table references against a fresh
+  // database, where previously a schema-qualified reference produced a schema-not-found error.
   private static final String H2_SCHEMA_DOES_NOT_EXIST = "90079";
   private static final String H2_TABLE_DOES_NOT_EXIST = "42S02";
+  private static final String H2_TABLE_NOT_FOUND_DATABASE_EMPTY = "42S04";
 
   // POSTGRES RETRYABLE EXCEPTIONS
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
@@ -152,9 +155,9 @@ public class DatasourceOperations {
    */
   public <T> List<T> executeSelect(
       @NonNull PreparedQuery query, @NonNull Converter<T> converterInstance) throws SQLException {
-    ArrayList<T> results = new ArrayList<>();
-    executeSelectOverStream(query, converterInstance, stream -> stream.forEach(results::add));
-    return results;
+    AtomicReference<List<T>> results = new AtomicReference<>();
+    executeSelectOverStream(query, converterInstance, stream -> results.set(stream.toList()));
+    return results.get();
   }
 
   /**
@@ -224,10 +227,10 @@ public class DatasourceOperations {
       @NonNull PreparedQuery query,
       @NonNull Converter<T> converterInstance)
       throws SQLException {
-    ArrayList<T> results = new ArrayList<>();
+    AtomicReference<List<T>> results = new AtomicReference<>();
     executeSelectOverStream(
-        connection, query, converterInstance, stream -> stream.forEach(results::add));
-    return results;
+        connection, query, converterInstance, stream -> results.set(stream.toList()));
+    return results.get();
   }
 
   /**
@@ -461,7 +464,8 @@ public class DatasourceOperations {
     return (RELATION_DOES_NOT_EXIST.equals(e.getSQLState())
             && (databaseType == DatabaseType.POSTGRES || databaseType == DatabaseType.COCKROACHDB))
         || ((H2_SCHEMA_DOES_NOT_EXIST.equals(e.getSQLState())
-                || H2_TABLE_DOES_NOT_EXIST.equals(e.getSQLState()))
+                || H2_TABLE_DOES_NOT_EXIST.equals(e.getSQLState())
+                || H2_TABLE_NOT_FOUND_DATABASE_EMPTY.equals(e.getSQLState()))
             && databaseType == DatabaseType.H2);
   }
 

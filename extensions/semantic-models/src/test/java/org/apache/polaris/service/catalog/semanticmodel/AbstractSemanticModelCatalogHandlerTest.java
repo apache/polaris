@@ -32,6 +32,7 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.service.TestServices;
@@ -99,6 +100,7 @@ abstract class AbstractSemanticModelCatalogHandlerTest {
             })
         .when(authorizer)
         .resolveAuthorizationInputs(any(), any());
+    Mockito.when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
     return handler(authorizer);
   }
 
@@ -114,11 +116,11 @@ abstract class AbstractSemanticModelCatalogHandlerTest {
   }
 
   protected static SemanticModelDocument doc(String model) {
-    return SemanticModelDocument.builder().setVersion("0.1.1").setSemanticModel(model).build();
+    return SemanticModelDocument.builder().setVersion("0.2.0.dev0").setSemanticModel(model).build();
   }
 
   protected static String modelJson(String source) {
-    return "[{\"name\":\"m\",\"datasets\":[{\"name\":\"d\",\"source\":\"" + source + "\"}]}]";
+    return "{\"name\":\"m\",\"datasets\":[{\"name\":\"d\",\"source\":\"" + source + "\"}]}";
   }
 
   private void createCatalogNamespaceAndTable() {

@@ -40,7 +40,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.jsontype.impl.TypeIdResolverBase;
 import tools.jackson.dataformat.smile.SmileMapper;
 
-final class PageTokenUtil {
+public final class PageTokenUtil {
 
   private static final ObjectMapper SMILE_MAPPER =
       SmileMapper.builder().findAndAddModules().build();
@@ -112,33 +112,76 @@ final class PageTokenUtil {
   private PageTokenUtil() {}
 
   /**
+   * Reduces a requested page size to {@code maxPageSize}, defaulting an absent request to it, so
+   * that a listing cannot return an unbounded response. A {@code maxPageSize} of zero or less means
+   * unlimited and leaves the request untouched.
+   */
+  public static OptionalInt boundPageSize(OptionalInt requestedPageSize, int maxPageSize) {
+    if (maxPageSize <= 0) {
+      return requestedPageSize;
+    }
+    return OptionalInt.of(Math.min(requestedPageSize.orElse(maxPageSize), maxPageSize));
+  }
+
+  /**
    * Decodes a {@link PageToken} from API request parameters for the page-size and a serialized page
    * token.
    */
   static PageToken decodePageRequest(
       @Nullable String requestedPageToken,
       @Nullable Integer requestedPageSize,
+      int maxPageSize,
       BooleanSupplier shouldDecodeToken) {
-    if (requestedPageToken != null
-        && !requestedPageToken.isEmpty()
-        && shouldDecodeToken.getAsBoolean()) {
-      var bytes = Base64.getUrlDecoder().decode(requestedPageToken);
-      var pageToken = SMILE_MAPPER.readValue(bytes, PageToken.class);
-      if (requestedPageSize != null) {
-        int pageSizeInt = requestedPageSize;
-        checkArgument(pageSizeInt >= 0, "Invalid page size");
-        if (pageToken.pageSize().orElse(-1) != pageSizeInt) {
-          pageToken = ImmutablePageToken.builder().from(pageToken).pageSize(pageSizeInt).build();
-        }
-      }
-      return pageToken;
-    } else if (requestedPageSize != null && shouldDecodeToken.getAsBoolean()) {
-      int pageSizeInt = requestedPageSize;
-      checkArgument(pageSizeInt >= 0, "Invalid page size");
-      return fromLimit(pageSizeInt);
-    } else {
+    if (!shouldDecodeToken.getAsBoolean()) {
+      // Pagination disabled: the request is ignored wholesale, invalid page sizes included.
       return READ_EVERYTHING;
     }
+    if (requestedPageSize != null) {
+      checkArgument(requestedPageSize >= 0, "Invalid page size");
+    }
+    if (requestedPageToken != null && !requestedPageToken.isEmpty()) {
+      var pageToken = deserializePageToken(requestedPageToken);
+      // A token carries the page size it was minted with, so bound that too: otherwise a token
+      // issued before the maximum was configured, or a crafted one, would escape it.
+      OptionalInt requested =
+          requestedPageSize != null ? OptionalInt.of(requestedPageSize) : pageToken.pageSize();
+      OptionalInt pageSize = boundPageSize(requested, maxPageSize);
+      return pageSize.equals(pageToken.pageSize())
+          ? pageToken
+          : ImmutablePageToken.builder().from(pageToken).pageSize(pageSize).build();
+    }
+    OptionalInt pageSize =
+        boundPageSize(
+            requestedPageSize != null ? OptionalInt.of(requestedPageSize) : OptionalInt.empty(),
+            maxPageSize);
+    // Without a maximum an unsized request reads everything, as the Iceberg REST specification
+    // requires. With one configured, pagination is applied instead so that no single listing can
+    // return an unbounded response.
+    return pageSize.isPresent() ? fromLimit(pageSize.getAsInt()) : READ_EVERYTHING;
+  }
+
+  /**
+   * Decodes a client-supplied page token. Page tokens are opaque to clients, so any decoding
+   * failure is client input that cannot be interpreted and must surface as an {@link
+   * IllegalArgumentException} (mapped to HTTP 400), never as a server error.
+   */
+  private static PageToken deserializePageToken(String requestedPageToken) {
+    PageToken pageToken;
+    try {
+      var bytes = Base64.getUrlDecoder().decode(requestedPageToken);
+      pageToken = SMILE_MAPPER.readValue(bytes, PageToken.class);
+    } catch (RuntimeException e) {
+      // Deliberately broad: the input is untrusted bytes fed to a binary parser. Besides the
+      // expected failures (IllegalArgumentException for non-base64, JacksonException for a payload
+      // that is not a serialized PageToken, IllegalStateException for an unknown token type id),
+      // corrupted SMILE can surface as e.g. ArrayIndexOutOfBoundsException from the parser. All of
+      // them mean the same thing: the client sent a token we cannot interpret.
+      throw new IllegalArgumentException("Invalid page token", e);
+    }
+    // A SMILE-encoded null deserializes "successfully" to null; reject it here rather than letting
+    // callers fail on it later.
+    checkArgument(pageToken != null, "Invalid page token");
+    return pageToken;
   }
 
   /**

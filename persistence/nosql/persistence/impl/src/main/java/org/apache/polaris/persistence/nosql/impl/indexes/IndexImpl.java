@@ -453,7 +453,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean add(@NonNull InternalIndexElement<V> element) {
+  public AddResult add(@NonNull InternalIndexElement<V> element) {
     modified = true;
     var e = elements;
     var serializer = this.serializer;
@@ -467,7 +467,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
       estimatedSerializedSizeDiff += elementSerializedSize - prevSerializedSize;
 
       e.set(idx, element);
-      return false;
+      return prev.hasValue() ? AddResult.UPDATED : AddResult.UPDATED_NO_VALUE;
     }
 
     estimatedSerializedSizeDiff += addElementDiff(element, elementSerializedSize);
@@ -478,7 +478,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
     } else {
       e.add(insertionPoint, element);
     }
-    return true;
+    return AddResult.NEW_KEY;
   }
 
   private static <V> int addElementDiff(

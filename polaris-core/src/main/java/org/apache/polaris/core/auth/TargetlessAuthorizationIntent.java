@@ -27,9 +27,4 @@ public record TargetlessAuthorizationIntent(@NonNull PolarisAuthorizableOperatio
   public TargetlessAuthorizationIntent {
     Preconditions.checkNotNull(operation, "operation must be non-null");
   }
-
-  @Override
-  public @NonNull PolarisAuthorizableOperation getOperation() {
-    return operation;
-  }
 }

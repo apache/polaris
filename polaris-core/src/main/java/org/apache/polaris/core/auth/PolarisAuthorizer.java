@@ -18,13 +18,7 @@
  */
 package org.apache.polaris.core.auth;
 
-import java.util.List;
-import java.util.Set;
-import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
 /** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {
@@ -52,32 +46,4 @@ public interface PolarisAuthorizer {
    */
   @NonNull AuthorizationDecision authorize(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request);
-
-  /**
-   * Convenience method that throws a {@link ForbiddenException} when authorization is denied.
-   *
-   * <p>Implementations should provide allow/deny decisions via {@link #authorize}.
-   */
-  default void authorizeOrThrow(
-      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    AuthorizationDecision decision = authorize(authzState, request);
-    if (!decision.isAllowed()) {
-      String message = decision.getMessage().orElse("Authorization denied");
-      throw new ForbiddenException("%s", message);
-    }
-  }
-
-  void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary);
-
-  void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable List<PolarisResolvedPathWrapper> targets,
-      @Nullable List<PolarisResolvedPathWrapper> secondaries);
 }

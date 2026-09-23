@@ -103,14 +103,19 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
                 ? RootCredentialsSet.EMPTY
                 : RootCredentialsSet.fromList(
                     inputOptions.rootCredentialsOptions.stdinOptions.credentials);
-        if (inputOptions.rootCredentialsOptions.stdinOptions.credentials == null
-            || inputOptions.rootCredentialsOptions.stdinOptions.credentials.isEmpty()) {
-          if (!inputOptions.rootCredentialsOptions.stdinOptions.printCredentials) {
+        if (!inputOptions.rootCredentialsOptions.stdinOptions.printCredentials) {
+          List<String> realmsWithoutCredentials =
+              inputOptions.rootCredentialsOptions.stdinOptions.realms.stream()
+                  .filter(realm -> !rootCredentialsSet.credentials().containsKey(realm))
+                  .toList();
+          if (!realmsWithoutCredentials.isEmpty()) {
             spec.commandLine()
                 .getErr()
-                .println(
-                    "Specify either `--credentials` or `--print-credentials` to ensure"
-                        + " the root user is accessible after bootstrapping.");
+                .printf(
+                    "No credentials were supplied for realm(s) %s. Specify `--credential` for"
+                        + " every realm, or `--print-credentials`, to ensure the root user is"
+                        + " accessible after bootstrapping.%n",
+                    realmsWithoutCredentials);
             return EXIT_CODE_BOOTSTRAP_ERROR;
           }
         }

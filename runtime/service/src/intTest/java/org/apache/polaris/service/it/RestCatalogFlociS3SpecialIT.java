@@ -200,6 +200,39 @@ public class RestCatalogFlociS3SpecialIT extends AbstractRestCatalogFlociS3Speci
     }
   }
 
+  /**
+   * A request that resolves to remote signing (not implemented) against a catalog that cannot vend
+   * credentials fails fast with a message telling the client what to do, instead of the opaque
+   * "Unsupported access delegation mode: REMOTE_SIGNING".
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"vended-credentials,remote-signing", "remote-signing"})
+  public void testLoadTableWithRemoteSigningRequestedWithoutStsFailsWithActionableMessage(
+      String accessDelegationHeader) throws IOException {
+    try (var restCatalog =
+        createCatalog(
+            Optional.of(endpoint),
+            Optional.of("http://sts.example.com"),
+            true,
+            Optional.empty(),
+            false)) {
+
+      catalogApi.createNamespace(catalogName, "test-ns");
+      var id = TableIdentifier.of("test-ns", "t4");
+      restCatalog.createTable(id, SCHEMA);
+
+      assertThatThrownBy(
+              () ->
+                  catalogApi.loadTable(
+                      catalogName,
+                      id,
+                      "ALL",
+                      Map.of("X-Iceberg-Access-Delegation", accessDelegationHeader)))
+          .hasMessageContaining("This catalog cannot vend credentials or sign requests")
+          .hasMessageContaining("request without X-Iceberg-Access-Delegation");
+    }
+  }
+
   @Test
   public void testLoadTableFailureWithCredentialVendingWithoutSts() throws IOException {
     try (var restCatalog =

@@ -19,6 +19,7 @@
 #
 linkTitle: "Backend: JDBC, Postgres"
 title: "Getting Started with Apache Polaris, Relational JDBC, Postgres and Spark SQL"
+description: "Uses JDBC persistence with PostgreSQL as the backend database and Spark SQL as the query engine."
 weight: 100
 tags:
    - backend

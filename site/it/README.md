@@ -19,17 +19,17 @@
 
 # Polaris Guide Testing
 
-This repository contains tools and scripts for testing Apache Spark guides.
+This repository contains tools and scripts for testing Apache Polaris getting-started guides.
 It provides a framework for running automated tests against guide content,
 ensuring that at least the basic functionality works.
 
 ## Overview
 
-Guide testing is performed via the "entry" shell script `site_guide_ci.sh`,
+Guide testing is performed via the "entry" Python script `markdown-testing.py`,
 which can also be invoked locally.
 
-The "entry" script calls a Python tool to extract the code blocks from a
-guide's Markdown file and write it to a temporary file as a bash script.
+The "entry" script extracts the code blocks from a
+guide's Markdown file and writes them to a temporary file as a bash script.
 Only `shell` code blocks are extracted, see [Spark SQL](#spark-sql-code) below. 
 
 The "entry" script then executes the generated bash script.
@@ -84,7 +84,7 @@ The code block will be executed but not appear in the guide.
   `docker compose up` command.
 * `curl` command invocations get the `--fail-with-body` option.
   Adding either the `--fail` or `--fail-with-body` option should be considered for
-  ever usage of `curl`, otherwise `curl` will exit with code 0 for error responses
+  every usage of `curl`, otherwise `curl` will exit with code 0 for error responses
   like 401 or 404 and others. 
 * `spark-sql` invocations get the SQL statements to execute via a file that is generated
   from the following `sql` code blocks.
@@ -103,7 +103,8 @@ unifies both into one execution of Spark SQL.
 
 ## GitHub Workflow
 
-The GitHub workflow `site_guide_ci.yml` is used to run the guide tests on pull requests.
+The GitHub CI workflow has a `test-site-guides` job that is used to run the guide tests on pull 
+requests.
 
 The executed generated bash scripts and the corresponding log files are uploaded as
 GitHub workflow artifacts.

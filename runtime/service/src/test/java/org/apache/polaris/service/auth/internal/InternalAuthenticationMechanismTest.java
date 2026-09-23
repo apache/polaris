@@ -31,17 +31,23 @@ import io.quarkus.security.identity.IdentityProviderManager;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
+import java.time.Duration;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.internal.broker.TokenBroker;
+import org.apache.polaris.service.auth.internal.broker.TokenVerificationResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 public class InternalAuthenticationMechanismTest {
+
+  private static final Duration AWAIT_TIMEOUT = Duration.ofSeconds(5);
 
   private InternalAuthenticationMechanism mechanism;
   private AuthenticationRealmConfiguration configuration;
@@ -80,7 +86,7 @@ public class InternalAuthenticationMechanismTest {
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
 
-    assertThat(result.await().indefinitely()).isNull();
+    assertThat(result.await().atMost(AWAIT_TIMEOUT)).isNull();
     verify(tokenBroker, never()).verify(any());
   }
 
@@ -92,7 +98,7 @@ public class InternalAuthenticationMechanismTest {
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
 
-    assertThat(result.await().indefinitely()).isNull();
+    assertThat(result.await().atMost(AWAIT_TIMEOUT)).isNull();
     verify(tokenBroker, never()).verify(any());
   }
 
@@ -104,7 +110,7 @@ public class InternalAuthenticationMechanismTest {
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
 
-    assertThat(result.await().indefinitely()).isNull();
+    assertThat(result.await().atMost(AWAIT_TIMEOUT)).isNull();
     verify(tokenBroker, never()).verify(any());
   }
 
@@ -114,8 +120,9 @@ public class InternalAuthenticationMechanismTest {
     when(routingContext.request()).thenReturn(mock(io.vertx.core.http.HttpServerRequest.class));
     when(routingContext.request().getHeader("Authorization")).thenReturn("Bearer invalidToken");
 
-    NotAuthorizedException cause = new NotAuthorizedException("Invalid token");
-    when(tokenBroker.verify("invalidToken")).thenThrow(cause);
+    RuntimeException cause = new RuntimeException("bad signature");
+    when(tokenBroker.verify("invalidToken"))
+        .thenReturn(new TokenVerificationResult.Invalid("Failed to verify the token", cause));
 
     SecurityIdentity securityIdentity = mock(SecurityIdentity.class);
     when(identityProviderManager.authenticate(any()))
@@ -123,8 +130,10 @@ public class InternalAuthenticationMechanismTest {
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
 
-    assertThatThrownBy(() -> result.await().indefinitely())
-        .isInstanceOf(AuthenticationFailedException.class)
+    // An invalid Polaris token surfaces as a 401 (NotAuthorizedException), preserving the cause.
+    assertThatThrownBy(() -> result.await().atMost(AWAIT_TIMEOUT))
+        .isInstanceOf(NotAuthorizedException.class)
+        .hasMessage("Failed to verify the token")
         .hasCause(cause);
     verify(tokenBroker).verify("invalidToken");
     verify(identityProviderManager, never()).authenticate(any(InternalAuthenticationRequest.class));
@@ -136,8 +145,8 @@ public class InternalAuthenticationMechanismTest {
     when(routingContext.request()).thenReturn(mock(io.vertx.core.http.HttpServerRequest.class));
     when(routingContext.request().getHeader("Authorization")).thenReturn("Bearer invalidToken");
 
-    NotAuthorizedException cause = new NotAuthorizedException("Invalid token");
-    when(tokenBroker.verify("invalidToken")).thenThrow(cause);
+    when(tokenBroker.verify("invalidToken"))
+        .thenReturn(new TokenVerificationResult.Invalid("Failed to verify the token", null));
 
     SecurityIdentity securityIdentity = mock(SecurityIdentity.class);
     when(identityProviderManager.authenticate(any()))
@@ -145,8 +154,66 @@ public class InternalAuthenticationMechanismTest {
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
 
-    assertThat(result.await().indefinitely()).isNull();
+    // A Polaris-issued but invalid token fails even in MIXED mode; only foreign tokens
+    // (NotRecognized) delegate to other mechanisms.
+    assertThatThrownBy(() -> result.await().atMost(AWAIT_TIMEOUT))
+        .isInstanceOf(NotAuthorizedException.class);
     verify(tokenBroker).verify("invalidToken");
+    verify(identityProviderManager, never()).authenticate(any(InternalAuthenticationRequest.class));
+  }
+
+  @Test
+  public void testAuthenticateWithForeignTokenMixedAuth() {
+    when(configuration.type()).thenReturn(AuthenticationType.MIXED);
+    when(routingContext.request()).thenReturn(mock(io.vertx.core.http.HttpServerRequest.class));
+    when(routingContext.request().getHeader("Authorization")).thenReturn("Bearer foreignToken");
+
+    // The broker reports tokens that are not Polaris-issued as NotRecognized.
+    when(tokenBroker.verify("foreignToken"))
+        .thenReturn(new TokenVerificationResult.NotRecognized());
+
+    Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
+
+    assertThat(result.await().atMost(AWAIT_TIMEOUT)).isNull();
+    verify(tokenBroker).verify("foreignToken");
+    verify(identityProviderManager, never()).authenticate(any(InternalAuthenticationRequest.class));
+  }
+
+  @Test
+  public void testAuthenticateWithForeignTokenInternalAuth() {
+    when(configuration.type()).thenReturn(AuthenticationType.INTERNAL);
+    when(routingContext.request()).thenReturn(mock(io.vertx.core.http.HttpServerRequest.class));
+    when(routingContext.request().getHeader("Authorization")).thenReturn("Bearer foreignToken");
+
+    // The broker reports tokens that are not Polaris-issued as NotRecognized.
+    when(tokenBroker.verify("foreignToken"))
+        .thenReturn(new TokenVerificationResult.NotRecognized());
+
+    Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
+
+    assertThatThrownBy(() -> result.await().atMost(AWAIT_TIMEOUT))
+        .isInstanceOf(AuthenticationFailedException.class);
+    verify(tokenBroker).verify("foreignToken");
+    verify(identityProviderManager, never()).authenticate(any(InternalAuthenticationRequest.class));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = AuthenticationType.class,
+      names = {"INTERNAL", "MIXED"})
+  public void testAuthenticatePropagatesServiceUnavailable(AuthenticationType type) {
+    when(configuration.type()).thenReturn(type);
+    when(routingContext.request()).thenReturn(mock(io.vertx.core.http.HttpServerRequest.class));
+    when(routingContext.request().getHeader("Authorization")).thenReturn("Bearer someToken");
+
+    PolarisServiceUnavailableException cause =
+        new PolarisServiceUnavailableException(0, "Service unavailable");
+    when(tokenBroker.verify("someToken")).thenThrow(cause);
+
+    Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
+
+    assertThatThrownBy(() -> result.await().atMost(AWAIT_TIMEOUT)).isSameAs(cause);
+    verify(tokenBroker).verify("someToken");
     verify(identityProviderManager, never()).authenticate(any(InternalAuthenticationRequest.class));
   }
 
@@ -157,7 +224,8 @@ public class InternalAuthenticationMechanismTest {
     when(routingContext.request().getHeader("Authorization")).thenReturn("Bearer validToken");
 
     PolarisCredential decodedToken = mock(PolarisCredential.class);
-    when(tokenBroker.verify("validToken")).thenReturn(decodedToken);
+    when(tokenBroker.verify("validToken"))
+        .thenReturn(new TokenVerificationResult.Recognized(decodedToken));
 
     SecurityIdentity securityIdentity = mock(SecurityIdentity.class);
     when(identityProviderManager.authenticate(any()))
@@ -165,7 +233,7 @@ public class InternalAuthenticationMechanismTest {
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
 
-    assertThat(result.await().indefinitely()).isSameAs(securityIdentity);
+    assertThat(result.await().atMost(AWAIT_TIMEOUT)).isSameAs(securityIdentity);
     verify(tokenBroker).verify("validToken");
     verify(identityProviderManager).authenticate(any(InternalAuthenticationRequest.class));
   }

@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -32,6 +33,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryCatalog;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
+import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
@@ -45,6 +47,7 @@ import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,7 +73,9 @@ public class IcebergCatalogAdapterTest {
                     "ENABLE_CATALOG_FEDERATION",
                     "true",
                     FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.key(),
-                    "false"))
+                    "false",
+                    FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE.key(),
+                    "100"))
             .build();
     catalogAdapter = Mockito.spy(testServices.catalogAdapter());
 
@@ -184,8 +189,10 @@ public class IcebergCatalogAdapterTest {
 
       // Simulate page-by-page fetching until all entities are consumed
       while (remain > 0) {
-        int expectedSize =
-            (pageSize != null && initialPageToken != null) ? Math.min(remain, pageSize) : remain;
+        // A requested page size is honoured even without an initial page token: a configured
+        // LIST_PAGINATION_MAX_PAGE_SIZE makes the listing paginate from the first request, as it
+        // does for a local catalog.
+        int expectedSize = pageSize != null ? Math.min(remain, pageSize) : remain;
 
         // Verify namespaces pagination
         ListNamespacesResponse namespacesResponse =
@@ -234,6 +241,178 @@ public class IcebergCatalogAdapterTest {
 
         remain -= expectedSize;
       }
+    }
+  }
+
+  static Stream<Arguments> renameRequestsMissingIdentifier() {
+    // operation x which identifier is omitted; the request carries only the other identifier.
+    return Stream.of(
+        Arguments.of(
+            "table", "source", "{\"destination\":{\"namespace\":[\"ns\"],\"name\":\"newtable\"}}"),
+        Arguments.of(
+            "table", "destination", "{\"source\":{\"namespace\":[\"ns\"],\"name\":\"oldtable\"}}"),
+        Arguments.of(
+            "view", "source", "{\"destination\":{\"namespace\":[\"ns\"],\"name\":\"newview\"}}"),
+        Arguments.of(
+            "view", "destination", "{\"source\":{\"namespace\":[\"ns\"],\"name\":\"oldview\"}}"));
+  }
+
+  @ParameterizedTest(name = "rename {0} missing {1} -> 400")
+  @MethodSource("renameRequestsMissingIdentifier")
+  void testRenameRejectsMissingIdentifier(String operation, String missing, String json)
+      throws IOException {
+    RenameTableRequest request = renameRequest(json);
+    if ("source".equals(missing)) {
+      Assertions.assertThat(request.source()).isNull();
+    } else {
+      Assertions.assertThat(request.destination()).isNull();
+    }
+    Assertions.assertThatThrownBy(
+            () -> {
+              if ("table".equals(operation)) {
+                catalogAdapter.renameTable(
+                    FEDERATED_CATALOG_NAME,
+                    request,
+                    null,
+                    testServices.realmContext(),
+                    testServices.securityContext());
+              } else {
+                catalogAdapter.renameView(
+                    FEDERATED_CATALOG_NAME,
+                    request,
+                    null,
+                    testServices.realmContext(),
+                    testServices.securityContext());
+              }
+            })
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(missing);
+  }
+
+  /**
+   * Deserializes a rename request the same way the server does, i.e. with field-level visibility
+   * and without invoking {@link RenameTableRequest#validate()}. This is the only way to obtain a
+   * request whose {@code source} or {@code destination} is null, since the builder rejects nulls.
+   */
+  private static RenameTableRequest renameRequest(String json) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    new PolarisIcebergObjectMapperCustomizer("1M").customize(mapper);
+    return mapper.readValue(json, RenameTableRequest.class);
+  }
+
+  /**
+   * A federated listing is paginated by Polaris itself, so a client asking for more than the
+   * configured maximum must be reduced to it rather than served an unbounded page.
+   */
+  @Test
+  void testFederatedListingsAreBoundedByMaxPageSize() throws IOException {
+    try (InMemoryCatalog inMemoryCatalog = new InMemoryCatalog()) {
+      inMemoryCatalog.initialize("inMemory", Map.of());
+      mockCatalogAdapter(inMemoryCatalog);
+
+      // One more entity than the LIST_PAGINATION_MAX_PAGE_SIZE configured above
+      int entityCount = 101;
+      for (int i = 0; i < entityCount; ++i) {
+        inMemoryCatalog.createNamespace(Namespace.of("ns" + i));
+        inMemoryCatalog.createTable(TableIdentifier.of("ns0", "table" + i), new Schema());
+        inMemoryCatalog
+            .buildView(TableIdentifier.of("ns0", "view" + i))
+            .withSchema(new Schema())
+            .withDefaultNamespace(Namespace.of("ns0"))
+            .withQuery("a", "SELECT * FROM ns0.table" + i)
+            .create();
+      }
+
+      int requestedPageSize = 1000;
+      int expectedPageSize = 100;
+
+      ListNamespacesResponse namespaces =
+          (ListNamespacesResponse)
+              catalogAdapter
+                  .listNamespaces(
+                      FEDERATED_CATALOG_NAME,
+                      "",
+                      requestedPageSize,
+                      null,
+                      testServices.realmContext(),
+                      testServices.securityContext())
+                  .getEntity();
+      Assertions.assertThat(namespaces.namespaces()).hasSize(expectedPageSize);
+      Assertions.assertThat(namespaces.nextPageToken()).isNotNull();
+
+      ListTablesResponse tables =
+          (ListTablesResponse)
+              catalogAdapter
+                  .listTables(
+                      FEDERATED_CATALOG_NAME,
+                      "ns0",
+                      "",
+                      requestedPageSize,
+                      testServices.realmContext(),
+                      testServices.securityContext())
+                  .getEntity();
+      Assertions.assertThat(tables.identifiers()).hasSize(expectedPageSize);
+      Assertions.assertThat(tables.nextPageToken()).isNotNull();
+
+      ListTablesResponse views =
+          (ListTablesResponse)
+              catalogAdapter
+                  .listViews(
+                      FEDERATED_CATALOG_NAME,
+                      "ns0",
+                      "",
+                      requestedPageSize,
+                      testServices.realmContext(),
+                      testServices.securityContext())
+                  .getEntity();
+      Assertions.assertThat(views.identifiers()).hasSize(expectedPageSize);
+      Assertions.assertThat(views.nextPageToken()).isNotNull();
+    }
+  }
+
+  /**
+   * A federated listing with no page token at all must still be bounded: the whole remote result
+   * set would otherwise be returned in one response.
+   */
+  @Test
+  void testFederatedListingsWithoutAPageTokenAreBounded() throws IOException {
+    try (InMemoryCatalog inMemoryCatalog = new InMemoryCatalog()) {
+      inMemoryCatalog.initialize("inMemory", Map.of());
+      mockCatalogAdapter(inMemoryCatalog);
+
+      int entityCount = 101;
+      for (int i = 0; i < entityCount; ++i) {
+        inMemoryCatalog.createNamespace(Namespace.of("ns" + i));
+        inMemoryCatalog.createTable(TableIdentifier.of("ns0", "table" + i), new Schema());
+      }
+
+      ListNamespacesResponse namespaces =
+          (ListNamespacesResponse)
+              catalogAdapter
+                  .listNamespaces(
+                      FEDERATED_CATALOG_NAME,
+                      null,
+                      null,
+                      null,
+                      testServices.realmContext(),
+                      testServices.securityContext())
+                  .getEntity();
+      Assertions.assertThat(namespaces.namespaces()).hasSize(100);
+      Assertions.assertThat(namespaces.nextPageToken()).isNotNull();
+
+      ListTablesResponse tables =
+          (ListTablesResponse)
+              catalogAdapter
+                  .listTables(
+                      FEDERATED_CATALOG_NAME,
+                      "ns0",
+                      null,
+                      null,
+                      testServices.realmContext(),
+                      testServices.securityContext())
+                  .getEntity();
+      Assertions.assertThat(tables.identifiers()).hasSize(100);
+      Assertions.assertThat(tables.nextPageToken()).isNotNull();
     }
   }
 

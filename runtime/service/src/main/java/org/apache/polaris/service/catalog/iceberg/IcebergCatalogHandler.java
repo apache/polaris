@@ -21,8 +21,10 @@ package org.apache.polaris.service.catalog.iceberg;
 import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
+import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -43,11 +45,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.MetadataTableType;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.RetryableValidationException;
@@ -111,6 +115,7 @@ import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PageTokenUtil;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -218,6 +223,35 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return realmConfig().getConfig(LIST_PAGINATION_ENABLED, getResolvedCatalogEntity());
   }
 
+  /** The configured page size ceiling; zero or less means unlimited. */
+  private int maxPageSize() {
+    return realmConfig().getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, getResolvedCatalogEntity());
+  }
+
+  /**
+   * Bounds the page size forwarded to a federated catalog, using the same rule as {@link
+   * PageTokenUtil#boundPageSize}. An absent page size becomes the maximum, so the remote result set
+   * is not returned whole.
+   */
+  private @Nullable Integer boundedPageSize(@Nullable Integer requestedPageSize) {
+    OptionalInt requested =
+        requestedPageSize == null ? OptionalInt.empty() : OptionalInt.of(requestedPageSize);
+    OptionalInt bounded = PageTokenUtil.boundPageSize(requested, maxPageSize());
+    return bounded.isPresent() ? bounded.getAsInt() : null;
+  }
+
+  /**
+   * The page token forwarded to a federated catalog. {@code CatalogHandlerUtils} returns the whole
+   * result set when no token is given, so when a maximum is configured the specification's initial
+   * page token is supplied instead, making the listing paginate from the first request as it does
+   * for a local catalog.
+   */
+  private @Nullable String boundedPageToken(@Nullable String pageToken) {
+    return pageToken == null && maxPageSize() > 0
+        ? CatalogHandlerUtils.INITIAL_PAGE_TOKEN
+        : pageToken;
+  }
+
   @Override
   protected void initializeCatalog() {
     CatalogEntity resolvedCatalogEntity = getResolvedCatalogEntity();
@@ -267,22 +301,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
   }
 
-  public ListNamespacesResponse listNamespaces(Namespace parent) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
-    authorizeBasicNamespaceOperationOrThrow(op, parent);
-
-    return catalogHandlerUtils().listNamespaces(namespaceCatalog, parent);
-  }
-
   public ListNamespacesResponse listNamespaces(
       Namespace parent, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
     if (isFederated) {
-      return catalogHandlerUtils().listNamespaces(namespaceCatalog, parent, pageToken, pageSize);
+      return catalogHandlerUtils()
+          .listNamespaces(
+              namespaceCatalog, parent, boundedPageToken(pageToken), boundedPageSize(pageSize));
     } else {
-      PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
+      PageToken pageRequest =
+          PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listNamespaces(parent, pageRequest);
       return ListNamespacesResponse.builder()
           .addAll(results.items())
@@ -347,8 +377,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // existence is also missing.
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    // TODO: Just skip CatalogHandlers for this one maybe
-    catalogHandlerUtils().loadNamespace(namespaceCatalog, namespace);
+    // Resolution above already established that the namespace exists, so a local catalog needs
+    // no further check. A federated catalog serves it from the remote system, which therefore
+    // has to answer.
+    if (!(baseCatalog instanceof LocalIcebergCatalog)) {
+      if (!namespaceCatalog.namespaceExists(namespace)) {
+        throw noSuchNamespaceException(namespace);
+      }
+    }
   }
 
   public void dropNamespace(Namespace namespace) {
@@ -371,9 +407,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
     if (isFederated) {
-      return catalogHandlerUtils().listTables(baseCatalog, namespace, pageToken, pageSize);
+      return catalogHandlerUtils()
+          .listTables(
+              baseCatalog, namespace, boundedPageToken(pageToken), boundedPageSize(pageSize));
     } else {
-      PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
+      PageToken pageRequest =
+          PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listTables(namespace, pageRequest);
       return ListTablesResponse.builder()
           .addAll(results.items())
@@ -942,18 +981,20 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation write =
         PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
 
-    resolveBasicTableLikeTargetOrThrow(write, tableIdentifier);
+    ensureResolutionManifestForTable(tableIdentifier);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    resolveBasicTableLikeTargetOrThrow(authorizationState, write, tableIdentifier);
 
     Set<PolarisStorageActions> actionsRequested =
         new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
     try {
       authorizeResolvedBasicTableLikeOperationOrThrow(
-          write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+          authorizationState, write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
       actionsRequested.add(PolarisStorageActions.WRITE);
     } catch (ForbiddenException e) {
       // Reuse the already-resolved table view for the read-delegation fallback.
       authorizeResolvedBasicTableLikeOperationOrThrow(
-          read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+          authorizationState, read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
 
     return actionsRequested;
@@ -993,40 +1034,98 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               PolarisEntityType.TABLE_LIKE,
               true /* optional */));
 
-      // Resolve once for the shared table target before auth fallback. Today resolution depends on
-      // the principal and target, not the register-table operation, so either delegation op is
-      // sufficient for building the manifest.
       AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-      authorizer()
-          .resolveAuthorizationInputs(
-              authorizationState,
-              new AuthorizationRequest(
-                  polarisPrincipal(),
-                  List.of(
-                      new SingleTargetAuthorizationIntent(
-                          PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
-                          PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier)))));
 
-      try {
-        if (overwrite) {
+      if (overwrite) {
+        AuthorizationRequest writeOverwriteRequest =
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
+                        PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier))));
+        AuthorizationRequest writeFallbackRequest =
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
+                        PolarisSecurableMapper.namespace(
+                            catalogName(), tableIdentifier.namespace()))));
+        AuthorizationRequest readOverwriteRequest =
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
+                        PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier))));
+        AuthorizationRequest readFallbackRequest =
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
+                        PolarisSecurableMapper.namespace(
+                            catalogName(), tableIdentifier.namespace()))));
+
+        // Resolve every write/read and overwrite/fallback intent that may be authorized from this
+        // shared AuthorizationState. A request-selective authorizer may use the operation, not just
+        // the target securable, to decide what inputs to resolve.
+        authorizer()
+            .resolveAuthorizationInputs(
+                authorizationState,
+                new AuthorizationRequest(
+                    polarisPrincipal(),
+                    List.of(
+                        writeOverwriteRequest.intents().getFirst(),
+                        writeFallbackRequest.intents().getFirst(),
+                        readOverwriteRequest.intents().getFirst(),
+                        readFallbackRequest.intents().getFirst())));
+
+        try {
           authorizeResolvedRegisterTableOverwriteOrThrow(
-              PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
-              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
-              tableIdentifier);
-        } else {
-          authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
-              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION, tableIdentifier);
+              authorizationState, writeOverwriteRequest, writeFallbackRequest, tableIdentifier);
+          actionsRequested.add(PolarisStorageActions.WRITE);
+        } catch (ForbiddenException e) {
+          authorizeResolvedRegisterTableOverwriteOrThrow(
+              authorizationState, readOverwriteRequest, readFallbackRequest, tableIdentifier);
         }
-        actionsRequested.add(PolarisStorageActions.WRITE);
-      } catch (ForbiddenException e) {
-        if (overwrite) {
-          authorizeResolvedRegisterTableOverwriteOrThrow(
-              PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
-              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
-              tableIdentifier);
-        } else {
+      } else {
+        AuthorizationRequest writeCreateRequest =
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
+                        PolarisSecurableMapper.namespace(
+                            catalogName(), tableIdentifier.namespace()))));
+        AuthorizationRequest readCreateRequest =
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
+                        PolarisSecurableMapper.namespace(
+                            catalogName(), tableIdentifier.namespace()))));
+
+        // Resolve both delegation intents before authorization so the read fallback can reuse the
+        // same AuthorizationState without assuming operation-independent resolution.
+        authorizer()
+            .resolveAuthorizationInputs(
+                authorizationState,
+                new AuthorizationRequest(
+                    polarisPrincipal(),
+                    List.of(
+                        writeCreateRequest.intents().getFirst(),
+                        readCreateRequest.intents().getFirst())));
+
+        try {
           authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
-              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION, tableIdentifier);
+              authorizationState, writeCreateRequest, tableIdentifier);
+          actionsRequested.add(PolarisStorageActions.WRITE);
+        } catch (ForbiddenException e) {
+          authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
+              authorizationState, readCreateRequest, tableIdentifier);
         }
       }
 
@@ -1237,7 +1336,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         getUpdateTableAuthorizableOperations(request, getResolvedCatalogEntity());
 
     authorizeBasicTableLikeOperationsOrThrow(
-        authorizableOperations, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+        authorizationState,
+        authorizableOperations,
+        PolarisEntitySubType.ICEBERG_TABLE,
+        tableIdentifier);
 
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
@@ -1328,8 +1430,22 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
-    // TODO: Just skip CatalogHandlers for this one maybe
-    catalogHandlerUtils().loadTable(baseCatalog, tableIdentifier);
+    // Resolution above already established that the table exists, so a local catalog needs no
+    // further check. A federated catalog serves it from the remote system, which therefore has
+    // to answer.
+    if (!(baseCatalog instanceof LocalIcebergCatalog)) {
+      // tableExists cannot answer for an identifier that could name a synthetic metadata table:
+      // Hadoop and Hive report ns.orders.snapshots as present while loadTable rejects it as not
+      // found, so HEAD would answer 204 where GET answers 404. A metadata table always ends in a
+      // MetadataTableType name, and nothing stops an ordinary table from carrying one of those
+      // names too, so only a load can tell the two apart.
+      if (MetadataTableType.from(tableIdentifier.name()) != null) {
+        catalogHandlerUtils().loadTable(baseCatalog, tableIdentifier);
+      } else if (!baseCatalog.tableExists(tableIdentifier)) {
+        throw notFoundExceptionForTableLikeEntity(
+            tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
+      }
+    }
   }
 
   public void renameTable(RenameTableRequest request) {
@@ -1528,13 +1644,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     if (isFederated) {
       if (baseCatalog instanceof ViewCatalog viewCatalog) {
-        return catalogHandlerUtils().listViews(viewCatalog, namespace, pageToken, pageSize);
+        return catalogHandlerUtils()
+            .listViews(
+                viewCatalog, namespace, boundedPageToken(pageToken), boundedPageSize(pageSize));
       }
       throw new BadRequestException(
           "Unsupported operation: listViews with baseCatalog type: %s",
           baseCatalog.getClass().getName());
     } else {
-      PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
+      PageToken pageRequest =
+          PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listViews(namespace, pageRequest);
       return ListTablesResponse.builder()
           .addAll(results.items())
@@ -1600,8 +1719,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
-    // TODO: Just skip CatalogHandlers for this one maybe
-    catalogHandlerUtils().loadView(viewCatalog, viewIdentifier);
+    // Resolution above already established that the view exists, so a local catalog needs no
+    // further check. A federated catalog serves it from the remote system, which therefore has
+    // to answer.
+    if (!(baseCatalog instanceof LocalIcebergCatalog)) {
+      if (!viewCatalog.viewExists(viewIdentifier)) {
+        throw notFoundExceptionForTableLikeEntity(
+            viewIdentifier, PolarisEntitySubType.ICEBERG_VIEW);
+      }
+    }
   }
 
   public void renameView(RenameTableRequest request) {
@@ -1713,6 +1839,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * Resolves the access delegation mode by delegating to the configured {@link
    * AccessDelegationModeResolver}.
    *
+   * <p>Remote signing is not implemented yet. Whenever the resolver settles on {@link
+   * AccessDelegationMode#REMOTE_SIGNING}, either because the client asked for it alone or because
+   * credential vending is not possible for the catalog and the client offered remote signing as the
+   * alternative, the request fails fast with a message that tells the client what to do. This
+   * matches how a vended-credentials-only request behaves when no credentials can be vended.
+   *
    * @param requestedModes The non-empty set of delegation modes requested by the client
    * @return The resolved access delegation mode, or empty if no delegation mode was resolved
    */
@@ -1724,11 +1856,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         accessDelegationModeResolver().resolve(requestedModes, catalogEntity);
 
     // TODO remove when remote signing is implemented
-    // Reject if the resolved mode is REMOTE_SIGNING since it's not yet supported
-    Preconditions.checkArgument(
-        resolvedMode.orElse(null) != AccessDelegationMode.REMOTE_SIGNING,
-        "Unsupported access delegation mode: %s",
-        AccessDelegationMode.REMOTE_SIGNING);
+    if (resolvedMode.orElse(null) == AccessDelegationMode.REMOTE_SIGNING) {
+      throw new IllegalArgumentException(
+          "This catalog cannot vend credentials or sign requests; request without "
+              + "X-Iceberg-Access-Delegation and configure storage credentials on the client");
+    }
 
     return resolvedMode;
   }

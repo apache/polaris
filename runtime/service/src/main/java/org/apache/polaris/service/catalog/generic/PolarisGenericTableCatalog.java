@@ -19,6 +19,8 @@
 package org.apache.polaris.service.catalog.generic;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_NOT_FOUND;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
@@ -39,6 +41,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
@@ -173,11 +176,17 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
             Map.of(),
             false);
 
+    if (dropEntityResult.getReturnStatus() == ENTITY_NOT_FOUND
+        || dropEntityResult.getReturnStatus() == CATALOG_PATH_CANNOT_BE_RESOLVED) {
+      throw notFoundExceptionForTableLikeEntity(
+          tableIdentifier, PolarisEntitySubType.GENERIC_TABLE);
+    }
+
     return dropEntityResult.isSuccess();
   }
 
   @Override
-  public List<TableIdentifier> listGenericTables(Namespace namespace) {
+  public Page<TableIdentifier> listGenericTables(Namespace namespace, PageToken pageToken) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(namespace));
     if (resolvedEntities == null) {
@@ -185,16 +194,15 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
-    List<PolarisEntity.NameAndId> entities =
-        PolarisEntity.toNameAndIdList(
-            this.metaStoreManager
-                .listEntities(
-                    this.callContext.getPolarisCallContext(),
-                    PolarisEntity.toCoreList(catalogPath),
-                    PolarisEntityType.TABLE_LIKE,
-                    PolarisEntitySubType.GENERIC_TABLE,
-                    PageToken.readEverything())
-                .getEntities());
-    return PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities);
+    Namespace parentNamespace = PolarisCatalogHelpers.parentNamespace(catalogPath);
+    return this.metaStoreManager
+        .listEntities(
+            this.callContext.getPolarisCallContext(),
+            PolarisEntity.toCoreList(catalogPath),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.GENERIC_TABLE,
+            pageToken)
+        .getPage()
+        .map(record -> TableIdentifier.of(parentNamespace, record.getName()));
   }
 }

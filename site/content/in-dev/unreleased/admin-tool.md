@@ -77,7 +77,10 @@ See the [Metastores]({{% ref "metastores" %}}) section for more information on c
 database connection. See [Configuration Reference]({{% ref "configuration/configuration-reference"
 %}}) for the full list of configuration options.
 
-Note: Polaris will always create the schema `polaris_schema` during bootstrap under the configured database.
+Note: Polaris does not create the database schema. The schema (by default `polaris_schema`, selected
+through the JDBC driver's `currentSchema` connection property) must already exist before bootstrapping;
+creating it is a database-administrator task. See the [Metastores]({{% ref "metastores" %}}) section for
+details.
 
 ## Bootstrapping Realms and Principal Credentials
 
@@ -119,6 +122,13 @@ File Input Options:
                             A file containing root principal credentials to
                               bootstrap.
 ```
+
+Every realm passed with `--realm` must have a matching `--credential`, unless
+`--print-credentials` is given. Without one of the two, that realm's root principal would be
+created with a randomly generated secret that is never shown, leaving the realm unusable; the
+command lists the realms that are missing credentials and exits without bootstrapping
+anything. This does not apply to `--credentials-file`, where the realms to bootstrap are taken
+from the file's own entries.
 
 For example, to bootstrap the `realm1` realm and create its root principal credential with the
 client ID `admin` and client secret `admin`, you can run the following commands:

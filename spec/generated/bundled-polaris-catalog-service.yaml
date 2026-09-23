@@ -1617,7 +1617,7 @@ paths:
         User provides the following inputs when creating a policy
         - `name` (REQUIRED): The name of the policy.
         - `type` (REQUIRED): The type of the policy.
-          - **Predefined Policies:** policies have a `system.*` prefix in their type, such as `system.data_compaction`
+          - **Predefined Policies:** policies have a `system.*` prefix in their type, such as `system.data-compaction`
         - `description` (OPTIONAL): Provides details about the policy's purpose and functionality
         - `content` (OPTIONAL): Defines the rules that control actions and access conditions on resources. The format can be JSON, SQL, or any other format.
 
