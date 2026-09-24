@@ -25,8 +25,8 @@ import jakarta.validation.constraints.Min;
 
 /**
  * Configuration for the process-wide cache of table metadata JSON documents, keyed by realm,
- * catalog ID, catalog version, and metadata file location. Metadata files are immutable, so cached
- * entries never go stale.
+ * catalog ID, catalog version, storage configuration, and metadata file location. Metadata files
+ * are immutable, so cached entries never go stale.
  */
 @ConfigMapping(prefix = "polaris.table-metadata-cache")
 public interface TableMetadataCacheConfiguration {

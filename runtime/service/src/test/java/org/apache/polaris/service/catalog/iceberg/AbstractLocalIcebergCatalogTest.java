@@ -127,6 +127,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -148,6 +149,7 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -3247,13 +3249,94 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         TableMetadata.buildFrom(committed).setProperties(Map.of("poisoned", "true")).build();
     cache.put(
         new TableMetadataCache.Key(
-            realmId, catalogEntity.getId(), staleCatalogVersion, metadataLocation),
+            realmId,
+            catalogEntity.getId(),
+            staleCatalogVersion,
+            PolarisStorageConfigurationInfo.extractStorageConfigFromEntity(catalogEntity)
+                .orElseThrow(),
+            metadataLocation),
         TableMetadataParser.toJson(poisoned));
 
     TableMetadata refreshed = cachingCatalog.newTableOps(TABLE).current();
     Assertions.assertThat(refreshed.properties()).doesNotContainKey("poisoned");
 
     // The refresh cached the document under the updated catalog version.
+    measured.newInputFileExceptionSupplier =
+        Optional.of(() -> new RuntimeException("metadata should be served from the cache"));
+    Assertions.assertThat(cachingCatalog.newTableOps(TABLE).current().properties())
+        .doesNotContainKey("poisoned");
+
+    measured.newInputFileExceptionSupplier = Optional.empty();
+    cachingCatalog.dropTable(TABLE, true);
+  }
+
+  @Test
+  public void testRefreshKeysMetadataCacheByNamespaceStorageConfiguration() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    TableMetadataCache cache =
+        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
+    MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
+    LocalIcebergCatalog cachingCatalog =
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured, cache);
+    cachingCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    cachingCatalog.createNamespace(NS);
+    cachingCatalog.buildTable(TABLE, SCHEMA).create();
+    TableMetadata committed = cachingCatalog.newTableOps(TABLE).current();
+    String metadataLocation = committed.metadataFileLocation();
+
+    // Bind the namespace to its own storage configuration.
+    AwsStorageConfigurationInfo catalogStorageConfiguration =
+        (AwsStorageConfigurationInfo)
+            PolarisStorageConfigurationInfo.extractStorageConfigFromEntity(catalogEntity)
+                .orElseThrow();
+    AwsStorageConfigurationInfo namespaceStorageConfiguration =
+        AwsStorageConfigurationInfo.builder()
+            .from(catalogStorageConfiguration)
+            .roleARN("arn:aws:iam::012345678901:role/namespace")
+            .build();
+    EntityResult namespaceResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            NS.toString());
+    Assertions.assertThat(namespaceResult).returns(true, EntityResult::isSuccess);
+    PolarisEntity updatedNamespace =
+        new PolarisEntity.Builder(PolarisEntity.of(namespaceResult.getEntity()))
+            .addInternalProperty(
+                PolarisEntityConstants.getStorageConfigInfoPropertyName(),
+                namespaceStorageConfiguration.serialize())
+            .build();
+    EntityResult updateResult =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            polarisContext, List.of(PolarisEntity.toCore(catalogEntity)), updatedNamespace);
+    Assertions.assertThat(updateResult).returns(true, EntityResult::isSuccess);
+
+    // A document cached under the catalog's storage configuration must not be served for a table
+    // whose namespace now carries its own.
+    String realmId = polarisContext.getRealmContext().getRealmIdentifier();
+    TableMetadata poisoned =
+        TableMetadata.buildFrom(committed).setProperties(Map.of("poisoned", "true")).build();
+    cache.put(
+        new TableMetadataCache.Key(
+            realmId,
+            catalogEntity.getId(),
+            catalogEntity.getEntityVersion(),
+            catalogStorageConfiguration,
+            metadataLocation),
+        TableMetadataParser.toJson(poisoned));
+
+    TableMetadata refreshed = cachingCatalog.newTableOps(TABLE).current();
+    Assertions.assertThat(refreshed.properties()).doesNotContainKey("poisoned");
+
+    // The refresh cached the document under the namespace's storage configuration.
     measured.newInputFileExceptionSupplier =
         Optional.of(() -> new RuntimeException("metadata should be served from the cache"));
     Assertions.assertThat(cachingCatalog.newTableOps(TABLE).current().properties())

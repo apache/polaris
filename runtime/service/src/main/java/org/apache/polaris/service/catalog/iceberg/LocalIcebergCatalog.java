@@ -1864,17 +1864,16 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               // TODO: Once we have the "current" table properties pulled into the
               // resolvedEntity then we should use the actual current table properties
               // for IO refresh here instead of the general tableDefaultProperties.
-              // Storage access is resolved and validated on every refresh; the metadata cache
-              // only replaces the object-storage read of the immutable document.
-              FileIO refreshFileIO =
-                  loadFileIOForTableLike(
-                      tableIdentifier,
-                      Set.of(metadataLocationDir),
-                      resolvedEntities,
-                      new HashMap<>(tableDefaultProperties),
-                      Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+              // Storage access is resolved only on a metadata cache miss.
               return tableMetadataCache.getOrLoadMetadata(
-                  metadataCacheKey(metadataLocation, resolvedEntities), refreshFileIO);
+                  metadataCacheKey(metadataLocation, resolvedEntities),
+                  () ->
+                      loadFileIOForTableLike(
+                          tableIdentifier,
+                          Set.of(metadataLocationDir),
+                          resolvedEntities,
+                          new HashMap<>(tableDefaultProperties),
+                          Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST)));
             });
         if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_REFRESH_TABLE)) {
           polarisEventDispatcher.dispatch(
@@ -2724,9 +2723,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
-   * Builds the cache key from the catalog entity in the resolved path that also produced the {@link
-   * FileIO} for the document, so a concurrent catalog update cannot pair a fresh storage binding
-   * with a key of the previous one.
+   * Builds the cache key from the resolved path that also produces the {@link FileIO} for the
+   * document, so a concurrent entity update cannot pair a fresh storage binding with a key of the
+   * previous one.
    */
   private TableMetadataCache.Key metadataCacheKey(
       String metadataLocation, PolarisResolvedPathWrapper resolvedStoragePath) {
@@ -2740,6 +2739,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         callContext.getRealmContext().getRealmIdentifier(),
         getCatalogId(),
         resolvedCatalogEntity.getEntityVersion(),
+        PolarisStorageConfigurationInfo.findStorageConfigFromHierarchy(
+                resolvedStoragePath.getRawFullPath())
+            .orElse(null),
         metadataLocation);
   }
 
