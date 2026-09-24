@@ -18,11 +18,22 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import java.util.OptionalLong;
+
 /** Test configuration for {@link TableMetadataCache}. */
-public record TestTableMetadataCacheConfiguration(long maxBytes, long maxContentLength)
+public record TestTableMetadataCacheConfiguration(OptionalLong maxBytes, long maxContentLength)
     implements TableMetadataCacheConfiguration {
 
   private static final long DEFAULT_MAX_CONTENT_LENGTH = 8 * 1024 * 1024;
+
+  public TestTableMetadataCacheConfiguration(long maxBytes, long maxContentLength) {
+    this(OptionalLong.of(maxBytes), maxContentLength);
+  }
+
+  public static TestTableMetadataCacheConfiguration defaults() {
+    return new TestTableMetadataCacheConfiguration(
+        OptionalLong.empty(), DEFAULT_MAX_CONTENT_LENGTH);
+  }
 
   public static TestTableMetadataCacheConfiguration disabled() {
     return new TestTableMetadataCacheConfiguration(0, DEFAULT_MAX_CONTENT_LENGTH);

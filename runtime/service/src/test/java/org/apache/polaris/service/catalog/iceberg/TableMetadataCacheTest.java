@@ -151,6 +151,18 @@ public class TableMetadataCacheTest {
   }
 
   @Test
+  public void testDefaultBudgetIsShareOfMaxHeap() {
+    Assertions.assertThat(TableMetadataCache.defaultMaxBytes(1000L * 1024 * 1024))
+        .isEqualTo(50L * 1024 * 1024);
+    TableMetadataCache cache =
+        new TableMetadataCache(TestTableMetadataCacheConfiguration.defaults());
+    Assertions.assertThat(cache.isEnabled()).isTrue();
+    cache.getOrLoad(key(1), this::countingFileIO);
+    cache.getOrLoad(key(1), this::countingFileIO);
+    Assertions.assertThat(storageReads).hasValue(1);
+  }
+
+  @Test
   public void testZeroBudgetDisablesCaching() {
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.disabled());

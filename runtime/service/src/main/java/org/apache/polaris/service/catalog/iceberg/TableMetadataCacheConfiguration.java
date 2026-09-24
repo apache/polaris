@@ -22,6 +22,7 @@ import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
 import jakarta.validation.constraints.Min;
+import java.util.OptionalLong;
 
 /**
  * Configuration for the process-wide cache of table metadata JSON documents, keyed by realm,
@@ -33,14 +34,13 @@ public interface TableMetadataCacheConfiguration {
 
   /**
    * Approximate upper bound on the heap used by cached table metadata JSON documents, in bytes,
-   * including an estimate of per-entry overhead. Eviction may briefly lag writes, so budget this
-   * cache with headroom alongside the other in-memory caches (such as the entity cache). Zero
-   * disables caching.
+   * including an estimate of per-entry overhead. Defaults to 5% of the maximum heap size. Eviction
+   * may briefly lag writes, so budget this cache with headroom alongside the other in-memory caches
+   * (such as the entity cache). Zero disables caching.
    */
   @WithName("max-bytes")
-  @WithDefault("134217728")
   @Min(0)
-  long maxBytes();
+  OptionalLong maxBytes();
 
   /**
    * Largest table metadata JSON document admitted into the cache, in bytes. Larger documents are

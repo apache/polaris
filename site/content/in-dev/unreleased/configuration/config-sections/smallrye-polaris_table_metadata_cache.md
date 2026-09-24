@@ -27,5 +27,5 @@ Configuration for the process-wide cache of table metadata JSON documents, keyed
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.table-metadata-cache.max-bytes` | `134217728` | `long` | Approximate upper bound on the heap used by cached table metadata JSON documents, in bytes,  including an estimate of per-entry overhead.  Eviction may briefly lag writes, so budget this  cache with headroom alongside the other in-memory caches (such as the entity cache). Zero  disables caching.  |
+| `polaris.table-metadata-cache.max-bytes` |  | `long` | Approximate upper bound on the heap used by cached table metadata JSON documents, in bytes,  including an estimate of per-entry overhead.  Defaults to 5% of the maximum heap size. Eviction  may briefly lag writes, so budget this cache with headroom alongside the other in-memory caches  (such as the entity cache). Zero disables caching.  |
 | `polaris.table-metadata-cache.max-content-length` | `8388608` | `long` | Largest table metadata JSON document admitted into the cache, in bytes. Larger documents are  always read from storage so that a single oversized document does not evict the working set of  ordinary-sized documents.  |

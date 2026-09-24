@@ -68,6 +68,9 @@ public class TableMetadataCache {
 
   private static final Duration EXPIRE_AFTER_ACCESS = Duration.ofHours(1);
 
+  /** Percentage of the maximum heap size the cache uses when no budget is configured. */
+  private static final long DEFAULT_MAX_HEAP_PERCENTAGE = 5;
+
   /** Estimated heap cost of a cache entry beyond its strings: map node and key record. */
   private static final int ENTRY_OVERHEAD_BYTES = 64;
 
@@ -80,17 +83,24 @@ public class TableMetadataCache {
 
   @Inject
   public TableMetadataCache(TableMetadataCacheConfiguration configuration) {
-    this.enabled = configuration.maxBytes() > 0;
+    long maxBytes =
+        configuration.maxBytes().orElseGet(() -> defaultMaxBytes(Runtime.getRuntime().maxMemory()));
+    this.enabled = maxBytes > 0;
     this.maxContentLength = configuration.maxContentLength();
     this.metadataJsonByLocation =
         Caffeine.newBuilder()
-            .maximumWeight(configuration.maxBytes())
+            .maximumWeight(maxBytes)
             .weigher(TableMetadataCache::estimatedEntryHeapBytes)
             // Run maintenance on the writing threads so eviction keeps up with inserts instead of
             // waiting for an executor, keeping the overshoot past the budget small.
             .executor(Runnable::run)
             .expireAfterAccess(EXPIRE_AFTER_ACCESS)
             .build();
+  }
+
+  @VisibleForTesting
+  static long defaultMaxBytes(long maxHeapBytes) {
+    return maxHeapBytes / 100 * DEFAULT_MAX_HEAP_PERCENTAGE;
   }
 
   private static int estimatedEntryHeapBytes(Key key, String metadataJson) {
