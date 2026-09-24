@@ -60,6 +60,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -127,7 +129,6 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -149,7 +150,6 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -468,6 +468,20 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
       PolarisMetaStoreManager metaStoreManager,
       FileIOFactory fileIOFactory,
       TableMetadataCache tableMetadataCache) {
+    return newIcebergCatalog(
+        catalogName,
+        metaStoreManager,
+        fileIOFactory,
+        tableMetadataCache,
+        storageAccessConfigProvider);
+  }
+
+  protected LocalIcebergCatalog newIcebergCatalog(
+      String catalogName,
+      PolarisMetaStoreManager metaStoreManager,
+      FileIOFactory fileIOFactory,
+      TableMetadataCache tableMetadataCache,
+      StorageAccessConfigProvider storageAccessConfigProvider) {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, authenticatedRoot, catalogName);
@@ -3211,136 +3225,92 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
-  public void testRefreshKeysMetadataCacheByResolvedCatalogVersion() {
+  public void testRefreshKeysMetadataCacheByTableDefaultProperties() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
         "Only applicable if namespaces must be created before adding children");
 
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
-    MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
     LocalIcebergCatalog cachingCatalog =
-        newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured, cache);
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, new MeasuredFileIOFactory(), cache);
     cachingCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
     cachingCatalog.createNamespace(NS);
     cachingCatalog.buildTable(TABLE, SCHEMA).create();
-    long staleCatalogVersion = catalogEntity.getEntityVersion();
-    TableMetadata committed = cachingCatalog.newTableOps(TABLE).current();
-    String metadataLocation = committed.metadataFileLocation();
 
-    // Update the catalog after the catalog instance resolved its entity.
-    CatalogEntity.Builder updatedCatalog =
-        new CatalogEntity.Builder(CatalogEntity.of(catalogEntity));
-    updatedCatalog.addProperty("metadata-cache-test", "updated");
-    EntityResult updateResult =
-        metaStoreManager.updateEntityPropertiesIfNotChanged(
-            polarisContext, List.of(PolarisEntity.toCore(catalogEntity)), updatedCatalog.build());
-    Assertions.assertThat(updateResult).returns(true, EntityResult::isSuccess);
-    catalogEntity = PolarisEntity.of(updateResult.getEntity());
-    long updatedCatalogVersion = catalogEntity.getEntityVersion();
-    Assertions.assertThat(updatedCatalogVersion).isGreaterThan(staleCatalogVersion);
+    // A catalog instance with other table defaults reads the document from storage.
+    MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
+    LocalIcebergCatalog otherDefaultsCatalog =
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured, cache);
+    otherDefaultsCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL,
+            "org.apache.iceberg.inmemory.InMemoryFileIO",
+            CatalogProperties.TABLE_DEFAULT_PREFIX + "metadata-cache-test",
+            "other"));
+    Assertions.assertThat(otherDefaultsCatalog.newTableOps(TABLE).current()).isNotNull();
+    Assertions.assertThat(measured.getInputBytes()).isPositive();
 
-    // A document cached under the previous catalog version must not be served after the update.
-    String realmId = polarisContext.getRealmContext().getRealmIdentifier();
-    TableMetadata poisoned =
-        TableMetadata.buildFrom(committed).setProperties(Map.of("poisoned", "true")).build();
-    cache.put(
-        new TableMetadataCache.Key(
-            realmId,
-            catalogEntity.getId(),
-            staleCatalogVersion,
-            PolarisStorageConfigurationInfo.extractStorageConfigFromEntity(catalogEntity)
-                .orElseThrow(),
-            metadataLocation),
-        TableMetadataParser.toJson(poisoned));
-
-    TableMetadata refreshed = cachingCatalog.newTableOps(TABLE).current();
-    Assertions.assertThat(refreshed.properties()).doesNotContainKey("poisoned");
-
-    // The refresh cached the document under the updated catalog version.
+    // The refresh cached the document under the other table defaults.
     measured.newInputFileExceptionSupplier =
         Optional.of(() -> new RuntimeException("metadata should be served from the cache"));
-    Assertions.assertThat(cachingCatalog.newTableOps(TABLE).current().properties())
-        .doesNotContainKey("poisoned");
+    Assertions.assertThat(otherDefaultsCatalog.newTableOps(TABLE).current()).isNotNull();
 
     measured.newInputFileExceptionSupplier = Optional.empty();
     cachingCatalog.dropTable(TABLE, true);
   }
 
   @Test
-  public void testRefreshKeysMetadataCacheByNamespaceStorageConfiguration() {
+  public void testRefreshKeysMetadataCacheByStorageAccessProperties() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
         "Only applicable if namespaces must be created before adding children");
 
+    // Every vend returns fresh credentials alongside the current region.
+    AtomicInteger vends = new AtomicInteger();
+    AtomicReference<String> region = new AtomicReference<>("us-west-2");
+    StorageAccessConfigProvider vendingProvider = mock(StorageAccessConfigProvider.class);
+    when(vendingProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
+        .thenAnswer(
+            invocation ->
+                StorageAccessConfig.builder()
+                    .put(StorageAccessProperty.AWS_KEY_ID, "key-" + vends.incrementAndGet())
+                    .put(StorageAccessProperty.CLIENT_REGION, region.get())
+                    .build());
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
     MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
     LocalIcebergCatalog cachingCatalog =
-        newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured, cache);
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured, cache, vendingProvider);
     cachingCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
     cachingCatalog.createNamespace(NS);
     cachingCatalog.buildTable(TABLE, SCHEMA).create();
-    TableMetadata committed = cachingCatalog.newTableOps(TABLE).current();
-    String metadataLocation = committed.metadataFileLocation();
 
-    // Bind the namespace to its own storage configuration.
-    AwsStorageConfigurationInfo catalogStorageConfiguration =
-        (AwsStorageConfigurationInfo)
-            PolarisStorageConfigurationInfo.extractStorageConfigFromEntity(catalogEntity)
-                .orElseThrow();
-    AwsStorageConfigurationInfo namespaceStorageConfiguration =
-        AwsStorageConfigurationInfo.builder()
-            .from(catalogStorageConfiguration)
-            .roleARN("arn:aws:iam::012345678901:role/namespace")
-            .build();
-    EntityResult namespaceResult =
-        metaStoreManager.readEntityByName(
-            polarisContext,
-            List.of(catalogEntity),
-            PolarisEntityType.NAMESPACE,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            NS.toString());
-    Assertions.assertThat(namespaceResult).returns(true, EntityResult::isSuccess);
-    PolarisEntity updatedNamespace =
-        new PolarisEntity.Builder(PolarisEntity.of(namespaceResult.getEntity()))
-            .addInternalProperty(
-                PolarisEntityConstants.getStorageConfigInfoPropertyName(),
-                namespaceStorageConfiguration.serialize())
-            .build();
-    EntityResult updateResult =
-        metaStoreManager.updateEntityPropertiesIfNotChanged(
-            polarisContext, List.of(PolarisEntity.toCore(catalogEntity)), updatedNamespace);
-    Assertions.assertThat(updateResult).returns(true, EntityResult::isSuccess);
-
-    // A document cached under the catalog's storage configuration must not be served for a table
-    // whose namespace now carries its own.
-    String realmId = polarisContext.getRealmContext().getRealmIdentifier();
-    TableMetadata poisoned =
-        TableMetadata.buildFrom(committed).setProperties(Map.of("poisoned", "true")).build();
-    cache.put(
-        new TableMetadataCache.Key(
-            realmId,
-            catalogEntity.getId(),
-            catalogEntity.getEntityVersion(),
-            catalogStorageConfiguration,
-            metadataLocation),
-        TableMetadataParser.toJson(poisoned));
-
-    TableMetadata refreshed = cachingCatalog.newTableOps(TABLE).current();
-    Assertions.assertThat(refreshed.properties()).doesNotContainKey("poisoned");
-
-    // The refresh cached the document under the namespace's storage configuration.
+    // The commit seeded the cache, so a refresh with fresh credentials reads nothing.
     measured.newInputFileExceptionSupplier =
         Optional.of(() -> new RuntimeException("metadata should be served from the cache"));
-    Assertions.assertThat(cachingCatalog.newTableOps(TABLE).current().properties())
-        .doesNotContainKey("poisoned");
+    int vendsAfterCommit = vends.get();
+    Assertions.assertThat(cachingCatalog.newTableOps(TABLE).current()).isNotNull();
+    Assertions.assertThat(vends).hasValueGreaterThan(vendsAfterCommit);
+
+    // Storage access in another region reads the document from storage.
+    measured.newInputFileExceptionSupplier = Optional.empty();
+    region.set("eu-west-1");
+    long inputBytesBeforeRefresh = measured.getInputBytes();
+    Assertions.assertThat(cachingCatalog.newTableOps(TABLE).current()).isNotNull();
+    Assertions.assertThat(measured.getInputBytes()).isGreaterThan(inputBytesBeforeRefresh);
+
+    // The refresh cached the document under the other region.
+    measured.newInputFileExceptionSupplier =
+        Optional.of(() -> new RuntimeException("metadata should be served from the cache"));
+    Assertions.assertThat(cachingCatalog.newTableOps(TABLE).current()).isNotNull();
 
     measured.newInputFileExceptionSupplier = Optional.empty();
     cachingCatalog.dropTable(TABLE, true);

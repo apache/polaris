@@ -19,13 +19,14 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
-import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -33,8 +34,9 @@ public class TableMetadataCacheTest {
 
   private static final String LOCATION = "memory://bucket/metadata/00000-abc.metadata.json";
   private static final String METADATA_JSON = "{\"format-version\":2}";
-  private static final PolarisStorageConfigurationInfo STORAGE_CONFIGURATION =
-      FileStorageConfigurationInfo.builder().addAllowedLocations("file:///bucket").build();
+  private static final String IO_IMPL = InMemoryFileIO.class.getName();
+  private static final StorageAccessConfig STORAGE_ACCESS_CONFIG =
+      StorageAccessConfig.builder().put(StorageAccessProperty.CLIENT_REGION, "us-west-2").build();
 
   private final AtomicInteger fileIOLoads = new AtomicInteger();
   private final AtomicInteger storageReads = new AtomicInteger();
@@ -54,13 +56,23 @@ public class TableMetadataCacheTest {
   }
 
   private static TableMetadataCache.Key key(long catalogId) {
-    return key(catalogId, 1, STORAGE_CONFIGURATION);
+    return key(IO_IMPL, Map.of(), STORAGE_ACCESS_CONFIG, catalogId);
   }
 
   private static TableMetadataCache.Key key(
-      long catalogId, long catalogVersion, PolarisStorageConfigurationInfo storageConfiguration) {
+      String ioImplClassName,
+      Map<String, String> tableProperties,
+      StorageAccessConfig storageAccessConfig) {
+    return key(ioImplClassName, tableProperties, storageAccessConfig, 1);
+  }
+
+  private static TableMetadataCache.Key key(
+      String ioImplClassName,
+      Map<String, String> tableProperties,
+      StorageAccessConfig storageAccessConfig,
+      long catalogId) {
     return new TableMetadataCache.Key(
-        "realm", catalogId, catalogVersion, storageConfiguration, LOCATION);
+        "realm", catalogId, ioImplClassName, tableProperties, storageAccessConfig, LOCATION);
   }
 
   @Test
@@ -84,34 +96,49 @@ public class TableMetadataCacheTest {
   }
 
   @Test
-  public void testEntriesScopedByCatalogVersion() {
+  public void testEntriesScopedByFileIOImplementationAndTableProperties() {
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
-    cache.getOrLoad(key(1, 1, STORAGE_CONFIGURATION), this::countingFileIO);
-    cache.getOrLoad(key(1, 2, STORAGE_CONFIGURATION), this::countingFileIO);
-    Assertions.assertThat(storageReads).hasValue(2);
-  }
-
-  @Test
-  public void testEntriesScopedByStorageConfiguration() {
-    TableMetadataCache cache =
-        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
-    PolarisStorageConfigurationInfo otherStorageConfiguration =
-        FileStorageConfigurationInfo.builder().addAllowedLocations("file:///other").build();
-    cache.getOrLoad(key(1, 1, STORAGE_CONFIGURATION), this::countingFileIO);
-    cache.getOrLoad(key(1, 1, otherStorageConfiguration), this::countingFileIO);
-    cache.getOrLoad(key(1, 1, null), this::countingFileIO);
+    cache.getOrLoad(key(IO_IMPL, Map.of(), STORAGE_ACCESS_CONFIG), this::countingFileIO);
+    cache.getOrLoad(
+        key("org.example.OtherFileIO", Map.of(), STORAGE_ACCESS_CONFIG), this::countingFileIO);
+    cache.getOrLoad(
+        key(IO_IMPL, Map.of("s3.acl", "private"), STORAGE_ACCESS_CONFIG), this::countingFileIO);
     Assertions.assertThat(storageReads).hasValue(3);
   }
 
   @Test
-  public void testEqualStorageConfigurationsShareEntry() {
+  public void testEntriesScopedByStorageAccessProperties() {
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
-    PolarisStorageConfigurationInfo equalStorageConfiguration =
-        PolarisStorageConfigurationInfo.deserialize(STORAGE_CONFIGURATION.serialize());
-    cache.getOrLoad(key(1, 1, STORAGE_CONFIGURATION), this::countingFileIO);
-    cache.getOrLoad(key(1, 1, equalStorageConfiguration), this::countingFileIO);
+    StorageAccessConfig otherRegion =
+        StorageAccessConfig.builder().put(StorageAccessProperty.CLIENT_REGION, "eu-west-1").build();
+    StorageAccessConfig internalEndpoint =
+        StorageAccessConfig.builder()
+            .put(StorageAccessProperty.CLIENT_REGION, "us-west-2")
+            .putInternalProperty(
+                StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), "http://internal:9000")
+            .build();
+    cache.getOrLoad(key(IO_IMPL, Map.of(), STORAGE_ACCESS_CONFIG), this::countingFileIO);
+    cache.getOrLoad(key(IO_IMPL, Map.of(), otherRegion), this::countingFileIO);
+    cache.getOrLoad(key(IO_IMPL, Map.of(), internalEndpoint), this::countingFileIO);
+    Assertions.assertThat(storageReads).hasValue(3);
+  }
+
+  @Test
+  public void testCredentialsDoNotScopeEntries() {
+    TableMetadataCache cache =
+        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
+    StorageAccessConfig vendedAgain =
+        StorageAccessConfig.builder()
+            .put(StorageAccessProperty.CLIENT_REGION, "us-west-2")
+            .put(StorageAccessProperty.AWS_KEY_ID, "key-id")
+            .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
+            .put(StorageAccessProperty.AWS_TOKEN, "token")
+            .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, "1000")
+            .build();
+    cache.getOrLoad(key(IO_IMPL, Map.of(), STORAGE_ACCESS_CONFIG), this::countingFileIO);
+    cache.getOrLoad(key(IO_IMPL, Map.of(), vendedAgain), this::countingFileIO);
     Assertions.assertThat(storageReads).hasValue(1);
   }
 
@@ -126,7 +153,8 @@ public class TableMetadataCacheTest {
     Assertions.assertThatThrownBy(
             () ->
                 cache.getOrLoad(
-                    new TableMetadataCache.Key("realm", 1, 1, STORAGE_CONFIGURATION, gzipLocation),
+                    new TableMetadataCache.Key(
+                        "realm", 1, IO_IMPL, Map.of(), STORAGE_ACCESS_CONFIG, gzipLocation),
                     () -> fileIO))
         .isInstanceOf(RuntimeIOException.class);
   }

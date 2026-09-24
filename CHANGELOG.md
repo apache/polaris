@@ -100,8 +100,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
 - Table metadata JSON documents are now cached in memory by metadata file location, avoiding an
-  object-storage read per table refresh. Storage access is resolved only on a cache miss. The
-  approximate heap budget is configurable via `polaris.table-metadata-cache.max-bytes` (default
+  object-storage read per table refresh. The approximate heap budget is configurable via `polaris.table-metadata-cache.max-bytes` (default
   5% of the maximum heap size, `0` disables caching) and documents
   larger than `polaris.table-metadata-cache.max-content-length` (default 8 MiB) are not cached.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.

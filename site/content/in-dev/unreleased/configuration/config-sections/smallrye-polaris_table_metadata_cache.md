@@ -23,7 +23,7 @@ build:
   render: never
 ---
 
-Configuration for the process-wide cache of table metadata JSON documents, keyed by realm,  catalog ID, catalog version, storage configuration, and metadata file location.  Metadata files  are immutable, so cached entries never go stale.
+Configuration for the process-wide cache of table metadata JSON documents, keyed by realm,  catalog ID, the non-credential FileIO inputs, and metadata file location. Metadata files are  immutable, so cached entries never go stale.
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|

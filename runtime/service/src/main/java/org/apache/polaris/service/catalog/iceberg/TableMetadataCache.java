@@ -28,6 +28,8 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.zip.GZIPInputStream;
 import org.apache.iceberg.TableMetadata;
@@ -35,14 +37,15 @@ import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.ImmutableStorageAccessConfig;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Process-wide cache of table metadata JSON documents keyed by realm, catalog, catalog version,
- * storage configuration and metadata file location. Metadata files are immutable once written, so
- * an entry never becomes stale and the location acts as a content address. Storage access is
- * resolved only on a miss, since a hit reads nothing from object storage. The raw JSON is cached
+ * Process-wide cache of table metadata JSON documents keyed by realm, catalog, the non-credential
+ * {@link FileIO} inputs and metadata file location. Metadata files are immutable once written, so
+ * an entry never becomes stale and the location acts as a content address. The {@link FileIO} is
+ * built only on a miss, since a hit reads nothing from object storage. The raw JSON is cached
  * rather than parsed {@link org.apache.iceberg.TableMetadata} objects because {@code TableMetadata}
  * lazily materializes some fields and is not safe to share across request threads, and raw
  * documents allow bounding the cache by size. Entry weights estimate heap usage (UTF-16 characters
@@ -54,17 +57,23 @@ public class TableMetadataCache {
 
   /**
    * Scopes a metadata document to the realm and catalog that is allowed to read it, and to the
-   * inputs of the {@link FileIO} that reads it. The storage configuration is the one resolved from
-   * the nearest entity in the table's path, so a binding on the catalog, a namespace or the table
-   * yields its own key. The catalog version covers the catalog properties that also configure the
-   * {@link FileIO}.
+   * inputs of the {@link FileIO} that reads it. Credentials and their expiry change on every vend,
+   * so the key keeps only the remaining storage access properties.
    */
   public record Key(
       String realmId,
       long catalogId,
-      long catalogVersion,
-      @Nullable PolarisStorageConfigurationInfo storageConfiguration,
-      String metadataLocation) {}
+      @Nullable String ioImplClassName,
+      Map<String, String> tableProperties,
+      StorageAccessConfig storageAccessConfig,
+      String metadataLocation) {
+    public Key {
+      storageAccessConfig =
+          ImmutableStorageAccessConfig.copyOf(storageAccessConfig)
+              .withCredentials(Map.of())
+              .withExpiresAt(Optional.empty());
+    }
+  }
 
   private static final Duration EXPIRE_AFTER_ACCESS = Duration.ofHours(1);
 
@@ -107,11 +116,13 @@ public class TableMetadataCache {
     long bytes =
         ENTRY_OVERHEAD_BYTES
             + estimatedSizeOf(key.realmId())
+            + estimatedSizeOf(key.tableProperties())
+            + estimatedSizeOf(key.storageAccessConfig().extraProperties())
+            + estimatedSizeOf(key.storageAccessConfig().internalProperties())
             + estimatedSizeOf(key.metadataLocation())
             + estimatedSizeOf(metadataJson);
-    if (key.storageConfiguration() != null) {
-      // The serialized form approximates the heap held by the configuration's fields.
-      bytes += estimatedSizeOf(key.storageConfiguration().serialize());
+    if (key.ioImplClassName() != null) {
+      bytes += estimatedSizeOf(key.ioImplClassName());
     }
     return (int) Math.min(bytes, Integer.MAX_VALUE);
   }
@@ -119,6 +130,15 @@ public class TableMetadataCache {
   /** Estimated heap size of a string: instance overhead plus two bytes per UTF-16 code unit. */
   private static long estimatedSizeOf(String value) {
     return STRING_INSTANCE_SIZE + (long) value.length() * Character.BYTES;
+  }
+
+  /** Estimated heap size of a map's keys and values. */
+  private static long estimatedSizeOf(Map<String, String> properties) {
+    long bytes = 0;
+    for (Map.Entry<String, String> entry : properties.entrySet()) {
+      bytes += estimatedSizeOf(entry.getKey()) + estimatedSizeOf(entry.getValue());
+    }
+    return bytes;
   }
 
   public boolean isEnabled() {

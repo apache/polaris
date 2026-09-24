@@ -1864,16 +1864,17 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               // TODO: Once we have the "current" table properties pulled into the
               // resolvedEntity then we should use the actual current table properties
               // for IO refresh here instead of the general tableDefaultProperties.
-              // Storage access is resolved only on a metadata cache miss.
+              StorageAccessConfig storageAccessConfig =
+                  storageAccessConfigProvider.getStorageAccessConfig(
+                      tableIdentifier,
+                      Set.of(metadataLocationDir),
+                      Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST),
+                      Optional.empty(),
+                      resolvedEntities);
+              // The FileIO is built only on a metadata cache miss.
               return tableMetadataCache.getOrLoadMetadata(
-                  metadataCacheKey(metadataLocation, resolvedEntities),
-                  () ->
-                      loadFileIOForTableLike(
-                          tableIdentifier,
-                          Set.of(metadataLocationDir),
-                          resolvedEntities,
-                          new HashMap<>(tableDefaultProperties),
-                          Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST)));
+                  metadataCacheKey(metadataLocation, storageAccessConfig),
+                  () -> loadFileIO(storageAccessConfig, new HashMap<>(tableDefaultProperties)));
             });
         if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_REFRESH_TABLE)) {
           polarisEventDispatcher.dispatch(
@@ -1981,16 +1982,17 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             tableIdentifier, metadata.location(), nextMetadataFileLocation(metadata));
       }
 
-      tableFileIO =
-          loadFileIOForTableLike(
+      StorageAccessConfig storageAccessConfig =
+          storageAccessConfigProvider.getStorageAccessConfig(
               tableIdentifier,
               requestedLocations,
-              resolvedStorageEntity,
-              new HashMap<>(metadata.properties()),
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
-                  PolarisStorageActions.LIST));
+                  PolarisStorageActions.LIST),
+              Optional.empty(),
+              resolvedStorageEntity);
+      tableFileIO = loadFileIO(storageAccessConfig, new HashMap<>(metadata.properties()));
 
       // Detect a lost race against the current entity before paying for the metadata write.
       // The metastore-level CAS in createTableLike/updateTableLike still guards the window
@@ -2076,7 +2078,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         if (tableMetadataCache.isEnabled()) {
           try {
             tableMetadataCache.put(
-                metadataCacheKey(newLocation, resolvedStorageEntity),
+                metadataCacheKey(newLocation, storageAccessConfig),
                 TableMetadataParser.toJson(committedMetadata));
           } catch (RuntimeException e) {
             LOGGER.warn("Failed to populate table metadata cache for {}", newLocation, e);
@@ -2697,6 +2699,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     StorageAccessConfig storageAccessConfig =
         storageAccessConfigProvider.getStorageAccessConfig(
             identifier, readLocations, storageActions, Optional.empty(), resolvedStorageEntity);
+    return loadFileIO(storageAccessConfig, tableProperties);
+  }
+
+  private FileIO loadFileIO(
+      StorageAccessConfig storageAccessConfig, Map<String, String> tableProperties) {
     // Reload fileIO based on table specific context
     FileIO fileIO = fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, tableProperties);
     // ensure the new fileIO is closed when the catalog is closed
@@ -2723,25 +2730,18 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
-   * Builds the cache key from the resolved path that also produces the {@link FileIO} for the
-   * document, so a concurrent entity update cannot pair a fresh storage binding with a key of the
-   * previous one.
+   * Keys a metadata document by the {@link FileIO} inputs a refresh reads it with. Storage access
+   * properties other than credentials derive from the storage configuration alone, so a commit's
+   * vended access yields the same key as a refresh's.
    */
   private TableMetadataCache.Key metadataCacheKey(
-      String metadataLocation, PolarisResolvedPathWrapper resolvedStoragePath) {
-    PolarisEntity resolvedCatalogEntity = resolvedStoragePath.getRawFullPath().get(0);
-    diagnostics.check(
-        resolvedCatalogEntity.getType() == PolarisEntityType.CATALOG,
-        "resolved_path_must_start_with_catalog",
-        "entity={}",
-        resolvedCatalogEntity);
+      String metadataLocation, StorageAccessConfig storageAccessConfig) {
     return new TableMetadataCache.Key(
         callContext.getRealmContext().getRealmIdentifier(),
         getCatalogId(),
-        resolvedCatalogEntity.getEntityVersion(),
-        PolarisStorageConfigurationInfo.findStorageConfigFromHierarchy(
-                resolvedStoragePath.getRawFullPath())
-            .orElse(null),
+        ioImplClassName,
+        tableDefaultProperties,
+        storageAccessConfig,
         metadataLocation);
   }
 
