@@ -89,6 +89,14 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ALLOW_CROSS_ACCOUNT_KMS_KEYS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_CROSS_ACCOUNT_KMS_KEYS")
+          .description(
+              "If set to true, allow AWS credential vending for S3 buckets whose SSE-KMS keys are owned by a different account.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   /**
    * The set of fields that are supported as AWS STS session tag labels in credential vending.
    *
