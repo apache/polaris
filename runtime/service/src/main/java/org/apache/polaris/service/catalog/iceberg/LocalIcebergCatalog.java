@@ -574,10 +574,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   }
                   Map<String, String> clone = new HashMap<>();
 
-                  // The user-configurable table properties are the baseline, but then override
-                  // with our restricted properties so that table properties can't clobber the
-                  // more restricted ones.
-                  clone.putAll(lastMetadata.properties());
+                  // Do not copy Iceberg table metadata properties into the purge task: those may
+                  // include caller-controlled FileIO client settings (for example s3.endpoint).
+                  // Server FileIO is built from AccessConfig; the task only needs storage-entity
+                  // internals, io-impl, and the storage location.
                   clone.put(CatalogProperties.FILE_IO_IMPL, ioImplClassName);
                   clone.putAll(properties);
                   clone.put(PolarisTaskConstants.STORAGE_LOCATION, lastMetadata.location());
@@ -1142,7 +1142,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         lastMetadata = currentMetadata;
 
         Map<String, String> clone = new HashMap<>();
-        clone.putAll(lastMetadata.properties());
+        // Do not copy view metadata properties into the purge task (same as table drop).
         clone.put(CatalogProperties.FILE_IO_IMPL, ioImplClassName);
 
         PolarisResolvedPathWrapper resolvedViewEntities =
@@ -1986,12 +1986,15 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             tableIdentifier, metadata.location(), nextMetadataFileLocation(metadata));
       }
 
+      // Use catalog table-default.* / server context only — not metadata.properties(), which can
+      // carry caller-controlled FileIO client settings (for example s3.endpoint).
+      // DefaultFileIOFactory copies this map before mutating, so no defensive copy here.
       tableFileIO =
           loadFileIOForTableLike(
               tableIdentifier,
               requestedLocations,
               resolvedStorageEntity,
-              new HashMap<>(metadata.properties()),
+              tableDefaultProperties,
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
@@ -2438,14 +2441,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             resolvedStorageEntity.getRawLeafEntity());
       }
 
-      Map<String, String> tableProperties = new HashMap<>(metadata.properties());
-
+      // Catalog table-default.* only — not metadata.properties() (caller-controlled FileIO keys).
+      // DefaultFileIOFactory copies this map before mutating, so no defensive copy here.
       viewFileIO =
           loadFileIOForTableLike(
               identifier,
               StorageUtil.getLocationsUsedByTable(metadata),
               resolvedStorageEntity,
-              tableProperties,
+              tableDefaultProperties,
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));
 
       MetadataWriteResult writeResult = writeNewMetadataIfRequired(metadata);
@@ -2678,17 +2681,24 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION, resolvedCatalogEntity);
   }
 
+  /**
+   * Builds server-side FileIO for a table-like entity.
+   *
+   * @param fileIOContextProperties catalog-trusted FileIO context (for example {@code
+   *     table-default.*}). Must not be table {@code metadata.properties()}, which can include
+   *     caller-controlled FileIO client settings such as {@code s3.endpoint}.
+   */
   private FileIO loadFileIOForTableLike(
       TableIdentifier identifier,
       Set<String> readLocations,
       PolarisResolvedPathWrapper resolvedStorageEntity,
-      Map<String, String> tableProperties,
+      Map<String, String> fileIOContextProperties,
       Set<PolarisStorageActions> storageActions) {
     StorageAccessConfig storageAccessConfig =
         storageAccessConfigProvider.getStorageAccessConfig(
             identifier, readLocations, storageActions, Optional.empty(), resolvedStorageEntity);
-    // Reload fileIO based on table specific context
-    FileIO fileIO = fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, tableProperties);
+    FileIO fileIO =
+        fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, fileIOContextProperties);
     // ensure the new fileIO is closed when the catalog is closed
     closeableGroup.addCloseable(fileIO);
     return fileIO;

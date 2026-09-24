@@ -32,15 +32,20 @@ import org.jspecify.annotations.NonNull;
 public interface FileIOFactory {
 
   /**
-   * Loads a FileIO implementation for a specific table in the given realm with detailed config.
+   * Loads a FileIO implementation for server-side use (metadata read/write, purge).
    *
    * <p>This method may obtain subscoped credentials to restrict the FileIO's permissions, ensuring
    * secure and limited access to the table's data and locations.
    *
+   * <p>{@code storageAccessConfig} is authoritative for credentials and storage-config extras.
+   * {@code properties} may carry catalog-trusted contextual settings (for example {@code
+   * table-default.*}). Callers must not pass table {@code metadata.properties()}, which can include
+   * caller-controlled FileIO client settings such as {@code s3.endpoint}.
+   *
    * @param storageAccessConfig the storage access configuration containing credentials and other
    *     properties.
    * @param ioImplClassName the class name of the FileIO implementation to load.
-   * @param properties configuration properties for the FileIO.
+   * @param properties catalog-trusted contextual properties for the FileIO.
    * @return a configured FileIO instance.
    */
   FileIO loadFileIO(
