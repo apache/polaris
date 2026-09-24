@@ -778,7 +778,8 @@ This product bundles Guava.
 
 * Maven group:artifact IDs: com.google.guava:failureaccess
 * Maven group:artifact IDs: com.google.guava:guava
-* Maven group:artifact IDs: com.google.guava:listenablefuture
+
+The Guava dependency includes its ListenableFuture classes.
 
 Project URL: https://github.com/google/guava
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -996,7 +997,13 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 This product bundles Failsafe.
 
 * Maven group:artifact IDs: dev.failsafe:failsafe
-* Maven group:artifact IDs: net.jodah:failsafe
+
+Project URL: https://failsafe.dev
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product also bundles the earlier Failsafe implementation published by Jodah.
 
 Project URL: https://failsafe.dev
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1324,9 +1331,14 @@ License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 This product bundles Jakarta Servlet API.
 
 * Maven group:artifact IDs: jakarta.servlet:jakarta.servlet-api
-* Maven group:artifact IDs: jakarta.servlet.jsp:jakarta.servlet.jsp-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.servlet
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
+
+--------------------------------------------------------------------------------
+
+This product bundles Jakarta Server Pages API.
+
 Project URL: https://projects.eclipse.org/projects/ee4j.jsp
 License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
@@ -1450,15 +1462,12 @@ This product bundles Apache Hadoop.
 * Maven group:artifact IDs: org.apache.hadoop:hadoop-client-api
 * Maven group:artifact IDs: org.apache.hadoop:hadoop-client-runtime
 * Maven group:artifact IDs: org.apache.hadoop:hadoop-common
-* Maven group:artifact IDs: org.apache.hadoop:hadoop-hdfs-client
-* Maven group:artifact IDs: org.apache.hadoop:hadoop-mapreduce-client-common
-* Maven group:artifact IDs: org.apache.hadoop:hadoop-mapreduce-client-core
-* Maven group:artifact IDs: org.apache.hadoop:hadoop-mapreduce-client-jobclient
-* Maven group:artifact IDs: org.apache.hadoop:hadoop-yarn-api
-* Maven group:artifact IDs: org.apache.hadoop:hadoop-yarn-client
-* Maven group:artifact IDs: org.apache.hadoop:hadoop-yarn-common
 * Maven group:artifact IDs: org.apache.hadoop.thirdparty:hadoop-shaded-guava
-* Maven group:artifact IDs: org.apache.hadoop.thirdparty:hadoop-shaded-protobuf_3_25
+
+The bundled client also contains HDFS client, MapReduce common, core, and job
+client components, and YARN API, client, and common components. It also contains
+shaded Protobuf 3.25 classes, covered by the BSD 3-Clause terms in the Protobuf
+section.
 
 Project URL: https://hadoop.apache.org/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1735,13 +1744,9 @@ This product bundles JBoss (logmanager, transaction, narayana).
 * Maven group:artifact IDs: org.jboss.logging:commons-logging-jboss-logging
 * Maven group:artifact IDs: org.jboss.narayana.jta:narayana-jta
 * Maven group:artifact IDs: org.jboss.narayana.jts:narayana-jts-integration
-* Maven group:artifact IDs: org.jboss.narayana:common
-* Maven group:artifact IDs: org.jboss.narayana.arjunacore:arjuna
-* Maven group:artifact IDs: org.jboss.narayana.arjunacore:txoj
-* Maven group:artifact IDs: org.jboss.narayana.jta:cdi
-* Maven group:artifact IDs: org.jboss.narayana.jta:jdbc
-* Maven group:artifact IDs: org.jboss.narayana.jta:jms
-* Maven group:artifact IDs: org.jboss.narayana.jta:jta
+
+Narayana components also include common, arjuna, txoj, cdi, jdbc, jms, and jta.
+
 * Maven group:artifact IDs: org.jboss.slf4j:slf4j-jboss-logmanager
 * Maven group:artifact IDs: org.jboss.threads:jboss-threads
 * Maven group:artifact IDs: org.wildfly.common:wildfly-common
@@ -2047,8 +2052,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 This product bundles ANTLR 4 Runtime.
 
-* Maven group:artifact IDs: org.antlr:antlr4-runtime
-
 Project URL: https://github.com/antlr/antlr4
 License: BSD 3-Clause
 | Copyright (c) 2012-2022 The ANTLR Project. All rights reserved.
@@ -2082,15 +2085,9 @@ License: BSD 3-Clause
 
 This product bundles JLine3.
 
-* Maven group:artifact IDs: org.jline:jline
-* Maven group:artifact IDs: org.jline:jline-builtins
-* Maven group:artifact IDs: org.jline:jline-reader
-* Maven group:artifact IDs: org.jline:jline-remote-ssh
-* Maven group:artifact IDs: org.jline:jline-remote-telnet
-* Maven group:artifact IDs: org.jline:jline-style
-* Maven group:artifact IDs: org.jline:jline-terminal
-* Maven group:artifact IDs: org.jline:jline-terminal-jansi
-* Maven group:artifact IDs: org.jline:jline-terminal-jna
+
+Includes the JLine command line, reader, builtins, remote SSH and Telnet, style,
+and terminal components.
 
 Project URL: https://github.com/jline/jline3
 License: BSD License
@@ -2122,8 +2119,6 @@ License: BSD License
 
 This product bundles jsch.
 
-* Maven group:artifact IDs: com.jcraft:jsch
-
 Project URL: http://www.jcraft.com/jsch/
 License: Revised BSD License
 | Copyright (c) 2002-2015 Atsuhiko Yamanaka, JCraft,Inc.
@@ -2152,9 +2147,6 @@ License: Revised BSD License
 --------------------------------------------------------------------------------
 
 This product bundles MSV.
-
-* Maven group:artifact IDs: net.java.dev.msv:msv-core
-* Maven group:artifact IDs: net.java.dev.msv:xsdlib
 
 Project URL: https://github.com/xmlark/msv
 License: BSD
@@ -2186,8 +2178,6 @@ License: BSD
 
 This product bundles Relaxng Datatype.
 
-* Maven group:artifact IDs: relaxngDatatype:relaxngDatatype
-
 License: BSD 3-Clause
 | Copyright (c) 2001-2002, SourceForge ISO-RELAX Project.
 | Copyright (c) 2001-2003, Thai Open Source Software Center Ltd.
@@ -2218,8 +2208,6 @@ License: BSD 3-Clause
 
 This product bundles ISO-Relax.
 
-* Maven group:artifact IDs: com.sun.xml.bind.jaxb:isorelax
-
 Project URL: https://sourceforge.net/projects/iso-relax/
 License: CDDL 1.1
 License text: https://glassfish.java.net/public/CDDL+GPL_1_1.html
@@ -2228,16 +2216,12 @@ License text: https://glassfish.java.net/public/CDDL+GPL_1_1.html
 
 This product bundles JCIP Annotations.
 
-* Maven group:artifact IDs: com.github.stephenc.jcip:jcip-annotations
-
 Project URL: https://github.com/stephenc/jcip-annotations
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
 This product bundles Error Prone Annotations.
-
-* Maven group:artifact IDs: com.google.errorprone:error_prone_annotations
 
 Project URL: https://errorprone.info/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -2276,12 +2260,9 @@ This product bundles Jetty libraries.
 * Maven group:artifact IDs: org.eclipse.jetty:jetty-http
 * Maven group:artifact IDs: org.eclipse.jetty:jetty-io
 * Maven group:artifact IDs: org.eclipse.jetty:jetty-util
-* Maven group:artifact IDs: org.eclipse.jetty:jetty-util-ajax
-* Maven group:artifact IDs: org.eclipse.jetty:jetty-webapp
-* Maven group:artifact IDs: org.eclipse.jetty:jetty-xml
-* Maven group:artifact IDs: org.eclipse.jetty.websocket:websocket-api
-* Maven group:artifact IDs: org.eclipse.jetty.websocket:websocket-client
-* Maven group:artifact IDs: org.eclipse.jetty.websocket:websocket-common
+
+Also includes Jetty Util Ajax, WebApp, XML, and WebSocket API, client, and common
+components.
 
 Home page: https://github.com/jetty/jetty.project/
 License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0

@@ -509,9 +509,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 This product bundles MSV.
 
-* Maven group:artifact IDs: net.java.dev.msv:msv-core
-* Maven group:artifact IDs: net.java.dev.msv:xsdlib
-
 Project URL: https://github.com/xmlark/msv
 License: BSD
 | Copyright (c) 2001-2009 Sun Microsystems, Inc. All Rights Reserved.
@@ -520,7 +517,7 @@ License: BSD
 | modification, are permitted provided that the following conditions are met:
 | - Redistributions of source code must retain the above copyright notice,
 | this list of conditions and the following disclaimer.
-| - Redistributions in binary form must reproduce the above copyright notice,
+| - Redistribution in binary form must reproduce the above copyright notice,
 | this list of conditions and the following disclaimer in the documentation
 | and/or other materials provided with the distribution.
 | Neither the name of Sun Microsystems, Inc. nor the names of contributors may
@@ -541,8 +538,6 @@ License: BSD
 --------------------------------------------------------------------------------
 
 This product bundles Relaxng Datatype.
-
-* Maven group:artifact IDs: relaxngDatatype:relaxngDatatype
 
 License: BSD 3-Clause
 | Copyright (c) 2001-2002, SourceForge ISO-RELAX Project.
@@ -573,8 +568,6 @@ License: BSD 3-Clause
 --------------------------------------------------------------------------------
 
 This product bundles ISO-Relax.
-
-* Maven group:artifact IDs: com.sun.xml.bind.jaxb:isorelax
 
 Project URL: https://sourceforge.net/projects/iso-relax/
 License: CDDL 1.1
@@ -791,7 +784,8 @@ This product bundles Guava.
 
 * Maven group:artifact IDs: com.google.guava:failureaccess
 * Maven group:artifact IDs: com.google.guava:guava
-* Maven group:artifact IDs: com.google.guava:listenablefuture
+
+The Guava dependency includes its ListenableFuture classes.
 
 Project URL: https://github.com/google/guava
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1506,13 +1500,9 @@ This product bundles JBoss (logmanager, transaction, narayana).
 * Maven group:artifact IDs: org.jboss.logging:commons-logging-jboss-logging
 * Maven group:artifact IDs: org.jboss.narayana.jta:narayana-jta
 * Maven group:artifact IDs: org.jboss.narayana.jts:narayana-jts-integration
-* Maven group:artifact IDs: org.jboss.narayana:common
-* Maven group:artifact IDs: org.jboss.narayana.arjunacore:arjuna
-* Maven group:artifact IDs: org.jboss.narayana.arjunacore:txoj
-* Maven group:artifact IDs: org.jboss.narayana.jta:cdi
-* Maven group:artifact IDs: org.jboss.narayana.jta:jdbc
-* Maven group:artifact IDs: org.jboss.narayana.jta:jms
-* Maven group:artifact IDs: org.jboss.narayana.jta:jta
+
+Narayana components also include common, arjuna, txoj, cdi, jdbc, jms, and jta.
+
 * Maven group:artifact IDs: org.jboss.slf4j:slf4j-jboss-logmanager
 * Maven group:artifact IDs: org.jboss.threads:jboss-threads
 * Maven group:artifact IDs: org.wildfly.common:wildfly-common
@@ -1797,8 +1787,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 --------------------------------------------------------------------------------
 
 This product bundles ANTLR 4 Runtime.
-
-* Maven group:artifact IDs: org.antlr:antlr4-runtime
 
 Project URL: https://github.com/antlr/antlr4
 License: BSD 3-Clause
