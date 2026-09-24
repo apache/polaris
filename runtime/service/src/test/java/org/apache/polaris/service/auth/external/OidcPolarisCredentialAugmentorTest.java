@@ -33,8 +33,8 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
+import org.apache.polaris.service.auth.CredentialMode;
 import org.apache.polaris.service.auth.PolarisCredential;
-import org.apache.polaris.service.auth.PrincipalMode;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration.PrincipalMapper;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration.PrincipalRolesMapper;
@@ -107,7 +107,7 @@ class OidcPolarisCredentialAugmentorTest {
   @Test
   public void testAugmentOidcInternalPrincipal() {
     // Given
-    when(authConfig.principalMode()).thenReturn(PrincipalMode.INTERNAL);
+    when(authConfig.credentialMode()).thenReturn(CredentialMode.INTERNAL);
     JsonWebToken oidcPrincipal = mock(JsonWebToken.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
@@ -135,7 +135,7 @@ class OidcPolarisCredentialAugmentorTest {
   @Test
   public void testAugmentOidcExternalPrincipal() {
     // Given
-    when(authConfig.principalMode()).thenReturn(PrincipalMode.EXTERNAL);
+    when(authConfig.credentialMode()).thenReturn(CredentialMode.EXTERNAL);
     JsonWebToken oidcPrincipal = mock(JsonWebToken.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
@@ -162,7 +162,7 @@ class OidcPolarisCredentialAugmentorTest {
   @Test
   public void testAugmentOidcExternalPrincipalWithoutName() {
     // Given: external mode but the principal mapper cannot resolve a name
-    when(authConfig.principalMode()).thenReturn(PrincipalMode.EXTERNAL);
+    when(authConfig.credentialMode()).thenReturn(CredentialMode.EXTERNAL);
     JsonWebToken oidcPrincipal = mock(JsonWebToken.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()

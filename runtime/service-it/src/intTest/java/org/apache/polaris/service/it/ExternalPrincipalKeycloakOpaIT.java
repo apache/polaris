@@ -77,7 +77,7 @@ public class ExternalPrincipalKeycloakOpaIT extends PolarisRestCatalogFileIntegr
           Map.entry("quarkus.oidc.tenant-enabled", "true"),
           Map.entry("quarkus.oidc.client-id", "polaris"),
           Map.entry("polaris.authentication.type", "external"),
-          Map.entry("polaris.authentication.principal-mode", "external"),
+          Map.entry("polaris.authentication.credential-mode", "external"),
           Map.entry(
               "polaris.oidc.principal-mapper.name-claim-path", KeycloakAccess.PRINCIPAL_NAME_CLAIM),
           Map.entry("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\"]"),

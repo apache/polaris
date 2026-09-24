@@ -34,8 +34,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * OIDC tests for <em>internal</em> principals: an OIDC-authenticated caller mapped to a Polaris
- * principal that <em>does</em> exist in the metastore ({@code principal-mode=internal}), authorized
- * by the built-in {@code internal} authorizer via its grants.
+ * principal that <em>does</em> exist in the metastore ({@code credential-mode=internal}),
+ * authorized by the built-in {@code internal} authorizer via its grants.
  */
 @QuarkusTest
 @TestProfile(InternalPrincipalOidcAuthTest.Profile.class)
@@ -50,7 +50,7 @@ public class InternalPrincipalOidcAuthTest extends AbstractOidcAuthTest {
     public Map<String, String> getConfigOverrides() {
       ImmutableMap.Builder<String, String> config = ImmutableMap.builder();
       config.putAll(super.getConfigOverrides());
-      config.put("polaris.authentication.principal-mode", "internal");
+      config.put("polaris.authentication.credential-mode", "internal");
       return config.build();
     }
   }

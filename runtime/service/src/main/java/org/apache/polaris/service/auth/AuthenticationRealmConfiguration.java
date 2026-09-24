@@ -32,7 +32,7 @@ public interface AuthenticationRealmConfiguration {
   AuthenticationType type();
 
   /**
-   * The principal mode to use. Valid values are {@code INTERNAL} and {@code EXTERNAL}.
+   * The credential mode to use. Valid values are {@code INTERNAL} and {@code EXTERNAL}.
    *
    * <p>Internal mode is the default. When internal mode is used, callers must have a corresponding
    * principal in the Polaris metastore, which serves as the authoritative source of truth for
@@ -41,15 +41,15 @@ public interface AuthenticationRealmConfiguration {
    * <p>When external mode is used, callers are authenticated entirely from the presented
    * credentials and are not required to have a corresponding entity in the Polaris metastore. Note
    * that when the presented credentials were issued by Polaris itself, a backing principal entity
-   * is always required, regardless of the principal mode.
+   * is always required, regardless of the credential mode.
    *
-   * <p>External principal mode is only meaningful when an external IDP is used, that is, when the
+   * <p>External credential mode is only meaningful when an external IDP is used, that is, when the
    * {@linkplain #type() authentication type} is {@link AuthenticationType#EXTERNAL} or {@link
    * AuthenticationType#MIXED}. Also, this mode is not compatible with the default, built-in Polaris
    * authorizer; an external authorizer (e.g., OPA or Ranger) must be configured.
    */
   @WithDefault("internal")
-  PrincipalMode principalMode();
+  CredentialMode credentialMode();
 
   /**
    * The configuration for the authenticator. The authenticator is responsible for validating token

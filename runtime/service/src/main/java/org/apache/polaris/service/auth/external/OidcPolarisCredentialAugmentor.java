@@ -33,8 +33,8 @@ import jakarta.inject.Inject;
 import java.util.Set;
 import org.apache.polaris.service.auth.AuthenticatingAugmentor;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
+import org.apache.polaris.service.auth.CredentialMode;
 import org.apache.polaris.service.auth.PolarisCredential;
-import org.apache.polaris.service.auth.PrincipalMode;
 import org.apache.polaris.service.auth.external.mapping.PrincipalMapper;
 import org.apache.polaris.service.auth.external.mapping.PrincipalRolesMapper;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
@@ -96,7 +96,7 @@ public class OidcPolarisCredentialAugmentor implements SecurityIdentityAugmentor
     // Note: we build the credential even if it doesn't contain enough data to authenticate;
     // DefaultAuthenticator will reject it later on.
     PolarisCredential credential;
-    if (authConfig.principalMode() == PrincipalMode.INTERNAL) {
+    if (authConfig.credentialMode() == CredentialMode.INTERNAL) {
       Long principalId =
           principalMapper.mapPrincipalId(identity).stream().boxed().findFirst().orElse(null);
       credential = PolarisCredential.of(principalId, principalName, principalRoles);

@@ -19,19 +19,19 @@
 
 package org.apache.polaris.service.auth;
 
-/** Represents the mode of a principal in the authentication process. */
-public enum PrincipalMode {
+/** Represents the mode of a credential in the authentication process. */
+public enum CredentialMode {
 
   /**
-   * The principal is backed by an entity in the Polaris metastore, which serves as the
-   * authoritative source of truth for principals, roles, and grants.
+   * The principal represented by this credential is backed by an entity in the Polaris metastore,
+   * which serves as the authoritative source of truth for principals, roles, and grants.
    */
   INTERNAL,
 
   /**
-   * The principal is not backed by an entity in the Polaris metastore and is authenticated entirely
-   * from the presented credentials. This mode is not compatible with the built-in Polaris
-   * authorizer.
+   * The principal represented by this credential is not backed by an entity in the Polaris
+   * metastore and is authenticated entirely from the presented credentials. This mode is not
+   * compatible with the built-in Polaris authorizer.
    */
   EXTERNAL,
 }

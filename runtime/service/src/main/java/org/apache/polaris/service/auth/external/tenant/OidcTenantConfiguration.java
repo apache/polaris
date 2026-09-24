@@ -55,11 +55,11 @@ public interface OidcTenantConfiguration {
      * separator, e.g. {@code "resource_access/client1/roles"} would look for the "roles" field
      * inside the "client1" object inside the "resource_access" object in the token claims.
      *
-     * <p>Optional when using internal principal mode, in which case either this option or {@link
+     * <p>Optional when using internal credential mode, in which case either this option or {@link
      * #idClaimPath()} must be provided.
      *
-     * <p>Required when using external principal mode ({@code
-     * polaris.authentication.principal-mode=EXTERNAL}), since external principals are identified
+     * <p>Required when using external credential mode ({@code
+     * polaris.authentication.credential-mode=EXTERNAL}), since external principals are identified
      * exclusively by name.
      */
     Optional<String> nameClaimPath();

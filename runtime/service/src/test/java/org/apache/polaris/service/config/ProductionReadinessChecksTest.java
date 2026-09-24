@@ -29,7 +29,7 @@ import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
-import org.apache.polaris.service.auth.PrincipalMode;
+import org.apache.polaris.service.auth.CredentialMode;
 import org.apache.polaris.service.auth.external.OidcConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.eclipse.microprofile.config.Config;
@@ -89,7 +89,7 @@ class ProductionReadinessChecksTest {
   void externalPrincipalsWithExternalTypeReturnsOk() {
     ProductionReadinessCheck result =
         checks.checkExternalPrincipals(
-            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL));
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL));
 
     assertThat(result.ready()).isTrue();
   }
@@ -98,7 +98,7 @@ class ProductionReadinessChecksTest {
   void externalPrincipalsDisabledReturnsOk() {
     ProductionReadinessCheck result =
         checks.checkExternalPrincipals(
-            authenticationConfig(AuthenticationType.INTERNAL, PrincipalMode.INTERNAL));
+            authenticationConfig(AuthenticationType.INTERNAL, CredentialMode.INTERNAL));
 
     assertThat(result.ready()).isTrue();
   }
@@ -107,7 +107,7 @@ class ProductionReadinessChecksTest {
   void externalPrincipalsWithInternalAuthenticationReturnsSevereError() {
     ProductionReadinessCheck result =
         checks.checkExternalPrincipals(
-            authenticationConfig(AuthenticationType.INTERNAL, PrincipalMode.EXTERNAL));
+            authenticationConfig(AuthenticationType.INTERNAL, CredentialMode.EXTERNAL));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
@@ -115,7 +115,7 @@ class ProductionReadinessChecksTest {
         .satisfies(
             error -> {
               assertThat(error.offendingProperty())
-                  .isEqualTo("polaris.authentication.principal-mode");
+                  .isEqualTo("polaris.authentication.credential-mode");
               assertThat(error.severe()).isTrue();
             });
   }
@@ -125,7 +125,7 @@ class ProductionReadinessChecksTest {
   void internalPrincipalsWithInternalAuthorizerReturnsOk(AuthenticationType type) {
     ProductionReadinessCheck result =
         checks.checkExternalPrincipalsAuthorizer(
-            authenticationConfig(type, PrincipalMode.INTERNAL), authorizationConfig("internal"));
+            authenticationConfig(type, CredentialMode.INTERNAL), authorizationConfig("internal"));
 
     assertThat(result.ready()).isTrue();
   }
@@ -134,7 +134,7 @@ class ProductionReadinessChecksTest {
   void externalPrincipalsWithNonInternalAuthorizerReturnsOk() {
     ProductionReadinessCheck result =
         checks.checkExternalPrincipalsAuthorizer(
-            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
             authorizationConfig("ranger"));
 
     assertThat(result.ready()).isTrue();
@@ -144,7 +144,7 @@ class ProductionReadinessChecksTest {
   void externalPrincipalsWithInternalAuthorizerReturnsSevereError() {
     ProductionReadinessCheck result =
         checks.checkExternalPrincipalsAuthorizer(
-            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
             authorizationConfig("internal"));
 
     assertThat(result.ready()).isFalse();
@@ -153,7 +153,7 @@ class ProductionReadinessChecksTest {
         .satisfies(
             error -> {
               assertThat(error.offendingProperty())
-                  .isEqualTo("polaris.authentication.principal-mode");
+                  .isEqualTo("polaris.authentication.credential-mode");
               assertThat(error.severe()).isTrue();
             });
   }
@@ -163,7 +163,7 @@ class ProductionReadinessChecksTest {
     // OIDC is not involved; the check should be skipped regardless of claim-path config
     ProductionReadinessCheck result =
         checks.checkOidcPrincipalMapping(
-            authenticationConfig(AuthenticationType.INTERNAL, PrincipalMode.INTERNAL),
+            authenticationConfig(AuthenticationType.INTERNAL, CredentialMode.INTERNAL),
             oidcConfig(
                 OidcConfiguration.DEFAULT_TENANT_KEY,
                 "default",
@@ -177,7 +177,7 @@ class ProductionReadinessChecksTest {
   void oidcMappingExternalModeWithNameClaimPathReturnsOk() {
     ProductionReadinessCheck result =
         checks.checkOidcPrincipalMapping(
-            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
             oidcConfig(
                 OidcConfiguration.DEFAULT_TENANT_KEY,
                 "default",
@@ -191,7 +191,7 @@ class ProductionReadinessChecksTest {
   void oidcMappingExternalModeWithoutNameClaimPathReturnsSevereError() {
     ProductionReadinessCheck result =
         checks.checkOidcPrincipalMapping(
-            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
             oidcConfig(
                 OidcConfiguration.DEFAULT_TENANT_KEY,
                 "default",
@@ -214,7 +214,7 @@ class ProductionReadinessChecksTest {
     // name-claim-path is set (required) but id-claim-path is also set (ignored in external mode)
     ProductionReadinessCheck result =
         checks.checkOidcPrincipalMapping(
-            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
             oidcConfig(
                 OidcConfiguration.DEFAULT_TENANT_KEY,
                 "default",
@@ -236,7 +236,7 @@ class ProductionReadinessChecksTest {
   void oidcMappingInternalModeWithNameClaimPathReturnsOk() {
     ProductionReadinessCheck result =
         checks.checkOidcPrincipalMapping(
-            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.INTERNAL),
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.INTERNAL),
             oidcConfig(
                 OidcConfiguration.DEFAULT_TENANT_KEY,
                 "default",
@@ -250,7 +250,7 @@ class ProductionReadinessChecksTest {
   void oidcMappingInternalModeWithIdClaimPathReturnsOk() {
     ProductionReadinessCheck result =
         checks.checkOidcPrincipalMapping(
-            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.INTERNAL),
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.INTERNAL),
             oidcConfig(
                 OidcConfiguration.DEFAULT_TENANT_KEY,
                 "default",
@@ -264,7 +264,7 @@ class ProductionReadinessChecksTest {
   void oidcMappingInternalModeWithoutAnyPathReturnsSevereError() {
     ProductionReadinessCheck result =
         checks.checkOidcPrincipalMapping(
-            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.INTERNAL),
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.INTERNAL),
             oidcConfig(
                 OidcConfiguration.DEFAULT_TENANT_KEY,
                 "default",
@@ -287,7 +287,7 @@ class ProductionReadinessChecksTest {
     // Named tenants are only activated at runtime; misconfiguration is a warning, not a blocker
     ProductionReadinessCheck result =
         checks.checkOidcPrincipalMapping(
-            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
             oidcConfig("idp1", "default", Optional.empty(), Optional.empty()));
 
     assertThat(result.ready()).isFalse();
@@ -306,7 +306,7 @@ class ProductionReadinessChecksTest {
     // Custom mappers handle their own name resolution; no check is applied
     ProductionReadinessCheck result =
         checks.checkOidcPrincipalMapping(
-            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
             oidcConfig(
                 OidcConfiguration.DEFAULT_TENANT_KEY,
                 "custom",
@@ -320,7 +320,7 @@ class ProductionReadinessChecksTest {
   void oidcMappingMixedAuthTypeExternalModeWithoutNameClaimPathReturnsSevereError() {
     ProductionReadinessCheck result =
         checks.checkOidcPrincipalMapping(
-            authenticationConfig(AuthenticationType.MIXED, PrincipalMode.EXTERNAL),
+            authenticationConfig(AuthenticationType.MIXED, CredentialMode.EXTERNAL),
             oidcConfig(
                 OidcConfiguration.DEFAULT_TENANT_KEY,
                 "default",
@@ -362,10 +362,10 @@ class ProductionReadinessChecksTest {
   }
 
   private static AuthenticationConfiguration authenticationConfig(
-      AuthenticationType type, PrincipalMode mode) {
+      AuthenticationType type, CredentialMode mode) {
     AuthenticationRealmConfiguration realmConfig = mock(AuthenticationRealmConfiguration.class);
     lenient().when(realmConfig.type()).thenReturn(type);
-    lenient().when(realmConfig.principalMode()).thenReturn(mode);
+    lenient().when(realmConfig.credentialMode()).thenReturn(mode);
     AuthenticationConfiguration config = mock(AuthenticationConfiguration.class);
     lenient()
         .when(config.realms())

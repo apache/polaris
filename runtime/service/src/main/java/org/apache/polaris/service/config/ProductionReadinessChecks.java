@@ -40,7 +40,7 @@ import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
-import org.apache.polaris.service.auth.PrincipalMode;
+import org.apache.polaris.service.auth.CredentialMode;
 import org.apache.polaris.service.auth.external.OidcConfiguration;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.context.DefaultRealmContextResolver;
@@ -208,12 +208,12 @@ public class ProductionReadinessChecks {
         .realms()
         .forEach(
             (realm, config) -> {
-              if (config.principalMode() == PrincipalMode.EXTERNAL
+              if (config.credentialMode() == CredentialMode.EXTERNAL
                   && config.type() == AuthenticationType.INTERNAL) {
                 errors.add(
                     Error.ofSevere(
                         "Setting principal mode to EXTERNAL when the authentication type is INTERNAL is not allowed.",
-                        "polaris.authentication.%sprincipal-mode"
+                        "polaris.authentication.%scredential-mode"
                             .formatted(authRealmSegment(realm))));
               }
             });
@@ -230,11 +230,11 @@ public class ProductionReadinessChecks {
           .realms()
           .forEach(
               (realm, config) -> {
-                if (config.principalMode() == PrincipalMode.EXTERNAL) {
+                if (config.credentialMode() == CredentialMode.EXTERNAL) {
                   errors.add(
                       Error.ofSevere(
                           "Setting principal mode to EXTERNAL when the authorizer is the default (internal) is not allowed.",
-                          "polaris.authentication.%sprincipal-mode"
+                          "polaris.authentication.%scredential-mode"
                               .formatted(authRealmSegment(realm))));
                 }
               });
@@ -262,14 +262,14 @@ public class ProductionReadinessChecks {
                 r ->
                     (r.type() == AuthenticationType.EXTERNAL
                             || r.type() == AuthenticationType.MIXED)
-                        && r.principalMode() == PrincipalMode.EXTERNAL);
+                        && r.credentialMode() == CredentialMode.EXTERNAL);
     boolean anyInternal =
         authConfig.realms().values().stream()
             .anyMatch(
                 r ->
                     (r.type() == AuthenticationType.EXTERNAL
                             || r.type() == AuthenticationType.MIXED)
-                        && r.principalMode() != PrincipalMode.EXTERNAL);
+                        && r.credentialMode() != CredentialMode.EXTERNAL);
     List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
     oidcConfig
         .tenants()
@@ -289,11 +289,11 @@ public class ProductionReadinessChecks {
                   errors.add(
                       isDefault
                           ? Error.ofSevere(
-                              "name-claim-path must be configured when principal-mode is EXTERNAL,"
+                              "name-claim-path must be configured when credential-mode is EXTERNAL,"
                                   + " since external principals are identified exclusively by name.",
                               propPrefix + ".name-claim-path")
                           : Error.of(
-                              "name-claim-path should be configured when principal-mode is EXTERNAL,"
+                              "name-claim-path should be configured when credential-mode is EXTERNAL,"
                                   + " since external principals are identified exclusively by name."
                                   + " Requests resolved to this tenant will be rejected.",
                               propPrefix + ".name-claim-path"));
@@ -301,7 +301,7 @@ public class ProductionReadinessChecks {
                 if (pm.idClaimPath().isPresent()) {
                   errors.add(
                       Error.of(
-                          "id-claim-path is ignored when principal-mode is EXTERNAL and should be"
+                          "id-claim-path is ignored when credential-mode is EXTERNAL and should be"
                               + " removed to avoid confusion.",
                           propPrefix + ".id-claim-path"));
                 }

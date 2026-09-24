@@ -213,9 +213,9 @@ External principals are enabled per realm:
 
 ```properties
 # Global default
-polaris.authentication.principal-mode=external
+polaris.authentication.credential-mode=external
 # Per-realm override
-polaris.authentication.realm1.principal-mode=external
+polaris.authentication.realm1.credential-mode=external
 ```
 
 {{< alert important >}}

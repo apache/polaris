@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * OIDC tests for <em>external</em> principals: an OIDC-authenticated caller that has no backing
- * entity in the Polaris metastore ({@code principal-mode=external}), authorized by a non-default
+ * entity in the Polaris metastore ({@code credential-mode=external}), authorized by a non-default
  * authorizer.
  */
 @QuarkusTest
@@ -44,7 +44,7 @@ public class ExternalPrincipalOidcAuthTest extends AbstractOidcAuthTest {
     public Map<String, String> getConfigOverrides() {
       ImmutableMap.Builder<String, String> config = ImmutableMap.builder();
       config.putAll(super.getConfigOverrides());
-      config.put("polaris.authentication.principal-mode", "external");
+      config.put("polaris.authentication.credential-mode", "external");
       config.put("polaris.authorization.type", "test");
       return config.build();
     }
