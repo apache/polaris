@@ -778,6 +778,7 @@ This product bundles Guava.
 
 * Maven group:artifact IDs: com.google.guava:failureaccess
 * Maven group:artifact IDs: com.google.guava:guava
+* Maven group:artifact IDs: com.google.guava:listenablefuture
 
 Project URL: https://github.com/google/guava
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -995,6 +996,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 This product bundles Failsafe.
 
 * Maven group:artifact IDs: dev.failsafe:failsafe
+* Maven group:artifact IDs: net.jodah:failsafe
 
 Project URL: https://failsafe.dev
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1322,8 +1324,10 @@ License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 This product bundles Jakarta Servlet API.
 
 * Maven group:artifact IDs: jakarta.servlet:jakarta.servlet-api
+* Maven group:artifact IDs: jakarta.servlet.jsp:jakarta.servlet.jsp-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.servlet
+Project URL: https://projects.eclipse.org/projects/ee4j.jsp
 License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
@@ -1636,17 +1640,6 @@ This product bundles Microprofile.
 
 Project URL: http://microprofile.io
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This product bundles Parsson.
-
-* Maven group:artifact IDs: org.eclipse.parsson:parsson
-
-Project URL: https://github.com/eclipse-ee4j/parsson
-License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
-
---------------------------------------------------------------------------------
 
 This product bundles expressly.
 
@@ -2118,7 +2111,7 @@ License: BSD License
 
 This product bundles jsch.
 
-* Maven group:artifact ID: com.jcraft:jsch:0.1.55
+* Maven group:artifact IDs: com.jcraft:jsch
 
 Project URL: http://www.jcraft.com/jsch/
 License: Revised BSD License
@@ -2149,8 +2142,8 @@ License: Revised BSD License
 
 This product bundles MSV.
 
-* Maven group:artifact IDs: net.java.dev.msv:msv-core:2022.7
-* Maven group:artifact IDs: net.java.dev.msv:xsdlib:2022.7
+* Maven group:artifact IDs: net.java.dev.msv:msv-core
+* Maven group:artifact IDs: net.java.dev.msv:xsdlib
 
 Project URL: https://github.com/xmlark/msv
 License: BSD
@@ -2182,7 +2175,7 @@ License: BSD
 
 This product bundles Relaxng Datatype.
 
-* Maven group:artifact ID: relaxngDatatype:relaxngDatatype:20020414
+* Maven group:artifact IDs: relaxngDatatype:relaxngDatatype
 
 License: BSD 3-Clause
 | Copyright (c) 2001-2002, SourceForge ISO-RELAX Project.
@@ -2214,7 +2207,7 @@ License: BSD 3-Clause
 
 This product bundles ISO-Relax.
 
-* Maven group:artifact ID: com.sun.xml.bind.jaxb:isorelax:20090621
+* Maven group:artifact IDs: com.sun.xml.bind.jaxb:isorelax
 
 Project URL: https://sourceforge.net/projects/iso-relax/
 License: CDDL 1.1

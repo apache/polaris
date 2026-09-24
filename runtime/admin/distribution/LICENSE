@@ -507,6 +507,81 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
+This product bundles MSV.
+
+* Maven group:artifact IDs: net.java.dev.msv:msv-core
+* Maven group:artifact IDs: net.java.dev.msv:xsdlib
+
+Project URL: https://github.com/xmlark/msv
+License: BSD
+| Copyright (c) 2001-2009 Sun Microsystems, Inc. All Rights Reserved.
+|
+| Redistribution and use in source and binary forms, with or without
+| modification, are permitted provided that the following conditions are met:
+| - Redistributions of source code must retain the above copyright notice,
+| this list of conditions and the following disclaimer.
+| - Redistributions in binary form must reproduce the above copyright notice,
+| this list of conditions and the following disclaimer in the documentation
+| and/or other materials provided with the distribution.
+| Neither the name of Sun Microsystems, Inc. nor the names of contributors may
+| be used to endorse or promote products derived from this software without
+| specific prior written permission.
+| This software is provided "AS IS," without a warranty of any kind. ALL EXPRESS
+| OR IMPLIED CONDITIONS, REPRESENTATIONS AND WARRANTIES, INCLUDING ANY IMPLIED
+| WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR
+| NON-INFRINGEMENT, ARE HEREBY EXCLUDED. SUN AND ITS LICENSORS SHALL NOT BE
+| LIABLE FOR ANY DAMAGES OR LIABILITIES SUFFERED BY LICENSEE AS A RESULT OF OR
+| RELATING TO USE, MODIFICATION OR DISTRIBUTION OF THE SOFTWARE OR ITS
+| DERIVATIVES. IN NO EVENT WILL SUN OR ITS LICENSORS BE LIABLE FOR ANY LOST
+| REVENUE, PROFIT OR DATA, OR FOR DIRECT, INDIRECT, SPECIAL, CONSEQUENTIAL,
+| INCIDENTAL OR PUNITIVE DAMAGES, HOWEVER CAUSED AND REGARDLESS OF THE THEORY OF
+| LIABILITY, ARISING OUT OF THE USE OF OR INABILITY TO USE SOFTWARE, EVEN IF SUN
+| HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+--------------------------------------------------------------------------------
+
+This product bundles Relaxng Datatype.
+
+* Maven group:artifact IDs: relaxngDatatype:relaxngDatatype
+
+License: BSD 3-Clause
+| Copyright (c) 2001-2002, SourceForge ISO-RELAX Project.
+| Copyright (c) 2001-2003, Thai Open Source Software Center Ltd.
+| All rights reserved.
+|
+| Redistribution and use in source and binary forms, with or without
+| modification, are permitted provided that the following conditions are met:
+| 1. Redistributions of source code must retain the above copyright notice,
+| this list of conditions and the following disclaimer.
+| 2. Redistributions in binary form must reproduce the above copyright notice,
+| this list of conditions and the following disclaimer in the documentation
+| and/or other materials provided with the distribution.
+| 3. Neither the name of the copyright holders nor the names of their
+| contributors may be used to endorse or promote products derived from this
+| software without specific prior written permission.
+| THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+| AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+| IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+| DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+| FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+| DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+| SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+| CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+| OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+| OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+
+This product bundles ISO-Relax.
+
+* Maven group:artifact IDs: com.sun.xml.bind.jaxb:isorelax
+
+Project URL: https://sourceforge.net/projects/iso-relax/
+License: CDDL 1.1
+License text: https://glassfish.java.net/public/CDDL+GPL_1_1.html
+
+--------------------------------------------------------------------------------
+
 This product bundles Caffeine.
 
 * Maven group:artifact IDs: com.github.ben-manes.caffeine:caffeine
@@ -716,6 +791,7 @@ This product bundles Guava.
 
 * Maven group:artifact IDs: com.google.guava:failureaccess
 * Maven group:artifact IDs: com.google.guava:guava
+* Maven group:artifact IDs: com.google.guava:listenablefuture
 
 Project URL: https://github.com/google/guava
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1430,6 +1506,13 @@ This product bundles JBoss (logmanager, transaction, narayana).
 * Maven group:artifact IDs: org.jboss.logging:commons-logging-jboss-logging
 * Maven group:artifact IDs: org.jboss.narayana.jta:narayana-jta
 * Maven group:artifact IDs: org.jboss.narayana.jts:narayana-jts-integration
+* Maven group:artifact IDs: org.jboss.narayana:common
+* Maven group:artifact IDs: org.jboss.narayana.arjunacore:arjuna
+* Maven group:artifact IDs: org.jboss.narayana.arjunacore:txoj
+* Maven group:artifact IDs: org.jboss.narayana.jta:cdi
+* Maven group:artifact IDs: org.jboss.narayana.jta:jdbc
+* Maven group:artifact IDs: org.jboss.narayana.jta:jms
+* Maven group:artifact IDs: org.jboss.narayana.jta:jta
 * Maven group:artifact IDs: org.jboss.slf4j:slf4j-jboss-logmanager
 * Maven group:artifact IDs: org.jboss.threads:jboss-threads
 * Maven group:artifact IDs: org.wildfly.common:wildfly-common
