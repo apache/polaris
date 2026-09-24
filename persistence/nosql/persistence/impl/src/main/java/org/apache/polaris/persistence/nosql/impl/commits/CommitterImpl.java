@@ -37,6 +37,7 @@ import org.apache.polaris.persistence.nosql.api.commit.CommitException;
 import org.apache.polaris.persistence.nosql.api.commit.CommitRetryable;
 import org.apache.polaris.persistence.nosql.api.commit.CommitterState;
 import org.apache.polaris.persistence.nosql.api.commit.RetryTimeoutException;
+import org.apache.polaris.persistence.nosql.api.exceptions.UnknownOperationResultException;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
@@ -108,6 +109,7 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
             ? ExclusiveCommitSynchronizer.forKey(persistence.realmId(), refName)
             : CommitSynchronizer.NON_SYNCHRONIZING;
 
+    Exception failure = null;
     try {
       var retryConfig = persistence.params().retryConfig();
       var loop = RetryLoop.<RESULT>newRetryLoop(retryConfig, persistence.monotonicClock());
@@ -137,6 +139,7 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
       LOGGER.debug("commit() yielding result");
       return Optional.of(result);
     } catch (RetryTimeoutException | RuntimeException e) {
+      failure = e;
       LOGGER.debug("commit() failed");
       committerState.deleteIds.addAll(committerState.allPersistedIds);
       throw e;
@@ -144,7 +147,15 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
       committerState.deleteIds.removeAll(committerState.mustNotDelete);
       if (!committerState.deleteIds.isEmpty()) {
         LOGGER.debug("commit() deleting {}", committerState.deleteIds);
-        persistence.deleteMany(committerState.deleteIds.toArray(new ObjRef[0]));
+        try {
+          persistence.deleteMany(committerState.deleteIds.toArray(new ObjRef[0]));
+        } catch (RuntimeException cleanupFailure) {
+          if (failure != null) {
+            failure.addSuppressed(cleanupFailure);
+          } else {
+            throw cleanupFailure;
+          }
+        }
       }
     }
   }
@@ -483,7 +494,8 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
     var persisted = persistence.writeMany(Obj.class, objs);
     // exclude the resultObj's ID here, handled below
     for (int i = 0; i < persisted.length - 1; i++) {
-      state.allPersistedIds.add(objRef(persisted[i]));
+      var persistedId = objRef(persisted[i]);
+      state.allPersistedIds.add(persistedId);
     }
     @SuppressWarnings("unchecked")
     var persistedResultObj = (REF_OBJ) persisted[persisted.length - 1];
@@ -491,7 +503,16 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
     // For testing purposes only
     randomDelay();
 
-    var newReference = persistence.updateReferencePointer(reference, resultObjRef);
+    Optional<Reference> newReference;
+    try {
+      newReference = persistence.updateReferencePointer(reference, resultObjRef);
+    } catch (UnknownOperationResultException e) {
+      // The reference update may have been applied. The new head can reuse objects persisted by
+      // an earlier attempt, so preserve all persisted objects along with the new head.
+      state.mustNotDelete.addAll(state.allPersistedIds);
+      state.mustNotDelete.add(resultObjRef);
+      throw e;
+    }
     if (newReference.isEmpty()) {
       state.deleteIds.add(resultObjRef);
       LOGGER.debug(
