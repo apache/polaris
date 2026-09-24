@@ -36,13 +36,23 @@ import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.service.Profiles;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
+import org.mockito.Mockito;
 
 @QuarkusTest
 @TestProfile(Profiles.PolarisAuthzBaseProfile.class)
 public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
+  private final S3CredentialVendingMechanism stsMechanism =
+      Mockito.mock(S3CredentialVendingMechanism.class);
+  private final S3CredentialVendingMechanism defaultMechanism =
+      Mockito.mock(S3CredentialVendingMechanism.class);
+  private final S3CredentialVendingMechanisms vendingMechanisms =
+      new S3CredentialVendingMechanisms(Map.of("STS", stsMechanism, "DEFAULT", defaultMechanism));
+
   private PolarisAdminService newTestAdminService() {
     final PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(
@@ -60,7 +70,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         serviceIdentityProvider,
         authenticatedPrincipal,
         polarisAuthorizer,
-        reservedProperties);
+        reservedProperties,
+        vendingMechanisms);
   }
 
   private PolarisAdminService newTestAdminService(Set<String> activatedPrincipalRoles) {

@@ -24,6 +24,7 @@ import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.persistence.cache.EntityWeigher;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 
 /**
  * Configurations for features within Polaris. These configurations are intended to be customized
@@ -402,6 +403,22 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   StorageConfigInfo.StorageTypeEnum.AZURE.name(),
                   StorageConfigInfo.StorageTypeEnum.GCS.name()))
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<List<String>>
+      SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS =
+          PolarisConfiguration.<List<String>>builder()
+              .key("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS")
+              .description(
+                  "The credential vending mechanisms an S3 catalog in this realm may name explicitly. STS is\n"
+                      + "AWS STS AssumeRole; a server may provide further mechanisms. A catalog that leaves\n"
+                      + "credentialVendingMechanism empty uses the server's default mechanism and is always\n"
+                      + "allowed. Realm-level only; catalog properties cannot widen it. Enforced at catalog create\n"
+                      + "and update, and when the server builds the storage integration that vends credentials\n"
+                      + "for a catalog. A listed mechanism with no implementation in this server is reported at\n"
+                      + "startup and refused at catalog create and update and whenever a credential is vended\n"
+                      + "for a catalog that names it.")
+              .defaultValue(List.of(S3CredentialVendingMechanism.STS))
+              .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
       PolarisConfiguration.<Boolean>builder()

@@ -143,6 +143,35 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   public abstract @Nullable Boolean getPathStyleAccess();
 
   /**
+   * The mechanism that vends credentials for this catalog, an identifier such as {@link
+   * S3CredentialVendingMechanism#STS}, or null when the catalog leaves the choice to the server;
+   * see {@link #resolvedCredentialVendingMechanism()}. A row persisted before this field existed
+   * lacks it and reads as null. The value is carried as is; the realm allowlist, the mechanism
+   * registry and the mechanism itself decide whether it is accepted.
+   */
+  @Nullable
+  public abstract String getCredentialVendingMechanism();
+
+  /**
+   * The identifier to resolve in the mechanism registry: the explicit value, or {@link
+   * S3CredentialVendingMechanism#DEFAULT} when the field is empty.
+   */
+  @JsonIgnore
+  public String resolvedCredentialVendingMechanism() {
+    String mechanism = getCredentialVendingMechanism();
+    return mechanism == null ? S3CredentialVendingMechanism.DEFAULT : mechanism;
+  }
+
+  /**
+   * Normalizes a value received through the management API: null and blank both mean the field is
+   * empty, so the catalog uses the server's default mechanism.
+   */
+  @Nullable
+  public static String credentialVendingMechanismOf(@Nullable String value) {
+    return value == null || value.isBlank() ? null : value;
+  }
+
+  /**
    * Flag indicating whether STS is available or not. It is modeled in the negative to simplify
    * support for unset values ({@code null} being interpreted as {@code false}).
    */
@@ -193,6 +222,10 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Override
   protected void check() {
     super.check();
+    String mechanism = getCredentialVendingMechanism();
+    if (mechanism != null && mechanism.isBlank()) {
+      throw new IllegalArgumentException("credentialVendingMechanism must not be blank");
+    }
     String arn = getRoleARN();
     validateArn(arn);
     if (arn != null) {

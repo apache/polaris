@@ -95,6 +95,16 @@ public class PolarisStorageConfigurationInfoTest {
                 .storageName("my-storage")
                 .build(),
             "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"storageName\":\"my-storage\",\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\",\"region\":\"no-where-1\",\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
+        arguments(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocations("s3://other-bucket/base/")
+                .credentialVendingMechanism("DOWNSTREAM_MECHANISM")
+                .endpoint("https://s3.example-compatible-store.test")
+                .pathStyleAccess(true)
+                .region("auto")
+                .storageName("other")
+                .build(),
+            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"credentialVendingMechanism\":\"DOWNSTREAM_MECHANISM\",\"allowedLocations\":[\"s3://other-bucket/base/\"],\"storageName\":\"other\",\"region\":\"auto\",\"endpoint\":\"https://s3.example-compatible-store.test\",\"pathStyleAccess\":true,\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
         //
         arguments(
             GcpStorageConfigurationInfo.builder()
