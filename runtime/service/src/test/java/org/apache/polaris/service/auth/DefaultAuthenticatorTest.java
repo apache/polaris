@@ -102,6 +102,9 @@ public class DefaultAuthenticatorTest {
         PolarisPrincipal.of(
             PolarisEntityConstants.getRootPrincipalName(),
             ImmutableAttributeMap.builder()
+                .put(
+                    PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                    new PrincipalEntity.Builder().setName("root").build())
                 .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
                 .build(),
             Set.of());
@@ -113,7 +116,7 @@ public class DefaultAuthenticatorTest {
 
   @Test
   void testNullPrincipalIdAndName() {
-    // Given: credentials with both null principal ID and name
+    // Given: internal credentials with both null principal ID and name
     PolarisCredential credentials =
         PolarisCredential.of(null, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
@@ -123,7 +126,7 @@ public class DefaultAuthenticatorTest {
 
   @Test
   void testPrincipalNotFoundByName() {
-    // Given: credentials with a non-existent principal name
+    // Given: internal credentials with a non-existent principal name
     PolarisCredential credentials =
         PolarisCredential.of(
             null, "non-existent-principal", Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
@@ -134,7 +137,7 @@ public class DefaultAuthenticatorTest {
 
   @Test
   void testPrincipalNotFoundById() {
-    // Given: credentials with a non-existent principal ID
+    // Given: internal credentials with a non-existent principal ID
     PolarisCredential credentials =
         PolarisCredential.of(999999L, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
@@ -145,7 +148,7 @@ public class DefaultAuthenticatorTest {
   @Test
   public void testFetchPrincipalThrowsServiceExceptionOnMetastoreException() {
 
-    // Given: credentials with a non-existent principal ID
+    // Given: internal credentials with a non-existent principal ID
     PolarisCredential credentials =
         PolarisCredential.of(123L, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
@@ -232,7 +235,7 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
 
     // Then: should return principal with all assigned roles
-    assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+    assertInternalPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
   }
 
   @Test
@@ -246,7 +249,7 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
 
     // Then: should return principal with all assigned roles
-    assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+    assertInternalPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
   }
 
   @Test
@@ -259,7 +262,7 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
 
     // Then: should return principal with all assigned roles
-    assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+    assertInternalPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
     assertThat(
             result.getAttributes().get(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY))
         .isTrue();
@@ -278,7 +281,7 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
 
     // Then: should return principal with only the requested role
-    assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1);
+    assertInternalPrincipal(result, principalEntity, PRINCIPAL_ROLE1);
     assertThat(
             result.getAttributes().get(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY))
         .isFalse();
@@ -299,7 +302,7 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
 
     // Then: should return principal with both requested roles
-    assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+    assertInternalPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
   }
 
   @Test
@@ -313,7 +316,7 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
 
     // Then: should return principal with empty roles set
-    assertPrincipal(result, principalEntityNoRoles);
+    assertInternalPrincipal(result, principalEntityNoRoles);
   }
 
   @Test
@@ -361,7 +364,7 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
 
     // Then: should return principal with only the properly prefixed role
-    assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1);
+    assertInternalPrincipal(result, principalEntity, PRINCIPAL_ROLE1);
   }
 
   @Test
@@ -376,7 +379,7 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
 
     // Then: should return principal with empty roles set
-    assertPrincipal(result, principalEntity);
+    assertInternalPrincipal(result, principalEntity);
     assertThat(
             result.getAttributes().get(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY))
         .isFalse();
@@ -398,7 +401,7 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal result =
         newStandaloneAuthenticator(metaStoreManagerSpy).authenticate(identityFor(credentials));
 
-    assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+    assertInternalPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
 
     // The role entities must have been served from LoadGrantsResult.getEntities(),
     // not re-fetched via loadEntity(..., PRINCIPAL_ROLE) per grant record.
@@ -431,7 +434,7 @@ public class DefaultAuthenticatorTest {
         newStandaloneAuthenticator(metaStoreManagerSpy).authenticate(identityFor(credentials));
 
     // Roles should still resolve — the fallback path must produce the same result.
-    assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+    assertInternalPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
 
     verify(metaStoreManagerSpy, Mockito.times(2))
         .loadEntity(any(), anyLong(), anyLong(), Mockito.eq(PolarisEntityType.PRINCIPAL_ROLE));
@@ -450,7 +453,7 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
 
     // Then: should return principal resolved by ID, not name
-    assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+    assertInternalPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
   }
 
   @Test
@@ -510,6 +513,65 @@ public class DefaultAuthenticatorTest {
         .isFalse();
   }
 
+  @Test
+  void testExternalPrincipal() {
+    // Given: an external credential (isExternal=true) carries name + roles,
+    // so the authenticator takes the external path with no metastore lookup
+    PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
+    DefaultAuthenticator sa = newStandaloneAuthenticator(metaStoreManagerSpy);
+    JsonWebToken jwt = Mockito.mock(JsonWebToken.class);
+    Mockito.when(jwt.getName()).thenReturn(PRINCIPAL_NAME);
+    Mockito.when(jwt.getRawToken()).thenReturn("raw.jwt.token");
+
+    PolarisCredential credentials =
+        PolarisCredential.ofExternal("ext-user", Set.of("ext-role1", "ext-role2"));
+    SecurityIdentity jwtIdentity =
+        QuarkusSecurityIdentity.builder()
+            .setAnonymous(false)
+            .setPrincipal(jwt)
+            .addCredential(credentials)
+            .build();
+
+    // When: authenticating
+    PolarisPrincipal result = sa.authenticate(jwtIdentity);
+
+    // Then: an external principal is built from the token with no metastore lookup, and its roles
+    // are taken as-is from the credentials
+    assertThat(result.getName()).isEqualTo("ext-user");
+    assertThat(result.getRoles()).containsExactlyInAnyOrder("ext-role1", "ext-role2");
+    ImmutableAttributeMap attributes = result.getAttributes();
+    assertThat(attributes.containsKey(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY))
+        .isFalse();
+    assertThat(attributes.containsKey(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY))
+        .isFalse();
+    assertThat(attributes.get(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY))
+        .isTrue();
+    assertThat(attributes.get(PolarisPrincipalAttributes.JWT_ATTRIBUTE_KEY))
+        .isEqualTo("raw.jwt.token");
+    Mockito.verifyNoInteractions(metaStoreManagerSpy);
+  }
+
+  @Test
+  void testExternalPrincipalWithoutName() {
+    // Given: an external credential with no principal name (e.g. an id-only OIDC mapping)
+    PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
+    DefaultAuthenticator sa = newStandaloneAuthenticator(metaStoreManagerSpy);
+    JsonWebToken jwt = Mockito.mock(JsonWebToken.class);
+    PolarisCredential credentials = PolarisCredential.ofExternal(null, Set.of("ext-role1"));
+    SecurityIdentity jwtIdentity =
+        QuarkusSecurityIdentity.builder()
+            .setAnonymous(false)
+            .setPrincipal(jwt)
+            .addCredential(credentials)
+            .build();
+
+    // When / Then: the missing name is rejected as an authentication failure, with no metastore
+    // lookup
+    assertThatThrownBy(() -> sa.authenticate(jwtIdentity))
+        .isInstanceOf(AuthenticationFailedException.class);
+    Mockito.verifyNoInteractions(metaStoreManagerSpy);
+  }
+
   private PrincipalEntity createPrincipal(String name, String... roles) {
 
     PrincipalWithCredentialsCredentials credentials =
@@ -553,7 +615,8 @@ public class DefaultAuthenticatorTest {
         reservedProperties);
   }
 
-  private void assertPrincipal(PolarisPrincipal result, PrincipalEntity entity, String... roles) {
+  private void assertInternalPrincipal(
+      PolarisPrincipal result, PrincipalEntity entity, String... roles) {
     assertThat(result).isNotNull();
     assertThat(result.getName()).isEqualTo(entity.getName());
     assertThat(result.getRoles()).containsExactlyInAnyOrder(roles);
