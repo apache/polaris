@@ -1641,6 +1641,17 @@ This product bundles Microprofile.
 Project URL: http://microprofile.io
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
+--------------------------------------------------------------------------------
+
+This product bundles Parsson.
+
+* Maven group:artifact IDs: org.eclipse.parsson:parsson
+
+Project URL: https://github.com/eclipse-ee4j/parsson
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
+
+--------------------------------------------------------------------------------
+
 This product bundles expressly.
 
 * Maven group:artifact IDs: org.glassfish.expressly:expressly
