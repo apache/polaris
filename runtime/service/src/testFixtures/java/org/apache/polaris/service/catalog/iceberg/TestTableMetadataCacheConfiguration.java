@@ -21,18 +21,19 @@ package org.apache.polaris.service.catalog.iceberg;
 import java.util.OptionalLong;
 
 /** Test configuration for {@link TableMetadataCache}. */
-public record TestTableMetadataCacheConfiguration(OptionalLong maxBytes, long maxContentLength)
+public record TestTableMetadataCacheConfiguration(
+    OptionalLong maxBytes, double fractionOfMaxHeapSize, long maxContentLength)
     implements TableMetadataCacheConfiguration {
 
+  private static final double DEFAULT_FRACTION_OF_MAX_HEAP_SIZE = 0.05;
   private static final long DEFAULT_MAX_CONTENT_LENGTH = 8 * 1024 * 1024;
 
   public TestTableMetadataCacheConfiguration(long maxBytes, long maxContentLength) {
-    this(OptionalLong.of(maxBytes), maxContentLength);
+    this(OptionalLong.of(maxBytes), DEFAULT_FRACTION_OF_MAX_HEAP_SIZE, maxContentLength);
   }
 
   public static TestTableMetadataCacheConfiguration defaults() {
-    return new TestTableMetadataCacheConfiguration(
-        OptionalLong.empty(), DEFAULT_MAX_CONTENT_LENGTH);
+    return withFractionOfMaxHeapSize(DEFAULT_FRACTION_OF_MAX_HEAP_SIZE);
   }
 
   public static TestTableMetadataCacheConfiguration disabled() {
@@ -41,5 +42,11 @@ public record TestTableMetadataCacheConfiguration(OptionalLong maxBytes, long ma
 
   public static TestTableMetadataCacheConfiguration withMaxBytes(long maxBytes) {
     return new TestTableMetadataCacheConfiguration(maxBytes, DEFAULT_MAX_CONTENT_LENGTH);
+  }
+
+  public static TestTableMetadataCacheConfiguration withFractionOfMaxHeapSize(
+      double fractionOfMaxHeapSize) {
+    return new TestTableMetadataCacheConfiguration(
+        OptionalLong.empty(), fractionOfMaxHeapSize, DEFAULT_MAX_CONTENT_LENGTH);
   }
 }

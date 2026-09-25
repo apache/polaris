@@ -39,35 +39,29 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
 import org.apache.polaris.core.storage.ImmutableStorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessConfig;
-import org.jspecify.annotations.Nullable;
 
 /**
- * Process-wide cache of table metadata JSON documents keyed by realm, catalog, the non-credential
- * {@link FileIO} inputs and metadata file location. Metadata files are immutable once written, so
- * an entry never becomes stale and the location acts as a content address. The {@link FileIO} is
- * built only on a miss, since a hit reads nothing from object storage. The raw JSON is cached
- * rather than parsed {@link org.apache.iceberg.TableMetadata} objects because {@code TableMetadata}
- * lazily materializes some fields and is not safe to share across request threads, and raw
- * documents allow bounding the cache by size. Entry weights estimate heap usage (UTF-16 characters
- * plus per-entry map and object overhead); the configured budget is an approximate bound because
- * eviction may briefly lag writes.
+ * Process-wide cache of table metadata JSON documents keyed by realm, storage access properties
+ * without credentials, and metadata file location. Metadata files are immutable once written, so an
+ * entry never becomes stale and the location acts as a content address. The {@link FileIO} is built
+ * only on a miss, since a hit reads nothing from object storage. The raw JSON is cached rather than
+ * parsed {@link org.apache.iceberg.TableMetadata} objects because {@code TableMetadata} lazily
+ * materializes some fields and is not safe to share across request threads, and raw documents allow
+ * bounding the cache by size. Entry weights estimate heap usage (UTF-16 characters plus per-entry
+ * map and object overhead); the configured budget is an approximate bound because eviction may
+ * briefly lag writes.
  */
 @ApplicationScoped
 public class TableMetadataCache {
 
   /**
-   * Scopes a metadata document to the realm and catalog that is allowed to read it, and to the
-   * inputs of the {@link FileIO} that reads it. Credentials and their expiry change on every vend,
-   * so the key keeps only the remaining storage access properties.
+   * Scopes a metadata document to its realm and to the storage access it is read with. Credentials
+   * and their expiry change on every vend, so the key keeps only the remaining storage access
+   * properties.
    */
-  public record Key(
-      String realmId,
-      long catalogId,
-      @Nullable String ioImplClassName,
-      Map<String, String> tableProperties,
-      StorageAccessConfig storageAccessConfig,
-      String metadataLocation) {
-    public Key {
+  private record Key(
+      String realmId, StorageAccessConfig storageAccessConfig, String metadataLocation) {
+    private Key {
       storageAccessConfig =
           ImmutableStorageAccessConfig.copyOf(storageAccessConfig)
               .withCredentials(Map.of())
@@ -76,9 +70,6 @@ public class TableMetadataCache {
   }
 
   private static final Duration EXPIRE_AFTER_ACCESS = Duration.ofHours(1);
-
-  /** Percentage of the maximum heap size the cache uses when no budget is configured. */
-  private static final long DEFAULT_MAX_HEAP_PERCENTAGE = 5;
 
   /** Estimated heap cost of a cache entry beyond its strings: map node and key record. */
   private static final int ENTRY_OVERHEAD_BYTES = 64;
@@ -92,8 +83,7 @@ public class TableMetadataCache {
 
   @Inject
   public TableMetadataCache(TableMetadataCacheConfiguration configuration) {
-    long maxBytes =
-        configuration.maxBytes().orElseGet(() -> defaultMaxBytes(Runtime.getRuntime().maxMemory()));
+    long maxBytes = maxBytes(configuration, Runtime.getRuntime().maxMemory());
     this.enabled = maxBytes > 0;
     this.maxContentLength = configuration.maxContentLength();
     this.metadataJsonByLocation =
@@ -108,22 +98,20 @@ public class TableMetadataCache {
   }
 
   @VisibleForTesting
-  static long defaultMaxBytes(long maxHeapBytes) {
-    return maxHeapBytes / 100 * DEFAULT_MAX_HEAP_PERCENTAGE;
+  static long maxBytes(TableMetadataCacheConfiguration configuration, long maxHeapBytes) {
+    return configuration
+        .maxBytes()
+        .orElseGet(() -> (long) (configuration.fractionOfMaxHeapSize() * maxHeapBytes));
   }
 
   private static int estimatedEntryHeapBytes(Key key, String metadataJson) {
     long bytes =
         ENTRY_OVERHEAD_BYTES
             + estimatedSizeOf(key.realmId())
-            + estimatedSizeOf(key.tableProperties())
             + estimatedSizeOf(key.storageAccessConfig().extraProperties())
             + estimatedSizeOf(key.storageAccessConfig().internalProperties())
             + estimatedSizeOf(key.metadataLocation())
             + estimatedSizeOf(metadataJson);
-    if (key.ioImplClassName() != null) {
-      bytes += estimatedSizeOf(key.ioImplClassName());
-    }
     return (int) Math.min(bytes, Integer.MAX_VALUE);
   }
 
@@ -146,43 +134,56 @@ public class TableMetadataCache {
   }
 
   /**
-   * Returns the table metadata at the key's immutable location, reading it through a {@link FileIO}
-   * from the given supplier on a cache miss. A document that cannot be read or parsed surfaces as
-   * {@link RuntimeIOException}.
+   * Returns the table metadata at the immutable metadata location, reading it through a {@link
+   * FileIO} from the given supplier on a cache miss. A document that cannot be read or parsed
+   * surfaces as {@link RuntimeIOException}.
    */
-  public TableMetadata getOrLoadMetadata(Key key, Supplier<FileIO> fileIOSupplier) {
-    String metadataJson = getOrLoad(key, fileIOSupplier);
+  public TableMetadata getOrLoadMetadata(
+      String realmId,
+      String metadataLocation,
+      StorageAccessConfig storageAccessConfig,
+      Supplier<FileIO> fileIOSupplier) {
+    String metadataJson = getOrLoad(realmId, metadataLocation, storageAccessConfig, fileIOSupplier);
     try {
-      return TableMetadataParser.fromJson(key.metadataLocation(), metadataJson);
+      return TableMetadataParser.fromJson(metadataLocation, metadataJson);
     } catch (UncheckedIOException e) {
       throw new RuntimeIOException(
-          e.getCause(), "Failed to parse metadata file %s", key.metadataLocation());
+          e.getCause(), "Failed to parse metadata file %s", metadataLocation);
     }
   }
 
   /**
-   * Returns the metadata JSON document at the key's immutable location, reading it through a {@link
-   * FileIO} from the given supplier on a cache miss. The read happens outside the cache's compute
-   * so a slow object-storage read never blocks access to other keys; concurrent misses for the same
-   * key may read the same immutable document more than once.
+   * Returns the metadata JSON document at the immutable metadata location, reading it through a
+   * {@link FileIO} from the given supplier on a cache miss. The read happens outside the cache's
+   * compute so a slow object-storage read never blocks access to other keys; concurrent misses for
+   * the same key may read the same immutable document more than once.
    */
   @VisibleForTesting
-  String getOrLoad(Key key, Supplier<FileIO> fileIOSupplier) {
+  String getOrLoad(
+      String realmId,
+      String metadataLocation,
+      StorageAccessConfig storageAccessConfig,
+      Supplier<FileIO> fileIOSupplier) {
     if (!enabled) {
-      return read(fileIOSupplier.get(), key.metadataLocation());
+      return read(fileIOSupplier.get(), metadataLocation);
     }
+    Key key = new Key(realmId, storageAccessConfig, metadataLocation);
     String cached = metadataJsonByLocation.getIfPresent(key);
     if (cached != null) {
       return cached;
     }
-    String metadataJson = read(fileIOSupplier.get(), key.metadataLocation());
+    String metadataJson = read(fileIOSupplier.get(), metadataLocation);
     admit(key, metadataJson);
     return metadataJson;
   }
 
-  public void put(Key key, String metadataJson) {
+  public void put(
+      String realmId,
+      String metadataLocation,
+      StorageAccessConfig storageAccessConfig,
+      String metadataJson) {
     if (enabled) {
-      admit(key, metadataJson);
+      admit(new Key(realmId, storageAccessConfig, metadataLocation), metadataJson);
     }
   }
 

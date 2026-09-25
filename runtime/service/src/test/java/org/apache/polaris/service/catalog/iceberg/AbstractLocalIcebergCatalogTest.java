@@ -609,7 +609,11 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     TableMetadataCache throwingCache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024)) {
           @Override
-          public void put(TableMetadataCache.Key key, String metadataJson) {
+          public void put(
+              String realmId,
+              String metadataLocation,
+              StorageAccessConfig storageAccessConfig,
+              String metadataJson) {
             throw new RuntimeException("cache population failed");
           }
         };
@@ -3219,46 +3223,6 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     TableMetadata metadata = cachingCatalog.newTableOps(TABLE).current();
     Assertions.assertThat(metadata).isNotNull();
     Assertions.assertThat(metadata.schema().columns()).hasSameSizeAs(SCHEMA.columns());
-
-    measured.newInputFileExceptionSupplier = Optional.empty();
-    cachingCatalog.dropTable(TABLE, true);
-  }
-
-  @Test
-  public void testRefreshKeysMetadataCacheByTableDefaultProperties() {
-    Assumptions.assumeTrue(
-        requiresNamespaceCreate(),
-        "Only applicable if namespaces must be created before adding children");
-
-    TableMetadataCache cache =
-        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
-    LocalIcebergCatalog cachingCatalog =
-        newIcebergCatalog(CATALOG_NAME, metaStoreManager, new MeasuredFileIOFactory(), cache);
-    cachingCatalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
-    cachingCatalog.createNamespace(NS);
-    cachingCatalog.buildTable(TABLE, SCHEMA).create();
-
-    // A catalog instance with other table defaults reads the document from storage.
-    MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
-    LocalIcebergCatalog otherDefaultsCatalog =
-        newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured, cache);
-    otherDefaultsCatalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL,
-            "org.apache.iceberg.inmemory.InMemoryFileIO",
-            CatalogProperties.TABLE_DEFAULT_PREFIX + "metadata-cache-test",
-            "other"));
-    Assertions.assertThat(otherDefaultsCatalog.newTableOps(TABLE).current()).isNotNull();
-    Assertions.assertThat(measured.getInputBytes()).isPositive();
-
-    // The refresh cached the document under the other table defaults.
-    measured.newInputFileExceptionSupplier =
-        Optional.of(() -> new RuntimeException("metadata should be served from the cache"));
-    Assertions.assertThat(otherDefaultsCatalog.newTableOps(TABLE).current()).isNotNull();
 
     measured.newInputFileExceptionSupplier = Optional.empty();
     cachingCatalog.dropTable(TABLE, true);

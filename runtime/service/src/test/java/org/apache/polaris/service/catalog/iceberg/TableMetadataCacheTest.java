@@ -19,7 +19,7 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
+import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
@@ -32,9 +32,9 @@ import org.junit.jupiter.api.Test;
 
 public class TableMetadataCacheTest {
 
+  private static final String REALM = "realm";
   private static final String LOCATION = "memory://bucket/metadata/00000-abc.metadata.json";
   private static final String METADATA_JSON = "{\"format-version\":2}";
-  private static final String IO_IMPL = InMemoryFileIO.class.getName();
   private static final StorageAccessConfig STORAGE_ACCESS_CONFIG =
       StorageAccessConfig.builder().put(StorageAccessProperty.CLIENT_REGION, "us-west-2").build();
 
@@ -55,24 +55,13 @@ public class TableMetadataCacheTest {
     return fileIO;
   }
 
-  private static TableMetadataCache.Key key(long catalogId) {
-    return key(IO_IMPL, Map.of(), STORAGE_ACCESS_CONFIG, catalogId);
+  private String load(TableMetadataCache cache) {
+    return load(cache, REALM, STORAGE_ACCESS_CONFIG);
   }
 
-  private static TableMetadataCache.Key key(
-      String ioImplClassName,
-      Map<String, String> tableProperties,
-      StorageAccessConfig storageAccessConfig) {
-    return key(ioImplClassName, tableProperties, storageAccessConfig, 1);
-  }
-
-  private static TableMetadataCache.Key key(
-      String ioImplClassName,
-      Map<String, String> tableProperties,
-      StorageAccessConfig storageAccessConfig,
-      long catalogId) {
-    return new TableMetadataCache.Key(
-        "realm", catalogId, ioImplClassName, tableProperties, storageAccessConfig, LOCATION);
+  private String load(
+      TableMetadataCache cache, String realmId, StorageAccessConfig storageAccessConfig) {
+    return cache.getOrLoad(realmId, LOCATION, storageAccessConfig, this::countingFileIO);
   }
 
   @Test
@@ -80,31 +69,19 @@ public class TableMetadataCacheTest {
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
     Assertions.assertThat(cache.isEnabled()).isTrue();
-    Assertions.assertThat(cache.getOrLoad(key(1), this::countingFileIO)).isEqualTo(METADATA_JSON);
-    Assertions.assertThat(cache.getOrLoad(key(1), this::countingFileIO)).isEqualTo(METADATA_JSON);
+    Assertions.assertThat(load(cache)).isEqualTo(METADATA_JSON);
+    Assertions.assertThat(load(cache)).isEqualTo(METADATA_JSON);
     Assertions.assertThat(fileIOLoads).hasValue(1);
     Assertions.assertThat(storageReads).hasValue(1);
   }
 
   @Test
-  public void testEntriesScopedByCatalog() {
+  public void testEntriesScopedByRealm() {
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
-    cache.getOrLoad(key(1), this::countingFileIO);
-    cache.getOrLoad(key(2), this::countingFileIO);
+    load(cache, "realm-1", STORAGE_ACCESS_CONFIG);
+    load(cache, "realm-2", STORAGE_ACCESS_CONFIG);
     Assertions.assertThat(storageReads).hasValue(2);
-  }
-
-  @Test
-  public void testEntriesScopedByFileIOImplementationAndTableProperties() {
-    TableMetadataCache cache =
-        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
-    cache.getOrLoad(key(IO_IMPL, Map.of(), STORAGE_ACCESS_CONFIG), this::countingFileIO);
-    cache.getOrLoad(
-        key("org.example.OtherFileIO", Map.of(), STORAGE_ACCESS_CONFIG), this::countingFileIO);
-    cache.getOrLoad(
-        key(IO_IMPL, Map.of("s3.acl", "private"), STORAGE_ACCESS_CONFIG), this::countingFileIO);
-    Assertions.assertThat(storageReads).hasValue(3);
   }
 
   @Test
@@ -119,9 +96,9 @@ public class TableMetadataCacheTest {
             .putInternalProperty(
                 StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), "http://internal:9000")
             .build();
-    cache.getOrLoad(key(IO_IMPL, Map.of(), STORAGE_ACCESS_CONFIG), this::countingFileIO);
-    cache.getOrLoad(key(IO_IMPL, Map.of(), otherRegion), this::countingFileIO);
-    cache.getOrLoad(key(IO_IMPL, Map.of(), internalEndpoint), this::countingFileIO);
+    load(cache, REALM, STORAGE_ACCESS_CONFIG);
+    load(cache, REALM, otherRegion);
+    load(cache, REALM, internalEndpoint);
     Assertions.assertThat(storageReads).hasValue(3);
   }
 
@@ -137,8 +114,8 @@ public class TableMetadataCacheTest {
             .put(StorageAccessProperty.AWS_TOKEN, "token")
             .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, "1000")
             .build();
-    cache.getOrLoad(key(IO_IMPL, Map.of(), STORAGE_ACCESS_CONFIG), this::countingFileIO);
-    cache.getOrLoad(key(IO_IMPL, Map.of(), vendedAgain), this::countingFileIO);
+    load(cache, REALM, STORAGE_ACCESS_CONFIG);
+    load(cache, REALM, vendedAgain);
     Assertions.assertThat(storageReads).hasValue(1);
   }
 
@@ -151,11 +128,7 @@ public class TableMetadataCacheTest {
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
     Assertions.assertThatThrownBy(
-            () ->
-                cache.getOrLoad(
-                    new TableMetadataCache.Key(
-                        "realm", 1, IO_IMPL, Map.of(), STORAGE_ACCESS_CONFIG, gzipLocation),
-                    () -> fileIO))
+            () -> cache.getOrLoad(REALM, gzipLocation, STORAGE_ACCESS_CONFIG, () -> fileIO))
         .isInstanceOf(RuntimeIOException.class);
   }
 
@@ -165,7 +138,8 @@ public class TableMetadataCacheTest {
     fileIO.addFile(LOCATION, "{not json".getBytes(StandardCharsets.UTF_8));
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
-    Assertions.assertThatThrownBy(() -> cache.getOrLoadMetadata(key(1), () -> fileIO))
+    Assertions.assertThatThrownBy(
+            () -> cache.getOrLoadMetadata(REALM, LOCATION, STORAGE_ACCESS_CONFIG, () -> fileIO))
         .isInstanceOf(RuntimeIOException.class);
   }
 
@@ -173,21 +147,45 @@ public class TableMetadataCacheTest {
   public void testPutSeedsSubsequentLoads() {
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
-    cache.put(key(1), METADATA_JSON);
-    Assertions.assertThat(cache.getOrLoad(key(1), this::countingFileIO)).isEqualTo(METADATA_JSON);
+    cache.put(REALM, LOCATION, STORAGE_ACCESS_CONFIG, METADATA_JSON);
+    Assertions.assertThat(load(cache)).isEqualTo(METADATA_JSON);
     Assertions.assertThat(fileIOLoads).hasValue(0);
   }
 
   @Test
   public void testDefaultBudgetIsShareOfMaxHeap() {
-    Assertions.assertThat(TableMetadataCache.defaultMaxBytes(1000L * 1024 * 1024))
+    Assertions.assertThat(
+            TableMetadataCache.maxBytes(
+                TestTableMetadataCacheConfiguration.defaults(), 1000L * 1024 * 1024))
         .isEqualTo(50L * 1024 * 1024);
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.defaults());
     Assertions.assertThat(cache.isEnabled()).isTrue();
-    cache.getOrLoad(key(1), this::countingFileIO);
-    cache.getOrLoad(key(1), this::countingFileIO);
+    load(cache);
+    load(cache);
     Assertions.assertThat(storageReads).hasValue(1);
+  }
+
+  @Test
+  public void testFractionOfMaxHeapSizeSetsBudget() {
+    Assertions.assertThat(
+            TableMetadataCache.maxBytes(
+                TestTableMetadataCacheConfiguration.withFractionOfMaxHeapSize(0.1),
+                1000L * 1024 * 1024))
+        .isEqualTo(100L * 1024 * 1024);
+    Assertions.assertThat(
+            new TableMetadataCache(TestTableMetadataCacheConfiguration.withFractionOfMaxHeapSize(0))
+                .isEnabled())
+        .isFalse();
+  }
+
+  @Test
+  public void testMaxBytesTakesPrecedenceOverFractionOfMaxHeapSize() {
+    Assertions.assertThat(
+            TableMetadataCache.maxBytes(
+                new TestTableMetadataCacheConfiguration(OptionalLong.of(1024), 0.1, 1024),
+                1000L * 1024 * 1024))
+        .isEqualTo(1024);
   }
 
   @Test
@@ -195,8 +193,8 @@ public class TableMetadataCacheTest {
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.disabled());
     Assertions.assertThat(cache.isEnabled()).isFalse();
-    cache.getOrLoad(key(1), this::countingFileIO);
-    cache.getOrLoad(key(1), this::countingFileIO);
+    load(cache);
+    load(cache);
     Assertions.assertThat(storageReads).hasValue(2);
   }
 
@@ -205,11 +203,11 @@ public class TableMetadataCacheTest {
     TableMetadataCache cache =
         new TableMetadataCache(
             new TestTableMetadataCacheConfiguration(1024 * 1024, METADATA_JSON.length() - 1));
-    cache.getOrLoad(key(1), this::countingFileIO);
-    cache.getOrLoad(key(1), this::countingFileIO);
+    load(cache);
+    load(cache);
     Assertions.assertThat(storageReads).hasValue(2);
-    cache.put(key(2), METADATA_JSON);
-    cache.getOrLoad(key(2), this::countingFileIO);
+    cache.put("other-realm", LOCATION, STORAGE_ACCESS_CONFIG, METADATA_JSON);
+    load(cache, "other-realm", STORAGE_ACCESS_CONFIG);
     Assertions.assertThat(storageReads).hasValue(3);
   }
 
@@ -218,8 +216,8 @@ public class TableMetadataCacheTest {
     TableMetadataCache cache =
         new TableMetadataCache(
             new TestTableMetadataCacheConfiguration(1024 * 1024, METADATA_JSON.length()));
-    cache.getOrLoad(key(1), this::countingFileIO);
-    cache.getOrLoad(key(1), this::countingFileIO);
+    load(cache);
+    load(cache);
     Assertions.assertThat(storageReads).hasValue(1);
   }
 
@@ -228,8 +226,8 @@ public class TableMetadataCacheTest {
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(10));
     Assertions.assertThat(cache.isEnabled()).isTrue();
-    cache.getOrLoad(key(1), this::countingFileIO);
-    cache.getOrLoad(key(1), this::countingFileIO);
+    load(cache);
+    load(cache);
     Assertions.assertThat(storageReads).hasValue(2);
   }
 }

@@ -1873,7 +1873,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                       resolvedEntities);
               // The FileIO is built only on a metadata cache miss.
               return tableMetadataCache.getOrLoadMetadata(
-                  metadataCacheKey(metadataLocation, storageAccessConfig),
+                  callContext.getRealmContext().getRealmIdentifier(),
+                  metadataLocation,
+                  storageAccessConfig,
                   () -> loadFileIO(storageAccessConfig, new HashMap<>(tableDefaultProperties)));
             });
         if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_REFRESH_TABLE)) {
@@ -2078,7 +2080,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         if (tableMetadataCache.isEnabled()) {
           try {
             tableMetadataCache.put(
-                metadataCacheKey(newLocation, storageAccessConfig),
+                callContext.getRealmContext().getRealmIdentifier(),
+                newLocation,
+                storageAccessConfig,
                 TableMetadataParser.toJson(committedMetadata));
           } catch (RuntimeException e) {
             LOGGER.warn("Failed to populate table metadata cache for {}", newLocation, e);
@@ -2727,22 +2731,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           "Failed to initialize catalogId before using catalog with name: " + catalogName);
     }
     return catalogId;
-  }
-
-  /**
-   * Keys a metadata document by the {@link FileIO} inputs a refresh reads it with. Storage access
-   * properties other than credentials derive from the storage configuration alone, so a commit's
-   * vended access yields the same key as a refresh's.
-   */
-  private TableMetadataCache.Key metadataCacheKey(
-      String metadataLocation, StorageAccessConfig storageAccessConfig) {
-    return new TableMetadataCache.Key(
-        callContext.getRealmContext().getRealmIdentifier(),
-        getCatalogId(),
-        ioImplClassName,
-        tableDefaultProperties,
-        storageAccessConfig,
-        metadataLocation);
   }
 
   private void renameTableLike(

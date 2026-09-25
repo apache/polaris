@@ -21,12 +21,14 @@ package org.apache.polaris.service.catalog.iceberg;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import java.util.OptionalLong;
 
 /**
  * Configuration for the process-wide cache of table metadata JSON documents, keyed by realm,
- * catalog ID, the non-credential FileIO inputs, and metadata file location. Metadata files are
+ * storage access properties without credentials, and metadata file location. Metadata files are
  * immutable, so cached entries never go stale.
  */
 @ConfigMapping(prefix = "polaris.table-metadata-cache")
@@ -34,13 +36,23 @@ public interface TableMetadataCacheConfiguration {
 
   /**
    * Approximate upper bound on the heap used by cached table metadata JSON documents, in bytes,
-   * including an estimate of per-entry overhead. Defaults to 5% of the maximum heap size. Eviction
-   * may briefly lag writes, so budget this cache with headroom alongside the other in-memory caches
-   * (such as the entity cache). Zero disables caching.
+   * including an estimate of per-entry overhead. Overrides the fraction of the maximum heap size
+   * when set. Eviction may briefly lag writes, so budget this cache with headroom alongside the
+   * other in-memory caches (such as the entity cache). Zero disables caching.
    */
   @WithName("max-bytes")
   @Min(0)
   OptionalLong maxBytes();
+
+  /**
+   * Fraction of the maximum heap size used as the cache budget when {@code max-bytes} is not set.
+   * Zero disables caching.
+   */
+  @WithName("fraction-of-max-heap-size")
+  @WithDefault("0.05")
+  @DecimalMin("0")
+  @DecimalMax("1")
+  double fractionOfMaxHeapSize();
 
   /**
    * Largest table metadata JSON document admitted into the cache, in bytes. Larger documents are

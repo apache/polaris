@@ -23,9 +23,10 @@ build:
   render: never
 ---
 
-Configuration for the process-wide cache of table metadata JSON documents, keyed by realm,  catalog ID, the non-credential FileIO inputs, and metadata file location. Metadata files are  immutable, so cached entries never go stale.
+Configuration for the process-wide cache of table metadata JSON documents, keyed by realm,  storage access properties without credentials, and metadata file location.  Metadata files are  immutable, so cached entries never go stale.
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.table-metadata-cache.max-bytes` |  | `long` | Approximate upper bound on the heap used by cached table metadata JSON documents, in bytes,  including an estimate of per-entry overhead.  Defaults to 5% of the maximum heap size. Eviction  may briefly lag writes, so budget this cache with headroom alongside the other in-memory caches  (such as the entity cache). Zero disables caching.  |
+| `polaris.table-metadata-cache.max-bytes` |  | `long` | Approximate upper bound on the heap used by cached table metadata JSON documents, in bytes,  including an estimate of per-entry overhead.  Overrides the fraction of the maximum heap size  when set. Eviction may briefly lag writes, so budget this cache with headroom alongside the  other in-memory caches (such as the entity cache). Zero disables caching.  |
+| `polaris.table-metadata-cache.fraction-of-max-heap-size` | `0.05` | `double` | Fraction of the maximum heap size used as the cache budget when `max-bytes` is not set.  Zero disables caching. |
 | `polaris.table-metadata-cache.max-content-length` | `8388608` | `long` | Largest table metadata JSON document admitted into the cache, in bytes. Larger documents are  always read from storage so that a single oversized document does not evict the working set of  ordinary-sized documents.  |
