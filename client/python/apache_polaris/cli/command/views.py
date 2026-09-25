@@ -75,7 +75,7 @@ class ViewCommand(Command):
             if not self.view_name or not self.view_name.strip():
                 raise CliError("The view name cannot be empty.")
         if self.views_subcommand == Subcommands.REGISTER:
-            validate_metadata_location(self.metadata_location)
+            self.metadata_location = validate_metadata_location(self.metadata_location)
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))

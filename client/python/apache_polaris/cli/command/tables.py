@@ -76,7 +76,7 @@ class TableCommand(Command):
             if not self.table_name or not self.table_name.strip():
                 raise CliError("The table name cannot be empty.")
         if self.table_subcommand == Subcommands.REGISTER:
-            validate_metadata_location(self.metadata_location)
+            self.metadata_location = validate_metadata_location(self.metadata_location)
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))

@@ -151,14 +151,20 @@ def handle_api_exception(entity_label: str, e: Exception) -> None:
         print(f"  [x] {entity_label:<30} Error: {e}", file=sys.stderr)
 
 
-def validate_metadata_location(location: Optional[str]) -> None:
+def validate_metadata_location(location: Optional[str]) -> str:
     """
-    Validate a --metadata-location argument. Raises CliError on failure.
+    Validate and normalize a --metadata-location argument.
+
+    Returns the location with surrounding whitespace stripped, or raises
+    CliError on failure.
     """
     if not location or not location.strip():
         raise CliError("Missing required argument: --metadata-location")
-    if not urlparse(location).scheme:
+    location = location.strip()
+    scheme = urlparse(location).scheme
+    if not scheme or len(scheme) == 1:
         raise CliError(f"--metadata-location must include a scheme; got {location}")
+    return location
 
 
 def format_iceberg_type(obj: Any) -> str:

@@ -1732,7 +1732,7 @@ The `tables` command is used to manage Iceberg tables within a Polaris Catalog.
 2. get
 3. summarize
 4. delete
-4. register
+5. register
 
 #### list
 
@@ -1850,7 +1850,7 @@ Command Options:
 ##### Examples
 
 ```
-polaris tables register my_table --catalog my_catalog --namesapce ns1 --metadata-location s3://bucket/path/00001-(uuid).metadata.json
+polaris tables register my_table --catalog my_catalog --namespace ns1 --metadata-location s3://bucket/path/00001-(uuid).metadata.json
 ```
 
 ### Views
@@ -1863,7 +1863,7 @@ The `views` command is used to manage Iceberg views within a Polaris Catalog.
 2. get
 3. summarize
 4. delete
-4. register
+5. register
 
 #### list
 
@@ -1960,7 +1960,7 @@ polaris views delete my_view --catalog my_catalog --namespace ns1
 
 #### register
 
-The `register` subcommand is used to register an view to catalog by its metadata location
+The `register` subcommand is used to register a view to catalog by its metadata location
 
 ```
 usage: polaris views register [-h] [options] VIEW_NAME
@@ -1980,7 +1980,7 @@ Command Options:
 ##### Examples
 
 ```
-polaris views register my_view --catalog my_catalog --namesapce ns1 --metadata-location s3://bucket/path/00001-(uuid).metadata.json
+polaris views register my_view --catalog my_catalog --namespace ns1 --metadata-location s3://bucket/path/00001-(uuid).metadata.json
 ```
 
 ### Generic Tables
