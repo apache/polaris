@@ -18,17 +18,23 @@
  */
 package org.apache.polaris.service.admin;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -36,6 +42,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.service.Profiles;
 import org.junit.jupiter.api.DynamicNode;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
 @QuarkusTest
@@ -45,11 +52,10 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
     final PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(
             principalEntity.getName(),
-            Map.of(
-                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-                principalEntity,
-                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
-                true),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
             Set.of());
     return new PolarisAdminService(
         callContext,
@@ -62,11 +68,32 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         reservedProperties);
   }
 
+  private PolarisAdminService newExternalTestAdminService(String principalName) {
+    final PolarisPrincipal externalPrincipal =
+        PolarisPrincipal.of(
+            principalName,
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true)
+                .build(),
+            Set.of());
+    return new PolarisAdminService(
+        callContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        serviceIdentityProvider,
+        externalPrincipal,
+        polarisAuthorizer,
+        reservedProperties);
+  }
+
   private PolarisAdminService newTestAdminService(Set<String> activatedPrincipalRoles) {
     final PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(
             principalEntity.getName(),
-            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+                .build(),
             activatedPrincipalRoles);
     return PolarisAdminServiceTestSupport.newAdminService(
         callContext,
@@ -955,5 +982,32 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         .shouldPassWith(PolarisPrivilege.POLICY_MANAGE_GRANTS_ON_SECURABLE)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
+  }
+
+  /**
+   * An external principal must not benefit from the "rotate own credentials" self-service shortcut
+   * just because it happens to share a name with a stored principal. External principals are not
+   * backed by the metastore, so a name match is an accidental collision, not genuine self-service;
+   * the rotation must be denied by the authorizer and the stored secret must remain unchanged.
+   */
+  @Test
+  void testExternalPrincipalCannotRotateSameNamedStoredPrincipalCredentials() {
+    String clientId = principalEntity.getClientId();
+    String secretHashBefore =
+        metaStoreManager
+            .loadPrincipalSecrets(polarisContext, clientId)
+            .getPrincipalSecrets()
+            .getMainSecretHash();
+
+    assertThatThrownBy(
+            () -> newExternalTestAdminService(PRINCIPAL_NAME).rotateCredentials(PRINCIPAL_NAME))
+        .isInstanceOf(ForbiddenException.class);
+
+    String secretHashAfter =
+        metaStoreManager
+            .loadPrincipalSecrets(polarisContext, clientId)
+            .getPrincipalSecrets()
+            .getMainSecretHash();
+    assertThat(secretHashAfter).isEqualTo(secretHashBefore);
   }
 }

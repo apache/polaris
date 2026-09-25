@@ -717,7 +717,7 @@ components:
           "type": "NoSuchPolicyException",
           "code": 404
         }
-      }
+       }
 
     PolicyAlreadyExistsError:
         summary: The requested policy identifier already exists
@@ -727,7 +727,7 @@ components:
             "type": "AlreadyExistsException",
             "code": 409
             }
-        }
+         }
 
     PolicyVersionMismatchError:
       summary: The policy version doesn't match the current-policy-version
@@ -737,7 +737,7 @@ components:
           "type": "PolicyVersionMismatchException",
           "code": 409
         }
-      }
+       }
 
     NoSuchTargetError:
       summary: The requested target does not exist
@@ -747,7 +747,7 @@ components:
           "type": "NoSuchTargetException",
           "code": 404
         }
-      }
+       }
 
     NoSuchMappingError:
       summary: The requested mapping between policy and target does not exist
@@ -757,7 +757,7 @@ components:
           "type": "NoSuchMappingException",
           "code": 404
         }
-      }
+       }
 
     PolicyInUseError:
       summary: The policy is attached to one or more targets
@@ -767,7 +767,7 @@ components:
           "type": "PolicyInUseException",
           "code": 400
         }
-      }
+       }
 
     ConflictPolicyAttachmentError:
       summary: The policy type is inheritable and there is already a policy of the same type attached to the target entity
@@ -777,7 +777,7 @@ components:
           "type": "ConflictPolicyAttachmentException",
           "code": 409
         }
-      }
+       }
 
     ListPoliciesNonEmptyExample:
       summary: A non-empty list of policy identifiers

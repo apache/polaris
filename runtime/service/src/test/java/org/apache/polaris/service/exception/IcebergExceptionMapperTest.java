@@ -39,6 +39,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.sts.model.StsException;
 
 public class IcebergExceptionMapperTest {
   static Stream<Arguments> fileIOExceptionMapping() {
@@ -68,6 +69,15 @@ public class IcebergExceptionMapperTest {
             Arguments.of(new AzureException("Not Authorized"), 403),
             Arguments.of(new AzureException("Access Denied"), 403),
             Arguments.of(S3Exception.builder().message("Access denied").build(), 403),
+            Arguments.of(
+                StsException.builder()
+                    .message("is not authorized to perform: sts:AssumeRole")
+                    .statusCode(Response.Status.FORBIDDEN.getStatusCode())
+                    .build(),
+                Response.Status.FORBIDDEN.getStatusCode()),
+            Arguments.of(
+                StsException.builder().message("Request failed").build(),
+                Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()),
             Arguments.of(new StorageException(1, "access denied"), 403),
             Arguments.of(
                 new FileIOUnknownHostException(
@@ -106,6 +116,12 @@ public class IcebergExceptionMapperTest {
                                     return entry.getKey();
                                   }
                                 },
+                                entry.getValue()),
+                            Arguments.of(
+                                StsException.builder()
+                                    .message("")
+                                    .statusCode(entry.getKey())
+                                    .build(),
                                 entry.getValue()),
                             Arguments.of(
                                 new StorageException(entry.getKey(), ""), entry.getValue()))

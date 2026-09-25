@@ -391,12 +391,20 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         "Invalid metadata file location; metadata file location must be absolute and contain a '/': %s",
         metadataFileLocation);
 
-    if (viewExists(identifier)) {
+    PolarisResolvedPathWrapper resolvedTableLike =
+        resolvedEntityView.getPassthroughResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE);
+    PolarisEntity existingEntity =
+        resolvedTableLike == null ? null : resolvedTableLike.getRawLeafEntity();
+
+    if (existingEntity != null
+        && existingEntity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
       throw alreadyExistsExceptionWithSameNameForTableLikeEntity(
           identifier, PolarisEntitySubType.ICEBERG_VIEW);
     }
 
-    boolean tableExists = tableExists(identifier);
+    boolean tableExists =
+        existingEntity != null && existingEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE;
     if (!overwrite && tableExists) {
       throw alreadyExistsExceptionForTableLikeEntity(
           identifier, PolarisEntitySubType.ICEBERG_TABLE);
@@ -404,7 +412,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
     if (tableExists) {
-      return overwriteRegisteredTable(identifier, metadataFileLocation, locationDir);
+      return overwriteRegisteredTable(
+          identifier, metadataFileLocation, locationDir, resolvedTableLike);
     } else {
       return registerNewTable(identifier, metadataFileLocation, locationDir);
     }
@@ -442,10 +451,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   private Table overwriteRegisteredTable(
-      TableIdentifier identifier, String metadataFileLocation, String locationDir) {
-    PolarisResolvedPathWrapper resolvedPath =
-        resolvedEntityView.getPassthroughResolvedPath(
-            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE);
+      TableIdentifier identifier,
+      String metadataFileLocation,
+      String locationDir,
+      PolarisResolvedPathWrapper resolvedPath) {
     if (resolvedPath == null || resolvedPath.getRawLeafEntity() == null) {
       throw new NoSuchTableException("Table does not exist: %s", identifier);
     }
@@ -1315,27 +1324,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         dataLocations,
         resolvedStorageEntity,
         resolvedStorageEntity.getRawFullPath());
-  }
-
-  /**
-   * Validates that the specified {@code location} is valid for whatever storage config is found for
-   * this TableLike's parent hierarchy.
-   */
-  private void validateLocationForTableLike(TableIdentifier identifier, String location) {
-    PolarisResolvedPathWrapper resolvedStorageEntity =
-        resolvedEntityView.getResolvedPath(
-            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE);
-    if (resolvedStorageEntity == null) {
-      resolvedStorageEntity =
-          resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()));
-    }
-    if (resolvedStorageEntity == null) {
-      resolvedStorageEntity =
-          resolvedEntityView.getPassthroughResolvedPath(
-              ResolvedPathKey.ofNamespace(identifier.namespace()));
-    }
-
-    validateLocationForTableLike(identifier, location, resolvedStorageEntity);
   }
 
   /**
@@ -3027,23 +3015,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       // of the TableIdentifier, which may even be the base CatalogEntity if no parent namespaces
       // actually exist yet. We can then extract the right StorageInfo entity via a normal call
       // to findStorageInfoFromHierarchy.
-      PolarisResolvedPathWrapper resolvedStorageEntity = null;
-      Optional<PolarisEntity> storageInfoEntity = Optional.empty();
-      for (int i = tableIdentifier.namespace().length(); i >= 0; i--) {
-        Namespace nsLevel =
-            Namespace.of(
-                Arrays.stream(tableIdentifier.namespace().levels())
-                    .limit(i)
-                    .toArray(String[]::new));
-        resolvedStorageEntity =
-            resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(nsLevel));
-        if (resolvedStorageEntity != null) {
-          storageInfoEntity =
-              PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
+      PolarisResolvedPathWrapper resolvedStorageEntity =
+          resolveDeepestExistingStorageEntity(tableIdentifier);
+      Optional<PolarisEntity> storageInfoEntity =
+          resolvedStorageEntity == null
+              ? Optional.empty()
+              : PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
                   resolvedStorageEntity);
-          break;
-        }
-      }
 
       if (resolvedStorageEntity == null || storageInfoEntity.isEmpty()) {
         throw new BadRequestException(
@@ -3072,10 +3050,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         || notificationType == NotificationType.UPDATE) {
 
       Namespace ns = tableIdentifier.namespace();
-      createNonExistingNamespaces(ns);
-
-      PolarisResolvedPathWrapper resolvedParent =
-          resolvedEntityView.getPassthroughResolvedPath(ResolvedPathKey.ofNamespace(ns));
 
       IcebergTableLikeEntity entity =
           IcebergTableLikeEntity.of(
@@ -3110,8 +3084,19 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                 .setLastNotificationTimestamp(request.getPayload().getTimestamp())
                 .build();
       }
-      // first validate we can read the metadata file
-      validateLocationForTableLike(tableIdentifier, newLocation);
+      // Validate the proposed metadata location against the storage configuration of the deepest
+      // already-existing ancestor BEFORE auto-creating any parent namespaces. Otherwise a
+      // notification carrying a disallowed location would fail validation only after the namespaces
+      // were persisted, leaving them orphaned. Auto-created namespaces inherit their storage
+      // configuration from this same ancestor, so validating here is equivalent to validating after
+      // creation.
+      validateLocationForTableLike(
+          tableIdentifier, newLocation, resolveDeepestExistingStorageEntity(tableIdentifier));
+
+      createNonExistingNamespaces(ns);
+
+      PolarisResolvedPathWrapper resolvedParent =
+          resolvedEntityView.getPassthroughResolvedPath(ResolvedPathKey.ofNamespace(ns));
 
       String locationDir = newLocation.substring(0, newLocation.lastIndexOf("/"));
 
@@ -3153,6 +3138,28 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
     return true;
+  }
+
+  /**
+   * Walks up the namespace hierarchy of {@code identifier} (from the deepest level up to the
+   * catalog root) and returns the resolved path of the nearest ancestor that already exists. Since
+   * auto-created namespaces inherit their storage configuration from this ancestor, callers can use
+   * it to validate a proposed location before any namespaces are created. Returns {@code null} if
+   * no ancestor is resolved.
+   */
+  private PolarisResolvedPathWrapper resolveDeepestExistingStorageEntity(
+      TableIdentifier identifier) {
+    for (int i = identifier.namespace().length(); i >= 0; i--) {
+      Namespace nsLevel =
+          Namespace.of(
+              Arrays.stream(identifier.namespace().levels()).limit(i).toArray(String[]::new));
+      PolarisResolvedPathWrapper resolvedStorageEntity =
+          resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(nsLevel));
+      if (resolvedStorageEntity != null) {
+        return resolvedStorageEntity;
+      }
+    }
+    return null;
   }
 
   private void createNonExistingNamespaces(Namespace namespace) {

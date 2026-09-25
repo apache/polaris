@@ -495,12 +495,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + " when LIST_PAGINATION_ENABLED is true; with pagination disabled the requested page"
                   + " size is ignored and the full result set is returned. For federated catalogs it"
                   + " always applies, because Polaris paginates those listings itself. Values <= 0 mean"
-                  + " unlimited (no max page size enforced), which is the default. Setting a maximum"
-                  + " deviates from the Iceberg REST specification, which requires a request that"
-                  + " does not supply a pageToken to receive the complete result with a null"
-                  + " next-page-token: such a request is then truncated to the maximum and answered"
-                  + " with a continuation token, so a client that does not follow continuations sees"
-                  + " only the first page.")
+                  + " unlimited (no max page size enforced), which is the default. A request that"
+                  + " supplies neither pageToken nor pageSize asks for the complete listing, so when"
+                  + " the result does not fit the maximum it is rejected rather than truncated and"
+                  + " answered with a continuation token. An empty pageToken starts a paginated"
+                  + " listing and is capped like any other paginated request.")
           .defaultValue(-1)
           .buildFeatureConfiguration();
 
