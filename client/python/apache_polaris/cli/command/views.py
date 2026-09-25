@@ -26,11 +26,13 @@ from apache_polaris.cli.command.utils import (
     get_catalog_api_client,
     handle_api_exception,
     paginate,
+    validate_metadata_location,
 )
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
+from apache_polaris.sdk.catalog.models import RegisterViewRequest
 from apache_polaris.sdk.management import PolarisDefaultApi
 from prettytable import PrettyTable
 
@@ -45,6 +47,7 @@ class ViewCommand(Command):
         * polaris views get my_view --catalog my_catalog --namespace ns1
         * polaris views summarize my_view --catalog my_catalog --namespace ns1
         * polaris views delete my_view --catalog my_catalog --namespace ns1
+        * polaris views register my_view --catalog my_catalog --namespace ns1 --metadata-location s3://bucket/path/00001-(uuid).metadata.json
     """
 
     views_subcommand: str
@@ -52,6 +55,7 @@ class ViewCommand(Command):
     namespace: Optional[List[str]] = field(default_factory=list)
     view_name: Optional[str] = None
     page_size: Optional[int] = None
+    metadata_location: Optional[str] = None
 
     def validate(self) -> None:
         if not self.catalog_name:
@@ -66,9 +70,12 @@ class ViewCommand(Command):
             self.views_subcommand == Subcommands.GET
             or self.views_subcommand == Subcommands.SUMMARIZE
             or self.views_subcommand == Subcommands.DELETE
+            or self.views_subcommand == Subcommands.REGISTER
         ):
             if not self.view_name or not self.view_name.strip():
                 raise CliError("The view name cannot be empty.")
+        if self.views_subcommand == Subcommands.REGISTER:
+            self.metadata_location = validate_metadata_location(self.metadata_location)
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))
@@ -105,6 +112,18 @@ class ViewCommand(Command):
             print(f"Dropping view {namespace_dot}.{view_name} completed")
         elif self.views_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(catalog_api, ns_str)
+        elif self.views_subcommand == Subcommands.REGISTER:
+            namespace_dot = ".".join(namespace_list)
+            print(f"Registering view {namespace_dot}.{view_name}...")
+            catalog_api.register_view(
+                prefix=catalog_name,
+                namespace=ns_str,
+                register_view_request=RegisterViewRequest(
+                    name=view_name,
+                    metadata_location=self.metadata_location,
+                ),
+            )
+            print(f"Registering view {namespace_dot}.{view_name} completed")
 
     def _generate_summary(self, catalog_api: IcebergCatalogAPI, ns_str: str) -> None:
         catalog_name = cast(str, self.catalog_name)

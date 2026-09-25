@@ -19,14 +19,16 @@
 
 import io
 from unittest.mock import patch, MagicMock
-from cli_test_utils import CLITestBase
+from cli_test_utils import CLITestBase, INVALID_ARGS
 from apache_polaris.cli.constants import UNIT_SEPARATOR
 from apache_polaris.cli.exceptions import CLI_ERROR_EXIT_CODE
+from apache_polaris.cli.options.parser import Parser
 from apache_polaris.cli.polaris_cli import PolarisCli
 from apache_polaris.sdk.catalog.exceptions import ApiException
 from apache_polaris.sdk.catalog.models import (
     LoadViewResult,
     ModelSchema,
+    RegisterViewRequest,
     SQLViewRepresentation,
     StructField,
     Type,
@@ -278,7 +280,101 @@ class TestViewsCommand(CLITestBase):
                 ],
             )
         output = mock_stdout.getvalue()
-        self.assertIn(
-            "No matching version found for the current version ID", output
-        )
+        self.assertIn("No matching version found for the current version ID", output)
         self.assertNotIn("Version History", output)
+
+    @patch("apache_polaris.cli.command.views.IcebergCatalogAPI")
+    def test_view_register(self, mock_iceberg_api_class: MagicMock) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+
+        self.mock_execute(
+            mock_client,
+            [
+                "views",
+                "register",
+                "my_view",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+                "--metadata-location",
+                "s3://bucket/ns1/my_view/metadata/00001-abcd.metadata.json",
+            ],
+        )
+        mock_iceberg_api.register_view.assert_called_once()
+        kwargs = mock_iceberg_api.register_view.call_args.kwargs
+        self.assertEqual(kwargs["prefix"], "my-catalog")
+        self.assertEqual(kwargs["namespace"], "ns1")
+        request = kwargs["register_view_request"]
+        self.assertIsInstance(request, RegisterViewRequest)
+        self.assertEqual(request.name, "my_view")
+        self.assertEqual(
+            request.metadata_location,
+            "s3://bucket/ns1/my_view/metadata/00001-abcd.metadata.json",
+        )
+
+    @patch("apache_polaris.cli.command.views.IcebergCatalogAPI")
+    def test_view_register_missing_metadata_location(
+        self, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                [
+                    "views",
+                    "register",
+                    "my_view",
+                    "--catalog",
+                    "my-catalog",
+                    "--namespace",
+                    "ns1",
+                ],
+            ),
+            "--metadata-location",
+        )
+
+    @patch("apache_polaris.cli.command.views.IcebergCatalogAPI")
+    def test_view_register_missing_scheme(
+        self, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                [
+                    "views",
+                    "register",
+                    "my_view",
+                    "--catalog",
+                    "my-catalog",
+                    "--namespace",
+                    "ns1",
+                    "--metadata-location",
+                    "/bucket/ns1/my_view/metadata/00001-abcd.metadata.json",
+                ],
+            ),
+            "must include a scheme",
+        )
+
+    def test_view_register_rejects_overwrite_flag(self) -> None:
+        with patch("sys.stdout", new_callable=io.StringIO):
+            with self.assertRaises(SystemExit) as cm:
+                Parser.parse(
+                    [
+                        "views",
+                        "register",
+                        "my_view",
+                        "--catalog",
+                        "my-catalog",
+                        "--namespace",
+                        "ns1",
+                        "--metadata-location",
+                        "s3://bucket/ns1/my_view/metadata/00001-abcd.metadata.json",
+                        "--overwrite",
+                    ]
+                )
+        self.assertEqual(cm.exception.code, INVALID_ARGS)

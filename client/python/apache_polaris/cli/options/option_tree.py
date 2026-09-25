@@ -1262,6 +1262,22 @@ class OptionTree:
                     input_name=Arguments.TABLE,
                     input_metavar="TABLE_NAME",
                 ),
+                Option(
+                    Subcommands.REGISTER,
+                    hint="Register a table to catalog by its metadata location",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                        Argument(
+                            Arguments.METADATA_LOCATION,
+                            str,
+                            Hints.METADATA_LOCATION,
+                        ),
+                        Argument(Arguments.OVERWRITE, bool, Hints.OVERWRITE),
+                    ],
+                    input_name=Arguments.TABLE,
+                    input_metavar="TABLE_NAME",
+                ),
             ],
         )
 
@@ -1305,6 +1321,21 @@ class OptionTree:
                     args=[
                         Argument(Arguments.CATALOG, str, Hints.CATALOG),
                         Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.VIEW,
+                    input_metavar="VIEW_NAME",
+                ),
+                Option(
+                    Subcommands.REGISTER,
+                    hint="Register a view to catalog by its metadata location",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                        Argument(
+                            Arguments.METADATA_LOCATION,
+                            str,
+                            Hints.METADATA_LOCATION,
+                        ),
                     ],
                     input_name=Arguments.VIEW,
                     input_metavar="VIEW_NAME",

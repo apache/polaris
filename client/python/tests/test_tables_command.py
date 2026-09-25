@@ -23,6 +23,7 @@ from apache_polaris.cli.constants import UNIT_SEPARATOR
 from apache_polaris.cli.exceptions import CLI_ERROR_EXIT_CODE
 from apache_polaris.cli.polaris_cli import PolarisCli
 from apache_polaris.sdk.catalog.exceptions import ApiException
+from apache_polaris.sdk.catalog.models import RegisterTableRequest
 
 
 class TestTablesCommand(CLITestBase):
@@ -214,4 +215,170 @@ class TestTablesCommand(CLITestBase):
         )
         mock_policy_api.get_applicable_policies.assert_called_with(
             prefix="my-catalog", namespace="ns1", target_name="my_table"
+        )
+
+    @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
+    def test_table_register(self, mock_iceberg_api_class: MagicMock) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+
+        self.mock_execute(
+            mock_client,
+            [
+                "tables",
+                "register",
+                "my_table",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+                "--metadata-location",
+                "s3://bucket/ns1/my_table/metadata/00001-abcd.metadata.json",
+            ],
+        )
+        mock_iceberg_api.register_table.assert_called_once()
+        kwargs = mock_iceberg_api.register_table.call_args.kwargs
+        self.assertEqual(kwargs["prefix"], "my-catalog")
+        self.assertEqual(kwargs["namespace"], "ns1")
+        request = kwargs["register_table_request"]
+        self.assertIsInstance(request, RegisterTableRequest)
+        self.assertEqual(request.name, "my_table")
+        self.assertEqual(
+            request.metadata_location,
+            "s3://bucket/ns1/my_table/metadata/00001-abcd.metadata.json",
+        )
+        self.assertFalse(request.overwrite)
+
+    @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
+    def test_table_register_with_overwrite(
+        self, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+
+        self.mock_execute(
+            mock_client,
+            [
+                "tables",
+                "register",
+                "my_table",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+                "--metadata-location",
+                "s3://bucket/ns1/my_table/metadata/00001-abcd.metadata.json",
+                "--overwrite",
+            ],
+        )
+        mock_iceberg_api.register_table.assert_called_once()
+        kwargs = mock_iceberg_api.register_table.call_args.kwargs
+        self.assertEqual(kwargs["prefix"], "my-catalog")
+        self.assertEqual(kwargs["namespace"], "ns1")
+        request = kwargs["register_table_request"]
+        self.assertIsInstance(request, RegisterTableRequest)
+        self.assertEqual(request.name, "my_table")
+        self.assertEqual(
+            request.metadata_location,
+            "s3://bucket/ns1/my_table/metadata/00001-abcd.metadata.json",
+        )
+        self.assertTrue(request.overwrite)
+
+    @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
+    def test_table_register_missing_metadata_location(
+        self, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                [
+                    "tables",
+                    "register",
+                    "my_table",
+                    "--catalog",
+                    "my-catalog",
+                    "--namespace",
+                    "ns1",
+                ],
+            ),
+            "--metadata-location",
+        )
+
+    @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
+    def test_table_register_missing_scheme(
+        self, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                [
+                    "tables",
+                    "register",
+                    "my_table",
+                    "--catalog",
+                    "my-catalog",
+                    "--namespace",
+                    "ns1",
+                    "--metadata-location",
+                    "/bucket/ns1/my_table/metadata/00001-abcd.metadata.json",
+                ],
+            ),
+            "must include a scheme",
+        )
+
+    @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
+    def test_table_register_rejects_windows_drive_path(
+        self, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                [
+                    "tables",
+                    "register",
+                    "my_table",
+                    "--catalog",
+                    "my-catalog",
+                    "--namespace",
+                    "ns1",
+                    "--metadata-location",
+                    "C:\\data\\my_table\\metadata\\00001-abcd.metadata.json",
+                ],
+            ),
+            "must include a scheme",
+        )
+
+    @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
+    def test_table_register_strips_metadata_location_whitespace(
+        self, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+
+        self.mock_execute(
+            mock_client,
+            [
+                "tables",
+                "register",
+                "my_table",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+                "--metadata-location",
+                "  s3://bucket/ns1/my_table/metadata/00001-abcd.metadata.json  ",
+            ],
+        )
+        request = mock_iceberg_api.register_table.call_args.kwargs[
+            "register_table_request"
+        ]
+        self.assertEqual(
+            request.metadata_location,
+            "s3://bucket/ns1/my_table/metadata/00001-abcd.metadata.json",
         )
