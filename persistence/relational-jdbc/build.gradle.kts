@@ -24,6 +24,9 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
+
+  implementation(platform(libs.iceberg.bom))
+  implementation("org.apache.iceberg:iceberg-api")
   implementation(libs.slf4j.api)
   implementation(libs.guava)
 

@@ -127,6 +127,10 @@ public final class PolarisClient implements AutoCloseable {
     return new PolicyApi(client, endpoints, authToken, endpoints.catalogApiEndpoint());
   }
 
+  public TagApi tagApi(String authToken) {
+    return new TagApi(client, endpoints, authToken, endpoints.catalogApiEndpoint());
+  }
+
   public PlatformMetricsApi platformMetricsApi() {
     if (platformEndpoints == null) {
       throw new IllegalStateException("Platform endpoints are not available");
@@ -178,6 +182,9 @@ public final class PolarisClient implements AutoCloseable {
         .forEach(
             c -> {
               catalogApi.purge(c.getName());
+              // a live tag definition blocks the catalog drop, so purge tags too; tolerate
+              // only 406 (feature disabled)
+              tagApi(authToken).purgeIfAvailable(c.getName());
               managementApi.dropCatalog(c.getName());
             });
 

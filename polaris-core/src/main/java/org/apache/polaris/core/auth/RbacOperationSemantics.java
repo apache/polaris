@@ -32,6 +32,10 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_VIEW
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ASSIGN_PRINCIPAL_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ASSIGN_TABLE_UUID;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ASSIGN_TAG_TO_CATALOG;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ASSIGN_TAG_TO_NAMESPACE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ASSIGN_TAG_TO_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ASSIGN_TAG_TO_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ATTACH_POLICY_TO_CATALOG;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ATTACH_POLICY_TO_NAMESPACE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ATTACH_POLICY_TO_TABLE;
@@ -47,6 +51,7 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_T
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_TABLE_STAGED;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_TAG;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DELETE_CATALOG;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DELETE_CATALOG_ROLE;
@@ -60,6 +65,8 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_POL
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_SEMANTIC_MODEL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_TABLE_WITH_PURGE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_TAG;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_TAG_DETACH_ALL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_CATALOG;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_NAMESPACE;
@@ -81,6 +88,7 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRI
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES_ASSIGNED;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_SEMANTIC_MODEL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_TABLES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_TAG;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_VIEWS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_NAMESPACE_METADATA;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_POLICY;
@@ -88,6 +96,7 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_SEM
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TABLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TAG;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.NAMESPACE_EXISTS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_TABLE;
@@ -103,6 +112,7 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REMOVE_T
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOT_REF;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REMOVE_TABLE_STATISTICS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.RENAME_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.RENAME_TAG;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.RENAME_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REPLACE_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REPORT_READ_METRICS;
@@ -126,6 +136,10 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.SET_TABL
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.SET_TABLE_STATISTICS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.TABLE_EXISTS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UNASSIGN_TAG_FROM_CATALOG;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UNASSIGN_TAG_FROM_NAMESPACE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UNASSIGN_TAG_FROM_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UNASSIGN_TAG_FROM_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_CATALOG;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_NAMESPACE_PROPERTIES;
@@ -135,11 +149,14 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_P
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_SEMANTIC_MODEL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_TABLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_TABLE_FOR_STAGED_CREATE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_TAG;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPGRADE_TABLE_FORMAT_VERSION;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.VIEW_EXISTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ATTACH_POLICY;
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ATTACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DETACH_POLICY;
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DETACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE;
@@ -154,8 +171,10 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_READ_
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_ATTACH_POLICY;
+import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_ATTACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DETACH_POLICY;
+import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DETACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE;
@@ -199,8 +218,10 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_SNAPSHOT
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_SORT_ORDER;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ASSIGN_UUID;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ATTACH_POLICY;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ATTACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DETACH_POLICY;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DETACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST;
@@ -221,7 +242,16 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_STATISTI
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_ATTACH;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_DETACH;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_DROP;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_LIST;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_READ;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_WRITE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_ATTACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_DETACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE;
@@ -431,6 +461,61 @@ record RbacOperationSemantics(
         REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE,
         EnumSet.of(SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE),
         EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
+
+    // Tag definition operations
+    register(CREATE_TAG, TAG_CREATE);
+    register(LOAD_TAG, TAG_READ);
+    register(DROP_TAG, TAG_DROP);
+    register(DROP_TAG_DETACH_ALL, EnumSet.of(TAG_DROP, TAG_DETACH));
+    // A rename is authorized on both sides, the way RENAME_TABLE and RENAME_VIEW are: dropping the
+    // old name on the definition, creating the new one in the catalog that will hold it. TAG_CREATE
+    // is a catalog privilege, so the destination securable is the catalog rather than a definition
+    // that does not exist yet.
+    register(RENAME_TAG, EnumSet.of(TAG_DROP), EnumSet.of(TAG_CREATE));
+    register(UPDATE_TAG, TAG_WRITE);
+    register(LIST_TAG, TAG_LIST);
+
+    // Tag assignment operations (use CATALOG rooting)
+    register(
+        ASSIGN_TAG_TO_CATALOG,
+        EnumSet.of(TAG_ATTACH),
+        EnumSet.of(CATALOG_ATTACH_TAG),
+        ResolvedPathRooting.CATALOG);
+    register(
+        ASSIGN_TAG_TO_NAMESPACE,
+        EnumSet.of(TAG_ATTACH),
+        EnumSet.of(NAMESPACE_ATTACH_TAG),
+        ResolvedPathRooting.CATALOG);
+    register(
+        ASSIGN_TAG_TO_TABLE,
+        EnumSet.of(TAG_ATTACH),
+        EnumSet.of(TABLE_ATTACH_TAG),
+        ResolvedPathRooting.CATALOG);
+    register(
+        ASSIGN_TAG_TO_VIEW,
+        EnumSet.of(TAG_ATTACH),
+        EnumSet.of(VIEW_ATTACH_TAG),
+        ResolvedPathRooting.CATALOG);
+    register(
+        UNASSIGN_TAG_FROM_CATALOG,
+        EnumSet.of(TAG_DETACH),
+        EnumSet.of(CATALOG_DETACH_TAG),
+        ResolvedPathRooting.CATALOG);
+    register(
+        UNASSIGN_TAG_FROM_NAMESPACE,
+        EnumSet.of(TAG_DETACH),
+        EnumSet.of(NAMESPACE_DETACH_TAG),
+        ResolvedPathRooting.CATALOG);
+    register(
+        UNASSIGN_TAG_FROM_TABLE,
+        EnumSet.of(TAG_DETACH),
+        EnumSet.of(TABLE_DETACH_TAG),
+        ResolvedPathRooting.CATALOG);
+    register(
+        UNASSIGN_TAG_FROM_VIEW,
+        EnumSet.of(TAG_DETACH),
+        EnumSet.of(VIEW_DETACH_TAG),
+        ResolvedPathRooting.CATALOG);
 
     // Policy attachment operations (use CATALOG rooting)
     register(
