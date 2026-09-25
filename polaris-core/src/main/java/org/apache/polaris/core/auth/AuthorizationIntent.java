@@ -28,7 +28,8 @@ public sealed interface AuthorizationIntent
         PolicyAttachmentAuthorizationIntent,
         RoleAssignmentAuthorizationIntent,
         PrivilegeGrantAuthorizationIntent,
-        RootPrivilegeGrantAuthorizationIntent {
+        RootPrivilegeGrantAuthorizationIntent,
+        TagAttachmentAuthorizationIntent {
 
   @NonNull PolarisAuthorizableOperation operation();
 

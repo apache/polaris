@@ -96,6 +96,15 @@ public final class AuthorizationIntentResolver {
           List.of(
               getResolvedSecurable(
                   resolutionManifest, policyAttachmentIntent.attachedTo(), prependRootContainer));
+    } else if (intent instanceof TagAttachmentAuthorizationIntent tagAttachmentIntent) {
+      resolvedTargets =
+          List.of(
+              getResolvedSecurable(
+                  resolutionManifest, tagAttachmentIntent.tag(), prependRootContainer));
+      resolvedSecondaries =
+          List.of(
+              getResolvedSecurable(
+                  resolutionManifest, tagAttachmentIntent.attachedTo(), prependRootContainer));
     } else if (intent instanceof RoleAssignmentAuthorizationIntent roleAssignmentIntent) {
       resolvedTargets =
           List.of(

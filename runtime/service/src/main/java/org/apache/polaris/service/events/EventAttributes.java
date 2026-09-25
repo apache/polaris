@@ -57,16 +57,25 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
+import org.apache.polaris.service.types.CreateTagRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.GetApplicablePoliciesResponse;
+import org.apache.polaris.service.types.GetObjectTagsResponse;
+import org.apache.polaris.service.types.ListObjectsByTagResponse;
+import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.LoadPolicyResponse;
 import org.apache.polaris.service.types.NotificationRequest;
+import org.apache.polaris.service.types.RenameTagRequest;
+import org.apache.polaris.service.types.Tag;
+import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.UpdatePolicyRequest;
+import org.apache.polaris.service.types.UpdateTagRequest;
 
 /**
  * Standard attribute keys for Polaris events. These keys provide type-safe access to common event
@@ -223,6 +232,41 @@ public final class EventAttributes {
       new AttributeKey<>("detach_policy_request");
   public static final AttributeKey<GetApplicablePoliciesResponse> GET_APPLICABLE_POLICIES_RESPONSE =
       new AttributeKey<>("get_applicable_policies_response");
+
+  // Tag attributes
+  public static final AttributeKey<String> TAG_NAME = new AttributeKey<>("tag_name");
+  public static final AttributeKey<CreateTagRequest> CREATE_TAG_REQUEST =
+      new AttributeKey<>("create_tag_request");
+  public static final AttributeKey<RenameTagRequest> RENAME_TAG_REQUEST =
+      new AttributeKey<>("rename_tag_request");
+  public static final AttributeKey<UpdateTagRequest> UPDATE_TAG_REQUEST =
+      new AttributeKey<>("update_tag_request");
+
+  /** The definition a create, load or update answered with, as the response carried it. */
+  public static final AttributeKey<Tag> TAG = new AttributeKey<>("tag");
+
+  public static final AttributeKey<ListTagsResponse> LIST_TAGS_RESPONSE =
+      new AttributeKey<>("list_tags_response");
+  public static final AttributeKey<AssignTagRequest> ASSIGN_TAG_REQUEST =
+      new AttributeKey<>("assign_tag_request");
+  public static final AttributeKey<TagAttachmentTarget> TAG_ASSIGNMENT_TARGET =
+      new AttributeKey<>("tag_assignment_target");
+
+  /**
+   * The kind a target read addresses. The kind is stated by the request rather than inferred, and
+   * the same namespace and name can name either a table or a view, so a listener cannot recover it
+   * from the path attributes below.
+   */
+  public static final AttributeKey<String> TAG_TARGET_TYPE = new AttributeKey<>("tag_target_type");
+
+  public static final AttributeKey<String> TAG_VIEW = new AttributeKey<>("tag_view");
+  public static final AttributeKey<String> COLUMN_NAME = new AttributeKey<>("column_name");
+  public static final AttributeKey<String> TAG_VALUE_FILTER =
+      new AttributeKey<>("tag_value_filter");
+  public static final AttributeKey<GetObjectTagsResponse> GET_OBJECT_TAGS_RESPONSE =
+      new AttributeKey<>("get_object_tags_response");
+  public static final AttributeKey<ListObjectsByTagResponse> LIST_OBJECTS_BY_TAG_RESPONSE =
+      new AttributeKey<>("list_objects_by_tag_response");
 
   public static Optional<AttributeKey<?>> findByName(String name) {
     return Optional.ofNullable(AttributeLookupHolder.ALL_BY_NAME.get(name));

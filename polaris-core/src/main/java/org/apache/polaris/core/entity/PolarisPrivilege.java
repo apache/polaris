@@ -263,6 +263,40 @@ public enum PolarisPrivilege {
   SEMANTIC_MODEL_DROP(107, PolarisEntityType.SEMANTIC_MODEL),
   SEMANTIC_MODEL_FULL_METADATA(108, PolarisEntityType.SEMANTIC_MODEL),
   SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE(109, PolarisEntityType.SEMANTIC_MODEL),
+  TAG_CREATE(110, PolarisEntityType.CATALOG),
+  TAG_READ(111, PolarisEntityType.TAG),
+  TAG_DROP(112, PolarisEntityType.TAG),
+  TAG_WRITE(113, PolarisEntityType.TAG),
+  TAG_LIST(114, PolarisEntityType.CATALOG),
+  TAG_FULL_METADATA(115, PolarisEntityType.TAG),
+  TAG_ATTACH(116, PolarisEntityType.TAG),
+  // Detach sits beside attach because it is required even when no assignment exists, which is what
+  // detach-all needs.
+  TAG_DETACH(117, PolarisEntityType.TAG),
+  CATALOG_ATTACH_TAG(118, PolarisEntityType.CATALOG),
+  NAMESPACE_ATTACH_TAG(119, PolarisEntityType.NAMESPACE),
+  TABLE_ATTACH_TAG(
+      120,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
+  CATALOG_DETACH_TAG(121, PolarisEntityType.CATALOG),
+  NAMESPACE_DETACH_TAG(122, PolarisEntityType.NAMESPACE),
+  TABLE_DETACH_TAG(
+      123,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
+  VIEW_ATTACH_TAG(
+      124,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_VIEW),
+      PolarisEntityType.CATALOG_ROLE),
+  VIEW_DETACH_TAG(
+      125,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_VIEW),
+      PolarisEntityType.CATALOG_ROLE),
   ;
 
   /**

@@ -51,6 +51,7 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
+import org.apache.polaris.core.tag.PolarisTagAssignmentManager;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -62,6 +63,7 @@ public interface PolarisMetaStoreManager
     extends PolarisSecretsManager,
         PolarisGrantManager,
         PolarisPolicyMappingManager,
+        PolarisTagAssignmentManager,
         PolarisEventManager {
 
   /**
@@ -456,6 +458,19 @@ public interface PolarisMetaStoreManager
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext, T entity) {
     return Optional.empty();
+  }
+
+  /**
+   * Indicates whether this metastore manager implementation can store entities of the given type.
+   *
+   * <p>An implementation that returns {@code false} has no storage for the type at all, so callers
+   * should reject the request before resolving anything rather than let it fail deep in
+   * persistence. This describes a permanent property of the implementation, not a per-realm
+   * setting: a feature flag decides whether an available capability is offered, while this decides
+   * whether it exists.
+   */
+  default boolean supportsEntityType(PolarisEntityType entityType) {
+    return true;
   }
 
   /**

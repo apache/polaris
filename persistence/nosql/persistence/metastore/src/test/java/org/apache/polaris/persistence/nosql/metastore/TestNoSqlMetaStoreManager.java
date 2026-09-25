@@ -824,4 +824,26 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   }
 
   private record FetchCounts(int fetch, int bulkFetches, int fetchReference) {}
+
+  @Override
+  @Disabled("TAG entities have no NoSQL mapping; tags cannot exist on this backend")
+  protected void testDropCatalogBlockedByTag() {
+    super.testDropCatalogBlockedByTag();
+  }
+
+  @Test
+  public void testTagEntityTypeIsReportedUnsupported() {
+    // The reason the test above is disabled, stated where callers can act on it: this backend
+    // has no object mapping for TAG, so a request must be refused before it reaches the mapping
+    // lookup, which would otherwise fail with an internal entity-type code. Every other type
+    // stays supported.
+    PolarisMetaStoreManager metaStoreManager =
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(() -> UUID.randomUUID().toString());
+    assertThat(metaStoreManager.supportsEntityType(PolarisEntityType.TAG)).isFalse();
+    for (PolarisEntityType entityType : PolarisEntityType.values()) {
+      if (entityType != PolarisEntityType.TAG) {
+        assertThat(metaStoreManager.supportsEntityType(entityType)).isTrue();
+      }
+    }
+  }
 }

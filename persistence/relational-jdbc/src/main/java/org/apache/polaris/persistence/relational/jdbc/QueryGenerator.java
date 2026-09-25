@@ -31,8 +31,10 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.core.tag.TargetField;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelTagAssignmentRecord;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -54,6 +56,14 @@ public class QueryGenerator {
 
   /** A container for the query fragment SQL string and the ordered parameter values. */
   record QueryFragment(String sql, List<Object> parameters) {}
+
+  /**
+   * The full identity of a tag assignment row, in significance order. Used to order a bounded read
+   * of the assignment table so that reading the same rows twice returns the same rows in the same
+   * order.
+   */
+  private static final String TAG_ASSIGNMENT_IDENTITY_ORDER =
+      "target_catalog_id, target_id, field_id, tag_catalog_id, tag_id";
 
   /**
    * Generates a SELECT query with projection and filtering.
@@ -140,6 +150,62 @@ public class QueryGenerator {
   }
 
   /**
+   * Builds a keyset-resumable SELECT: equality filters plus an optional strictly-greater row-value
+   * resume over {@code resumeColumns}, ordered by those columns. Used by paginated scans whose
+   * continuation key is composite, e.g. {@code (target_id, field_id)} for tag-assignment reverse
+   * lookups.
+   *
+   * @param projections Columns to select.
+   * @param tableName Target table.
+   * @param whereEquals Column-value pairs the row must match exactly.
+   * @param resumeColumns Columns forming the ordering and resume key, in significance order.
+   * @param resumeValues Values of the resume key from the last row of the previous page; empty for
+   *     the first page.
+   * @param limit Max rows, or null for no limit.
+   * @return SELECT query resuming strictly after the resume key in resume-column order.
+   */
+  public static PreparedQuery generateSelectQueryWithRowValueResume(
+      @NonNull List<String> projections,
+      @NonNull String tableName,
+      @NonNull Map<String, Object> whereEquals,
+      @NonNull List<String> resumeColumns,
+      @NonNull List<Object> resumeValues,
+      @Nullable Integer limit) {
+    if (resumeColumns.isEmpty()) {
+      throw new IllegalArgumentException("Resume columns must not be empty");
+    }
+    if (!resumeValues.isEmpty() && resumeValues.size() != resumeColumns.size()) {
+      throw new IllegalArgumentException("Resume values must match resume columns");
+    }
+    Set<String> tableColumns = new HashSet<>(projections);
+    validateColumns(tableColumns, new HashSet<>(resumeColumns));
+    QueryFragment equalsWhere = generateWhereClause(tableColumns, whereEquals, Map.of());
+    StringBuilder where = new StringBuilder(equalsWhere.sql());
+    List<Object> parameters = new ArrayList<>(equalsWhere.parameters());
+    if (!resumeValues.isEmpty()) {
+      // Lexicographic strictly-greater over the composite key:
+      // (c0 > ?) OR (c0 = ? AND c1 > ?) OR ...
+      List<String> terms = new ArrayList<>();
+      for (int i = 0; i < resumeColumns.size(); i++) {
+        StringBuilder term = new StringBuilder("(");
+        for (int j = 0; j < i; j++) {
+          term.append(resumeColumns.get(j)).append(" = ? AND ");
+          parameters.add(resumeValues.get(j));
+        }
+        term.append(resumeColumns.get(i)).append(" > ?)");
+        parameters.add(resumeValues.get(i));
+        terms.add(term.toString());
+      }
+      where.append(where.length() == 0 ? " WHERE " : " AND ");
+      where.append("(").append(String.join(" OR ", terms)).append(")");
+    }
+    PreparedQuery query =
+        generateSelectQuery(
+            projections, tableName, where.toString(), String.join(", ", resumeColumns), limit);
+    return new PreparedQuery(query.sql(), parameters);
+  }
+
+  /**
    * Builds a DELETE query to remove grant records for a given entity.
    *
    * @param entity The target entity (either grantee or securable).
@@ -205,6 +271,52 @@ public class QueryGenerator {
   }
 
   /**
+   * Builds a SELECT query over the tag assignment record table using a composite-tuple IN on {@code
+   * (target_catalog_id, target_id, field_id)}. One statement covering every requested target field,
+   * so the caller reads every level of a hierarchy under one snapshot instead of issuing one round
+   * trip per level.
+   *
+   * <p>A bounded read is ordered by the record identity as well as limited. Without an order, two
+   * reads of the same rows may each return a different subset of them, and a caller that compares
+   * the two to establish that they describe one state would see a disagreement that no writer
+   * caused.
+   *
+   * @param realmId Realm to filter by.
+   * @param targetFields List of (targetCatalogId, targetId, fieldId) keys.
+   * @param limit Max rows, or null for no limit.
+   * @return SELECT query to retrieve matching tag assignment records.
+   * @throws IllegalArgumentException if targetFields is empty.
+   */
+  public static PreparedQuery generateSelectQueryWithTargetFields(
+      @NonNull String realmId, @NonNull List<TargetField> targetFields, @Nullable Integer limit) {
+    if (targetFields.isEmpty()) {
+      throw new IllegalArgumentException("Empty target fields");
+    }
+    String placeholders =
+        targetFields.stream().map(t -> "(?, ?, ?)").collect(Collectors.joining(", "));
+    List<Object> params = new ArrayList<>();
+    for (TargetField targetField : targetFields) {
+      params.add(targetField.targetCatalogId());
+      params.add(targetField.targetId());
+      params.add(targetField.fieldId());
+    }
+    params.add(realmId);
+    String where =
+        " WHERE (target_catalog_id, target_id, field_id) IN ("
+            + placeholders
+            + ") AND realm_id = ?";
+    return new PreparedQuery(
+        generateSelectQuery(
+                ModelTagAssignmentRecord.ALL_COLUMNS,
+                ModelTagAssignmentRecord.TABLE_NAME,
+                where,
+                limit == null ? null : TAG_ASSIGNMENT_IDENTITY_ORDER,
+                limit)
+            .sql(),
+        params);
+  }
+
+  /**
    * Generates an INSERT query for a given table.
    *
    * @param allColumns Columns to insert values into.
@@ -248,6 +360,31 @@ public class QueryGenerator {
     String sql = "UPDATE " + tableName + " SET " + setClause + where.sql();
     bindingParams.addAll(where.parameters());
     return new PreparedQuery(sql, bindingParams);
+  }
+
+  /**
+   * Builds a no-op UPDATE that re-sets a version column to itself, conditioned on the row still
+   * being at the expected version. Used to take this transaction's write lock on a row and detect
+   * whether a concurrent writer already moved it past the version read earlier in the same
+   * transaction, without changing any of the row's actual values: an updated row count of zero
+   * means the row moved.
+   *
+   * @param tableName Target table.
+   * @param versionColumn The version column to re-set to itself; also expected as a key in {@code
+   *     whereClause}.
+   * @param tableColumns All valid columns of the table, used to validate {@code whereClause}.
+   * @param whereClause Conditions identifying the row, including the expected version value.
+   * @return UPDATE query with parameter bindings for the WHERE clause only.
+   */
+  public static PreparedQuery generateVersionCheckUpdateQuery(
+      @NonNull String tableName,
+      @NonNull String versionColumn,
+      @NonNull List<String> tableColumns,
+      @NonNull Map<String, Object> whereClause) {
+    QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause, Map.of());
+    String sql =
+        "UPDATE " + tableName + " SET " + versionColumn + " = " + versionColumn + where.sql();
+    return new PreparedQuery(sql, where.parameters());
   }
 
   /**
