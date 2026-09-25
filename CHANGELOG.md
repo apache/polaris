@@ -335,6 +335,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added `--scheme` to specify URL scheme
 - Added opt-in idempotency for `createTable` and `updateTable` in the Iceberg REST catalog. When enabled via `polaris.idempotency.enabled=true` (default `false`), a client-supplied `Idempotency-Key` header is embedded into the table entity and committed in the same transaction as the operation; a retry carrying the same key within the TTL window (`polaris.idempotency.ttl`, default `PT5M`) replays the original success instead of failing — with `AlreadyExists` for `createTable`, or with `CommitFailedException` for `updateTable` when the request's requirements no longer match the already-advanced table. When idempotency is enabled, the reuse window is advertised to clients through the `idempotency-key-lifetime` field of the `GET /v1/config` response.
 - Python CLI: Added views and generic-tables support.
+- Added the `STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS` feature flag (default `0`). When non-zero, a cached storage credential is evicted this many seconds before it actually expires, guaranteeing callers always receive credentials with at least this much validity left; a freshly loaded credential that is already within the buffer is reloaded once rather than handed back as-is. Must be `>= 0` and less than `STORAGE_CREDENTIAL_DURATION_SECONDS`. When `0` (the default), behavior is unchanged: credentials are kept for half of their remaining lifetime.
 
 ### Changes
 
