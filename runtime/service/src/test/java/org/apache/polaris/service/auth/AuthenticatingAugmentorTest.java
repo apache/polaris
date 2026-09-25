@@ -28,9 +28,10 @@ import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import java.security.Principal;
-import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -83,12 +84,18 @@ public class AuthenticatingAugmentorTest {
   public void testAugmentSuccessfulAuthentication() {
     // Given
     PolarisPrincipal polarisPrincipal =
-        PolarisPrincipal.of("user1", Map.of("attribute1", "value1"), Set.of("role1", "role2"));
+        PolarisPrincipal.of(
+            "user1",
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.JWT_ATTRIBUTE_KEY, "token")
+                .build(),
+            Set.of("role1", "role2"));
     PolarisCredential credential = mock(PolarisCredential.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
             .setPrincipal(polarisPrincipal)
             .addCredential(credential)
+            .addAttribute("attr1", "value1")
             .build();
 
     when(authenticator.authenticate(identity)).thenReturn(polarisPrincipal);
@@ -101,6 +108,6 @@ public class AuthenticatingAugmentorTest {
     assertThat(result).isNotNull();
     assertThat(result.getPrincipal()).isSameAs(polarisPrincipal);
     // principal attributes should not be merged
-    assertThat(result.getAttributes()).doesNotContainKey("attribute1");
+    assertThat(result.getAttributes()).containsOnlyKeys("attr1");
   }
 }

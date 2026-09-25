@@ -58,7 +58,8 @@ public final class AuthorizationPreConditions {
 
   private static boolean mustRotateCredentials(PolarisPrincipal principal) {
     return principal
-        .getAttribute(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, PrincipalEntity.class)
+        .getAttributes()
+        .getOptional(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY)
         .map(PrincipalEntity::getInternalPropertiesAsMap)
         .map(
             map ->

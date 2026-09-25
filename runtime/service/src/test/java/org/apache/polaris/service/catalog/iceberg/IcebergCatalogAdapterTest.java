@@ -31,6 +31,7 @@ import java.util.stream.Stream;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.inmemory.InMemoryCatalog;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
@@ -371,48 +372,61 @@ public class IcebergCatalogAdapterTest {
   }
 
   /**
-   * A federated listing with no page token at all must still be bounded: the whole remote result
-   * set would otherwise be returned in one response.
+   * A federated listing that supplies neither a page token nor a page size asks for the complete
+   * result, so it is rejected when that does not fit the configured maximum rather than served a
+   * page that looks complete. A listing that does fit is answered in full.
    */
   @Test
-  void testFederatedListingsWithoutAPageTokenAreBounded() throws IOException {
+  void testFederatedListingsWithoutAPageTokenAreRejectedWhenTheyDoNotFit() throws IOException {
     try (InMemoryCatalog inMemoryCatalog = new InMemoryCatalog()) {
       inMemoryCatalog.initialize("inMemory", Map.of());
       mockCatalogAdapter(inMemoryCatalog);
 
+      // One more entity than the LIST_PAGINATION_MAX_PAGE_SIZE configured above
       int entityCount = 101;
       for (int i = 0; i < entityCount; ++i) {
         inMemoryCatalog.createNamespace(Namespace.of("ns" + i));
         inMemoryCatalog.createTable(TableIdentifier.of("ns0", "table" + i), new Schema());
       }
 
-      ListNamespacesResponse namespaces =
-          (ListNamespacesResponse)
-              catalogAdapter
-                  .listNamespaces(
+      Assertions.assertThatThrownBy(
+              () ->
+                  catalogAdapter.listNamespaces(
                       FEDERATED_CATALOG_NAME,
                       null,
                       null,
                       null,
                       testServices.realmContext(),
-                      testServices.securityContext())
-                  .getEntity();
-      Assertions.assertThat(namespaces.namespaces()).hasSize(100);
-      Assertions.assertThat(namespaces.nextPageToken()).isNotNull();
+                      testServices.securityContext()))
+          .isInstanceOf(BadRequestException.class)
+          .hasMessageContaining("100");
 
-      ListTablesResponse tables =
-          (ListTablesResponse)
-              catalogAdapter
-                  .listTables(
+      Assertions.assertThatThrownBy(
+              () ->
+                  catalogAdapter.listTables(
                       FEDERATED_CATALOG_NAME,
                       "ns0",
                       null,
                       null,
                       testServices.realmContext(),
+                      testServices.securityContext()))
+          .isInstanceOf(BadRequestException.class)
+          .hasMessageContaining("100");
+
+      // ns1 holds no tables, so the same unpaged request fits and is answered in full.
+      ListTablesResponse empty =
+          (ListTablesResponse)
+              catalogAdapter
+                  .listTables(
+                      FEDERATED_CATALOG_NAME,
+                      "ns1",
+                      null,
+                      null,
+                      testServices.realmContext(),
                       testServices.securityContext())
                   .getEntity();
-      Assertions.assertThat(tables.identifiers()).hasSize(100);
-      Assertions.assertThat(tables.nextPageToken()).isNotNull();
+      Assertions.assertThat(empty.identifiers()).isEmpty();
+      Assertions.assertThat(empty.nextPageToken()).isNull();
     }
   }
 

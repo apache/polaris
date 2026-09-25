@@ -67,3 +67,5 @@ oidc:
     secret:
       name: polaris-oidc
       key: client-secret
+  principalMapper:
+    nameClaimPath: preferred_username

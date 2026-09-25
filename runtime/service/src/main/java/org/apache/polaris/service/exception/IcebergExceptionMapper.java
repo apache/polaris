@@ -63,6 +63,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.sts.model.StsException;
 
 @Provider
 public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException> {
@@ -211,6 +212,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   public static int extractHttpCodeFromCloudException(Throwable t) {
     return switch (t) {
       case S3Exception s3e -> s3e.statusCode();
+      case StsException stse -> stse.statusCode();
       case HttpResponseException hre -> hre.getResponse().getStatusCode();
       case StorageException se -> se.getCode();
       default -> UNKNOWN_CLOUD_HTTP_CODE;
@@ -226,6 +228,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
    */
   static Optional<Integer> mapCloudExceptionToResponseCode(Throwable t) {
     if (!(t instanceof S3Exception
+        || t instanceof StsException
         || t instanceof AzureException
         || t instanceof StorageException)) {
       return Optional.empty();

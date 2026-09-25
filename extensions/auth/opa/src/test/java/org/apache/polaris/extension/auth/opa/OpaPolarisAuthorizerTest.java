@@ -37,7 +37,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
@@ -61,6 +60,9 @@ import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.auth.RenameAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
+import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -97,7 +99,12 @@ public class OpaPolarisAuthorizerTest {
               "test-realm");
 
       PolarisPrincipal principal =
-          PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+          PolarisPrincipal.of(
+              "eve",
+              ImmutableAttributeMap.builder()
+                  .put(new AttributeKey<>("department"), "finance")
+                  .build(),
+              Set.of("auditor"));
 
       PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
@@ -157,7 +164,10 @@ public class OpaPolarisAuthorizerTest {
       PolarisPrincipal principal =
           PolarisPrincipal.of(
               "alice",
-              Map.of("department", "analytics", "level", "senior"),
+              ImmutableAttributeMap.builder()
+                  .put(new AttributeKey<>("department"), "analytics")
+                  .put(new AttributeKey<>("level"), "senior")
+                  .build(),
               Set.of("data_engineer", "analyst"));
 
       // Create a hierarchical resource structure: catalog.namespace.table
@@ -299,7 +309,10 @@ public class OpaPolarisAuthorizerTest {
       PolarisPrincipal principal =
           PolarisPrincipal.of(
               "bob",
-              Map.of("team", "ml", "project", "forecasting"),
+              ImmutableAttributeMap.builder()
+                  .put(new AttributeKey<>("team"), "ml")
+                  .put(new AttributeKey<>("project"), "forecasting")
+                  .build(),
               Set.of("data_scientist", "analyst"));
 
       // Create a multi-level namespace structure: catalog.department.team.table
@@ -469,7 +482,8 @@ public class OpaPolarisAuthorizerTest {
               null,
               "test-realm");
 
-      PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
+      PolarisPrincipal principal =
+          PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
 
       PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
@@ -556,7 +570,7 @@ public class OpaPolarisAuthorizerTest {
         };
 
     PolarisPrincipal mockPrincipal =
-        PolarisPrincipal.of("test-user", Map.of(), Collections.emptySet());
+        PolarisPrincipal.of("test-user", AttributeMap.EMPTY, Collections.emptySet());
 
     PolarisAuthorizableOperation mockOperation = PolarisAuthorizableOperation.LOAD_TABLE;
     PolarisResolvedPathWrapper target = null;
@@ -610,7 +624,7 @@ public class OpaPolarisAuthorizerTest {
 
     // Create mock principal and entities
     PolarisPrincipal mockPrincipal =
-        PolarisPrincipal.of("test-user", Map.of(), Collections.emptySet());
+        PolarisPrincipal.of("test-user", AttributeMap.EMPTY, Collections.emptySet());
 
     PolarisAuthorizableOperation mockOperation = PolarisAuthorizableOperation.LOAD_TABLE;
     PolarisResolvedPathWrapper target = null;
@@ -647,7 +661,7 @@ public class OpaPolarisAuthorizerTest {
             "test-realm");
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(resolutionManifest);
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role-1"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1"));
 
     authorizer.resolveAuthorizationInputs(authzState, requestWithCatalogTarget(principal));
 
@@ -657,7 +671,7 @@ public class OpaPolarisAuthorizerTest {
   @Test
   void authorizeUsesIntentInputsAndAllows() throws Exception {
     final String[] capturedRequestBody = new String[1];
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role-1"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1"));
     AuthorizationRequest request = requestWithCatalogTarget(principal);
     HttpEntity mockEntity = HttpEntities.create("{\"result\":{\"allow\":true}}");
     @SuppressWarnings("resource")
@@ -707,7 +721,7 @@ public class OpaPolarisAuthorizerTest {
 
   @Test
   void authorizeDeniesWhenOpaDenies() {
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role-1"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1"));
     AuthorizationRequest request = requestWithCatalogTarget(principal);
     HttpEntity mockEntity = HttpEntities.create("{\"result\":{\"allow\":false}}");
     @SuppressWarnings("resource")
@@ -743,7 +757,7 @@ public class OpaPolarisAuthorizerTest {
     final String[] capturedRequestBody = new String[1];
     AuthorizationRequest request =
         new AuthorizationRequest(
-            PolarisPrincipal.of("alice", Map.of(), Set.of("role-1")),
+            PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1")),
             List.of(
                 new SingleTargetAuthorizationIntent(
                     PolarisAuthorizableOperation.LOAD_TABLE,
@@ -844,7 +858,8 @@ public class OpaPolarisAuthorizerTest {
                       .authorize(
                           new AuthorizationState(mock(PolarisResolutionManifest.class)),
                           new AuthorizationRequest(
-                              PolarisPrincipal.of("root", Map.of(), Set.of("service_admin")),
+                              PolarisPrincipal.of(
+                                  "root", AttributeMap.EMPTY, Set.of("service_admin")),
                               authorizationIntents(
                                   PolarisAuthorizableOperation.GET_CATALOG,
                                   List.of(
@@ -908,7 +923,8 @@ public class OpaPolarisAuthorizerTest {
                       .authorize(
                           new AuthorizationState(mock(PolarisResolutionManifest.class)),
                           new AuthorizationRequest(
-                              PolarisPrincipal.of("root", Map.of(), Set.of("service_admin")),
+                              PolarisPrincipal.of(
+                                  "root", AttributeMap.EMPTY, Set.of("service_admin")),
                               authorizationIntents(
                                   PolarisAuthorizableOperation.LIST_CATALOGS,
                                   List.of(
@@ -938,7 +954,7 @@ public class OpaPolarisAuthorizerTest {
 
     AuthorizationRequest request =
         new AuthorizationRequest(
-            PolarisPrincipal.of("alice", Map.of(), Set.of("role-1")),
+            PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1")),
             List.of(
                 new RenameAuthorizationIntent(
                     PolarisAuthorizableOperation.RENAME_TABLE,
@@ -1016,7 +1032,7 @@ public class OpaPolarisAuthorizerTest {
 
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(resolutionManifest);
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role-1"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1"));
 
     OpaPolarisAuthorizer authorizer =
         new OpaPolarisAuthorizer(
@@ -1099,7 +1115,7 @@ public class OpaPolarisAuthorizerTest {
 
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(resolutionManifest);
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role-1"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1"));
     PolarisSecurable tableTarget =
         PolarisSecurable.of(
             new PathSegment(PolarisEntityType.CATALOG, "catalog-1"),
@@ -1156,7 +1172,8 @@ public class OpaPolarisAuthorizerTest {
               null,
               "explicit-realm");
 
-      PolarisPrincipal principal = PolarisPrincipal.of("eve", Map.of(), Set.of("auditor"));
+      PolarisPrincipal principal =
+          PolarisPrincipal.of("eve", AttributeMap.EMPTY, Set.of("auditor"));
 
       assertThatNoException()
           .isThrownBy(
@@ -1201,7 +1218,8 @@ public class OpaPolarisAuthorizerTest {
       PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
       AuthorizationState authzState = new AuthorizationState(resolutionManifest);
 
-      PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
+      PolarisPrincipal principal =
+          PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
       AuthorizationRequest request = requestWithCatalogTarget(principal);
 
       assertThatNoException().isThrownBy(() -> authorizer.authorize(authzState, request));
@@ -1233,7 +1251,12 @@ public class OpaPolarisAuthorizerTest {
               "test-realm");
 
       PolarisPrincipal principal =
-          PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+          PolarisPrincipal.of(
+              "eve",
+              ImmutableAttributeMap.builder()
+                  .put(new AttributeKey<>("department"), "finance")
+                  .build(),
+              Set.of("auditor"));
       PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
@@ -1278,7 +1301,12 @@ public class OpaPolarisAuthorizerTest {
               "test-realm");
 
       PolarisPrincipal principal =
-          PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+          PolarisPrincipal.of(
+              "eve",
+              ImmutableAttributeMap.builder()
+                  .put(new AttributeKey<>("department"), "finance")
+                  .build(),
+              Set.of("auditor"));
       PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
