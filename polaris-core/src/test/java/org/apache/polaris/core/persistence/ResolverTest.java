@@ -22,11 +22,14 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 
 import java.time.Clock;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -75,13 +78,101 @@ public class ResolverTest extends BaseResolverTest {
   }
 
   @Test
+  public void testResolveExternalCallerPrincipalIsSynthetic() {
+    Resolver resolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of(
+                "ext-user",
+                ImmutableAttributeMap.builder()
+                    .put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true)
+                    .build(),
+                Set.of("ext-role1", "ext-role2")),
+            null,
+            null);
+
+    // The external principal and its roles do not exist in the metastore, yet resolution succeeds.
+    ResolverStatus status = resolver.resolveAll();
+    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+
+    ResolvedPolarisEntity principal = resolver.getResolvedCallerPrincipal();
+    Assertions.assertThat(principal.getEntity().getName()).isEqualTo("ext-user");
+    Assertions.assertThat(principal.getEntity().getType()).isEqualTo(PolarisEntityType.PRINCIPAL);
+    Assertions.assertThat(principal.getGrantRecordsAsGrantee()).isEmpty();
+
+    Assertions.assertThat(resolver.getResolvedCallerPrincipalRoles())
+        .extracting(r -> r.getEntity().getName())
+        .containsExactlyInAnyOrder("ext-role1", "ext-role2");
+    Assertions.assertThat(resolver.getResolvedCallerPrincipalRoles())
+        .allSatisfy(r -> Assertions.assertThat(r.getGrantRecordsAsGrantee()).isEmpty());
+  }
+
+  @Test
+  public void testExternalCallerPrincipalNameDoesNotShadowStoredPrincipal() {
+    // P1 is a stored principal created in setupTest(); use the same name for the external caller.
+    Resolver resolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of(
+                "P1",
+                ImmutableAttributeMap.builder()
+                    .put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true)
+                    .build(),
+                Set.of()),
+            null,
+            null);
+    resolver.addEntityByName(PolarisEntityType.PRINCIPAL, "P1");
+
+    ResolverStatus status = resolver.resolveAll();
+    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+
+    // Must return the real stored P1, not the synthetic sentinel with id -1.
+    ResolvedPolarisEntity resolved = resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL, "P1");
+    Assertions.assertThat(resolved).isNotNull();
+    Assertions.assertThat(resolved.getEntity().getId()).isEqualTo(P1.getId());
+    Assertions.assertThat(resolved.getEntity().getId()).isPositive();
+  }
+
+  @Test
+  public void testExternalCallerRoleNameDoesNotShadowStoredPrincipalRole() {
+    // PR1 is a stored principal role created in setupTest(); use the same name as an external role.
+    Resolver resolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of(
+                "ext-user",
+                ImmutableAttributeMap.builder()
+                    .put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true)
+                    .build(),
+                Set.of("PR1")),
+            null,
+            null);
+    resolver.addOptionalEntityByName(PolarisEntityType.PRINCIPAL_ROLE, "PR1");
+
+    ResolverStatus status = resolver.resolveAll();
+    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+
+    // Must return the real stored PR1, not the synthetic sentinel with a negative id.
+    ResolvedPolarisEntity resolved =
+        resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL_ROLE, "PR1");
+    Assertions.assertThat(resolved).isNotNull();
+    Assertions.assertThat(resolved.getEntity().getId()).isPositive();
+  }
+
+  @Test
   public void testResolveSelectionsSkipsCallerPrincipalForReferenceCatalog() {
     Resolver resolver =
         new Resolver(
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of("missing", AttributeMap.EMPTY, Set.of()),
             null,
             "test");
     ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.REFERENCE_CATALOG));
@@ -95,7 +186,7 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of("missing", AttributeMap.EMPTY, Set.of()),
             null,
             "test");
     pathResolver.addPath(new ResolverPath(List.of("N1"), PolarisEntityType.NAMESPACE));
@@ -110,7 +201,7 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of("missing", AttributeMap.EMPTY, Set.of()),
             null,
             null);
     entityResolver.addEntityByName(PolarisEntityType.PRINCIPAL, "P1");
@@ -126,7 +217,14 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of(
+                "missing",
+                ImmutableAttributeMap.builder()
+                    .put(
+                        PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                        new PrincipalEntity.Builder().setName("missing").build())
+                    .build(),
+                Set.of()),
             null,
             "test");
     ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CALLER_CATALOG_ROLES));
@@ -142,7 +240,7 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of("missing", AttributeMap.EMPTY, Set.of()),
             null,
             "test");
     resolver.addOptionalEntityByName(PolarisEntityType.CATALOG_ROLE, "role1");
@@ -161,7 +259,14 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of(
+                "missing",
+                ImmutableAttributeMap.builder()
+                    .put(
+                        PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                        new PrincipalEntity.Builder().setName("missing").build())
+                    .build(),
+                Set.of()),
             null,
             "test");
     ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CALLER_PRINCIPAL));
@@ -176,7 +281,14 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of(
+                "missing",
+                ImmutableAttributeMap.builder()
+                    .put(
+                        PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                        new PrincipalEntity.Builder().setName("missing").build())
+                    .build(),
+                Set.of()),
             null,
             "test");
     ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CALLER_PRINCIPAL_ROLES));
@@ -191,7 +303,7 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of("missing", AttributeMap.EMPTY, Set.of()),
             null,
             "test");
     ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.REFERENCE_CATALOG));

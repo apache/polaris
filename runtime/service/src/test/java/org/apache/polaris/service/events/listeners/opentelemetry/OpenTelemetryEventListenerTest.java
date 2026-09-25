@@ -66,6 +66,7 @@ import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.events.EventAttributes;
@@ -313,7 +314,7 @@ class OpenTelemetryEventListenerTest {
         .timestamp(Instant.parse("2026-06-19T00:00:00Z"))
         .realmId("test_realm")
         .requestId("request-1")
-        .user(PolarisPrincipal.of("test_user", Map.of(), Set.of("role1", "role2")))
+        .user(PolarisPrincipal.of("test_user", AttributeMap.EMPTY, Set.of("role1", "role2")))
         .openTelemetryContext(openTelemetryContext)
         .build();
   }

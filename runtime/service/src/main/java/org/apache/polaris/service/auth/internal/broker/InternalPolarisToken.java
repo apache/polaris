@@ -27,8 +27,7 @@ import org.immutables.value.Value;
 import org.jspecify.annotations.NonNull;
 
 /**
- * A specialized {@link PolarisCredential} used for internal authentication, when Polaris is the
- * identity provider.
+ * A specialized {@link PolarisCredential} produced by Polaris default internal token broker.
  *
  * <p>Such credentials are created by the Polaris service itself, from a JWT token previously issued
  * by Polaris itself.
@@ -50,14 +49,17 @@ abstract class InternalPolarisToken implements PolarisCredential {
         .build();
   }
 
+  @Override
+  public final boolean isExternal() {
+    return false;
+  }
+
   @NonNull // switch from nullable to non-nullable
   @Override
-  @SuppressWarnings("NullableProblems")
   public abstract String getPrincipalName();
 
   @NonNull // switch from nullable to non-nullable
   @Override
-  @SuppressWarnings("NullableProblems")
   public abstract Long getPrincipalId();
 
   @Value.Lazy
