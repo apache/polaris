@@ -21,6 +21,7 @@ package org.apache.polaris.service.admin;
 import java.util.function.Supplier;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.jspecify.annotations.Nullable;
 
@@ -37,6 +38,9 @@ final class DropEntityFailureMapper {
 
     String label = entityLabel.get();
     switch (result.getReturnStatus()) {
+      case ENTITY_ALREADY_EXISTS ->
+          throw new CommitConflictException(
+              "Concurrent cleanup task creation while dropping %s", label);
       case ENTITY_UNDROPPABLE ->
           throw new BadRequestException(
               "%s", undroppableMessage != null ? undroppableMessage : label + " cannot be dropped");

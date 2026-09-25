@@ -275,6 +275,81 @@ public abstract class BasePolarisMetaStoreManagerTest {
     polarisTestMetaStoreManager.testDropEntities();
   }
 
+  protected void assertCleanupTaskCreationFailureRollsBackEntityDrop() {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+    PolarisBaseEntity entityToDrop =
+        polarisTestMetaStoreManager.createEntity(
+            null,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            "principal_role_to_drop");
+    TaskEntity conflictingTask =
+        createTask(
+            "entityCleanup_" + entityToDrop.getId(),
+            metaStoreManager.generateNewEntityId(callCtx).getId());
+    metaStoreManager.createEntitiesIfNotExist(callCtx, null, List.of(conflictingTask));
+
+    List<Long> taskIdsBeforeDrop =
+        metaStoreManager
+            .listFullEntitiesAll(
+                callCtx, null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE)
+            .stream()
+            .map(PolarisBaseEntity::getId)
+            .toList();
+
+    Assertions.assertThat(
+            metaStoreManager.dropEntityIfExists(callCtx, null, entityToDrop, Map.of(), true))
+        .extracting(BaseResult::getReturnStatus)
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS);
+
+    Assertions.assertThat(
+            metaStoreManager
+                .loadEntity(
+                    callCtx,
+                    entityToDrop.getCatalogId(),
+                    entityToDrop.getId(),
+                    entityToDrop.getType())
+                .getEntity())
+        .isNotNull()
+        .extracting(PolarisBaseEntity::getId)
+        .isEqualTo(entityToDrop.getId());
+    Assertions.assertThat(
+            metaStoreManager.listFullEntitiesAll(
+                callCtx, null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE))
+        .extracting(PolarisBaseEntity::getId)
+        .containsExactlyInAnyOrderElementsOf(taskIdsBeforeDrop);
+  }
+
+  protected void assertCleanupTaskCreationRetryIsIdempotent() {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+    PolarisBaseEntity entityToDrop =
+        polarisTestMetaStoreManager.createEntity(
+            null,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            "principal_role_to_drop_on_retry");
+
+    var dropResult =
+        metaStoreManager.dropEntityIfExists(callCtx, null, entityToDrop, Map.of(), true);
+    PolarisBaseEntity cleanupTask =
+        metaStoreManager
+            .loadEntity(callCtx, 0L, dropResult.getCleanupTaskId(), PolarisEntityType.TASK)
+            .getEntity();
+
+    Assertions.assertThat(cleanupTask).isNotNull();
+    var retryResult =
+        metaStoreManager.dropEntityIfExists(callCtx, null, entityToDrop, Map.of(), true);
+    Assertions.assertThat(retryResult.isSuccess()).isTrue();
+    Assertions.assertThat(retryResult.getCleanupTaskId()).isEqualTo(dropResult.getCleanupTaskId());
+    Assertions.assertThat(
+            metaStoreManager
+                .loadEntity(callCtx, 0L, cleanupTask.getId(), PolarisEntityType.TASK)
+                .getEntity())
+        .isEqualTo(cleanupTask);
+  }
+
   /** Test that granting/revoking privileges works well */
   @Test
   protected void testPrivileges() {
