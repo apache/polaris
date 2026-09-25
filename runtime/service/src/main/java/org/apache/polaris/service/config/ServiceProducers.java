@@ -97,7 +97,7 @@ import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.http.SdkHttpClient;
-import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.http.apache5.Apache5HttpClient;
 
 public class ServiceProducers {
   private static final Logger LOGGER = LoggerFactory.getLogger(ServiceProducers.class);
@@ -237,7 +237,7 @@ public class ServiceProducers {
   @Singleton
   @Identifier("aws-sdk-http-client")
   public SdkHttpClient sdkHttpClient(S3AccessConfig config) {
-    ApacheHttpClient.Builder httpClient = ApacheHttpClient.builder();
+    Apache5HttpClient.Builder httpClient = Apache5HttpClient.builder();
     config.maxHttpConnections().ifPresent(httpClient::maxConnections);
     config.readTimeout().ifPresent(httpClient::socketTimeout);
     config.connectTimeout().ifPresent(httpClient::connectionTimeout);
