@@ -51,14 +51,13 @@ See [Token Broker description]({{< relref "../external-idp#token-broker" >}}) fo
 1. [`InternalAuthenticationMechanism`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/internal/InternalAuthenticationMechanism.java) parses the auth header.
 2. Uses [`TokenBroker`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/TokenBroker.java) to decode the token.
 3. Builds [`InternalAuthenticationRequest`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/internal/InternalAuthenticationRequest.java) and generates `SecurityIdentity` (Quarkus).
-4. `Authenticator.authenticate()` validates the credential, resolves the principal and principal roles, then creates the `PolarisPrincipal`.
+4. [`PolarisSecurityIdentityAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/PolarisSecurityIdentityAugmentor.java) invokes `Authenticator.authenticate()`, which validates the credential, resolves the principal and principal roles, then creates the `PolarisPrincipal`.
 
 ### External Authentication
 
 1. `OidcAuthenticationMechanism` (Quarkus) processes the auth header.
-2. [`OidcTenantResolvingAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/external/tenant/OidcTenantResolvingAugmentor.java) selects the OIDC tenant.
-3. [`OidcPolarisCredentialAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/external/OidcPolarisCredentialAugmentor.java) extracts JWT claims.
-4. `Authenticator.authenticate()` validates the claims, resolves the principal and principal roles, then creates the `PolarisPrincipal`.
+2. [`PolarisSecurityIdentityAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/PolarisSecurityIdentityAugmentor.java) delegates to [`OidcIdentityPreparer`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/external/OidcIdentityPreparer.java), which resolves the OIDC tenant and extracts JWT claims into a `PolarisCredential`.
+3. `PolarisSecurityIdentityAugmentor` then invokes `Authenticator.authenticate()`, which validates the claims, resolves the principal and principal roles, then creates the `PolarisPrincipal`.
 
 When [external principals]({{< relref "../external-idp#external-principals" >}}) are enabled for
 the realm, step 4 differs: `DefaultAuthenticator` builds the `PolarisPrincipal` directly from the
