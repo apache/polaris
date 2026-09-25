@@ -129,6 +129,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -611,6 +612,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
           @Override
           public void put(
               String realmId,
+              PolarisEntityCore tableEntity,
               String metadataLocation,
               StorageAccessConfig storageAccessConfig,
               String metadataJson) {
@@ -3216,15 +3218,55 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
     cachingCatalog.createNamespace(NS);
     cachingCatalog.buildTable(TABLE, SCHEMA).create();
+    cachingCatalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
 
     // The commit seeded the cache, so a fresh ops instance refreshes without reading storage.
     measured.newInputFileExceptionSupplier =
         Optional.of(() -> new RuntimeException("metadata should be served from the cache"));
     TableMetadata metadata = cachingCatalog.newTableOps(TABLE).current();
-    Assertions.assertThat(metadata).isNotNull();
-    Assertions.assertThat(metadata.schema().columns()).hasSameSizeAs(SCHEMA.columns());
-
     measured.newInputFileExceptionSupplier = Optional.empty();
+    TableMetadata stored =
+        TableMetadataParser.read(new InMemoryFileIO(), metadata.metadataFileLocation());
+    Assertions.assertThat(TableMetadataParser.toJson(metadata))
+        .isEqualTo(TableMetadataParser.toJson(stored));
+
+    cachingCatalog.dropTable(TABLE, true);
+  }
+
+  @Test
+  public void testRefreshAfterRegisterOverwriteAtSameLocationReadsStorage() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    LocalIcebergCatalog cachingCatalog =
+        newIcebergCatalog(
+            CATALOG_NAME,
+            metaStoreManager,
+            fileIOFactory,
+            new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024)));
+    cachingCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    cachingCatalog.createNamespace(NS);
+    cachingCatalog.buildTable(TABLE, SCHEMA).create();
+    TableMetadata created = cachingCatalog.newTableOps(TABLE).current();
+
+    // An external writer recreates the table and rewrites the same metadata file name.
+    String location = created.metadataFileLocation();
+    String recreatedUuid = UUID.randomUUID().toString();
+    new InMemoryFileIO()
+        .addFile(
+            location,
+            TableMetadataParser.toJson(created)
+                .replace(created.uuid(), recreatedUuid)
+                .getBytes(UTF_8));
+    cachingCatalog.registerTable(TABLE, location, true);
+
+    Assertions.assertThat(cachingCatalog.newTableOps(TABLE).current().uuid())
+        .isEqualTo(recreatedUuid);
+
     cachingCatalog.dropTable(TABLE, true);
   }
 

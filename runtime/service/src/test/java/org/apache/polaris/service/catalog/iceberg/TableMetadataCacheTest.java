@@ -18,13 +18,18 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.GZIPOutputStream;
 import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.assertj.core.api.Assertions;
@@ -35,6 +40,7 @@ public class TableMetadataCacheTest {
   private static final String REALM = "realm";
   private static final String LOCATION = "memory://bucket/metadata/00000-abc.metadata.json";
   private static final String METADATA_JSON = "{\"format-version\":2}";
+  private static final PolarisEntityCore TABLE_ENTITY = tableEntity(1, 1);
   private static final StorageAccessConfig STORAGE_ACCESS_CONFIG =
       StorageAccessConfig.builder().put(StorageAccessProperty.CLIENT_REGION, "us-west-2").build();
 
@@ -55,13 +61,26 @@ public class TableMetadataCacheTest {
     return fileIO;
   }
 
+  private static PolarisEntityCore tableEntity(long id, int entityVersion) {
+    return new PolarisEntityCore.Builder<>().id(id).entityVersion(entityVersion).build();
+  }
+
   private String load(TableMetadataCache cache) {
     return load(cache, REALM, STORAGE_ACCESS_CONFIG);
   }
 
   private String load(
       TableMetadataCache cache, String realmId, StorageAccessConfig storageAccessConfig) {
-    return cache.getOrLoad(realmId, LOCATION, storageAccessConfig, this::countingFileIO);
+    return load(cache, realmId, TABLE_ENTITY, storageAccessConfig);
+  }
+
+  private String load(
+      TableMetadataCache cache,
+      String realmId,
+      PolarisEntityCore tableEntity,
+      StorageAccessConfig storageAccessConfig) {
+    return cache.getOrLoad(
+        realmId, tableEntity, LOCATION, storageAccessConfig, this::countingFileIO);
   }
 
   @Test
@@ -81,6 +100,24 @@ public class TableMetadataCacheTest {
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
     load(cache, "realm-1", STORAGE_ACCESS_CONFIG);
     load(cache, "realm-2", STORAGE_ACCESS_CONFIG);
+    Assertions.assertThat(storageReads).hasValue(2);
+  }
+
+  @Test
+  public void testEntriesScopedByTableEntity() {
+    TableMetadataCache cache =
+        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
+    load(cache, REALM, tableEntity(1, 1), STORAGE_ACCESS_CONFIG);
+    load(cache, REALM, tableEntity(2, 1), STORAGE_ACCESS_CONFIG);
+    Assertions.assertThat(storageReads).hasValue(2);
+  }
+
+  @Test
+  public void testEntriesScopedByTableEntityVersion() {
+    TableMetadataCache cache =
+        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
+    load(cache, REALM, tableEntity(1, 1), STORAGE_ACCESS_CONFIG);
+    load(cache, REALM, tableEntity(1, 2), STORAGE_ACCESS_CONFIG);
     Assertions.assertThat(storageReads).hasValue(2);
   }
 
@@ -128,8 +165,26 @@ public class TableMetadataCacheTest {
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
     Assertions.assertThatThrownBy(
-            () -> cache.getOrLoad(REALM, gzipLocation, STORAGE_ACCESS_CONFIG, () -> fileIO))
+            () ->
+                cache.getOrLoad(
+                    REALM, TABLE_ENTITY, gzipLocation, STORAGE_ACCESS_CONFIG, () -> fileIO))
         .isInstanceOf(RuntimeIOException.class);
+  }
+
+  @Test
+  public void testGzipDocumentDecompressed() throws IOException {
+    String gzipLocation = "memory://bucket/metadata/00000-abc.gz.metadata.json";
+    ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+    try (OutputStream stream = new GZIPOutputStream(compressed)) {
+      stream.write(METADATA_JSON.getBytes(StandardCharsets.UTF_8));
+    }
+    InMemoryFileIO fileIO = new InMemoryFileIO();
+    fileIO.addFile(gzipLocation, compressed.toByteArray());
+    TableMetadataCache cache =
+        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
+    Assertions.assertThat(
+            cache.getOrLoad(REALM, TABLE_ENTITY, gzipLocation, STORAGE_ACCESS_CONFIG, () -> fileIO))
+        .isEqualTo(METADATA_JSON);
   }
 
   @Test
@@ -139,7 +194,9 @@ public class TableMetadataCacheTest {
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
     Assertions.assertThatThrownBy(
-            () -> cache.getOrLoadMetadata(REALM, LOCATION, STORAGE_ACCESS_CONFIG, () -> fileIO))
+            () ->
+                cache.getOrLoadMetadata(
+                    REALM, TABLE_ENTITY, LOCATION, STORAGE_ACCESS_CONFIG, () -> fileIO))
         .isInstanceOf(RuntimeIOException.class);
   }
 
@@ -147,7 +204,7 @@ public class TableMetadataCacheTest {
   public void testPutSeedsSubsequentLoads() {
     TableMetadataCache cache =
         new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
-    cache.put(REALM, LOCATION, STORAGE_ACCESS_CONFIG, METADATA_JSON);
+    cache.put(REALM, TABLE_ENTITY, LOCATION, STORAGE_ACCESS_CONFIG, METADATA_JSON);
     Assertions.assertThat(load(cache)).isEqualTo(METADATA_JSON);
     Assertions.assertThat(fileIOLoads).hasValue(0);
   }
@@ -206,7 +263,7 @@ public class TableMetadataCacheTest {
     load(cache);
     load(cache);
     Assertions.assertThat(storageReads).hasValue(2);
-    cache.put("other-realm", LOCATION, STORAGE_ACCESS_CONFIG, METADATA_JSON);
+    cache.put("other-realm", TABLE_ENTITY, LOCATION, STORAGE_ACCESS_CONFIG, METADATA_JSON);
     load(cache, "other-realm", STORAGE_ACCESS_CONFIG);
     Assertions.assertThat(storageReads).hasValue(3);
   }

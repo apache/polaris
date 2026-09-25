@@ -99,7 +99,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Semantic models now support dedicated privileges for listing, creating, reading, updating,
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
-- Table metadata JSON documents are now cached in memory by metadata file location, avoiding an
+- Table metadata JSON documents are now cached in memory per table version, avoiding an
   object-storage read per table refresh. The approximate heap budget defaults to 5% of the maximum
   heap size, configurable via `polaris.table-metadata-cache.fraction-of-max-heap-size`, or can be
   fixed via `polaris.table-metadata-cache.max-bytes` (`0` in either disables caching). Documents

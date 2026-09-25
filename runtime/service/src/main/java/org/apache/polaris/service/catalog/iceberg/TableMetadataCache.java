@@ -37,30 +37,36 @@ import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.storage.ImmutableStorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 
 /**
- * Process-wide cache of table metadata JSON documents keyed by realm, storage access properties
- * without credentials, and metadata file location. Metadata files are immutable once written, so an
- * entry never becomes stale and the location acts as a content address. The {@link FileIO} is built
- * only on a miss, since a hit reads nothing from object storage. The raw JSON is cached rather than
- * parsed {@link org.apache.iceberg.TableMetadata} objects because {@code TableMetadata} lazily
- * materializes some fields and is not safe to share across request threads, and raw documents allow
- * bounding the cache by size. Entry weights estimate heap usage (UTF-16 characters plus per-entry
- * map and object overhead); the configured budget is an approximate bound because eviction may
- * briefly lag writes.
+ * Process-wide cache of table metadata JSON documents keyed by realm, table entity id and version,
+ * storage access properties without credentials, and metadata file location. Every change to a
+ * table's metadata location creates a new table entity or entity version, so an entry never becomes
+ * stale, even when an external writer reuses a metadata file name, such as a Hadoop table recreated
+ * at the same path. The {@link FileIO} is built only on a miss, since a hit reads nothing from
+ * object storage. The raw JSON is cached rather than parsed {@link
+ * org.apache.iceberg.TableMetadata} objects because {@code TableMetadata} lazily materializes some
+ * fields and is not safe to share across request threads, and raw documents allow bounding the
+ * cache by size. Entry weights estimate heap usage (UTF-16 characters plus per-entry map and object
+ * overhead); the configured budget is an approximate bound because eviction may briefly lag writes.
  */
 @ApplicationScoped
 public class TableMetadataCache {
 
   /**
-   * Scopes a metadata document to its realm and to the storage access it is read with. Credentials
-   * and their expiry change on every vend, so the key keeps only the remaining storage access
-   * properties.
+   * Scopes a metadata document to its realm, to the table entity version that points at it, and to
+   * the storage access it is read with. Credentials and their expiry change on every vend, so the
+   * key keeps only the remaining storage access properties.
    */
   private record Key(
-      String realmId, StorageAccessConfig storageAccessConfig, String metadataLocation) {
+      String realmId,
+      long tableEntityId,
+      int tableEntityVersion,
+      StorageAccessConfig storageAccessConfig,
+      String metadataLocation) {
     private Key {
       storageAccessConfig =
           ImmutableStorageAccessConfig.copyOf(storageAccessConfig)
@@ -134,16 +140,18 @@ public class TableMetadataCache {
   }
 
   /**
-   * Returns the table metadata at the immutable metadata location, reading it through a {@link
-   * FileIO} from the given supplier on a cache miss. A document that cannot be read or parsed
-   * surfaces as {@link RuntimeIOException}.
+   * Returns the table metadata at the metadata location that the table entity version points at,
+   * reading it through a {@link FileIO} from the given supplier on a cache miss. A document that
+   * cannot be read or parsed surfaces as {@link RuntimeIOException}.
    */
   public TableMetadata getOrLoadMetadata(
       String realmId,
+      PolarisEntityCore tableEntity,
       String metadataLocation,
       StorageAccessConfig storageAccessConfig,
       Supplier<FileIO> fileIOSupplier) {
-    String metadataJson = getOrLoad(realmId, metadataLocation, storageAccessConfig, fileIOSupplier);
+    String metadataJson =
+        getOrLoad(realmId, tableEntity, metadataLocation, storageAccessConfig, fileIOSupplier);
     try {
       return TableMetadataParser.fromJson(metadataLocation, metadataJson);
     } catch (UncheckedIOException e) {
@@ -153,21 +161,28 @@ public class TableMetadataCache {
   }
 
   /**
-   * Returns the metadata JSON document at the immutable metadata location, reading it through a
-   * {@link FileIO} from the given supplier on a cache miss. The read happens outside the cache's
-   * compute so a slow object-storage read never blocks access to other keys; concurrent misses for
-   * the same key may read the same immutable document more than once.
+   * Returns the metadata JSON document at the metadata location that the table entity version
+   * points at, reading it through a {@link FileIO} from the given supplier on a cache miss. The
+   * read happens outside the cache's compute so a slow object-storage read never blocks access to
+   * other keys; concurrent misses for the same key may read the same document more than once.
    */
   @VisibleForTesting
   String getOrLoad(
       String realmId,
+      PolarisEntityCore tableEntity,
       String metadataLocation,
       StorageAccessConfig storageAccessConfig,
       Supplier<FileIO> fileIOSupplier) {
     if (!enabled) {
       return read(fileIOSupplier.get(), metadataLocation);
     }
-    Key key = new Key(realmId, storageAccessConfig, metadataLocation);
+    Key key =
+        new Key(
+            realmId,
+            tableEntity.getId(),
+            tableEntity.getEntityVersion(),
+            storageAccessConfig,
+            metadataLocation);
     String cached = metadataJsonByLocation.getIfPresent(key);
     if (cached != null) {
       return cached;
@@ -179,11 +194,19 @@ public class TableMetadataCache {
 
   public void put(
       String realmId,
+      PolarisEntityCore tableEntity,
       String metadataLocation,
       StorageAccessConfig storageAccessConfig,
       String metadataJson) {
     if (enabled) {
-      admit(new Key(realmId, storageAccessConfig, metadataLocation), metadataJson);
+      admit(
+          new Key(
+              realmId,
+              tableEntity.getId(),
+              tableEntity.getEntityVersion(),
+              storageAccessConfig,
+              metadataLocation),
+          metadataJson);
     }
   }
 

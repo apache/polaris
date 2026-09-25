@@ -1874,6 +1874,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               // The FileIO is built only on a metadata cache miss.
               return tableMetadataCache.getOrLoadMetadata(
                   callContext.getRealmContext().getRealmIdentifier(),
+                  resolvedEntities.getRawLeafEntity(),
                   metadataLocation,
                   storageAccessConfig,
                   () -> loadFileIO(storageAccessConfig, new HashMap<>(tableDefaultProperties)));
@@ -2053,10 +2054,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   .build();
         }
 
+        PolarisEntity committedEntity;
         if (null == existingLocation) {
-          createTableLike(tableIdentifier, entity, false);
+          committedEntity = createTableLike(tableIdentifier, entity, false);
         } else {
-          updateTableLike(tableIdentifier, entity, false);
+          committedEntity = updateTableLike(tableIdentifier, entity, false);
         }
         // Commit is durable here; mark it before further work so a later failure can't trigger the
         // finally-block cleanup of the committed newLocation.
@@ -2081,6 +2083,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           try {
             tableMetadataCache.put(
                 callContext.getRealmContext().getRealmIdentifier(),
+                committedEntity,
                 newLocation,
                 storageAccessConfig,
                 TableMetadataParser.toJson(committedMetadata));
@@ -2855,9 +2858,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   /**
    * Caller must fill in all entity fields except parentId, since the caller may not want to
    * duplicate the logic to try to resolve parentIds before constructing the proposed entity. This
-   * method will fill in the parentId if needed upon resolution.
+   * method will fill in the parentId if needed upon resolution. Returns the persisted entity.
    */
-  private void createTableLike(
+  private PolarisEntity createTableLike(
       TableIdentifier identifier, PolarisEntity entity, boolean validateMetadataLocation) {
     PolarisResolvedPathWrapper resolvedParent =
         resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()));
@@ -2867,10 +2870,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
 
-    createTableLike(identifier, entity, resolvedParent, validateMetadataLocation);
+    return createTableLike(identifier, entity, resolvedParent, validateMetadataLocation);
   }
 
-  private void createTableLike(
+  private PolarisEntity createTableLike(
       TableIdentifier identifier,
       PolarisEntity entity,
       PolarisResolvedPathWrapper resolvedParent,
@@ -2927,9 +2930,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     PolarisEntity resultEntity = PolarisEntity.of(res);
     LOGGER.debug("Created TableLike entity {} with TableIdentifier {}", resultEntity, identifier);
+    return resultEntity;
   }
 
-  private void updateTableLike(
+  /** Returns the persisted entity. */
+  private PolarisEntity updateTableLike(
       TableIdentifier identifier, PolarisEntity entity, boolean validateMetadataLocation) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(
@@ -2980,6 +2985,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     PolarisEntity resultEntity = PolarisEntity.of(res);
     LOGGER.debug("Updated TableLike entity {} with TableIdentifier {}", resultEntity, identifier);
+    return resultEntity;
   }
 
   @SuppressWarnings("FormatStringAnnotation")
