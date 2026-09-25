@@ -35,6 +35,7 @@ import java.util.Optional;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.polaris.core.PolarisCallContext;
@@ -48,6 +49,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -293,6 +295,38 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
                     .create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Unable to create entity at location")
+        .hasMessageContaining("conflicts with existing table or namespace");
+  }
+
+  @Test
+  public void testRecreatingNamespaceIsAlreadyExistsNotOverlap() {
+    // Re-creating an existing namespace fails with already-exists (409) and not a conflict (403).
+    Namespace parent = Namespace.of("overlap-recreate-parent");
+    catalog().createNamespace(parent);
+
+    assertThatThrownBy(() -> catalog().createNamespace(parent))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("Namespace already exists");
+
+    // The same holds once the namespace has content.
+    TableIdentifier table = TableIdentifier.of(parent, "t");
+    String tableLocation = STORAGE_LOCATION + "/overlap-recreate-table";
+    catalog().buildTable(table, SCHEMA).withLocation(tableLocation).create();
+
+    assertThatThrownBy(() -> catalog().createNamespace(parent))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("Namespace already exists");
+
+    // A new namespace at the existing namespace's location is still an overlap.
+    Namespace intruder = Namespace.of("overlap-recreate-intruder");
+    String parentLocation = STORAGE_LOCATION + "/overlap-recreate-parent";
+    assertThatThrownBy(
+            () ->
+                catalog()
+                    .createNamespace(
+                        intruder,
+                        Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, parentLocation)))
+        .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }
 }

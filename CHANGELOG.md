@@ -150,6 +150,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Re-creating an existing namespace now returns `409 Conflict` instead of `403 Forbidden` when
+  `OPTIMIZED_SIBLING_CHECK` is on. Namespace creation checks for an existing namespace before
+  validating locations, as table and view creation already do, so the existing namespace's own
+  location is no longer reported as a conflict.
 - A list request whose `pageSize` is not a number now returns `400 Bad Request` naming the
   parameter, instead of `404 Not Found`. The status is now the same on every API that accepts
   `pageSize`.
