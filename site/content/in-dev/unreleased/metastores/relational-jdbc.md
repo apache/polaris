@@ -227,141 +227,29 @@ Upgrading Polaris on an existing installation requires two steps, in this order:
 first.
 {{< /alert >}}
 
-The SQL statements below are for PostgreSQL; other databases may require syntax changes.
+## Upgrading Database Schemas
 
-### Migration From Schema v5 to v6
+Starting with schema version v6 (Polaris 1.9.0), schema changes are versioned in git, and you can
+use regular diff tools to compare the two files and see the differences between two release tags.
+Polaris release git tags are of the form: `apache-polaris-<version>`, e.g. `apache-polaris-1.9.0`.
 
-```sql
-DROP INDEX IF EXISTS idx_locations;
-CREATE INDEX IF NOT EXISTS idx_locations ON entities 
-    USING btree (realm_id, catalog_id, location_without_scheme)
-    WHERE location_without_scheme IS NOT NULL;
-UPDATE version SET version_value = 6 WHERE version_key = 'version';
+For example, to get the diff between the PostgreSQL schema SQL file between Polaris 1.9.0 and
+1.10.0, you can run the following command:
+
+```bash
+git diff apache-polaris-1.9.0 apache-polaris-1.10.0 -- persistence/relational-jdbc/src/main/resources/postgres/schema.sql
 ```
 
-**CockroachDB:** In addition to the statements above, CockroachDB deployments must also create the
-following indexes, which the PostgreSQL schema has declared since v4 but were missing from the
-CockroachDB schema:
+Refer to the [Schema Version Reference](#schema-version-reference) table for links to the full
+schema SQL file for each database type.
 
-```sql
-CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee
-    ON grant_records (realm_id, grantee_id);
-CREATE INDEX IF NOT EXISTS idx_grants_realm_securable
-    ON grant_records (realm_id, securable_id);
-CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id
-    ON entities (catalog_id, id);
-```
-
-### Migration From Schema v4 to v5
-
-```sql
-DROP TABLE IF EXISTS idempotency_records;
-ALTER TABLE events ALTER COLUMN catalog_id DROP NOT NULL;
-UPDATE events SET catalog_id = NULL WHERE catalog_id = '__realm__';
-UPDATE version SET version_value = 5 WHERE version_key = 'version';
-```
-
-### Migration From Schema v3 to v4
-
-```sql
-CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id
-    ON entities (catalog_id, id);
-CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee
-    ON grant_records (realm_id, grantee_id);
-CREATE INDEX IF NOT EXISTS idx_grants_realm_securable
-    ON grant_records (realm_id, securable_id);
-CREATE TABLE IF NOT EXISTS idempotency_records (
-    realm_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, operation_type TEXT NOT NULL,
-    resource_id TEXT NOT NULL, http_status INTEGER, error_subtype TEXT,            
-    response_summary TEXT, response_headers TEXT, finalized_at TIMESTAMP,        
-    created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL,  heartbeat_at TIMESTAMP,        
-    executor_id TEXT, expires_at TIMESTAMP,
-    PRIMARY KEY (realm_id, idempotency_key)
-);
-CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
-    ON idempotency_records (realm_id, expires_at);
-CREATE TABLE IF NOT EXISTS scan_metrics_report (
-    report_id TEXT NOT NULL, realm_id TEXT NOT NULL, catalog_id BIGINT NOT NULL,
-    table_id BIGINT NOT NULL, timestamp_ms BIGINT NOT NULL, principal_name TEXT,
-    request_id TEXT, otel_trace_id TEXT, otel_span_id TEXT, report_trace_id TEXT,
-    snapshot_id BIGINT, schema_id INTEGER, filter_expression TEXT,
-    projected_field_ids TEXT, projected_field_names TEXT,
-    result_data_files BIGINT DEFAULT 0, result_delete_files BIGINT DEFAULT 0,
-    total_file_size_bytes BIGINT DEFAULT 0, total_data_manifests BIGINT DEFAULT 0,
-    total_delete_manifests BIGINT DEFAULT 0, scanned_data_manifests BIGINT DEFAULT 0,
-    scanned_delete_manifests BIGINT DEFAULT 0, skipped_data_manifests BIGINT DEFAULT 0,
-    skipped_delete_manifests BIGINT DEFAULT 0, skipped_data_files BIGINT DEFAULT 0,
-    skipped_delete_files BIGINT DEFAULT 0, total_planning_duration_ms BIGINT DEFAULT 0,
-    equality_delete_files BIGINT DEFAULT 0, positional_delete_files BIGINT DEFAULT 0,
-    indexed_delete_files BIGINT DEFAULT 0, total_delete_file_size_bytes BIGINT DEFAULT 0,
-    metadata JSONB DEFAULT '{}', PRIMARY KEY (realm_id, report_id)
-);
-CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp
-    ON scan_metrics_report (realm_id, timestamp_ms);
-CREATE INDEX IF NOT EXISTS idx_scan_report_lookup
-    ON scan_metrics_report (realm_id, catalog_id, table_id, timestamp_ms);
-CREATE TABLE IF NOT EXISTS commit_metrics_report (
-    report_id TEXT NOT NULL, realm_id TEXT NOT NULL, catalog_id BIGINT NOT NULL,
-    table_id BIGINT NOT NULL, timestamp_ms BIGINT NOT NULL, principal_name TEXT,
-    request_id TEXT, otel_trace_id TEXT, otel_span_id TEXT, report_trace_id TEXT,
-    snapshot_id BIGINT NOT NULL, sequence_number BIGINT, operation TEXT NOT NULL,
-    added_data_files BIGINT DEFAULT 0, removed_data_files BIGINT DEFAULT 0,
-    total_data_files BIGINT DEFAULT 0, added_delete_files BIGINT DEFAULT 0,
-    removed_delete_files BIGINT DEFAULT 0, total_delete_files BIGINT DEFAULT 0,
-    added_equality_delete_files BIGINT DEFAULT 0, removed_equality_delete_files BIGINT DEFAULT 0,
-    added_positional_delete_files BIGINT DEFAULT 0, removed_positional_delete_files BIGINT DEFAULT 0,
-    added_records BIGINT DEFAULT 0, removed_records BIGINT DEFAULT 0,
-    total_records BIGINT DEFAULT 0, added_file_size_bytes BIGINT DEFAULT 0,
-    removed_file_size_bytes BIGINT DEFAULT 0, total_file_size_bytes BIGINT DEFAULT 0,
-    total_duration_ms BIGINT DEFAULT 0, attempts INTEGER DEFAULT 1,
-    metadata JSONB DEFAULT '{}', PRIMARY KEY (realm_id, report_id)
-);
-CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp
-    ON commit_metrics_report (realm_id, timestamp_ms);
-CREATE INDEX IF NOT EXISTS idx_commit_report_lookup
-    ON commit_metrics_report (realm_id, catalog_id, table_id, timestamp_ms);
-UPDATE version SET version_value = 4 WHERE version_key = 'version';
-```
-
-### Migration From Schema v2 to v3
-
-```sql
-CREATE TABLE IF NOT EXISTS events (
-    realm_id TEXT NOT NULL,
-    catalog_id TEXT NOT NULL,
-    event_id TEXT NOT NULL,
-    request_id TEXT,
-    event_type TEXT NOT NULL,
-    timestamp_ms BIGINT NOT NULL,
-    principal_name TEXT,
-    resource_type TEXT NOT NULL,
-    resource_identifier TEXT NOT NULL,
-    additional_properties JSONB NOT NULL DEFAULT '{}',
-    PRIMARY KEY (event_id)
-);
-UPDATE version SET version_value = 3 WHERE version_key = 'version';
-```
-
-### Migration From Schema v1 to v2
-
-{{< alert note >}}
-Polaris 1.0.0-incubating and 1.0.1-incubating shipped without a `version` table. The statements
-below create it if absent before recording the version.
+{{< alert important >}}
+Git diffs of `schema.sql` are only possible starting from schema v6 (Polaris 1.9.0).
 {{< /alert >}}
 
-```sql
-ALTER TABLE entities ADD COLUMN IF NOT EXISTS location_without_scheme TEXT;
-CREATE INDEX IF NOT EXISTS idx_locations
-    ON entities USING btree (realm_id, parent_id, location_without_scheme)
-    WHERE location_without_scheme IS NOT NULL;
-CREATE TABLE IF NOT EXISTS version (
-    version_key TEXT PRIMARY KEY,
-    version_value INTEGER NOT NULL
-);
-INSERT INTO version (version_key, version_value)
-    VALUES ('version', 1) ON CONFLICT (version_key) DO NOTHING;
-UPDATE version SET version_value = 2 WHERE version_key = 'version';
-```
+Older schema versions had each their own versioned schema file. Refer to the [Schema Version
+Reference](#schema-version-reference) table for links to the specific SQL file for each database
+type at the desired version.
 
 ## Schema Version Reference
 
@@ -375,21 +263,6 @@ The table below maps each released Polaris version to the JDBC schema version it
 | v4             | 1.4.0 – 1.6.0                                   | Added `scan_metrics_report` and `commit_metrics_report` tables; added `idempotency_records` table; added indexes on `entities` and `grant_records` | [PG][v4-pg] · [CRD][v4-crd] |
 | v5             | 1.7.0                                           | `events.catalog_id` made nullable; `idempotency_records` removed                                                                                   | [PG][v5-pg] · [CRD][v5-crd] |
 | v6             | In Development                                  | Switched to single `schema.sql` script; changed `idx_locations` index definition                                                                   |                             |
-
-Since schema changes are versioned in git, you can use regular diff tools to compare the two files
-and see the differences between two release tags. Polaris release git tags are of the form:
-`apache-polaris-<version>`, e.g. `apache-polaris-1.8.0`.
-
-For example, to get the diff between the PostgreSQL schema SQL file between Polaris 1.8.0 and 1.9.0,
-you can run the following command:
-
-```bash
-git diff apache-polaris-1.8.0 apache-polaris-1.9.0 -- persistence/relational-jdbc/src/main/resources/postgres/schema.sql
-```
-
-{{< alert important >}}
-Git diffs of `schema.sql` are only possible starting from schema v6 (Polaris 1.8.0).
-{{< /alert >}}
 
 [Quarkus configuration reference]: https://quarkus.io/guides/config-reference
 [Quarkus datasource documentation]: https://quarkus.io/guides/datasource
