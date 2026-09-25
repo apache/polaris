@@ -17,13 +17,14 @@
  * under the License.
  */
 
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.api.plugins.jvm.JvmTestSuite
+
 plugins {
   alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
 }
-
-import org.gradle.api.plugins.jvm.JvmTestSuite
 
 // get version information
 val sparkMajorVersion = "4.0"
@@ -155,7 +156,7 @@ evaluationDependsOn(":polaris-spark-${sparkMajorVersion}_${scalaVersion}")
 val sparkBundleJarTask =
   project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}")
     .tasks
-    .named("createPolarisSparkJar")
+    .named<ShadowJar>("createPolarisSparkJar")
 
 tasks.named<Test>("intTest").configure {
   if (System.getenv("AWS_REGION") == null) {
