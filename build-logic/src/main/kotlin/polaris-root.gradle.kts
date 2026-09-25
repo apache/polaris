@@ -20,7 +20,6 @@
 import org.jetbrains.gradle.ext.copyright
 import org.jetbrains.gradle.ext.encodings
 import org.jetbrains.gradle.ext.settings
-import publishing.PublishingHelperExtension
 import publishing.PublishingHelperPlugin
 
 plugins {
@@ -66,8 +65,4 @@ if (providers.systemProperty("idea.sync.active").getOrElse("false").toBoolean())
       encodings.properties.encoding = "UTF-8"
     }
   }
-}
-
-extensions.getByType<PublishingHelperExtension>().apply {
-  mailingLists.addAll("dev", "issues", "commits")
 }
