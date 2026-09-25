@@ -35,8 +35,6 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolicyAttachmentAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -81,6 +79,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     PageToken pageRequest =
         PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
     Page<PolicyIdentifier> page = policyCatalog.listPolicies(parent, policyType, pageRequest);
+    rejectIncompleteListing(pageToken, pageSize, page.encodedResponseToken());
 
     return ListPoliciesResponse.builder()
         .setIdentifiers(new LinkedHashSet<>(page.items()))
@@ -358,20 +357,5 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
         default -> throw new IllegalStateException("Cannot resolve");
       }
     }
-  }
-
-  private boolean shouldDecodeToken() {
-    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
-    return catalogEntity == null
-        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED)
-        : realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED, catalogEntity);
-  }
-
-  private int maxPageSize() {
-    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
-    return catalogEntity == null
-        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE)
-        : realmConfig()
-            .getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity);
   }
 }
