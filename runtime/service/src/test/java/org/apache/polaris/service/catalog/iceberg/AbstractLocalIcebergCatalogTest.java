@@ -502,6 +502,16 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         tableMetadataCache);
   }
 
+  /** Initializes the catalog over in-memory storage and creates {@code TABLE}. */
+  private static void initializeWithTable(LocalIcebergCatalog catalog) {
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+  }
+
   @Test
   public void testEmptyNamespace() {
     LocalIcebergCatalog catalog = catalog();
@@ -613,26 +623,15 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
           public void put(
               String realmId,
               PolarisEntityCore tableEntity,
-              String metadataLocation,
-              StorageAccessConfig storageAccessConfig,
-              String metadataJson) {
+              TableMetadata metadata,
+              StorageAccessConfig storageAccessConfig) {
             throw new RuntimeException("cache population failed");
           }
         };
     LocalIcebergCatalog catalog =
         newIcebergCatalog(CATALOG_NAME, metaStoreManager, fileIOFactory, throwingCache);
     catalog.setCatalogFileIo(new InMemoryFileIO());
-    catalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.<String, String>builder()
-            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
-            .putAll(TABLE_PREFIXES)
-            .buildKeepingLast());
-
-    if (requiresNamespaceCreate()) {
-      catalog.createNamespace(NS);
-    }
-    catalog.buildTable(TABLE, SCHEMA).create();
+    initializeWithTable(catalog);
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
     assertFiles(catalog.loadTable(TABLE), FILE_A);
   }
@@ -3159,8 +3158,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             catalog.newTableOps(TABLE, updateMetadataOnCommit);
     LocalIcebergCatalog.BasePolarisTableOperations ops = Mockito.spy(realOps);
 
-    // Refreshes parse the metadata document through fromJson(location, json); with the cache
-    // disabled in tests its invocation count equals the number of metadata loads from storage.
+    // Each metadata load parses the document once through fromJson(location, json).
     try (MockedStatic<TableMetadataParser> mocked =
         Mockito.mockStatic(TableMetadataParser.class, Mockito.CALLS_REAL_METHODS)) {
       TableMetadata base1 = ops.current();
@@ -3207,17 +3205,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
     MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
     LocalIcebergCatalog cachingCatalog =
-        newIcebergCatalog(
-            CATALOG_NAME,
-            metaStoreManager,
-            measured,
-            new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024)));
-    cachingCatalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
-    cachingCatalog.createNamespace(NS);
-    cachingCatalog.buildTable(TABLE, SCHEMA).create();
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured);
+    initializeWithTable(cachingCatalog);
     cachingCatalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
 
     // The commit seeded the cache, so a fresh ops instance refreshes without reading storage.
@@ -3240,17 +3229,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         "Only applicable if namespaces must be created before adding children");
 
     LocalIcebergCatalog cachingCatalog =
-        newIcebergCatalog(
-            CATALOG_NAME,
-            metaStoreManager,
-            fileIOFactory,
-            new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024)));
-    cachingCatalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
-    cachingCatalog.createNamespace(NS);
-    cachingCatalog.buildTable(TABLE, SCHEMA).create();
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, fileIOFactory);
+    initializeWithTable(cachingCatalog);
     TableMetadata created = cachingCatalog.newTableOps(TABLE).current();
 
     // An external writer recreates the table and rewrites the same metadata file name.
@@ -3292,12 +3272,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
     LocalIcebergCatalog cachingCatalog =
         newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured, cache, vendingProvider);
-    cachingCatalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
-    cachingCatalog.createNamespace(NS);
-    cachingCatalog.buildTable(TABLE, SCHEMA).create();
+    initializeWithTable(cachingCatalog);
 
     // The commit seeded the cache, so a refresh with fresh credentials reads nothing.
     measured.newInputFileExceptionSupplier =

@@ -1859,15 +1859,15 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             SHOULD_RETRY_REFRESH_PREDICATE,
             getMaxMetadataRefreshRetries(),
             metadataLocation -> {
-              String metadataLocationDir =
-                  metadataLocation.substring(0, metadataLocation.lastIndexOf('/'));
-              // TODO: Once we have the "current" table properties pulled into the
-              // resolvedEntity then we should use the actual current table properties
-              // for IO refresh here instead of the general tableDefaultProperties.
+              String latestLocationDir =
+                  latestLocation.substring(0, latestLocation.lastIndexOf('/'));
+              // TODO: Once we have the "current" table properties pulled into the resolvedEntity
+              // then we should use the actual current table properties for IO refresh here
+              // instead of the general tableDefaultProperties.
               StorageAccessConfig storageAccessConfig =
                   storageAccessConfigProvider.getStorageAccessConfig(
                       tableIdentifier,
-                      Set.of(metadataLocationDir),
+                      Set.of(latestLocationDir),
                       Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST),
                       Optional.empty(),
                       resolvedEntities);
@@ -2079,17 +2079,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         }
         // Serve subsequent refreshes of this version from memory instead of object storage. Cache
         // population is best-effort and must not fail a commit that already persisted.
-        if (tableMetadataCache.isEnabled()) {
-          try {
-            tableMetadataCache.put(
-                callContext.getRealmContext().getRealmIdentifier(),
-                committedEntity,
-                newLocation,
-                storageAccessConfig,
-                TableMetadataParser.toJson(committedMetadata));
-          } catch (RuntimeException e) {
-            LOGGER.warn("Failed to populate table metadata cache for {}", newLocation, e);
-          }
+        try {
+          tableMetadataCache.put(
+              callContext.getRealmContext().getRealmIdentifier(),
+              committedEntity,
+              committedMetadata,
+              storageAccessConfig);
+        } catch (RuntimeException e) {
+          LOGGER.warn("Failed to populate table metadata cache for {}", newLocation, e);
         }
       } finally {
         if (!writeSucceeded && writeResult.written()) {

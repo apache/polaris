@@ -22,13 +22,19 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPOutputStream;
+import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.Schema;
+import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
+import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -39,7 +45,17 @@ public class TableMetadataCacheTest {
 
   private static final String REALM = "realm";
   private static final String LOCATION = "memory://bucket/metadata/00000-abc.metadata.json";
-  private static final String METADATA_JSON = "{\"format-version\":2}";
+  private static final TableMetadata METADATA =
+      TableMetadata.buildFrom(
+              TableMetadata.newTableMetadata(
+                  new Schema(Types.NestedField.required(1, "id", Types.LongType.get())),
+                  PartitionSpec.unpartitioned(),
+                  "memory://bucket",
+                  Map.of()))
+          .withMetadataLocation(LOCATION)
+          .discardChanges()
+          .build();
+  private static final String METADATA_JSON = TableMetadataParser.toJson(METADATA);
   private static final PolarisEntityCore TABLE_ENTITY = tableEntity(1, 1);
   private static final StorageAccessConfig STORAGE_ACCESS_CONFIG =
       StorageAccessConfig.builder().put(StorageAccessProperty.CLIENT_REGION, "us-west-2").build();
@@ -65,13 +81,12 @@ public class TableMetadataCacheTest {
     return new PolarisEntityCore.Builder<>().id(id).entityVersion(entityVersion).build();
   }
 
-  private String load(TableMetadataCache cache) {
-    return load(cache, REALM, STORAGE_ACCESS_CONFIG);
+  private static TableMetadataCache newCache() {
+    return new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
   }
 
-  private String load(
-      TableMetadataCache cache, String realmId, StorageAccessConfig storageAccessConfig) {
-    return load(cache, realmId, TABLE_ENTITY, storageAccessConfig);
+  private String load(TableMetadataCache cache) {
+    return load(cache, REALM, TABLE_ENTITY, STORAGE_ACCESS_CONFIG);
   }
 
   private String load(
@@ -85,8 +100,7 @@ public class TableMetadataCacheTest {
 
   @Test
   public void testSecondLoadServedFromCache() {
-    TableMetadataCache cache =
-        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
+    TableMetadataCache cache = newCache();
     Assertions.assertThat(cache.isEnabled()).isTrue();
     Assertions.assertThat(load(cache)).isEqualTo(METADATA_JSON);
     Assertions.assertThat(load(cache)).isEqualTo(METADATA_JSON);
@@ -96,17 +110,15 @@ public class TableMetadataCacheTest {
 
   @Test
   public void testEntriesScopedByRealm() {
-    TableMetadataCache cache =
-        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
-    load(cache, "realm-1", STORAGE_ACCESS_CONFIG);
-    load(cache, "realm-2", STORAGE_ACCESS_CONFIG);
+    TableMetadataCache cache = newCache();
+    load(cache, "realm-1", TABLE_ENTITY, STORAGE_ACCESS_CONFIG);
+    load(cache, "realm-2", TABLE_ENTITY, STORAGE_ACCESS_CONFIG);
     Assertions.assertThat(storageReads).hasValue(2);
   }
 
   @Test
   public void testEntriesScopedByTableEntity() {
-    TableMetadataCache cache =
-        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
+    TableMetadataCache cache = newCache();
     load(cache, REALM, tableEntity(1, 1), STORAGE_ACCESS_CONFIG);
     load(cache, REALM, tableEntity(2, 1), STORAGE_ACCESS_CONFIG);
     Assertions.assertThat(storageReads).hasValue(2);
@@ -114,8 +126,7 @@ public class TableMetadataCacheTest {
 
   @Test
   public void testEntriesScopedByTableEntityVersion() {
-    TableMetadataCache cache =
-        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
+    TableMetadataCache cache = newCache();
     load(cache, REALM, tableEntity(1, 1), STORAGE_ACCESS_CONFIG);
     load(cache, REALM, tableEntity(1, 2), STORAGE_ACCESS_CONFIG);
     Assertions.assertThat(storageReads).hasValue(2);
@@ -123,8 +134,7 @@ public class TableMetadataCacheTest {
 
   @Test
   public void testEntriesScopedByStorageAccessProperties() {
-    TableMetadataCache cache =
-        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
+    TableMetadataCache cache = newCache();
     StorageAccessConfig otherRegion =
         StorageAccessConfig.builder().put(StorageAccessProperty.CLIENT_REGION, "eu-west-1").build();
     StorageAccessConfig internalEndpoint =
@@ -133,16 +143,15 @@ public class TableMetadataCacheTest {
             .putInternalProperty(
                 StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), "http://internal:9000")
             .build();
-    load(cache, REALM, STORAGE_ACCESS_CONFIG);
-    load(cache, REALM, otherRegion);
-    load(cache, REALM, internalEndpoint);
+    load(cache, REALM, TABLE_ENTITY, STORAGE_ACCESS_CONFIG);
+    load(cache, REALM, TABLE_ENTITY, otherRegion);
+    load(cache, REALM, TABLE_ENTITY, internalEndpoint);
     Assertions.assertThat(storageReads).hasValue(3);
   }
 
   @Test
   public void testCredentialsDoNotScopeEntries() {
-    TableMetadataCache cache =
-        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
+    TableMetadataCache cache = newCache();
     StorageAccessConfig vendedAgain =
         StorageAccessConfig.builder()
             .put(StorageAccessProperty.CLIENT_REGION, "us-west-2")
@@ -151,8 +160,8 @@ public class TableMetadataCacheTest {
             .put(StorageAccessProperty.AWS_TOKEN, "token")
             .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, "1000")
             .build();
-    load(cache, REALM, STORAGE_ACCESS_CONFIG);
-    load(cache, REALM, vendedAgain);
+    load(cache, REALM, TABLE_ENTITY, STORAGE_ACCESS_CONFIG);
+    load(cache, REALM, TABLE_ENTITY, vendedAgain);
     Assertions.assertThat(storageReads).hasValue(1);
   }
 
@@ -162,8 +171,7 @@ public class TableMetadataCacheTest {
     InMemoryFileIO fileIO = new InMemoryFileIO();
     // Bytes are not gzip-encoded though the name selects the GZIP codec, so the read fails.
     fileIO.addFile(gzipLocation, METADATA_JSON.getBytes(StandardCharsets.UTF_8));
-    TableMetadataCache cache =
-        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
+    TableMetadataCache cache = newCache();
     Assertions.assertThatThrownBy(
             () ->
                 cache.getOrLoad(
@@ -180,8 +188,7 @@ public class TableMetadataCacheTest {
     }
     InMemoryFileIO fileIO = new InMemoryFileIO();
     fileIO.addFile(gzipLocation, compressed.toByteArray());
-    TableMetadataCache cache =
-        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
+    TableMetadataCache cache = newCache();
     Assertions.assertThat(
             cache.getOrLoad(REALM, TABLE_ENTITY, gzipLocation, STORAGE_ACCESS_CONFIG, () -> fileIO))
         .isEqualTo(METADATA_JSON);
@@ -191,8 +198,7 @@ public class TableMetadataCacheTest {
   public void testMalformedJsonThrowsRuntimeIOException() {
     InMemoryFileIO fileIO = new InMemoryFileIO();
     fileIO.addFile(LOCATION, "{not json".getBytes(StandardCharsets.UTF_8));
-    TableMetadataCache cache =
-        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
+    TableMetadataCache cache = newCache();
     Assertions.assertThatThrownBy(
             () ->
                 cache.getOrLoadMetadata(
@@ -202,9 +208,8 @@ public class TableMetadataCacheTest {
 
   @Test
   public void testPutSeedsSubsequentLoads() {
-    TableMetadataCache cache =
-        new TableMetadataCache(TestTableMetadataCacheConfiguration.withMaxBytes(1024 * 1024));
-    cache.put(REALM, TABLE_ENTITY, LOCATION, STORAGE_ACCESS_CONFIG, METADATA_JSON);
+    TableMetadataCache cache = newCache();
+    cache.put(REALM, TABLE_ENTITY, METADATA, STORAGE_ACCESS_CONFIG);
     Assertions.assertThat(load(cache)).isEqualTo(METADATA_JSON);
     Assertions.assertThat(fileIOLoads).hasValue(0);
   }
@@ -263,8 +268,8 @@ public class TableMetadataCacheTest {
     load(cache);
     load(cache);
     Assertions.assertThat(storageReads).hasValue(2);
-    cache.put("other-realm", TABLE_ENTITY, LOCATION, STORAGE_ACCESS_CONFIG, METADATA_JSON);
-    load(cache, "other-realm", STORAGE_ACCESS_CONFIG);
+    cache.put("other-realm", TABLE_ENTITY, METADATA, STORAGE_ACCESS_CONFIG);
+    load(cache, "other-realm", TABLE_ENTITY, STORAGE_ACCESS_CONFIG);
     Assertions.assertThat(storageReads).hasValue(3);
   }
 

@@ -85,14 +85,14 @@ public class TableMetadataCache {
 
   private final boolean enabled;
   private final long maxContentLength;
-  private final Cache<Key, String> metadataJsonByLocation;
+  private final Cache<Key, String> metadataJsonCache;
 
   @Inject
   public TableMetadataCache(TableMetadataCacheConfiguration configuration) {
     long maxBytes = maxBytes(configuration, Runtime.getRuntime().maxMemory());
     this.enabled = maxBytes > 0;
     this.maxContentLength = configuration.maxContentLength();
-    this.metadataJsonByLocation =
+    this.metadataJsonCache =
         Caffeine.newBuilder()
             .maximumWeight(maxBytes)
             .weigher(TableMetadataCache::estimatedEntryHeapBytes)
@@ -183,7 +183,7 @@ public class TableMetadataCache {
             tableEntity.getEntityVersion(),
             storageAccessConfig,
             metadataLocation);
-    String cached = metadataJsonByLocation.getIfPresent(key);
+    String cached = metadataJsonCache.getIfPresent(key);
     if (cached != null) {
       return cached;
     }
@@ -192,12 +192,14 @@ public class TableMetadataCache {
     return metadataJson;
   }
 
+  /**
+   * Caches the metadata that the table entity version points at, keyed by its metadata location.
+   */
   public void put(
       String realmId,
       PolarisEntityCore tableEntity,
-      String metadataLocation,
-      StorageAccessConfig storageAccessConfig,
-      String metadataJson) {
+      TableMetadata metadata,
+      StorageAccessConfig storageAccessConfig) {
     if (enabled) {
       admit(
           new Key(
@@ -205,8 +207,8 @@ public class TableMetadataCache {
               tableEntity.getId(),
               tableEntity.getEntityVersion(),
               storageAccessConfig,
-              metadataLocation),
-          metadataJson);
+              metadata.metadataFileLocation()),
+          TableMetadataParser.toJson(metadata));
     }
   }
 
@@ -216,7 +218,7 @@ public class TableMetadataCache {
    */
   private void admit(Key key, String metadataJson) {
     if (metadataJson.length() <= maxContentLength) {
-      metadataJsonByLocation.put(key, metadataJson);
+      metadataJsonCache.put(key, metadataJson);
     }
   }
 
