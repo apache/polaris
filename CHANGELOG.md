@@ -278,6 +278,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - JDBC optimized location-overlap queries no longer include the lone `/` prefix term produced by
   scheme stripping (e.g. `s3://bucket/path` → `//bucket/path`). `//` and `///` are retained so
   scheme-root ancestors remain visible to the overlap check.
+- Honored pagination for policy API with applicable-policies endpoint excluded.
 
 ### Commits
 

@@ -76,6 +76,86 @@ class TestPoliciesCommand(CLITestBase):
         )
 
     @patch("apache_polaris.cli.command.policies.PolicyAPI")
+    def test_policy_list_with_paginate(
+        self, mock_policy_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_policy_api = mock_policy_api_class.return_value
+        ids = [MagicMock(to_json=MagicMock(return_value="{}")) for _ in range(3)]
+        page1 = MagicMock(identifiers=ids[:2], next_page_token="token")
+        page2 = MagicMock(identifiers=[ids[2]], next_page_token=None)
+        mock_policy_api.list_policies.side_effect = [page1, page2]
+        self.mock_execute(
+            mock_client,
+            [
+                "policies",
+                "list",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+                "--page-size",
+                "2",
+            ],
+        )
+        self.assertEqual(mock_policy_api.list_policies.call_count, 2)
+        mock_policy_api.list_policies.assert_any_call(
+            prefix="my-catalog",
+            namespace="ns1",
+            page_size=2,
+            page_token="",
+            policy_type=None,
+        )
+        mock_policy_api.list_policies.assert_any_call(
+            prefix="my-catalog",
+            namespace="ns1",
+            page_size=2,
+            page_token="token",
+            policy_type=None,
+        )
+
+    @patch("apache_polaris.cli.command.policies.PolicyAPI")
+    def test_policy_list_with_paginate_and_filter(
+        self, mock_policy_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_policy_api = mock_policy_api_class.return_value
+        ids = [MagicMock(to_json=MagicMock(return_value="{}")) for _ in range(3)]
+        page1 = MagicMock(identifiers=ids[:2], next_page_token="token")
+        page2 = MagicMock(identifiers=[ids[2]], next_page_token=None)
+        mock_policy_api.list_policies.side_effect = [page1, page2]
+        self.mock_execute(
+            mock_client,
+            [
+                "policies",
+                "list",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+                "--page-size",
+                "2",
+                "--policy-type",
+                "system.data-compaction",
+            ],
+        )
+        self.assertEqual(mock_policy_api.list_policies.call_count, 2)
+        mock_policy_api.list_policies.assert_any_call(
+            prefix="my-catalog",
+            namespace="ns1",
+            page_size=2,
+            page_token="",
+            policy_type="system.data-compaction",
+        )
+        mock_policy_api.list_policies.assert_any_call(
+            prefix="my-catalog",
+            namespace="ns1",
+            page_size=2,
+            page_token="token",
+            policy_type="system.data-compaction",
+        )
+
+    @patch("apache_polaris.cli.command.policies.PolicyAPI")
     def test_policy_attach(self, mock_policy_api_class: MagicMock) -> None:
         mock_client = self.build_mock_client()
         mock_policy_api = mock_policy_api_class.return_value
