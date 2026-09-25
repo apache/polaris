@@ -153,7 +153,10 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
           if (failure != null) {
             failure.addSuppressed(cleanupFailure);
           } else {
-            throw cleanupFailure;
+            LOGGER.warn(
+                "commit() succeeded but cleanup of {} failed",
+                committerState.deleteIds,
+                cleanupFailure);
           }
         }
       }

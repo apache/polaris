@@ -407,6 +407,62 @@ public abstract class BaseTestCommitterImpl {
   }
 
   @Test
+  public void cleanupFailureDoesNotMaskSuccessfulCommit(TestInfo testInfo) throws Exception {
+    var initialObj =
+        persistence.write(
+            CommitTestObj.builder()
+                .id(persistence.generateId())
+                .text("initial")
+                .seq(1)
+                .tail(new long[0])
+                .build(),
+            CommitTestObj.class);
+    var referenceName = testInfo.getTestMethod().orElseThrow().getName();
+    var cleanupFailure = new RuntimeException("simulated cleanup failure");
+    var updateAttempts = new AtomicInteger();
+
+    persistence.createReference(referenceName, Optional.of(objRef(initialObj)));
+
+    var failingCleanupPersistence =
+        new DelegatingPersistence(persistence) {
+          @Override
+          public Optional<Reference> updateReferencePointer(
+              Reference reference, ObjRef newPointer) {
+            if (updateAttempts.incrementAndGet() == 1) {
+              return Optional.empty();
+            }
+            return delegate.updateReferencePointer(reference, newPointer);
+          }
+
+          @Override
+          public void deleteMany(ObjRef... ids) {
+            throw cleanupFailure;
+          }
+
+          @Override
+          public PersistenceParams params() {
+            return ONE_RETRY_PARAMS;
+          }
+        };
+
+    var committer =
+        new CommitterImpl<>(
+            failingCleanupPersistence, referenceName, CommitTestObj.class, String.class);
+    soft.assertThat(
+            committer.commit(
+                (state, refObjSupplier) ->
+                    state.commitResult(
+                        "result", CommitTestObj.builder().text("result"), refObjSupplier.get())))
+        .contains("result");
+
+    soft.assertThat(updateAttempts).hasValue(2);
+    soft.assertThat(persistence.fetchReferenceHead(referenceName, CommitTestObj.class))
+        .get()
+        .extracting(CommitTestObj::text)
+        .isEqualTo("result");
+  }
+
+  @Test
   public void synchronizingLocallySerializesConcurrentCommits(TestInfo testInfo) throws Exception {
     var initialObj =
         persistence.write(
