@@ -158,11 +158,11 @@ def validate_metadata_location(location: Optional[str]) -> str:
     Returns the location with surrounding whitespace stripped, or raises
     CliError on failure.
     """
-    if not location or not location.strip():
+    location = location.strip() if location else location
+    if not location:
         raise CliError("Missing required argument: --metadata-location")
-    location = location.strip()
-    scheme = urlparse(location).scheme
-    if not scheme or len(scheme) == 1:
+    parsed = urlparse(location)
+    if not parsed.scheme or len(parsed.scheme) == 1:
         raise CliError(f"--metadata-location must include a scheme; got {location}")
     return location
 
