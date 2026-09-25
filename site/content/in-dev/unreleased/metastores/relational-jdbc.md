@@ -227,7 +227,7 @@ Upgrading Polaris on an existing installation requires two steps, in this order:
 first.
 {{< /alert >}}
 
-## Upgrading Database Schemas
+## Schema Upgrades
 
 Starting with schema version v6 (Polaris 1.9.0), schema changes are versioned in git, and you can
 use regular diff tools to compare the two files and see the differences between two release tags.
