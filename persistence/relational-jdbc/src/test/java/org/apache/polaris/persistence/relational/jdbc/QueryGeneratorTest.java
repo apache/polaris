@@ -46,7 +46,7 @@ public class QueryGeneratorTest {
   private static final String REALM_ID = "testRealm";
 
   @Test
-  void testGenerateSelectQuery_withMaQueryGeneratorpWhereClause() {
+  void testGenerateSelectQuery_withMapWhereClause() {
     Map<String, Object> whereClause = new HashMap<>();
     whereClause.put("name", "testEntity");
     whereClause.put("entity_version", 1);
@@ -94,10 +94,11 @@ public class QueryGeneratorTest {
     when(entity.getId()).thenReturn(1L);
     when(entity.getCatalogId()).thenReturn(123L);
     String expectedQuery =
-        "DELETE FROM GRANT_RECORDS WHERE (\n"
-            + "    (grantee_id = ? AND grantee_catalog_id = ?) OR\n"
-            + "    (securable_id = ? AND securable_catalog_id = ?)\n"
-            + ") AND realm_id = ?";
+        """
+        DELETE FROM GRANT_RECORDS WHERE (
+            (grantee_id = ? AND grantee_catalog_id = ?) OR
+            (securable_id = ? AND securable_catalog_id = ?)
+        ) AND realm_id = ?""";
     assertEquals(
         expectedQuery,
         QueryGenerator.generateDeleteQueryForEntityGrantRecords(entity, REALM_ID).sql());
@@ -410,17 +411,17 @@ public class QueryGeneratorTest {
     // so an ancestor stored at the bare scheme root s3:// (ALLOW_NAMESPACE_CUSTOM_LOCATION mode)
     // is still matched. Regression pair: namespace at "//" with a table under "//bucket/ns/t".
     Assertions.assertThat(
-            QueryGenerator.generateOverlapQuery("realmId", 2, "s3://bucket/ns/t/").parameters())
+            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/ns/t/").parameters())
         .contains("//")
         .doesNotContain("/");
     // Same without a trailing slash (prefix walk normalizes; slash-only skip is unchanged).
     Assertions.assertThat(
-            QueryGenerator.generateOverlapQuery("realmId", 2, "s3://bucket/ns/t").parameters())
+            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/ns/t").parameters())
         .contains("//")
         .doesNotContain("/");
     // file: locations: the "///" root and "//" are kept, but "/" is not emitted.
     Assertions.assertThat(
-            QueryGenerator.generateOverlapQuery("realmId", 2, "file:///tmp/data/").parameters())
+            QueryGenerator.generateOverlapQuery("realmId", -123, "file:///tmp/data/").parameters())
         .contains("//", "///")
         .doesNotContain("/");
   }
@@ -431,11 +432,11 @@ public class QueryGeneratorTest {
     // an ESCAPE clause) so they match literally rather than as wildcards; the exact-match prefix
     // terms use "=" and must keep the raw characters.
     assertTrue(
-        QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/a_b/c%d/")
+        QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/a_b/c%d/")
             .sql()
             .contains("location_without_scheme LIKE ? ESCAPE '\\'"));
     Assertions.assertThat(
-            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/a_b/c%d/")
+            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/a_b/c%d/")
                 .parameters())
         .endsWith("//bucket/a\\_b/c\\%d/%")
         .contains("//bucket/a_b", "//bucket/a_b/c%d");
@@ -447,8 +448,7 @@ public class QueryGeneratorTest {
     // escaped
     // so a descendant whose path contains a backslash is still matched rather than silently missed.
     Assertions.assertThat(
-            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/a\\b/")
-                .parameters())
+            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/a\\b/").parameters())
         .endsWith("//bucket/a\\\\b/%");
   }
 
