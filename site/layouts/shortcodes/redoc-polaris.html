@@ -89,6 +89,12 @@ Redoc element with link to your OpenAPI definition
 <redoc spec-url='{{ $url }}' hide-hostname="true" suppress-warnings="true" lazy-rendering  native-scrollbars scroll-y-offset=".js-navbar-scroll" {{ $otheroptions }}></redoc>
 </div>
 <!--
-Link to Redoc JavaScript on CDN for rendering standalone element
+Redoc JavaScript pinned and served locally to comply with ASF CSP policy
 -->
-<script src="https://cdn.jsdelivr.net/npm/redoc@latest/bundles/redoc.standalone.js"></script>
+{{- $redocUrl := "https://cdn.jsdelivr.net/npm/redoc@2.5.4/bundles/redoc.standalone.js" -}}
+{{ with resources.GetRemote $redocUrl }}
+<script
+  src="{{ .RelPermalink }}"
+  integrity="sha512-Z00aADcPGQvnFhTYEiE/mxUqXe5/jsomUy0kmoASPCt5JBIA1Ik1tpFk1V7sX1LZY5YGZ1EhpZyLU0ijUaooYg=="
+  crossorigin="anonymous"></script>
+{{ end -}}
