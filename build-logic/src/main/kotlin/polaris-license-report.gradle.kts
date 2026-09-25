@@ -54,12 +54,15 @@ licenseReport {
 
 val generateLicenseReport =
   tasks.named<ReportTask>("generateLicenseReport") {
-    dependsOn("quarkusBuild")
+    dependsOn("quarkusAppPartsBuild")
     inputs
       .files(
         normalizerBundle,
         allowedLicenses,
-        project.layout.buildDirectory.file("quarkus-app/quarkus-app-dependencies.txt"),
+        project.layout.projectDirectory.file("distribution/LICENSE"),
+        project.layout.buildDirectory.file(
+          "quarkus-build/app/quarkus-app/quarkus-app-dependencies.txt"
+        ),
       )
       .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.property("renderersHash", licenseReport.renderers.contentHashCode())
