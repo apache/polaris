@@ -188,14 +188,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
   while building the access-boundary rules; GCS now handles it like the AWS integration.
 - Fixed `OPTIMIZED_SIBLING_CHECK` rejecting every entity created under a namespace. The location
-  index lookup returns the new entity's own parent namespaces (their locations contain the new
-  location by construction), and each backend treated them as overlapping siblings, so nested
-  namespace creation and default-location table creation failed with `403 Forbidden`, and
-  re-creating an existing namespace returned `403` instead of `409`. The JDBC, NoSQL, and in-memory
-  implementations of `hasOverlappingSiblings` now exclude the entity's ancestors (when they strictly
-  contain it) before reporting an overlap, matching the legacy sibling check. Namespace creation
-  checks for an existing namespace before validating locations, so re-creating a namespace returns
-  `409` rather than reporting the namespace or its children as conflicts.
+  index lookup returns the new entity's own parent namespaces, whose locations contain the new
+  location whenever locations follow the namespace tree, and each backend treated them as
+  overlapping siblings, so nested namespace creation and default-location table creation failed
+  with `403 Forbidden`. The JDBC, NoSQL, and in-memory implementations of `hasOverlappingSiblings`
+  now exclude the entity's ancestors (when they strictly contain it) before reporting an overlap,
+  matching the legacy sibling check.
 
 - Return HTTP 404 instead of 204 when a generic table or its catalog path disappears after resolution and before deletion.
 
