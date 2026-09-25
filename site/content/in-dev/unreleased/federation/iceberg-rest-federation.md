@@ -102,6 +102,20 @@ polaris catalogs update analytics_rest \
 
 Connection config properties (URI and authentication) take precedence if the same keys are present.
 
+### Custom HTTP headers
+
+Properties prefixed with `header.` add an HTTP header to every request sent to the remote catalog.
+For example, BigLake requires a billing project on each request:
+
+```bash
+polaris catalogs update analytics_rest \
+    --set-property header.x-goog-user-project=my-gcp-project
+```
+
+The warning above applies: headers set this way are visible to catalog clients through `/config`,
+so use the connection's authentication parameters for credentials, never a `header.Authorization`
+property.
+
 ## Operational notes
 
 - **Connectivity checks:** Polaris does not lazily probe the remote service; catalog creation fails if
