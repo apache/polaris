@@ -107,6 +107,23 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Semantic models now support dedicated privileges for listing, creating, reading, updating,
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
+- Added tag management: tag definitions can be created, listed, loaded, updated and dropped
+  through the new `/polaris/v1/{prefix}/tags` endpoints, with catalog-scoped authorization and
+  new `TAG_*` privileges covered by `CATALOG_MANAGE_CONTENT`. The feature is gated by the
+  `ENABLE_TAG_STORE` feature flag (disabled by default) and is supported on the JDBC and
+  in-memory metastores; a metastore without tag storage, such as NoSQL, does not advertise the
+  endpoints and rejects them. Tag assignments arrive in a follow-up change.
+- Tag definitions carry a read-only `id` that stays the same across renames and updates, so a client
+  can tell a renamed definition from a same-name replacement. Renaming is its own operation,
+  `POST /polaris/v1/{prefix}/tags/rename`, authorized as a drop on the definition plus a create in
+  the catalog, and an update now replaces the whole editable definition rather than patching
+  individual fields. Omitting `target-types` on create selects every target kind and stores that set
+  explicitly. `createTag`, `updateTag` and `renameTag` honour `Idempotency-Key`: a retry that carries
+  a key the definition already records is recognized instead of applied twice, within the lifetime
+  the shared idempotency configuration sets. Tag listings return the first page by default, and
+  `pagination=false` asks for the complete collection in one response. Tag listings bound both the
+  page they return and the full result they will answer, through `LIST_PAGINATION_DEFAULT_PAGE_SIZE`,
+  `LIST_PAGINATION_MAX_PAGE_SIZE_CEILING` and `LIST_PAGINATION_UNPAGINATED_MAX_RESULTS`.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.

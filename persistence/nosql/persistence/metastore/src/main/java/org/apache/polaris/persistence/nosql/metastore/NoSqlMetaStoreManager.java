@@ -265,6 +265,14 @@ record NoSqlMetaStoreManager(
 
   @NonNull
   @Override
+  public boolean supportsEntityType(PolarisEntityType entityType) {
+    // TAG has no object mapping on this backend (see EntityObjMappings), so nothing can be
+    // stored or resolved for it. Say so here instead of letting a request reach the mapping
+    // lookup and fail with an internal type code.
+    return entityType != PolarisEntityType.TAG;
+  }
+
+  @Override
   public ResolvedEntitiesResult loadResolvedEntities(
       @NonNull PolarisCallContext callCtx,
       @NonNull PolarisEntityType entityType,
