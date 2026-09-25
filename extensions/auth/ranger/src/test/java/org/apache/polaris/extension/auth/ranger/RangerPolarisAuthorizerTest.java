@@ -66,10 +66,12 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
 import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
 import org.apache.ranger.authz.model.RangerAuthzResult;
 import org.apache.ranger.authz.model.RangerMultiAuthzRequest;
 import org.apache.ranger.authz.model.RangerMultiAuthzResult;
+import org.apache.ranger.authz.util.RangerResourceNameParser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
@@ -131,6 +133,78 @@ public class RangerPolarisAuthorizerTest {
   @Test
   public void testAuthzUnsupported() throws Exception {
     runTests(authorizer, "/authz_tests/tests_authz_unsupported.json");
+  }
+
+  @Test
+  void resourceNameKeepsNestedNamespaceInOneSegment() throws Exception {
+    PolarisResolvedPathWrapper tablePath =
+        resolvedPath(
+            PolarisEntityType.ROOT,
+            "root",
+            PolarisEntityType.CATALOG,
+            "catalog",
+            PolarisEntityType.NAMESPACE,
+            "ns1",
+            PolarisEntityType.NAMESPACE,
+            "ns2",
+            PolarisEntityType.TABLE_LIKE,
+            "table");
+
+    String resourceName = RangerUtils.toResourcePath(tablePath, "POLARIS");
+
+    assertThat(
+            new RangerResourceNameParser("table:root/catalog/namespace/table")
+                .parseToMap(resourceName))
+        .containsEntry("catalog", "catalog")
+        .containsEntry("namespace", "ns1/ns2")
+        .containsEntry("table", "table");
+  }
+
+  @Test
+  void resourceNameKeepsNestedNamespaceInOneSegmentForPolicy() throws Exception {
+    PolarisResolvedPathWrapper policyPath =
+        resolvedPath(
+            PolarisEntityType.ROOT,
+            "root",
+            PolarisEntityType.CATALOG,
+            "catalog",
+            PolarisEntityType.NAMESPACE,
+            "ns1",
+            PolarisEntityType.NAMESPACE,
+            "ns2",
+            PolarisEntityType.POLICY,
+            "policy");
+
+    String resourceName = RangerUtils.toResourcePath(policyPath, "POLARIS");
+
+    assertThat(
+            new RangerResourceNameParser("policy:root/catalog/namespace/policy")
+                .parseToMap(resourceName))
+        .containsEntry("catalog", "catalog")
+        .containsEntry("namespace", "ns1/ns2")
+        .containsEntry("policy", "policy");
+  }
+
+  @Test
+  void resourceNameKeepsNestedNamespaceInOneSegmentWhenItIsTheLeaf() throws Exception {
+    PolarisResolvedPathWrapper namespacePath =
+        resolvedPath(
+            PolarisEntityType.ROOT,
+            "root",
+            PolarisEntityType.CATALOG,
+            "catalog",
+            PolarisEntityType.NAMESPACE,
+            "ns1",
+            PolarisEntityType.NAMESPACE,
+            "ns2");
+
+    String resourceName = RangerUtils.toResourcePath(namespacePath, "POLARIS");
+
+    assertThat(
+            new RangerResourceNameParser("namespace:root/catalog/namespace")
+                .parseToMap(resourceName))
+        .containsEntry("catalog", "catalog")
+        .containsEntry("namespace", "ns1/ns2");
   }
 
   @Test
