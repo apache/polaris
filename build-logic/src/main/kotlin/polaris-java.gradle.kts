@@ -222,16 +222,12 @@ tasks.withType<Jar>().configureEach {
 
   if (!project.file("src/main/no-license-notice-marker").exists()) {
     if (!project.file("src/main/resources/META-INF/LICENSE").exists()) {
-      from(rootProject.rootDir) {
-        include("gradle/jar-licenses/LICENSE").eachFile { path = "META-INF/$sourceName" }
-      }
+      from(rootProject.file("gradle/jar-licenses/LICENSE")) { into("META-INF") }
     } else if (name == "javadocJar") {
       from("src/main/resources") { include("META-INF/LICENSE") }
     }
     if (!project.file("src/main/resources/META-INF/NOTICE").exists()) {
-      from(rootProject.rootDir) {
-        include("gradle/jar-licenses/NOTICE").eachFile { path = "META-INF/$sourceName" }
-      }
+      from(rootProject.file("gradle/jar-licenses/NOTICE")) { into("META-INF") }
     } else if (name == "javadocJar") {
       from("src/main/resources") { include("META-INF/NOTICE") }
     }
