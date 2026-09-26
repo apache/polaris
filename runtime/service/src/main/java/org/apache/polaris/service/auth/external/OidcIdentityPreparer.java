@@ -18,93 +18,103 @@
  */
 package org.apache.polaris.service.auth.external;
 
-import static org.apache.polaris.service.auth.external.tenant.OidcTenantResolvingAugmentor.getOidcTenantConfig;
-
-import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.SecurityIdentity;
-import io.quarkus.security.identity.SecurityIdentityAugmentor;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.common.annotation.Identifier;
-import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.Set;
-import org.apache.polaris.service.auth.AuthenticatingAugmentor;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.CredentialMode;
 import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.external.mapping.PrincipalMapper;
 import org.apache.polaris.service.auth.external.mapping.PrincipalRolesMapper;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
+import org.apache.polaris.service.auth.external.tenant.OidcTenantResolver;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 /**
- * A {@link SecurityIdentityAugmentor} that maps the access token claims, as provided by the OIDC
- * authentication mechanism, to a {@link PolarisCredential}.
+ * Prepares an OIDC {@link SecurityIdentity} for authentication by resolving the OIDC tenant
+ * configuration and mapping JWT claims to a {@link PolarisCredential}.
+ *
+ * <p>This bean consolidates the OIDC-specific preparation that must happen before {@link
+ * org.apache.polaris.service.auth.Authenticator} is invoked. It:
+ *
+ * <ol>
+ *   <li>Resolves the OIDC tenant configuration via {@link OidcTenantResolver} and attaches it as an
+ *       identity attribute so that {@link
+ *       org.apache.polaris.service.auth.external.mapping.PrincipalMapper} and {@link
+ *       org.apache.polaris.service.auth.external.mapping.PrincipalRolesMapper} implementations can
+ *       access it.
+ *   <li>Maps the JWT claims to a {@link PolarisCredential} and adds it to the identity.
+ * </ol>
+ *
+ * @see org.apache.polaris.service.auth.PolarisSecurityIdentityAugmentor
  */
 @ApplicationScoped
-public class OidcPolarisCredentialAugmentor implements SecurityIdentityAugmentor {
+public class OidcIdentityPreparer {
 
-  // must run before the authenticating augmentor
-  public static final int PRIORITY = AuthenticatingAugmentor.PRIORITY + 100;
+  public static final String TENANT_CONFIG_ATTRIBUTE =
+      "org.apache.polaris.service.auth.TENANT_CONFIG";
 
   private final AuthenticationRealmConfiguration authConfig;
+  private final OidcTenantResolver resolver;
   private final Instance<PrincipalMapper> principalMappers;
   private final Instance<PrincipalRolesMapper> principalRoleMappers;
 
   @Inject
-  public OidcPolarisCredentialAugmentor(
+  public OidcIdentityPreparer(
       AuthenticationRealmConfiguration authConfig,
+      OidcTenantResolver resolver,
       @Any Instance<PrincipalMapper> principalMappers,
       @Any Instance<PrincipalRolesMapper> principalRoleMappers) {
     this.authConfig = authConfig;
+    this.resolver = resolver;
     this.principalMappers = principalMappers;
     this.principalRoleMappers = principalRoleMappers;
   }
 
-  @Override
-  public int priority() {
-    return PRIORITY;
+  public static OidcTenantConfiguration getOidcTenantConfig(SecurityIdentity identity) {
+    return identity.getAttribute(TENANT_CONFIG_ATTRIBUTE);
   }
 
-  @Override
-  public Uni<SecurityIdentity> augment(
-      SecurityIdentity identity, AuthenticationRequestContext context) {
-    if (identity.isAnonymous() || !(identity.getPrincipal() instanceof JsonWebToken)) {
-      return Uni.createFrom().item(identity);
+  /**
+   * Prepares the given identity for authentication. For OIDC identities (where the principal is a
+   * {@link JsonWebToken}), resolves the tenant configuration and maps JWT claims to a {@link
+   * PolarisCredential}. Non-OIDC identities are returned unchanged.
+   */
+  public SecurityIdentity prepare(SecurityIdentity identity) {
+    if (!(identity.getPrincipal() instanceof JsonWebToken)) {
+      return identity;
     }
-    OidcTenantConfiguration config = getOidcTenantConfig(identity);
+    OidcTenantConfiguration config = resolver.resolveConfig(identity);
+    // Add the resolved config as an attribute so mappers can access it via getOidcTenantConfig()
+    SecurityIdentity withConfig =
+        QuarkusSecurityIdentity.builder(identity)
+            .addAttribute(TENANT_CONFIG_ATTRIBUTE, config)
+            .build();
     PrincipalMapper principalMapper =
         principalMappers.select(Identifier.Literal.of(config.principalMapper().type())).get();
-    PrincipalRolesMapper principalRolesMapper =
+    PrincipalRolesMapper rolesMapper =
         principalRoleMappers
             .select(Identifier.Literal.of(config.principalRolesMapper().type()))
             .get();
-    // The mappers may do expensive work, hence we run within a blocking context
-    return context.runBlocking(
-        () -> setPolarisCredential(identity, principalMapper, principalRolesMapper));
-  }
-
-  protected SecurityIdentity setPolarisCredential(
-      SecurityIdentity identity,
-      PrincipalMapper principalMapper,
-      PrincipalRolesMapper rolesMapper) {
-    String principalName = principalMapper.mapPrincipalName(identity).orElse(null);
-    Set<String> principalRoles = rolesMapper.mapPrincipalRoles(identity);
+    String principalName = principalMapper.mapPrincipalName(withConfig).orElse(null);
+    Set<String> principalRoles = rolesMapper.mapPrincipalRoles(withConfig);
     // Note: we build the credential even if it doesn't contain enough data to authenticate;
     // DefaultAuthenticator will reject it later on.
     PolarisCredential credential;
     if (authConfig.credentialMode() == CredentialMode.INTERNAL) {
       Long principalId =
-          principalMapper.mapPrincipalId(identity).stream().boxed().findFirst().orElse(null);
+          principalMapper.mapPrincipalId(withConfig).stream().boxed().findFirst().orElse(null);
       credential = PolarisCredential.of(principalId, principalName, principalRoles);
     } else {
       credential = PolarisCredential.ofExternal(principalName, principalRoles);
     }
-    // Note: we don't change the identity roles here, this will be done later on
-    // by the AuthenticatingAugmentor, which will also validate them.
-    return QuarkusSecurityIdentity.builder(identity).addCredential(credential).build();
+    // Note: we don't change the identity roles here; this is done later by
+    // AuthenticatingAugmentor, which also validates them.
+    return QuarkusSecurityIdentity.builder(withConfig).addCredential(credential).build();
   }
 }
