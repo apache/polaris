@@ -37,6 +37,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
 import org.apache.ranger.authz.api.RangerAuthzException;
 import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
@@ -79,15 +80,24 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   /**
-   * Resolves authorization inputs using {@code resolveAll()} for backward compatibility.
+   * Resolves only the selections required by Ranger authorization.
    *
-   * <p>This scope is intentionally broad for now and will be narrowed in a future refactoring to
-   * resolve only the selections required by Ranger authorization.
+   * <p>{@link Resolvable#REFERENCE_CATALOG} and {@link Resolvable#REQUESTED_PATHS} require a
+   * reference catalog to resolve, so they are requested only when the manifest carries one. Root
+   * operations and the {@code principal}/{@code principal-role} operations use a manifest without a
+   * catalog name, and asking for them there would be rejected before resolution.
    */
   @Override
   public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    authzState.getResolutionManifest().resolveAll();
+    PolarisResolutionManifest manifest = authzState.getResolutionManifest();
+    manifest.resolveSelections(
+        manifest.getCatalogName() != null
+            ? Set.of(
+                Resolvable.REFERENCE_CATALOG,
+                Resolvable.REQUESTED_PATHS,
+                Resolvable.REQUESTED_TOP_LEVEL_ENTITIES)
+            : Set.of(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES));
   }
 
   @Override

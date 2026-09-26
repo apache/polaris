@@ -128,6 +128,18 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     passthroughPaths.put(ResolvedPathKey.of(path), path);
   }
 
+  /**
+   * Returns the name of the reference catalog this manifest resolves against, or {@code null} if it
+   * was created without one.
+   *
+   * <p>Callers that choose a {@link Resolvable} selection set need this: catalog-dependent
+   * selections are rejected by the resolver when no reference catalog is present, as happens for
+   * root operations and the {@code principal}/{@code principal-role} operations.
+   */
+  public @Nullable String getCatalogName() {
+    return catalogName;
+  }
+
   public ResolverStatus resolveAll() {
     primaryResolverStatus = primaryResolver.resolveAll();
     // TODO: This could be a race condition where a Principal is dropped after initial authn

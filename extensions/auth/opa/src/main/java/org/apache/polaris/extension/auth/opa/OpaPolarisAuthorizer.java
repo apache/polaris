@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -53,6 +54,8 @@ import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
 import org.apache.polaris.core.auth.RootPrivilegeGrantAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
 import org.apache.polaris.extension.auth.opa.model.ImmutableContext;
 import org.apache.polaris.extension.auth.opa.model.ImmutableOpaAuthorizationInput;
@@ -119,15 +122,24 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   /**
-   * Resolves authorization inputs using {@code resolveAll()} for backward compatibility.
+   * Resolves only the selections required by OPA authorization.
    *
-   * <p>This scope is intentionally broad for now and will be narrowed in a future refactoring to
-   * resolve only the selections required by OPA authorization.
+   * <p>{@link Resolvable#REFERENCE_CATALOG} and {@link Resolvable#REQUESTED_PATHS} require a
+   * reference catalog to resolve, so they are requested only when the manifest carries one. Root
+   * operations and the {@code principal}/{@code principal-role} operations use a manifest without a
+   * catalog name, and asking for them there would be rejected before resolution.
    */
   @Override
   public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    authzState.getResolutionManifest().resolveAll();
+    PolarisResolutionManifest manifest = authzState.getResolutionManifest();
+    manifest.resolveSelections(
+        manifest.getCatalogName() != null
+            ? Set.of(
+                Resolvable.REFERENCE_CATALOG,
+                Resolvable.REQUESTED_PATHS,
+                Resolvable.REQUESTED_TOP_LEVEL_ENTITIES)
+            : Set.of(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES));
   }
 
   @Override
