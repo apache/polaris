@@ -118,6 +118,9 @@ public class IcebergExceptionMapperTest {
                                 },
                                 entry.getValue()),
                             Arguments.of(
+                                new MsalServiceException("Authentication failed", "service_error"),
+                                Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()),
+                            Arguments.of(
                                 StsException.builder()
                                     .message("")
                                     .statusCode(entry.getKey())
