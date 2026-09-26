@@ -255,7 +255,8 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         storageAccessConfigProvider,
         fileIOFactory,
         polarisEventDispatcher,
-        eventMetadataFactory);
+        eventMetadataFactory,
+        new TableMetadataCache(TestTableMetadataCacheConfiguration.disabled()));
   }
 
   @Test

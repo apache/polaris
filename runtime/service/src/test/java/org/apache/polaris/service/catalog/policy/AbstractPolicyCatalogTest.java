@@ -83,6 +83,8 @@ import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisAdminServiceTestSupport;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.TableMetadataCache;
+import org.apache.polaris.service.catalog.iceberg.TestTableMetadataCacheConfiguration;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -273,7 +275,8 @@ public abstract class AbstractPolicyCatalogTest {
             storageAccessConfigProvider,
             fileIOFactory,
             new InMemoryEventCollector(),
-            eventMetadataFactory);
+            eventMetadataFactory,
+            new TableMetadataCache(TestTableMetadataCacheConfiguration.disabled()));
     this.icebergCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
