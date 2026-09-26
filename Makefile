@@ -48,6 +48,15 @@ version: ## Display version information
 	@echo "Git commit: ${GIT_COMMIT}"
 	@echo "UV version: ${UV_VERSION}"
 
+##@ Proposal snapshots
+
+.PHONY: proposal-snapshots proposal-snapshots-check
+proposal-snapshots: ## Fill pending proposal manifest entries and capture their snapshots
+	$(PYTHON) tools/gdoc-snapshot/gdoc_snapshot.py build proposals $(if $(PROPOSAL_BASE_REF),--base-ref "$(PROPOSAL_BASE_REF)")
+
+proposal-snapshots-check: ## Verify frozen proposal snapshots offline
+	$(PYTHON) tools/gdoc-snapshot/gdoc_snapshot.py check proposals $(if $(PROPOSAL_BASE_REF),--base-ref "$(PROPOSAL_BASE_REF)")
+
 ##@ Polaris Build
 
 .PHONY: build
