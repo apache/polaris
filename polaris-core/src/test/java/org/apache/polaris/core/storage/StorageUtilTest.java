@@ -107,4 +107,35 @@ public class StorageUtilTest {
                     IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, "/3/")))
         .contains("/1/", "/2/", "/3/");
   }
+
+  @Test
+  public void getLocationsUsedByTable_trailingSlashOnlyMismatchIsDeduped() {
+    // baseLocation and write.data.path are the same path, differing only by a trailing slash.
+    // They are distinct raw strings, so they do NOT collapse in the HashSet, but they are
+    // mutually isChildOf each other once isChildOf's trailing-slash normalization is applied.
+    // removeRedundantLocations must treat that as equivalence and keep exactly one, not drop both.
+    Assertions.assertThat(
+            StorageUtil.getLocationsUsedByTable(
+                "s3://bucket/a/b/c",
+                Map.of(
+                    IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+                    "s3://bucket/a/b/c/")))
+        .hasSize(1);
+  }
+
+  @Test
+  public void getLocationsUsedByTable_schemeOnlyMismatchIsDeduped() {
+    // Same container/account/file path, but "abfss" (secure) vs "abfs" (non-secure) schemes.
+    // AzureLocation.isChildOf never inspects scheme, so this hits the same bug class as the
+    // trailing-slash case above, with no trailing slash involved at all -- confirming the defect
+    // is in the general mutual-containment handling in removeRedundantLocations, not specific to
+    // trailing slashes.
+    Assertions.assertThat(
+            StorageUtil.getLocationsUsedByTable(
+                "abfss://container@account.dfs.core.windows.net/a/b/c",
+                Map.of(
+                    IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+                    "abfs://container@account.dfs.core.windows.net/a/b/c")))
+        .hasSize(1);
+  }
 }
