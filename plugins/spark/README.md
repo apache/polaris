@@ -31,10 +31,30 @@ REST endpoints, and provides implementations for Apache Spark's
 
 The plugin provides support for Spark 3.5 (Scala version 2.12 and 2.13) and Spark 4.0 (Scala version 2.13).
 
-The Polaris Spark client supports catalog management for both Iceberg and Delta tables. It routes all Iceberg table
-requests to the Iceberg REST endpoints and routes all Delta table requests to the Generic Table REST endpoints.
+The Polaris Spark client supports catalog management for Iceberg and generic table formats,
+including Delta, Hudi, and Paimon. Iceberg requests use the Iceberg REST endpoints. Generic
+formats are registered through the Generic Table REST endpoints so they participate in the same
+catalog listing.
 
 The Spark Client requires at least delta 3.2.1 to work with Delta tables for Spark 3.5, and delta 4.2.0 for Spark 4.0.
+
+## Paimon configuration
+
+To use Paimon, add a Paimon Spark runtime compatible with the selected Spark and Scala versions to
+Spark's classpath and configure a separate physical Paimon warehouse:
+
+```shell
+--conf spark.sql.catalog.<catalog-name>.paimon-warehouse=<paimon-warehouse-path>
+```
+
+The physical table is owned by the Paimon catalog at that warehouse. Polaris additionally stores a
+Generic Table registration for unified discovery and `SHOW TABLES`. The Paimon catalog
+implementation defaults to `org.apache.paimon.spark.SparkCatalog`; it can be overridden when
+needed:
+
+```shell
+--conf spark.sql.catalog.<catalog-name>.paimon-catalog-impl=<table-catalog-class>
+```
 
 # Start Spark with local Polaris service using the Polaris Spark plugin
 The following command starts a Polaris server for local testing, it runs on localhost:8181 with default
@@ -125,7 +145,8 @@ bin/spark-shell \
 The following describes the current limitations of the Polaris Spark client:
 
 ## General Limitations
-1. The Polaris Spark client only supports Iceberg and Delta tables. It does not support other table formats like CSV, JSON, etc.
+1. Generic formats other than Delta, Hudi, and Paimon are only registered in Polaris; their
+   format-specific lifecycle is not managed by the plugin.
 2. Generic tables (non-Iceberg tables) do not currently support credential vending.
 
 ## Delta Table Limitations
@@ -134,3 +155,10 @@ The following describes the current limitations of the Polaris Spark client:
 2. Create a Delta table without explicit location is not supported.
 3. Rename a Delta table is not supported.
 4. ALTER TABLE ... SET LOCATION is not supported for DELTA table.
+
+## Paimon Table Limitations
+
+1. Staged Paimon operations are not supported. This includes create-table-as-select (CTAS),
+   replace-table-as-select (RTAS), and APIs such as `DataFrameWriter.saveAsTable` that use Spark's
+   staged table path.
+2. Renaming Paimon tables through the Polaris Spark catalog is not supported.
