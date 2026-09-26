@@ -68,7 +68,13 @@ quarkus.rds.credentials-provider.aws.port=6160
 
 This is the basic configuration. For more details, please refer to the [Quarkus plugin documentation](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-rds.html#_configuration_reference).
 
-The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only PostgreSQL and H2 databases. At this time, official documentation is provided exclusively for usage with PostgreSQL.
+## 3. MySQL (custom source build)
+
+The relational JDBC backend can be built with MySQL 8.0+ support, but the MySQL JDBC driver is GPL-licensed and is not bundled in the official Polaris release artifacts (see [issue #2491](https://github.com/apache/polaris/issues/2491)). To use this path, download the official Polaris source release and build your own derivative from that source tree; see `persistence/relational-jdbc/MYSQL.md` in the unpacked source release for build and configuration details. The runner you build is a custom downstream derivative, not an official Polaris artifact.
+
+---
+
+The Relational JDBC metastore currently relies on a Quarkus-managed datasource. Official Polaris release artifacts support PostgreSQL and H2. At this time, the most detailed documentation is provided for PostgreSQL.
 Please refer to the documentation here:
 [Configure data sources in Quarkus](https://quarkus.io/guides/datasource).
 
@@ -77,6 +83,8 @@ Additionally, the retries can be configured via `polaris.persistence.relational.
 By default, Polaris stores its tables in a schema named `POLARIS_SCHEMA`. The schema is selected entirely through the datasource configuration — Polaris ships the default as the JDBC driver's `currentSchema` connection property (`quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema=POLARIS_SCHEMA`), and the persistence code itself is agnostic of the schema name. To use a different schema (for example, to run multiple Polaris deployments in the same database or to comply with a schema-naming policy), override that property or set `currentSchema` directly in the JDBC URL (the URL takes precedence). The name is passed to the driver unquoted, so the database applies its usual identifier case folding (for example, PostgreSQL folds it to lowercase).
 
 The schema must exist before Polaris connects: Polaris does not issue `CREATE SCHEMA`, since that is a privileged operation best performed by a database administrator. Setting up a fresh deployment is therefore a two-step procedure: a DBA first creates the schema (for example `CREATE SCHEMA polaris_schema;`), then the [Admin Tool]({{% ref "../admin-tool" %}}) bootstraps the realm using a datasource configured with the same schema. The database user Polaris runs with needs `USAGE` (and, for bootstrap, `CREATE`) privileges on that schema only.
+
+The `currentSchema` mechanism above is specific to the PostgreSQL driver (also used for CockroachDB) on the default datasource. On the MySQL custom source build, schema is synonymous with database and is selected by the path component of the JDBC URL on the named `mysql` datasource; `currentSchema` is not a MySQL Connector/J property and has no effect there. The rule that the schema must pre-exist still applies. See `persistence/relational-jdbc/MYSQL.md` for details.
 
 {{< alert important >}}
 **Upgrading an existing deployment:** if your JDBC URL already sets `currentSchema`, check it

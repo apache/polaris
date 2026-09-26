@@ -241,11 +241,8 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
     map.put(INDEXED_DELETE_FILES, getIndexedDeleteFiles());
     map.put(TOTAL_DELETE_FILE_SIZE_BYTES, getTotalDeleteFileSizeBytes());
 
-    if (databaseType.equals(DatabaseType.POSTGRES)) {
-      map.put(METADATA, toJsonbPGobject(getMetadata() != null ? getMetadata() : "{}"));
-    } else {
-      map.put(METADATA, getMetadata() != null ? getMetadata() : "{}");
-    }
+    map.put(
+        METADATA, wrapJsonForDatabase(getMetadata() != null ? getMetadata() : "{}", databaseType));
     return map;
   }
 
