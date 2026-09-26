@@ -798,6 +798,47 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(10)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> TABLE_SOFT_DELETE_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("TABLE_SOFT_DELETE_ENABLED")
+          .catalogConfig("polaris.config.table-soft-delete.enabled")
+          .description(
+              "If set to true, DROP TABLE without purge marks an INTERNAL Iceberg table as"
+                  + " soft-deleted for a hold period instead of permanently removing it. Soft-deleted"
+                  + " tables are hidden from Iceberg REST list/load/HEAD, the identifier stays"
+                  + " reserved until permanent delete, and data files are not deleted. Default is"
+                  + " false (hard DROP). DROP TABLE with purge remains an immediate"
+                  + " permanent delete.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> TABLE_SOFT_DELETE_HOLD_PERIOD =
+      PolarisConfiguration.<String>builder()
+          .key("TABLE_SOFT_DELETE_HOLD_PERIOD")
+          .catalogConfig("polaris.config.table-soft-delete.hold-period")
+          .description(
+              "ISO-8601 duration to retain a soft-deleted Iceberg table before it becomes eligible"
+                  + " for permanent delete. Used only when TABLE_SOFT_DELETE_ENABLED is true."
+                  + " Default is P7D (seven days). After the hold, the next list, create, or"
+                  + " drop-namespace in that namespace permanently removes catalog state for"
+                  + " eligible tables. There is no dedicated expiration task. When the feature is"
+                  + " off, this is a no-op.")
+          .defaultValue("P7D")
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean>
+      TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE =
+          PolarisConfiguration.<Boolean>builder()
+              .key("TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE")
+              .catalogConfig("polaris.config.table-soft-delete.purge-data-on-permanent-delete")
+              .description(
+                  "If set to true, permanent delete of a previously soft-deleted Iceberg table"
+                      + " enqueues the existing entity-cleanup task so data and metadata files may"
+                      + " be removed. Used only when TABLE_SOFT_DELETE_ENABLED is true. Default is"
+                      + " false (catalog state is removed; files are left in place).")
+              .defaultValue(false)
+              .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> RESOLVE_CREDENTIALS_BY_STORAGE_NAME =
       PolarisConfiguration.<Boolean>builder()
           .key("RESOLVE_CREDENTIALS_BY_STORAGE_NAME")

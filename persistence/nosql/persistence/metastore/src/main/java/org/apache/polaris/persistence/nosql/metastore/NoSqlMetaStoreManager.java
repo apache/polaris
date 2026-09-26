@@ -19,6 +19,7 @@
 package org.apache.polaris.persistence.nosql.metastore;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_NOT_FOUND;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.GRANT_NOT_FOUND;
@@ -174,6 +175,34 @@ record NoSqlMetaStoreManager(
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     return ms(callCtx).dropEntity(entityToDrop, cleanupProperties, cleanup);
+  }
+
+  @NonNull
+  @Override
+  public DropEntityResult softDeleteEntityIfExists(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop,
+      long dropTimestamp,
+      long toPurgeTimestamp) {
+    requireNonNull(entityToDrop, "entityToDrop");
+    if (entityToDrop.cannotBeDroppedOrRenamed()) {
+      return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, null);
+    }
+    if (entityToDrop.isDropped()) {
+      return new DropEntityResult();
+    }
+
+    PolarisBaseEntity softDeleted =
+        new PolarisBaseEntity.Builder(entityToDrop)
+            .dropTimestamp(dropTimestamp)
+            .toPurgeTimestamp(toPurgeTimestamp)
+            .build();
+    EntityResult updated = ms(callCtx).updateEntity(softDeleted);
+    if (!updated.isSuccess()) {
+      return new DropEntityResult(updated.getReturnStatus(), updated.getExtraInformation());
+    }
+    return new DropEntityResult();
   }
 
   @NonNull

@@ -158,11 +158,13 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
    * Drop this entity. This will:
    *
    * <pre>
-   *   - validate that the entity has not yet been dropped
    *   - error out if this entity is undroppable
    *   - if this is a catalog or a namespace, error out if the entity still has children
    *   - we will fully delete the entity from persistence store
    * </pre>
+   *
+   * <p>Soft-deleted entities (non-zero dropTimestamp) may still occupy the active name index; this
+   * method is the permanent-delete path for those entities as well.
    *
    * @param callCtx call context
    * @param ms meta store
@@ -176,9 +178,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // validate the entity type and subtype
     getDiagnostics().checkNotNull(entity, "unexpected_null_dpo");
     getDiagnostics().checkNotNull(entity.getName(), "unexpected_null_name");
-
-    // creation timestamp must be filled
-    getDiagnostics().check(entity.getDropTimestamp() == 0, "already_dropped");
 
     // for now drop all associated grants, etc. synchronously
     // delete ALL grant records to (if the entity is a grantee) and from that entity
@@ -1471,6 +1470,56 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         () ->
             this.dropEntityIfExists(
                 callCtx, ms, catalogPath, entityToDrop, cleanupProperties, cleanup));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull DropEntityResult softDeleteEntityIfExists(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop,
+      long dropTimestamp,
+      long toPurgeTimestamp) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    return ms.runInTransaction(
+        callCtx,
+        () ->
+            this.softDeleteEntityIfExists(
+                callCtx, ms, catalogPath, entityToDrop, dropTimestamp, toPurgeTimestamp));
+  }
+
+  private @NonNull DropEntityResult softDeleteEntityIfExists(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull TransactionalPersistence ms,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop,
+      long dropTimestamp,
+      long toPurgeTimestamp) {
+    getDiagnostics().checkNotNull(entityToDrop, "unexpected_null_entity");
+
+    PolarisEntityResolver resolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath, entityToDrop);
+    if (resolver.isFailure()) {
+      return new DropEntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
+    }
+
+    PolarisBaseEntity refreshEntityToDrop =
+        ms.lookupEntityInCurrentTxn(
+            callCtx, entityToDrop.getCatalogId(), entityToDrop.getId(), entityToDrop.getTypeCode());
+    if (refreshEntityToDrop == null) {
+      return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+    if (refreshEntityToDrop.cannotBeDroppedOrRenamed()) {
+      return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, null);
+    }
+    if (refreshEntityToDrop.isDropped()) {
+      return new DropEntityResult();
+    }
+
+    PolarisBaseEntity softDeleted =
+        prepareToSoftDeleteEntity(refreshEntityToDrop, dropTimestamp, toPurgeTimestamp);
+    ms.writeEntityInCurrentTxn(callCtx, softDeleted, false, refreshEntityToDrop);
+    return new DropEntityResult();
   }
 
   /**
