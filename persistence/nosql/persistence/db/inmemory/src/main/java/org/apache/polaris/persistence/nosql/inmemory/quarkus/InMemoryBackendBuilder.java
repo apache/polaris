@@ -16,12 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.quarkus.backend;
+package org.apache.polaris.persistence.nosql.inmemory.quarkus;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.inmemory.InMemoryBackendFactory;
 import org.apache.polaris.persistence.nosql.inmemory.InMemoryConfiguration;
+import org.apache.polaris.persistence.nosql.quarkus.backend.BackendBuilder;
+import org.apache.polaris.persistence.nosql.quarkus.backend.BackendType;
 
 @BackendType(InMemoryBackendFactory.NAME)
 @ApplicationScoped

@@ -17,6 +17,8 @@
  * under the License.
  */
 
+import org.gradle.api.component.AdhocComponentWithVariants
+
 plugins {
   id("org.kordamp.gradle.jandex")
   id("polaris-server")
@@ -24,10 +26,31 @@ plugins {
 
 description = "Polaris NoSQL persistence, in-memory implementation"
 
+val quarkusRuntimeOnly =
+  configurations.dependencyScope("quarkusRuntimeOnly") {
+    extendsFrom(configurations.implementation.get(), configurations.runtimeOnly.get())
+  }
+val quarkusRuntimeElements =
+  configurations.consumable("quarkusRuntimeElements") {
+    extendsFrom(quarkusRuntimeOnly.get())
+    attributes {
+      addAllLater(configurations.runtimeElements.get().attributes)
+    }
+    outgoing {
+      artifact(tasks.named("jar"))
+      capability("$group:${project.name}-quarkus:$version")
+    }
+  }
+
+(components["java"] as AdhocComponentWithVariants).addVariantsFromConfiguration(
+  quarkusRuntimeElements.get()
+) {}
+
 dependencies {
   implementation(project(":polaris-persistence-nosql-api"))
   implementation(project(":polaris-persistence-nosql-impl"))
   implementation(project(":polaris-idgen-api"))
+  compileOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
 
   implementation(libs.guava)
   implementation(libs.slf4j.api)

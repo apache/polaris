@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.quarkus.backend;
+package org.apache.polaris.persistence.nosql.mongodb.quarkus;
 
 import io.smallrye.config.ConfigSourceContext;
 import io.smallrye.config.ConfigSourceFactory;
@@ -52,10 +52,9 @@ public class MongoDBConfigSourceFactory implements ConfigSourceFactory {
             }
 
             var backendType = context.getValue("polaris.persistence.nosql.backend");
-            return backendType != null
-                    && MongoDbBackendFactory.NAME.equalsIgnoreCase(backendType.getValue())
-                ? "true"
-                : "false";
+            return Boolean.toString(
+                backendType != null
+                    && MongoDbBackendFactory.NAME.equalsIgnoreCase(backendType.getValue()));
           }
 
           @Override

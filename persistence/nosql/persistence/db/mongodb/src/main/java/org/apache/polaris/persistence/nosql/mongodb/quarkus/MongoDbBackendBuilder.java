@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.quarkus.backend;
+package org.apache.polaris.persistence.nosql.mongodb.quarkus;
 
 import com.mongodb.client.MongoClient;
 import jakarta.enterprise.context.Dependent;
@@ -25,6 +25,8 @@ import jakarta.inject.Inject;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.mongodb.MongoDbBackendConfig;
 import org.apache.polaris.persistence.nosql.mongodb.MongoDbBackendFactory;
+import org.apache.polaris.persistence.nosql.quarkus.backend.BackendBuilder;
+import org.apache.polaris.persistence.nosql.quarkus.backend.BackendType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @BackendType(MongoDbBackendFactory.NAME)
