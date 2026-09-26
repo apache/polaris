@@ -450,7 +450,10 @@ public class PolarisManagementServiceIntegrationTest {
     // default-base-location.
     UpdateCatalogRequest updateRequest =
         new UpdateCatalogRequest(
-            fetchedCatalog.getEntityVersion(), Map.of("foo", "bar"), null /* storageConfigIno */);
+            fetchedCatalog.getEntityVersion(),
+            Map.of("foo", "bar"),
+            null /* storageConfigInfo */,
+            null);
 
     // Successfully update
     Catalog updatedCatalog;
@@ -587,7 +590,8 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "abfss://newcontainer@acct1.dfs.core.windows.net/"),
-            modifiedStorageConfig);
+            modifiedStorageConfig,
+            null);
     try (Response response =
         managementApi.request("v1/catalogs/" + catalogName).put(Entity.json(badUpdateRequest))) {
       assertThat(response)
@@ -604,7 +608,8 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "abfss://newcontainer@acct1.dfs.core.windows.net/"),
-            storageConfig);
+            storageConfig,
+            null);
 
     // 200 successful update
     try (Response response =
@@ -621,6 +626,218 @@ public class PolarisManagementServiceIntegrationTest {
     try (Response response = managementApi.request("v1/catalogs/" + catalogName).delete()) {
       assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
+  }
+
+  // --- Named storage configurations (storageConfigInfos) ---
+
+  private static AwsStorageConfigInfo namedAwsStorageConfig(String storageName, String location) {
+    return AwsStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+        .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+        .setAllowedLocations(List.of(location))
+        .setStorageName(storageName)
+        .build();
+  }
+
+  @Test
+  public void testCreateCatalogWithNamedStorageConfigs() {
+    String catalogName = client.newEntityName("mycatalog");
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder()
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                    .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+                    .build())
+            .setStorageConfigInfos(
+                List.of(
+                    namedAwsStorageConfig("hot-us-east", "s3://hot/bucket/"),
+                    namedAwsStorageConfig("cold-archive", "s3://cold/bucket/")))
+            .build();
+    managementApi.createCatalog(catalog);
+
+    try (Response response = managementApi.request("v1/catalogs/" + catalogName).get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog fetchedCatalog = response.readEntity(Catalog.class);
+      assertThat(fetchedCatalog.getStorageConfigInfos())
+          .extracting(StorageConfigInfo::getStorageName)
+          .containsExactlyInAnyOrder("hot-us-east", "cold-archive");
+    }
+
+    managementApi.deleteCatalog(catalogName);
+  }
+
+  @Test
+  public void testUpdateCatalogNamedStorageConfigsSemantics() {
+    String catalogName = client.newEntityName("mycatalog");
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder()
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                    .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+                    .build())
+            .setStorageConfigInfos(
+                List.of(
+                    namedAwsStorageConfig("a", "s3://a/bucket/"),
+                    namedAwsStorageConfig("b", "s3://b/bucket/")))
+            .build();
+    managementApi.createCatalog(catalog);
+
+    Catalog fetchedCatalog;
+    try (Response response = managementApi.request("v1/catalogs/" + catalogName).get()) {
+      fetchedCatalog = response.readEntity(Catalog.class);
+    }
+
+    // Omitting storageConfigInfos leaves the existing named configs untouched.
+    UpdateCatalogRequest omitUpdate =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(),
+            Map.of("default-base-location", "s3://bucket/path/to/data"),
+            fetchedCatalog.getStorageConfigInfo(),
+            null);
+    try (Response response =
+        managementApi.request("v1/catalogs/" + catalogName).put(Entity.json(omitUpdate))) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = response.readEntity(Catalog.class);
+      assertThat(fetchedCatalog.getStorageConfigInfos())
+          .extracting(StorageConfigInfo::getStorageName)
+          .containsExactlyInAnyOrder("a", "b");
+    }
+
+    // A present array replaces the whole set: keep "a" (modified), drop "b", add "c".
+    UpdateCatalogRequest replaceUpdate =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(),
+            Map.of("default-base-location", "s3://bucket/path/to/data"),
+            fetchedCatalog.getStorageConfigInfo(),
+            List.of(
+                namedAwsStorageConfig("a", "s3://a/modified-bucket/"),
+                namedAwsStorageConfig("c", "s3://c/bucket/")));
+    try (Response response =
+        managementApi.request("v1/catalogs/" + catalogName).put(Entity.json(replaceUpdate))) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = response.readEntity(Catalog.class);
+      assertThat(fetchedCatalog.getStorageConfigInfos())
+          .extracting(StorageConfigInfo::getStorageName)
+          .containsExactlyInAnyOrder("a", "c");
+      StorageConfigInfo aConfig =
+          fetchedCatalog.getStorageConfigInfos().stream()
+              .filter(c -> "a".equals(c.getStorageName()))
+              .findFirst()
+              .orElseThrow();
+      assertThat(aConfig.getAllowedLocations()).containsExactly("s3://a/modified-bucket/");
+    }
+
+    // An empty array removes every named config while leaving the default untouched.
+    UpdateCatalogRequest emptyUpdate =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(),
+            Map.of("default-base-location", "s3://bucket/path/to/data"),
+            fetchedCatalog.getStorageConfigInfo(),
+            List.of());
+    try (Response response =
+        managementApi.request("v1/catalogs/" + catalogName).put(Entity.json(emptyUpdate))) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = response.readEntity(Catalog.class);
+      assertThat(fetchedCatalog.getStorageConfigInfos()).isNull();
+      assertThat(fetchedCatalog.getStorageConfigInfo()).isNotNull();
+    }
+
+    managementApi.deleteCatalog(catalogName);
+  }
+
+  @Test
+  public void testCatalogResponseRoundTripsNamedStorageConfigsForInternalAndExternal() {
+    String internalCatalogName = client.newEntityName("myinternalcatalog");
+    Catalog internalCatalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(internalCatalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder()
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                    .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+                    .build())
+            .setStorageConfigInfos(List.of(namedAwsStorageConfig("hot", "s3://hot/bucket/")))
+            .build();
+    managementApi.createCatalog(internalCatalog);
+
+    try (Response response = managementApi.request("v1/catalogs/" + internalCatalogName).get()) {
+      Catalog fetched = response.readEntity(Catalog.class);
+      assertThat(fetched)
+          .isInstanceOf(PolarisCatalog.class)
+          .extracting(Catalog::getStorageConfigInfos)
+          .asInstanceOf(InstanceOfAssertFactories.list(StorageConfigInfo.class))
+          .extracting(StorageConfigInfo::getStorageName)
+          .containsExactly("hot");
+    }
+    managementApi.deleteCatalog(internalCatalogName);
+
+    String externalCatalogName = client.newEntityName("myexternalcatalog");
+    Catalog externalCatalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName(externalCatalogName)
+            .setProperties(new CatalogProperties("s3://ext-bucket/path/to/data"))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder()
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                    .setAllowedLocations(List.of("s3://ext-bucket/path/to/data"))
+                    .build())
+            .setStorageConfigInfos(List.of(namedAwsStorageConfig("archive", "s3://ext-archive/")))
+            .build();
+    managementApi.createCatalog(externalCatalog);
+
+    try (Response response = managementApi.request("v1/catalogs/" + externalCatalogName).get()) {
+      Catalog fetched = response.readEntity(Catalog.class);
+      assertThat(fetched)
+          .isInstanceOf(ExternalCatalog.class)
+          .extracting(Catalog::getStorageConfigInfos)
+          .asInstanceOf(InstanceOfAssertFactories.list(StorageConfigInfo.class))
+          .extracting(StorageConfigInfo::getStorageName)
+          .containsExactly("archive");
+    }
+    managementApi.deleteCatalog(externalCatalogName);
+  }
+
+  @Test
+  public void testCatalogWithoutNamedStorageConfigsOmitsFieldEntirely() {
+    String catalogName = client.newEntityName("mycatalog");
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder()
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                    .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+                    .build())
+            .build();
+    managementApi.createCatalog(catalog);
+
+    try (Response response = managementApi.request("v1/catalogs/" + catalogName).get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      String rawJson = response.readEntity(String.class);
+      // A catalog with no named configs must produce a response byte-identical, in shape, to one
+      // from before this capability existed: the field is absent, not an empty array.
+      assertThat(rawJson).doesNotContain("storageConfigInfos");
+    }
+
+    managementApi.deleteCatalog(catalogName);
   }
 
   @Test
@@ -680,7 +897,8 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://newbucket/"),
-            invalidModifiedStorageConfig);
+            invalidModifiedStorageConfig,
+            null);
     try (Response response =
         managementApi
             .request("v1/catalogs/{cat}", Map.of("cat", catalogName))
@@ -707,7 +925,8 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://newbucket/"),
-            validModifiedStorageConfig);
+            validModifiedStorageConfig,
+            null);
 
     // 200 successful update
     try (Response response =
@@ -795,7 +1014,8 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket1/"),
-            differentAccountConfig);
+            differentAccountConfig,
+            null);
 
     try (Response response =
         managementApi
@@ -847,7 +1067,8 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket1/"),
-            updatedConfig);
+            updatedConfig,
+            null);
 
     try (Response response =
         managementApi
@@ -898,7 +1119,8 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket1/"),
-            configWithDifferentExternalId);
+            configWithDifferentExternalId,
+            null);
 
     try (Response response =
         managementApi

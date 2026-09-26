@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -44,6 +45,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -115,6 +117,32 @@ public abstract class PolarisStorageConfigurationInfo {
    */
   public static PolarisStorageConfigurationInfo deserialize(final @NonNull String jsonStr) {
     return DEFAULT_MAPPER.readValue(jsonStr, PolarisStorageConfigurationInfo.class);
+  }
+
+  /**
+   * Serialize a map of named storage configurations into a single JSON object whose values are the
+   * nested (polymorphic) config objects, not further-encoded strings.
+   */
+  public static String serializeMap(Map<String, PolarisStorageConfigurationInfo> configs) {
+    // Serialize through a TypeReference so Jackson resolves the declared value type as the
+    // polymorphic base class rather than each entry's runtime class; otherwise it treats the
+    // declared and runtime types as identical and omits the "@type" discriminator entirely.
+    return DEFAULT_MAPPER
+        .writerFor(new TypeReference<Map<String, PolarisStorageConfigurationInfo>>() {})
+        .writeValueAsString(configs);
+  }
+
+  /**
+   * Deserialize a JSON object of named storage configurations produced by {@link
+   * #serializeMap(Map)}.
+   *
+   * @param jsonStr a json string
+   * @return the map of storage name to PolarisStorageConfigurationInfo
+   */
+  public static Map<String, PolarisStorageConfigurationInfo> deserializeMap(
+      final @NonNull String jsonStr) {
+    return DEFAULT_MAPPER.readValue(
+        jsonStr, new TypeReference<Map<String, PolarisStorageConfigurationInfo>>() {});
   }
 
   public static Optional<LocationRestrictions> forEntityPath(

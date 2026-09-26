@@ -681,6 +681,15 @@ public class PolarisAdminService {
               .map(this::terminateWithSlash)
               .toList());
     }
+    catalogEntity
+        .getNamedStorageConfigurationInfos()
+        .values()
+        .forEach(
+            namedConfig ->
+                catalogLocations.addAll(
+                    namedConfig.getAllowedLocations().stream()
+                        .map(this::terminateWithSlash)
+                        .toList()));
     return catalogLocations;
   }
 
@@ -954,12 +963,29 @@ public class PolarisAdminService {
    */
   private void validateUpdateCatalogDiffOrThrow(
       CatalogEntity currentEntity, CatalogEntity newEntity) {
+    validateStorageConfigDiffOrThrow(
+        currentEntity.getStorageConfigurationInfo(), newEntity.getStorageConfigurationInfo());
+
+    Map<String, PolarisStorageConfigurationInfo> currentNamedConfigs =
+        currentEntity.getNamedStorageConfigurationInfos();
+    Map<String, PolarisStorageConfigurationInfo> newNamedConfigs =
+        newEntity.getNamedStorageConfigurationInfos();
+    Set<String> allNamedConfigNames = new HashSet<>(currentNamedConfigs.keySet());
+    allNamedConfigNames.addAll(newNamedConfigs.keySet());
+    for (String name : allNamedConfigNames) {
+      validateStorageConfigDiffOrThrow(currentNamedConfigs.get(name), newNamedConfigs.get(name));
+    }
+  }
+
+  /**
+   * Helper to validate business logic of what is allowed to be updated on a single storage config
+   * (the default config, or one named entry) or throw a BadRequestException.
+   */
+  private void validateStorageConfigDiffOrThrow(
+      PolarisStorageConfigurationInfo currentStorageConfig,
+      PolarisStorageConfigurationInfo newStorageConfig) {
     // TODO: Expand the set of validations if there are other fields for other cloud providers
     // that we can't successfully apply changes to.
-    PolarisStorageConfigurationInfo currentStorageConfig =
-        currentEntity.getStorageConfigurationInfo();
-    PolarisStorageConfigurationInfo newStorageConfig = newEntity.getStorageConfigurationInfo();
-
     if (currentStorageConfig == null || newStorageConfig == null) {
       return;
     }
@@ -1036,6 +1062,14 @@ public class PolarisAdminService {
 
     if (updateRequest.getStorageConfigInfo() != null) {
       updateBuilder.setStorageConfigurationInfo(realmConfig, updateRequest.getStorageConfigInfo());
+    }
+    // Replace-the-whole-set semantics: an absent array leaves the existing named configs
+    // untouched (setStorageConfigurationInfos is simply not called, so the field stays null and
+    // processStorageConfigurationInfos() leaves internalProperties as copied from
+    // currentCatalogEntity); a present array, empty or not, becomes the new set.
+    if (updateRequest.getStorageConfigInfos() != null) {
+      updateBuilder.setStorageConfigurationInfos(
+          realmConfig, updateRequest.getStorageConfigInfos());
     }
     CatalogEntity updatedEntity = updateBuilder.build();
 
