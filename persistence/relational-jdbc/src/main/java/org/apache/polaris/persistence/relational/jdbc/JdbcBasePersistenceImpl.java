@@ -134,6 +134,24 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @NonNull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       PolarisBaseEntity originalEntity) {
+    writeEntity(callCtx, entity, nameOrParentChanged, originalEntity, false);
+  }
+
+  @Override
+  public void writeEntityWithAmbiguousWriteDetection(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
+      boolean nameOrParentChanged,
+      PolarisBaseEntity originalEntity) {
+    writeEntity(callCtx, entity, nameOrParentChanged, originalEntity, true);
+  }
+
+  private void writeEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
+      boolean nameOrParentChanged,
+      PolarisBaseEntity originalEntity,
+      boolean detectAmbiguousWrite) {
     try {
       persistEntity(
           callCtx,
@@ -141,7 +159,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           originalEntity,
           null,
           (connection, preparedQuery) -> {
-            return datasourceOperations.executeUpdate(preparedQuery);
+            return detectAmbiguousWrite
+                ? datasourceOperations.executeUpdateWithAmbiguousWriteDetection(preparedQuery)
+                : datasourceOperations.executeUpdate(preparedQuery);
           });
     } catch (SQLException e) {
       throw new RuntimeException("Error persisting entity", e);

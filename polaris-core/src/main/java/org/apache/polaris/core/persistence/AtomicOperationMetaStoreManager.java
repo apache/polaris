@@ -154,12 +154,28 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @NonNull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       @NonNull PolarisBaseEntity originalEntity) {
+    return persistEntityAfterChange(
+        callCtx, ms, entity, nameOrParentChanged, originalEntity, false);
+  }
+
+  private @NonNull PolarisBaseEntity persistEntityAfterChange(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull BasePersistence ms,
+      @NonNull PolarisBaseEntity entity,
+      boolean nameOrParentChanged,
+      @NonNull PolarisBaseEntity originalEntity,
+      boolean detectAmbiguousWrite) {
     // Invoke shared logic for validation and updating expected fields.
     entity =
         prepareToPersistEntityAfterChange(callCtx, ms, entity, nameOrParentChanged, originalEntity);
 
     // persist it to the various slices
-    ms.writeEntity(callCtx, entity, nameOrParentChanged, originalEntity);
+    if (detectAmbiguousWrite) {
+      ms.writeEntityWithAmbiguousWriteDetection(
+          callCtx, entity, nameOrParentChanged, originalEntity);
+    } else {
+      ms.writeEntity(callCtx, entity, nameOrParentChanged, originalEntity);
+    }
 
     // return it
     return entity;
@@ -922,6 +938,22 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @NonNull PolarisBaseEntity entity) {
+    return updateEntityPropertiesIfNotChanged(callCtx, catalogPath, entity, false);
+  }
+
+  @Override
+  public @NonNull EntityResult updateEntityPropertiesIfNotChangedWithAmbiguousWriteDetection(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entity) {
+    return updateEntityPropertiesIfNotChanged(callCtx, catalogPath, entity, true);
+  }
+
+  private @NonNull EntityResult updateEntityPropertiesIfNotChanged(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entity,
+      boolean detectAmbiguousWrite) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -931,7 +963,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // updated time. Because the entity version is changed, we will update the change tracking table
     try {
       PolarisBaseEntity persistedEntity =
-          this.persistEntityAfterChange(callCtx, ms, entity, false, entity);
+          this.persistEntityAfterChange(callCtx, ms, entity, false, entity, detectAmbiguousWrite);
 
       // TODO: Revalidate parent-path *after* performing update to fulfill the semantic of returning
       // a NotFoundException if some element of the parent path was concurrently deleted.
