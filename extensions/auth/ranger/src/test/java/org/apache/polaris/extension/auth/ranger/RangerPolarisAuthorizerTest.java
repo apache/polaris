@@ -42,6 +42,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationIntent;
@@ -65,6 +66,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
 import org.apache.ranger.authz.model.RangerAuthzResult;
@@ -184,6 +186,65 @@ public class RangerPolarisAuthorizerTest {
     assertThat(rangerRequest.getAccesses().get(0).getAction()).isEqualTo("LOAD_TABLE");
     assertThat(rangerRequest.getAccesses().get(0).getResource().getName())
         .isEqualTo("table:POLARIS/catalog/ns/table");
+  }
+
+  @Test
+  void resolveAuthorizationInputsResolvesRequiredSelections() {
+    RangerEmbeddedAuthorizer embeddedAuthorizer = mock(RangerEmbeddedAuthorizer.class);
+    RangerPolarisAuthorizer authorizer =
+        new RangerPolarisAuthorizer(embeddedAuthorizer, "dev_polaris", createRealmConfig());
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    when(manifest.getCatalogName()).thenReturn("catalog");
+    AuthorizationState authzState = new AuthorizationState(manifest);
+    PolarisPrincipal principal =
+        PolarisPrincipal.of("alice", AttributeMap.EMPTY, Collections.emptySet());
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.GET_CATALOG,
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")))));
+
+    authorizer.resolveAuthorizationInputs(authzState, request);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Set<Resolvable>> selectionsCaptor = ArgumentCaptor.forClass(Set.class);
+    verify(manifest).resolveSelections(selectionsCaptor.capture());
+    assertThat(selectionsCaptor.getValue())
+        .containsExactlyInAnyOrder(
+            Resolvable.REFERENCE_CATALOG,
+            Resolvable.REQUESTED_PATHS,
+            Resolvable.REQUESTED_TOP_LEVEL_ENTITIES);
+  }
+
+  @Test
+  void resolveAuthorizationInputsWithNullCatalogResolvesOnlyTopLevelEntities() {
+    // Admin and principal operations build the manifest with a null catalog name; asking the
+    // resolver for catalog-dependent selections there is rejected before resolution.
+    RangerEmbeddedAuthorizer embeddedAuthorizer = mock(RangerEmbeddedAuthorizer.class);
+    RangerPolarisAuthorizer authorizer =
+        new RangerPolarisAuthorizer(embeddedAuthorizer, "dev_polaris", createRealmConfig());
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    when(manifest.getCatalogName()).thenReturn(null);
+    AuthorizationState authzState = new AuthorizationState(manifest);
+    PolarisPrincipal principal =
+        PolarisPrincipal.of("alice", AttributeMap.EMPTY, Collections.emptySet());
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.GET_CATALOG,
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")))));
+
+    authorizer.resolveAuthorizationInputs(authzState, request);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Set<Resolvable>> selectionsCaptor = ArgumentCaptor.forClass(Set.class);
+    verify(manifest).resolveSelections(selectionsCaptor.capture());
+    assertThat(selectionsCaptor.getValue())
+        .containsExactly(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES);
   }
 
   @Test
