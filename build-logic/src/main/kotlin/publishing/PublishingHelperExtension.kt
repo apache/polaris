@@ -80,7 +80,8 @@ constructor(objectFactory: ObjectFactory, project: Project) {
       .convention(project.provider { distributionDir.get().file("${baseName.get()}.tar.gz") })
 
   /** List of mailing-lists. */
-  val mailingLists = objectFactory.listProperty(String::class.java).convention(emptyList())
+  val mailingLists =
+    objectFactory.listProperty(String::class.java).convention(listOf("dev", "issues", "commits"))
 }
 
 /**
