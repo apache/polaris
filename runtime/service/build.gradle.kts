@@ -105,6 +105,7 @@ dependencies {
   implementation("com.azure:azure-core")
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
+  implementation(libs.msal4j)
 
   compileOnly(libs.swagger.annotations)
 
