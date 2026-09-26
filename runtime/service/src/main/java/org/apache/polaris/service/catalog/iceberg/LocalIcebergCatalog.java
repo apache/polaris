@@ -1539,7 +1539,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
     if (useOptimizedSiblingCheck) {
       Optional<Optional<String>> directSiblingCheckResult =
-          getMetaStoreManager().hasOverlappingSiblings(getCurrentPolarisContext(), entity);
+          getMetaStoreManager()
+              .hasOverlappingSiblings(
+                  getCurrentPolarisContext(), PolarisEntity.toCoreList(parentPath), entity);
       if (directSiblingCheckResult.isPresent()) {
         if (directSiblingCheckResult.get().isPresent()) {
           throw new org.apache.iceberg.exceptions.ForbiddenException(

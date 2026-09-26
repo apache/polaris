@@ -443,18 +443,24 @@ public interface PolarisMetaStoreManager
       long entityId);
 
   /**
-   * Check if the specified IcebergTableLikeEntity has any same-namespace siblings which share a
-   * location
+   * Check whether the base location of the specified IcebergTableLikeEntity / NamespaceEntity
+   * overlaps the base location of another table, view, or namespace in the same catalog. The check
+   * is not limited to entities under the same parent; see {@link
+   * BasePersistence#hasOverlappingSiblings} for the exact semantics.
    *
    * @param callContext the polaris call context
-   * @param entity the entity to check for overlapping siblings for
-   * @return Optional.of(Optional.of ( location)) if the parent entity has children,
-   *     Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
-   *     this operation
+   * @param parentPath the entity's resolved parent path: the catalog first, then each parent
+   *     namespace, not including the entity itself
+   * @param entity the entity whose base location to check
+   * @return Optional.of(Optional.of(location)) with the base location of a conflicting entity,
+   *     Optional.of(Optional.empty()) if there is no conflict, and Optional.empty() if the
+   *     metastore doesn't support this operation
    */
   default <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> parentPath,
+          T entity) {
     return Optional.empty();
   }
 

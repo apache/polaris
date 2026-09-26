@@ -397,18 +397,33 @@ public interface BasePersistence extends PolicyMappingPersistence {
       long parentId);
 
   /**
-   * Check if the specified IcebergTableLikeEntity / NamespaceEntity has any sibling entities which
-   * share a base location
+   * Check whether the base location of the specified IcebergTableLikeEntity / NamespaceEntity
+   * overlaps the base location of another entity in the same catalog.
+   *
+   * <p>Despite the name, implementations do not limit the search to siblings under the same parent.
+   * They consider every table, view, and namespace in the catalog whose base location contains,
+   * equals, or is contained by the entity's base location. This is the check behind {@code
+   * OPTIMIZED_SIBLING_CHECK}; the fallback used when that flag is off inspects only the entities
+   * directly under the same parent.
+   *
+   * <p>The entity's own ancestors, given by {@code parentPath}, are excluded: a parent namespace
+   * whose location strictly contains the entity's location is not reported, since default locations
+   * nest under the parent's location. An ancestor whose location equals the entity's location is
+   * still reported.
    *
    * @param callContext the polaris call context
-   * @param entity the entity to check for overlapping siblings for
-   * @return Optional.of(Optional.of(location)) if the parent entity has children,
-   *     Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
-   *     this operation
+   * @param parentPath the entity's resolved parent path: the catalog first, then each parent
+   *     namespace, not including the entity itself
+   * @param entity the entity whose base location to check
+   * @return Optional.of(Optional.of(location)) with the base location of a conflicting entity,
+   *     Optional.of(Optional.empty()) if there is no conflict, and Optional.empty() if the
+   *     metastore doesn't support this operation
    */
   default <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> parentPath,
+          T entity) {
     return Optional.empty();
   }
 

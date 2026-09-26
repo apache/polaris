@@ -58,6 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -624,18 +625,24 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   <T extends PolarisEntity & LocationBasedEntity> Optional<String> hasOverlappingSiblings(
-      T entity) {
+      List<PolarisEntityCore> parentPath, T entity) {
     var baseLocation = entity.getBaseLocation();
     if (baseLocation == null) {
       return Optional.empty();
     }
 
+    var catalogId = entity.getCatalogId();
     var checkLocation = StorageLocation.of(baseLocation).withoutScheme();
 
-    return hasOverlappingSiblings(entity.getCatalogId(), checkLocation);
+    // The entity's own parent namespaces may contain its location: they always do when locations
+    // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
+    var ancestorIds = parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
+
+    return hasOverlappingSiblings(catalogId, checkLocation, ancestorIds);
   }
 
-  Optional<String> hasOverlappingSiblings(long catalogId, String checkLocation) {
+  Optional<String> hasOverlappingSiblings(
+      long catalogId, String checkLocation, Set<Long> ancestorIds) {
     return memoizedIndexedAccess
         .catalogContent(catalogId)
         .refObj()
@@ -697,8 +704,13 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                 var prefixKey = prefix.toIndexKey();
                 var entry = locationsIndex.get(prefixKey);
                 if (entry != null) {
+                  // An ancestor found at a strict prefix is the expected layout when locations
+                  // follow the namespace tree, not a sibling conflict. An ancestor at exactly the
+                  // entity's location still conflicts.
+                  var strictPrefix = i < locationIdentifier.length();
                   var conflicting =
                       entry.entityIds().stream()
+                          .filter(id -> !strictPrefix || !ancestorIds.contains(id))
                           .map(IndexKey::key)
                           .map(byId::get)
                           .filter(Objects::nonNull)

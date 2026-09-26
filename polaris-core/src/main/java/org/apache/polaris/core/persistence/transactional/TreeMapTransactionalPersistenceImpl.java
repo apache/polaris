@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence.transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -673,17 +674,32 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> parentPath,
+          T entity) {
     // TODO we could optimize this full scan
     StorageLocation entityLocationWithoutScheme =
         StorageLocation.of(StorageLocation.of(entity.getBaseLocation()).withoutScheme());
     List<PolarisBaseEntity> allEntities = this.store.getSliceEntities().readRange("");
+
+    // The entity's own parent namespaces may contain its location: they always do when locations
+    // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
+    Set<Long> ancestorIds =
+        parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
+
     for (PolarisBaseEntity siblingEntity : allEntities) {
       Optional<StorageLocation> maybeSiblingLocationWithoutScheme =
           getEntityLocationWithoutScheme(siblingEntity).map(StorageLocation::of);
       if (maybeSiblingLocationWithoutScheme.isPresent()) {
-        if (maybeSiblingLocationWithoutScheme.get().isChildOf(entityLocationWithoutScheme)
-            || entityLocationWithoutScheme.isChildOf(maybeSiblingLocationWithoutScheme.get())) {
+        boolean containsEntity =
+            entityLocationWithoutScheme.isChildOf(maybeSiblingLocationWithoutScheme.get());
+        boolean containedByEntity =
+            maybeSiblingLocationWithoutScheme.get().isChildOf(entityLocationWithoutScheme);
+        // An ancestor may contain the entity, but the entity may not sit at exactly its location.
+        if (containsEntity && !containedByEntity && ancestorIds.contains(siblingEntity.getId())) {
+          continue;
+        }
+        if (containsEntity || containedByEntity) {
           return Optional.of(Optional.of(maybeSiblingLocationWithoutScheme.toString()));
         }
       }

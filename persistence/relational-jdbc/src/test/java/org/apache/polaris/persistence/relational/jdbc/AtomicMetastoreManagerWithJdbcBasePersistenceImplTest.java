@@ -146,7 +146,9 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
                 "candidate",
                 "s3://bucket/warehouse/existing/child"));
 
-    Assertions.assertThat(metaStoreManager.hasOverlappingSiblings(callContext, candidateNamespace))
+    Assertions.assertThat(
+            metaStoreManager.hasOverlappingSiblings(
+                callContext, List.of(PolarisEntity.toCore(catalog)), candidateNamespace))
         .contains(Optional.of("s3://bucket/warehouse/existing/"));
 
     TestLocationBasedEntity nonOverlappingNamespace =
@@ -158,7 +160,8 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
                 "s3://bucket/warehouse/non-overlapping"));
 
     Assertions.assertThat(
-            metaStoreManager.hasOverlappingSiblings(callContext, nonOverlappingNamespace))
+            metaStoreManager.hasOverlappingSiblings(
+                callContext, List.of(PolarisEntity.toCore(catalog)), nonOverlappingNamespace))
         .contains(Optional.empty());
   }
 
