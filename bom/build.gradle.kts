@@ -97,6 +97,7 @@ dependencies {
     api(project(":polaris-extensions-lineage"))
 
     api(project(":polaris-relational-jdbc"))
+    api(project(":polaris-persistence-dynamodb"))
 
     api(project(":polaris-extensions-auth-opa"))
     api(project(":polaris-extensions-auth-ranger"))
