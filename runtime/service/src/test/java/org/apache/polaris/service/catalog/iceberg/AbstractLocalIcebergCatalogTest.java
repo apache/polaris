@@ -130,6 +130,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
@@ -2158,6 +2159,52 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThat(softCatalog.listTables(NS)).contains(TABLE);
   }
 
+  @Test
+  public void testSoftDeletedTablesStayHiddenWhenSoftDeleteDisabled() {
+    LocalIcebergCatalog softCatalog = newSoftDeleteCatalog("P7D", false);
+    softCatalog.createNamespace(NS);
+    softCatalog.buildTable(TABLE, SCHEMA).create();
+
+    Assertions.assertThat(softCatalog.dropTable(TABLE, false)).isTrue();
+    Assertions.assertThat(softCatalog.listTables(NS)).doesNotContain(TABLE);
+
+    updateSoftDeleteCatalogProperties(
+        softCatalog,
+        Map.of(FeatureConfiguration.TABLE_SOFT_DELETE_ENABLED.catalogConfig(), "false"));
+    LocalIcebergCatalog refreshedCatalog =
+        newIcebergCatalog(softCatalog.name(), metaStoreManager, fileIOFactory);
+    refreshedCatalog.initialize(
+        softCatalog.name(),
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Assertions.assertThat(refreshedCatalog.listTables(NS)).doesNotContain(TABLE);
+  }
+
+  @Test
+  public void testSoftDeleteExpireWithPurgeSchedulesCleanupTask() {
+    LocalIcebergCatalog softCatalog = newSoftDeleteCatalog("PT0S", true);
+    softCatalog.createNamespace(NS);
+    Table table = softCatalog.buildTable(TABLE, SCHEMA).create();
+    String tableLocation = table.location();
+
+    Assertions.assertThat(softCatalog.dropTable(TABLE, false)).isTrue();
+    softCatalog.listTables(NS);
+
+    List<PolarisBaseEntity> tasks =
+        metaStoreManager
+            .loadTasks(polarisContext, "testExecutor", PageToken.readEverything())
+            .getEntities();
+    Assertions.assertThat(
+            tasks.stream()
+                .map(TaskEntity::of)
+                .map(TaskEntity::getInternalPropertiesAsMap)
+                .anyMatch(
+                    props ->
+                        tableLocation.equals(props.get(PolarisTaskConstants.STORAGE_LOCATION))))
+        .isTrue();
+  }
+
   private PolarisEntity softCatalogResolvedCatalogEntity(LocalIcebergCatalog softCatalog) {
     EntityResult catalogResult =
         metaStoreManager.readEntityByName(
@@ -2214,6 +2261,17 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         ImmutableMap.of(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
     return softCatalog;
+  }
+
+  private void updateSoftDeleteCatalogProperties(
+      LocalIcebergCatalog softCatalog, Map<String, String> properties) {
+    PolarisEntity catalog = softCatalogResolvedCatalogEntity(softCatalog);
+    CatalogEntity.Builder builder = new CatalogEntity.Builder(CatalogEntity.of(catalog));
+    properties.forEach(builder::addProperty);
+    EntityResult result =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            polarisContext, List.of(PolarisEntity.toCore(catalog)), builder.build());
+    Assertions.assertThat(result).returns(true, EntityResult::isSuccess);
   }
 
   @Test
