@@ -635,14 +635,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     Set<String> storageLocations =
         triggerCleanup ? storedTableLocationsForPurge(tableIdentifier, ops.current()) : Set.of();
 
-    Optional<PolarisEntity> storageInfoEntity =
-        PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
-            CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier));
-
-    // The storageProperties we stash away in the Task should be the superset of the
-    // internalProperties of the StorageInfoEntity to be able to use its StorageIntegration
-    // combined with other miscellaneous FileIO-related initialization properties defined
-    // by the Table.
     Map<String, String> storageProperties =
         storageInfoEntity
             .map(PolarisEntity::getInternalPropertiesAsMap)
@@ -3364,11 +3356,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     if (!tableSoftDeleteEnabled()) {
       return;
     }
-    boolean cleanup =
+    boolean purgeOnExpire =
         realmConfig.getConfig(
             FeatureConfiguration.TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE, catalogEntity);
-    Map<String, String> cleanupProperties =
-        cleanup ? new HashMap<>(catalogEntity.getInternalPropertiesAsMap()) : Map.of();
     long now = System.currentTimeMillis();
     List<PolarisBaseEntity> entities =
         getMetaStoreManager()
@@ -3381,6 +3371,50 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       if (entity.isDropped()
           && entity.getToPurgeTimestamp() > 0
           && now >= entity.getToPurgeTimestamp()) {
+        boolean purgeEntity = purgeOnExpire;
+        Map<String, String> cleanupProperties = Map.of();
+        if (purgeOnExpire) {
+          IcebergTableLikeEntity icebergTableLikeEntity = IcebergTableLikeEntity.of(entity);
+          if (icebergTableLikeEntity == null) {
+            purgeEntity = false;
+          } else {
+            TableIdentifier identifier = icebergTableLikeEntity.getTableIdentifier();
+            String metadataLocation = icebergTableLikeEntity.getMetadataLocation();
+            TableMetadata lastMetadata = null;
+            if (metadataLocation != null) {
+              try {
+                String locationDir =
+                    metadataLocation.substring(0, metadataLocation.lastIndexOf('/'));
+                PolarisResolvedPathWrapper resolvedStorage =
+                    CatalogUtils.findResolvedStorageEntity(resolvedEntityView, identifier);
+                FileIO tableFileIO =
+                    loadFileIOForTableLike(
+                        identifier,
+                        Set.of(locationDir),
+                        resolvedStorage,
+                        new HashMap<>(tableDefaultProperties),
+                        Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+                lastMetadata = TableMetadataParser.read(tableFileIO, metadataLocation);
+              } catch (RuntimeException e) {
+                LOGGER.warn(
+                    "Unable to read metadata at {} for expired soft-deleted table {}, skipping"
+                        + " data purge",
+                    metadataLocation,
+                    identifier,
+                    e);
+                purgeEntity = false;
+              }
+            } else {
+              purgeEntity = false;
+            }
+            if (purgeEntity) {
+              cleanupProperties = tablePurgeStorageProperties(identifier, lastMetadata);
+              if (cleanupProperties.isEmpty()) {
+                purgeEntity = false;
+              }
+            }
+          }
+        }
         DropEntityResult expired =
             getMetaStoreManager()
                 .dropEntityIfExists(
@@ -3388,7 +3422,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                     PolarisEntity.toCoreList(catalogPath),
                     entity,
                     cleanupProperties,
-                    cleanup);
+                    purgeEntity);
         if (expired.isSuccess() && expired.getCleanupTaskId() != null) {
           LOGGER.info(
               "Scheduled cleanup task {} for expired soft-deleted table {}",
@@ -3632,20 +3666,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     expireEligibleSoftDeletedTables(catalogPath);
 
     Namespace parentNamespace = PolarisCatalogHelpers.parentNamespace(catalogPath);
-    if (!tableSoftDeleteEnabled()) {
-      ListEntitiesResult listResult =
-          getMetaStoreManager()
-              .listEntities(
-                  getCurrentPolarisContext(),
-                  PolarisEntity.toCoreList(catalogPath),
-                  PolarisEntityType.TABLE_LIKE,
-                  subType,
-                  pageToken);
-      return listResult
-          .getPage()
-          .map(record -> TableIdentifier.of(parentNamespace, record.getName()));
-    }
-
     return getMetaStoreManager()
         .listFullEntities(
             getCurrentPolarisContext(),
@@ -3655,6 +3675,32 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             pageToken)
         .filter(entity -> !entity.isDropped())
         .map(entity -> TableIdentifier.of(parentNamespace, entity.getName()));
+  }
+
+  private Map<String, String> tablePurgeStorageProperties(
+      TableIdentifier tableIdentifier, TableMetadata lastMetadata) {
+    Optional<PolarisEntity> storageInfoEntity =
+        PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
+            CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier));
+    return storageInfoEntity
+        .map(PolarisEntity::getInternalPropertiesAsMap)
+        .map(
+            properties -> {
+              if (lastMetadata == null) {
+                return Map.<String, String>of();
+              }
+              Map<String, String> clone = new HashMap<>();
+
+              // The user-configurable table properties are the baseline, but then override
+              // with our restricted properties so that table properties can't clobber the
+              // more restricted ones.
+              clone.putAll(lastMetadata.properties());
+              clone.put(CatalogProperties.FILE_IO_IMPL, ioImplClassName);
+              clone.putAll(properties);
+              clone.put(PolarisTaskConstants.STORAGE_LOCATION, lastMetadata.location());
+              return clone;
+            })
+        .orElse(Map.of());
   }
 
   private int getMaxMetadataRefreshRetries() {
