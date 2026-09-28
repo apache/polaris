@@ -115,6 +115,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
+- Azure credential vending now maps MSAL authentication failures using their HTTP status codes,
+  including the existing `401` to `403` and `404` to `400` mappings.
+
 - A metastore failure during authentication now returns a fixed `Service unavailable` message
   instead of naming the lookup that failed; the principal lookup previously returned `Unable to
   fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which
