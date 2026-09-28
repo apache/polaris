@@ -34,6 +34,8 @@ import org.apache.polaris.core.persistence.pagination.ImmutablePageToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * Contract test shared by every {@link MetricsQuerySpi} implementation (the no-op default and any
@@ -69,26 +71,50 @@ public abstract class AbstractMetricsQuerySpiContractTest {
   void emptyResultReturnsEmptyPage() {
     MetricsQuerySpi spi = querySpi(realm());
     Page<? extends MetricsRecordIdentity> scanPage =
-        spi.listReports(
-            MetricsQuerySpi.MetricType.SCAN,
-            CATALOG_ID,
-            List.of(TABLE_ID),
-            null,
-            null,
-            null,
-            PageToken.fromLimit(10));
+        pageOf(
+            spi.listReports(
+                MetricsQuerySpi.MetricType.SCAN,
+                CATALOG_ID,
+                List.of(TABLE_ID),
+                null,
+                null,
+                null,
+                PageToken.fromLimit(10)));
     Page<? extends MetricsRecordIdentity> commitPage =
-        spi.listReports(
-            MetricsQuerySpi.MetricType.COMMIT,
-            CATALOG_ID,
-            List.of(TABLE_ID),
-            null,
-            null,
-            null,
-            PageToken.fromLimit(10));
+        pageOf(
+            spi.listReports(
+                MetricsQuerySpi.MetricType.COMMIT,
+                CATALOG_ID,
+                List.of(TABLE_ID),
+                null,
+                null,
+                null,
+                PageToken.fromLimit(10)));
 
     assertThat(scanPage.items()).isEmpty();
     assertThat(commitPage.items()).isEmpty();
+  }
+
+  @ParameterizedTest
+  @EnumSource(MetricsQuerySpi.MetricType.class)
+  void resultTypeMatchesRequestedMetricType(MetricsQuerySpi.MetricType metricType) {
+    MetricsQuerySpi.QueryResult result =
+        querySpi(realm())
+            .listReports(
+                metricType,
+                CATALOG_ID,
+                List.of(TABLE_ID),
+                null,
+                null,
+                null,
+                PageToken.fromLimit(10));
+
+    assertThat(result.metricType()).isEqualTo(metricType);
+    assertThat(result)
+        .isInstanceOf(
+            metricType == MetricsQuerySpi.MetricType.SCAN
+                ? MetricsQuerySpi.ScanResult.class
+                : MetricsQuerySpi.CommitResult.class);
   }
 
   @Test
@@ -101,28 +127,30 @@ public abstract class AbstractMetricsQuerySpiContractTest {
     writeScan(realmA, record);
 
     Page<? extends MetricsRecordIdentity> otherRealmPage =
-        querySpi(realmB)
-            .listReports(
-                MetricsQuerySpi.MetricType.SCAN,
-                CATALOG_ID,
-                List.of(TABLE_ID),
-                null,
-                null,
-                null,
-                PageToken.fromLimit(10));
+        pageOf(
+            querySpi(realmB)
+                .listReports(
+                    MetricsQuerySpi.MetricType.SCAN,
+                    CATALOG_ID,
+                    List.of(TABLE_ID),
+                    null,
+                    null,
+                    null,
+                    PageToken.fromLimit(10)));
     assertThat(otherRealmPage.items()).isEmpty();
 
     if (supportsPersistence()) {
       Page<? extends MetricsRecordIdentity> ownRealmPage =
-          querySpi(realmA)
-              .listReports(
-                  MetricsQuerySpi.MetricType.SCAN,
-                  CATALOG_ID,
-                  List.of(TABLE_ID),
-                  null,
-                  null,
-                  null,
-                  PageToken.fromLimit(10));
+          pageOf(
+              querySpi(realmA)
+                  .listReports(
+                      MetricsQuerySpi.MetricType.SCAN,
+                      CATALOG_ID,
+                      List.of(TABLE_ID),
+                      null,
+                      null,
+                      null,
+                      PageToken.fromLimit(10)));
       assertThat(ownRealmPage.items())
           .extracting(MetricsRecordIdentity::reportId)
           .contains(record.reportId());
@@ -144,15 +172,16 @@ public abstract class AbstractMetricsQuerySpiContractTest {
     writeScan(realm, newest);
 
     Page<? extends MetricsRecordIdentity> firstPage =
-        querySpi(realm)
-            .listReports(
-                MetricsQuerySpi.MetricType.SCAN,
-                CATALOG_ID,
-                List.of(TABLE_ID),
-                null,
-                null,
-                null,
-                PageToken.fromLimit(2));
+        pageOf(
+            querySpi(realm)
+                .listReports(
+                    MetricsQuerySpi.MetricType.SCAN,
+                    CATALOG_ID,
+                    List.of(TABLE_ID),
+                    null,
+                    null,
+                    null,
+                    PageToken.fromLimit(2)));
     assertThat(firstPage.items())
         .extracting(MetricsRecordIdentity::reportId)
         .containsExactly(newest.reportId(), middle.reportId());
@@ -160,15 +189,16 @@ public abstract class AbstractMetricsQuerySpiContractTest {
 
     PageToken nextPageToken = PageToken.build(firstPage.encodedResponseToken(), 2, -1, () -> true);
     Page<? extends MetricsRecordIdentity> secondPage =
-        querySpi(realm)
-            .listReports(
-                MetricsQuerySpi.MetricType.SCAN,
-                CATALOG_ID,
-                List.of(TABLE_ID),
-                null,
-                null,
-                null,
-                nextPageToken);
+        pageOf(
+            querySpi(realm)
+                .listReports(
+                    MetricsQuerySpi.MetricType.SCAN,
+                    CATALOG_ID,
+                    List.of(TABLE_ID),
+                    null,
+                    null,
+                    null,
+                    nextPageToken));
     assertThat(secondPage.items())
         .extracting(MetricsRecordIdentity::reportId)
         .containsExactly(oldest.reportId());
@@ -188,30 +218,32 @@ public abstract class AbstractMetricsQuerySpiContractTest {
     writeScan(realm, second);
 
     Page<? extends MetricsRecordIdentity> firstPage =
-        querySpi(realm)
-            .listReports(
-                MetricsQuerySpi.MetricType.SCAN,
-                CATALOG_ID,
-                List.of(TABLE_ID),
-                null,
-                null,
-                null,
-                PageToken.fromLimit(1));
+        pageOf(
+            querySpi(realm)
+                .listReports(
+                    MetricsQuerySpi.MetricType.SCAN,
+                    CATALOG_ID,
+                    List.of(TABLE_ID),
+                    null,
+                    null,
+                    null,
+                    PageToken.fromLimit(1)));
     assertThat(firstPage.items())
         .extracting(MetricsRecordIdentity::reportId)
         .containsExactly(second.reportId());
 
     PageToken nextPageToken = PageToken.build(firstPage.encodedResponseToken(), 1, -1, () -> true);
     Page<? extends MetricsRecordIdentity> secondPage =
-        querySpi(realm)
-            .listReports(
-                MetricsQuerySpi.MetricType.SCAN,
-                CATALOG_ID,
-                List.of(TABLE_ID),
-                null,
-                null,
-                null,
-                nextPageToken);
+        pageOf(
+            querySpi(realm)
+                .listReports(
+                    MetricsQuerySpi.MetricType.SCAN,
+                    CATALOG_ID,
+                    List.of(TABLE_ID),
+                    null,
+                    null,
+                    null,
+                    nextPageToken));
     assertThat(secondPage.items())
         .extracting(MetricsRecordIdentity::reportId)
         .containsExactly(first.reportId());
@@ -256,15 +288,16 @@ public abstract class AbstractMetricsQuerySpiContractTest {
     writeScan(realmB, recordB);
 
     Page<? extends MetricsRecordIdentity> firstPage =
-        querySpi(realmA)
-            .listReports(
-                MetricsQuerySpi.MetricType.SCAN,
-                CATALOG_ID,
-                List.of(TABLE_ID),
-                null,
-                null,
-                null,
-                PageToken.fromLimit(1));
+        pageOf(
+            querySpi(realmA)
+                .listReports(
+                    MetricsQuerySpi.MetricType.SCAN,
+                    CATALOG_ID,
+                    List.of(TABLE_ID),
+                    null,
+                    null,
+                    null,
+                    PageToken.fromLimit(1)));
     assertThat(firstPage.encodedResponseToken()).isNotNull();
 
     // A cursor minted while listing realm A must not be honored when replayed against realm B,
@@ -283,6 +316,14 @@ public abstract class AbstractMetricsQuerySpiContractTest {
                         null,
                         replayedToken))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  /** Unwraps the page of records from a {@link MetricsQuerySpi.QueryResult} of either type. */
+  private static Page<? extends MetricsRecordIdentity> pageOf(MetricsQuerySpi.QueryResult result) {
+    return switch (result) {
+      case MetricsQuerySpi.ScanResult scan -> scan.reports();
+      case MetricsQuerySpi.CommitResult commit -> commit.reports();
+    };
   }
 
   private static String realm() {
