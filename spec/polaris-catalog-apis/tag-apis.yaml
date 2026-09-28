@@ -1,0 +1,2150 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+---
+paths:
+
+  /polaris/v1/{prefix}/tags:
+    parameters:
+      - $ref: '#/components/parameters/catalog-prefix'
+
+    post:
+      tags:
+        - Tag API
+      summary: Create a tag definition in the catalog
+      operationId: createTag
+      description: |
+        Creates a tag definition within the catalog identified by {prefix}.
+
+        A tag definition gives a classification a name, a set of permitted values, and the target kinds it may
+        classify. Tag assignments later select exactly one value from the definition's current values
+        list and attach it to a catalog, namespace, table, view, or column target.
+
+        User provides the following inputs when creating a tag definition
+        - `name` (REQUIRED): The name of the tag definition. It is unique within the catalog.
+        - `values` (REQUIRED): The definition's values, meaning the choices a new assignment is
+          permitted to select. The list must be non-empty, and every member must be a unique, non-empty
+          string of at most 2000 bytes. The limit is measured on the decoded value in UTF-8 bytes: JSON
+          escaping does not count toward it, and it does not prescribe how the server represents the
+          string internally. A longer value returns 400 BadRequest. Matching is exact and case-sensitive.
+        - `target-types` (OPTIONAL): The target kinds this definition may classify, directly or through
+          inheritance. Omitting the field selects every v1 target kind, and the response returns the
+          explicit set stored for the definition either way. A supplied list is a set: an explicit null, an
+          empty list, duplicates and unknown kinds each return 400 BadRequest. It cannot be changed after
+          creation, whether supplied or defaulted, and target kinds added in a later version do not expand
+          an existing definition.
+        - `description` (OPTIONAL): Text that explains the classification.
+
+        The response carries the new definition's version token. Clients send it back unchanged in
+        `current-tag-version` when updating the definition.
+
+        Where idempotency is enabled, a retry is recognized by the name the request asks for, on the terms
+        the Idempotency-Key parameter describes. If the definition the original request created has since
+        been renamed, the retry cannot locate it and follows the normal rules: a free name creates a new
+        definition, a name held by another definition returns 409 AlreadyExists, and a definition renamed
+        back to the requested name within the key's recognition window is recognized again.
+
+        Requires permission to create definitions in the catalog.
+      parameters:
+        - $ref: '#/components/parameters/tag-idempotency-key'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTagRequest'
+      responses:
+        200:
+          $ref: '#/components/responses/CreateTagResponse'
+        400:
+          description: |
+            Bad Request - the values list is invalid, or a supplied target-types list is invalid,
+            meaning it is an explicit null, empty, or holds a duplicate or unknown kind. Omitting
+            target-types is valid and selects every v1 target kind.
+
+            InvalidJson covers a body that is not syntactically valid JSON, and ValidationError covers a
+            missing name or a field sent with the wrong schema type. Where this operation names its own
+            type for a case, as it does for the values and target-types rules above, that type takes
+            precedence. InvalidIdempotencyKey covers a present but malformed Idempotency-Key header,
+            rejected by the shared handler before this operation runs.
+
+            Possible error types: BadRequest, ValidationError, InvalidJson, InvalidIdempotencyKey.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                InvalidAllowedValues:
+                  $ref: '#/components/examples/AllowedValuesInvalidError'
+                InvalidTargetTypes:
+                  $ref: '#/components/examples/TargetTypesInvalidError'
+                InvalidIdempotencyKey:
+                  $ref: '#/components/examples/TagInvalidIdempotencyKeyError'
+        401:
+          $ref: '#/components/responses/TagUnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/TagForbiddenResponse'
+        404:
+          description: |
+            Not Found - the request addresses something that does not exist; the error type names
+            the cause.
+
+            Possible error types: NoSuchCatalog (the catalog identified by {prefix}).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+        409:
+          description: |
+            Conflict - the request cannot be applied to the catalog's current state; the error type
+            names the cause.
+
+            Possible error types: AlreadyExists (a tag definition with the requested name
+            already exists in the catalog).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                AlreadyExists:
+                  $ref: '#/components/examples/TagAlreadyExistsError'
+        503:
+          $ref: '#/components/responses/TagServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/TagServerErrorResponse'
+
+    get:
+      tags:
+        - Tag API
+      summary: List tag definition names in the catalog
+      operationId: listTags
+      description: |
+        Return the tag definition names in the catalog identified by {prefix}.
+
+        The listing is paginated by default: a request with no pagination parameters returns the first
+        page, and an empty `pageToken` asks for the first page too. Send `pagination=false` on its own to
+        ask for the complete collection in one response, subject to the full-result limits the pagination
+        parameters describe.
+
+        Requires permission to read definitions in the catalog.
+      parameters:
+        - $ref: '#/components/parameters/tag-pagination'
+        - $ref: '#/components/parameters/tag-page-token'
+        - $ref: '#/components/parameters/tag-page-size'
+      responses:
+        200:
+          $ref: '#/components/responses/ListTagsResponse'
+        400:
+          description: |
+            Bad Request - the request is malformed, fails shared validation, or asks for more work or a
+            larger response than the server's limits allow.
+
+            This operation takes no request body, so no JSON parse failure can arise on it. Where it names
+            its own type for a case, as it does for the pagination rules, that type takes precedence.
+
+            Possible error types: ValidationError, BadRequest (invalid pagination input, a repeated
+            pagination parameter, `pagination=false` combined with `pageToken` or `pageSize`, an invalid
+            or expired token, a request that would exceed the response-size or work limits, or a paged
+            request that cannot make safe progress within its work budget).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+        401:
+          $ref: '#/components/responses/TagUnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/TagForbiddenResponse'
+        404:
+          description: |
+            Not Found - the request addresses something that does not exist; the error type names
+            the cause.
+
+            Possible error types: NoSuchCatalog (the catalog identified by {prefix}).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+        503:
+          $ref: '#/components/responses/TagServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/TagServerErrorResponse'
+
+  /polaris/v1/{prefix}/tags/rename:
+    parameters:
+      - $ref: '#/components/parameters/catalog-prefix'
+    post:
+      tags:
+        - Tag API
+      summary: Rename a tag definition
+      operationId: renameTag
+      description: |
+        Renames one tag definition within the catalog. The request names the source and the destination
+        explicitly, so this operation changes the name and nothing else; the other definition fields are
+        changed through updateTag.
+
+        A rename preserves the definition's identity: its id, its assignments and its values list all carry
+        over unchanged, and clients that recorded the id can recognize the definition under its new name.
+        The version token changes on success.
+
+        current-tag-version is required and must be the source definition's current token. A missing, null,
+        empty, or non-string value returns the shared request-validation 400 response, and a token that no
+        longer matches returns 409 TagVersionMismatch.
+
+        The token binds the definition's identity as well as its revision. A token taken from a definition
+        that was since deleted and recreated under the same name, or from a definition whose name another
+        definition was renamed into, does not match and returns 409 TagVersionMismatch, exactly as a stale
+        revision does; the check is applied atomically with the rename.
+
+        After a successful rename, an ordinary request that still uses the old name may return 404 NoSuchTag,
+        while a recognized retry returns 204 without renaming again, on the terms the Idempotency-Key
+        parameter describes.
+
+        A rename is authorized on both sides: it requires permission to delete the source definition,
+        because the name it holds stops resolving, and permission to create a definition in the catalog for
+        the destination name, the same check createTag performs. Editing a definition in place is a
+        different, weaker check, so a caller who may edit a definition but may not delete it, or may not
+        create one, cannot rename it.
+      parameters:
+        - $ref: '#/components/parameters/tag-idempotency-key'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenameTagRequest'
+      responses:
+        204:
+          description: Success - the definition was renamed. No content is returned.
+        400:
+          description: |
+            Bad Request - the request cannot be applied as written; the error type names the cause.
+
+            BadRequest covers a destination that fails TagName validation and a destination equal to the
+            source. ValidationError covers a body that is not valid JSON against this schema, including a
+            missing source or destination and a missing, null, empty or non-string current-tag-version.
+            InvalidIdempotencyKey covers a present but malformed Idempotency-Key header, rejected by the
+            shared handler before this operation runs. Where this operation names its own type for a case,
+            as it does for the destination rules above, that type takes precedence.
+
+            Possible error types: BadRequest, ValidationError, InvalidJson, InvalidIdempotencyKey.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                InvalidDestination:
+                  $ref: '#/components/examples/RenameDestinationInvalidError'
+                InvalidIdempotencyKey:
+                  $ref: '#/components/examples/TagInvalidIdempotencyKeyError'
+        401:
+          $ref: '#/components/responses/TagUnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/TagForbiddenResponse'
+        404:
+          description: |
+            Not Found - the request addresses something that does not exist; the error type names
+            the cause. A catalog that cannot be resolved is NoSuchCatalog; a source definition missing
+            inside a catalog that did resolve is NoSuchTag.
+
+            Possible error types: NoSuchCatalog (the catalog identified by {prefix}),
+            NoSuchTag (the source definition).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                SourceToRenameDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+        409:
+          description: |
+            Conflict - the request cannot be applied to the current state; the error type names the cause.
+            For a stale token, reload the definition and retry with the current one.
+
+            Possible error types: AlreadyExists (the destination already names a definition in this
+            catalog), TagVersionMismatch (the supplied token is not the source definition's current one),
+            CommitConflict (a concurrent change; the request may be retried).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                DestinationAlreadyExists:
+                  $ref: '#/components/examples/TagAlreadyExistsError'
+                TagVersionMismatch:
+                  $ref: '#/components/examples/TagVersionMismatchError'
+                TagConcurrentlyModified:
+                  $ref: '#/components/examples/TagCommitConflictError'
+        503:
+          $ref: '#/components/responses/TagServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/TagServerErrorResponse'
+
+  /polaris/v1/{prefix}/tags/{tag-name}:
+    parameters:
+      - $ref: '#/components/parameters/catalog-prefix'
+      - $ref: '#/components/parameters/tag-name'
+
+    get:
+      tags:
+        - Tag API
+      summary: Load a tag definition
+      operationId: loadTag
+      description: |
+        Load a tag definition from the catalog.
+
+        The response contains the definition's name, description, values, target types, and
+        version token. For more details, refer to the definition of the `Tag` model.
+
+        Requires permission to read the definition.
+      responses:
+        200:
+          $ref: '#/components/responses/LoadTagResponse'
+        400:
+          $ref: '#/components/responses/TagBadRequestResponse'
+        401:
+          $ref: '#/components/responses/TagUnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/TagForbiddenResponse'
+        404:
+          description: |
+            Not Found - the request addresses something that does not exist; the error type names
+            the cause. A catalog that cannot be resolved is NoSuchCatalog; a definition missing inside
+            a catalog that did resolve is NoSuchTag.
+
+            Possible error types: NoSuchCatalog (the catalog identified by {prefix}),
+            NoSuchTag (the tag definition).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                TagToGetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+        503:
+          $ref: '#/components/responses/TagServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/TagServerErrorResponse'
+
+    put:
+      tags:
+        - Tag API
+      summary: Update a tag definition
+      operationId: updateTag
+      description: |
+        Replaces the complete editable definition: its description and its values list. The request
+        describes the state the definition should end in rather than the fields that changed, so both
+        fields are required and a client that wants to keep a value sends it back. An explicit JSON null
+        for description clears it, and so does an empty string. A missing values list, or one sent as an explicit JSON null, returns 400
+        BadRequest, as does a present list that is empty or holds an empty or duplicate member. A missing
+        description returns 400 ValidationError.
+
+        The definition's name is not part of this request; renaming goes through renameTag. target-types
+        is create-only and is likewise not part of it: a request that carries target-types at all,
+        including an explicit JSON null, returns 400 BadRequest.
+
+        Changing values never rewrites existing assignments. An assignment
+        whose stored value was removed from the list remains readable until it is
+        replaced or unassigned; only later writes are checked against the new list.
+
+        current-tag-version is required and must be a non-empty JSON string. A
+        missing, null, empty, or non-string value returns the shared
+        request-validation 400 response.
+
+        Requires permission to modify the definition. A stale or non-matching token returns 409
+        TagVersionMismatch, including a request that would change nothing. A
+        successful update returns the resulting definition and its new token; a
+        request that changes nothing leaves the definition fields unchanged and
+        returns the current token without advancing it. That returned version is the one read while
+        serving the request, and a concurrent write may advance it before the response reaches the caller;
+        the caller's next write then returns 409 TagVersionMismatch. The token check and any definition
+        change are atomic.
+
+        A request that changes nothing may leave its key unrecognized; where it does, a retry of it sent
+        after the definition has changed returns 409 TagVersionMismatch rather than the earlier success.
+        Recognizing it is also allowed, and doing so does not advance the definition's version. A recognized
+        retry of an update that did change the definition returns the definition's current state without
+        applying the update again, on the terms the Idempotency-Key parameter describes.
+      parameters:
+        - $ref: '#/components/parameters/tag-idempotency-key'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTagRequest'
+      responses:
+        200:
+          $ref: '#/components/responses/UpdateTagResponse'
+        400:
+          description: |
+            Bad Request - target-types was supplied on update, including as an explicit null (it is
+            create-only), or the values list is invalid, meaning it is empty or holds an empty or
+            duplicate member, or a member exceeds 2000 bytes. The limit is measured on the decoded value in
+            UTF-8 bytes: JSON escaping does not count toward it, and it does not prescribe how the server
+            represents the string internally.
+
+            A missing values list, or one present as an explicit JSON null, returns BadRequest: the tag
+            validation row for an invalid definition values list names that type, and it takes precedence.
+            A missing description returns ValidationError, the shared required-field row, because no tag
+            validation row names it.
+
+            InvalidJson covers a body that is not syntactically valid JSON. InvalidIdempotencyKey covers a
+            present but malformed Idempotency-Key header, rejected by the shared handler before this
+            operation runs.
+
+            Possible error types: BadRequest, ValidationError, InvalidJson, InvalidIdempotencyKey.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                TargetTypesImmutable:
+                  $ref: '#/components/examples/TargetTypesImmutableError'
+                InvalidAllowedValues:
+                  $ref: '#/components/examples/AllowedValuesInvalidError'
+                InvalidIdempotencyKey:
+                  $ref: '#/components/examples/TagInvalidIdempotencyKeyError'
+        401:
+          $ref: '#/components/responses/TagUnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/TagForbiddenResponse'
+        404:
+          description: |
+            Not Found - the request addresses something that does not exist; the error type names
+            the cause. A catalog that cannot be resolved is NoSuchCatalog; a definition missing inside
+            a catalog that did resolve is NoSuchTag.
+
+            Possible error types: NoSuchCatalog (the catalog identified by {prefix}),
+            NoSuchTag (the tag definition).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                TagToUpdateDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+        409:
+          description: |
+            Conflict - the request cannot be applied to the definition's current state; the error
+            type names the cause. For a stale token or a conflicting update, reload the definition
+            and retry with the returned token.
+
+            Possible error types: TagVersionMismatch (the supplied current-tag-version is
+            not the definition's current token, including a request that would change nothing),
+            CommitConflict (the conditional update conflicted after validation, retryable).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                TagVersionMismatch:
+                  $ref: '#/components/examples/TagVersionMismatchError'
+                TagConcurrentlyModified:
+                  $ref: '#/components/examples/TagCommitConflictError'
+        503:
+          $ref: '#/components/responses/TagServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/TagServerErrorResponse'
+
+    delete:
+      tags:
+        - Tag API
+      summary: Drop a tag definition from the catalog
+      operationId: dropTag
+      description: |
+        Remove a tag definition from the catalog.
+
+        Without detach-all=true, a definition can be deleted only when no assignment on a **live** target
+        uses it. Two kinds of assignment do not block the delete: one confirmed to be orphaned, and one
+        whose target has been soft-dropped. A successful delete makes those relations permanently
+        ineffective, so restoring a soft-dropped target can never restore a deleted definition.
+
+        Failure to load a required entity or its schema metadata is not proof of absence. In that case the
+        server fails the request without making any visible change, rather than treating the assignment as
+        orphaned.
+
+        To remove the definition along with all of its assignments, set detach-all to true; callers then
+        see every assignment and the definition removed, or no change. detach-all=true requires **both**
+        the permission to drop the definition and the definition-side permission to detach its
+        assignments, and it requires them even when the definition currently has no assignments. The
+        server does not check a permission on every attached target.
+
+        After a successful detach-all=true, the definition and every one of its assignments are gone from
+        every Tag API read and reverse lookup together: no later read can expose an assignment of the
+        deleted definition. Physical cleanup of assignment rows may happen later and is never observable,
+        and a cleanup failure must not undo completed deletion or expose retained rows.
+
+        Returning 204 after a partial visible deletion is invalid. A transient execution failure uses the
+        shared server-error responses.
+
+        The definition is permanently deleted and its name is released.
+
+        Requires permission to delete the definition, and detach-all=true additionally requires permission
+        to remove its assignments.
+      parameters:
+        - name: detach-all
+          in: query
+          required: false
+          description: |
+            When set to true, the dropTag operation will also delete every assignment of this tag definition
+            across the catalog.
+          schema:
+            type: boolean
+            default: false
+          example: false
+      responses:
+        204:
+          description: Success, no content
+        400:
+          description: |
+            Bad Request - assignments of this tag definition remain and detach-all is not set to
+            true.
+
+            This operation names TagInUse for that case, and that type takes precedence over any shared
+            type for it. InvalidIdempotencyKey covers a present but malformed Idempotency-Key header: the
+            shared handler inspects the header on any write it sees, and rejecting a malformed one does not
+            make this operation recognize a retry.
+
+            Possible error types: TagInUse, InvalidIdempotencyKey.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                TagInUse:
+                  $ref: '#/components/examples/TagInUseError'
+        401:
+          $ref: '#/components/responses/TagUnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/TagForbiddenResponse'
+        404:
+          description: |
+            Not Found - the request addresses something that does not exist; the error type names
+            the cause. A catalog that cannot be resolved is NoSuchCatalog; a definition missing inside
+            a catalog that did resolve is NoSuchTag.
+
+            Possible error types: NoSuchCatalog (the catalog identified by {prefix}),
+            NoSuchTag (the tag definition).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                TagToDeleteDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+        503:
+          $ref: '#/components/responses/TagServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/TagServerErrorResponse'
+
+  /polaris/v1/{prefix}/tags/{tag-name}/assignments:
+    parameters:
+      - $ref: '#/components/parameters/catalog-prefix'
+      - $ref: '#/components/parameters/tag-name'
+
+    put:
+      tags:
+        - Tag API
+      summary: Assign a tag value to a target
+      operationId: assignTag
+      description: |
+        Create or replace the assignment of this tag definition on one target.
+
+        The query parameters name the target and the request body carries only the selected values. The
+        values list must contain exactly one value, and that value must appear in the definition's
+        current values list. The target kind must appear in the definition's target-types list.
+        Reassigning the same tag on the same target replaces the stored value.
+
+        A tag can be assigned at any of the target kinds:
+        1. **COLUMN:** one top-level column of an Iceberg table. Column targets are limited to Iceberg
+           tables, because generic tables and views define no stable column identifier in v1.
+        2. **TABLE:** a whole table, meaning an Iceberg table or a generic table this implementation
+           supports.
+        3. **VIEW:** a whole Iceberg view.
+        4. **NAMESPACE:** a namespace.
+        5. **CATALOG:** the catalog identified by {prefix}.
+
+        The target must be inside the catalog identified by {prefix}. Polaris resolves request names
+        to durable identifiers before storing an assignment: a tag definition has a stable id, a target has
+        a stable entity id, and a column is identified by its containing table's id together with its
+        Iceberg field id. A rename that preserves the underlying entity keeps the assignment, while
+        dropping and recreating the same name produces a different identity and inherits nothing.
+
+        The write depends on those facts and no others: that the target exists, which identity the name
+        resolves to, and the parent and schema facts the kind requires. A change to an unrelated property
+        of the target is not a conflict.
+
+        Requires permission to attach on the definition and the corresponding permission to attach a tag on
+        the target; a column target is checked through the table that contains it.
+      parameters:
+        - $ref: '#/components/parameters/target-type'
+        - $ref: '#/components/parameters/target-namespace'
+        - $ref: '#/components/parameters/target-name'
+        - $ref: '#/components/parameters/target-column'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignTagRequest'
+      responses:
+        204:
+          description: Success, no content
+        400:
+          description: |
+            Bad Request - the target is unsupported or malformed, the target kind is excluded by the
+            definition's target-types, the values list is an explicit null, is empty, or contains an
+            empty or duplicate member, more than one value was selected, or the selected value is not
+            currently allowed.
+
+            This operation names BadRequest for those cases and that type takes precedence for them.
+            InvalidJson covers a body that is not syntactically valid JSON, and ValidationError covers a
+            values field that is absent or, when not null, not a JSON array, neither of which is a
+            selected value this operation can judge; an explicit null is invalid and answers 400
+            BadRequest, and a rejected request neither creates nor replaces an assignment.
+            InvalidIdempotencyKey covers a present but malformed
+            Idempotency-Key header: the shared handler inspects the header on any write it sees, and
+            rejecting a malformed one does not make this operation recognize a retry.
+
+            Possible error types: BadRequest, ValidationError, InvalidJson, InvalidIdempotencyKey.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                UnsupportedTarget:
+                  $ref: '#/components/examples/UnsupportedTargetError'
+                TargetTypeNotAllowed:
+                  $ref: '#/components/examples/TargetTypeNotAllowedError'
+                InvalidValues:
+                  $ref: '#/components/examples/ValuesInvalidError'
+                MultipleValuesNotSupported:
+                  $ref: '#/components/examples/MultipleValuesNotSupportedError'
+                ValueNotAllowed:
+                  $ref: '#/components/examples/ValueInvalidError'
+        401:
+          $ref: '#/components/responses/TagUnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/TagForbiddenResponse'
+        404:
+          description: |
+            Not Found - the request addresses something that does not exist; the error type names
+            the cause.
+
+            Possible error types: NoSuchCatalog (the catalog identified by {prefix}),
+            NoSuchTag (the tag definition), NoSuchTarget (the target or the named
+            column).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                TagToAssignDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+                TargetToAssignDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTargetError'
+        503:
+          $ref: '#/components/responses/TagServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/TagServerErrorResponse'
+
+    delete:
+      tags:
+        - Tag API
+      summary: Remove the assignment of a tag from a target
+      operationId: unassignTag
+      description: |
+        Remove the existing assignment of this tag definition from one target.
+
+        The query parameters name the target, exactly as they do on assignTag, and there is no request
+        body. The operation removes an existing assignment; it does not re-check the definition's
+        target-types. The target must be inside the catalog identified by {prefix} and must resolve
+        from the request.
+
+        Requires permission to detach on the definition and the corresponding permission to detach a tag
+        from the target; a column target is checked through the table that contains it.
+      parameters:
+        - $ref: '#/components/parameters/target-type'
+        - $ref: '#/components/parameters/target-namespace'
+        - $ref: '#/components/parameters/target-name'
+        - $ref: '#/components/parameters/target-column'
+      responses:
+        204:
+          description: Success, no content
+        400:
+          description: |
+            Bad Request - the target is unsupported or malformed.
+
+            This operation names BadRequest for that case and that type takes precedence for it.
+            InvalidIdempotencyKey covers a present but malformed Idempotency-Key header: the shared handler
+            inspects the header on any write it sees, and rejecting a malformed one does not make this
+            operation recognize a retry.
+
+            Possible error types: BadRequest, InvalidIdempotencyKey.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                UnsupportedTarget:
+                  $ref: '#/components/examples/UnsupportedTargetError'
+        401:
+          $ref: '#/components/responses/TagUnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/TagForbiddenResponse'
+        404:
+          description: |
+            Not Found - the request addresses something that does not exist; the error type names
+            the cause.
+
+            Possible error types: NoSuchCatalog (the catalog identified by {prefix}),
+            NoSuchTag (the tag definition), NoSuchTarget (the target or the named
+            column), NoSuchAssignment (the assignment).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                TagToUnassignDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+                TargetToUnassignDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTargetError'
+                AssignmentToRemoveDoesNotExist:
+                  $ref: '#/components/examples/NoSuchAssignmentError'
+        503:
+          $ref: '#/components/responses/TagServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/TagServerErrorResponse'
+
+    get:
+      tags:
+        - Tag API
+      summary: List targets that carry a direct assignment of a tag
+      operationId: listObjectsByTag
+      description: |
+        A reverse lookup that starts from one tag definition and returns targets with their own direct
+        assignment. The listing is paginated by default: a request with no pagination parameters returns
+        the first page, and `pagination=false` on its own asks for the complete result in one response,
+        subject to the full-result limits.
+
+        Without `value`, every direct assignment of the tag is returned. With `value`, only direct
+        assignments containing that exact, case-sensitive string are returned. Targets that only inherit the
+        tag are not returned, so `apply-method` in this response is never `INHERITED`.
+
+        The caller needs permission to read the named definition, and then read permission on each target
+        the response would report; a column is checked through the table that contains it. There is no
+        catalog-wide shortcut: holding a permission on the catalog does not stand in for the per-target
+        check, and a target the caller may not read is left out rather than reported. A
+        failure of the authorization system itself is not a denial: the request fails rather than silently
+        returning fewer targets.
+
+        A result is also left out when its target has been dropped, has been soft-dropped, or cannot be
+        found, and when the named field no longer exists. Being unable to determine whether a target
+        exists is not the same as confirming it is gone: a metadata read that fails is an error, not an
+        absence. Because results are filtered after candidates are fetched, and because a paged request may
+        reach its work budget partway through, a page may come back short or empty and still carry a
+        next-page-token.
+      parameters:
+        - $ref: '#/components/parameters/tag-pagination'
+        - name: value
+          in: query
+          required: false
+          description: |
+            Return only direct assignments whose selected values contain this exact, case-sensitive string.
+          schema:
+            type: string
+          example: "confidential"
+        - $ref: '#/components/parameters/tag-page-token'
+        - $ref: '#/components/parameters/tag-page-size'
+      responses:
+        200:
+          $ref: '#/components/responses/ListObjectsByTagResponse'
+        400:
+          description: |
+            Bad Request - the request is malformed, fails shared validation, or asks for more work or a
+            larger response than the server's limits allow.
+
+            This operation takes no request body, so no JSON parse failure can arise on it. Where it names
+            its own type for a case, as it does for the pagination rules, that type takes precedence.
+
+            Possible error types: ValidationError, BadRequest (invalid pagination input, a repeated
+            pagination parameter, `pagination=false` combined with `pageToken` or `pageSize`, an invalid
+            or expired token, a request that would exceed the response-size or work limits, or a paged
+            request that cannot make safe progress within its work budget).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+        401:
+          $ref: '#/components/responses/TagUnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/TagForbiddenResponse'
+        404:
+          description: |
+            Not Found - the request addresses something that does not exist; the error type names
+            the cause. A catalog that cannot be resolved is NoSuchCatalog; a definition missing inside
+            a catalog that did resolve is NoSuchTag.
+
+            Possible error types: NoSuchCatalog (the catalog identified by {prefix}),
+            NoSuchTag (the tag definition).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                TagToListDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+        503:
+          $ref: '#/components/responses/TagServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/TagServerErrorResponse'
+
+  /polaris/v1/{prefix}/object-tags:
+    parameters:
+      - $ref: '#/components/parameters/catalog-prefix'
+
+    get:
+      tags:
+        - Tag API
+      summary: Get the tags of a catalog, namespace, table, or column
+      operationId: getObjectTags
+      description: |
+        Retrieves the tags of one target. The target is named with the same query parameters assignTag
+        and unassignTag use: a required `target-type` plus the parameters that kind needs. The per-kind
+        combination table lives on the `target-type` parameter, and a combination that does not match
+        `target-type` is rejected.
+
+        The optional `view` parameter selects the read:
+
+        - `direct` (the default when `view` is omitted) returns only assignments stored on the queried
+          target.
+        - `effective` reads the target and its parents, then returns the final result for each tag
+          definition. Among the assignments a definition allows, the closest one wins: column, then table,
+          then the nearest namespace, then the catalog. Values from different levels are never combined.
+
+        Both views are paginated by default: a request with no pagination parameters returns the first
+        page, and `pagination=false` on its own returns all tags of the queried target in one response,
+        subject to the full-result limits. The `pagination`, `pageToken` and `pageSize` parameters follow
+        the same rules here as they do on the two listings.
+
+        A tag definition appears in the result only when the queried target kind is listed in its
+        target-types, and that test applies to the target being read rather than to the target the
+        assignment sits on. A definition listing NAMESPACE and COLUMN but not TABLE therefore reaches a
+        column through its namespace while never appearing on the table in between.
+
+        The hierarchy, definitions, and assignments behind one response are consistent with a single
+        logical point in time. Separate pages of a paged response make no such promise between them.
+
+        The effective computation always considers the complete hierarchy: paging bounds the tags a
+        response returns and never truncates the hierarchy or falls back to a direct read, and a read
+        that cannot consider the whole hierarchy is an error. One page is one coherent response. Results
+        leave out soft-dropped targets, and assignments whose definition, target entity, or named field
+        is permanently absent.
+
+        Requires read permission on the queried target; a column is checked through the table that
+        contains it. Authorizing the queried target is enough to read all of its effective tags: there is
+        no per-parent and no per-definition authorization, so an effective read never depends on the
+        caller's access to the ancestors an assignment came from. An effective read returns the complete result or fails; it never returns a partial
+        hierarchy or falls back to a direct read.
+
+        The kind is always stated, never inferred: a request without `target-type` is rejected and is
+        never treated as a catalog read. `TagAttachmentTarget` remains the response shape that reports
+        which target a result belongs to, and these query parameters carry a reversible encoding of the
+        same names. A complete request for the column sales.eu.customers.email is
+
+        `?target-type=COLUMN&namespace=sales%1Feu&target-name=customers&column=email&view=effective`
+
+        and the catalog itself is `?target-type=CATALOG`, with none of the other three set.
+
+        Each of `target-type`, `namespace`, `target-name`, `column`, and `view` appears at most once. A
+        present but empty parameter and an empty namespace level are both invalid.
+      parameters:
+        - $ref: '#/components/parameters/tag-pagination'
+        - $ref: '#/components/parameters/target-type'
+        - $ref: '#/components/parameters/target-namespace'
+        - $ref: '#/components/parameters/target-name'
+        - $ref: '#/components/parameters/target-column'
+        - $ref: '#/components/parameters/tag-page-token'
+        - $ref: '#/components/parameters/tag-page-size'
+        - name: view
+          in: query
+          required: false
+          description: |
+            Which read to perform. Omitting this parameter is the same as `direct`. A present but
+            empty or unknown value returns 400 BadRequest, and the parameter appears at
+            most once.
+          schema:
+            type: string
+            default: direct
+            enum:
+              - direct
+              - effective
+          example: "effective"
+      responses:
+        200:
+          $ref: '#/components/responses/GetObjectTagsResponse'
+        400:
+          description: |
+            Bad Request - the parameters do not match the `target-type` given, they name a target this
+            implementation does not support, such as a column of a view or of a generic table, a
+            present `target-name`, `namespace`, or `column` is empty, a namespace level is empty
+            after splitting, `view` is present but empty or unknown, `target-type` is missing or
+            unknown, or a target-address parameter is repeated.
+
+            A malformed percent escape or another malformed URI is rejected before the Tag handler
+            and uses the HTTP layer's shared 400 response; validation in the Tag handler uses
+            BadRequest.
+
+            This operation takes no request body, so no JSON parse failure can arise on it. Where it names
+            its own type for a case, that type takes precedence.
+
+            Possible error types: BadRequest, and for the pagination parameters
+            ValidationError, or BadRequest for invalid pagination input, a repeated pagination
+            parameter, `pagination=false` combined with `pageToken` or `pageSize`, an invalid or expired
+            token, a request that would exceed the response-size or work limits, or a paged request that
+            cannot make safe progress within its work budget.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                UnsupportedTarget:
+                  $ref: '#/components/examples/UnsupportedTargetError'
+                InvalidTargetQuery:
+                  $ref: '#/components/examples/InvalidTargetQueryError'
+        401:
+          $ref: '#/components/responses/TagUnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/TagForbiddenResponse'
+        404:
+          description: |
+            Not Found - the request addresses something that does not exist; the error type names
+            the cause.
+
+            Possible error types: NoSuchCatalog (the catalog identified by {prefix}),
+            NoSuchTarget (the target path or the named column).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                TargetToReadDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTargetError'
+        503:
+          $ref: '#/components/responses/TagServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/TagServerErrorResponse'
+
+components:
+  parameters:
+    target-type:
+      name: target-type
+      in: query
+      required: true
+      description: |
+        The kind of target the request addresses. It is stated explicitly rather than inferred, and the
+        other target parameters must match it:
+
+        | target-type | namespace | target-name | column |
+        |-------------|-----------|-------------|--------|
+        | `CATALOG` | absent | absent | absent |
+        | `NAMESPACE` | required | absent | absent |
+        | `TABLE` | required | required | absent |
+        | `VIEW` | required | required | absent |
+        | `COLUMN` | required | required | required |
+
+        A combination that does not match target-type returns 400 BadRequest. `target-type` is always
+        required: a request that omits it is rejected, and is never treated as addressing the catalog.
+      schema:
+        $ref: '#/components/schemas/TargetType'
+
+    target-namespace:
+      name: namespace
+      in: query
+      required: false
+      description: |
+        A namespace identifier as a single string.
+        Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+
+        The parameter uses Iceberg namespace query encoding, not Iceberg path encoding: join the
+        original level names with U+001F, then URI-encode the joined text once. Every level must
+        be non-empty and must not contain U+001F, so a client checks the names before joining
+        them; once joined, a separator inside a name looks exactly like the separator between
+        names.
+
+        Two rules follow from that and are worth separating. The client pre-join constraint is that
+        every level is non-empty and free of U+001F, and the client is the only party that can enforce
+        it: after the join the server cannot tell whether a U+001F came from inside a name or from
+        between names. The server-observable check is what remains after decoding, namely that no
+        level is empty. And a malformed URI may be rejected by the HTTP
+        layer before the Tag handler runs, so a client should not count on a Tag error payload for
+        every malformed input.
+
+        The server decodes the value once, then splits on U+001F. It does not decode the result
+        again, so percent sequences that survive the first decode are literal text. A raw `+`
+        decodes to a space, here and in `target-name` and `column` alike, so send a literal plus
+        as `%2B`; `%252B` decodes to the literal text `%2B` and is not decoded a second time.
+
+        Conformance examples. Each row gives the contents of one query value, without its
+        parameter name. `US` in the middle column stands for one actual U+001F character, not for
+        the two letters.
+
+        | input | before URI encoding | query value |
+        |---|---|---|
+        | namespace `["sales", "eu"]` | `sales` + US + `eu` | `sales%1Feu` |
+        | namespace `["sales.eu"]` | `sales.eu` | `sales.eu` |
+        | namespace `["R&D", "tax=2026"]` | `R&D` + US + `tax=2026` | `R%26D%1Ftax%3D2026` |
+        | namespace `["tax%20rate", "%1F"]` | `tax%20rate` + US + `%1F` | `tax%2520rate%1F%251F` |
+        | namespace `["with space", "café"]` | `with space` + US + `café` | `with%20space%1Fcaf%C3%A9` |
+        | namespace `["销售", "日本語"]` | `销售` + US + `日本語` | `%E9%94%80%E5%94%AE%1F%E6%97%A5%E6%9C%AC%E8%AA%9E` |
+        | `target-name` `orders%20&total` | `orders%20&total` | `orders%2520%26total` |
+        | `column` `cost+tax` | `cost+tax` | `cost%2Btax` |
+        | `column` `a &?=+%` | `a &?=+%` | `a%20%26%3F%3D%2B%25` |
+        | `column` `customer.name` | `customer.name` | `customer.name` |
+        | `target-name` `Q1 orders` | `Q1 orders` | `Q1%20orders` |
+
+        The examples test encoding only. They do not widen the identifiers a catalog or a schema
+        accepts. The round trip is defined for any string, but Polaris's own name validation rejects
+        `/ \ : * ? " < > | # +` and a backtick, control characters, and leading or trailing whitespace in
+        namespace levels and in table and view names, before any tag request can reference such an entity, so
+        those characters occur only in column names. Namespace levels must satisfy those existing naming
+        rules; percent-encoding does not make a forbidden character valid. The literal `%1F` example above
+        still applies, because that level is a percent sign followed by two ordinary characters rather than
+        the U+001F separator.
+
+        `target-name` and `column` are ordinary query values, not namespace lists: they are never
+        joined and never split, and U+001F carries no meaning in them.
+
+        `namespace=sales%251Feu` names one level whose text is `sales%1Feu`; it does not name
+        `["sales", "eu"]`. Double encoding cannot always be detected, because a literal percent
+        sequence may itself be a valid name.
+
+        Omit the parameter for a catalog target. A present but empty parameter, an empty level
+        after splitting, and a repeated parameter each return 400 BadRequest. These query
+        fragments are invalid even when the rest of the address is well formed, and each returns
+        400:
+
+        | query fragment | reason |
+        |---|---|
+        | `namespace=` | empty parameter |
+        | `namespace=%1Fsales` | empty first level |
+        | `namespace=sales%1F` | empty last level |
+        | `namespace=sales%1F%1Feu` | empty middle level |
+        | `namespace=%` | incomplete percent escape |
+        | `namespace=%GG` | non-hexadecimal percent escape |
+        | `namespace=sales&target-name=` | empty table name |
+        | `namespace=sales&target-name=orders&column=` | empty column name |
+        | `namespace=sales&namespace=eu` | duplicate target-address parameter |
+      schema:
+        type: string
+      examples:
+        singlepart_namespace:
+          value: "accounting"
+        multipart_namespace:
+          value: "accounting%1Ftax"
+        namespace_with_space_and_non_ascii:
+          summary: 'The levels ["with space", "café"]'
+          value: "with%20space%1Fcaf%C3%A9"
+        namespace_with_literal_percent_escape:
+          summary: 'The levels ["tax%20rate", "%1F"], where both are literal text'
+          value: "tax%2520rate%1F%251F"
+
+    target-name:
+      name: target-name
+      in: query
+      required: false
+      description: |
+        Name of the target table or view. Which one it names follows from `target-type`: a `TABLE`
+        target is an Iceberg table or a generic table this implementation supports, and a `VIEW`
+        target is an Iceberg view. For a `COLUMN` target this names the table that contains the
+        column.
+
+        The value is an ordinary string query value; it is not namespace-joined and is not split.
+        A present value must be non-empty, and the parameter appears at most once. A raw `+`
+        decodes to a space, so send a literal plus as `%2B`.
+      schema:
+        type: string
+      example: "test_table"
+
+    target-column:
+      name: column
+      in: query
+      required: false
+      description: |
+        Name of one top-level column in the table named by target-name. Column targets are supported on
+        Iceberg tables only.
+
+        The value is an ordinary string query value; it is not split and is not parsed as JSON. A
+        dot belongs to one top-level column name and does not address a nested field. A present
+        value must be non-empty, and the parameter appears at most once. `a+b` decodes to `a b`,
+        `a%2Bb` decodes to `a+b`, and `%252B` decodes to the literal text `%2B`.
+      schema:
+        type: string
+      example: "email"
+
+    tag-pagination:
+      name: pagination
+      in: query
+      required: false
+      description: |
+        Selects how the result is delivered. Omitting this parameter, or sending `pagination=true`, asks
+        for one page at a time; `pagination=false` asks for the complete result in one response, subject
+        to the limits `pageSize` describes. The choice changes delivery only: the filters, the
+        authorization checks and the read guarantees are the same in both modes.
+
+        A client should normally take the result one page at a time, because it cannot know in advance
+        how large the collection is. Ask for the whole result only when the client can receive and
+        process all of it; a server-side limit is not a promise that the response fits in the client's
+        memory.
+
+        `pagination=false` is the only way to ask for a full result: no `pageSize` value and no empty
+        `pageToken` selects one. It must also arrive alone, so sending it together with `pageToken` or
+        `pageSize` returns 400 BadRequest, even when the other parameter is empty.
+
+        Only the two literals `true` and `false` are accepted. An empty value or any other value returns
+        400 BadRequest, and that check reads the query value as the request sent it rather than relying
+        on a converted parameter type. Each of `pagination`, `pageToken` and `pageSize` appears at most
+        once; a repeated one returns 400 BadRequest even when both copies agree. A shared pagination
+        flag or helper does not change these input or mode rules.
+      schema:
+        type: boolean
+        default: true
+      example: false
+
+    tag-page-token:
+      name: pageToken
+      in: query
+      required: false
+      description: |
+        Continues a paginated listing. Paged mode is the default, and within it:
+
+        | request | server behaviour |
+        |---|---|
+        | `pageToken` omitted | the first page, sized by the server's current default |
+        | `pageToken=` (present and empty) | the first page |
+        | `pageToken=<token>` | continue from that token |
+
+        A client continuing with a token does not need to send `pagination=true` alongside it, because
+        paged mode is already what an omitted `pagination` means.
+
+        Send a token back exactly as received; do not parse or construct one. A token is bound to the
+        catalog, the definition or target being listed, the view, and any filters of the request that
+        produced it, and every request is authorized again: a token grants no access of its own.
+
+        An invalid or expired token returns 400 BadRequest, and so does a repeated `pageToken`, even
+        when both copies carry the same value. A full-result request rejects this parameter:
+        `pagination=false` together with `pageToken`, including an empty one, returns 400 BadRequest.
+      schema:
+        type: string
+
+    tag-page-size:
+      name: pageSize
+      in: query
+      required: false
+      description: |
+        An upper bound on one page. The value must be a positive integer: zero, a negative number, an
+        empty value and a non-integer each return 400 BadRequest, whether or not the request carries a
+        `pageToken`. A request that omits it uses the server's finite default page size, and that
+        applies to a continuation as well, which never inherits the size of the request that produced
+        its token. A request above the server's maximum is capped at that maximum; the server may return
+        fewer results than the bound either way, so a client cannot rely on a page holding exactly this
+        many results.
+
+        A full-result request rejects this parameter: `pagination=false` together with `pageSize`,
+        including an empty one, returns 400 BadRequest. A repeated `pageSize` returns 400 BadRequest
+        even when both copies carry the same value.
+
+        Both modes are protected by finite limits on response size and on the work a request may do, and
+        those limits exist by default. A deployment adjusts them, expressed for example as a result count,
+        encoded bytes, candidates examined, or execution time, and the absence of an override never means
+        an unlimited request. A full-result request that would exceed one returns 400 BadRequest with a
+        message directing the client to retry in paged mode by removing `pagination=false` or setting it
+        to `true`, keeping the same target and filters. The server detects this before committing a
+        success: it must not silently truncate, switch to paged mode, or return a successful partial
+        body.
+
+        A paged request that reaches its work budget may return a short or empty page with a continuation
+        token, and a request that cannot make safe progress within that budget returns 400 BadRequest. A
+        continuation resumes after the last consumed candidate, so a candidate that was fetched but
+        neither returned nor rejected stays reachable. A failing metadata, storage or authorization
+        dependency returns the service error for that failure, never an empty page and never a budget 400.
+      schema:
+        type: integer
+
+    tag-idempotency-key:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        An optional client-supplied key that makes a completed write recognizable when its response is
+        lost. Whether a deployment recognizes keys is discoverable: where it does, the reuse window is the
+        value it advertises as `idempotency-key-lifetime` in the catalog configuration response; where it
+        does not, requests take the ordinary path. The lifetime bounds how long a client may rely on
+        recognition; its end says nothing about whether the original write succeeded.
+
+        Three operations recognize a retry: createTag, updateTag and renameTag. Request validation and the
+        operation's own authorization run first. A key grants no permission: createTag still needs
+        permission to create definitions in the catalog, updateTag permission to modify the definition, and
+        renameTag permission to delete the source definition together with permission to create in the
+        catalog.
+
+        A retry is recognized as an earlier success when the mechanism is enabled and the key is still
+        recognized for the definition the original request created, updated or renamed. A recognized retry
+        requires the caller's current authorization for the original operation. A recognized createTag or
+        updateTag retry answers 200 with the definition's current state: not the original response, and not
+        the state the original request wrote if the definition has changed since. A recognized renameTag
+        retry answers 204 without renaming again, even after later renames, and the server never renames a
+        definition back to satisfy a retry. Recognition happens before the supplied `current-tag-version`
+        is compared with the definition's current version.
+
+        A client uses one key per logical operation and repeats the key and the request unchanged on retry.
+        Reusing one key with different arguments is a client error: the outcome is undefined and no conflict
+        response is promised. The server does not replay the original response body.
+
+        Recognition ends when the definition is deleted, and a definition later created under the same name
+        inherits none of it. A request the server does not recognize follows the ordinary path, with the
+        usual name lookup, authorization and version check and the errors those produce.
+
+        The number of keys recognized for one definition at a time is bounded. When that bound is reached, a
+        write that would add another key is rejected with 503 ServiceUnavailable and a Retry-After header
+        rather than ending recognition of an existing key, and the write is not applied.
+
+        dropTag, assignTag and unassignTag accept the header through the shared request layer, and none of
+        them recognizes a retry.
+
+        A missing or blank header supplies no key, and the request follows the ordinary path. When the
+        shared idempotency handler is enabled, a non-blank value that is not a UUID is rejected with 400
+        InvalidIdempotencyKey before the Tag handler runs. When support is disabled the header is not
+        rejected: the operation runs its ordinary path and no success recognition is promised. A UUID is
+        accepted, with no Tag-specific requirement on its version.
+      schema:
+        type: string
+
+    catalog-prefix:
+      name: prefix
+      in: path
+      required: true
+      description: |
+        Identifies the catalog the request addresses. Every tag definition and every assignment belongs to
+        exactly one catalog, and this parameter scopes the whole request to it. Polaris maps the prefix to a
+        catalog name, and the default mapping is the identity: the prefix is the catalog name.
+
+        This is the same prefix the other catalog-scoped Polaris APIs take, and it is defined here rather
+        than referenced so this document stands on its own.
+      schema:
+        type: string
+
+    tag-name:
+      name: tag-name
+      in: path
+      required: true
+      description: |
+        The tag definition the request addresses. A tag name consists only of letters, digits,
+        hyphens, and underscores, as the TagName pattern requires, so it never contains a slash and
+        needs no path encoding. That restriction belongs to tag names alone: namespace levels, table and
+        view names, and column names are not limited to those characters.
+      schema:
+        $ref: '#/components/schemas/TagName'
+
+  schemas:
+
+    NextPageToken:
+      description: |
+        An opaque token that continues this listing. A **non-empty** value means there is more to
+        read, including after a page that came back short or empty because of filtering. The field
+        absent or null means the listing is complete; the server never returns an empty string.
+        A full-result response, the one `pagination=false` asks for, never carries one. Send the value
+        back unchanged as `pageToken`; do not parse or construct one.
+      type: string
+      nullable: true
+
+    PolarisErrorResponse:
+      description: |
+        JSON wrapper for all error responses (non-2xx) of the Polaris-specific APIs. The shape is the
+        same as the Iceberg REST catalog's error response, and this definition is intended to be
+        shared by the Polaris-specific APIs so they can evolve independently of that spec.
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/PolarisErrorModel'
+      additionalProperties: false
+      example: {
+        "error": {
+          "message": "The given tag definition does not exist",
+          "type": "NoSuchTag",
+          "code": 404
+        }
+      }
+
+    PolarisErrorModel:
+      type: object
+      description: JSON error payload returned in a response with further details on the error
+      required:
+        - message
+        - type
+        - code
+      properties:
+        message:
+          type: string
+          description: Human-readable error message
+        type:
+          type: string
+          description: The error type, which names the specific cause behind the HTTP status code
+          example: NoSuchTag
+        code:
+          type: integer
+          description: The HTTP status code of the response, repeated in the body
+          example: 404
+        stack:
+          type: array
+          items:
+            type: string
+
+    TagName:
+      type: string
+      description:
+        A tag definition name. It is unique within the catalog. A valid tag name should only consist of
+        uppercase and lowercase letters (A-Z, a-z), digits (0-9), hyphens (-), underscores (_).
+      pattern: '^[A-Za-z0-9\-_]+$'
+      example: 'sensitivity'
+
+    TagId:
+      type: string
+      readOnly: true
+      description: |
+        A server-assigned, opaque identifier for the tag definition, for comparison within the same realm and
+        catalog. It is stable for the life of the definition, so a client can recognize the same definition
+        under a new name after a rename. A definition that is deleted and recreated under the same name receives a
+        different id, which lets a client distinguish a same-name replacement. Clients must not parse it or
+        infer ordering or any other meaning from its representation.
+
+        The id identifies the tag, not its current definition state: operations continue to address
+        definitions by name, and `current-tag-version` remains the concurrency check.
+      example: 'tag-8f31c2'
+
+    TargetType:
+      type: string
+      description: |
+        The kind of target a tag applies to:
+        1. CATALOG: the catalog identified by {prefix}.
+        2. NAMESPACE: a namespace.
+        3. TABLE: a whole table. This covers Iceberg tables and the generic tables this implementation
+           supports.
+        4. VIEW: a whole Iceberg view.
+        5. COLUMN: one top-level column of an Iceberg table. Column targets are limited to Iceberg tables:
+           generic tables and views define no stable column identifier in v1, so their columns cannot be
+           addressed. That limit applies to columns only and does not restrict VIEW targets.
+      enum:
+        - CATALOG
+        - NAMESPACE
+        - TABLE
+        - VIEW
+        - COLUMN
+      example: TABLE
+
+    Tag:
+      type: object
+      description: |
+        A tag definition.
+      required:
+        - id
+        - name
+        - values
+        - target-types
+        - version
+      properties:
+        id:
+          $ref: '#/components/schemas/TagId'
+        name:
+          allOf:
+            - $ref: '#/components/schemas/TagName'
+          description: |
+            The definition's name, unique within the catalog. It matches the TagName pattern, so it never
+            contains a slash and needs no path encoding. Renaming a definition changes this value while
+            `id` stays the same.
+        description:
+          type: string
+          description: |
+            Optional text explaining the classification. It carries no meaning for matching or
+            inheritance. An update replaces it, and either an explicit JSON null or an empty string on
+            update clears it.
+        values:
+          type: array
+          items:
+            type: string
+          description: |
+            The values an assignment may select. The v1 server requires at least one non-empty member,
+            and each value is limited to 2000 bytes. The limit is measured on the decoded value in UTF-8
+            bytes: JSON escaping does not count toward it, and it does not prescribe how the server
+            represents the string internally. A longer value returns 400 BadRequest.
+        target-types:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/TargetType'
+          description: |
+            The target kinds this definition may classify, directly or through inheritance. The response
+            always carries the explicit set stored for the definition, including when creation defaulted it
+            to every v1 kind. The set is create-only and also scopes inheritance: an excluded intermediate
+            kind does not stop inheritance to an allowed descendant.
+        version:
+          type: string
+          minLength: 1
+          example: "rev-a"
+          description: |
+            An opaque, non-empty, server-managed token for optimistic concurrency. Send it back unchanged
+            as `current-tag-version`; do not parse, order or increment it. Every successful write changes
+            it, while a request that changes nothing returns the current token without advancing it.
+
+            The fields and the token in one response describe the same revision of the definition. The
+            token check and the definition change are atomic, and every supported definition-write path
+            takes part, including native writes made outside this API.
+
+            A definition change invalidates earlier tokens even if the fields later return to their
+            previous values, and a token issued for a definition that was since deleted cannot authorize an
+            update or rename of a same-name replacement, or of a definition renamed into that name. A new
+            no-op update still has to match the current token. Where an already completed update or rename
+            is recognized from an Idempotency-Key, that recognition happens before the token comparison.
+
+            An implementation may use a catalog-wide revision, so an unrelated change elsewhere in the
+            catalog may invalidate a token although this definition did not change.
+
+    TagIdentifier:
+      type: object
+      description: |
+        A tag definition named in a list result or an object-tag response, without its full definition.
+      required:
+        - id
+        - name
+      properties:
+        id:
+          $ref: '#/components/schemas/TagId'
+        name:
+          allOf:
+            - $ref: '#/components/schemas/TagName'
+          description: |
+            The definition's current name, unique within the catalog. Requests address definitions by this
+            name; this object introduces no id-based addressing.
+
+    CreateTagRequest:
+      type: object
+      required:
+        - name
+        - values
+      properties:
+        name:
+          allOf:
+            - $ref: '#/components/schemas/TagName'
+          description: |
+            The name for the new definition. It must be unique within the catalog and must match the
+            TagName pattern.
+        description:
+          type: string
+          description: |
+            Optional text explaining the classification. It carries no meaning for matching or
+            inheritance.
+        values:
+          type: array
+          items:
+            type: string
+          description: |
+            The choices a later assignment may select. The list is required and must hold at least one
+            member; every member must be a distinct, non-empty string of at most 2000 bytes. The limit is
+            measured on the decoded value in UTF-8 bytes: JSON escaping does not count toward it, and it
+            does not prescribe how the server represents the string internally. A longer value returns
+            400 BadRequest. Matching is exact and case-sensitive.
+        target-types:
+          type: array
+          items:
+            $ref: '#/components/schemas/TargetType'
+          description: |
+            The target kinds this definition may classify. **Optional.** Omitting the field selects every
+            v1 target kind, and the response returns the explicit set stored for the definition either way.
+            Supply a narrower set to scope inheritance as well as direct assignment: a definition limited to
+            NAMESPACE and COLUMN can be assigned to a namespace and inherited by descendant columns without
+            appearing on the intermediate tables, because an excluded intermediate kind does not stop
+            inheritance to an allowed descendant.
+
+            The set is immutable after creation, whether supplied or defaulted, and target kinds added in a
+            later version do not expand an existing definition. An explicit null, an empty list, duplicates
+            and unknown kinds each return 400 BadRequest.
+
+    UpdateTagRequest:
+      type: object
+      description: |
+        The complete editable definition. An update is a read/modify/write: the request describes the state
+        the definition should end in rather than the fields that changed, so `description` and `values` are
+        both required. Omitting either returns 400, and clients that want to keep a value send it back.
+
+        An explicit JSON null for `description` clears it. `values` must be a valid, non-empty list of
+        distinct, non-empty strings, the same rules createTag applies.
+
+        `name` is not a field of this request: renaming goes through renameTag. `target-types` is
+        create-only and is likewise not a field here, so a request that carries it at all, including as an
+        explicit null or an empty list, returns 400 BadRequest.
+
+        `current-tag-version` is required and the update succeeds only when it matches the definition's
+        current token; a stale token returns 409 TagVersionMismatch. A request that changes nothing still
+        checks the token and returns the current definition and version without advancing it. Changing the
+        values list never rewrites existing assignments.
+      required:
+        - description
+        - values
+        - current-tag-version
+      properties:
+        description:
+          type: string
+          nullable: true
+          description: |
+            The definition's description in the state it should end in. It is required, and either an
+            explicit JSON null or an empty string clears it.
+        values:
+          type: array
+          items:
+            type: string
+          description: |
+            The complete values list the definition should end with. It is required and must hold at least
+            one member; every member must be a distinct, non-empty string of at most 2000 bytes. The limit
+            is measured on the decoded value in UTF-8 bytes: JSON escaping does not count toward it, and it
+            does not prescribe how the server represents the string internally. A longer value returns
+            400 BadRequest.
+        current-tag-version:
+          type: string
+          minLength: 1
+          example: "rev-b"
+          description: |
+            The definition's current version token, as returned by a previous create, load, or update.
+            Send it back unchanged; do not parse, order, or increment it. The token identifies the
+            definition as well as its revision: a token from a definition that was deleted and recreated
+            under the same name, or from a definition whose name another definition was renamed into, is
+            refused as a version mismatch.
+
+    RenameTagRequest:
+      type: object
+      description: |
+        A rename of one definition. The source keeps its identity, its `id`, its assignments and its values;
+        only the name changes, and the version token changes on success.
+      required:
+        - source
+        - destination
+        - current-tag-version
+      properties:
+        source:
+          allOf:
+            - $ref: '#/components/schemas/TagName'
+          description: |
+            The current name of the definition to rename. It must exist in the resolved catalog.
+        destination:
+          allOf:
+            - $ref: '#/components/schemas/TagName'
+          description: |
+            The new name. It must match the TagName pattern, must not already name a definition in the
+            catalog, and must differ from `source`.
+        current-tag-version:
+          type: string
+          minLength: 1
+          example: "rev-b"
+          description: |
+            The source definition's current version token, as returned by a previous create, load, or
+            update. Send it back unchanged; do not parse, order, or increment it. The token identifies the
+            definition as well as its revision: a token from a definition that was deleted and recreated
+            under the same name, or from a definition whose name another definition was renamed into, is
+            refused as a version mismatch.
+
+    ListTagsResponse:
+      type: object
+      required:
+        - identifiers
+      properties:
+        next-page-token:
+          $ref: '#/components/schemas/NextPageToken'
+        identifiers:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/TagIdentifier'
+
+    TagAttachmentTarget:
+      type: object
+      description: |
+        One catalog object or top-level Iceberg column, as returned by a read. Assignment requests name
+        their target with query parameters instead; this object is the response shape that reports which
+        target a result belongs to. A field combination that does not match `type` is invalid.
+
+        The fields per target type are:
+
+        - `CATALOG`: `path` absent or empty, `column` absent or empty.
+        - `NAMESPACE`: `path` is one or more namespace levels, `column` absent or empty.
+        - `TABLE`: `path` is the namespace levels followed by the table name, `column` absent or empty.
+        - `VIEW`: `path` is the namespace levels followed by the view name, `column` absent or empty.
+        - `COLUMN`: `path` is the namespace levels followed by the containing table name, and `column`
+          is one top-level column name.
+
+        Each namespace level must be non-empty and must not contain U+001F, the character the query
+        parameters use to separate levels. A JSON body carries the original names as separate strings
+        without URI encoding. The rule covers every namespace level, including the levels that locate a
+        table or a column.
+      required:
+        - type
+      properties:
+        type:
+          $ref: '#/components/schemas/TargetType'
+        path:
+          type: array
+          items:
+            type: string
+          description: |
+            A list representing the hierarchical path to the target, ordered from the namespace level down
+            to the entity.
+
+            If the target is catalog, the path should be either empty or not set.
+
+            Each namespace level must be non-empty and must not contain U+001F; a violation returns
+            400 BadRequest.
+          example: ["NS1", "NS2", "test_table_1"]
+        column:
+          type: array
+          items:
+            type: string
+          description: |
+            For column targets only, the name of one top-level column in the table named by path. More than
+            one column segment is invalid.
+          example: ["email"]
+
+    AssignTagRequest:
+      type: object
+      description: |
+        The values selected for an assignment. The target is named by the operation's query parameters,
+        not by this body.
+      required:
+        - values
+      properties:
+        values:
+          type: array
+          items:
+            type: string
+          description: |
+            The selected values. The v1 server requires exactly one member, it must appear in the
+            definition's current values list, and it is limited to 2000 bytes. The limit is measured on
+            the decoded value in UTF-8 bytes: JSON escaping does not count toward it, and it does not
+            prescribe how the server represents the string internally. A longer value returns
+            400 BadRequest.
+            The list shape leaves room for later value forms.
+          example: ["confidential"]
+
+    ObjectTag:
+      type: object
+      description: |
+        One tag of the queried target, as returned by getObjectTags.
+
+        - **tag:** The tag definition name.
+        - **values:** The selected values. v1 returns exactly one item.
+        - **apply-method:** How the classification applies to the target being read, regardless of whether
+          a person or automation created it. This field is output only. A v1 server returns `DIRECT` (the
+          assignment is stored on the queried target) or `INHERITED` (the winning assignment is stored on a
+          parent target). A server implementing this version of the API returns only those two values,
+          regardless of who or what created the assignment. The field stays a string so that a future
+          revision of this specification can add methods, and clients must accept values they do not
+          know.
+        - **assigned-at:** The target that stores the winning assignment. For a direct result this is the
+          queried target; for an inherited result it is the parent that stores the assignment.
+      required:
+        - tag
+        - values
+        - apply-method
+        - assigned-at
+      properties:
+        tag:
+          $ref: '#/components/schemas/TagIdentifier'
+        values:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        apply-method:
+          type: string
+          example: "DIRECT"
+        assigned-at:
+          $ref: '#/components/schemas/TagAttachmentTarget'
+
+    GetObjectTagsResponse:
+      type: object
+      required:
+        - object-tags
+      properties:
+        next-page-token:
+          $ref: '#/components/schemas/NextPageToken'
+        object-tags:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ObjectTag'
+
+    TaggedObject:
+      type: object
+      description: |
+        One direct assignment of the named tag definition, as returned by listObjectsByTag. apply-method is
+        never `INHERITED` in this response.
+      required:
+        - target
+        - values
+        - apply-method
+      properties:
+        target:
+          $ref: '#/components/schemas/TagAttachmentTarget'
+        values:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        apply-method:
+          type: string
+          example: "DIRECT"
+
+    ListObjectsByTagResponse:
+      type: object
+      required:
+        - objects
+      properties:
+        next-page-token:
+          $ref: '#/components/schemas/NextPageToken'
+        objects:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/TaggedObject'
+
+  responses:
+    TagBadRequestResponse:
+      description: |
+        Bad Request - the request is malformed or fails shared request validation before an operation's
+        own rules are reached.
+
+        Possible error types: ValidationError (a required field is missing or a field has the wrong
+        schema type, including a missing, null, empty or non-string current-tag-version on the operations
+        that take one), BadRequest (a request the Tag handler itself rejects). An operation with no request
+        body cannot produce a JSON parse failure, so InvalidJson is listed on the operations that take a
+        body rather than here.
+
+        These wire literals are fixed and do not depend on the exception an implementation raises
+        internally. Where an operation lists its own type for a case, that type takes precedence over
+        this shared response.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PolarisErrorResponse'
+          examples:
+            ValidationError:
+              summary: A path or query value does not satisfy its schema
+              value: {
+                "error": {
+                  "message": "tag-name must match ^[A-Za-z0-9\\-_]+$",
+                  "type": "ValidationError",
+                  "code": 400
+                }
+              }
+
+    TagUnauthorizedResponse:
+      description: |
+        Unauthorized - the request carries no credentials, or credentials the server cannot
+        authenticate.
+
+        Possible error types: Unauthorized.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PolarisErrorResponse'
+          example: {
+            "error": {
+              "message": "Not authorized",
+              "type": "Unauthorized",
+              "code": 401
+            }
+          }
+
+    TagForbiddenResponse:
+      description: |
+        Forbidden - the caller is authenticated but lacks the permission this operation requires.
+
+        Possible error types: Forbidden.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PolarisErrorResponse'
+          example: {
+            "error": {
+              "message": "Not authorized to perform this operation",
+              "type": "Forbidden",
+              "code": 403
+            }
+          }
+
+    TagServiceUnavailableResponse:
+      description: |
+        Service Unavailable - the server cannot handle the request right now and the caller may retry.
+
+        On createTag, updateTag and renameTag this response is also returned when a supported write cannot
+        accept another idempotency key because the number of keys recognized for the definition is at its
+        bound; the write is left unapplied, and the response carries a Retry-After header.
+
+        Possible error types: ServiceUnavailable.
+      headers:
+        Retry-After:
+          description: |
+            How long to wait before retrying, as a number of seconds or an HTTP-date. Present when the
+            server can state a delay, which includes a write rejected because the number of idempotency
+            keys recognized for the definition is at its bound.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PolarisErrorResponse'
+          example: {
+            "error": {
+              "message": "Service is unavailable, please retry",
+              "type": "ServiceUnavailable",
+              "code": 503
+            }
+          }
+
+    TagServerErrorResponse:
+      description: |
+        Server Error - an unexpected failure on the server, or a required dependency failing for a reason
+        no other response on this operation covers. The error type is the fixed wire literal
+        InternalServerError with code 500, independent of the internal exception class that produced it.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PolarisErrorResponse'
+          example: {
+            "error": {
+              "message": "Internal Server Error",
+              "type": "InternalServerError",
+              "code": 500
+            }
+          }
+
+    CreateTagResponse:
+      description: The created definition, returned directly
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Tag'
+
+    LoadTagResponse:
+      description: The definition, returned directly
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Tag'
+
+    UpdateTagResponse:
+      description: The updated definition, returned directly
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Tag'
+
+    ListTagsResponse:
+      description: |
+        One page of tag definition identifiers, or the complete list when the request asked for a full
+        result
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListTagsResponse'
+          examples:
+            ListTagsResponseNonEmpty:
+              $ref: '#/components/examples/ListTagsNonEmptyExample'
+            ListTagsResponseEmpty:
+              $ref: '#/components/examples/ListTagsEmptyExample'
+
+    GetObjectTagsResponse:
+      description: |
+        One page of the queried target's direct or effective tags, or all of them when the request asked
+        for a full result
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetObjectTagsResponse'
+          examples:
+            GetObjectTagsResponseEffective:
+              $ref: '#/components/examples/GetObjectTagsEffectiveExample'
+
+    ListObjectsByTagResponse:
+      description: A page of targets that carry a direct assignment of the named tag definition
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListObjectsByTagResponse'
+          examples:
+            ListObjectsByTagResponseNonEmpty:
+              $ref: '#/components/examples/ListObjectsByTagNonEmptyExample'
+
+  examples:
+    NoSuchTagError:
+      summary: The requested tag definition does not exist
+      value: {
+        "error": {
+          "message": "The given tag definition does not exist",
+          "type": "NoSuchTag",
+          "code": 404
+        }
+      }
+
+    TagAlreadyExistsError:
+      summary: A tag definition with the requested name already exists
+      value: {
+        "error": {
+          "message": "A tag definition with the given name already exists in the catalog",
+          "type": "AlreadyExists",
+          "code": 409
+        }
+      }
+
+    TagVersionMismatchError:
+      summary: The supplied current-tag-version is not the definition's current token
+      value: {
+        "error": {
+          "message": "The supplied current-tag-version does not match the tag definition's current version token",
+          "type": "TagVersionMismatch",
+          "code": 409
+        }
+      }
+
+    TagCommitConflictError:
+      summary: The definition was concurrently modified; retry
+      value: {
+        "error": {
+          "message": "Concurrent modification on tag 'sensitivity'; retry later",
+          "type": "CommitConflict",
+          "code": 409
+        }
+      }
+    TagInUseError:
+      summary: Assignments of the tag definition remain
+      value: {
+        "error": {
+          "message": "The tag definition is assigned to one or more targets and detach-all is not set to true",
+          "type": "TagInUse",
+          "code": 400
+        }
+      }
+
+    NoSuchTargetError:
+      summary: The requested target does not exist
+      value: {
+        "error": {
+          "message": "The given target path or column does not exist",
+          "type": "NoSuchTarget",
+          "code": 404
+        }
+      }
+
+    NoSuchAssignmentError:
+      summary: The requested assignment does not exist on the target
+      value: {
+        "error": {
+          "message": "The given tag is not assigned to the given target",
+          "type": "NoSuchAssignment",
+          "code": 404
+        }
+      }
+
+    UnsupportedTargetError:
+      summary: The requested target is unsupported or malformed
+      value: {
+        "error": {
+          "message": "The given target is not supported in v1 or does not match its declared type",
+          "type": "BadRequest",
+          "code": 400
+        }
+      }
+
+    InvalidTargetQueryError:
+      summary: A target-address query parameter is empty, repeated, or encodes an empty namespace level
+      value: {
+        "error": {
+          "message": "Invalid target query parameter 'namespace': it must appear at most once and contain one or more non-empty levels",
+          "type": "BadRequest",
+          "code": 400
+        }
+      }
+
+    TargetTypeNotAllowedError:
+      summary: The target kind is excluded by the definition's target-types
+      value: {
+        "error": {
+          "message": "The target kind is not listed in the tag definition's target-types",
+          "type": "BadRequest",
+          "code": 400
+        }
+      }
+
+    AllowedValuesInvalidError:
+      summary: The values list is invalid
+      value: {
+        "error": {
+          "message": "values must be a non-empty list of unique, non-empty strings",
+          "type": "BadRequest",
+          "code": 400
+        }
+      }
+
+    TargetTypesInvalidError:
+      summary: A supplied target-types list is invalid
+      value: {
+        "error": {
+          "message": "when supplied, target-types must be a non-empty list of unique, known target types",
+          "type": "BadRequest",
+          "code": 400
+        }
+      }
+
+    TagInvalidIdempotencyKeyError:
+      summary: The Idempotency-Key header is present but malformed
+      value: {
+        "error": {
+          "message": "Invalid Idempotency-Key header; expected a UUID",
+          "type": "InvalidIdempotencyKey",
+          "code": 400
+        }
+      }
+
+    RenameDestinationInvalidError:
+      summary: The rename destination is invalid
+      value: {
+        "error": {
+          "message": "destination must match the tag name pattern and must differ from source",
+          "type": "BadRequest",
+          "code": 400
+        }
+      }
+
+    TargetTypesImmutableError:
+      summary: target-types cannot be supplied on update
+      value: {
+        "error": {
+          "message": "target-types cannot be supplied on update, including as an explicit null, because it is create-only",
+          "type": "BadRequest",
+          "code": 400
+        }
+      }
+
+    ValuesInvalidError:
+      summary: The selected values list is invalid
+      value: {
+        "error": {
+          "message": "values must be a non-empty list of unique, non-empty strings",
+          "type": "BadRequest",
+          "code": 400
+        }
+      }
+
+    MultipleValuesNotSupportedError:
+      summary: More than one selected value
+      value: {
+        "error": {
+          "message": "v1 supports exactly one selected value per assignment",
+          "type": "BadRequest",
+          "code": 400
+        }
+      }
+
+    ValueInvalidError:
+      summary: The selected value is not currently allowed
+      value: {
+        "error": {
+          "message": "The selected value is not in the tag definition's current values list",
+          "type": "BadRequest",
+          "code": 400
+        }
+      }
+
+    ListTagsNonEmptyExample:
+      summary: The first page of tag definition identifiers, with more to read
+      value:
+        next-page-token: dGFnLTRiMDdhZQ
+        identifiers:
+          - id: tag-8f31c2
+            name: sensitivity
+          - id: tag-4b07ae
+            name: retention
+
+    ListTagsEmptyExample:
+      summary: A complete, empty result for a catalog with no tag definitions
+      value:
+        identifiers: [ ]
+
+    GetObjectTagsEffectiveExample:
+      summary: |
+        An effective read of a column that inherits one tag and carries one direct tag, complete in one
+        page
+      value:
+        object-tags:
+          - tag:
+              id: tag-8f31c2
+              name: sensitivity
+            values:
+              - confidential
+            apply-method: DIRECT
+            assigned-at:
+              type: COLUMN
+              path:
+                - sales
+                - customers
+              column:
+                - email
+          - tag:
+              id: tag-4b07ae
+              name: retention
+            values:
+              - short
+            apply-method: INHERITED
+            assigned-at:
+              type: NAMESPACE
+              path:
+                - sales
+
+    ListObjectsByTagNonEmptyExample:
+      summary: A page of direct assignments of one tag definition
+      value:
+        objects:
+          - target:
+              type: TABLE
+              path:
+                - sales
+                - customers
+            values:
+              - internal
+            apply-method: DIRECT
+          - target:
+              type: COLUMN
+              path:
+                - sales
+                - customers
+              column:
+                - email
+            values:
+              - confidential
+            apply-method: DIRECT

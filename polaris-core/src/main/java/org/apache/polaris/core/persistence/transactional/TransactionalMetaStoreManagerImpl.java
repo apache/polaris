@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -66,13 +67,17 @@ import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadAllTagAssignmentTargetsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadTagAssignmentTargetsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadTagAssignmentsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.TagAssignmentResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -81,6 +86,13 @@ import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.tag.CandidateBudget;
+import org.apache.polaris.core.tag.ClassifiedAssignment;
+import org.apache.polaris.core.tag.PolarisTagAssignmentManager.TargetLevel;
+import org.apache.polaris.core.tag.TagAssignmentRecord;
+import org.apache.polaris.core.tag.TagAssignmentTargetToken;
+import org.apache.polaris.core.tag.TagEntity;
+import org.apache.polaris.core.tag.TargetField;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -239,6 +251,32 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             callCtx, entity, mappingOnTarget, mappingOnPolicy);
       } catch (UnsupportedOperationException e) {
         // Policy mapping persistence not implemented, but we should not block dropping entities
+      }
+    }
+
+    if (entity.getType() == PolarisEntityType.CATALOG
+        || entity.getType() == PolarisEntityType.NAMESPACE
+        || entity.getType() == PolarisEntityType.TABLE_LIKE) {
+      // Best-effort cleanup - for potential tag assignment targets, drop the assignment rows
+      // stored on the dropped target. Target deletion never depends on this cleanup succeeding;
+      // any row left behind is orphaned and hidden from reads. (Dropping a TAG definition itself
+      // is handled in dropEntityIfExists and is all-or-nothing, never best-effort.)
+      try {
+        final List<TagAssignmentRecord> assignmentsOnTarget =
+            ms.loadAllTagAssignmentsOnTargetEntityInCurrentTxn(
+                callCtx, TagAssignmentRecord.containingCatalogId(entity), entity.getId());
+        ms.deleteAllEntityTagAssignmentRecordsInCurrentTxn(
+            callCtx, entity, List.of(), assignmentsOnTarget);
+      } catch (UnsupportedOperationException e) {
+        // Tag assignment persistence not implemented, but we should not block dropping entities
+      } catch (RuntimeException e) {
+        // Best-effort by contract: a cleanup failure must never fail the target entity drop.
+        // Rows left behind are orphaned and hidden from reads.
+        LOGGER.warn(
+            "Failed best-effort tag-assignment cleanup while dropping entity {} of type {}",
+            entity.getId(),
+            entity.getType(),
+            e);
       }
     }
 
@@ -1315,7 +1353,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nullable List<PolarisEntityCore> catalogPath,
       @NonNull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
-      boolean cleanup) {
+      boolean cleanup,
+      @Nullable Set<ClassifiedAssignment> classifiedAssignments) {
     // entity cannot be null
     getDiagnostics().checkNotNull(entityToDrop, "unexpected_null_entity");
 
@@ -1374,6 +1413,12 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         }
       }
 
+      // a live tag definition blocks the drop: tags are catalog children, so dropping the
+      // catalog would leave them behind as unreachable rows
+      if (ms.hasChildrenInCurrentTxn(callCtx, PolarisEntityType.TAG, catalogId, catalogId)) {
+        return new DropEntityResult(BaseResult.ReturnStatus.CATALOG_NOT_EMPTY, null);
+      }
+
       // get the list of catalog roles, at most 2
       List<PolarisBaseEntity> catalogRoles =
           ms.loadEntitiesInCurrentTxn(
@@ -1417,6 +1462,56 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       } catch (UnsupportedOperationException e) {
         // Policy mapping persistence not implemented, but we should not block dropping entities
       }
+    } else if (refreshEntityToDrop.getType() == PolarisEntityType.TAG) {
+      if (cleanup) {
+        // Remove the assignments of this definition inside this transaction; the definition row
+        // itself is removed by dropEntity below in the same transaction, so callers observe every
+        // assignment and the definition removed, or no change. A tag drop must never report
+        // success after partial work, so a backend that cannot perform this atomically cannot drop
+        // a tag definition this way.
+        try {
+          if (classifiedAssignments == null) {
+            // detach-all: every assignment goes, whatever it names.
+            ms.deleteAllTagAssignmentsOnTagInCurrentTxn(callCtx, refreshEntityToDrop);
+          } else if (!ms.deleteClassifiedTagAssignmentsOnTagInCurrentTxn(
+              callCtx, refreshEntityToDrop, classifiedAssignments)) {
+            // The caller judged the definition's surviving rows inert and asked for exactly those
+            // to go. The definition holds a row it never judged, so this returns before anything
+            // is written and the caller classifies again rather than deleting a row that may be
+            // live.
+            return new DropEntityResult(
+                BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
+                "the tag's assignment rows changed after they were classified");
+          }
+        } catch (UnsupportedOperationException e) {
+          return new DropEntityResult(
+              BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+              Objects.requireNonNullElse(
+                  e.getMessage(),
+                  "this backend cannot atomically remove a tag definition and its assignments"));
+        }
+      } else {
+        try {
+          List<TagAssignmentRecord> records =
+              ms.loadAllTargetsOnTagInCurrentTxn(
+                  callCtx,
+                  refreshEntityToDrop.getCatalogId(),
+                  refreshEntityToDrop.getId(),
+                  null,
+                  PageToken.fromLimit(1),
+                  CandidateBudget.unbounded());
+          if (!records.isEmpty()) {
+            return new DropEntityResult(BaseResult.ReturnStatus.TAG_HAS_ASSIGNMENTS, null);
+          }
+        } catch (UnsupportedOperationException e) {
+          // Like the POLICY branch above, and unlike the detach-all branch above: below the
+          // tag-assignment schema version no assignment can exist, so this is not a backend that
+          // cannot answer whether the tag has assignments, the answer is definitively "none", and
+          // a plain drop must keep working (same contract as the target-entity-drop cleanup
+          // path). This never actually throws for the in-memory backend today (it has no
+          // schema-version gate), but the branch mirrors the atomic manager for consistency.
+        }
+      }
     }
 
     // simply delete that entity. Will be removed from entities_active, added to the
@@ -1426,7 +1521,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // if cleanup, schedule a cleanup task for the entity. do this here, so that drop and scheduling
     // the cleanup task is transactional. Otherwise, we'll be unable to schedule the cleanup task
     // later
-    if (cleanup && refreshEntityToDrop.getType() != PolarisEntityType.POLICY) {
+    if (cleanup
+        && refreshEntityToDrop.getType() != PolarisEntityType.POLICY
+        && refreshEntityToDrop.getType() != PolarisEntityType.TAG) {
       Map<String, String> properties = new HashMap<>();
       properties.put(
           PolarisTaskConstants.TASK_TYPE,
@@ -1470,7 +1567,26 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         callCtx,
         () ->
             this.dropEntityIfExists(
-                callCtx, ms, catalogPath, entityToDrop, cleanupProperties, cleanup));
+                callCtx, ms, catalogPath, entityToDrop, cleanupProperties, cleanup, null));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull DropEntityResult dropTagAndClassifiedAssignmentsIfExists(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity tagToDrop,
+      @NonNull Set<ClassifiedAssignment> classifiedAssignments) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+
+    // The re-read that checks the classification, the assignment deletes and the definition delete
+    // all run in this one transaction, so a row written concurrently either loses to it or is seen
+    // by that re-read.
+    return ms.runInTransaction(
+        callCtx,
+        () ->
+            this.dropEntityIfExists(
+                callCtx, ms, catalogPath, tagToDrop, null, true, classifiedAssignments));
   }
 
   /**
@@ -2439,6 +2555,343 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
+  public @NonNull TagAssignmentResult assignTagToEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag,
+      @NonNull String value) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    return ms.runInTransaction(
+        callCtx,
+        () ->
+            this.doAssignTagToEntity(
+                callCtx, ms, targetCatalogPath, target, fieldId, tagCatalogPath, tag, value));
+  }
+
+  /**
+   * See {@link #assignTagToEntity(PolarisCallContext, List, PolarisEntityCore, int, List,
+   * TagEntity, String)}
+   */
+  private @NonNull TagAssignmentResult doAssignTagToEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull TransactionalPersistence ms,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag,
+      @NonNull String value) {
+    PolarisEntityResolver targetResolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, targetCatalogPath, target);
+    PolarisEntityResolver tagResolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, tagCatalogPath, tag);
+    // Concurrent-miss precedence is deterministic and identical across managers: a target miss
+    // classifies before a tag miss, matching the resolution-time classification.
+    if (targetResolver.isFailure()) {
+      // Target-side miss: maps to the target-not-found wire error, distinct from a tag miss.
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, "target no longer exists");
+    }
+    if (tagResolver.isFailure()) {
+      // Tag-side miss: maps to the tag-not-found wire error.
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "tag no longer exists");
+    }
+
+    // Re-read the tag definition inside the transaction: the selected value must satisfy the
+    // definition's allowed values as of this write.
+    PolarisBaseEntity tagEntity =
+        ms.lookupEntityInCurrentTxn(
+            callCtx, tag.getCatalogId(), tag.getId(), PolarisEntityType.TAG.getCode());
+    if (tagEntity == null) {
+      return new TagAssignmentResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+    if (!TagEntity.of(tagEntity).getValues().contains(value)) {
+      throw new BadRequestException(
+          "Value '%s' is not in the current allowed values of tag %s", value, tagEntity.getName());
+    }
+
+    // Assignments are same-catalog: enforce the invariant at this boundary rather than relying
+    // on the REST wiring, which happens to only express same-catalog requests today.
+    if (TagAssignmentRecord.containingCatalogId(target) != tag.getCatalogId()) {
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, "target is not in the tag's catalog");
+    }
+    TagAssignmentRecord assignmentRecord =
+        new TagAssignmentRecord(
+            TagAssignmentRecord.containingCatalogId(target),
+            target.getId(),
+            fieldId,
+            tag.getCatalogId(),
+            tag.getId(),
+            value);
+    try {
+      ms.writeToTagAssignmentRecordsInCurrentTxn(callCtx, assignmentRecord);
+    } catch (UnsupportedOperationException e) {
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+          Objects.requireNonNullElse(
+              e.getMessage(), "this backend does not support tag assignments"));
+    }
+    return new TagAssignmentResult(assignmentRecord);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull TagAssignmentResult unassignTagFromEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    return ms.runInTransaction(
+        callCtx,
+        () ->
+            this.doUnassignTagFromEntity(
+                callCtx, ms, targetCatalogPath, target, fieldId, tagCatalogPath, tag));
+  }
+
+  /**
+   * See {@link #unassignTagFromEntity(PolarisCallContext, List, PolarisEntityCore, int, List,
+   * TagEntity)}
+   */
+  private TagAssignmentResult doUnassignTagFromEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull TransactionalPersistence ms,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag) {
+    PolarisEntityResolver targetResolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, targetCatalogPath, target);
+    PolarisEntityResolver tagResolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, tagCatalogPath, tag);
+    // Concurrent-miss precedence is deterministic and identical across managers: a target miss
+    // classifies before a tag miss, matching the resolution-time classification.
+    if (targetResolver.isFailure()) {
+      // Target-side miss: maps to the target-not-found wire error, distinct from a tag miss.
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, "target no longer exists");
+    }
+    if (tagResolver.isFailure()) {
+      // Tag-side miss: maps to the tag-not-found wire error.
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "tag no longer exists");
+    }
+
+    try {
+      TagAssignmentRecord assignmentRecord =
+          ms.lookupTagAssignmentRecordInCurrentTxn(
+              callCtx,
+              TagAssignmentRecord.containingCatalogId(target),
+              target.getId(),
+              fieldId,
+              tag.getCatalogId(),
+              tag.getId());
+      if (assignmentRecord == null) {
+        return new TagAssignmentResult(BaseResult.ReturnStatus.TAG_ASSIGNMENT_NOT_FOUND, null);
+      }
+      // Same identity boundary as the atomic manager: trust the delete's own return value for
+      // whether a row was actually removed, not just the preceding lookup.
+      if (!ms.deleteFromTagAssignmentRecordsInCurrentTxn(callCtx, assignmentRecord)) {
+        return new TagAssignmentResult(BaseResult.ReturnStatus.TAG_ASSIGNMENT_NOT_FOUND, null);
+      }
+      return new TagAssignmentResult(assignmentRecord);
+    } catch (UnsupportedOperationException e) {
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+          Objects.requireNonNullElse(
+              e.getMessage(), "this backend does not support tag assignments"));
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull LoadTagAssignmentsResult loadTagsOnEntities(
+      @NonNull PolarisCallContext callCtx, @NonNull List<TargetLevel> levels, int candidateBudget) {
+    if (levels.isEmpty()) {
+      return new LoadTagAssignmentsResult(List.of(), List.of());
+    }
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    // The whole walk, every requested level's existence check, its assignment rows, and the
+    // referenced tag definitions, runs inside one read transaction: one lock held for the entire
+    // call, not one lock acquired and released per level. A writer can never run and commit an
+    // entire transaction of its own between two levels this call loads.
+    return ms.runInReadTransaction(
+        callCtx, () -> this.doLoadTagsOnEntities(callCtx, ms, levels, candidateBudget));
+  }
+
+  /** See {@link #loadTagsOnEntities(PolarisCallContext, List, int)} */
+  private LoadTagAssignmentsResult doLoadTagsOnEntities(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull TransactionalPersistence ms,
+      @NonNull List<TargetLevel> levels,
+      int candidateBudget) {
+    // One bulk existence check across every requested level: a level whose target has vanished
+    // fails the whole read rather than a partial result, matching the pre-existing single-level
+    // contract. Keyed by the entity's own catalog id, not the assignment row's containing-catalog
+    // id: a catalog target's own catalogId is null-ish, while TagAssignmentRecord
+    // .containingCatalogId reports its own id for that same entity; these are deliberately
+    // different id spaces for the same target.
+    List<PolarisEntityId> targetEntityIds =
+        levels.stream()
+            .map(
+                level -> new PolarisEntityId(level.entity().getCatalogId(), level.entity().getId()))
+            .distinct()
+            .collect(Collectors.toList());
+    List<PolarisBaseEntity> targetEntities =
+        ms.lookupEntitiesInCurrentTxn(callCtx, targetEntityIds);
+    if (targetEntities.stream().anyMatch(Objects::isNull)) {
+      // At least one requested target entity does not exist
+      return new LoadTagAssignmentsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    // The rows and the definitions below need no cross-checking on this backend: they are read
+    // inside this one transaction, so they cannot come from different instants. The chain is the
+    // half that stays open, because the request resolved it before this transaction opened, and a
+    // response names those levels. Validate it against the entities just read -- which are this
+    // transaction's own state, so this costs no extra read -- rather than re-reading versions the
+    // way a backend without a read transaction has to.
+    Map<PolarisEntityId, Integer> resolvedLevelVersions = tagLevelResolvedVersions(levels);
+    for (int i = 0; i < targetEntityIds.size(); i++) {
+      PolarisEntityId levelId = targetEntityIds.get(i);
+      PolarisBaseEntity current = targetEntities.get(i);
+      Integer resolvedVersion = resolvedLevelVersions.get(levelId);
+      if (resolvedVersion == null || current.getEntityVersion() == resolvedVersion) {
+        continue;
+      }
+      // One entity can be requested at more than one level: an effective read of a column asks for
+      // the whole table and for the column on that same table, and only the column level carries
+      // the
+      // schema pointer. Every level requested on this entity has to survive, because each one
+      // contributes its own facts to the response; checking one of them would leave the others
+      // unvalidated.
+      List<TargetLevel> requestedOnThisEntity =
+          levels.stream()
+              .filter(
+                  level ->
+                      level.entity().getId() == levelId.id()
+                          && level.entity().getCatalogId() == levelId.catalogId())
+              .toList();
+      if (requestedOnThisEntity.isEmpty()) {
+        // No retry: entity_version only moves forward and the caller's resolution is fixed.
+        throw concurrentTagReadModification("the target or one of its parents changed");
+      }
+      for (TargetLevel level : requestedOnThisEntity) {
+        if (!tagLevelUnchanged(level, current)) {
+          // No retry: entity_version only moves forward and the caller's resolution is fixed.
+          throw concurrentTagReadModification("the target or one of its parents changed");
+        }
+      }
+    }
+
+    try {
+      List<TargetField> targetFields =
+          levels.stream()
+              .map(
+                  level ->
+                      new TargetField(
+                          TagAssignmentRecord.containingCatalogId(level.entity()),
+                          level.entity().getId(),
+                          level.fieldId()))
+              .collect(Collectors.toList());
+      final List<TagAssignmentRecord> assignmentRecords =
+          ms.loadTagAssignmentsOnTargetFieldsInCurrentTxn(callCtx, targetFields, candidateBudget);
+      List<PolarisEntityId> tagEntityIds =
+          assignmentRecords.stream()
+              .map(
+                  assignmentRecord ->
+                      new PolarisEntityId(
+                          assignmentRecord.getTagCatalogId(), assignmentRecord.getTagId()))
+              .distinct()
+              .collect(Collectors.toList());
+      List<PolarisBaseEntity> tagEntities = ms.lookupEntitiesInCurrentTxn(callCtx, tagEntityIds);
+      return new LoadTagAssignmentsResult(assignmentRecords, tagEntities);
+    } catch (UnsupportedOperationException e) {
+      return new LoadTagAssignmentsResult(
+          BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+          Objects.requireNonNullElse(
+              e.getMessage(), "this backend does not support tag assignments"));
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull LoadTagAssignmentTargetsResult loadTargetsOnTag(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore tag,
+      @Nullable String valueFilter,
+      @NonNull PageToken pageToken,
+      @NonNull CandidateBudget candidateBudget) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    return ms.runInReadTransaction(
+        callCtx,
+        () -> this.doLoadTargetsOnTag(callCtx, ms, tag, valueFilter, pageToken, candidateBudget));
+  }
+
+  /**
+   * See {@link #loadTargetsOnTag(PolarisCallContext, PolarisEntityCore, String, PageToken,
+   * CandidateBudget)}
+   */
+  private LoadTagAssignmentTargetsResult doLoadTargetsOnTag(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull TransactionalPersistence ms,
+      @NonNull PolarisEntityCore tag,
+      @Nullable String valueFilter,
+      @NonNull PageToken pageToken,
+      @NonNull CandidateBudget candidateBudget) {
+    PolarisBaseEntity tagEntity =
+        ms.lookupEntityInCurrentTxn(callCtx, tag.getCatalogId(), tag.getId(), tag.getTypeCode());
+    if (tagEntity == null) {
+      // tag definition does not exist
+      return new LoadTagAssignmentTargetsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    try {
+      List<TagAssignmentRecord> records =
+          ms.loadAllTargetsOnTagInCurrentTxn(
+              callCtx, tag.getCatalogId(), tag.getId(), valueFilter, pageToken, candidateBudget);
+      Page<TagAssignmentRecord> page =
+          Page.mapped(
+              pageToken,
+              records.stream(),
+              Function.identity(),
+              TagAssignmentTargetToken::fromRecord);
+      List<PolarisEntityId> targetEntityIds =
+          page.items().stream()
+              .map(
+                  record ->
+                      new PolarisEntityId(
+                          // a catalog target's assignment row stores the catalog's own id as its
+                          // containing catalog id, while the catalog entity itself lives under the
+                          // root container: invert that mapping for the entity lookup
+                          record.getTargetCatalogId() == record.getTargetId()
+                              ? PolarisEntityConstants.getNullId()
+                              : record.getTargetCatalogId(),
+                          record.getTargetId()))
+              .distinct()
+              .collect(Collectors.toList());
+      List<PolarisBaseEntity> targetEntities =
+          targetEntityIds.isEmpty()
+              ? List.of()
+              : ms.lookupEntitiesInCurrentTxn(callCtx, targetEntityIds);
+      return new LoadTagAssignmentTargetsResult(page, targetEntities);
+    } catch (UnsupportedOperationException e) {
+      return new LoadTagAssignmentTargetsResult(
+          BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+          Objects.requireNonNullElse(
+              e.getMessage(), "this backend does not support tag assignments"));
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public @NonNull LoadPolicyMappingsResult loadPoliciesOnEntityByType(
       @NonNull PolarisCallContext callCtx,
       @NonNull PolarisEntityCore target,
@@ -2535,5 +2988,66 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             .distinct()
             .collect(Collectors.toList());
     return ms.lookupEntitiesInCurrentTxn(callCtx, policyEntityIds);
+  }
+
+  /** See {@link PolarisMetaStoreManager#loadAllTargetsOnTagWithEntities} */
+  private @NonNull LoadAllTagAssignmentTargetsResult loadAllTargetsOnTagWithEntities(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull TransactionalPersistence ms,
+      @NonNull PolarisEntityCore tag) {
+    PolarisBaseEntity tagEntity =
+        ms.lookupEntityInCurrentTxn(callCtx, tag.getCatalogId(), tag.getId(), tag.getTypeCode());
+    if (tagEntity == null) {
+      // tag definition does not exist
+      return new LoadAllTagAssignmentTargetsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    try {
+      List<TagAssignmentRecord> records =
+          ms.loadAllTargetsOnTagInCurrentTxn(
+              callCtx,
+              tag.getCatalogId(),
+              tag.getId(),
+              null,
+              PageToken.readEverything(),
+              CandidateBudget.unbounded());
+      List<PolarisEntityId> targetEntityIds =
+          records.stream()
+              .map(
+                  record ->
+                      new PolarisEntityId(
+                          // a catalog target's assignment row stores the catalog's own id as its
+                          // containing catalog id, while the catalog entity itself lives under the
+                          // root container: invert that mapping for the entity lookup
+                          record.getTargetCatalogId() == record.getTargetId()
+                              ? PolarisEntityConstants.getNullId()
+                              : record.getTargetCatalogId(),
+                          record.getTargetId()))
+              .distinct()
+              .collect(Collectors.toList());
+      List<PolarisBaseEntity> targetEntities =
+          targetEntityIds.isEmpty()
+              ? List.of()
+              : ms.lookupEntitiesInCurrentTxn(callCtx, targetEntityIds);
+      return new LoadAllTagAssignmentTargetsResult(records, targetEntities);
+    } catch (UnsupportedOperationException e) {
+      return new LoadAllTagAssignmentTargetsResult(
+          BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+          Objects.requireNonNullElse(
+              e.getMessage(), "this backend does not support tag assignments"));
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull LoadAllTagAssignmentTargetsResult loadAllTargetsOnTagWithEntities(
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisEntityCore tag) {
+    // get metastore we should be using
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+
+    // the rows and the entities they point at must describe one state: a target dropped between the
+    // two reads would otherwise look live in one and gone in the other
+    return ms.runInReadTransaction(
+        callCtx, () -> loadAllTargetsOnTagWithEntities(callCtx, ms, tag));
   }
 }

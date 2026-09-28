@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EventEntity;
@@ -45,17 +46,25 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadAllTagAssignmentTargetsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadTagAssignmentTargetsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadTagAssignmentsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.TagAssignmentResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.tag.CandidateBudget;
+import org.apache.polaris.core.tag.ClassifiedAssignment;
+import org.apache.polaris.core.tag.PolarisTagAssignmentManager.TargetLevel;
+import org.apache.polaris.core.tag.TagEntity;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -392,6 +401,60 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @NonNull PolarisEntityCore target,
       @NonNull PolicyType policyType) {
     throw illegalMethodError("loadPoliciesOnEntityByType");
+  }
+
+  @Override
+  public @NonNull DropEntityResult dropTagAndClassifiedAssignmentsIfExists(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity tagToDrop,
+      @NonNull Set<ClassifiedAssignment> classifiedAssignments) {
+    throw illegalMethodError("dropTagAndClassifiedAssignmentsIfExists");
+  }
+
+  @Override
+  public @NonNull TagAssignmentResult assignTagToEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag,
+      @NonNull String value) {
+    throw illegalMethodError("assignTagToEntity");
+  }
+
+  @Override
+  public @NonNull TagAssignmentResult unassignTagFromEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag) {
+    throw illegalMethodError("unassignTagFromEntity");
+  }
+
+  @Override
+  public @NonNull LoadAllTagAssignmentTargetsResult loadAllTargetsOnTagWithEntities(
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisEntityCore tag) {
+    throw illegalMethodError("loadAllTargetsOnTagWithEntities");
+  }
+
+  @Override
+  public @NonNull LoadTagAssignmentsResult loadTagsOnEntities(
+      @NonNull PolarisCallContext callCtx, @NonNull List<TargetLevel> levels, int candidateBudget) {
+    throw illegalMethodError("loadTagsOnEntities");
+  }
+
+  @Override
+  public @NonNull LoadTagAssignmentTargetsResult loadTargetsOnTag(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore tag,
+      @Nullable String valueFilter,
+      @NonNull PageToken pageToken,
+      @NonNull CandidateBudget candidateBudget) {
+    throw illegalMethodError("loadTargetsOnTag");
   }
 
   @Override

@@ -45,7 +45,10 @@ public class ReturnStatusTest {
         Arguments.of(14, BaseResult.ReturnStatus.POLICY_MAPPING_NOT_FOUND),
         Arguments.of(15, BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS),
         Arguments.of(16, BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS),
-        Arguments.of(17, null));
+        Arguments.of(17, BaseResult.ReturnStatus.TAG_HAS_ASSIGNMENTS),
+        Arguments.of(18, BaseResult.ReturnStatus.TAG_ASSIGNMENT_NOT_FOUND),
+        Arguments.of(19, BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED),
+        Arguments.of(20, null));
   }
 
   @ParameterizedTest

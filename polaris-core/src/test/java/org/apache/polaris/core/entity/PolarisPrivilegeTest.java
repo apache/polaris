@@ -138,7 +138,23 @@ public class PolarisPrivilegeTest {
         Arguments.of(107, PolarisPrivilege.SEMANTIC_MODEL_DROP),
         Arguments.of(108, PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA),
         Arguments.of(109, PolarisPrivilege.SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE),
-        Arguments.of(110, null));
+        Arguments.of(110, PolarisPrivilege.TAG_CREATE),
+        Arguments.of(111, PolarisPrivilege.TAG_READ),
+        Arguments.of(112, PolarisPrivilege.TAG_DROP),
+        Arguments.of(113, PolarisPrivilege.TAG_WRITE),
+        Arguments.of(114, PolarisPrivilege.TAG_LIST),
+        Arguments.of(115, PolarisPrivilege.TAG_FULL_METADATA),
+        Arguments.of(116, PolarisPrivilege.TAG_ATTACH),
+        Arguments.of(117, PolarisPrivilege.TAG_DETACH),
+        Arguments.of(118, PolarisPrivilege.CATALOG_ATTACH_TAG),
+        Arguments.of(119, PolarisPrivilege.NAMESPACE_ATTACH_TAG),
+        Arguments.of(120, PolarisPrivilege.TABLE_ATTACH_TAG),
+        Arguments.of(121, PolarisPrivilege.CATALOG_DETACH_TAG),
+        Arguments.of(122, PolarisPrivilege.NAMESPACE_DETACH_TAG),
+        Arguments.of(123, PolarisPrivilege.TABLE_DETACH_TAG),
+        Arguments.of(124, PolarisPrivilege.VIEW_ATTACH_TAG),
+        Arguments.of(125, PolarisPrivilege.VIEW_DETACH_TAG),
+        Arguments.of(126, null));
   }
 
   @ParameterizedTest

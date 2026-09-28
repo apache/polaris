@@ -44,7 +44,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   and retain their existing default.
 
 - Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
-  (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris
+  (see Fixes). Fresh bootstraps use the latest schema version (v7, see the schema v7 upgrade note
+  below) and get the right index. Because Polaris
   has no automated schema migrations, existing Postgres/CockroachDB deployments keep the old,
   ineffective index until an operator recreates it manually:
   ```sql
@@ -65,6 +66,39 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id ON polaris_schema.entities (catalog_id, id);
   ```
   Postgres and H2 are unaffected.
+
+- Relational JDBC: a new schema version 7 adds the `tag_assignment_record` table backing tag
+  assignments. Fresh bootstraps use schema v7 automatically. Existing deployments on older schema
+  versions keep working, but tag assignment writes are rejected with an error naming the v7
+  requirement until the database is upgraded; Polaris has no automated schema migrations, so the
+  upgrade is a one-time manual step (run against each existing database, then restart Polaris).
+  A database below schema v5 must first apply the v5 change (see the 1.7.0 release's Upgrade
+  notes), then the v6 index changes above, then this step, in that order. Skipping the v5 step
+  and jumping straight from schema v3/v4 to v7 leaves the `events.catalog_id` column `NOT NULL`
+  while the server, now reporting schema v7, writes `NULL` there, so every event write that is not
+  catalog-scoped fails. New realms bootstrapped into an existing database stay on that database's
+  current schema version, so this step is required before tag assignments can be used anywhere on
+  it:
+  ```sql
+  CREATE TABLE IF NOT EXISTS polaris_schema.tag_assignment_record (
+      realm_id TEXT NOT NULL,
+      target_catalog_id BIGINT NOT NULL,
+      target_id BIGINT NOT NULL,
+      field_id INTEGER NOT NULL DEFAULT 0,
+      tag_catalog_id BIGINT NOT NULL,
+      tag_id BIGINT NOT NULL,
+      tag_value TEXT NOT NULL,
+      PRIMARY KEY (realm_id, target_catalog_id, target_id, field_id, tag_catalog_id, tag_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_tag_assignment_record_by_tag
+      ON polaris_schema.tag_assignment_record (realm_id, tag_catalog_id, tag_id);
+  CREATE INDEX IF NOT EXISTS idx_tag_assignment_record_by_tag_value
+      ON polaris_schema.tag_assignment_record (realm_id, tag_catalog_id, tag_id, tag_value);
+  UPDATE polaris_schema.version SET version_value = 7 WHERE version_key = 'version';
+  ```
+  On CockroachDB, declare `field_id INT4` instead of `INTEGER`, matching the shipped
+  `cockroachdb/schema-v7.sql` (the generic INTEGER type maps incorrectly in the CockroachDB
+  JDBC driver).
 
 ### Breaking changes
 
@@ -107,6 +141,48 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Semantic models now support dedicated privileges for listing, creating, reading, updating,
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
+- Added tag management: tag definitions can be created, listed, loaded, updated and dropped
+  through the new `/polaris/v1/{prefix}/tags` endpoints, with catalog-scoped authorization and
+  new `TAG_*` privileges covered by `CATALOG_MANAGE_CONTENT`. The feature is gated by the
+  `ENABLE_TAG_STORE` feature flag (disabled by default) and is supported on the JDBC and
+  in-memory metastores; a metastore without tag storage, such as NoSQL, does not advertise the
+  endpoints and rejects them.
+- Tag definitions carry a read-only `id` that stays the same across renames and updates, so a client
+  can tell a renamed definition from a same-name replacement. Renaming is its own operation,
+  `POST /polaris/v1/{prefix}/tags/rename`, authorized as a drop on the definition plus a create in
+  the catalog, and an update now replaces the whole editable definition rather than patching
+  individual fields. Omitting `target-types` on create selects every target kind and stores that set
+  explicitly. `createTag`, `updateTag` and `renameTag` honour `Idempotency-Key`: a retry that carries
+  a key the definition already records is recognized instead of applied twice, within the lifetime
+  the shared idempotency configuration sets. Tag listings return the first page by default, and
+  `pagination=false` asks for the complete collection in one response. Tag listings bound both the
+  page they return and the full result they will answer, through `LIST_PAGINATION_DEFAULT_PAGE_SIZE`,
+  `LIST_PAGINATION_MAX_PAGE_SIZE_CEILING` and `LIST_PAGINATION_UNPAGINATED_MAX_RESULTS`.
+- Tag assignments: tags can be assigned to and unassigned from catalogs, namespaces, tables,
+  Iceberg views and top-level Iceberg table columns through
+  `PUT`/`DELETE /polaris/v1/{prefix}/tags/{tag-name}/assignments`, selecting the target with the
+  `target-type` query parameter and the matching `namespace`/`target-name`/`column` parameters.
+  `detach-all=true` on drop removes a definition together with its assignments. Allowed values
+  and assigned tag values are limited to 2000 UTF-8 bytes, an implementation size limit: the
+  value is part of a database index key. An assignment write checks the selected value against
+  the tag definition inside its own transaction and conflicts with a concurrent allowed-values
+  update on that same definition row, so a value an update removes before the assignment commits
+  is rejected.
+- Tag reads: `GET /polaris/v1/{prefix}/object-tags` returns the tags of one catalog, namespace,
+  table, Iceberg view or top-level Iceberg table column, naming the target with the same
+  `target-type` plus `namespace`/`target-name`/`column` parameters the assignment writes use, and
+  with `view=effective` returns the tags that apply after inheritance from the target's parents
+  instead of only the ones stored on it. `GET /polaris/v1/{prefix}/tags/{tag-name}/assignments` is
+  the reverse lookup, listing the targets that carry a tag, with an exact value filter. Both reads
+  bound the page they return and the full result they will answer through the same
+  `LIST_PAGINATION_*` settings the definition listing uses, and both hide assignment rows whose tag
+  definition, target or named column no longer resolves; a metadata read that fails is reported as
+  an error rather than as an absence. Both are rejected below schema v7 the same way assignment
+  writes are, rather than answering as though nothing were assigned. Reading an object's tags uses
+  that object's existing read-properties privilege and covers every tag that applies to it,
+  including inherited ones. The reverse lookup needs `TAG_READ` on the named definition and then
+  each reported target's own read-properties privilege, checked per target, so a target the caller
+  cannot read is left out of the result rather than reported.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.

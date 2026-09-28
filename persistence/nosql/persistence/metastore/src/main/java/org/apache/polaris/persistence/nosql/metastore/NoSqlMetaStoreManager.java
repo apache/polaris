@@ -30,6 +30,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
@@ -62,17 +63,25 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadAllTagAssignmentTargetsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadTagAssignmentTargetsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadTagAssignmentsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.TagAssignmentResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.tag.CandidateBudget;
+import org.apache.polaris.core.tag.ClassifiedAssignment;
+import org.apache.polaris.core.tag.PolarisTagAssignmentManager.TargetLevel;
+import org.apache.polaris.core.tag.TagEntity;
 import org.apache.polaris.persistence.nosql.metastore.mutation.GrantsMutation;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
 import org.jspecify.annotations.NonNull;
@@ -173,7 +182,84 @@ record NoSqlMetaStoreManager(
       @NonNull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
+    if (entityToDrop.getType() == PolarisEntityType.TAG) {
+      // Defense in depth: TAG entities have no type mapping on this backend, and dropEntity
+      // deletes the entity before any type-specific cleanup could run, so a TAG drop here could
+      // never honor the tag drop contract (reject when assignments remain, or remove the
+      // definition and every assignment together). Reject instead of deleting.
+      return new DropEntityResult(
+          BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+          "tag entities are not supported by the NoSQL backend");
+    }
     return ms(callCtx).dropEntity(entityToDrop, cleanupProperties, cleanup);
+  }
+
+  @Override
+  public @NonNull DropEntityResult dropTagAndClassifiedAssignmentsIfExists(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity tagToDrop,
+      @NonNull Set<ClassifiedAssignment> classifiedAssignments) {
+    // Same reason as the TAG branch of dropEntityIfExists above: this backend cannot honor any tag
+    // drop contract, so it rejects rather than deleting.
+    return new DropEntityResult(
+        BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+        "tag entities are not supported by the NoSQL backend");
+  }
+
+  @Override
+  public @NonNull TagAssignmentResult assignTagToEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag,
+      @NonNull String value) {
+    return new TagAssignmentResult(
+        BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+        "tag assignments are not supported by the NoSQL backend");
+  }
+
+  @Override
+  public @NonNull TagAssignmentResult unassignTagFromEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag) {
+    return new TagAssignmentResult(
+        BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+        "tag assignments are not supported by the NoSQL backend");
+  }
+
+  @Override
+  public @NonNull LoadAllTagAssignmentTargetsResult loadAllTargetsOnTagWithEntities(
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisEntityCore tag) {
+    return new LoadAllTagAssignmentTargetsResult(
+        BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+        "tag assignments are not supported by the NoSQL backend");
+  }
+
+  @Override
+  public @NonNull LoadTagAssignmentsResult loadTagsOnEntities(
+      @NonNull PolarisCallContext callCtx, @NonNull List<TargetLevel> levels, int candidateBudget) {
+    return new LoadTagAssignmentsResult(
+        BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+        "tag assignments are not supported by the NoSQL backend");
+  }
+
+  @Override
+  public @NonNull LoadTagAssignmentTargetsResult loadTargetsOnTag(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore tag,
+      @Nullable String valueFilter,
+      @NonNull PageToken pageToken,
+      @NonNull CandidateBudget candidateBudget) {
+    return new LoadTagAssignmentTargetsResult(
+        BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+        "tag assignments are not supported by the NoSQL backend");
   }
 
   @NonNull
@@ -264,6 +350,14 @@ record NoSqlMetaStoreManager(
   }
 
   @NonNull
+  @Override
+  public boolean supportsEntityType(PolarisEntityType entityType) {
+    // TAG has no object mapping on this backend (see EntityObjMappings), so nothing can be
+    // stored or resolved for it. Say so here instead of letting a request reach the mapping
+    // lookup and fail with an internal type code.
+    return entityType != PolarisEntityType.TAG;
+  }
+
   @Override
   public ResolvedEntitiesResult loadResolvedEntities(
       @NonNull PolarisCallContext callCtx,

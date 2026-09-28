@@ -85,6 +85,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
       case NAMESPACE -> ResourceType.NAMESPACE;
       case CATALOG -> ResourceType.CATALOG;
       case POLICY,
+          TAG,
           PRINCIPAL,
           PRINCIPAL_ROLE,
           CATALOG_ROLE,

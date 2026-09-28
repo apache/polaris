@@ -18,12 +18,14 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -31,7 +33,9 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.apache.polaris.core.tag.TagAssignmentRecord;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Implements a simple in-memory store for Polaris, using tree-map */
 public class TreeMapMetaStore {
@@ -49,6 +53,12 @@ public class TreeMapMetaStore {
 
     // the key builder
     private final Function<T, T> copyRecord;
+
+    // how many values this slice has copied out of its map; see copiedValueCount()
+    private long copiedValues;
+
+    // how many values this slice has looked at in its map; see visitedValueCount()
+    private long visitedValues;
 
     private Slice(Function<T, String> buildKey, Function<T, T> copyRecord) {
       this.slice = new TreeMap<>();
@@ -79,12 +89,119 @@ public class TreeMapMetaStore {
      */
     public List<T> readRange(String prefix) {
       ensureReadTr();
-      if (prefix.isEmpty()) {
-        return copyValues(this.slice.values());
-      }
+      return copyValues(rangeValues(prefix));
+    }
 
+    /**
+     * Read at most {@code limit} values from the range a key prefix names, in key order.
+     *
+     * <p>The limit bounds the copy itself, not the result of one: a caller that reads the whole
+     * range and then stops using it has already paid for every record in it, however few it keeps.
+     * That is the difference between a bound on a response and a bound on the work a request does.
+     *
+     * @param prefix key prefix
+     * @param limit the greatest number of values to copy out
+     */
+    public List<T> readRange(String prefix, int limit) {
+      ensureReadTr();
+      return copyValues(rangeValues(prefix), limit);
+    }
+
+    private Collection<T> rangeValues(String prefix) {
+      if (prefix.isEmpty()) {
+        return this.slice.values();
+      }
       // Get the sub-map with keys in the range [prefix, rangeEndKey(prefix))
-      return copyValues(slice.subMap(prefix, true, rangeEndKey(prefix), false).values());
+      return slice.subMap(prefix, true, rangeEndKey(prefix), false).values();
+    }
+
+    /**
+     * How many values this slice has copied out of its map since it was created. A bounded read is
+     * the only thing that can keep this below the size of the range it was asked for, which is why
+     * a test asserts on it: the list a read returns is short either way, so its size proves nothing
+     * about the work that produced it.
+     */
+    @VisibleForTesting
+    long copiedValueCount() {
+      return this.copiedValues;
+    }
+
+    /**
+     * How many values this slice has looked at in its map since it was created. It differs from
+     * {@link #copiedValueCount()} only for a filtered read: a filter decides per value, so a read
+     * that returns one row may have compared many. Keeping the two apart is what lets a test say
+     * which of the two a bound actually bounds.
+     */
+    @VisibleForTesting
+    long visitedValueCount() {
+      return this.visitedValues;
+    }
+
+    /**
+     * Reads at most {@code limit} values that {@code filter} accepts, from the range a key prefix
+     * names, in key order, starting strictly after {@code afterKeyExclusive} when one is given.
+     *
+     * <p>Three properties the caller of a paged read needs, and none of them holds for a read that
+     * materializes the range first. The map's own order is the read order, so a caller whose key
+     * encodes its ordering columns needs no sort. The start key is a seek, so resuming a page costs
+     * nothing for the rows already handed out. And the bound is on the copy, so answering one page
+     * of a range holding a great many rows copies one page.
+     *
+     * <p>The bound counts values kept, not values looked at. A filtered read walks until it has
+     * filled the bound or reached the end of the range, so an empty result means the range holds
+     * nothing else that matches -- which is what a caller minting a continuation from the last row
+     * it received has to be able to assume. A filter that may not look at another value says so by
+     * throwing, and this read does not catch it: a bound on values looked at is the filter's to
+     * enforce and to report.
+     *
+     * @param prefix key prefix naming the range
+     * @param afterKeyExclusive resume strictly after this key, or null to start at the range's
+     *     first key
+     * @param filter values this read keeps
+     * @param limit the greatest number of accepted values to copy out
+     */
+    public List<T> readRange(
+        String prefix, @Nullable String afterKeyExclusive, Predicate<T> filter, int limit) {
+      ensureReadTr();
+      String start = afterKeyExclusive == null ? prefix : afterKeyExclusive;
+      List<T> copied = new ArrayList<>();
+      if (limit <= 0) {
+        return copied;
+      }
+      Collection<T> range =
+          prefix.isEmpty() && afterKeyExclusive == null
+              ? this.slice.values()
+              : this.slice
+                  .subMap(start, afterKeyExclusive == null, rangeEndKey(prefix), false)
+                  .values();
+      for (T value : range) {
+        this.visitedValues++;
+        if (!filter.test(value)) {
+          continue;
+        }
+        copied.add(this.copyRecord.apply(value));
+        if (copied.size() >= limit) {
+          break;
+        }
+      }
+      this.copiedValues += copied.size();
+      return copied;
+    }
+
+    private List<T> copyValues(Collection<T> values, int limit) {
+      // Not pre-sized from the limit: the caller's unbounded limit is Integer.MAX_VALUE, and not
+      // from
+      // the range either, because sizing a sub-map view walks it, which is the cost being avoided.
+      List<T> copied = new ArrayList<>();
+      for (T value : values) {
+        if (copied.size() >= limit) {
+          break;
+        }
+        copied.add(this.copyRecord.apply(value));
+      }
+      this.copiedValues += copied.size();
+      this.visitedValues += copied.size();
+      return copied;
     }
 
     private List<T> copyValues(Collection<T> values) {
@@ -92,6 +209,8 @@ public class TreeMapMetaStore {
       for (T value : values) {
         copied.add(this.copyRecord.apply(value));
       }
+      this.copiedValues += copied.size();
+      this.visitedValues += copied.size();
       return copied;
     }
 
@@ -104,8 +223,7 @@ public class TreeMapMetaStore {
     }
 
     private String rangeEndKey(String prefix) {
-      return prefix.substring(0, prefix.length() - 1)
-          + (char) (prefix.charAt(prefix.length() - 1) + 1);
+      return keyJustPast(prefix);
     }
 
     /**
@@ -128,16 +246,19 @@ public class TreeMapMetaStore {
      * delete the specified record from the slice
      *
      * @param key key for the record to remove
+     * @return whether a record was actually removed; false if the key was not present
      */
-    public void delete(String key) {
+    public boolean delete(String key) {
       ensureReadWriteTr();
-      if (slice.containsKey(key)) {
+      boolean existed = slice.containsKey(key);
+      if (existed) {
         // write undo if needs be
         if (!this.undoSlice.containsKey(key)) {
           this.undoSlice.put(key, this.slice.getOrDefault(key, null));
         }
         this.slice.remove(key);
       }
+      return existed;
     }
 
     /**
@@ -163,9 +284,10 @@ public class TreeMapMetaStore {
      * delete the specified record from the slice
      *
      * @param value value to remove
+     * @return whether a record was actually removed; false if no matching record was present
      */
-    public void delete(T value) {
-      this.delete(this.buildKey(value));
+    public boolean delete(T value) {
+      return this.delete(this.buildKey(value));
     }
 
     /** Rollback all changes made to this slice since transaction started */
@@ -224,6 +346,10 @@ public class TreeMapMetaStore {
   private final Slice<PolarisPolicyMappingRecord> slicePolicyMappingRecords;
 
   private final Slice<PolarisPolicyMappingRecord> slicePolicyMappingRecordsByPolicy;
+
+  private final Slice<TagAssignmentRecord> sliceTagAssignmentRecords;
+
+  private final Slice<TagAssignmentRecord> sliceTagAssignmentRecordsByTag;
 
   // next id generator
   private final AtomicLong nextId = new AtomicLong();
@@ -308,6 +434,21 @@ public class TreeMapMetaStore {
                     policyMappingRecord.getTargetId()),
             PolarisPolicyMappingRecord::new);
 
+    this.sliceTagAssignmentRecords =
+        new Slice<>(
+            tagAssignmentRecord ->
+                String.format(
+                    "%d::%d::%d::%d::%d",
+                    tagAssignmentRecord.getTargetCatalogId(),
+                    tagAssignmentRecord.getTargetId(),
+                    tagAssignmentRecord.getFieldId(),
+                    tagAssignmentRecord.getTagCatalogId(),
+                    tagAssignmentRecord.getTagId()),
+            TagAssignmentRecord::new);
+
+    this.sliceTagAssignmentRecordsByTag =
+        new Slice<>(TreeMapMetaStore::buildTagAssignmentByTagKey, TagAssignmentRecord::new);
+
     this.initialDiagnosticServices = diagnostics;
     // no transaction open yet
     this.diagnosticServices = diagnostics;
@@ -372,6 +513,96 @@ public class TreeMapMetaStore {
     return result.toString();
   }
 
+  /** Digits an unsigned 64-bit value takes: {@code 18446744073709551615} is 20 of them. */
+  private static final int LONG_KEY_WIDTH = 20;
+
+  /** Digits an unsigned 32-bit value takes: {@code 4294967295} is 10 of them. */
+  private static final int INT_KEY_WIDTH = 10;
+
+  /** The separator every composite key uses between its segments. */
+  private static final String KEY_SEPARATOR = "::";
+
+  /**
+   * One numeric key segment, encoded so that the map's own {@code String} order over the segment is
+   * the numeric order of the value it came from.
+   *
+   * <p>Two things break that agreement and both are fixed here. Printed plainly, {@code 10} sorts
+   * before {@code 9} because {@code '1' < '9'}, which a fixed width fixes. And a negative value
+   * printed with its sign sorts below every non-negative one but inverts the order among negatives,
+   * which flipping the sign bit fixes: {@code value ^ MIN_VALUE} maps the signed range onto the
+   * unsigned range in order, so the smallest {@code long} becomes {@code 0} and the largest becomes
+   * the largest unsigned value. Encoding both once per write is cheaper than ordering every read,
+   * and it turns the map into the index the read wants rather than a bag the read has to sort.
+   */
+  private static String orderedSegment(long value) {
+    return padLeft(Long.toUnsignedString(value ^ Long.MIN_VALUE), LONG_KEY_WIDTH);
+  }
+
+  /** {@link #orderedSegment(long)} for a 32-bit segment. */
+  private static String orderedSegment(int value) {
+    return padLeft(Integer.toUnsignedString(value ^ Integer.MIN_VALUE), INT_KEY_WIDTH);
+  }
+
+  private static String padLeft(String digits, int width) {
+    return "0".repeat(width - digits.length()) + digits;
+  }
+
+  /**
+   * The first key that sorts after every key beginning with {@code prefix}: the prefix with its
+   * last character stepped by one. A range read uses it as its exclusive upper bound, and a paged
+   * read uses it to resume strictly after a row whose full key it cannot rebuild.
+   */
+  private static String keyJustPast(String prefix) {
+    return prefix.substring(0, prefix.length() - 1)
+        + (char) (prefix.charAt(prefix.length() - 1) + 1);
+  }
+
+  /**
+   * Key for the by-tag index of tag assignment records.
+   *
+   * <p>{@code tagCatalogId::tagId} groups one definition's rows, then {@code targetId::fieldId}
+   * orders them, and {@code targetCatalogId} closes the row's stored identity -- the same identity
+   * the relational schema declares as this row's primary key. The ordering pair comes before {@code
+   * targetCatalogId} so that the order the map iterates is exactly the {@code (targetId, fieldId)}
+   * order the reverse-lookup read promises, whatever catalog ids the rows carry: a key that placed
+   * {@code targetCatalogId} first would order by it first and would only accidentally agree, in the
+   * ordinary case where every target of one definition lives in one catalog.
+   */
+  static String buildTagAssignmentByTagKey(TagAssignmentRecord record) {
+    return buildTagAssignmentByTagOrderedPrefix(
+            record.getTagCatalogId(), record.getTagId(), record.getTargetId(), record.getFieldId())
+        + orderedSegment(record.getTargetCatalogId());
+  }
+
+  /**
+   * Prefix naming every assignment row of one tag definition, in {@code (targetId, fieldId)} order.
+   */
+  static String buildTagAssignmentByTagPrefix(long tagCatalogId, long tagId) {
+    return orderedSegment(tagCatalogId) + KEY_SEPARATOR + orderedSegment(tagId) + KEY_SEPARATOR;
+  }
+
+  /**
+   * Where a page of one definition's assignment rows resumes: strictly after the row a caller last
+   * consumed, named by the {@code (targetId, fieldId)} pair its continuation carries. The pair
+   * identifies one row of the definition, and the key the row is stored under ends with a segment
+   * the continuation does not carry, so the bound is taken just past the pair rather than at the
+   * row's own key.
+   */
+  static String buildTagAssignmentByTagResumeKey(
+      long tagCatalogId, long tagId, long targetId, int fieldId) {
+    return keyJustPast(
+        buildTagAssignmentByTagOrderedPrefix(tagCatalogId, tagId, targetId, fieldId));
+  }
+
+  private static String buildTagAssignmentByTagOrderedPrefix(
+      long tagCatalogId, long tagId, long targetId, int fieldId) {
+    return buildTagAssignmentByTagPrefix(tagCatalogId, tagId)
+        + orderedSegment(targetId)
+        + KEY_SEPARATOR
+        + orderedSegment(fieldId)
+        + KEY_SEPARATOR;
+  }
+
   /** Start a read transaction */
   private void startReadTransaction() {
     this.diagnosticServices.check(this.tr == null, "cannot nest transaction");
@@ -390,6 +621,8 @@ public class TreeMapMetaStore {
     this.slicePrincipalSecrets.startWriteTransaction();
     this.slicePolicyMappingRecords.startWriteTransaction();
     this.slicePolicyMappingRecordsByPolicy.startWriteTransaction();
+    this.sliceTagAssignmentRecords.startWriteTransaction();
+    this.sliceTagAssignmentRecordsByTag.startWriteTransaction();
   }
 
   /** Rollback transaction */
@@ -402,6 +635,8 @@ public class TreeMapMetaStore {
     this.slicePrincipalSecrets.rollback();
     this.slicePolicyMappingRecords.rollback();
     this.slicePolicyMappingRecordsByPolicy.rollback();
+    this.sliceTagAssignmentRecords.rollback();
+    this.sliceTagAssignmentRecordsByTag.rollback();
   }
 
   /** Ensure that a read/write FDB transaction has been started */
@@ -538,6 +773,14 @@ public class TreeMapMetaStore {
     return slicePolicyMappingRecordsByPolicy;
   }
 
+  public Slice<TagAssignmentRecord> getSliceTagAssignmentRecords() {
+    return sliceTagAssignmentRecords;
+  }
+
+  public Slice<TagAssignmentRecord> getSliceTagAssignmentRecordsByTag() {
+    return sliceTagAssignmentRecordsByTag;
+  }
+
   /**
    * Next sequence number generator
    *
@@ -559,5 +802,7 @@ public class TreeMapMetaStore {
     this.slicePrincipalSecrets.deleteAll();
     this.slicePolicyMappingRecords.deleteAll();
     this.slicePolicyMappingRecordsByPolicy.deleteAll();
+    this.sliceTagAssignmentRecords.deleteAll();
+    this.sliceTagAssignmentRecordsByTag.deleteAll();
   }
 }
