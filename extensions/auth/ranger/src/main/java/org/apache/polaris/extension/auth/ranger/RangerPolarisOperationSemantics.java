@@ -86,6 +86,7 @@ public record RangerPolarisOperationSemantics(
   private static final String TABLE_WRITE_PROPERTIES = "table-properties-write";
   private static final String TABLE_READ_DATA = "table-data-read";
   private static final String TABLE_WRITE_DATA = "table-data-write";
+  private static final String TABLE_READ_METRICS = "table-metrics-read";
   private static final String TABLE_ATTACH_POLICY = "table-policy-attach";
   private static final String TABLE_DETACH_POLICY = "table-policy-detach";
   private static final String TABLE_ASSIGN_UUID = "table-uuid-assign";
@@ -254,6 +255,10 @@ public record RangerPolarisOperationSemantics(
         PolarisAuthorizableOperation.REPORT_READ_METRICS,
         new RangerPolarisOperationSemantics(
             toSet(TABLE_READ_DATA), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.LIST_TABLE_METRICS,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_READ_METRICS), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.REPORT_WRITE_METRICS,
         new RangerPolarisOperationSemantics(
