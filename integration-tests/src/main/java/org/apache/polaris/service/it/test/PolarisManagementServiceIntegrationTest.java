@@ -326,6 +326,55 @@ public class PolarisManagementServiceIntegrationTest {
   }
 
   @Test
+  public void testCatalogsDifferingOnlyByCaseCoexist() {
+    // Cross-backend regression check that identifier uniqueness is case-sensitive on the
+    // `entities` table. Notably this catches MySQL collation regressions: a default
+    // case-insensitive collation would collapse `foo` and `Foo` into a single row via the
+    // (realm_id, catalog_id, parent_id, type_code, name) unique constraint, diverging from
+    // PostgreSQL's case-sensitive TEXT semantics.
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::000000000000:role/polaris-it")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://test-bucket/"))
+            .build();
+    String lowerName = client.newEntityName("foo");
+    String upperName = lowerName.replaceFirst("foo", "Foo");
+    Catalog lowerCatalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(lowerName)
+            .setProperties(new CatalogProperties("s3://test-bucket/" + lowerName))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    Catalog upperCatalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(upperName)
+            .setProperties(new CatalogProperties("s3://test-bucket/" + upperName))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    managementApi.createCatalog(lowerCatalog);
+    try {
+      managementApi.createCatalog(upperCatalog);
+      try {
+        try (Response r = managementApi.request("v1/catalogs/" + lowerName).get()) {
+          assertThat(r).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+          assertThat(r.readEntity(Catalog.class).getName()).isEqualTo(lowerName);
+        }
+        try (Response r = managementApi.request("v1/catalogs/" + upperName).get()) {
+          assertThat(r).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+          assertThat(r.readEntity(Catalog.class).getName()).isEqualTo(upperName);
+        }
+      } finally {
+        managementApi.deleteCatalog(upperName);
+      }
+    } finally {
+      managementApi.deleteCatalog(lowerName);
+    }
+  }
+
+  @Test
   public void testCreateCatalogWithNullBaseLocation() {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()

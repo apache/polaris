@@ -34,6 +34,7 @@ final class SimpleRelationalJdbcConfiguration implements RelationalJdbcConfigura
       case H2 -> new SimpleRelationalJdbcConfiguration("h2");
       case POSTGRES -> new SimpleRelationalJdbcConfiguration("postgresql");
       case COCKROACHDB -> new SimpleRelationalJdbcConfiguration("cockroachdb");
+      case MYSQL -> new SimpleRelationalJdbcConfiguration("mysql");
     };
   }
 

@@ -64,3 +64,7 @@ following command:
   -Dquarkus.container-image.group=apache \
   -Dquarkus.container-image.name=polaris-local
 ```
+
+## MySQL support
+
+MySQL is available for the Relational JDBC backend via an opt-in, build-from-source path: the GPL-licensed MySQL JDBC driver (ASF Category X) is not bundled in the official Polaris artifacts. Because this is a custom downstream build rather than part of the standard server, the build, configuration and bootstrap details live in separate JDBC/MySQL documentation: see [`persistence/relational-jdbc/MYSQL.md`](../../persistence/relational-jdbc/MYSQL.md).

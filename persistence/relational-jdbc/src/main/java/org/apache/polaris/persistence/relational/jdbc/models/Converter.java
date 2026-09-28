@@ -50,4 +50,11 @@ public interface Converter<T> {
       throw new RuntimeException(e);
     }
   }
+
+  default Object wrapJsonForDatabase(String json, DatabaseType databaseType) {
+    return switch (databaseType) {
+      case POSTGRES -> toJsonbPGobject(json);
+      case MYSQL, H2, COCKROACHDB -> json;
+    };
+  }
 }

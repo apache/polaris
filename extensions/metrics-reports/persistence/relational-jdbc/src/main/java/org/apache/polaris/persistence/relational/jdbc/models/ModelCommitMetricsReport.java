@@ -241,11 +241,8 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
     map.put(TOTAL_DURATION_MS, getTotalDurationMs());
     map.put(ATTEMPTS, getAttempts());
 
-    if (databaseType.equals(DatabaseType.POSTGRES)) {
-      map.put(METADATA, toJsonbPGobject(getMetadata() != null ? getMetadata() : "{}"));
-    } else {
-      map.put(METADATA, getMetadata() != null ? getMetadata() : "{}");
-    }
+    map.put(
+        METADATA, wrapJsonForDatabase(getMetadata() != null ? getMetadata() : "{}", databaseType));
     return map;
   }
 

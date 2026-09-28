@@ -16,23 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.relational.jdbc;
+package org.apache.polaris.persistence.relational.jdbc.mysql.tests;
 
-import java.util.Optional;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
+import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.service.it.test.PolarisRestCatalogViewFileIntegrationTestBase;
 
-public interface RelationalJdbcConfiguration {
-  // max retries before giving up
-  Optional<Integer> maxRetries();
-
-  // max retry duration
-  Optional<Long> maxDurationInMs();
-
-  // initial delay
-  Optional<Long> initialDelayInMs();
-
-  /**
-   * Explicitly configured database type. If not specified, the database type will be inferred from
-   * the JDBC connection metadata. Supported values: "postgresql", "cockroachdb", "h2", "mysql"
-   */
-  Optional<String> databaseType();
-}
+@TestProfile(MysqlRelationalJdbcProfile.class)
+@QuarkusIntegrationTest
+public class MysqlViewFileIT extends PolarisRestCatalogViewFileIntegrationTestBase {}

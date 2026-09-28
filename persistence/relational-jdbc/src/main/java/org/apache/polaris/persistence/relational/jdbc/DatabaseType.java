@@ -34,7 +34,8 @@ import java.util.Locale;
 public enum DatabaseType {
   POSTGRES("postgres"),
   COCKROACHDB("cockroachdb"),
-  H2("h2");
+  H2("h2"),
+  MYSQL("mysql");
 
   private final String displayName; // Store the user-friendly name
 
@@ -48,6 +49,17 @@ public enum DatabaseType {
   }
 
   /**
+   * Returns the SQL placeholder for an equality comparison against a JSON column. See {@code
+   * ModelRegistry} for why MySQL needs {@code CAST(? AS JSON)} and the others do not.
+   */
+  public String asJsonConditionPlaceholder() {
+    return switch (this) {
+      case MYSQL -> "CAST(? AS JSON)";
+      case POSTGRES, COCKROACHDB, H2 -> "?";
+    };
+  }
+
+  /**
    * Returns the latest schema version available for this database type. This is used as the default
    * schema version for new installations.
    */
@@ -56,6 +68,20 @@ public enum DatabaseType {
       case POSTGRES -> 6; // PostgreSQL has schemas v1, v2, v3, v4, v5, v6
       case COCKROACHDB -> 6; // CockroachDB schema version kept in sync with PostgreSQL
       case H2 -> 6; // H2 uses same schemas as PostgreSQL
+      case MYSQL -> 6; // MySQL ships schema v6 only
+    };
+  }
+
+  /**
+   * Returns the earliest schema version available for this database type. Schema resources exist
+   * for {@link #getFirstSchemaVersion()} through {@link #getLatestSchemaVersion()} only: MySQL
+   * support was added when v6 was already current, so it ships that one version and has no earlier
+   * scripts to upgrade from.
+   */
+  public int getFirstSchemaVersion() {
+    return switch (this) {
+      case POSTGRES, COCKROACHDB, H2 -> 1;
+      case MYSQL -> 6; // MySQL ships schema-v6.sql only
     };
   }
 
@@ -64,6 +90,7 @@ public enum DatabaseType {
       case "h2" -> DatabaseType.H2;
       case "postgresql" -> DatabaseType.POSTGRES;
       case "cockroachdb" -> DatabaseType.COCKROACHDB;
+      case "mysql" -> DatabaseType.MYSQL;
       default -> throw new IllegalStateException("Unsupported DatabaseType: '" + displayName + "'");
     };
   }
@@ -100,6 +127,8 @@ public enum DatabaseType {
         inferredType = DatabaseType.POSTGRES;
       } else if (productName.contains("h2")) {
         inferredType = DatabaseType.H2;
+      } else if (productName.contains("mysql")) {
+        inferredType = DatabaseType.MYSQL;
       }
 
       // If a type was explicitly configured, use it and validate
@@ -149,13 +178,16 @@ public enum DatabaseType {
    * caller.
    */
   public InputStream openInitScriptResource(int schemaVersion) {
-    // Validate schema version is within acceptable range for this database type
+    // Validate schema version is within acceptable range for this database type. The lower bound is
+    // per-database: a type that ships only recent scripts must not accept a version it has no
+    // resource for, which would fail later with a less actionable "resource not found".
+    int firstVersion = getFirstSchemaVersion();
     int latestVersion = getLatestSchemaVersion();
-    if (schemaVersion <= 0 || schemaVersion > latestVersion) {
+    if (schemaVersion < firstVersion || schemaVersion > latestVersion) {
       throw new IllegalArgumentException(
           String.format(
-              "Invalid schema version %d for database type %s. Valid range: 1-%d",
-              schemaVersion, this, latestVersion));
+              "Invalid schema version %d for database type %s. Valid range: %d-%d",
+              schemaVersion, this, firstVersion, latestVersion));
     }
 
     final String resourceName =

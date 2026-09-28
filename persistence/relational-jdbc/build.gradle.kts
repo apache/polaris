@@ -37,6 +37,8 @@ dependencies {
   compileOnly("io.opentelemetry:opentelemetry-api")
 
   implementation(libs.smallrye.common.annotation) // @Identifier
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus:quarkus-agroal") // DataSourceLiteral for named DataSource lookup
   implementation(libs.postgresql)
 
   compileOnly(project(":polaris-immutables"))
