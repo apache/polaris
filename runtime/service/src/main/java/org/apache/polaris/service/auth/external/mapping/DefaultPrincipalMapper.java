@@ -51,9 +51,23 @@ class DefaultPrincipalMapper implements PrincipalMapper {
     return principalMapper
         .idClaimPath()
         .map(claimPath -> claimsLocator.locateClaim(claimPath, jwt))
-        .map(id -> id instanceof Number number ? number.longValue() : Long.parseLong(id.toString()))
+        .flatMap(DefaultPrincipalMapper::toLong)
         .map(OptionalLong::of)
         .orElse(OptionalLong.empty());
+  }
+
+  private static Optional<Long> toLong(Object id) {
+    if (id instanceof Number number) {
+      return Optional.of(number.longValue());
+    }
+    if (id == null) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(Long.parseLong(id.toString()));
+    } catch (NumberFormatException e) {
+      return Optional.empty();
+    }
   }
 
   @Override
