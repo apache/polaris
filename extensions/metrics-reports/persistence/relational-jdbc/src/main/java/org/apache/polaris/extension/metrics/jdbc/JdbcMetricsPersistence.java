@@ -30,7 +30,6 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
-import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -102,7 +101,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
   }
 
   @Override
-  public Page<? extends MetricsRecordIdentity> listReports(
+  public QueryResult listReports(
       @NonNull MetricType metricType,
       long catalogId,
       @NonNull List<Long> tableIds,
@@ -128,11 +127,12 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
                 scope);
         List<ModelCommitMetricsReport> rows =
             datasourceOperations.executeSelect(query, ModelCommitMetricsReport.CONVERTER);
-        return Page.mapped(
-            pageToken,
-            rows.stream().map(ModelCommitMetricsReport::toRecord),
-            Function.<CommitMetricsRecord>identity(),
-            last -> MetricsReportToken.fromRecord(last, scope));
+        return new CommitResult(
+            Page.mapped(
+                pageToken,
+                rows.stream().map(ModelCommitMetricsReport::toRecord),
+                Function.<CommitMetricsRecord>identity(),
+                last -> MetricsReportToken.fromRecord(last, scope)));
       }
 
       PreparedQuery query =
@@ -148,11 +148,12 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
               scope);
       List<ModelScanMetricsReport> rows =
           datasourceOperations.executeSelect(query, ModelScanMetricsReport.CONVERTER);
-      return Page.mapped(
-          pageToken,
-          rows.stream().map(ModelScanMetricsReport::toRecord),
-          Function.<ScanMetricsRecord>identity(),
-          last -> MetricsReportToken.fromRecord(last, scope));
+      return new ScanResult(
+          Page.mapped(
+              pageToken,
+              rows.stream().map(ModelScanMetricsReport::toRecord),
+              Function.<ScanMetricsRecord>identity(),
+              last -> MetricsReportToken.fromRecord(last, scope)));
     } catch (SQLException e) {
       throw new RuntimeException("Failed to list metrics reports: " + e.getMessage(), e);
     }
