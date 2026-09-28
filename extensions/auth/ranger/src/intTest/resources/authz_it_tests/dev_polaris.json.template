@@ -157,7 +157,13 @@
             { "type": "table-statistics-remove" },
             { "type": "table-structure-manage" }
           ],
-          "users": [ "admin1" ] }
+          "users": [ "admin1" ] },
+        {
+          "accesses": [
+            { "type": "table-data-read" },
+            { "type": "table-data-write" }
+          ],
+          "users": [ "dataonly1" ] }
       ]
     },
     {
