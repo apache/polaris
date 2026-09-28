@@ -33,6 +33,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -55,6 +56,7 @@ import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -104,7 +106,7 @@ public class PolarisAdminServiceTest {
   @Mock private ServiceIdentityProvider identityProvider;
   @Mock private PolarisAuthorizer authorizer;
   @Mock private ReservedProperties reservedProperties;
-  @Mock private PolarisPrincipal authenticatedPrincipal;
+  private PolarisPrincipal authenticatedPrincipal;
   @Mock private PolarisResolutionManifest resolutionManifest;
   @Mock private PolarisResolvedPathWrapper resolvedPathWrapper;
   @Mock private RealmConfig realmConfig;
@@ -140,6 +142,8 @@ public class PolarisAdminServiceTest {
         .when(authorizer)
         .resolveAuthorizationInputs(any(), any());
     when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
+
+    authenticatedPrincipal = PolarisPrincipal.of("test", AttributeMap.EMPTY, Set.of());
 
     adminService =
         new PolarisAdminService(
