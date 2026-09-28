@@ -48,6 +48,16 @@ import org.junit.jupiter.api.Test;
 public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     extends BasePolarisMetaStoreManagerTest {
 
+  @Test
+  void testCleanupTaskCreationFailureRollsBackEntityDrop() {
+    assertCleanupTaskCreationFailureRollsBackEntityDrop();
+  }
+
+  @Test
+  void testCleanupTaskCreationRetryIsIdempotent() {
+    assertCleanupTaskCreationRetryIsIdempotent();
+  }
+
   protected DatabaseType databaseType() {
     return DatabaseType.H2;
   }

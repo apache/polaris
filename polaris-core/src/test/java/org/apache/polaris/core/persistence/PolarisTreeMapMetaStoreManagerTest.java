@@ -26,9 +26,20 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreManagerTest {
+  @Test
+  void testCleanupTaskCreationFailureRollsBackEntityDrop() {
+    assertCleanupTaskCreationFailureRollsBackEntityDrop();
+  }
+
+  @Test
+  void testCleanupTaskCreationRetryIsIdempotent() {
+    assertCleanupTaskCreationRetryIsIdempotent();
+  }
+
   @Override
   public PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
