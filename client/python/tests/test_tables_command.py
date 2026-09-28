@@ -307,51 +307,61 @@ class TestTablesCommand(CLITestBase):
         )
 
     @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
-    def test_table_register_missing_scheme(
+    def test_table_register_forwards_location_without_scheme(
         self, mock_iceberg_api_class: MagicMock
     ) -> None:
         mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
 
-        self.check_exception(
-            lambda: self.mock_execute(
-                mock_client,
-                [
-                    "tables",
-                    "register",
-                    "my_table",
-                    "--catalog",
-                    "my-catalog",
-                    "--namespace",
-                    "ns1",
-                    "--metadata-location",
-                    "/bucket/ns1/my_table/metadata/00001-abcd.metadata.json",
-                ],
-            ),
-            "must include a scheme",
+        self.mock_execute(
+            mock_client,
+            [
+                "tables",
+                "register",
+                "my_table",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+                "--metadata-location",
+                "/bucket/ns1/my_table/metadata/00001-abcd.metadata.json",
+            ],
+        )
+        request = mock_iceberg_api.register_table.call_args.kwargs[
+            "register_table_request"
+        ]
+        self.assertEqual(
+            request.metadata_location,
+            "/bucket/ns1/my_table/metadata/00001-abcd.metadata.json",
         )
 
     @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
-    def test_table_register_rejects_windows_drive_path(
+    def test_table_register_forwards_windows_drive_path(
         self, mock_iceberg_api_class: MagicMock
     ) -> None:
         mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
 
-        self.check_exception(
-            lambda: self.mock_execute(
-                mock_client,
-                [
-                    "tables",
-                    "register",
-                    "my_table",
-                    "--catalog",
-                    "my-catalog",
-                    "--namespace",
-                    "ns1",
-                    "--metadata-location",
-                    "C:\\data\\my_table\\metadata\\00001-abcd.metadata.json",
-                ],
-            ),
-            "must include a scheme",
+        self.mock_execute(
+            mock_client,
+            [
+                "tables",
+                "register",
+                "my_table",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+                "--metadata-location",
+                "C:\\data\\my_table\\metadata\\00001-abcd.metadata.json",
+            ],
+        )
+        request = mock_iceberg_api.register_table.call_args.kwargs[
+            "register_table_request"
+        ]
+        self.assertEqual(
+            request.metadata_location,
+            "C:\\data\\my_table\\metadata\\00001-abcd.metadata.json",
         )
 
     @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")

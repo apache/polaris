@@ -26,7 +26,6 @@ from apache_polaris.cli.command.utils import (
     get_catalog_api_client,
     handle_api_exception,
     paginate,
-    validate_metadata_location,
 )
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
@@ -75,7 +74,9 @@ class ViewCommand(Command):
             if not self.view_name or not self.view_name.strip():
                 raise CliError("The view name cannot be empty.")
         if self.views_subcommand == Subcommands.REGISTER:
-            self.metadata_location = validate_metadata_location(self.metadata_location)
+            if not self.metadata_location or not self.metadata_location.strip():
+                raise CliError("Missing required argument: --metadata-location")
+            self.metadata_location = self.metadata_location.strip()
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))

@@ -32,7 +32,6 @@ from apache_polaris.cli.command.utils import (
     handle_api_exception,
     format_timestamp,
     format_iceberg_type,
-    validate_metadata_location,
 )
 from prettytable import PrettyTable
 
@@ -76,7 +75,9 @@ class TableCommand(Command):
             if not self.table_name or not self.table_name.strip():
                 raise CliError("The table name cannot be empty.")
         if self.table_subcommand == Subcommands.REGISTER:
-            self.metadata_location = validate_metadata_location(self.metadata_location)
+            if not self.metadata_location or not self.metadata_location.strip():
+                raise CliError("Missing required argument: --metadata-location")
+            self.metadata_location = self.metadata_location.strip()
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))

@@ -337,27 +337,32 @@ class TestViewsCommand(CLITestBase):
         )
 
     @patch("apache_polaris.cli.command.views.IcebergCatalogAPI")
-    def test_view_register_missing_scheme(
+    def test_view_register_forwards_location_without_scheme(
         self, mock_iceberg_api_class: MagicMock
     ) -> None:
         mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
 
-        self.check_exception(
-            lambda: self.mock_execute(
-                mock_client,
-                [
-                    "views",
-                    "register",
-                    "my_view",
-                    "--catalog",
-                    "my-catalog",
-                    "--namespace",
-                    "ns1",
-                    "--metadata-location",
-                    "/bucket/ns1/my_view/metadata/00001-abcd.metadata.json",
-                ],
-            ),
-            "must include a scheme",
+        self.mock_execute(
+            mock_client,
+            [
+                "views",
+                "register",
+                "my_view",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+                "--metadata-location",
+                "/bucket/ns1/my_view/metadata/00001-abcd.metadata.json",
+            ],
+        )
+        request = mock_iceberg_api.register_view.call_args.kwargs[
+            "register_view_request"
+        ]
+        self.assertEqual(
+            request.metadata_location,
+            "/bucket/ns1/my_view/metadata/00001-abcd.metadata.json",
         )
 
     def test_view_register_rejects_overwrite_flag(self) -> None:
