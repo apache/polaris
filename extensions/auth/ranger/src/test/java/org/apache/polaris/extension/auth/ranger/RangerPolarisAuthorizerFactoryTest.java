@@ -25,13 +25,16 @@ import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRea
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.nio.file.Path;
 import java.util.Collections;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class RangerPolarisAuthorizerFactoryTest {
   @Test
-  public void testAuthorizerInstantiation() {
-    RangerPolarisAuthorizerFactory factory = new RangerPolarisAuthorizerFactory(createConfig());
+  public void testAuthorizerInstantiation(@TempDir Path tempDir) {
+    RangerPolarisAuthorizerFactory factory =
+        new RangerPolarisAuthorizerFactory(createConfig(tempDir));
     RangerPolarisAuthorizer authorizer = factory.create(createRealmConfig());
     assertNotNull(authorizer);
     authorizer.setRealmContext(createRealmContext());

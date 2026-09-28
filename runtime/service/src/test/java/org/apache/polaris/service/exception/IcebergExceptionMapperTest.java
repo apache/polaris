@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.azure.core.exception.AzureException;
 import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
+import com.microsoft.aad.msal4j.MsalServiceException;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.UnknownHostException;
@@ -38,9 +39,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.sts.model.StsException;
 
 public class IcebergExceptionMapperTest {
-
   static Stream<Arguments> fileIOExceptionMapping() {
     Map<Integer, Integer> cloudCodeMappings =
         Map.of(
@@ -68,6 +69,15 @@ public class IcebergExceptionMapperTest {
             Arguments.of(new AzureException("Not Authorized"), 403),
             Arguments.of(new AzureException("Access Denied"), 403),
             Arguments.of(S3Exception.builder().message("Access denied").build(), 403),
+            Arguments.of(
+                StsException.builder()
+                    .message("is not authorized to perform: sts:AssumeRole")
+                    .statusCode(Response.Status.FORBIDDEN.getStatusCode())
+                    .build(),
+                Response.Status.FORBIDDEN.getStatusCode()),
+            Arguments.of(
+                StsException.builder().message("Request failed").build(),
+                Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()),
             Arguments.of(new StorageException(1, "access denied"), 403),
             Arguments.of(
                 new FileIOUnknownHostException(
@@ -85,6 +95,33 @@ public class IcebergExceptionMapperTest {
                                 entry.getValue()),
                             Arguments.of(
                                 S3Exception.builder()
+                                    .message("")
+                                    .statusCode(entry.getKey())
+                                    .build(),
+                                entry.getValue()),
+                            Arguments.of(
+                                new MsalServiceException(
+                                    "AADSTS7000222: The provided client secret keys for app "
+                                        + "'abc12345-abcd-4abc-8abc-1234567890ab' are expired. "
+                                        + "Visit the Azure portal to create new keys for your "
+                                        + "app: https://aka.ms/NewClientSecret, or consider using "
+                                        + "certificate credentials for added security: "
+                                        + "https://aka.ms/certCreds. Trace ID: "
+                                        + "abc12345-abcd-4abc-8abc-1234567890ac Correlation ID: "
+                                        + "abc12345-abcd-4abc-8abc-1234567890ad Timestamp: "
+                                        + "2026-09-24 07:59:05Z",
+                                    "service_error") {
+                                  @Override
+                                  public Integer statusCode() {
+                                    return entry.getKey();
+                                  }
+                                },
+                                entry.getValue()),
+                            Arguments.of(
+                                new MsalServiceException("Authentication failed", "service_error"),
+                                Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()),
+                            Arguments.of(
+                                StsException.builder()
                                     .message("")
                                     .statusCode(entry.getKey())
                                     .build(),

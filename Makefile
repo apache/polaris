@@ -131,6 +131,12 @@ spotless-apply: check-dependencies ## Apply code formatting using Spotless Gradl
 	@./gradlew spotlessApply
 	@echo "--- Spotless formatting applied ---"
 
+.PHONY: spec-bundle
+spec-bundle: ## Regenerate the bundled OpenAPI spec, license header included
+	@echo "--- Regenerating bundled OpenAPI spec ---"
+	@./spec/bundle.sh
+	@echo "--- Bundled OpenAPI spec regenerated ---"
+
 ##@ Polaris Client
 
 # Target to create the virtual environment directory

@@ -108,18 +108,20 @@ public class TestCacheInvalidationSender {
             () ->
                 new CacheInvalidationSender(vertx, config, senderId) {
                   @Override
-                  Future<List<String>> resolveServiceNames(List<String> serviceNames) {
+                  Future<List<CacheInvalidationPeer>> discoverPeers() {
                     return failedFuture(new RuntimeException("foo"));
                   }
 
                   @Override
                   List<Future<Map.Entry<HttpClientResponse, Buffer>>> submit(
-                      List<CacheInvalidation> batch, List<String> resolvedAddresses, int httpPort) {
+                      List<CacheInvalidation> batch,
+                      List<CacheInvalidationPeer> resolvedPeers,
+                      int httpPort) {
                     soft.fail("Not expected");
                     return null;
                   }
                 })
-        .hasMessage("Failed to resolve service names [serviceName] for remote cache invalidations")
+        .hasMessage("Failed to discover peers for remote cache invalidations")
         .cause()
         .hasMessage("foo");
   }
@@ -142,15 +144,15 @@ public class TestCacheInvalidationSender {
     var continueSemaphore = new Semaphore(0);
     var submittedSemaphore = new Semaphore(0);
     var updateResolvedSemaphore = new Semaphore(0);
-    var currentAddresses = List.of("127.1.1.1");
-    var resolveResult = new AtomicReference<>(succeededFuture(currentAddresses));
-    var submitResolvedAddresses = new AtomicReference<List<String>>();
+    var currentPeers = List.of(peer("127.1.1.1"));
+    var resolveResult = new AtomicReference<>(succeededFuture(currentPeers));
+    var submitResolvedPeers = new AtomicReference<List<CacheInvalidationPeer>>();
 
     try {
       CacheInvalidationSender sender =
           new CacheInvalidationSender(vertx, config, senderId) {
             @Override
-            Future<List<String>> resolveServiceNames(List<String> serviceNames) {
+            Future<List<CacheInvalidationPeer>> discoverPeers() {
               try {
                 assertThat(resolveSemaphore.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
               } catch (InterruptedException e) {
@@ -164,9 +166,9 @@ public class TestCacheInvalidationSender {
             }
 
             @Override
-            void updateResolvedAddresses(List<String> all) {
+            void updateResolvedPeers(List<CacheInvalidationPeer> all) {
               try {
-                super.updateResolvedAddresses(all);
+                super.updateResolvedPeers(all);
               } finally {
                 updateResolvedSemaphore.release();
               }
@@ -174,8 +176,10 @@ public class TestCacheInvalidationSender {
 
             @Override
             List<Future<Map.Entry<HttpClientResponse, Buffer>>> submit(
-                List<CacheInvalidation> batch, List<String> resolvedAddresses, int httpPort) {
-              submitResolvedAddresses.set(resolvedAddresses);
+                List<CacheInvalidation> batch,
+                List<CacheInvalidationPeer> resolvedPeers,
+                int httpPort) {
+              submitResolvedPeers.set(resolvedPeers);
               submittedSemaphore.release();
               return null;
             }
@@ -186,57 +190,53 @@ public class TestCacheInvalidationSender {
             }
           };
 
-      // "consume" after initial, blocking call to resolveServiceNames() from the constructor
+      // "consume" after initial, blocking call to discoverPeers() from the constructor
       assertThat(continueSemaphore.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
       assertThat(updateResolvedSemaphore.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
 
       // Send an invalidation, compare addresses
       sender.evictObj("repo", SOME_OBJ_REF);
       assertThat(submittedSemaphore.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
-      soft.assertThat(submitResolvedAddresses.get())
-          .containsExactlyInAnyOrderElementsOf(currentAddresses);
+      soft.assertThat(submitResolvedPeers.get()).containsExactlyInAnyOrderElementsOf(currentPeers);
 
       // simulate change of resolved addresses
-      currentAddresses = List.of("127.2.2.2", "127.3.3.3");
-      resolveResult.set(succeededFuture(currentAddresses));
+      currentPeers = List.of(peer("127.2.2.2"), peer("127.3.3.3"));
+      resolveResult.set(succeededFuture(currentPeers));
       resolveSemaphore.release();
-      // wait until next call to resolveServiceNames() has been triggered
+      // wait until next call to discoverPeers() has been triggered
       assertThat(continueSemaphore.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
       assertThat(updateResolvedSemaphore.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
 
       // Send another invalidation, compare addresses
       sender.evictObj("repo", SOME_OBJ_REF);
       assertThat(submittedSemaphore.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
-      soft.assertThat(submitResolvedAddresses.get())
-          .containsExactlyInAnyOrderElementsOf(currentAddresses);
+      soft.assertThat(submitResolvedPeers.get()).containsExactlyInAnyOrderElementsOf(currentPeers);
 
       // simulate a failure resolving the addresses
       resolveResult.set(failedFuture(new RuntimeException("blah")));
       resolveSemaphore.release();
-      // wait until next call to resolveServiceNames() has been triggered
+      // wait until next call to discoverPeers() has been triggered
       assertThat(continueSemaphore.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
 
       // Send another invalidation, compare addresses
       sender.evictObj("repo", SOME_OBJ_REF);
       assertThat(submittedSemaphore.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
-      soft.assertThat(submitResolvedAddresses.get())
-          .containsExactlyInAnyOrderElementsOf(currentAddresses);
+      soft.assertThat(submitResolvedPeers.get()).containsExactlyInAnyOrderElementsOf(currentPeers);
 
       // simulate another change of resolved addresses
-      currentAddresses = List.of("127.4.4.4", "127.5.5.5");
-      resolveResult.set(succeededFuture(currentAddresses));
+      currentPeers = List.of(peer("127.4.4.4"), peer("127.5.5.5"));
+      resolveResult.set(succeededFuture(currentPeers));
       resolveSemaphore.release();
-      // wait until next call to resolveServiceNames() has been triggered
+      // wait until next call to discoverPeers() has been triggered
       assertThat(continueSemaphore.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
       assertThat(updateResolvedSemaphore.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
 
       // Send another invalidation, compare addresses
       sender.evictObj("repo", SOME_OBJ_REF);
       assertThat(submittedSemaphore.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
-      soft.assertThat(submitResolvedAddresses.get())
-          .containsExactlyInAnyOrderElementsOf(currentAddresses);
+      soft.assertThat(submitResolvedPeers.get()).containsExactlyInAnyOrderElementsOf(currentPeers);
     } finally {
-      // Permit a lot, the test might otherwise "hang" in resolveServiceNames()
+      // Permit a lot, the test might otherwise "hang" in discoverPeers()
       resolveSemaphore.release(10_000_000);
     }
   }
@@ -254,13 +254,15 @@ public class TestCacheInvalidationSender {
     var sender =
         new CacheInvalidationSender(vertx, config, senderId) {
           @Override
-          Future<List<String>> resolveServiceNames(List<String> serviceNames) {
+          Future<List<CacheInvalidationPeer>> discoverPeers() {
             return succeededFuture(List.of());
           }
 
           @Override
           List<Future<Map.Entry<HttpClientResponse, Buffer>>> submit(
-              List<CacheInvalidation> batch, List<String> resolvedAddresses, int httpPort) {
+              List<CacheInvalidation> batch,
+              List<CacheInvalidationPeer> resolvedPeers,
+              int httpPort) {
             soft.fail("Not expected");
             return null;
           }
@@ -279,6 +281,82 @@ public class TestCacheInvalidationSender {
     verifyNoMoreInteractions(senderSpy);
   }
 
+  @Test
+  public void customPeerDiscoveryEnablesInvalidationsWithoutServiceNames() throws Exception {
+    var senderId = ServerInstanceId.of("senderId");
+    var discoveredPeers = List.of(peer("127.1.1.1", 12345));
+    var config =
+        buildConfig(
+            singletonList("token"),
+            Optional.empty(),
+            Duration.ofSeconds(10),
+            Duration.ofSeconds(10));
+    var submitted = new Semaphore(0);
+
+    var peerDiscovery =
+        new CacheInvalidationPeerDiscovery() {
+          @Override
+          public boolean isConfigured() {
+            return true;
+          }
+
+          @Override
+          public Future<List<CacheInvalidationPeer>> discoverPeers() {
+            return succeededFuture(discoveredPeers);
+          }
+        };
+
+    var sender =
+        new CacheInvalidationSender(vertx, config, senderId, peerDiscovery) {
+          @Override
+          List<Future<Map.Entry<HttpClientResponse, Buffer>>> submit(
+              List<CacheInvalidation> batch,
+              List<CacheInvalidationPeer> resolvedPeers,
+              int httpPort) {
+            soft.assertThat(resolvedPeers).containsExactlyElementsOf(discoveredPeers);
+            submitted.release();
+            return List.of();
+          }
+
+          @Override
+          int quarkusManagementPort() {
+            return 42;
+          }
+        };
+
+    sender.evictObj("repo", SOME_OBJ_REF);
+
+    assertThat(submitted.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
+  }
+
+  @Test
+  public void optionalInitialPeerDiscoveryFailureDoesNotPreventStartup() {
+    var senderId = ServerInstanceId.of("senderId");
+    var config =
+        buildConfig(
+            singletonList("token"),
+            Optional.of(singletonList("service-name")),
+            Duration.ofSeconds(10),
+            Duration.ofSeconds(10));
+    when(config.cacheInvalidationInitialDiscoveryRequired()).thenReturn(false);
+
+    var peerDiscovery =
+        new CacheInvalidationPeerDiscovery() {
+          @Override
+          public boolean isConfigured() {
+            return true;
+          }
+
+          @Override
+          public Future<List<CacheInvalidationPeer>> discoverPeers() {
+            return failedFuture(new RuntimeException("foo"));
+          }
+        };
+
+    soft.assertThatCode(() -> new CacheInvalidationSender(vertx, config, senderId, peerDiscovery))
+        .doesNotThrowAnyException();
+  }
+
   @ParameterizedTest
   @MethodSource("invalidations")
   public void mockedSendSingleInvalidation(
@@ -290,7 +368,7 @@ public class TestCacheInvalidationSender {
     var tokens = singletonList(token);
 
     var serviceNames = singletonList("service-name");
-    var resolvedServiceNames = singletonList("service-name-resolved");
+    var resolvedPeers = singletonList(peer("service-name-resolved"));
 
     var config =
         buildConfig(
@@ -300,13 +378,15 @@ public class TestCacheInvalidationSender {
     var sender =
         new CacheInvalidationSender(vertx, config, senderId) {
           @Override
-          Future<List<String>> resolveServiceNames(List<String> serviceNames) {
-            return succeededFuture(resolvedServiceNames);
+          Future<List<CacheInvalidationPeer>> discoverPeers() {
+            return succeededFuture(resolvedPeers);
           }
 
           @Override
           List<Future<Map.Entry<HttpClientResponse, Buffer>>> submit(
-              List<CacheInvalidation> batch, List<String> resolvedAddresses, int httpPort) {
+              List<CacheInvalidation> batch,
+              List<CacheInvalidationPeer> discoveredPeers,
+              int httpPort) {
             sem.release(1);
             return null;
           }
@@ -322,7 +402,7 @@ public class TestCacheInvalidationSender {
     invalidation.accept(senderSpy);
     assertThat(sem.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
 
-    verify(senderSpy).submit(singletonList(expected), resolvedServiceNames, 42);
+    verify(senderSpy).submit(singletonList(expected), resolvedPeers, 42);
   }
 
   @Test
@@ -333,7 +413,7 @@ public class TestCacheInvalidationSender {
     var tokens = singletonList(token);
 
     var serviceNames = singletonList("service-name");
-    var resolvedServiceNames = singletonList("service-name-resolved");
+    var resolvedPeers = singletonList(peer("service-name-resolved"));
 
     var config =
         buildConfig(
@@ -344,16 +424,17 @@ public class TestCacheInvalidationSender {
     var sender =
         new CacheInvalidationSender(vertx, config, senderId) {
           @Override
-          Future<List<String>> resolveServiceNames(List<String> serviceNames) {
-            return succeededFuture(resolvedServiceNames);
+          Future<List<CacheInvalidationPeer>> discoverPeers() {
+            return succeededFuture(resolvedPeers);
           }
 
           @Override
           List<Future<Map.Entry<HttpClientResponse, Buffer>>> submit(
-              List<CacheInvalidation> batch, List<String> resolvedAddresses, int httpPort) {
+              List<CacheInvalidation> batch,
+              List<CacheInvalidationPeer> discoveredPeers,
+              int httpPort) {
             received.addAll(batch);
-            soft.assertThat(resolvedAddresses)
-                .containsExactlyInAnyOrderElementsOf(resolvedServiceNames);
+            soft.assertThat(discoveredPeers).containsExactlyInAnyOrderElementsOf(resolvedPeers);
             sem.release(batch.size());
             return null;
           }
@@ -394,7 +475,7 @@ public class TestCacheInvalidationSender {
             Duration.ofSeconds(10),
             Duration.ofSeconds(10),
             2);
-    var resolvedServiceNames = singletonList("service-name-resolved");
+    var resolvedPeers = singletonList(peer("service-name-resolved"));
 
     var sem = new Semaphore(0);
     var batchSizes = new CopyOnWriteArrayList<Integer>();
@@ -404,13 +485,15 @@ public class TestCacheInvalidationSender {
           private volatile int managementPort;
 
           @Override
-          Future<List<String>> resolveServiceNames(List<String> serviceNames) {
-            return succeededFuture(resolvedServiceNames);
+          Future<List<CacheInvalidationPeer>> discoverPeers() {
+            return succeededFuture(resolvedPeers);
           }
 
           @Override
           List<Future<Map.Entry<HttpClientResponse, Buffer>>> submit(
-              List<CacheInvalidation> batch, List<String> resolvedAddresses, int httpPort) {
+              List<CacheInvalidation> batch,
+              List<CacheInvalidationPeer> discoveredPeers,
+              int httpPort) {
             batchSizes.add(batch.size());
             sem.release(batch.size());
             return null;
@@ -471,15 +554,18 @@ public class TestCacheInvalidationSender {
       var sender =
           new CacheInvalidationSender(vertx, config, senderId) {
             @Override
-            Future<List<String>> resolveServiceNames(List<String> serviceNames) {
-              return succeededFuture(List.of(uri.getHost()));
+            Future<List<CacheInvalidationPeer>> discoverPeers() {
+              return succeededFuture(List.of(peer(uri.getHost(), uri.getPort())));
             }
           };
 
       var future =
           CompletableFuture.allOf(
               sender
-                  .submit(singletonList(expected), singletonList(uri.getHost()), uri.getPort())
+                  .submit(
+                      singletonList(expected),
+                      singletonList(peer(uri.getHost(), uri.getPort())),
+                      uri.getPort())
                   .stream()
                   .map(Future::toCompletionStage)
                   .map(CompletionStage::toCompletableFuture)
@@ -533,13 +619,13 @@ public class TestCacheInvalidationSender {
       var sender =
           new CacheInvalidationSender(vertx, config, senderId) {
             @Override
-            Future<List<String>> resolveServiceNames(List<String> serviceNames) {
-              return succeededFuture(List.of(uri.getHost()));
+            Future<List<CacheInvalidationPeer>> discoverPeers() {
+              return succeededFuture(List.of(peer(uri.getHost(), uri.getPort())));
             }
           };
 
       var future =
-          Future.all(sender.submit(expected, singletonList(uri.getHost()), uri.getPort()))
+          Future.all(sender.submit(expected, singletonList(peer(uri.getHost(), uri.getPort())), 1))
               .toCompletionStage()
               .toCompletableFuture();
 
@@ -586,14 +672,14 @@ public class TestCacheInvalidationSender {
       var sender =
           new CacheInvalidationSender(vertx, config, senderId) {
             @Override
-            Future<List<String>> resolveServiceNames(List<String> serviceNames) {
-              return succeededFuture(List.of(uri.getHost()));
+            Future<List<CacheInvalidationPeer>> discoverPeers() {
+              return succeededFuture(List.of(peer(uri.getHost(), uri.getPort())));
             }
           };
 
       var future =
           CompletableFuture.allOf(
-              sender.submit(expected, singletonList(uri.getHost()), uri.getPort()).stream()
+              sender.submit(expected, singletonList(peer(uri.getHost(), uri.getPort())), 1).stream()
                   .map(Future::toCompletionStage)
                   .map(CompletionStage::toCompletableFuture)
                   .toArray(CompletableFuture[]::new));
@@ -615,6 +701,14 @@ public class TestCacheInvalidationSender {
             cacheInvalidationEvictReference("repo", "refs/foo/bar")));
   }
 
+  private static CacheInvalidationPeer peer(String host) {
+    return new CacheInvalidationPeer(host);
+  }
+
+  private static CacheInvalidationPeer peer(String host, int managementPort) {
+    return new CacheInvalidationPeer(host, managementPort);
+  }
+
   private static QuarkusDistributedCacheInvalidationsConfig buildConfig(
       List<String> tokens,
       Optional<List<String>> serviceName,
@@ -633,6 +727,7 @@ public class TestCacheInvalidationSender {
     when(config.cacheInvalidationValidTokens()).thenReturn(Optional.of(tokens));
     when(config.cacheInvalidationServiceNames()).thenReturn(serviceName);
     when(config.cacheInvalidationServiceNameLookupInterval()).thenReturn(interval);
+    when(config.cacheInvalidationInitialDiscoveryRequired()).thenReturn(true);
     when(config.cacheInvalidationBatchSize()).thenReturn(batchSize);
     when(config.cacheInvalidationUri()).thenReturn("/foo/bar/");
     when(config.cacheInvalidationRequestTimeout()).thenReturn(Optional.of(requestTimeout));

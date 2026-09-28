@@ -432,9 +432,14 @@ public class QueryGenerator {
 
     // Add LIKE condition to match children. Slash-terminate the location so the pattern only
     // matches true descendants (e.g. //bucket/ns/tA/% matches //bucket/ns/tA/child but not
-    // //bucket/ns/tA_backup).
-    conditions.add("location_without_scheme LIKE ?");
-    parameters.add(StorageLocation.ensureTrailingSlash(locationWithoutScheme) + "%");
+    // //bucket/ns/tA_backup). LIKE wildcards (% and _) and the escape character (\) that appear
+    // literally in the location are escaped, with an explicit ESCAPE clause: otherwise a location
+    // such as //bucket/my_table/ would be treated as a wildcard, where % and _ over-fetch rows
+    // (the caller's precise re-check still filters those) and a literal \ could hide true
+    // descendants.
+    conditions.add("location_without_scheme LIKE ? ESCAPE '\\'");
+    parameters.add(
+        escapeLikePattern(StorageLocation.ensureTrailingSlash(locationWithoutScheme)) + "%");
 
     String locationClause = String.join(" OR ", conditions);
     String clause = " WHERE realm_id = ? AND catalog_id = ? AND (" + locationClause + ")";
@@ -453,5 +458,15 @@ public class QueryGenerator {
             where.sql(),
             null);
     return new PreparedQuery(query.sql(), where.parameters());
+  }
+
+  /**
+   * Escapes the LIKE metacharacters {@code %} and {@code _} and the escape character {@code \} in a
+   * literal so it can be used safely as a fixed prefix in a {@code LIKE ? ESCAPE '\'} pattern. The
+   * backslash is escaped first so the escapes introduced for {@code %} and {@code _} are not
+   * double-escaped.
+   */
+  private static String escapeLikePattern(String literal) {
+    return literal.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
   }
 }

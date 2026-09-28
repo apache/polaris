@@ -697,6 +697,22 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             .setCreateTimestamp(System.currentTimeMillis())
             .setBaseLocation(baseLocation)
             .build();
+    // Check for an existing namespace before validating locations, as table and view creation
+    // already do. The existing namespace and everything under it occupy this location, so the
+    // overlap check would otherwise report a conflict (403) for a create that can only fail with
+    // already-exists (409).
+    EntityResult existingNamespace =
+        getMetaStoreManager()
+            .readEntityByName(
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(resolvedParent.getRawFullPath()),
+                PolarisEntityType.NAMESPACE,
+                PolarisEntitySubType.ANY_SUBTYPE,
+                entity.getName());
+    if (existingNamespace.isSuccess()) {
+      throw new AlreadyExistsException(
+          "Cannot create namespace %s. Namespace already exists", namespace);
+    }
     if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap for {} with sibling tables or namespaces", namespace);
       validateNoLocationOverlap(entity, resolvedParent.getRawFullPath());

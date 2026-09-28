@@ -105,6 +105,7 @@ dependencies {
   implementation("com.azure:azure-core")
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
+  implementation(libs.msal4j)
 
   compileOnly(libs.swagger.annotations)
 
@@ -136,8 +137,6 @@ dependencies {
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(project(":polaris-relational-jdbc"))
 
-  testImplementation(project(":polaris-rustfs-testcontainer"))
-
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
   testImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")
 
@@ -148,6 +147,7 @@ dependencies {
   testImplementation(enforcedPlatform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit")
   testImplementation("io.quarkus:quarkus-junit-mockito")
+  testImplementation("io.quarkus:quarkus-test-oidc-server")
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
   testImplementation("io.quarkus:quarkus-jdbc-h2")
@@ -157,10 +157,12 @@ dependencies {
   testImplementation("io.rest-assured:rest-assured")
 
   testImplementation(platform(libs.testcontainers.bom))
+  testImplementation("org.testcontainers:testcontainers")
+  testImplementation("org.testcontainers:testcontainers-postgresql")
   testImplementation(project(":polaris-floci-aws-testcontainer"))
   testImplementation(project(":polaris-floci-az-testcontainer"))
   testImplementation(project(":polaris-floci-gcp-testcontainer"))
-  testImplementation(project(":polaris-keycloak-testcontainer"))
+  testImplementation(project(":polaris-rustfs-testcontainer"))
 
   testImplementation(project(":polaris-runtime-test-common"))
   testImplementation(project(":polaris-container-spec-helper"))
@@ -171,10 +173,6 @@ dependencies {
   testImplementation(libs.awaitility)
 
   testImplementation(libs.junit.pioneer)
-
-  testImplementation(platform(libs.testcontainers.bom))
-  testImplementation("org.testcontainers:testcontainers")
-  testImplementation("org.testcontainers:testcontainers-postgresql")
 
   testImplementation(project(":polaris-persistence-nosql-api"))
   testImplementation(testFixtures(project(":polaris-persistence-nosql-api")))

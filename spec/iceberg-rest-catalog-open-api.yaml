@@ -160,7 +160,7 @@ paths:
                   "GET /v1/{prefix}/namespaces/{namespace}/tables/{table}",
                   "GET /v1/{prefix}/namespaces/{namespace}/views/{view}"
                 ]
-              }
+               }
         400:
           $ref: '#/components/responses/BadRequestErrorResponse'
         401:
@@ -1102,7 +1102,7 @@ paths:
                   "type": "CommitStateUnknownException",
                   "code": 500
                 }
-              }
+               }
         503:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         502:
@@ -1118,7 +1118,7 @@ paths:
                   "type": "CommitStateUnknownException",
                   "code": 502
                 }
-              }
+               }
         504:
           description:
             A server-side gateway timeout occurred; the commit state is unknown.
@@ -1132,7 +1132,7 @@ paths:
                   "type": "CommitStateUnknownException",
                   "code": 504
                 }
-              }
+               }
         5XX:
           description:
             A server-side problem that might not be addressable on the client.
@@ -1146,7 +1146,7 @@ paths:
                   "type": "InternalServerError",
                   "code": 502
                 }
-              }
+               }
 
     delete:
       tags:
@@ -1481,7 +1481,7 @@ paths:
                   "type": "CommitStateUnknownException",
                   "code": 500
                 }
-              }
+               }
         503:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         502:
@@ -1497,7 +1497,7 @@ paths:
                   "type": "CommitStateUnknownException",
                   "code": 502
                 }
-              }
+               }
         504:
           description:
             A server-side gateway timeout occurred; the commit state is unknown.
@@ -1511,7 +1511,7 @@ paths:
                   "type": "CommitStateUnknownException",
                   "code": 504
                 }
-              }
+               }
         5XX:
           description:
             A server-side problem that might not be addressable on the client.
@@ -1525,7 +1525,7 @@ paths:
                   "type": "InternalServerError",
                   "code": 502
                 }
-              }
+               }
 
   /v1/{prefix}/namespaces/{namespace}/views:
     parameters:
@@ -1723,7 +1723,7 @@ paths:
                   "type": "CommitStateUnknownException",
                   "code": 500
                 }
-              }
+               }
         503:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         502:
@@ -1739,7 +1739,7 @@ paths:
                   "type": "CommitStateUnknownException",
                   "code": 502
                 }
-              }
+               }
         504:
           description:
             A server-side gateway timeout occurred; the commit state is unknown.
@@ -1753,7 +1753,7 @@ paths:
                   "type": "CommitStateUnknownException",
                   "code": 504
                 }
-              }
+               }
         5XX:
           description:
             A server-side problem that might not be addressable on the client.
@@ -1767,7 +1767,7 @@ paths:
                   "type": "InternalServerError",
                   "code": 502
                 }
-              }
+               }
 
     delete:
       tags:
@@ -2173,7 +2173,7 @@ components:
             "POST /v1/{prefix}/namespaces",
             "GET /v1/{prefix}/namespaces/{namespace}/tables/{table}",
             "GET /v1/{prefix}/namespaces/{namespace}/views/{view}"
-          ]
+           ]
         idempotency-key-lifetime:
           type: string
           format: duration
@@ -4025,7 +4025,7 @@ components:
             "value": 0,
           }
         }
-      }
+       }
 
     ReportMetricsRequest:
       anyOf:
@@ -4834,7 +4834,7 @@ components:
               "type": "BadRequestException",
               "code": 400
             }
-          }
+           }
 
     #  Note that this is a representative example response for use as a shorthand in the spec.
     #  The fields `message` and `type` as indicated here are not presently prescriptive.
@@ -4853,7 +4853,7 @@ components:
               "type": "NotAuthorizedException",
               "code": 401
             }
-          }
+           }
 
     #  Note that this is a representative example response for use as a shorthand in the spec.
     #  The fields `message` and `type` as indicated here are not presently prescriptive.
@@ -4869,7 +4869,7 @@ components:
               "type": "NotAuthorizedException",
               "code": 403
             }
-          }
+           }
 
     #  Note that this is a representative example response for use as a shorthand in the spec.
     #  The fields `message` and `type` as indicated here are not presently prescriptive.
@@ -4885,7 +4885,7 @@ components:
               "type": "UnsupportedOperationException",
               "code": 406
             }
-          }
+           }
 
     IcebergErrorResponse:
       description: JSON wrapper for all error responses (non-2xx)
@@ -4913,7 +4913,7 @@ components:
           example: {
             "namespace": ["accounting", "tax"],
             "properties": { "owner": "Ralph", "created_at": "1452120468" }
-          }
+           }
 
     GetNamespaceResponse:
       description:
@@ -4963,7 +4963,7 @@ components:
               "type": "AuthenticationTimeoutException",
               "code": 419
             }
-          }
+           }
 
     ServiceUnavailableResponse:
       description:
@@ -4981,7 +4981,7 @@ components:
               "type": "SlowDownException",
               "code": 503
             }
-          }
+           }
 
     ServerErrorResponse:
       description:
@@ -4998,7 +4998,7 @@ components:
               "type": "InternalServerError",
               "code": 500
             }
-          }
+           }
 
     UpdateNamespacePropertiesResponse:
       description: JSON data response for a synchronous update properties request.
@@ -5010,7 +5010,7 @@ components:
             "updated": [ "owner" ],
             "removed": [ "foo" ],
             "missing": [ "bar" ]
-          }
+           }
 
     CreateTableResponse:
       description: Table metadata result after creating a table
@@ -5098,13 +5098,13 @@ components:
       summary: An empty list for a namespace with no tables
       value: {
         "identifiers": [ ]
-      }
+       }
 
     ListNamespacesEmptyExample:
       summary: An empty list of namespaces
       value: {
         "namespaces": [ ]
-      }
+       }
 
     ListNamespacesNonEmptyExample:
       summary: A non-empty list of namespaces
@@ -5113,7 +5113,7 @@ components:
           ["accounting", "tax"],
           ["accounting", "credits"]
         ]
-      }
+       }
 
     ListTablesNonEmptyExample:
       summary: A non-empty list of table identifiers
@@ -5122,7 +5122,7 @@ components:
           { "namespace": ["accounting", "tax"], "name": "paid" },
           { "namespace": ["accounting", "tax"], "name": "owed" }
         ]
-      }
+       }
 
     MultipartNamespaceAsPathVariable:
       summary: A multi-part namespace, as represented in a path parameter
@@ -5140,7 +5140,7 @@ components:
           "type": "AlreadyExistsException",
           "code": 409
         }
-      }
+       }
 
     NoSuchPlanIdError:
       summary: The plan id does not exist
@@ -5150,7 +5150,7 @@ components:
           "type": "NoSuchPlanIdException",
           "code": 404
         }
-      }
+       }
 
     NoSuchPlanTaskError:
       summary: The plan task does not exist
@@ -5160,7 +5160,7 @@ components:
           "type": "NoSuchPlanTaskException",
           "code": 404
         }
-      }
+       }
 
     NoSuchTableError:
       summary: The requested table does not exist
@@ -5170,7 +5170,7 @@ components:
           "type": "NoSuchTableException",
           "code": 404
         }
-      }
+       }
 
     NoSuchViewError:
       summary: The requested view does not exist
@@ -5180,7 +5180,7 @@ components:
           "type": "NoSuchViewException",
           "code": 404
         }
-      }
+       }
 
     NoSuchWarehouseError:
       summary: The requested warehouse does not exist
@@ -5190,7 +5190,7 @@ components:
           "type": "NoSuchWarehouseException",
           "code": 404
         }
-      }
+       }
 
     NoSuchNamespaceError:
       summary: The requested namespace does not exist
@@ -5200,7 +5200,7 @@ components:
           "type": "NoSuchNamespaceException",
           "code": 404
         }
-      }
+       }
 
     NamespaceNotEmptyError:
       summary: The requested namespace is not empty
@@ -5210,21 +5210,21 @@ components:
           "type": "NamespaceNotEmptyException",
           "code": 409
         }
-      }
+       }
 
     RenameTableSameNamespace:
       summary: Rename a table in the same namespace
       value: {
         "source": { "namespace": ["accounting", "tax"], "name": "paid" },
         "destination": { "namespace": ["accounting", "tax"], "name": "owed" }
-      }
+       }
 
     RenameViewSameNamespace:
       summary: Rename a view in the same namespace
       value: {
         "source": { "namespace": [ "accounting", "tax" ], "name": "paid-view" },
         "destination": { "namespace": [ "accounting", "tax" ], "name": "owed-view" }
-      }
+       }
 
     TableAlreadyExistsError:
       summary: The requested table identifier already exists
@@ -5234,7 +5234,7 @@ components:
           "type": "AlreadyExistsException",
           "code": 409
         }
-      }
+       }
 
     ViewAlreadyExistsError:
       summary: The requested view identifier already exists
@@ -5244,7 +5244,7 @@ components:
           "type": "AlreadyExistsException",
           "code": 409
         }
-      }
+       }
 
     # This is an example response and is not meant to be prescriptive regarding the message or type.
     UnprocessableEntityDuplicateKey:
@@ -5257,14 +5257,14 @@ components:
           "type": "UnprocessableEntityException",
           "code": 422
         }
-      }
+       }
 
     UpdateAndRemoveNamespacePropertiesRequest:
       summary: An update namespace properties request with both properties to remove and properties to upsert.
       value: {
         "removals": [ "foo", "bar" ],
         "updates": { "owner": "Raoul" }
-      }
+       }
 
   securitySchemes:
     OAuth2:
