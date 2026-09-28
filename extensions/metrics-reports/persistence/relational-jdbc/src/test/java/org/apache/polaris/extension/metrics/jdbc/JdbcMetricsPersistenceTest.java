@@ -18,15 +18,21 @@
  */
 package org.apache.polaris.extension.metrics.jdbc;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.InputStream;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
+import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.extension.metrics.spi.MetricsQuerySpi;
+import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.h2.jdbcx.JdbcConnectionPool;
@@ -159,6 +165,105 @@ class JdbcMetricsPersistenceTest {
 
       metricsPersistence.writeScanReport(record);
     }
+  }
+
+  @Test
+  void testRoundTripInDatasourceSelectedSchema() throws SQLException {
+    // The datasource selects a non-default schema (the H2 equivalent of the PostgreSQL driver's
+    // currentSchema setting), and the latest bootstrap script creates its tables there. Reads must
+    // resolve against the same schema as writes.
+    DataSource dataSource =
+        JdbcConnectionPool.create(
+            "jdbc:h2:mem:test_metrics_schema_"
+                + UUID.randomUUID()
+                + ";DB_CLOSE_DELAY=-1"
+                + ";INIT=CREATE SCHEMA IF NOT EXISTS custom_polaris\\;SET SCHEMA custom_polaris",
+            "sa",
+            "");
+    DatasourceOperations datasourceOperations =
+        new DatasourceOperations(dataSource, new TestJdbcConfiguration());
+    datasourceOperations.executeScript(
+        DatabaseType.H2.openInitScriptResource(DatabaseType.H2.getLatestSchemaVersion()));
+    JdbcMetricsPersistence persistence =
+        new JdbcMetricsPersistence(datasourceOperations, () -> "TEST_REALM");
+
+    ScanMetricsRecord scan =
+        ScanMetricsRecord.builder()
+            .reportId(UUID.randomUUID().toString())
+            .catalogId(1L)
+            .tableId(2L)
+            .timestamp(Instant.now())
+            .resultDataFiles(0L)
+            .resultDeleteFiles(0L)
+            .totalFileSizeBytes(0L)
+            .totalDataManifests(0L)
+            .totalDeleteManifests(0L)
+            .scannedDataManifests(0L)
+            .scannedDeleteManifests(0L)
+            .skippedDataManifests(0L)
+            .skippedDeleteManifests(0L)
+            .skippedDataFiles(0L)
+            .skippedDeleteFiles(0L)
+            .totalPlanningDurationMs(0L)
+            .equalityDeleteFiles(0L)
+            .positionalDeleteFiles(0L)
+            .indexedDeleteFiles(0L)
+            .totalDeleteFileSizeBytes(0L)
+            .build();
+    CommitMetricsRecord commit =
+        CommitMetricsRecord.builder()
+            .reportId(UUID.randomUUID().toString())
+            .catalogId(1L)
+            .tableId(2L)
+            .timestamp(Instant.now())
+            .snapshotId(3L)
+            .operation("append")
+            .addedDataFiles(0L)
+            .removedDataFiles(0L)
+            .totalDataFiles(0L)
+            .addedDeleteFiles(0L)
+            .removedDeleteFiles(0L)
+            .totalDeleteFiles(0L)
+            .addedEqualityDeleteFiles(0L)
+            .removedEqualityDeleteFiles(0L)
+            .addedPositionalDeleteFiles(0L)
+            .removedPositionalDeleteFiles(0L)
+            .addedRecords(0L)
+            .removedRecords(0L)
+            .totalRecords(0L)
+            .addedFileSizeBytes(0L)
+            .removedFileSizeBytes(0L)
+            .totalFileSizeBytes(0L)
+            .attempts(1)
+            .build();
+    persistence.writeScanReport(scan);
+    persistence.writeCommitReport(commit);
+
+    MetricsQuerySpi.QueryResult scans =
+        persistence.listReports(
+            MetricsQuerySpi.MetricType.SCAN,
+            1L,
+            List.of(2L),
+            null,
+            null,
+            null,
+            PageToken.fromLimit(10));
+    MetricsQuerySpi.QueryResult commits =
+        persistence.listReports(
+            MetricsQuerySpi.MetricType.COMMIT,
+            1L,
+            List.of(2L),
+            null,
+            null,
+            null,
+            PageToken.fromLimit(10));
+
+    assertThat(((MetricsQuerySpi.ScanResult) scans).reports().items())
+        .extracting(ScanMetricsRecord::reportId)
+        .containsExactly(scan.reportId());
+    assertThat(((MetricsQuerySpi.CommitResult) commits).reports().items())
+        .extracting(CommitMetricsRecord::reportId)
+        .containsExactly(commit.reportId());
   }
 
   private static class TestJdbcConfiguration implements RelationalJdbcConfiguration {

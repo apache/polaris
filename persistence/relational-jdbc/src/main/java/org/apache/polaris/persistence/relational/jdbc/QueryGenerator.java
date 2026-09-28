@@ -469,9 +469,4 @@ public class QueryGenerator {
   private static String escapeLikePattern(String literal) {
     return literal.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
   }
-
-  public static String getFullyQualifiedTableName(String tableName) {
-    // TODO: make schema name configurable.
-    return "POLARIS_SCHEMA." + tableName;
-  }
 }
