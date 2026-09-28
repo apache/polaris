@@ -154,6 +154,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Catalog federation: `connectionConfigInfo.properties` is now persisted and returned for `HADOOP`
+  and `HIVE` connection configurations. It was previously accepted by the management API but
+  silently dropped, so `GET /catalogs/{name}` never showed it.
 - Semantic models: a `datasets` field that is not a JSON array now returns `400 Bad Request`
   instead of being silently skipped, which bypassed every `dataset.source` check.
 - Re-creating an existing namespace now returns `409 Conflict` instead of `403 Forbidden` when

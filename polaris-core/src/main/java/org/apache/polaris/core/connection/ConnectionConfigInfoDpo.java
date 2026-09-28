@@ -215,7 +215,8 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 hadoopConfigModel.getUri(),
                 authenticationParameters,
                 null /*Service Identity Info*/,
-                hadoopConfigModel.getWarehouse());
+                hadoopConfigModel.getWarehouse(),
+                hadoopConfigModel.getProperties());
         break;
       case HIVE:
         HiveConnectionConfigInfo hiveConfigModel =
@@ -228,7 +229,8 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 hiveConfigModel.getUri(),
                 authenticationParameters,
                 hiveConfigModel.getWarehouse(),
-                null /*Service Identity Info*/);
+                null /*Service Identity Info*/,
+                hiveConfigModel.getProperties());
         break;
       case BIGQUERY:
         BigQueryMetastoreConnectionConfigInfo bigqueryConfigModel =
