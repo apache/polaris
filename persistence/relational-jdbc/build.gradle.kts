@@ -26,6 +26,8 @@ dependencies {
   implementation(project(":polaris-core"))
   implementation(libs.slf4j.api)
   implementation(libs.guava)
+  implementation(platform(libs.micrometer.bom))
+  implementation("io.micrometer:micrometer-core")
 
   implementation(platform(libs.jackson3.bom))
   implementation("tools.jackson.core:jackson-core")

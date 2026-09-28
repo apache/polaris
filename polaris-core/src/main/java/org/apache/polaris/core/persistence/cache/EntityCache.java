@@ -28,7 +28,18 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /** Interface for a Polaris entity cache */
-public interface EntityCache {
+public interface EntityCache extends AutoCloseable {
+  /**
+   * Called when this cache is discarded, for example because its realm was purged. Implementations
+   * release the resources they hold here, such as removing the metrics they registered. The cache
+   * must not be used afterwards.
+   *
+   * <p>Overrides {@link AutoCloseable#close()} to drop the checked exception, so callers discarding
+   * a cache do not have to handle one.
+   */
+  @Override
+  default void close() {}
+
   /**
    * Remove the specified cache entry from the cache
    *
