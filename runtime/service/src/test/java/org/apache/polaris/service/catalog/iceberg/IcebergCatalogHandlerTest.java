@@ -35,6 +35,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
+import com.google.common.collect.ImmutableMap;
 import jakarta.enterprise.inject.Instance;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -44,6 +45,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
@@ -60,6 +62,7 @@ import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.rest.credentials.Credential;
+import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
@@ -187,7 +190,7 @@ class IcebergCatalogHandlerTest {
         .prefixParser(mock(CatalogPrefixParser.class))
         .resolverFactory(mock(ResolverFactory.class))
         .localCatalogFactory(localCatalogFactory)
-        .reservedProperties(mock(ReservedProperties.class))
+        .reservedProperties(ReservedProperties.NONE)
         .catalogHandlerUtils(catalogHandlerUtils)
         .storageAccessConfigProvider(storageAccessConfigProvider)
         .eventAttributeMap(mock(MutableAttributeMap.class))
@@ -744,6 +747,48 @@ class IcebergCatalogHandlerTest {
             withSettings().extraInterfaces(ViewCatalog.class, SupportsNamespaces.class));
     when(localCatalogFactory.createCatalog(any())).thenReturn(federated);
     return federated;
+  }
+
+  @Test
+  void createTableStagedAppliesCatalogTableDefaultAndOverrideProperties() {
+    LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
+    when(icebergCatalog.properties())
+        .thenReturn(
+            Map.of(
+                CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.endpoint",
+                "http://s3.local:9000",
+                CatalogProperties.TABLE_DEFAULT_PREFIX + "shared-key",
+                "catalog-default",
+                CatalogProperties.TABLE_OVERRIDE_PREFIX + "override-key",
+                "catalog-override"));
+    when(icebergCatalog.transformTableLikeLocation(TABLE2, TABLE_LOCATION))
+        .thenReturn(TABLE_LOCATION);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+    when(realmConfig.getConfig(
+            eq(FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION), eq(catalogEntity)))
+        .thenReturn(true);
+    when(accessDelegationModeResolver.resolve(any(), any())).thenReturn(Optional.empty());
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    CreateTableRequest request =
+        CreateTableRequest.builder()
+            .withName(TABLE2.name())
+            .withLocation(TABLE_LOCATION)
+            .withSchema(new Schema(Types.NestedField.required(1, "id", Types.IntegerType.get())))
+            .setProperties(ImmutableMap.of("shared-key", "request", "override-key", "request"))
+            .stageCreate()
+            .build();
+    LoadTableResponse response =
+        handler.createTableStaged(
+            NS1, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
+
+    // Same precedence as a direct create: catalog defaults, then the request, then overrides.
+    assertThat(response.tableMetadata().properties())
+        .containsEntry("s3.endpoint", "http://s3.local:9000")
+        .containsEntry("shared-key", "request")
+        .containsEntry("override-key", "catalog-override");
   }
 
   @Test

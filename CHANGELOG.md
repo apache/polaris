@@ -126,6 +126,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Staged table creates now honor the catalog's `table-default.*` and `table-override.*` properties
+  in the returned table metadata, matching the precedence applied to direct creates.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - Maintenance policy content now rejects non-boolean values for the `enable` field again. The
