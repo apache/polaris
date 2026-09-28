@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -32,18 +33,24 @@ import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
+import org.apache.polaris.service.auth.external.OidcIdentityPreparer;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class AuthenticatingAugmentorTest {
+public class PolarisSecurityIdentityAugmentorTest {
 
-  private AuthenticatingAugmentor augmentor;
+  private PolarisSecurityIdentityAugmentor augmentor;
   private Authenticator authenticator;
+  private OidcIdentityPreparer oidcIdentityPreparer;
 
   @BeforeEach
   public void setup() {
     authenticator = mock(Authenticator.class);
-    augmentor = new AuthenticatingAugmentor(authenticator);
+    oidcIdentityPreparer = mock(OidcIdentityPreparer.class);
+    // By default, the preparer is a pass-through; individual tests override for OIDC identities
+    when(oidcIdentityPreparer.prepare(any())).thenAnswer(i -> i.getArgument(0));
+    augmentor = new PolarisSecurityIdentityAugmentor(authenticator, oidcIdentityPreparer);
   }
 
   @Test
@@ -109,5 +116,32 @@ public class AuthenticatingAugmentorTest {
     assertThat(result.getPrincipal()).isSameAs(polarisPrincipal);
     // principal attributes should not be merged
     assertThat(result.getAttributes()).containsOnlyKeys("attr1");
+  }
+
+  @Test
+  public void testAugmentOidcIdentity() {
+    // Given
+    JsonWebToken oidcPrincipal = mock(JsonWebToken.class);
+    SecurityIdentity identity =
+        QuarkusSecurityIdentity.builder().setPrincipal(oidcPrincipal).build();
+    PolarisCredential credential = mock(PolarisCredential.class);
+    SecurityIdentity preparedIdentity =
+        QuarkusSecurityIdentity.builder()
+            .setPrincipal(oidcPrincipal)
+            .addCredential(credential)
+            .build();
+    PolarisPrincipal polarisPrincipal =
+        PolarisPrincipal.of("user1", ImmutableAttributeMap.builder().build(), Set.of("role1"));
+
+    when(oidcIdentityPreparer.prepare(identity)).thenReturn(preparedIdentity);
+    when(authenticator.authenticate(preparedIdentity)).thenReturn(polarisPrincipal);
+
+    // When
+    SecurityIdentity result =
+        augmentor.augment(identity, Uni.createFrom()::item).await().indefinitely();
+
+    // Then
+    assertThat(result.getPrincipal()).isSameAs(polarisPrincipal);
+    assertThat(result.getRoles()).containsExactlyInAnyOrder("role1");
   }
 }

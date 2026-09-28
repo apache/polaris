@@ -26,24 +26,32 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.service.auth.external.OidcIdentityPreparer;
 
 /**
- * A custom {@link SecurityIdentityAugmentor} that, after Quarkus OIDC or Internal Auth extracted
- * and validated the principal credentials, augments the {@link SecurityIdentity} by authenticating
- * the principal.
+ * A custom {@link SecurityIdentityAugmentor} that augments the already-authenticated {@link
+ * SecurityIdentity} with Polaris-specific requirements.
  *
+ * <p>First, it prepares OIDC identities, if applicable, so that all identities expose a valid
+ * {@link PolarisCredential}; and finally, it invokes the {@link Authenticator} and sets the
+ * produced {@link PolarisPrincipal} as the identity's principal.
+ *
+ * @see OidcIdentityPreparer
  * @see Authenticator
  */
 @ApplicationScoped
-public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
+public class PolarisSecurityIdentityAugmentor implements SecurityIdentityAugmentor {
 
   public static final int PRIORITY = 1000;
 
   private final Authenticator authenticator;
+  private final OidcIdentityPreparer oidcIdentityPreparer;
 
   @Inject
-  public AuthenticatingAugmentor(Authenticator authenticator) {
+  public PolarisSecurityIdentityAugmentor(
+      Authenticator authenticator, OidcIdentityPreparer oidcIdentityPreparer) {
     this.authenticator = authenticator;
+    this.oidcIdentityPreparer = oidcIdentityPreparer;
   }
 
   @Override
@@ -60,10 +68,11 @@ public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
   }
 
   private SecurityIdentity authenticatePolarisPrincipal(SecurityIdentity identity) {
-    PolarisPrincipal polarisPrincipal = authenticator.authenticate(identity);
+    SecurityIdentity preparedIdentity = oidcIdentityPreparer.prepare(identity);
+    PolarisPrincipal polarisPrincipal = authenticator.authenticate(preparedIdentity);
     // Do not merge the principal attributes into the security identity's attributes:
     // these must stay separate.
-    return QuarkusSecurityIdentity.builder(identity)
+    return QuarkusSecurityIdentity.builder(preparedIdentity)
         .setAnonymous(false)
         .setPrincipal(polarisPrincipal)
         .addRoles(polarisPrincipal.getRoles())
