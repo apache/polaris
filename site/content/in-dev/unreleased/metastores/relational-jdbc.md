@@ -214,16 +214,16 @@ For more details on the bootstrap command and other administrative operations, s
 Upgrading Polaris on an existing installation requires two steps, in this order:
 
 1. **Apply schema migrations** for each schema version between your current version and the target
-   version (see the migration SQL in the sections below). Schema migrations must be applied
-   **before** starting the new Polaris binary. The first request to any realm whose recorded schema
-   version does not match what the binary expects will fail fast with an actionable error message.
+   version (see below). Schema migrations must be applied **before** starting the new Polaris 
+   binary. The first request to any realm whose recorded schema version does not match what the 
+   binary expects will fail fast with an actionable error message.
 
 2. **Bootstrap new realms** if needed. Re-bootstrapping an existing installation is not required
    unless you want to add new realms. The bootstrap command is idempotent — already-bootstrapped
    realms are simply ignored — so it can be safely run again if needed.
 
 {{< alert important >}}
-**Re-bootstrapping is not sufficient to upgrade the SQL schema.** Always apply the SQL migration
+**Re-bootstrapping is not sufficient to upgrade the SQL schema.** Always apply schema migrations
 first.
 {{< /alert >}}
 
