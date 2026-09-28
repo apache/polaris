@@ -66,15 +66,20 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -1060,5 +1065,41 @@ public class PolarisAdminServiceTest {
     when(resolutionManifest.getResolvedPath(
             eq(ResolvedPathKey.of(List.of(namespace.levels()), PolarisEntityType.NAMESPACE))))
         .thenReturn(resolvedPathWrapper);
+  }
+
+  @Test
+  void testRotateCredentialsConcurrentModificationThrowsCommitConflictException() {
+    String principalName = "test_principal";
+    PrincipalEntity principalEntity =
+        new PrincipalEntity.Builder()
+            .setName(principalName)
+            .setId(100L)
+            .setClientId("test_client")
+            .build();
+
+    PolarisResolvedPathWrapper wrapper = mock(PolarisResolvedPathWrapper.class);
+    when(wrapper.getRawLeafEntity()).thenReturn(principalEntity);
+    ResolvedPolarisEntity resolvedLeaf = mock(ResolvedPolarisEntity.class);
+    when(resolvedLeaf.getEntity()).thenReturn(principalEntity);
+    when(wrapper.getResolvedLeafEntity()).thenReturn(resolvedLeaf);
+
+    when(resolutionManifest.getResolvedTopLevelEntity(
+            eq(principalName), eq(PolarisEntityType.PRINCIPAL)))
+        .thenReturn(wrapper);
+
+    PolarisPrincipalSecrets currentSecrets =
+        new PolarisPrincipalSecrets(100L, "test_client", "main_secret");
+    when(metaStoreManager.loadPrincipalSecrets(any(), eq("test_client")))
+        .thenReturn(new PrincipalSecretsResult(currentSecrets));
+
+    when(metaStoreManager.rotatePrincipalSecrets(
+            any(), eq("test_client"), eq(100L), eq(false), any()))
+        .thenReturn(
+            new PrincipalSecretsResult(
+                BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
+                "Concurrent modification detected"));
+
+    assertThatThrownBy(() -> adminService.rotateCredentials(principalName))
+        .isInstanceOf(CommitConflictException.class);
   }
 }

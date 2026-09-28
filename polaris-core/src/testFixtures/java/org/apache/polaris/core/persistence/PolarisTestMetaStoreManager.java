@@ -513,12 +513,15 @@ public class PolarisTestMetaStoreManager {
         .isNull();
 
     // rotate the secrets, twice!
-    polarisMetaStoreManager.rotatePrincipalSecrets(
-        this.polarisCallContext,
-        clientId,
-        principalEntity.getId(),
-        false,
-        secrets.getMainSecretHash());
+    secrets =
+        polarisMetaStoreManager
+            .rotatePrincipalSecrets(
+                this.polarisCallContext,
+                clientId,
+                principalEntity.getId(),
+                false,
+                secrets.getMainSecretHash())
+            .getPrincipalSecrets();
     polarisMetaStoreManager.rotatePrincipalSecrets(
         this.polarisCallContext,
         clientId,
