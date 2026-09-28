@@ -26,7 +26,9 @@ import static org.apache.polaris.persistence.nosql.api.index.IndexKey.INDEX_KEY_
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.NULL_ESCAPED;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.deserializeKey;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.key;
+import static org.apache.polaris.persistence.nosql.api.index.IndexKey.skip;
 import static org.apache.polaris.persistence.nosql.api.index.Util.asHex;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.InstanceOfAssertFactories.INTEGER;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -78,6 +80,41 @@ public class TestIndexKey {
     return Stream.of(
         STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100 + "x",
         STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100);
+  }
+
+  /**
+   * Keys whose decoded length is under {@link IndexKey#MAX_LENGTH} but that expand when escaped
+   * must still be skippable. {@code skip} used to count two units per escaped byte and reject these
+   * keys after they had already been written.
+   */
+  @ParameterizedTest
+  @ValueSource(chars = {'\u0001', '\u0002'})
+  void skipAcceptsKeysThatExpandWhenEscaped(char escapedChar) {
+    // Decoded length 251: under MAX_LENGTH, but 251 escape pairs used to push skip's counter past
+    // 500 (2 * 251) and throw while deserializeKey still succeeded.
+    var indexKey = key(String.valueOf(escapedChar).repeat(251));
+    var buffer = ByteBuffer.allocate(indexKey.serializedSize());
+    indexKey.serialize(buffer).flip();
+
+    assertThat(deserializeKey(buffer.duplicate())).isEqualTo(indexKey);
+    var skipped = buffer.duplicate();
+    skip(skipped);
+    assertThat(skipped.remaining()).isZero();
+  }
+
+  @Test
+  void skipAcceptsMixedEscapedKeyNearLimit() {
+    // 250 escaped bytes + one ordinary byte: decoded length 251. The old skip counter would reach
+    // 501 (2 * 250 + 1) and throw.
+    var raw = "\u0001".repeat(250) + "a";
+    var indexKey = key(raw);
+    var buffer = ByteBuffer.allocate(indexKey.serializedSize());
+    indexKey.serialize(buffer).flip();
+
+    assertThat(deserializeKey(buffer.duplicate())).isEqualTo(indexKey);
+    var skipped = buffer.duplicate();
+    skip(skipped);
+    assertThat(skipped.remaining()).isZero();
   }
 
   @ParameterizedTest
