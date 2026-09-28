@@ -353,6 +353,56 @@ public abstract class BasePolarisMetaStoreManagerTest {
   }
 
   @Test
+  protected void testTagAssignment() {
+    polarisTestMetaStoreManager.testTagAssignment();
+  }
+
+  @Test
+  protected void testTagDropDetachAll() {
+    polarisTestMetaStoreManager.testTagDropDetachAll();
+  }
+
+  @Test
+  protected void testTagDropWithOrphanRows() {
+    polarisTestMetaStoreManager.testTagDropWithOrphanRows();
+  }
+
+  @Test
+  protected void testTagDropRejectsAnAssignmentWrittenAfterClassification() {
+    polarisTestMetaStoreManager.testTagDropRejectsAnAssignmentWrittenAfterClassification();
+  }
+
+  @Test
+  protected void testTagDropWithEmptyClassificationRejectsARowWrittenAfterwards() {
+    polarisTestMetaStoreManager.testTagDropWithEmptyClassificationRejectsARowWrittenAfterwards();
+  }
+
+  @Test
+  protected void testTagDropRejectsWhenAJudgedTargetHasMovedOn() {
+    polarisTestMetaStoreManager.testTagDropRejectsWhenAJudgedTargetHasMovedOn();
+  }
+
+  @Test
+  protected void testTagAssignmentCleanup() {
+    polarisTestMetaStoreManager.testTagAssignmentCleanup();
+  }
+
+  @Test
+  protected void testDeleteAllClearsTagAssignments() {
+    polarisTestMetaStoreManager.testDeleteAllClearsTagAssignments();
+  }
+
+  @Test
+  protected void testTagCatalogTargetAssignment() {
+    polarisTestMetaStoreManager.testTagCatalogTargetAssignment();
+  }
+
+  @Test
+  protected void testTagCrossCatalogAssignmentRejected() {
+    polarisTestMetaStoreManager.testTagCrossCatalogAssignmentRejected();
+  }
+
+  @Test
   protected void testLoadTasks() {
     for (int i = 0; i < 20; i++) {
       polarisTestMetaStoreManager.createEntity(
@@ -626,5 +676,45 @@ public abstract class BasePolarisMetaStoreManagerTest {
     DropEntityResult dropped =
         metaStoreManager.dropEntityIfExists(callCtx, null, principalRole, null, false);
     Assertions.assertThat(dropped.isSuccess()).isTrue();
+  }
+
+  /** a live tag definition must block dropping its catalog, in both metastore managers */
+  @Test
+  protected void testDropCatalogBlockedByTag() {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+
+    // a bare catalog (no namespaces, only the auto-created admin role) with one tag under it
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStoreManager.generateNewEntityId(callCtx).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "tag_block_catalog");
+    catalog = metaStoreManager.createCatalog(callCtx, catalog, List.of()).getCatalog();
+    PolarisBaseEntity tag =
+        polarisTestMetaStoreManager.createEntity(
+            List.of(catalog), PolarisEntityType.TAG, PolarisEntitySubType.NULL_SUBTYPE, "t1");
+
+    // the drop is blocked while the tag exists
+    DropEntityResult blocked =
+        metaStoreManager.dropEntityIfExists(callCtx, null, catalog, Map.of(), false);
+    Assertions.assertThat(blocked.isSuccess()).isFalse();
+    Assertions.assertThat(blocked.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.CATALOG_NOT_EMPTY);
+
+    // dropping the tag unblocks the catalog drop
+    Assertions.assertThat(
+            metaStoreManager
+                .dropEntityIfExists(callCtx, List.of(catalog), tag, Map.of(), false)
+                .isSuccess())
+        .isTrue();
+    Assertions.assertThat(
+            metaStoreManager
+                .dropEntityIfExists(callCtx, null, catalog, Map.of(), false)
+                .isSuccess())
+        .isTrue();
   }
 }

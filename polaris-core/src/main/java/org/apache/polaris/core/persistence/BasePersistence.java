@@ -37,6 +37,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyMappingPersistence;
+import org.apache.polaris.core.tag.TagAssignmentPersistence;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -57,7 +58,7 @@ import org.jspecify.annotations.Nullable;
  * polaris-extensions-metrics-reports-jdbc} extension module, which provides its own {@code
  * MetricsPersistence} implementation independently of {@link BasePersistence}.
  */
-public interface BasePersistence extends PolicyMappingPersistence {
+public interface BasePersistence extends PolicyMappingPersistence, TagAssignmentPersistence {
   /**
    * The returned id must be fully unique within a realm and never reused once generated, whether or
    * not anything ends up committing an entity with the generated id.

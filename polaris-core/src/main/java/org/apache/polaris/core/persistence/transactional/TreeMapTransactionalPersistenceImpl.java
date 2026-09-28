@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence.transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -52,6 +53,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.core.tag.TagAssignmentRecord;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -648,6 +650,99 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     return this.store
         .getSlicePolicyMappingRecordsByPolicy()
         .readRange(this.store.buildPrefixKeyComposite(policyTypeCode, policyCatalogId, policyId));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void writeToTagAssignmentRecordsInCurrentTxn(
+      @NonNull PolarisCallContext callCtx, @NonNull TagAssignmentRecord record) {
+    this.store.getSliceTagAssignmentRecords().write(record);
+    this.store.getSliceTagAssignmentRecordsByTag().write(record);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public boolean deleteFromTagAssignmentRecordsInCurrentTxn(
+      @NonNull PolarisCallContext callCtx, @NonNull TagAssignmentRecord record) {
+    // The two slices are dual indexes of the same logical row; the primary index is the
+    // authoritative signal for whether the row actually existed.
+    boolean removed = this.store.getSliceTagAssignmentRecords().delete(record);
+    this.store.getSliceTagAssignmentRecordsByTag().delete(record);
+    return removed;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteAllEntityTagAssignmentRecordsInCurrentTxn(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
+      @NonNull List<TagAssignmentRecord> assignmentsOnTag,
+      @NonNull List<TagAssignmentRecord> assignmentsOnTarget) {
+    if (entity.getType() == PolarisEntityType.TAG) {
+      this.store
+          .getSliceTagAssignmentRecordsByTag()
+          .deleteRange(this.store.buildPrefixKeyComposite(entity.getCatalogId(), entity.getId()));
+      // also delete the other side. We need to delete these assignments one at a time versus
+      // doing a range delete
+      assignmentsOnTag.forEach(record -> this.store.getSliceTagAssignmentRecords().delete(record));
+    } else {
+      this.store
+          .getSliceTagAssignmentRecords()
+          .deleteRange(
+              this.store.buildPrefixKeyComposite(
+                  TagAssignmentRecord.containingCatalogId(entity), entity.getId()));
+      // also delete the other side. We need to delete these assignments one at a time versus
+      // doing a range delete
+      assignmentsOnTarget.forEach(
+          record -> this.store.getSliceTagAssignmentRecordsByTag().delete(record));
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @Nullable TagAssignmentRecord lookupTagAssignmentRecordInCurrentTxn(
+      @NonNull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int fieldId,
+      long tagCatalogId,
+      long tagId) {
+    return this.store
+        .getSliceTagAssignmentRecords()
+        .read(
+            this.store.buildKeyComposite(targetCatalogId, targetId, fieldId, tagCatalogId, tagId));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull List<TagAssignmentRecord> loadAllTagAssignmentsOnTargetEntityInCurrentTxn(
+      @NonNull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
+    return this.store
+        .getSliceTagAssignmentRecords()
+        .readRange(this.store.buildPrefixKeyComposite(targetCatalogId, targetId));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull List<TagAssignmentRecord> loadAllTargetsOnTagInCurrentTxn(
+      @NonNull PolarisCallContext callCtx,
+      long tagCatalogId,
+      long tagId,
+      @Nullable String valueFilter,
+      @NonNull PageToken pageToken) {
+    Stream<TagAssignmentRecord> records =
+        this.store
+            .getSliceTagAssignmentRecordsByTag()
+            .readRange(this.store.buildPrefixKeyComposite(tagCatalogId, tagId))
+            .stream();
+    if (valueFilter != null) {
+      records = records.filter(record -> valueFilter.equals(record.getValue()));
+    }
+    OptionalInt pageSize = pageToken.pageSize();
+    if (pageToken.paginationRequested() && pageSize.isPresent()) {
+      records = records.limit(pageSize.getAsInt());
+    }
+    return records.collect(Collectors.toList());
   }
 
   private Optional<String> getEntityLocationWithoutScheme(PolarisBaseEntity entity) {

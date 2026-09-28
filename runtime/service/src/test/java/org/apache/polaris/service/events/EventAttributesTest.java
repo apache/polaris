@@ -46,16 +46,23 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
+import org.apache.polaris.service.types.CreateTagRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.GetApplicablePoliciesResponse;
+import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.LoadPolicyResponse;
 import org.apache.polaris.service.types.NotificationRequest;
+import org.apache.polaris.service.types.RenameTagRequest;
+import org.apache.polaris.service.types.Tag;
+import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.UpdatePolicyRequest;
+import org.apache.polaris.service.types.UpdateTagRequest;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 
@@ -96,6 +103,13 @@ class EventAttributesTest {
           GenericTable.class,
           CreateGenericTableRequest.class,
           CreatePolicyRequest.class,
+          AssignTagRequest.class,
+          TagAttachmentTarget.class,
+          CreateTagRequest.class,
+          RenameTagRequest.class,
+          UpdateTagRequest.class,
+          Tag.class,
+          ListTagsResponse.class,
           UpdatePolicyRequest.class,
           LoadPolicyResponse.class,
           AttachPolicyRequest.class,

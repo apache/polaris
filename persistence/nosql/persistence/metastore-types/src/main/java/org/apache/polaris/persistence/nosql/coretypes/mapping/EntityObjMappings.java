@@ -93,6 +93,9 @@ public final class EntityObjMappings {
     // TODO: SEMANTIC_MODEL is not yet supported by the NoSQL backend; Excluded here so the NoSQL
     // module still loads while the type exists in the shared enum.
     missingEntityTypes.remove(PolarisEntityType.SEMANTIC_MODEL);
+    // TODO: TAG is not yet supported by the NoSQL backend; Excluded here so the NoSQL
+    // module still loads while the type exists in the shared enum.
+    missingEntityTypes.remove(PolarisEntityType.TAG);
     missingEntityTypes.removeAll(BY_ENTITY_TYPE.keySet());
     checkState(
         missingEntityTypes.isEmpty(),
