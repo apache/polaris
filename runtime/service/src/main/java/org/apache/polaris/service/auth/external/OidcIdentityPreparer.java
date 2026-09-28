@@ -114,7 +114,7 @@ public class OidcIdentityPreparer {
       credential = PolarisCredential.ofExternal(principalName, principalRoles);
     }
     // Note: we don't change the identity roles here; this is done later by
-    // AuthenticatingAugmentor, which also validates them.
+    // PolarisSecurityIdentityAugmentor, which also validates them.
     return QuarkusSecurityIdentity.builder(withConfig).addCredential(credential).build();
   }
 }
