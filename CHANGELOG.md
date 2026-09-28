@@ -156,6 +156,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Semantic models: a `datasets` field that is not a JSON array now returns `400 Bad Request`
   instead of being silently skipped, which bypassed every `dataset.source` check.
+- Conditional `loadTable` (`If-None-Match` → HTTP 304) no longer attaches a null
+  `LOAD_TABLE_RESPONSE` to the `AFTER_LOAD_TABLE` event. The persistence event listener also
+  skips null attribute values instead of failing while pruning them.
 - Re-creating an existing namespace now returns `409 Conflict` instead of `403 Forbidden` when
   `OPTIMIZED_SIBLING_CHECK` is on. Namespace creation checks for an existing namespace before
   validating locations, as table and view creation already do, so the existing namespace's own

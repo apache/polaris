@@ -437,16 +437,21 @@ public class IcebergRestCatalogEventServiceDelegator
             realmContext,
             securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_LOAD_TABLE)) {
+      // Conditional GET (If-None-Match match) returns 304 notModified() with no entity. Do not
+      // cast/store a null LOAD_TABLE_RESPONSE on the after-event.
+      ImmutableAttributeMap.Builder afterAttributes =
+          ImmutableAttributeMap.builder()
+              .put(EventAttributes.CATALOG_NAME, catalogName)
+              .put(EventAttributes.NAMESPACE, namespaceObj)
+              .put(EventAttributes.TABLE_NAME, table);
+      if (resp.getEntity() instanceof LoadTableResponse loadTableResponse) {
+        afterAttributes.put(EventAttributes.LOAD_TABLE_RESPONSE, loadTableResponse);
+      }
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
               PolarisEventType.AFTER_LOAD_TABLE,
               eventMetadataFactory.create(),
-              ImmutableAttributeMap.builder()
-                  .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.TABLE_NAME, table)
-                  .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())
-                  .build()));
+              afterAttributes.build()));
     }
     return resp;
   }
