@@ -32,7 +32,7 @@ info:
 
     Requires TABLE_READ_METRICS privilege on every requested table. Durable persistence backing for
     this API is provided by the polaris-extensions-metrics-reports-jdbc extension; without it the
-    endpoint returns HTTP 501.
+    endpoint returns HTTP 200 with an empty `reports` list.
   version: 0.1.0
   license:
     name: Apache 2.0
@@ -89,12 +89,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Catalog, namespace, or table not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '501':
-          description: Durable metrics query backing is not available in this deployment
           content:
             application/json:
               schema:
@@ -189,9 +183,9 @@ components:
     MetricsReport:
       type: object
       description: >
-        Envelope for a single persisted Iceberg metrics report (scan or commit). The `payload`
-        preserves the original Iceberg report data as an opaque JSON object so new metric fields
-        can pass through without requiring a change to this API's schema.
+        Envelope for a single persisted Iceberg metrics report (scan or commit). The `payload` is
+        an opaque JSON object so fields can be added without requiring a change to this API's
+        schema.
       required:
         - metricType
         - table
@@ -223,8 +217,12 @@ components:
           type: object
           additionalProperties: true
           description: >
-            Opaque Iceberg metrics report payload, e.g. `{"type": "iceberg.metrics.scan",
-            "version": 1, "data": {...}}`, mirroring the shape of the original report as received.
+            Opaque metrics report payload, e.g. `{"type": "iceberg.metrics.scan", "version": 1,
+            "data": {...}}`. The payload is a projection reconstructed from the persisted metrics
+            record, not the original report as received: `data` contains only the metric fields
+            the persistence backend stores, and fields of the original report that are not
+            persisted (e.g. custom metrics or report metadata) are not returned. Clients must not
+            assume every field of the original Iceberg report is present.
 
     MetricsActor:
       type: object

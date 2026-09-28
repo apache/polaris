@@ -29,7 +29,9 @@ import static org.mockito.Mockito.when;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NotFoundException;
@@ -41,9 +43,13 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.metrics.api.model.ListMetricsResponse;
+import org.apache.polaris.core.metrics.api.model.MetricsReport;
 import org.apache.polaris.core.metrics.api.model.QueryMetricsRequest;
 import org.apache.polaris.core.metrics.api.model.TableRef;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
@@ -61,7 +67,7 @@ import org.junit.jupiter.api.Test;
  *
  * <p>Without a durable query backend the no-op default provider returns empty pages; the durable
  * JDBC implementation (#4756) returns real data. These tests cover authorization, resolution error
- * paths, and input validation.
+ * paths, input validation, and mapping of persisted records to response payloads.
  */
 class MetricsReportsServiceTest {
 
@@ -247,6 +253,147 @@ class MetricsReportsServiceTest {
             securityContext);
 
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+  }
+
+  @Test
+  void populatedScanResultIsReturnedAsReconstructedPayload() {
+    ScanMetricsRecord record =
+        ScanMetricsRecord.builder()
+            .reportId("scan-1")
+            .catalogId(7L)
+            .tableId(42L)
+            .timestamp(Instant.ofEpochMilli(1_000L))
+            .putMetadata("custom-key", "custom-value")
+            .principalName("alice")
+            .requestId("req-1")
+            .snapshotId(99L)
+            .schemaId(3)
+            .filterExpression("id > 5")
+            .projectedFieldIds(List.of(1, 2))
+            .projectedFieldNames(List.of("id", "name"))
+            .resultDataFiles(10L)
+            .resultDeleteFiles(0L)
+            .totalFileSizeBytes(2048L)
+            .totalDataManifests(2L)
+            .totalDeleteManifests(0L)
+            .scannedDataManifests(2L)
+            .scannedDeleteManifests(0L)
+            .skippedDataManifests(0L)
+            .skippedDeleteManifests(0L)
+            .skippedDataFiles(1L)
+            .skippedDeleteFiles(0L)
+            .totalPlanningDurationMs(15L)
+            .equalityDeleteFiles(0L)
+            .positionalDeleteFiles(0L)
+            .indexedDeleteFiles(0L)
+            .totalDeleteFileSizeBytes(0L)
+            .build();
+    MetricsQuerySpi backend = mock(MetricsQuerySpi.class);
+    when(backend.listReports(
+            eq(MetricsQuerySpi.MetricType.SCAN),
+            eq(7L),
+            eq(List.of(42L)),
+            any(),
+            any(),
+            any(),
+            any(PageToken.class)))
+        .thenReturn(new MetricsQuerySpi.ScanResult(Page.fromItems(List.of(record))));
+    when(queryProvider.get()).thenReturn(backend);
+
+    Response response =
+        service.queryTableMetrics(
+            CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext);
+
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    List<MetricsReport> reports = ((ListMetricsResponse) response.getEntity()).getReports();
+    assertThat(reports).hasSize(1);
+    MetricsReport report = reports.getFirst();
+    assertThat(report.getMetricType()).isEqualTo(MetricsReport.MetricTypeEnum.SCAN);
+    assertThat(report.getTable()).isEqualTo(new TableRef(NAMESPACE, TABLE));
+    assertThat(report.getTimestampMs()).isEqualTo(1_000L);
+    assertThat(report.getSnapshotId()).isEqualTo(99L);
+    assertThat(report.getActor().getPrincipalName()).isEqualTo("alice");
+    assertThat(report.getRequest().getRequestId()).isEqualTo("req-1");
+    assertThat(report.getPayload())
+        .containsEntry("type", "iceberg.metrics.scan")
+        .containsEntry("version", 1);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> data = (Map<String, Object>) report.getPayload().get("data");
+    assertThat(data)
+        .containsEntry("schema-id", 3)
+        .containsEntry("filter", "id > 5")
+        .containsEntry("projected-field-names", List.of("id", "name"))
+        .containsEntry("result-data-files", 10L)
+        .containsEntry("total-planning-duration-ms", 15L);
+    // The payload is a projection of the persisted record: record metadata is not included.
+    assertThat(data).doesNotContainKey("custom-key");
+    assertThat(report.getPayload()).containsOnlyKeys("type", "version", "data");
+  }
+
+  @Test
+  void populatedCommitResultIsReturnedAsReconstructedPayload() {
+    CommitMetricsRecord record =
+        CommitMetricsRecord.builder()
+            .reportId("commit-1")
+            .catalogId(7L)
+            .tableId(42L)
+            .timestamp(Instant.ofEpochMilli(2_000L))
+            .snapshotId(100L)
+            .sequenceNumber(5L)
+            .operation("append")
+            .addedDataFiles(3L)
+            .removedDataFiles(0L)
+            .totalDataFiles(13L)
+            .addedDeleteFiles(0L)
+            .removedDeleteFiles(0L)
+            .totalDeleteFiles(0L)
+            .addedEqualityDeleteFiles(0L)
+            .removedEqualityDeleteFiles(0L)
+            .addedPositionalDeleteFiles(0L)
+            .removedPositionalDeleteFiles(0L)
+            .addedRecords(300L)
+            .removedRecords(0L)
+            .totalRecords(1300L)
+            .addedFileSizeBytes(4096L)
+            .removedFileSizeBytes(0L)
+            .totalFileSizeBytes(40960L)
+            .totalDurationMs(25L)
+            .attempts(1)
+            .build();
+    MetricsQuerySpi backend = mock(MetricsQuerySpi.class);
+    when(backend.listReports(
+            eq(MetricsQuerySpi.MetricType.COMMIT),
+            eq(7L),
+            eq(List.of(42L)),
+            any(),
+            any(),
+            any(),
+            any(PageToken.class)))
+        .thenReturn(new MetricsQuerySpi.CommitResult(Page.fromItems(List.of(record))));
+    when(queryProvider.get()).thenReturn(backend);
+
+    Response response =
+        service.queryTableMetrics(
+            CATALOG, requestFor("commit", NAMESPACE, TABLE), realmContext, securityContext);
+
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    List<MetricsReport> reports = ((ListMetricsResponse) response.getEntity()).getReports();
+    assertThat(reports).hasSize(1);
+    MetricsReport report = reports.getFirst();
+    assertThat(report.getMetricType()).isEqualTo(MetricsReport.MetricTypeEnum.COMMIT);
+    assertThat(report.getTimestampMs()).isEqualTo(2_000L);
+    assertThat(report.getSnapshotId()).isEqualTo(100L);
+    assertThat(report.getActor()).isNull();
+    assertThat(report.getRequest()).isNull();
+    assertThat(report.getPayload()).containsEntry("type", "iceberg.metrics.commit");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> data = (Map<String, Object>) report.getPayload().get("data");
+    assertThat(data)
+        .containsEntry("sequence-number", 5L)
+        .containsEntry("operation", "append")
+        .containsEntry("added-records", 300L)
+        .containsEntry("total-duration-ms", 25L)
+        .containsEntry("attempts", 1);
   }
 
   @Test

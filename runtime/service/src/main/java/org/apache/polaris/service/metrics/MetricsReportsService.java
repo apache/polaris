@@ -72,6 +72,9 @@ import org.jspecify.annotations.NonNull;
  *
  * <p>Resolves catalog/namespace/table names to internal IDs, performs authorization, and delegates
  * durable reads to {@link MetricsQuerySpi} when an implementation is available.
+ *
+ * <p>Report payloads are projections reconstructed from the persisted {@link ScanMetricsRecord} and
+ * {@link CommitMetricsRecord} fields; they do not preserve the original Iceberg report as received.
  */
 @Beta
 @RequestScoped
