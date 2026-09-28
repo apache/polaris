@@ -421,7 +421,7 @@ class ProductionReadinessChecksTest {
             featuresConfig(
                 Map.of(MECHANISMS_KEY, "[\"STS\"]"),
                 Map.of("r1", overrides(Map.of(MECHANISMS_KEY, "[\"STS\"]")))),
-            installed("STS"));
+            installed("STS", "DEFAULT"));
     assertThat(result.ready()).isTrue();
   }
 
@@ -430,7 +430,7 @@ class ProductionReadinessChecksTest {
     ProductionReadinessCheck result =
         checks.checkS3CredentialVendingMechanisms(
             featuresConfig(Map.of(MECHANISMS_KEY, "[\"STS\",\"BOGUS\"]"), Map.of()),
-            installed("STS"));
+            installed("STS", "DEFAULT"));
     assertThat(result.getErrors())
         .singleElement()
         .satisfies(
@@ -471,7 +471,7 @@ class ProductionReadinessChecksTest {
     ProductionReadinessCheck result =
         checks.checkS3CredentialVendingMechanisms(
             featuresConfig(Map.of(), Map.of("r1", overrides(Map.of(MECHANISMS_KEY, "[\"NOPE\"]")))),
-            installed("STS"));
+            installed("STS", "DEFAULT"));
     assertThat(result.getErrors())
         .singleElement()
         .satisfies(
@@ -479,6 +479,23 @@ class ProductionReadinessChecksTest {
               assertThat(error.severe()).isFalse();
               assertThat(error.offendingProperty()).contains("r1").contains(MECHANISMS_KEY);
               assertThat(error.message()).contains("NOPE").contains("STS");
+            });
+  }
+
+  @Test
+  void aMissingDefaultMechanismIsASevereError() {
+    ProductionReadinessCheck result =
+        checks.checkS3CredentialVendingMechanisms(
+            featuresConfig(Map.of(MECHANISMS_KEY, "[\"STS\"]"), Map.of()), installed("STS"));
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.severe()).isTrue();
+              assertThat(error.message()).contains("DEFAULT");
+              assertThat(error.offendingProperty())
+                  .isEqualTo("S3CredentialVendingMechanism @Identifier(\"DEFAULT\")");
             });
   }
 
