@@ -1206,6 +1206,7 @@ components:
                 if set to `true`, instructs Polaris Servers to avoid adding KMS key policies.
             credentialVendingMechanism:
               type: string
+              example: "STS"
               description: >-
                 How Polaris vends subscoped storage credentials for this catalog. Leave the field empty
                 to use the server's default mechanism. STS selects AWS STS AssumeRole against the

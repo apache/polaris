@@ -30,11 +30,11 @@ import org.jspecify.annotations.Nullable;
  * listed mechanism with no bean in the running server is refused at catalog create and update, and
  * whenever a credential is vended for a catalog that selects it. A server replaces a mechanism,
  * {@link #DEFAULT} included, with an {@code @Alternative} bean of a higher {@code @Priority} that
- * carries the same identifier. An implementation must be application-scoped (or otherwise
- * normal-scoped): the registry resolves every bean once at startup and hands out the same instance
- * for the lifetime of the server. An implementation that needs realm configuration injects {@code
- * RealmConfig}; the request context is active wherever the server calls a mechanism, including task
- * execution.
+ * carries the same identifier. An implementation must be {@code @ApplicationScoped} and
+ * thread-safe: the registry resolves every bean once at startup, before any request context exists,
+ * and one instance serves all concurrent requests for the lifetime of the server. An implementation
+ * that needs realm configuration injects {@code RealmConfig}; the request context is active
+ * wherever the server calls a mechanism, including task execution.
  */
 public interface S3CredentialVendingMechanism {
 
