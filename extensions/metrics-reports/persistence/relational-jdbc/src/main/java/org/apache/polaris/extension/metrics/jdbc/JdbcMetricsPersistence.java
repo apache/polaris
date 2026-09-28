@@ -206,7 +206,8 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
       PageToken pageToken,
       String scope) {
     StringBuilder sql = new StringBuilder("SELECT * FROM ");
-    sql.append(QueryGenerator.getFullyQualifiedTableName(tableName));
+    // Unqualified, like the INSERTs: the schema is selected by the datasource (currentSchema).
+    sql.append(tableName);
     sql.append(" WHERE realm_id = ? AND catalog_id = ? AND table_id IN (");
     sql.append(tableIds.stream().map(id -> "?").collect(Collectors.joining(", ")));
     sql.append(")");
