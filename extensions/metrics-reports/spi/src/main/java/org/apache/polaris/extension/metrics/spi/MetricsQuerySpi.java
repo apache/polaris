@@ -31,8 +31,9 @@ import org.jspecify.annotations.Nullable;
  * SPI for querying persisted Iceberg metrics reports.
  *
  * <p>Implementations are provided by persistence-backend extension modules (e.g. {@code
- * polaris-extensions-metrics-reports-jdbc}). When no implementation is on the classpath, the read
- * path returns HTTP 501 Not Implemented.
+ * polaris-extensions-metrics-reports-jdbc}). When no durable implementation is installed, the no-op
+ * default in {@code polaris-extensions-metrics-reports} is used and the read path returns an empty
+ * page.
  *
  * @see org.apache.polaris.core.persistence.metrics.MetricsPersistence for the corresponding write
  *     SPI
