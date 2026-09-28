@@ -808,6 +808,17 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ENABLE_NAMED_STORAGE_CONFIGURATIONS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_NAMED_STORAGE_CONFIGURATIONS")
+          .description(
+              "If set to true, allows adding or replacing named storage configurations on a "
+                  + "catalog, through the storageConfigInfos field of the create and update catalog "
+                  + "requests and through the /catalogs/{catalogName}/storage-configs endpoints. "
+                  + "Reading and removing existing named storage configurations is always allowed.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES")

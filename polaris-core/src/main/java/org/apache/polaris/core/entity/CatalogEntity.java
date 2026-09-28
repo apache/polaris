@@ -33,6 +33,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -158,11 +159,19 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
   // `storageConfigInfos` key at all, since the generated model is annotated @JsonInclude(NON_NULL).
 
   private @Nullable List<StorageConfigInfo> getNamedStorageInfosForResponse() {
-    Map<String, PolarisStorageConfigurationInfo> namedConfigs = getNamedStorageConfigurationInfos();
+    Map<String, StorageConfigInfo> namedConfigs = getNamedStorageConfigInfos();
     if (namedConfigs.isEmpty()) {
       return null;
     }
-    return namedConfigs.values().stream().map(this::toStorageConfigInfoModel).toList();
+    return List.copyOf(namedConfigs.values());
+  }
+
+  /** The named storage configurations as API models, keyed by name; empty if there are none. */
+  public Map<String, StorageConfigInfo> getNamedStorageConfigInfos() {
+    Map<String, StorageConfigInfo> models = new LinkedHashMap<>();
+    getNamedStorageConfigurationInfos()
+        .forEach((name, config) -> models.put(name, toStorageConfigInfoModel(config)));
+    return models;
   }
 
   private StorageConfigInfo toStorageConfigInfoModel(PolarisStorageConfigurationInfo configInfo) {
@@ -480,34 +489,98 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
           throw new BadRequestException(
               "Each entry in storageConfigInfos must have a non-empty storageName");
         }
-        String name = rawName.trim();
-        if (!STORAGE_NAME_PATTERN.matcher(name).matches()) {
-          throw new IllegalArgumentException(
-              String.format(
-                  "Invalid storage configuration name '%s': must match %s after trimming",
-                  name, STORAGE_NAME_PATTERN.pattern()));
-        }
+        String name = validateStorageConfigName(rawName);
         // Names are compared for uniqueness exactly as written, without case folding.
         if (namedConfigs.containsKey(name)) {
           throw new IllegalArgumentException(
               String.format("Duplicate named storage configuration name '%s'", name));
         }
-
-        List<String> userAllowedLocations = model.getAllowedLocations();
-        if (userAllowedLocations == null || userAllowedLocations.isEmpty()) {
-          // Unlike the default config, a named entry has no catalog base location to fall back
-          // to, so an absent/empty allowedLocations is rejected rather than defaulted.
-          throw new BadRequestException(
-              "Named storage configuration '%s' must specify at least one allowed location", name);
-        }
-        Set<String> allowedLocations = new HashSet<>(userAllowedLocations);
-        validateMaxAllowedLocations(realmConfig, allowedLocations);
-        namedConfigs.put(name, toStorageConfigurationInfo(model, name, allowedLocations));
+        namedConfigs.put(name, toNamedStorageConfigurationInfo(model, name));
       }
 
       internalProperties.put(
           PolarisEntityConstants.getStorageConfigInfosPropertyName(),
           PolarisStorageConfigurationInfo.serializeMap(namedConfigs));
+    }
+
+    /**
+     * Creates or replaces the one named storage configuration {@code name}, leaving the other named
+     * configurations as they are. If the payload sets a storageName, it must equal {@code name}.
+     */
+    public Builder putStorageConfigurationInfo(
+        RealmConfig realmConfig, String name, StorageConfigInfo model) {
+      Preconditions.checkNotNull(
+          realmConfig, "realmConfig must be provided when setting a StorageConfigInfo");
+      this.realmConfig = realmConfig;
+      String validName = validateStorageConfigName(name);
+      String payloadName = model.getStorageName();
+      if (payloadName != null && !payloadName.isBlank() && !payloadName.trim().equals(validName)) {
+        throw new BadRequestException(
+            "storageName '%s' in the request body does not match the storage configuration name"
+                + " '%s' in the path",
+            payloadName.trim(), validName);
+      }
+      Map<String, PolarisStorageConfigurationInfo> namedConfigs =
+          new LinkedHashMap<>(getCurrentNamedStorageConfigurationInfos());
+      namedConfigs.put(validName, toNamedStorageConfigurationInfo(model, validName));
+      internalProperties.put(
+          PolarisEntityConstants.getStorageConfigInfosPropertyName(),
+          PolarisStorageConfigurationInfo.serializeMap(namedConfigs));
+      return this;
+    }
+
+    /**
+     * Removes the one named storage configuration {@code name}. Removing the last one removes the
+     * property entirely, as an empty storageConfigInfos array does.
+     */
+    public Builder removeStorageConfigurationInfo(String name) {
+      Map<String, PolarisStorageConfigurationInfo> namedConfigs =
+          new LinkedHashMap<>(getCurrentNamedStorageConfigurationInfos());
+      if (namedConfigs.remove(name) == null) {
+        throw new NotFoundException("Named storage configuration '%s' does not exist", name);
+      }
+      if (namedConfigs.isEmpty()) {
+        internalProperties.remove(PolarisEntityConstants.getStorageConfigInfosPropertyName());
+      } else {
+        internalProperties.put(
+            PolarisEntityConstants.getStorageConfigInfosPropertyName(),
+            PolarisStorageConfigurationInfo.serializeMap(namedConfigs));
+      }
+      return this;
+    }
+
+    private Map<String, PolarisStorageConfigurationInfo>
+        getCurrentNamedStorageConfigurationInfos() {
+      String configStr =
+          internalProperties.get(PolarisEntityConstants.getStorageConfigInfosPropertyName());
+      return configStr == null
+          ? Map.of()
+          : PolarisStorageConfigurationInfo.deserializeMap(configStr);
+    }
+
+    private static String validateStorageConfigName(String rawName) {
+      String name = rawName.trim();
+      if (!STORAGE_NAME_PATTERN.matcher(name).matches()) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid storage configuration name '%s': must match %s after trimming",
+                name, STORAGE_NAME_PATTERN.pattern()));
+      }
+      return name;
+    }
+
+    private PolarisStorageConfigurationInfo toNamedStorageConfigurationInfo(
+        StorageConfigInfo model, String name) {
+      List<String> userAllowedLocations = model.getAllowedLocations();
+      if (userAllowedLocations == null || userAllowedLocations.isEmpty()) {
+        // Unlike the default config, a named entry has no catalog base location to fall back
+        // to, so an absent/empty allowedLocations is rejected rather than defaulted.
+        throw new BadRequestException(
+            "Named storage configuration '%s' must specify at least one allowed location", name);
+      }
+      Set<String> allowedLocations = new HashSet<>(userAllowedLocations);
+      validateMaxAllowedLocations(realmConfig, allowedLocations);
+      return toStorageConfigurationInfo(model, name, allowedLocations);
     }
 
     @SuppressWarnings("deprecation")

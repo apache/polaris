@@ -36,6 +36,7 @@ import org.apache.polaris.core.admin.model.NamespaceGrant;
 import org.apache.polaris.core.admin.model.PolicyGrant;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.SemanticModelGrant;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
@@ -182,6 +183,42 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
               AttributeMap.EMPTY));
     }
     return resp;
+  }
+
+  @Override
+  public Response listStorageConfigs(
+      String catalogName, RealmContext realmContext, SecurityContext securityContext) {
+    return delegate.listStorageConfigs(catalogName, realmContext, securityContext);
+  }
+
+  @Override
+  public Response getStorageConfig(
+      String catalogName,
+      String storageConfigName,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.getStorageConfig(catalogName, storageConfigName, realmContext, securityContext);
+  }
+
+  @Override
+  public Response putStorageConfig(
+      String catalogName,
+      String storageConfigName,
+      StorageConfigInfo storageConfigInfo,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.putStorageConfig(
+        catalogName, storageConfigName, storageConfigInfo, realmContext, securityContext);
+  }
+
+  @Override
+  public Response deleteStorageConfig(
+      String catalogName,
+      String storageConfigName,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.deleteStorageConfig(
+        catalogName, storageConfigName, realmContext, securityContext);
   }
 
   @Override

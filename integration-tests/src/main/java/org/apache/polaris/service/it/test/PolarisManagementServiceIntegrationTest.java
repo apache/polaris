@@ -70,6 +70,7 @@ import org.apache.polaris.core.admin.model.PrincipalRoles;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.Principals;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.admin.model.StorageConfigInfos;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
@@ -836,6 +837,62 @@ public class PolarisManagementServiceIntegrationTest {
       // from before this capability existed: the field is absent, not an empty array.
       assertThat(rawJson).doesNotContain("storageConfigInfos");
     }
+
+    managementApi.deleteCatalog(catalogName);
+  }
+
+  @Test
+  public void testStorageConfigSubResourceEndpoints() {
+    String catalogName = client.newEntityName("mycatalog");
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder()
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                    .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+                    .build())
+            .build();
+    managementApi.createCatalog(catalog);
+    String storageConfigsPath = "v1/catalogs/" + catalogName + "/storage-configs";
+    StorageConfigInfo hot =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/hot")
+            .setAllowedLocations(List.of("s3://hot-bucket/"))
+            .build();
+
+    try (Response response =
+        managementApi.request(storageConfigsPath + "/hot").put(Entity.json(hot))) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      assertThat(response.readEntity(StorageConfigInfo.class).getStorageName()).isEqualTo("hot");
+    }
+    try (Response response =
+        managementApi.request(storageConfigsPath + "/warm").put(Entity.json(hot))) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
+    try (Response response = managementApi.request(storageConfigsPath).get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      assertThat(response.readEntity(StorageConfigInfos.class).getStorageConfigInfos())
+          .extracting(StorageConfigInfo::getStorageName)
+          .containsExactlyInAnyOrder("hot", "warm");
+    }
+    try (Response response = managementApi.request(storageConfigsPath + "/hot").delete()) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+    try (Response response = managementApi.request(storageConfigsPath + "/hot").get()) {
+      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
+    }
+    try (Response response = managementApi.request(storageConfigsPath + "/hot").delete()) {
+      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
+    }
+    // The catalog response still shows the remaining named configuration.
+    assertThat(managementApi.getCatalog(catalogName).getStorageConfigInfos())
+        .extracting(StorageConfigInfo::getStorageName)
+        .containsExactly("warm");
 
     managementApi.deleteCatalog(catalogName);
   }

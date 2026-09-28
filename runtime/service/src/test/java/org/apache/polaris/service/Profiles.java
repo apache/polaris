@@ -71,6 +71,8 @@ public final class Profiles {
           "true",
           "polaris.features.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
           "true",
+          "polaris.features.\"ENABLE_NAMED_STORAGE_CONFIGURATIONS\"",
+          "true",
           "polaris.storage.gcp.token",
           "token",
           "polaris.storage.gcp.lifespan",

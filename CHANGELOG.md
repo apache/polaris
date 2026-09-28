@@ -130,9 +130,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   uniqueness, allowed-location count and prefix rules, and the same constrained-change rules the
   default configuration is subject to on update). On update, a supplied array replaces the entire
   set and an omitted one leaves it unchanged. Named configurations' allowed locations now also
-  participate in the cross-catalog overlap check. Nothing resolves a named configuration yet, so
-  credential vending is unchanged: tables and namespaces continue to use the catalog's default
-  configuration.
+  participate in the cross-catalog overlap check. One named configuration can also be listed, read,
+  created or replaced, and removed on its own through new
+  `/catalogs/{catalogName}/storage-configs[/{storageConfigName}]` management endpoints. Adding or
+  replacing named configurations requires the new `ENABLE_NAMED_STORAGE_CONFIGURATIONS` feature
+  flag (default: false). Nothing resolves a named configuration yet, so credential vending is
+  unchanged: tables and namespaces continue to use the catalog's default configuration.
 
 ### Changes
 

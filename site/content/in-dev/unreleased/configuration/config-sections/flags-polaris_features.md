@@ -319,6 +319,15 @@ If true, the generic-tables endpoints are enabled
 
 ---
 
+##### `polaris.features."ENABLE_NAMED_STORAGE_CONFIGURATIONS"`
+
+If set to true, allows adding or replacing named storage configurations on a catalog, through the storageConfigInfos field of the create and update catalog requests and through the /catalogs/{catalogName}/storage-configs endpoints. Reading and removing existing named storage configurations is always allowed.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ENABLE_OPENLINEAGE_INGEST"`
 
 If true, the OpenLineage ingest endpoints are enabled and advertised to clients in the catalog configuration response during endpoint discovery. If false, the endpoints return 501 Not Implemented and are not advertised. The routes are always mounted when the OpenLineage extension is assembled into the server; this flag is the runtime switch that turns the feature on or off.

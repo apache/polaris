@@ -42,7 +42,14 @@ import org.junit.jupiter.params.provider.CsvSource;
 public class PolarisOverlappingCatalogTest {
 
   static TestServices services =
-      TestServices.builder().config(Map.of("ALLOW_OVERLAPPING_CATALOG_URLS", "false")).build();
+      TestServices.builder()
+          .config(
+              Map.of(
+                  "ALLOW_OVERLAPPING_CATALOG_URLS",
+                  "false",
+                  "ENABLE_NAMED_STORAGE_CONFIGURATIONS",
+                  "true"))
+          .build();
 
   private Response createCatalog(String prefix, String defaultBaseLocation, boolean isExternal) {
     return createCatalog("s3", prefix, defaultBaseLocation, isExternal, new ArrayList<String>());
@@ -271,9 +278,65 @@ public class PolarisOverlappingCatalogTest {
   }
 
   @Test
+  public void testPutStorageConfigOverlappingAnotherCatalogRejected() {
+    String prefix = UUID.randomUUID().toString();
+    assertThat(createCatalog(prefix, "root", false))
+        .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    String catalogName = String.format("overlap_catalog_put_%s", UUID.randomUUID());
+    String baseLocation = String.format("s3://bucket/%s/put-base/", prefix);
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties(baseLocation))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder()
+                    .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setAllowedLocations(List.of(baseLocation))
+                    .build())
+            .build();
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    AwsStorageConfigInfo overlapping =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/named-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(String.format("s3://bucket/%s/root/child/", prefix)))
+            .build();
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .putStorageConfig(
+                        catalogName,
+                        "hot",
+                        overlapping,
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("overlaps with an existing catalog");
+  }
+
+  @Test
   public void testNamedConfigLocationOverlapAllowedWithOverlapFlag() {
     TestServices overlapAllowedServices =
-        TestServices.builder().config(Map.of("ALLOW_OVERLAPPING_CATALOG_URLS", "true")).build();
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_OVERLAPPING_CATALOG_URLS",
+                    "true",
+                    "ENABLE_NAMED_STORAGE_CONFIGURATIONS",
+                    "true"))
+            .build();
     String prefix = UUID.randomUUID().toString();
     String rootBaseLocation = String.format("s3://bucket/%s/root/", prefix);
 

@@ -69,6 +69,7 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.SemanticModelGrant;
 import org.apache.polaris.core.admin.model.SemanticModelPrivilege;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -1087,8 +1088,15 @@ public class PolarisAdminService {
       updateBuilder.setStorageConfigurationInfos(
           realmConfig, updateRequest.getStorageConfigInfos());
     }
-    CatalogEntity updatedEntity = updateBuilder.build();
+    return validateAndPersistCatalogUpdate(name, currentCatalogEntity, updateBuilder.build());
+  }
 
+  /**
+   * Checks an updated catalog entity against the current one and against other catalogs, then
+   * persists it. Persisting fails with a conflict if the catalog changed since it was read.
+   */
+  private @NonNull CatalogEntity validateAndPersistCatalogUpdate(
+      String name, CatalogEntity currentCatalogEntity, CatalogEntity updatedEntity) {
     validateUpdateCatalogDiffOrThrow(currentCatalogEntity, updatedEntity);
 
     if (catalogOverlapsWithExistingCatalog(updatedEntity)) {
@@ -1108,6 +1116,53 @@ public class PolarisAdminService {
                     new CommitConflictException(
                         "Concurrent modification on Catalog '%s'; retry later", name));
     return returnedEntity;
+  }
+
+  /** List the named storage configurations of a catalog, keyed by name. */
+  public @NonNull Map<String, StorageConfigInfo> listStorageConfigs(String catalogName) {
+    return getCatalog(catalogName).getNamedStorageConfigInfos();
+  }
+
+  /** Get one named storage configuration of a catalog. */
+  public @NonNull StorageConfigInfo getStorageConfig(String catalogName, String storageConfigName) {
+    StorageConfigInfo storageConfig =
+        getCatalog(catalogName).getNamedStorageConfigInfos().get(storageConfigName);
+    if (storageConfig == null) {
+      throw new NotFoundException(
+          "Named storage configuration '%s' does not exist in catalog '%s'",
+          storageConfigName, catalogName);
+    }
+    return storageConfig;
+  }
+
+  /**
+   * Create or replace one named storage configuration of a catalog. The rest of the catalog is
+   * carried forward from its current version, and the result is checked like any catalog update.
+   */
+  public @NonNull CatalogEntity putStorageConfig(
+      String catalogName, String storageConfigName, StorageConfigInfo storageConfigInfo) {
+    PolarisResolutionManifest resolutionManifest =
+        authorizeBasicTopLevelEntityOperationOrThrow(
+            PolarisAuthorizableOperation.UPDATE_CATALOG, catalogName, PolarisEntityType.CATALOG);
+    CatalogEntity currentCatalogEntity = getCatalogByName(resolutionManifest, catalogName);
+    CatalogEntity updatedEntity =
+        new CatalogEntity.Builder(currentCatalogEntity)
+            .putStorageConfigurationInfo(realmConfig, storageConfigName, storageConfigInfo)
+            .build();
+    return validateAndPersistCatalogUpdate(catalogName, currentCatalogEntity, updatedEntity);
+  }
+
+  /** Remove one named storage configuration from a catalog. */
+  public void deleteStorageConfig(String catalogName, String storageConfigName) {
+    PolarisResolutionManifest resolutionManifest =
+        authorizeBasicTopLevelEntityOperationOrThrow(
+            PolarisAuthorizableOperation.UPDATE_CATALOG, catalogName, PolarisEntityType.CATALOG);
+    CatalogEntity currentCatalogEntity = getCatalogByName(resolutionManifest, catalogName);
+    CatalogEntity updatedEntity =
+        new CatalogEntity.Builder(currentCatalogEntity)
+            .removeStorageConfigurationInfo(storageConfigName)
+            .build();
+    validateAndPersistCatalogUpdate(catalogName, currentCatalogEntity, updatedEntity);
   }
 
   /** List all catalogs after checking for permission. */
