@@ -64,7 +64,10 @@ import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.admin.model.CatalogGrant;
+import org.apache.polaris.core.admin.model.CatalogPrivilege;
 import org.apache.polaris.core.admin.model.CatalogProperties;
+import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -373,16 +376,34 @@ public class RestCatalogRustFSSpecialIT {
   private void assertLoadTableWithVendedCredentialsFailsWithKmsError(TableIdentifier id) {
     // RustFS's STS shim rejects the AssumeRole call when the inline policy contains the
     // wildcard KMS resource generated for kms-enabled configs; it returns a 400 without a
-    // descriptive body, so we can only pin the error to the STS client path.
+    // descriptive body, so we can only pin the error to the STS client path. The wildcard is
+    // only added to read-only policies, so request the credentials as a read-only principal.
+    CatalogApi readOnlyCatalogApi = readOnlyCatalogApi();
     assertThatThrownBy(
             () ->
-                catalogApi.loadTable(
+                readOnlyCatalogApi.loadTable(
                     catalogName,
                     id,
                     "ALL",
                     Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
         .hasMessageContaining("Service: Sts")
         .hasMessageContaining("Status Code: 400");
+  }
+
+  private CatalogApi readOnlyCatalogApi() {
+    String principalName = client.newEntityName("test-reader");
+    String readerRoleName = client.newEntityName("test-reader");
+    PrincipalWithCredentials readerCredentials =
+        managementApi.createPrincipalWithRole(principalName, readerRoleName);
+    String catalogRoleName = "reader";
+    managementApi.createCatalogRole(catalogName, catalogRoleName);
+    managementApi.addGrant(
+        catalogName,
+        catalogRoleName,
+        new CatalogGrant(CatalogPrivilege.TABLE_READ_DATA, GrantResource.TypeEnum.CATALOG));
+    managementApi.grantCatalogRoleToPrincipalRole(
+        readerRoleName, catalogName, managementApi.getCatalogRole(catalogName, catalogRoleName));
+    return client.catalogApi(client.obtainToken(readerCredentials));
   }
 
   private void assertLoadTableWithVendedCredentialsSucceeds(TableIdentifier id) {
