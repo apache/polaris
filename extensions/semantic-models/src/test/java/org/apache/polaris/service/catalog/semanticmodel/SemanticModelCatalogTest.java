@@ -187,6 +187,28 @@ class SemanticModelCatalogTest {
   }
 
   @Test
+  void createRejectsObjectFormDatasets() {
+    // An object here would otherwise skip every dataset.source check, persisting a model whose
+    // sources were never resolved.
+    String objectDatasets = "{\"name\":\"m\",\"datasets\":{\"d\":{\"source\":\"does.not.exist\"}}}";
+    assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(objectDatasets)))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("'semantic_model.datasets' must be a JSON array");
+  }
+
+  @Test
+  void createAcceptsModelWithoutDatasets() {
+    when(metaStoreManager.generateNewEntityId(any())).thenReturn(new GenerateEntityIdResult(10L));
+    when(metaStoreManager.createEntityIfNotExists(any(), any(), any()))
+        .thenAnswer(SemanticModelCatalogTest::echoPersistedEntity);
+
+    String noDatasets = "{\"name\":\"m\"}";
+
+    assertThatCode(() -> catalog.createSemanticModel(IDENTIFIER, doc(noDatasets)))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
   void createRejectsDatasetWithoutSource() {
     String noSource = "{\"name\":\"m\",\"datasets\":[{\"name\":\"d\"}]}";
     assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(noSource)))
@@ -246,6 +268,16 @@ class SemanticModelCatalogTest {
     LoadSemanticModelResponse response =
         catalog.updateSemanticModel(IDENTIFIER, doc(VALID_MODEL_JSON), "3");
     assertThat(response.getDocument().getSemanticModel()).isEqualTo(VALID_MODEL_JSON);
+  }
+
+  @Test
+  void updateRejectsObjectFormDatasets() {
+    // update shares resolveAndValidateSources with create, so the shape is rejected there too.
+    stubExistingModel(3);
+    String objectDatasets = "{\"name\":\"m\",\"datasets\":{\"d\":{\"source\":\"does.not.exist\"}}}";
+    assertThatThrownBy(() -> catalog.updateSemanticModel(IDENTIFIER, doc(objectDatasets), "3"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("'semantic_model.datasets' must be a JSON array");
   }
 
   @Test
