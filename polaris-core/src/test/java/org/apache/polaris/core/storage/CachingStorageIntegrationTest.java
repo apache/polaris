@@ -21,6 +21,7 @@ package org.apache.polaris.core.storage;
 import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -43,6 +44,7 @@ class CachingStorageIntegrationTest {
 
   private static final RealmContext REALM_CONTEXT = () -> "testRealm";
   private static final RealmConfig REALM_CONFIG = new RealmConfigImpl(EMPTY_CONFIG, REALM_CONTEXT);
+  private static final Instant EXPIRES_AT = Instant.ofEpochMilli(Long.MAX_VALUE);
 
   @ParameterizedTest
   @MethodSource("storageConfigurationsAndRefreshEndpointProperties")
@@ -53,7 +55,10 @@ class CachingStorageIntegrationTest {
     AtomicInteger loadCount = new AtomicInteger();
     TestCachingStorageIntegration integration =
         new TestCachingStorageIntegration(
-            new StorageCredentialCache(cacheConfig), storageConfig, loadCount);
+            new StorageCredentialCache(cacheConfig),
+            storageConfig,
+            refreshEndpointProperty,
+            loadCount);
 
     StorageAccessConfig serverConfig =
         integration.getStorageAccessConfig(
@@ -69,6 +74,11 @@ class CachingStorageIntegrationTest {
     assertThat(serverConfig.get(refreshEndpointProperty)).isNull();
     assertThat(firstClientConfig.get(refreshEndpointProperty)).isEqualTo("/v1/first/credentials");
     assertThat(secondClientConfig.get(refreshEndpointProperty)).isEqualTo("/v1/second/credentials");
+    assertThat(firstClientConfig.credentials()).containsEntry("key", "value");
+    assertThat(firstClientConfig.extraProperties()).containsEntry("extra", "value");
+    assertThat(firstClientConfig.internalProperties()).containsEntry("internal", "value");
+    assertThat(firstClientConfig.expiresAt()).contains(EXPIRES_AT);
+    assertThat(firstClientConfig.supportsCredentialVending()).isFalse();
   }
 
   private static Stream<Arguments> storageConfigurationsAndRefreshEndpointProperties() {
@@ -91,22 +101,30 @@ class CachingStorageIntegrationTest {
       extends CachingStorageIntegration<PolarisStorageConfigurationInfo> {
 
     private final AtomicInteger loadCount;
+    private final StorageAccessProperty refreshEndpointProperty;
 
     private TestCachingStorageIntegration(
         StorageCredentialCache cache,
         PolarisStorageConfigurationInfo storageConfig,
+        StorageAccessProperty refreshEndpointProperty,
         AtomicInteger loadCount) {
       super(cache, REALM_CONFIG, storageConfig);
+      this.refreshEndpointProperty = refreshEndpointProperty;
       this.loadCount = loadCount;
     }
 
     @Override
     protected StorageCredentialCacheKey buildCacheKey(
-        @NonNull List<LocationGrant> grants,
-        @NonNull Optional<String> refreshEndpoint,
-        @NonNull CredentialVendingContext context) {
-      assertThat(refreshEndpoint).isEmpty();
+        @NonNull List<LocationGrant> grants, @NonNull CredentialVendingContext context) {
       return new TestStorageCredentialCacheKey(REALM_CONFIG, loadCount);
+    }
+
+    @Override
+    protected StorageAccessConfig addExtraProperties(
+        @NonNull StorageAccessConfig accessConfig, @NonNull Optional<String> refreshEndpoint) {
+      return refreshEndpoint
+          .map(endpoint -> withExtraProperty(accessConfig, refreshEndpointProperty, endpoint))
+          .orElse(accessConfig);
     }
   }
 
@@ -116,7 +134,13 @@ class CachingStorageIntegrationTest {
     @Override
     public StorageAccessConfig load() {
       loadCount.incrementAndGet();
-      return StorageAccessConfig.builder().putCredential("key", "value").build();
+      return StorageAccessConfig.builder()
+          .putCredential("key", "value")
+          .putExtraProperty("extra", "value")
+          .putInternalProperty("internal", "value")
+          .expiresAt(EXPIRES_AT)
+          .supportsCredentialVending(false)
+          .build();
     }
   }
 }

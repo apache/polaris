@@ -55,26 +55,23 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
   Set<String> allowedWriteLocations();
 
   @Value.Parameter(order = 6)
-  Optional<String> refreshCredentialsEndpoint();
-
-  @Value.Parameter(order = 7)
   String roleSessionName();
 
-  @Value.Parameter(order = 8)
+  @Value.Parameter(order = 7)
   List<Tag> sessionTags();
 
   // ---- aux: app-scoped invariants, excluded from equals/hashCode ----
 
-  @Value.Parameter(order = 9)
+  @Value.Parameter(order = 8)
   @Value.Auxiliary
   StsClientProvider stsClientProvider();
 
-  @Value.Parameter(order = 10)
+  @Value.Parameter(order = 9)
   @Value.Auxiliary
   Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>> credentialsResolver();
 
   @Override
-  @Value.Parameter(order = 11)
+  @Value.Parameter(order = 10)
   @Value.Auxiliary
   RealmConfig realmConfig();
 
@@ -89,7 +86,6 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
       Set<String> allowedReadLocations,
       Set<String> allowedListLocations,
       Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint,
       String roleSessionName,
       List<Tag> sessionTags,
       StsClientProvider stsClientProvider,
@@ -101,7 +97,6 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
         allowedReadLocations,
         allowedListLocations,
         allowedWriteLocations,
-        refreshCredentialsEndpoint,
         roleSessionName,
         sessionTags,
         stsClientProvider,

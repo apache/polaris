@@ -72,38 +72,18 @@ public abstract class CachingStorageIntegration<T extends PolarisStorageConfigur
       @NonNull List<LocationGrant> grants,
       @NonNull Optional<String> refreshEndpoint,
       @NonNull CredentialVendingContext context) {
-    StorageCredentialCacheKey key = buildCacheKey(grants, Optional.empty(), context);
+    StorageCredentialCacheKey key = buildCacheKey(grants, context);
     StorageAccessConfig accessConfig = cache != null ? cache.getOrLoad(key) : key.load();
-    return withRefreshEndpoint(accessConfig, refreshEndpoint);
+    return addExtraProperties(accessConfig, refreshEndpoint);
   }
 
-  private StorageAccessConfig withRefreshEndpoint(
-      StorageAccessConfig accessConfig, Optional<String> refreshEndpoint) {
-    if (refreshEndpoint.isEmpty()) {
-      return accessConfig;
-    }
-
-    StorageAccessProperty refreshEndpointProperty =
-        switch (storageConfig.getStorageType()) {
-          case S3 -> StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT;
-          case GCS -> StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT;
-          case AZURE -> StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT;
-          case FILE -> null;
-        };
-    if (refreshEndpointProperty == null) {
-      return accessConfig;
-    }
-
-    StorageAccessConfig.Builder builder =
-        StorageAccessConfig.builder()
-            .supportsCredentialVending(accessConfig.supportsCredentialVending());
-    accessConfig.credentials().forEach(builder::putCredential);
-    accessConfig.extraProperties().forEach(builder::putExtraProperty);
-    accessConfig.internalProperties().forEach(builder::putInternalProperty);
-    accessConfig.expiresAt().ifPresent(builder::expiresAt);
-    builder.put(refreshEndpointProperty, refreshEndpoint.orElseThrow());
-    return builder.build();
+  protected static StorageAccessConfig withExtraProperty(
+      StorageAccessConfig accessConfig, StorageAccessProperty property, String value) {
+    return StorageAccessConfig.builder().from(accessConfig).put(property, value).build();
   }
+
+  protected abstract StorageAccessConfig addExtraProperties(
+      @NonNull StorageAccessConfig accessConfig, @NonNull Optional<String> refreshEndpoint);
 
   /**
    * Build a backend-specific cache key for the given vending request. The key must carry whatever
@@ -111,7 +91,5 @@ public abstract class CachingStorageIntegration<T extends PolarisStorageConfigur
    * {@link StorageCredentialCacheKey#load()} can mint credentials on miss.
    */
   protected abstract StorageCredentialCacheKey buildCacheKey(
-      @NonNull List<LocationGrant> grants,
-      @NonNull Optional<String> refreshEndpoint,
-      @NonNull CredentialVendingContext context);
+      @NonNull List<LocationGrant> grants, @NonNull CredentialVendingContext context);
 }
