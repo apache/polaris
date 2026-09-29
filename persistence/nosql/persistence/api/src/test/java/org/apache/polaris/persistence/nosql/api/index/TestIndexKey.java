@@ -60,12 +60,28 @@ public class TestIndexKey {
   @ParameterizedTest
   @MethodSource("keyLengthGood")
   void keyLengthGood(String value) {
-    key(value);
+    var indexKey = key(value);
+    var buffer = ByteBuffer.allocate(indexKey.serializedSize());
+    indexKey.serialize(buffer).flip();
+
+    assertThat(deserializeKey(buffer.duplicate())).isEqualTo(indexKey);
+    var skipped = buffer.duplicate();
+    var positionBeforeSkip = skipped.position();
+    skip(skipped);
+    assertThat(skipped.position() - positionBeforeSkip).isEqualTo(indexKey.serializedSize());
+    assertThat(skipped.remaining()).isZero();
   }
 
   static Stream<String> keyLengthGood() {
+    // Include MAX_LENGTH keys of escaped bytes: skip used to count two units per escaped byte and
+    // reject these after they had already been written and deserialized successfully.
     return Stream.of(
-        "1", STRING_100, STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100);
+        "1",
+        STRING_100,
+        STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100,
+        "\u0001".repeat(IndexKey.MAX_LENGTH),
+        "\u0002".repeat(IndexKey.MAX_LENGTH),
+        "\u0001".repeat(IndexKey.MAX_LENGTH - 1) + "a");
   }
 
   @ParameterizedTest
@@ -79,42 +95,23 @@ public class TestIndexKey {
   static Stream<String> keyTooLong() {
     return Stream.of(
         STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100 + "x",
-        STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100);
-  }
-
-  /**
-   * Keys whose decoded length is under {@link IndexKey#MAX_LENGTH} but that expand when escaped
-   * must still be skippable. {@code skip} used to count two units per escaped byte and reject these
-   * keys after they had already been written.
-   */
-  @ParameterizedTest
-  @ValueSource(chars = {'\u0001', '\u0002'})
-  void skipAcceptsKeysThatExpandWhenEscaped(char escapedChar) {
-    // Decoded length 251: under MAX_LENGTH, but 251 escape pairs used to push skip's counter past
-    // 500 (2 * 251) and throw while deserializeKey still succeeded.
-    var indexKey = key(String.valueOf(escapedChar).repeat(251));
-    var buffer = ByteBuffer.allocate(indexKey.serializedSize());
-    indexKey.serialize(buffer).flip();
-
-    assertThat(deserializeKey(buffer.duplicate())).isEqualTo(indexKey);
-    var skipped = buffer.duplicate();
-    skip(skipped);
-    assertThat(skipped.remaining()).isZero();
+        STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100,
+        "\u0001".repeat(IndexKey.MAX_LENGTH + 1),
+        "\u0002".repeat(IndexKey.MAX_LENGTH + 1));
   }
 
   @Test
-  void skipAcceptsMixedEscapedKeyNearLimit() {
-    // 250 escaped bytes + one ordinary byte: decoded length 251. The old skip counter would reach
-    // 501 (2 * 250 + 1) and throw.
-    var raw = "\u0001".repeat(250) + "a";
-    var indexKey = key(raw);
-    var buffer = ByteBuffer.allocate(indexKey.serializedSize());
-    indexKey.serialize(buffer).flip();
+  void skipRejectsDecodedLengthOverMax() {
+    // Wire form that key() cannot produce: MAX_LENGTH + 1 plain bytes then EOF.
+    var buffer = ByteBuffer.allocate(IndexKey.MAX_LENGTH + 2);
+    for (int i = 0; i < IndexKey.MAX_LENGTH + 1; i++) {
+      buffer.put((byte) 'a');
+    }
+    buffer.put(EOF).flip();
 
-    assertThat(deserializeKey(buffer.duplicate())).isEqualTo(indexKey);
-    var skipped = buffer.duplicate();
-    skip(skipped);
-    assertThat(skipped.remaining()).isZero();
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> skip(buffer.duplicate()))
+        .withMessage("Deserialized key too long");
   }
 
   @ParameterizedTest
@@ -283,6 +280,12 @@ public class TestIndexKey {
     var deserialized = deserializeKey(serialized.duplicate());
     soft.assertThat(deserialized).isEqualTo(key);
 
+    var toSkip = serialized.duplicate();
+    var positionBeforeSkip = toSkip.position();
+    skip(toSkip);
+    soft.assertThat(toSkip.position() - positionBeforeSkip).isEqualTo(expectedSerializedSize);
+    soft.assertThat(toSkip.remaining()).isZero();
+
     var big = alloc.apply(8192);
     big.position(1234);
     big.put(serialized.duplicate());
@@ -291,6 +294,11 @@ public class TestIndexKey {
     ser.position(1234);
     deserialized = deserializeKey(ser.duplicate());
     soft.assertThat(deserialized).isEqualTo(key);
+
+    var bigSkip = ser.duplicate();
+    positionBeforeSkip = bigSkip.position();
+    skip(bigSkip);
+    soft.assertThat(bigSkip.position() - positionBeforeSkip).isEqualTo(expectedSerializedSize);
   }
 
   static Stream<Arguments> keySerializationJsonRoundTrip() {
