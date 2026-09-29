@@ -261,6 +261,10 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     AttributeMap.AttributeKey<?> key = attribute.key();
     Object value = attribute.value();
 
+    if (value == null) {
+      return Map.of();
+    }
+
     if (value instanceof String || value instanceof Number || value instanceof Boolean) {
       return Map.of(key.key(), value.toString());
     }
