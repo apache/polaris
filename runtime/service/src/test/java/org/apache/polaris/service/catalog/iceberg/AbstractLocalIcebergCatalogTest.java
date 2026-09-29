@@ -96,6 +96,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.iceberg.exceptions.ValidationException;
@@ -129,6 +130,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
@@ -2135,6 +2137,186 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> noPurgeCatalog.dropTable(TABLE, true))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.key());
+  }
+
+  @Test
+  public void testSoftDeleteHidesTableAndReservesName() {
+    LocalIcebergCatalog softCatalog = newSoftDeleteCatalog("P7D", false);
+    softCatalog.createNamespace(NS);
+    Table table = softCatalog.buildTable(TABLE, SCHEMA).create();
+    String metadataLocation = ((BaseTable) table).operations().current().metadataFileLocation();
+
+    Assertions.assertThat(softCatalog.dropTable(TABLE, false)).isTrue();
+    Assertions.assertThat(softCatalog.tableExists(TABLE)).isFalse();
+    Assertions.assertThat(softCatalog.listTables(NS)).doesNotContain(TABLE);
+    Assertions.assertThatThrownBy(() -> softCatalog.loadTable(TABLE))
+        .isInstanceOf(NoSuchTableException.class);
+    Assertions.assertThatThrownBy(() -> softCatalog.buildTable(TABLE, SCHEMA).create())
+        .isInstanceOf(AlreadyExistsException.class);
+
+    EntityResult namespaceResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(softCatalogResolvedCatalogEntity(softCatalog)),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            NS.toString());
+    Assertions.assertThat(namespaceResult.isSuccess()).isTrue();
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(softCatalogResolvedCatalogEntity(softCatalog), namespaceResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            TABLE.name());
+    Assertions.assertThat(tableResult.isSuccess()).isTrue();
+    Assertions.assertThat(tableResult.getEntity().isDropped()).isTrue();
+    Assertions.assertThat(tableResult.getEntity().getToPurgeTimestamp())
+        .isGreaterThan(tableResult.getEntity().getDropTimestamp());
+    Assertions.assertThat(IcebergTableLikeEntity.of(tableResult.getEntity()).getMetadataLocation())
+        .isEqualTo(metadataLocation);
+  }
+
+  @Test
+  public void testSoftDeleteDropWithPurgeStillPermanentlyDeletes() {
+    LocalIcebergCatalog softCatalog = newSoftDeleteCatalog("P7D", false);
+    softCatalog.createNamespace(NS);
+    softCatalog.buildTable(TABLE, SCHEMA).create();
+
+    Assertions.assertThat(softCatalog.dropTable(TABLE, true)).isTrue();
+    Assertions.assertThat(softCatalog.tableExists(TABLE)).isFalse();
+    Assertions.assertThat(softCatalog.buildTable(TABLE, SCHEMA).create()).isNotNull();
+    Assertions.assertThat(softCatalog.tableExists(TABLE)).isTrue();
+  }
+
+  @Test
+  public void testSoftDeleteExpiresAfterHoldAndAllowsRecreate() {
+    LocalIcebergCatalog softCatalog = newSoftDeleteCatalog("PT0S", false);
+    softCatalog.createNamespace(NS);
+    softCatalog.buildTable(TABLE, SCHEMA).create();
+
+    Assertions.assertThat(softCatalog.dropTable(TABLE, false)).isTrue();
+    Assertions.assertThat(softCatalog.tableExists(TABLE)).isFalse();
+
+    Table recreated = softCatalog.buildTable(TABLE, SCHEMA).create();
+    Assertions.assertThat(recreated).isNotNull();
+    Assertions.assertThat(softCatalog.tableExists(TABLE)).isTrue();
+    Assertions.assertThat(softCatalog.listTables(NS)).contains(TABLE);
+  }
+
+  @Test
+  public void testSoftDeletedTablesStayHiddenWhenSoftDeleteDisabled() {
+    LocalIcebergCatalog softCatalog = newSoftDeleteCatalog("P7D", false);
+    softCatalog.createNamespace(NS);
+    softCatalog.buildTable(TABLE, SCHEMA).create();
+
+    Assertions.assertThat(softCatalog.dropTable(TABLE, false)).isTrue();
+    Assertions.assertThat(softCatalog.listTables(NS)).doesNotContain(TABLE);
+
+    updateSoftDeleteCatalogProperties(
+        softCatalog,
+        Map.of(FeatureConfiguration.TABLE_SOFT_DELETE_ENABLED.catalogConfig(), "false"));
+    LocalIcebergCatalog refreshedCatalog =
+        newIcebergCatalog(softCatalog.name(), metaStoreManager, fileIOFactory);
+    refreshedCatalog.initialize(
+        softCatalog.name(),
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Assertions.assertThat(refreshedCatalog.listTables(NS)).doesNotContain(TABLE);
+  }
+
+  @Test
+  public void testSoftDeleteExpireWithPurgeSchedulesCleanupTask() {
+    LocalIcebergCatalog softCatalog = newSoftDeleteCatalog("PT0S", true);
+    softCatalog.createNamespace(NS);
+    Table table = softCatalog.buildTable(TABLE, SCHEMA).create();
+    String tableLocation = table.location();
+
+    Assertions.assertThat(softCatalog.dropTable(TABLE, false)).isTrue();
+    softCatalog.listTables(NS);
+
+    List<PolarisBaseEntity> tasks =
+        metaStoreManager
+            .loadTasks(polarisContext, "testExecutor", PageToken.readEverything())
+            .getEntities();
+    Assertions.assertThat(
+            tasks.stream()
+                .map(TaskEntity::of)
+                .map(TaskEntity::getInternalPropertiesAsMap)
+                .anyMatch(
+                    props ->
+                        tableLocation.equals(props.get(PolarisTaskConstants.STORAGE_LOCATION))))
+        .isTrue();
+  }
+
+  private PolarisEntity softCatalogResolvedCatalogEntity(LocalIcebergCatalog softCatalog) {
+    EntityResult catalogResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            null,
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            softCatalog.name());
+    Assertions.assertThat(catalogResult.isSuccess()).isTrue();
+    return PolarisEntity.of(catalogResult.getEntity());
+  }
+
+  private LocalIcebergCatalog newSoftDeleteCatalog(String holdPeriod, boolean purgeDataOnExpire) {
+    String catalogName = CATALOG_NAME + "_soft_delete_" + UUID.randomUUID();
+    String storageLocation = "s3://soft-delete-test/" + catalogName;
+    AwsStorageConfigInfo storageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setExternalId("externalId")
+            .setUserArn("aws::a:user:arn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(storageLocation))
+            .build();
+    newAdminService()
+        .createCatalog(
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setName(catalogName)
+                    .setDefaultBaseLocation(storageLocation)
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(),
+                        "true")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                        "true")
+                    .addProperty(
+                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+                    .addProperty(
+                        FeatureConfiguration.TABLE_SOFT_DELETE_ENABLED.catalogConfig(), "true")
+                    .addProperty(
+                        FeatureConfiguration.TABLE_SOFT_DELETE_HOLD_PERIOD.catalogConfig(),
+                        holdPeriod)
+                    .addProperty(
+                        FeatureConfiguration.TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE
+                            .catalogConfig(),
+                        Boolean.toString(purgeDataOnExpire))
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel)
+                    .build()
+                    .asCatalog(serviceIdentityProvider)));
+    LocalIcebergCatalog softCatalog =
+        newIcebergCatalog(catalogName, metaStoreManager, fileIOFactory);
+    softCatalog.initialize(
+        catalogName,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    return softCatalog;
+  }
+
+  private void updateSoftDeleteCatalogProperties(
+      LocalIcebergCatalog softCatalog, Map<String, String> properties) {
+    PolarisEntity catalog = softCatalogResolvedCatalogEntity(softCatalog);
+    CatalogEntity.Builder builder = new CatalogEntity.Builder(CatalogEntity.of(catalog));
+    properties.forEach(builder::addProperty);
+    EntityResult result =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            polarisContext, List.of(PolarisEntity.toCore(catalog)), builder.build());
+    Assertions.assertThat(result).returns(true, EntityResult::isSuccess);
   }
 
   @Test
