@@ -1440,6 +1440,43 @@ public class ManagementServiceTest {
   }
 
   @Test
+  public void testStorageConfigEndpointsTrimPathName() {
+    String catalogName = "mycatalog";
+    createCatalogWithDefaultConfigOnly(services, catalogName);
+    AwsStorageConfigInfo hot = namedAwsConfig("hot", "arn:aws:iam::123456789012:role/hot");
+
+    // PUT stores the trimmed name, so GET and DELETE find it by the same untrimmed path segment.
+    try (Response response =
+        services
+            .catalogsApi()
+            .putStorageConfig(
+                catalogName, " hot ", hot, services.realmContext(), services.securityContext())) {
+      assertThat(((StorageConfigInfo) response.getEntity()).getStorageName()).isEqualTo("hot");
+    }
+    try (Response response =
+        services
+            .catalogsApi()
+            .getStorageConfig(
+                catalogName, " hot ", services.realmContext(), services.securityContext())) {
+      assertThat(((StorageConfigInfo) response.getEntity()).getStorageName()).isEqualTo("hot");
+    }
+    try (Response response =
+        services
+            .catalogsApi()
+            .deleteStorageConfig(
+                catalogName, " hot ", services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .getStorageConfig(
+                        catalogName, "hot", services.realmContext(), services.securityContext()))
+        .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
   public void testPutStorageConfigValidation() {
     String catalogName = "mycatalog";
     createCatalogWithDefaultConfigOnly(services, catalogName);

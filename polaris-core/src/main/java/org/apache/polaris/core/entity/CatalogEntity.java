@@ -531,13 +531,15 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     /**
      * Removes the one named storage configuration {@code name}. Removing the last one removes the
-     * property entirely, as an empty storageConfigInfos array does.
+     * property entirely, as an empty storageConfigInfos array does. {@code name} is trimmed, as
+     * names are when stored.
      */
     public Builder removeStorageConfigurationInfo(String name) {
+      String trimmedName = name.trim();
       Map<String, PolarisStorageConfigurationInfo> namedConfigs =
           new LinkedHashMap<>(getCurrentNamedStorageConfigurationInfos());
-      if (namedConfigs.remove(name) == null) {
-        throw new NotFoundException("Named storage configuration '%s' does not exist", name);
+      if (namedConfigs.remove(trimmedName) == null) {
+        throw new NotFoundException("Named storage configuration '%s' does not exist", trimmedName);
       }
       if (namedConfigs.isEmpty()) {
         internalProperties.remove(PolarisEntityConstants.getStorageConfigInfosPropertyName());

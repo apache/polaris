@@ -1125,8 +1125,9 @@ public class PolarisAdminService {
 
   /** Get one named storage configuration of a catalog. */
   public @NonNull StorageConfigInfo getStorageConfig(String catalogName, String storageConfigName) {
+    // Names are stored trimmed, as putStorageConfig and the storageConfigInfos array store them.
     StorageConfigInfo storageConfig =
-        getCatalog(catalogName).getNamedStorageConfigInfos().get(storageConfigName);
+        getCatalog(catalogName).getNamedStorageConfigInfos().get(storageConfigName.trim());
     if (storageConfig == null) {
       throw new NotFoundException(
           "Named storage configuration '%s' does not exist in catalog '%s'",

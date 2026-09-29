@@ -23,11 +23,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
+import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
@@ -194,6 +197,108 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                       .setProperties(Map.of("foo", Long.toString(System.currentTimeMillis())))
                       .build();
               newTestAdminService().updateCatalog(CATALOG_NAME, updateRequest);
+            })
+        .grantAction(
+            privilege ->
+                newRootAdminService()
+                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(
+            privilege ->
+                newRootAdminService()
+                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .shouldPassWith(PolarisPrivilege.CATALOG_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
+        .createTests();
+  }
+
+  private static final String NAMED_STORAGE_CONFIG = "named";
+
+  private static FileStorageConfigInfo namedStorageConfig() {
+    return FileStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+        .setStorageName(NAMED_STORAGE_CONFIG)
+        .setAllowedLocations(List.of("file:///tmp/authz/named/"))
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testListStorageConfigsPrivileges() {
+    return authzTestsBuilder("listStorageConfigs")
+        .action(() -> newTestAdminService().listStorageConfigs(CATALOG_NAME))
+        .grantAction(
+            privilege ->
+                newRootAdminService()
+                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(
+            privilege ->
+                newRootAdminService()
+                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .shouldPassWith(PolarisPrivilege.CATALOG_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testGetStorageConfigPrivileges() {
+    newRootAdminService()
+        .putStorageConfig(CATALOG_NAME, NAMED_STORAGE_CONFIG, namedStorageConfig());
+    return authzTestsBuilder("getStorageConfig")
+        .action(() -> newTestAdminService().getStorageConfig(CATALOG_NAME, NAMED_STORAGE_CONFIG))
+        .grantAction(
+            privilege ->
+                newRootAdminService()
+                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(
+            privilege ->
+                newRootAdminService()
+                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .shouldPassWith(PolarisPrivilege.CATALOG_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testPutStorageConfigPrivileges() {
+    return authzTestsBuilder("putStorageConfig")
+        .action(
+            () ->
+                newTestAdminService()
+                    .putStorageConfig(CATALOG_NAME, NAMED_STORAGE_CONFIG, namedStorageConfig()))
+        .grantAction(
+            privilege ->
+                newRootAdminService()
+                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(
+            privilege ->
+                newRootAdminService()
+                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .shouldPassWith(PolarisPrivilege.CATALOG_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testDeleteStorageConfigPrivileges() {
+    return authzTestsBuilder("deleteStorageConfig")
+        .action(
+            () -> {
+              newRootAdminService()
+                  .putStorageConfig(CATALOG_NAME, NAMED_STORAGE_CONFIG, namedStorageConfig());
+              newTestAdminService().deleteStorageConfig(CATALOG_NAME, NAMED_STORAGE_CONFIG);
             })
         .grantAction(
             privilege ->
