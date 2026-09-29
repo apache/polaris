@@ -194,6 +194,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
   while building the access-boundary rules; GCS now handles it like the AWS integration.
 - Return HTTP 404 instead of 204 when a generic table or its catalog path disappears after resolution and before deletion.
+
 - Deleting a semantic model now returns HTTP 404 instead of HTTP 500 when the model or its
   catalog path disappears after resolution and before the deletion is persisted.
 - Return HTTP 404 instead of 500 when a policy or its catalog path disappears after resolution and before deletion.

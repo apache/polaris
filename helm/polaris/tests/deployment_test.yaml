@@ -1222,11 +1222,18 @@ tests:
             configMapRef:
               name: polaris-env-configmap
 
-  - it: should not set any environment variables by default
+  - it: should not set secret-derived env vars by default
     template: deployment.yaml
     asserts:
-      - notExists:
+      - contains:
           path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS
+            value: io.opentelemetry.contrib.gcp.resource.GCPResourceProvider
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: quarkus.datasource.username
 
   - it: should not set envFrom by default
     template: deployment.yaml
