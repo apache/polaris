@@ -21,7 +21,11 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 public class MetricsModelUtilsTest {
 
@@ -49,6 +53,22 @@ public class MetricsModelUtilsTest {
   @Test
   public void parseJsonArrayReadsLegacyFieldNamedNullFollowedByAnotherField() {
     assertThat(MetricsModelUtils.parseJsonArray("null,id")).containsExactly("null", "id");
+  }
+
+  static Stream<Arguments> legacyValuesStartingWithJson() {
+    return Stream.of(
+        // Legacy fields literally named ["id"] and name.
+        Arguments.of("[\"id\"],name", List.of("[\"id\"]", "name")),
+        Arguments.of("[\"a\"],[\"b\"]", List.of("[\"a\"]", "[\"b\"]")),
+        Arguments.of("null,[\"id\"]", List.of("null", "[\"id\"]")));
+  }
+
+  @ParameterizedTest
+  @MethodSource("legacyValuesStartingWithJson")
+  public void parseJsonArrayRequiresTheWholeValueToBeAJsonArray(
+      String stored, List<String> expected) {
+    // Jackson would otherwise accept the leading JSON value and ignore the rest of the input.
+    assertThat(MetricsModelUtils.parseJsonArray(stored)).containsExactlyElementsOf(expected);
   }
 
   @Test
