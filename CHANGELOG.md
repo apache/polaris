@@ -131,6 +131,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
 - The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.additionalProperties.currentSchema` in the Helm chart.
 - Python CLI: `catalogs create` and `catalogs update` now support `--storage-name` to set an optional name referencing a server-side storage configuration.
+- Python CLI: added `register` support for both `tables` and `views` commands
 
 ### Changes
 
@@ -172,6 +173,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Semantic models: a `datasets` field that is not a JSON array now returns `400 Bad Request`
+  instead of being silently skipped, which bypassed every `dataset.source` check.
+- Conditional `loadTable` (`If-None-Match` → HTTP 304) no longer attaches a null
+  `LOAD_TABLE_RESPONSE` to the `AFTER_LOAD_TABLE` event. The persistence event listener also
+  skips null attribute values instead of failing while pruning them.
 - Re-creating an existing namespace now returns `409 Conflict` instead of `403 Forbidden` when
   `OPTIMIZED_SIBLING_CHECK` is on. Namespace creation checks for an existing namespace before
   validating locations, as table and view creation already do, so the existing namespace's own
@@ -179,6 +185,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - A list request whose `pageSize` is not a number now returns `400 Bad Request` naming the
   parameter, instead of `404 Not Found`. The status is now the same on every API that accepts
   `pageSize`.
+- Ranger authorizer: a table or policy under a nested namespace is no longer mapped to the wrong
+  Ranger resource. Namespace levels now occupy a single namespace resource instead of one each,
+  so a policy written for the nested namespace matches.
 - Policy API: detaching a policy from a target it was never attached to now returns
   `404 Not Found` with error type `NoSuchMappingException`, as the policy API specification
   requires, instead of `500 Internal Server Error`.

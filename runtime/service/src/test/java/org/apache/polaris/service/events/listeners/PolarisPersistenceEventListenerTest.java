@@ -272,6 +272,29 @@ class PolarisPersistenceEventListenerTest {
   }
 
   @Test
+  void shouldSkipNullLoadTableResponseWithoutNpe() {
+    CapturingPersistenceListener listener = new CapturingPersistenceListener();
+
+    // Conditional GET after-event can omit a body; a null attribute must not crash pruning.
+    listener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.AFTER_LOAD_TABLE,
+            metadata(),
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(EventAttributes.NAMESPACE, NAMESPACE)
+                .put(EventAttributes.TABLE_NAME, TABLE_NAME)
+                .put(EventAttributes.LOAD_TABLE_RESPONSE, null)
+                .build()));
+
+    EventEntity persisted = listener.persistedEvent(PolarisEventType.AFTER_LOAD_TABLE);
+    assertThat(persisted).isNotNull();
+    assertThat(additionalProperties(persisted))
+        .containsEntry(EventAttributes.CATALOG_NAME.key(), CATALOG_NAME)
+        .doesNotContainKey(EventAttributes.LOAD_TABLE_RESPONSE.key());
+  }
+
+  @Test
   void shouldResolveViewRenameIdentifier() {
     CapturingPersistenceListener listener = new CapturingPersistenceListener();
 
