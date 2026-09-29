@@ -171,6 +171,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Catalog federation: `connectionConfigInfo.properties` is now persisted and returned for `HADOOP`
   and `HIVE` connection configurations. It was previously accepted by the management API but
   silently dropped, so `GET /catalogs/{name}` never showed it.
+- Ranger authorizer: `table-data-write` now confers `table-properties-write`, as the built-in
+  authorizer already does. Without it, a Ranger policy granting only `table-data-write` was
+  refused operations the same grant allows under the built-in authorizer. Existing deployments
+  must re-register the updated service definition with Ranger Admin for this to take effect;
+  upgrading Polaris alone does not change the definition already persisted there.
 - Semantic models: a `datasets` field that is not a JSON array now returns `400 Bad Request`
   instead of being silently skipped, which bypassed every `dataset.source` check.
 - Conditional `loadTable` (`If-None-Match` → HTTP 304) no longer attaches a null
