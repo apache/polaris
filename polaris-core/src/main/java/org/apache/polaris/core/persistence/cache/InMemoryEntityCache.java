@@ -51,7 +51,11 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** An in-memory entity cache with a limit of 100k entities and a 1h TTL. */
+/**
+ * An in-memory entity cache holding entities in two internally consistent indexes: one keyed by
+ * entity id and one keyed by entity name. Both indexes are bounded by the same weight budget
+ * ({@code ENTITY_CACHE_WEIGHER_TARGET}) and expire entries after 1h of no access.
+ */
 public class InMemoryEntityCache implements EntityCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryEntityCache.class);
   public static final int MAX_CACHE_REFRESH_ATTEMPTS = 100;
@@ -76,9 +80,7 @@ public class InMemoryEntityCache implements EntityCache {
     Caffeine<EntityCacheByNameKey, ResolvedPolarisEntity> byNameBuilder =
         Caffeine.newBuilder()
             .maximumWeight(weigherTarget)
-            .weigher(
-                (EntityCacheByNameKey key, ResolvedPolarisEntity value) ->
-                    EntityWeigher.asWeigher().weigh(-1L, value))
+            .weigher(EntityWeigher.byName())
             .expireAfterAccess(1, TimeUnit.HOURS);
 
     boolean useSoftValues =
@@ -104,7 +106,7 @@ public class InMemoryEntityCache implements EntityCache {
     Caffeine<Long, ResolvedPolarisEntity> byIdBuilder =
         Caffeine.newBuilder()
             .maximumWeight(weigherTarget)
-            .weigher(EntityWeigher.asWeigher())
+            .weigher(EntityWeigher.byId())
             .expireAfterAccess(1, TimeUnit.HOURS) // Expire entries after 1 hour of no access
             .removalListener(removalListener); // Set the removal listener
 
