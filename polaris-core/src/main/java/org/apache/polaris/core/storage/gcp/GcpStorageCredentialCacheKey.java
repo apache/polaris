@@ -58,34 +58,31 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
   @Value.Parameter(order = 5)
   Set<String> allowedWriteLocations();
 
-  @Value.Parameter(order = 6)
-  Optional<String> refreshCredentialsEndpoint();
-
   /**
    * The requesting principal name, included in the cache key only when GCS principal attribution is
    * enabled (otherwise empty). When attribution is active the vended credential carries this
    * principal's identity, so it must participate in cache identity to avoid serving one principal's
    * attributed credentials to another.
    */
-  @Value.Parameter(order = 7)
+  @Value.Parameter(order = 6)
   Optional<String> principalName();
 
   // ---- aux: app-scoped invariants, excluded from equals/hashCode ----
 
-  @Value.Parameter(order = 8)
+  @Value.Parameter(order = 7)
   @Value.Auxiliary
   GoogleCredentials sourceCredentials();
 
-  @Value.Parameter(order = 9)
+  @Value.Parameter(order = 8)
   @Value.Auxiliary
   HttpTransportFactory transportFactory();
 
   @Override
-  @Value.Parameter(order = 10)
+  @Value.Parameter(order = 9)
   @Value.Auxiliary
   RealmConfig realmConfig();
 
-  @Value.Parameter(order = 11)
+  @Value.Parameter(order = 10)
   @Value.Auxiliary
   GcpCredentialOps credentialOps();
 
@@ -94,7 +91,7 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
    * fully configured and a principal is available. Computed at cache key build time so {@code
    * compute()} can use these values directly without re-reading realm config.
    */
-  @Value.Parameter(order = 12)
+  @Value.Parameter(order = 11)
   @Value.Auxiliary
   Optional<GcpAttributionParams> attributionParams();
 
@@ -109,7 +106,6 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
       Set<String> allowedReadLocations,
       Set<String> allowedListLocations,
       Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint,
       Optional<String> principalName,
       GoogleCredentials sourceCredentials,
       HttpTransportFactory transportFactory,
@@ -122,7 +118,6 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
         allowedReadLocations,
         allowedListLocations,
         allowedWriteLocations,
-        refreshCredentialsEndpoint,
         principalName,
         sourceCredentials,
         transportFactory,
