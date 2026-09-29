@@ -43,6 +43,7 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.entity.EventEntity;
@@ -208,7 +209,7 @@ class PolarisPersistenceEventListenerTest {
   void shouldPersistRequestUserAndTimestampMetadataFields() {
     CapturingPersistenceListener listener = new CapturingPersistenceListener();
     Instant timestamp = Instant.parse("2024-01-02T03:04:05Z");
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role1"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role1"));
     PolarisEventMetadata metadata =
         PolarisEventMetadata.builder()
             .realmId(REALM_ID)

@@ -82,6 +82,7 @@ import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.auth.PrivilegeGrantAuthorizationIntent;
 import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
@@ -119,6 +120,7 @@ import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -299,6 +301,17 @@ public class PolarisAdminService {
    * PolarisPrincipal}.
    */
   private boolean isSelfEntity(PolarisEntity entity) {
+    // External principals are not backed by the metastore, so they can never be the stored target
+    // entity: a name match would be an accidental collision, not genuine self-service. Denying the
+    // shortcut forces such callers through the authorizer.
+    boolean externalPrincipal =
+        polarisPrincipal
+            .getAttributes()
+            .getOptional(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY)
+            .orElse(false);
+    if (externalPrincipal) {
+      return false;
+    }
     // Entity name is unique for (realm_id, catalog_id, parent_id, type_code),
     // which is reduced to (realm_id, type_code) for top-level entities;
     // so there can be only one principal with a given name inside any realm.
@@ -1251,15 +1264,20 @@ public class PolarisAdminService {
       throw new IllegalArgumentException(
           String.format("Failed to load current secrets for principal '%s'", principalName));
     }
-    PolarisPrincipalSecrets newSecrets =
-        metaStoreManager
-            .rotatePrincipalSecrets(
-                getCurrentPolarisContext(),
-                currentPrincipalEntity.getClientId(),
-                currentPrincipalEntity.getId(),
-                shouldReset,
-                currentSecrets.getMainSecretHash())
-            .getPrincipalSecrets();
+    PrincipalSecretsResult rotateResult =
+        metaStoreManager.rotatePrincipalSecrets(
+            getCurrentPolarisContext(),
+            currentPrincipalEntity.getClientId(),
+            currentPrincipalEntity.getId(),
+            shouldReset,
+            currentSecrets.getMainSecretHash());
+    if (rotateResult.getReturnStatus()
+        == BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED) {
+      throw new CommitConflictException(
+          "Failed to %s secrets for principal '%s' due to concurrent modification",
+          shouldReset ? "reset" : "rotate", principalName);
+    }
+    PolarisPrincipalSecrets newSecrets = rotateResult.getPrincipalSecrets();
     if (newSecrets == null) {
       throw new IllegalStateException(
           String.format(

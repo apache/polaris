@@ -35,6 +35,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.apache.polaris.service.types.TokenType;
 import org.junit.jupiter.api.BeforeEach;
@@ -107,7 +108,8 @@ public class JWTBrokerCredentialsBindingTest {
             TokenType.ACCESS_TOKEN);
     Mockito.clearInvocations(metaStore);
 
-    assertThat(broker.verify(response.getAccessToken()).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+    assertThat(verifyRecognized(response.getAccessToken()).getPrincipalId())
+        .isEqualTo(PRINCIPAL_ID);
     // Bearer verify is signature/claims only — no secrets load on the hot path.
     verify(metaStore, never()).loadPrincipalSecrets(callContext, CLIENT_ID);
   }
@@ -131,7 +133,7 @@ public class JWTBrokerCredentialsBindingTest {
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
         .thenReturn(new PrincipalSecretsResult(secrets));
 
-    assertThat(broker.verify(accessToken).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+    assertThat(verifyRecognized(accessToken).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
   }
 
   @Test
@@ -214,7 +216,7 @@ public class JWTBrokerCredentialsBindingTest {
   void verifyAcceptsLegacyTokenWithoutCredentialsVersionClaim() {
     // Intended upgrade soft-landing: claim-less bearers verify until expiry; exchange rejects.
     String legacy = legacyToken();
-    assertThat(broker.verify(legacy).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+    assertThat(verifyRecognized(legacy).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
     verify(metaStore, never()).loadPrincipalSecrets(callContext, CLIENT_ID);
   }
 
@@ -226,7 +228,7 @@ public class JWTBrokerCredentialsBindingTest {
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
         .thenReturn(new PrincipalSecretsResult(secrets));
 
-    assertThat(broker.verify(legacy).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+    assertThat(verifyRecognized(legacy).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
   }
 
   @Test
@@ -279,7 +281,7 @@ public class JWTBrokerCredentialsBindingTest {
                 .getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION)
                 .asString())
         .isEqualTo(secrets.getCredentialsVersion());
-    assertThat(broker.verify(after.getAccessToken()).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+    assertThat(verifyRecognized(after.getAccessToken()).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
   }
 
   @Test
@@ -304,7 +306,8 @@ public class JWTBrokerCredentialsBindingTest {
     assertThat(claim).isNotEqualTo(secrets.getCredentialsVersion());
     assertThat(secrets.matchesCredentialsVersion(claim)).isTrue();
     // Bearer verify does not consult secrets generation.
-    assertThat(broker.verify(response.getAccessToken()).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+    assertThat(verifyRecognized(response.getAccessToken()).getPrincipalId())
+        .isEqualTo(PRINCIPAL_ID);
 
     // Exchange still succeeds while secondary grace holds.
     TokenResponse exchangedWhileGrace =
@@ -320,7 +323,8 @@ public class JWTBrokerCredentialsBindingTest {
     secrets.rotateSecrets(secrets.getMainSecretHash());
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
         .thenReturn(new PrincipalSecretsResult(secrets));
-    assertThat(broker.verify(response.getAccessToken()).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+    assertThat(verifyRecognized(response.getAccessToken()).getPrincipalId())
+        .isEqualTo(PRINCIPAL_ID);
     TokenResponse exchangedAfterDrop =
         broker.generateFromToken(
             TokenType.ACCESS_TOKEN,
@@ -329,6 +333,13 @@ public class JWTBrokerCredentialsBindingTest {
             SCOPE,
             TokenType.ACCESS_TOKEN);
     assertThat(exchangedAfterDrop.getError()).isEqualTo(OAuthError.invalid_client);
+  }
+
+  /** Verifies a bearer token that is expected to be recognized and returns its credential. */
+  private PolarisCredential verifyRecognized(String token) {
+    TokenVerificationResult result = broker.verify(token);
+    assertThat(result).isInstanceOf(TokenVerificationResult.Recognized.class);
+    return ((TokenVerificationResult.Recognized) result).credential();
   }
 
   private String legacyToken() {

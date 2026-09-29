@@ -393,7 +393,7 @@ components:
           "type": "NoSuchSemanticModelException",
           "code": 404
         }
-      }
+       }
 
     SemanticModelAlreadyExistsError:
       summary: A semantic model with this name already exists in the namespace
@@ -403,7 +403,7 @@ components:
           "type": "AlreadyExistsException",
           "code": 409
         }
-      }
+       }
 
     SemanticModelVersionMismatchError:
       summary: The supplied entity-version does not match the stored version
@@ -413,7 +413,7 @@ components:
           "type": "SemanticModelVersionMismatchException",
           "code": 409
         }
-      }
+       }
 
     ListSemanticModelsNonEmptyExample:
       summary: A non-empty list of semantic model identifiers

@@ -28,8 +28,20 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ## [Unreleased]
 
 ### Highlights
+- Polaris now fully supports "external" principals, that is, principals that are not backed by an 
+  entity in Polaris metastore. By enabling external principals, either globally or per-realm,
+  Polaris now skips the principal entity metastore lookup. This means that synchronizing principals 
+  between an external IDP and Polaris is not necessary anymore. To enable external principals, 
+  set the `polaris.authentication.credential-mode` option to `external`. Note: external principals
+  are not compatible with internal authentication and internal authorization; you must configure an
+  external IDP and an external PDP, such as OPA or Ranger.
 
 ### Upgrade notes
+
+- Polaris-managed AWS SDK clients now use Apache HttpClient 5, which disables HTTP
+  `Expect: 100-continue` by default. Set `polaris.storage.expect-continue-enabled=true`
+  to preserve the previous behavior. Iceberg S3 clients continue to use Apache HttpClient 4
+  and retain their existing default.
 
 - Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
   (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris
@@ -82,9 +94,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
 - `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
   invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
-  size or when a positive LIST_PAGINATION_MAX_PAGE_SIZE limits local catalog listings. Otherwise,
-  requests without pagination parameters still return all results. To keep the previous behavior,
-  set `LIST_PAGINATION_ENABLED=false` or the catalog property `polaris.config.list-pagination-enabled=false`.
+  size or supplying a page token. A request that supplies neither still returns all results, unless
+  a positive `LIST_PAGINATION_MAX_PAGE_SIZE` is configured and the result does not fit, in which
+  case it is rejected rather than truncated. To keep the previous behavior, set
+  `LIST_PAGINATION_ENABLED=false` or the catalog property `polaris.config.list-pagination-enabled=false`.
+- The `PolarisPrincipal` interface has evolved. The `getAttributes()` method now returns 
+  `org.apache.polaris.core.collection.ImmutableAttributeMap`. The attribute keys were moved to a
+  new `org.apache.polaris.core.auth.PolarisPrincipalAttributes` class.
 
 ### New Features
 
@@ -96,9 +112,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
 - The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.additionalProperties.currentSchema` in the Helm chart.
 - Python CLI: `catalogs create` and `catalogs update` now support `--storage-name` to set an optional name referencing a server-side storage configuration.
+- Python CLI: added `register` support for both `tables` and `views` commands
 - Added the default-disabled `ALLOW_CROSS_ACCOUNT_KMS_KEYS` feature flag for AWS credential vending. When enabled, read-only policies may reference SSE-KMS keys owned by another AWS account in the same region for decryption. This broadens `kms:Decrypt` and `kms:DescribeKey` access to a cross-account regional wildcard, so operators should enable it only with intentional cross-account KMS permissions and trust relationships.
 
 ### Changes
+
+- Azure credential vending now maps MSAL authentication failures using their HTTP status codes,
+  including the existing `401` to `403` and `404` to `400` mappings.
 
 - A metastore failure during authentication now returns a fixed `Service unavailable` message
   instead of naming the lookup that failed; the principal lookup previously returned `Unable to
@@ -121,10 +141,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   For local catalogs the maximum takes effect only when `LIST_PAGINATION_ENABLED` is true, since
   with pagination disabled the requested page size is ignored and the full result set is returned;
   for federated catalogs it always applies, because Polaris paginates those listings itself.
-  Setting a maximum deviates from the Iceberg REST specification, which requires a request that
-  does not supply a `pageToken` to receive the complete result with a null `next-page-token`: such
-  a request is then truncated to the maximum and answered with a continuation token, so a client
-  that does not follow continuations sees only the first page.
+  A request that supplies neither `pageToken` nor `pageSize` asks for the complete listing, so when
+  the result does not fit the maximum it is rejected rather than truncated and answered with a
+  continuation token. An empty `pageToken` starts a paginated listing and is capped like any other
+  paginated request. This applies to the Iceberg, generic-table and semantic-model listings alike.
 - Table commits whose base metadata is already stale now fail before the new metadata file is
   written, saving an object-storage write and delete per conflict and returning the `409` to the
   client sooner.
@@ -135,9 +155,28 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Semantic models: a `datasets` field that is not a JSON array now returns `400 Bad Request`
+  instead of being silently skipped, which bypassed every `dataset.source` check.
+- Re-creating an existing namespace now returns `409 Conflict` instead of `403 Forbidden` when
+  `OPTIMIZED_SIBLING_CHECK` is on. Namespace creation checks for an existing namespace before
+  validating locations, as table and view creation already do, so the existing namespace's own
+  location is no longer reported as a conflict.
+- A list request whose `pageSize` is not a number now returns `400 Bad Request` naming the
+  parameter, instead of `404 Not Found`. The status is now the same on every API that accepts
+  `pageSize`.
+- Ranger authorizer: a table or policy under a nested namespace is no longer mapped to the wrong
+  Ranger resource. Namespace levels now occupy a single namespace resource instead of one each,
+  so a policy written for the nested namespace matches.
 - Policy API: detaching a policy from a target it was never attached to now returns
   `404 Not Found` with error type `NoSuchMappingException`, as the policy API specification
   requires, instead of `500 Internal Server Error`.
+- Registering a table whose stored metadata file is no longer readable no longer fails: with
+  overwrite it replaces the metadata location, and without overwrite it reports the table as
+  already existing.
+- Relational JDBC: the location-overlap check now escapes SQL `LIKE` wildcards (`%`, `_`) and the
+  escape character (`\`) that appear literally in a table or namespace location. Previously these
+  characters were interpreted as wildcards, which could over-fetch candidate rows and, for a literal
+  `\`, silently miss true descendants during the overlapping-siblings check.
 - OPA authorizer HTTP client creation no longer silently falls back to a default client when
   truststore or SSL setup fails. Misconfiguration (for example a bad truststore path) now fails
   startup instead of continuing with system trust and no configured response timeout.
@@ -148,6 +187,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   matching `--credential` unless `--print-credentials` is given; otherwise the command names
   the realms that are missing credentials and exits without bootstrapping anything.
   `--credentials-file` is unaffected.
+- Table notifications (`CREATE`/`UPDATE`) that reference a metadata location outside the catalog's
+  allowed locations are now rejected before any missing parent namespaces are auto-created, so a
+  rejected notification no longer leaves orphaned namespaces behind.
 - GCS credential vending no longer fails with HTTP 500 when a table's location or `write.data.path`
   / `write.metadata.path` points at a bucket root without a trailing slash (e.g. `gs://bucket`).
   Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`

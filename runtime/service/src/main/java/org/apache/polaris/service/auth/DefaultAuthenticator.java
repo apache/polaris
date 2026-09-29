@@ -19,7 +19,6 @@
 package org.apache.polaris.service.auth;
 
 import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.common.annotation.Identifier;
@@ -33,6 +32,9 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -98,14 +100,15 @@ public class DefaultAuthenticator implements Authenticator {
     PolarisCredential credentials = extractPolarisCredential(identity);
     LOGGER.debug("Resolving principal for credentials: {}", credentials);
 
-    PrincipalEntity principalEntity = resolvePrincipalEntity(credentials);
-    PrincipalRoleSelection principalRoles = resolvePrincipalRoles(credentials, principalEntity);
-    Map<String, Object> principalAttributes =
-        resolvePrincipalAttributes(identity, principalEntity, principalRoles.allRolesRequested());
-    PolarisPrincipal polarisPrincipal =
-        PolarisPrincipal.of(principalEntity.getName(), principalAttributes, principalRoles.roles());
+    var entity = resolvePrincipalEntity(credentials);
+    var roleSelection = resolvePrincipalRoles(credentials, entity);
+    var attributes =
+        resolvePrincipalAttributes(identity, entity, roleSelection.allRolesRequested());
 
-    LOGGER.debug("Resolved principal: {}", polarisPrincipal);
+    var principalName = entity != null ? entity.getName() : credentials.getPrincipalName();
+    var polarisPrincipal = PolarisPrincipal.of(principalName, attributes, roleSelection.roles());
+
+    LOGGER.debug("Resolved principal: {} - entity available: {}", polarisPrincipal, entity != null);
     return polarisPrincipal;
   }
 
@@ -120,73 +123,104 @@ public class DefaultAuthenticator implements Authenticator {
   /**
    * Resolves the principal entity based on the provided credentials.
    *
-   * <p>This method attempts to load the principal entity using either the principal ID or the
-   * principal name from the credentials. If neither is available, nor if the principal entity can
-   * be found, it throws a {@link AuthenticationFailedException}.
+   * <p>When {@link PolarisCredential#isExternal()} is {@code true}, the credentials represent an
+   * externally-managed principal: no metastore lookup is performed and {@code null} is returned. It
+   * throws {@link AuthenticationFailedException} if the principal name is not available in the
+   * credentials.
+   *
+   * <p>Otherwise, the credentials are treated as internal — this includes both credentials created
+   * via {@link PolarisCredential#of} and any plain {@link PolarisCredential} returned by a custom
+   * token broker. This method attempts to load the principal entity using either the principal ID
+   * or the principal name from the credentials. If neither is available, nor if the principal
+   * entity can be found, it throws a {@link AuthenticationFailedException}.
    */
+  @Nullable
   protected PrincipalEntity resolvePrincipalEntity(PolarisCredential credentials) {
 
-    PrincipalEntity principal = null;
+    if (credentials.isExternal()) {
+      if (credentials.getPrincipalName() == null) {
+        LOGGER.warn("Failed to resolve external principal, no principal name in credentials");
+        throw new AuthenticationFailedException("Invalid credential");
+      }
+      return null;
+    }
+
+    // Internal principal: the credentials must resolve to a backing entity in the metastore.
+    Long principalId = credentials.getPrincipalId();
+    String principalName = credentials.getPrincipalName();
+
+    PrincipalEntity entity = null;
     try {
       // If the principal id is present, prefer to use it to load the principal entity,
       // otherwise, use the principal name to load the entity.
-      if (credentials.getPrincipalId() != null && credentials.getPrincipalId() > 0) {
-        principal =
+      if (principalId != null && principalId > 0) {
+        entity =
             metaStoreManager
-                .findPrincipalById(
-                    callContext.getPolarisCallContext(), credentials.getPrincipalId())
+                .findPrincipalById(callContext.getPolarisCallContext(), principalId)
                 .orElse(null);
-      } else if (credentials.getPrincipalName() != null) {
-        principal =
+      } else if (principalName != null) {
+        entity =
             metaStoreManager
-                .findPrincipalByName(
-                    callContext.getPolarisCallContext(), credentials.getPrincipalName())
+                .findPrincipalByName(callContext.getPolarisCallContext(), principalName)
                 .orElse(null);
       }
     } catch (Exception e) {
       throw metaStoreUnavailable(
           e,
           "Unable to resolve principal entity from credentials, principalName={} principalId={}",
-          credentials.getPrincipalName(),
-          credentials.getPrincipalId());
+          principalName,
+          principalId);
     }
 
-    if (principal == null || principal.getType() != PolarisEntityType.PRINCIPAL) {
+    if (entity == null || entity.getType() != PolarisEntityType.PRINCIPAL) {
       LOGGER.warn("Failed to resolve principal from credentials={}", credentials);
       throw new AuthenticationFailedException("Unable to authenticate");
     }
 
-    return principal;
+    return entity;
   }
 
-  protected Map<String, Object> resolvePrincipalAttributes(
-      SecurityIdentity identity, PrincipalEntity principalEntity, boolean allRolesRequested) {
+  protected AttributeMap resolvePrincipalAttributes(
+      SecurityIdentity identity,
+      @Nullable PrincipalEntity principalEntity,
+      boolean allRolesRequested) {
     // Do not merge the security identity's attributes into the principal attributes:
     // these must stay separate.
-    ImmutableMap.Builder<String, Object> principalAttributes =
-        ImmutableMap.<String, Object>builder()
-            .put(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
-            .put(PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, allRolesRequested);
+    ImmutableAttributeMap.Builder principalAttributes = ImmutableAttributeMap.builder();
     if (identity.getPrincipal() instanceof JsonWebToken jwt) {
-      principalAttributes.put(PolarisPrincipal.JWT_ATTRIBUTE_KEY, jwt.getRawToken());
+      principalAttributes.put(PolarisPrincipalAttributes.JWT_ATTRIBUTE_KEY, jwt.getRawToken());
+    }
+    if (principalEntity != null) {
+      principalAttributes
+          .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+          .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, allRolesRequested);
+    } else {
+      principalAttributes.put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true);
     }
     return principalAttributes.build();
   }
 
   /**
-   * Resolves the roles for the given principal based on the provided credentials.
+   * Resolves the roles for the given principal based on the provided credentials and entity.
    *
-   * <p>This method checks the credentials for requested roles and loads the principal's grants to
-   * determine which roles are currently active for the principal.
+   * <p>When no entity is available, the method assumes that the principal is not backed by an
+   * entity in the Polaris metastore and resolves the roles from the credentials directly. In this
+   * case, no special treatment is applied to role names, and the pseudo-role {@link
+   * #PRINCIPAL_ROLE_ALL} is ignored.
    *
-   * <p>The returned set of roles will include only those roles that the principal has been granted
-   * and that match the requested roles from the credentials. If the credentials contain the
-   * pseudo-role {@link #PRINCIPAL_ROLE_ALL}, it indicates that the principal is requesting all
-   * roles they have been granted in the system, and all such roles will be included in the returned
-   * set.
+   * <p>When an entity is available, this method checks the credentials for requested roles and
+   * loads the principal's grants to determine which roles are currently active for the principal.
+   * The returned set of roles will include only those roles that the principal has been granted and
+   * that match the requested roles from the credentials. If the credentials contain the pseudo-role
+   * {@link #PRINCIPAL_ROLE_ALL}, it indicates that the principal is requesting all roles they have
+   * been granted in the system, and all such roles will be included in the returned set.
    */
   protected PrincipalRoleSelection resolvePrincipalRoles(
-      PolarisCredential credentials, PrincipalEntity principal) {
+      PolarisCredential credentials, @Nullable PrincipalEntity principal) {
+
+    if (principal == null) {
+      return new PrincipalRoleSelection(credentials.getPrincipalRoles(), false);
+    }
 
     PrincipalRoleSelection requestedRoles = extractRequestedRoles(credentials);
     LoadGrantsResult loadGrantsResult = loadPrincipalGrants(principal);

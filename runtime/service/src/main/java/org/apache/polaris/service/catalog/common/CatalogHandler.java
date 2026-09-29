@@ -30,6 +30,7 @@ import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
@@ -39,9 +40,11 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.RenameAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -53,6 +56,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.immutables.value.Value;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An ABC for catalog wrappers which provides authorize methods that should be called before a
@@ -90,6 +94,38 @@ public abstract class CatalogHandler {
   // Initialized in the authorize methods.
   @SuppressWarnings("immutables:incompat")
   protected PolarisResolutionManifest resolutionManifest = null;
+
+  protected boolean shouldDecodeToken() {
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    return catalogEntity == null
+        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED)
+        : realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED, catalogEntity);
+  }
+
+  /** The configured page size ceiling; zero or less means unlimited. */
+  protected int maxPageSize() {
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    return catalogEntity == null
+        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE)
+        : realmConfig()
+            .getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity);
+  }
+
+  /**
+   * A request that supplies neither {@code pageToken} nor {@code pageSize} asks for the complete
+   * listing, which the Iceberg REST specification answers with every result and a null
+   * next-page-token. When a configured maximum prevents that, fail rather than return a page that
+   * looks complete and is not. An empty {@code pageToken} starts a paginated listing, so it is
+   * capped like any other paginated request.
+   */
+  protected void rejectIncompleteListing(
+      @Nullable String pageToken, @Nullable Integer pageSize, @Nullable String nextPageToken) {
+    if (pageToken == null && pageSize == null && nextPageToken != null) {
+      throw new BadRequestException(
+          "Listing does not fit the maximum page size of %s; supply a pageToken to paginate",
+          maxPageSize());
+    }
+  }
 
   /** Initialize the catalog once authorized. Called after all `authorize...` methods. */
   protected abstract void initializeCatalog();

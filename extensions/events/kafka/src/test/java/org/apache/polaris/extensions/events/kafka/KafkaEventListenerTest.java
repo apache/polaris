@@ -42,6 +42,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.UUIDDeserializer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.ImmutablePolarisEventMetadata;
@@ -77,7 +78,7 @@ class KafkaEventListenerTest {
   private static final String KAFKA_GROUP_ID = "polaris-group-id";
   private static final String TEST_CATALOG = "test_catalog";
   private static final PolarisPrincipal PRINCIPAL =
-      PolarisPrincipal.of(TEST_USER, Map.of(), Set.of("role1", "role2"));
+      PolarisPrincipal.of(TEST_USER, AttributeMap.EMPTY, Set.of("role1", "role2"));
   private static final TableIdentifier TEST_TABLE_IDENTIFIER =
       TableIdentifier.of("test_namespace", "test_table");
   private static final JsonMapper OBJECT_MAPPER = JsonMapper.shared();

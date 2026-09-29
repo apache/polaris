@@ -18,9 +18,7 @@
  */
 package org.apache.polaris.service.auth.internal.broker;
 
-import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.types.TokenType;
-import org.jspecify.annotations.Nullable;
 
 /** A broker for generating and verifying tokens. */
 public interface TokenBroker {
@@ -54,27 +52,28 @@ public interface TokenBroker {
       TokenType requestedTokenType);
 
   /**
-   * Decodes and verifies the token, then returns the associated {@link PolarisCredential}.
+   * Decodes and verifies the token.
    *
-   * <p>Outcomes the caller relies on:
+   * <p>Normal outcomes are returned as a {@link TokenVerificationResult}:
    *
    * <ul>
-   *   <li>{@code null} — the token is not recognized by this broker (for example it does not claim
-   *       to be Polaris-issued). In MIXED mode the authentication mechanism may delegate to other
-   *       mechanisms; otherwise authentication fails.
-   *   <li>a credential — the token is recognized and valid.
-   *   <li>{@link org.apache.iceberg.exceptions.NotAuthorizedException} — the token is recognized as
-   *       Polaris-issued but fails verification (invalid signature, claims, and so on). Callers
-   *       must not treat this as “not recognized”; it stops MIXED fallback.
-   *   <li>other runtime failures — if an implementation surfaces a transient error (for example
-   *       {@link org.apache.polaris.core.exceptions.PolarisServiceUnavailableException}), callers
-   *       must propagate it rather than treating it as an authentication failure. Stock {@code
-   *       JWTBroker.verify} does not perform metastore IO; secrets-load unavailability applies on
-   *       the token-exchange path instead.
+   *   <li>{@link TokenVerificationResult.Recognized} — the token is recognized by this broker and
+   *       valid.
+   *   <li>{@link TokenVerificationResult.NotRecognized} — the token is not recognized by this
+   *       broker (for example it does not claim to be Polaris-issued). In MIXED mode the
+   *       authentication mechanism may delegate to other mechanisms; otherwise authentication
+   *       fails.
+   *   <li>{@link TokenVerificationResult.Invalid} — the token is recognized as Polaris-issued but
+   *       fails verification (invalid signature, claims, and so on). This stops MIXED fallback.
    * </ul>
    *
-   * @return the credential for a valid token recognized by this broker, or {@code null} when the
-   *     token is not recognized
+   * <p>Implementations must throw only for transient or unexpected failures (for example {@link
+   * org.apache.polaris.core.exceptions.PolarisServiceUnavailableException}); callers propagate
+   * those rather than treating them as authentication failures. Stock {@code JWTBroker.verify} does
+   * not perform metastore IO, so it never produces a transient failure; secrets-load unavailability
+   * applies on the token-exchange path instead.
+   *
+   * @return the verification outcome; never {@code null}
    */
-  @Nullable PolarisCredential verify(String token);
+  TokenVerificationResult verify(String token);
 }

@@ -37,7 +37,6 @@ import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.auth.DefaultAuthenticator;
-import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.apache.polaris.service.types.TokenType;
 import org.jspecify.annotations.Nullable;
@@ -91,20 +90,25 @@ public class JWTBroker implements TokenBroker {
   }
 
   @Override
-  public PolarisCredential verify(String token) {
+  public TokenVerificationResult verify(String token) {
     // Cheap pre-check without cryptographic verification: tokens not issued by Polaris are not
-    // ours to verify; return null so the caller can delegate to other mechanisms (mixed mode).
-    // Undecodable tokens cannot be Polaris-issued, so they count as foreign.
+    // ours to verify; report them as not recognized so the caller can delegate to other mechanisms
+    // (mixed mode). Undecodable tokens cannot be Polaris-issued, so they count as foreign too.
     final DecodedJWT decodedJWT;
     try {
       decodedJWT = JWT.decode(token);
     } catch (JWTDecodeException e) {
-      return null;
+      return new TokenVerificationResult.NotRecognized();
     }
     if (!ISSUER_KEY.equals(decodedJWT.getIssuer())) {
-      return null;
+      return new TokenVerificationResult.NotRecognized();
     }
-    return verifyInternal(decodedJWT).token();
+    try {
+      return new TokenVerificationResult.Recognized(verifyInternal(decodedJWT).token());
+    } catch (NotAuthorizedException e) {
+      // Recognized as Polaris-issued but failed signature/claims verification.
+      return new TokenVerificationResult.Invalid(e.getMessage(), e.getCause());
+    }
   }
 
   private VerifiedToken verifyInternal(String token) {
