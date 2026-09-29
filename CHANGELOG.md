@@ -139,6 +139,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Ranger authorizer: a table or policy under a nested namespace is no longer mapped to the wrong
   Ranger resource. Namespace levels now occupy a single namespace resource instead of one each,
   so a policy written for the nested namespace matches.
+- Ranger authorizer: `table-data-write` now confers `table-properties-write`, as the built-in
+  authorizer already does. Without it, a Ranger policy granting only `table-data-write` was
+  refused operations the same grant allows under the built-in authorizer. Existing deployments
+  must re-register the updated service definition with Ranger Admin for this to take effect;
+  upgrading Polaris alone does not change the definition already persisted there.
 - Policy API: detaching a policy from a target it was never attached to now returns
   `404 Not Found` with error type `NoSuchMappingException`, as the policy API specification
   requires, instead of `500 Internal Server Error`.
