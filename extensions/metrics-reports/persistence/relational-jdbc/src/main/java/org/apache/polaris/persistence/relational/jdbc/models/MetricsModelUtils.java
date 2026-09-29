@@ -20,7 +20,9 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -34,6 +36,13 @@ public final class MetricsModelUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricsModelUtils.class);
 
   public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+  // Rejects trailing content after the first JSON value, so a legacy value such as
+  // ["id"],name is not silently truncated to its leading JSON-looking prefix.
+  private static final ObjectReader STRING_LIST_READER =
+      OBJECT_MAPPER
+          .readerFor(new TypeReference<List<String>>() {})
+          .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
 
   private MetricsModelUtils() {}
 
@@ -70,16 +79,19 @@ public final class MetricsModelUtils {
    * earlier reader, which persisted it as a comma-delimited string. JSON is tried first; a value
    * that isn't a complete JSON array of non-null strings is assumed to be the legacy
    * comma-delimited format rather than treated as empty, so pre-upgrade rows keep their field
-   * names. This also covers a legacy field literally named "null": Jackson parses that as the JSON
-   * null literal (not an array), so it is rejected here and falls through to the legacy decoder
-   * instead of propagating a null list to callers.
+   * names. The whole input must be consumed by the JSON array, so a legacy value that merely starts
+   * with one (e.g. fields literally named {@code ["id"]} and {@code name}, stored as {@code
+   * ["id"],name}) is decoded as legacy rather than truncated. This also covers a legacy field
+   * literally named "null": Jackson parses that as the JSON null literal (not an array), so it is
+   * rejected here and falls through to the legacy decoder instead of propagating a null list to
+   * callers.
    */
   public static List<String> parseJsonArray(String value) {
     if (value == null || value.isEmpty()) {
       return List.of();
     }
     try {
-      List<String> parsed = OBJECT_MAPPER.readValue(value, new TypeReference<List<String>>() {});
+      List<String> parsed = STRING_LIST_READER.readValue(value);
       if (parsed != null && parsed.stream().noneMatch(Objects::isNull)) {
         return parsed;
       }
