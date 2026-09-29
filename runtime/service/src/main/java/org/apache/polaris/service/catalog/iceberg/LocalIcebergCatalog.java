@@ -583,10 +583,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   }
                   Map<String, String> clone = new HashMap<>();
 
-                  // Do not copy Iceberg table metadata properties into the purge task: those may
-                  // include caller-controlled FileIO client settings (for example s3.endpoint).
-                  // Server FileIO is built from AccessConfig; the task only needs storage-entity
-                  // internals, io-impl, and the storage location.
+                  // Seed catalog-trusted table-default.* FileIO settings (same as commit), then
+                  // storage-entity internals / io-impl / location. Do not copy
+                  // metadata.properties()
+                  // — those may include caller-controlled FileIO client settings (e.g.
+                  // s3.endpoint).
+                  // Needed when SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION leaves AccessConfig empty:
+                  // TaskFileIOSupplier rebuilds FileIO from these task properties alone.
+                  clone.putAll(tableDefaultProperties);
                   clone.put(CatalogProperties.FILE_IO_IMPL, ioImplClassName);
                   clone.putAll(properties);
                   clone.put(PolarisTaskConstants.STORAGE_LOCATION, lastMetadata.location());
@@ -1167,7 +1171,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         lastMetadata = currentMetadata;
 
         Map<String, String> clone = new HashMap<>();
-        // Do not copy view metadata properties into the purge task (same as table drop).
+        // Same as table drop: catalog table-default.* first, never view metadata.properties().
+        clone.putAll(tableDefaultProperties);
         clone.put(CatalogProperties.FILE_IO_IMPL, ioImplClassName);
 
         PolarisResolvedPathWrapper resolvedViewEntities =
