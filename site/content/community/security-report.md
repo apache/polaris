@@ -17,12 +17,12 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: Security Report
+linkTitle: Security
 type: docs
 weight: 500
 ---
 
-# Security Report
+# Security
 
 Adhering to the specifications of The ASF, the Apache Polaris community maintains a highly proactive and open attitude towards addressing security issues.
 
