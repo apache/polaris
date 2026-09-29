@@ -51,8 +51,10 @@ import java.time.Period;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -157,46 +159,15 @@ public class AzureCredentialsStorageIntegration
     Set<String> writeLocations = key.allowedWriteLocations();
     Optional<String> refreshEndpoint = key.refreshCredentialsEndpoint();
 
-    String loc =
-        !writeLocations.isEmpty()
-            ? writeLocations.stream().findAny().orElse(null)
-            : locations.stream().findAny().orElse(null);
-    if (loc == null) {
+    Set<String> allLocations = new LinkedHashSet<>();
+    allLocations.addAll(locations);
+    allLocations.addAll(writeLocations);
+    if (allLocations.isEmpty()) {
       throw new IllegalArgumentException("Expect valid location");
-    }
-    // schema://<container_name>@<account_name>.<endpoint>/<file_path>
-    AzureLocation location = new AzureLocation(loc);
-    validateAccountAndContainer(location, locations, writeLocations);
-
-    String storageDnsName = location.getStorageDnsName();
-    String filePath = location.getFilePath();
-
-    BlobSasPermission blobSasPermission = new BlobSasPermission();
-    // pathSasPermission is for Data lake storage
-    PathSasPermission pathSasPermission = new PathSasPermission();
-
-    if (allowList) {
-      // container level
-      blobSasPermission.setListPermission(true);
-      pathSasPermission.setListPermission(true);
-    }
-    if (!locations.isEmpty()) {
-      blobSasPermission.setReadPermission(true);
-      pathSasPermission.setReadPermission(true);
-    }
-    if (!writeLocations.isEmpty()) {
-      blobSasPermission.setAddPermission(true);
-      blobSasPermission.setWritePermission(true);
-      blobSasPermission.setDeletePermission(true);
-      pathSasPermission.setAddPermission(true);
-      pathSasPermission.setWritePermission(true);
-      pathSasPermission.setDeletePermission(true);
     }
 
     Instant start = Instant.now();
 
-    AccessToken accessToken =
-        getAccessToken(defaultAzureCredential, realmConfig, azureStorageConfig.getTenantId());
     // Backdate the user delegation key start time by five minutes, following Microsoft's Java
     // user-delegation SAS example, to prevent authorization failures caused by clock skew.
     // Microsoft's general SAS guidance recommends a 15-minute backdate for an explicit SAS start
@@ -218,50 +189,190 @@ public class AzureCredentialsStorageIntegration
         .addKeyValue(StructuredLogKeys.ALLOWED_LIST_ACTION, allowList)
         .addKeyValue(StructuredLogKeys.LOCATIONS, locations)
         .addKeyValue(StructuredLogKeys.WRITE_LOCATIONS, writeLocations)
-        .addKeyValue(StructuredLogKeys.LOCATION, loc)
-        .addKeyValue(StructuredLogKeys.STORAGE_ACCOUNT, location.getStorageAccount())
-        .addKeyValue(StructuredLogKeys.ENDPOINT, location.getEndpoint())
-        .addKeyValue(StructuredLogKeys.CONTAINER, location.getContainer())
-        .addKeyValue(StructuredLogKeys.FILE_PATH, filePath)
         .log("Subscope Azure SAS");
-    String sasToken;
-    if (location.getEndpoint().equalsIgnoreCase(AzureLocation.BLOB_ENDPOINT)) {
-      sasToken =
-          getBlobUserDelegationSas(
-              startTime,
-              sanitizedEndTime,
-              sanitizedEndTime,
-              storageDnsName,
-              location.getContainer(),
-              blobSasPermission,
-              Mono.just(accessToken));
-    } else if (location.getEndpoint().equalsIgnoreCase(AzureLocation.ADLS_ENDPOINT)) {
-      String path = null;
-      if (Boolean.TRUE.equals(azureStorageConfig.isHierarchical())) {
-        Preconditions.checkArgument(
-            locations.size() <= 1, "Allowed read locations must not have more that one entry");
-        Preconditions.checkArgument(
-            writeLocations.size() <= 1,
-            "Allowed write locations must not have more that one entry");
-        path = location.getFilePath();
+
+    StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
+    // A single access token is reused for every storage scope, since the token is scoped to the
+    // Azure tenant and not to an individual storage account.
+    AccessToken accessToken =
+        getAccessToken(defaultAzureCredential, realmConfig, azureStorageConfig.getTenantId());
+    // Credentials are vended per storage account / container so that metadata and data may live in
+    // different storage accounts and containers. Each distinct scope gets a SAS token whose read
+    // and write permissions are derived only from the locations that fall inside that scope.
+    Map<AzureLocationScope, ScopedLocations> scopes =
+        groupByStorageScope(locations, writeLocations);
+    // The account-name keys (bare and endpoint-less) identify a storage account rather than a
+    // container, so they can only be emitted when every vended scope belongs to one account.
+    boolean singleStorageAccount =
+        scopes.keySet().stream()
+                .map(scope -> scope.location().getStorageAccount())
+                .distinct()
+                .count()
+            == 1;
+    boolean first = true;
+    // Credentials are collected in a plain map first: two containers in the same storage account
+    // map
+    // onto the same account-host key, and a duplicate key must not fail credential vending.
+    Map<String, String> credentials = new LinkedHashMap<>();
+    for (Map.Entry<AzureLocationScope, ScopedLocations> entry : scopes.entrySet()) {
+      // Account-scoped keys (bare and account-name-suffixed) are emitted once, for the first scope
+      // only, and only when a single account is being vended.
+      boolean emitAccountScopedKeys = singleStorageAccount && first;
+      first = false;
+      AzureLocationScope scope = entry.getKey();
+      AzureLocation location = scope.location();
+      ScopedLocations scoped = entry.getValue();
+
+      BlobSasPermission blobSasPermission = new BlobSasPermission();
+      // pathSasPermission is for Data lake storage
+      PathSasPermission pathSasPermission = new PathSasPermission();
+
+      if (allowList) {
+        // container level
+        blobSasPermission.setListPermission(true);
+        pathSasPermission.setListPermission(true);
+      }
+      if (!scoped.readLocations().isEmpty()) {
+        blobSasPermission.setReadPermission(true);
+        pathSasPermission.setReadPermission(true);
+      }
+      if (!scoped.writeLocations().isEmpty()) {
+        blobSasPermission.setAddPermission(true);
+        blobSasPermission.setWritePermission(true);
+        blobSasPermission.setDeletePermission(true);
+        pathSasPermission.setAddPermission(true);
+        pathSasPermission.setWritePermission(true);
+        pathSasPermission.setDeletePermission(true);
       }
 
-      sasToken =
-          getAdlsUserDelegationSas(
-              startTime,
-              sanitizedEndTime,
-              sanitizedEndTime,
-              storageDnsName,
-              location.getContainer(),
-              pathSasPermission,
-              path,
-              Mono.just(accessToken));
-    } else {
-      throw new RuntimeException(
-          String.format("Endpoint %s not supported", location.getEndpoint()));
+      LOGGER
+          .atDebug()
+          .addKeyValue(StructuredLogKeys.LOCATION, location.withoutScheme())
+          .addKeyValue(StructuredLogKeys.STORAGE_ACCOUNT, location.getStorageAccount())
+          .addKeyValue(StructuredLogKeys.ENDPOINT, location.getEndpoint())
+          .addKeyValue(StructuredLogKeys.CONTAINER, location.getContainer())
+          .addKeyValue(StructuredLogKeys.FILE_PATH, location.getFilePath())
+          .addKeyValue(StructuredLogKeys.READ_LOCATIONS, new HashSet<>(scoped.readLocations()))
+          .addKeyValue(StructuredLogKeys.WRITE_LOCATIONS, new HashSet<>(scoped.writeLocations()))
+          .log("Subscope Azure SAS");
+      String sasToken;
+      if (location.isBlob()) {
+        sasToken =
+            getBlobUserDelegationSas(
+                startTime,
+                sanitizedEndTime,
+                sanitizedEndTime,
+                location.getStorageDnsName(),
+                location.getContainer(),
+                blobSasPermission,
+                Mono.just(accessToken));
+      } else if (location.isAdls()) {
+        String path = null;
+        if (Boolean.TRUE.equals(azureStorageConfig.isHierarchical())) {
+          Preconditions.checkArgument(
+              scoped.readLocations().size() <= 1,
+              "Allowed read locations must not have more that one entry per storage scope");
+          Preconditions.checkArgument(
+              scoped.writeLocations().size() <= 1,
+              "Allowed write locations must not have more that one entry per storage scope");
+          path = location.getFilePath();
+        }
+
+        sasToken =
+            getAdlsUserDelegationSas(
+                startTime,
+                sanitizedEndTime,
+                sanitizedEndTime,
+                location.getStorageDnsName(),
+                location.getContainer(),
+                pathSasPermission,
+                path,
+                Mono.just(accessToken));
+      } else {
+        throw new RuntimeException(
+            String.format("Endpoint %s not supported", location.getEndpoint()));
+      }
+
+      handleAzureCredential(
+          credentials, sasToken, location, sanitizedEndTime.toInstant(), emitAccountScopedKeys);
     }
 
-    return toAccessConfig(sasToken, location, sanitizedEndTime.toInstant(), refreshEndpoint);
+    credentials.forEach(accessConfig::putCredential);
+    accessConfig.expiresAt(sanitizedEndTime.toInstant());
+    refreshEndpoint.ifPresent(
+        endpoint ->
+            accessConfig.put(StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT, endpoint));
+    return accessConfig.build();
+  }
+
+  /**
+   * Vends one SAS token per storage account / container / endpoint scope. Two locations share a
+   * scope only when they resolve to the same storage account, container and endpoint, because a
+   * single Azure SAS token cannot span accounts or containers.
+   */
+  private static Map<AzureLocationScope, ScopedLocations> groupByStorageScope(
+      Set<String> readLocations, Set<String> writeLocations) {
+    Map<AzureLocationScope, ScopedLocations> grouped = new LinkedHashMap<>();
+    for (String loc : readLocations) {
+      grouped.computeIfAbsent(AzureLocationScope.of(loc), k -> new ScopedLocations()).addRead(loc);
+    }
+    for (String loc : writeLocations) {
+      grouped.computeIfAbsent(AzureLocationScope.of(loc), k -> new ScopedLocations()).addWrite(loc);
+    }
+    return grouped;
+  }
+
+  /** Locations sharing the same storage account, container and endpoint. */
+  private record AzureLocationScope(AzureLocation location) {
+    static AzureLocationScope of(String location) {
+      // schema://<container_name>@<account_name>.<endpoint>/<file_path>
+      AzureLocation azureLocation = new AzureLocation(location);
+      if (azureLocation.getFilePath() != null && !azureLocation.getFilePath().isEmpty()) {
+        // Scope the SAS token at the container level, which is what a single SAS token can cover.
+        azureLocation =
+            new AzureLocation(
+                azureLocation.getScheme()
+                    + "://"
+                    + azureLocation.getContainer()
+                    + "@"
+                    + azureLocation.getStorageDnsName());
+      }
+      return new AzureLocationScope(azureLocation);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof AzureLocationScope other && location.equals(other.location);
+    }
+
+    @Override
+    public int hashCode() {
+      return location.hashCode();
+    }
+  }
+
+  /** The read and write locations belonging to a single storage scope. */
+  private static final class ScopedLocations {
+    private final Set<String> readLocations = new LinkedHashSet<>();
+    private final Set<String> writeLocations = new LinkedHashSet<>();
+
+    ScopedLocations addRead(String location) {
+      readLocations.add(location);
+      return this;
+    }
+
+    ScopedLocations addWrite(String location) {
+      writeLocations.add(location);
+      return this;
+    }
+
+    Set<String> readLocations() {
+      return readLocations;
+    }
+
+    Set<String> writeLocations() {
+      return writeLocations;
+    }
   }
 
   @VisibleForTesting
@@ -276,7 +387,9 @@ public class AzureCredentialsStorageIntegration
       Instant expiresAt,
       Optional<String> refreshCredentialsEndpoint) {
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
-    handleAzureCredential(accessConfig, sasToken, location, expiresAt);
+    Map<String, String> credentials = new LinkedHashMap<>();
+    handleAzureCredential(credentials, sasToken, location, expiresAt, true);
+    credentials.forEach(accessConfig::putCredential);
     accessConfig.expiresAt(expiresAt);
     refreshCredentialsEndpoint.ifPresent(
         endpoint -> {
@@ -286,32 +399,50 @@ public class AzureCredentialsStorageIntegration
   }
 
   private static void handleAzureCredential(
-      StorageAccessConfig.Builder config,
+      Map<String, String> credentials,
       String sasToken,
       AzureLocation location,
-      Instant expiresAt) {
+      Instant expiresAt,
+      boolean emitAccountScopedKeys) {
     String storageDnsName = location.getStorageDnsName();
     String accountName = location.getStorageAccount();
 
-    config.putCredential(
-        StorageAccessProperty.AZURE_SAS_TOKEN_ACCOUNT_HOST.getPropertyName() + "." + storageDnsName,
-        sasToken);
-    config.putCredential(
-        StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS.getPropertyName()
-            + "."
-            + storageDnsName,
-        String.valueOf(expiresAt.toEpochMilli()));
+    // The per-account-host SAS key is the only key that can carry a container-scoped token, so when
+    // two containers share a storage account the later scope wins. The token is still restricted to
+    // one container, and clients that need every container use the hosted credential refresh path.
+    // Duplicate keys must therefore be tolerated here rather than rejected by the immutable
+    // builder.
+    String accountHostKey =
+        StorageAccessProperty.AZURE_SAS_TOKEN_ACCOUNT_HOST.getPropertyName() + "." + storageDnsName;
+    String previous = credentials.put(accountHostKey, sasToken);
+    if (previous != null && !previous.equals(sasToken)) {
+      LOGGER.debug(
+          "Replacing credential {} because another container in the same storage account was vended first",
+          accountHostKey);
+    }
+    // The expiry key is likewise account scoped: every scope minted by this call shares one expiry,
+    // so writing it more than once is redundant and must not happen for two containers in one
+    // account.
+    if (emitAccountScopedKeys) {
+      credentials.put(
+          StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS.getPropertyName()
+              + "."
+              + storageDnsName,
+          String.valueOf(expiresAt.toEpochMilli()));
+    }
+
+    // The keys below identify a storage account rather than a container, so a single value can only
+    // represent a single account. They are emitted only for the first scope, and only when every
+    // vended scope shares one account. Otherwise they would silently claim that one account's token
+    // covers the others; clients that span accounts must use the per-account-host keys above.
+    if (!emitAccountScopedKeys) {
+      return;
+    }
 
     // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint.
     // Use accountName (from location) for the stripped variant.
-    if (location.isAdls()) {
-      config.putCredential(
-          StorageAccessProperty.AZURE_SAS_TOKEN_ACCOUNT_NAME.getPropertyName() + "." + accountName,
-          sasToken);
-    }
-
-    if (location.isBlob()) {
-      config.putCredential(
+    if (location.isAdls() || location.isBlob()) {
+      credentials.put(
           StorageAccessProperty.AZURE_SAS_TOKEN_ACCOUNT_NAME.getPropertyName() + "." + accountName,
           sasToken);
     }
@@ -320,8 +451,8 @@ public class AzureCredentialsStorageIntegration
     // with adlfs/fsspec (and similar libraries). The bare keys are emitted in addition to the
     // suffixed variants used by Spark.
     // See https://github.com/apache/polaris/issues/418
-    config.putCredential(StorageAccessProperty.AZURE_SAS_TOKEN_BARE.getPropertyName(), sasToken);
-    config.putCredential(StorageAccessProperty.AZURE_ACCOUNT_NAME.getPropertyName(), accountName);
+    credentials.put(StorageAccessProperty.AZURE_SAS_TOKEN_BARE.getPropertyName(), sasToken);
+    credentials.put(StorageAccessProperty.AZURE_ACCOUNT_NAME.getPropertyName(), accountName);
   }
 
   private static String getBlobUserDelegationSas(
@@ -408,24 +539,6 @@ public class AzureCredentialsStorageIntegration
           ex);
       throw ex;
     }
-  }
-
-  /** Verify that storage accounts, containers and endpoint are the same */
-  private static void validateAccountAndContainer(
-      AzureLocation target, Set<String> readLocations, Set<String> writeLocations) {
-    Set<String> allLocations = new HashSet<>();
-    allLocations.addAll(readLocations);
-    allLocations.addAll(writeLocations);
-    allLocations.forEach(
-        loc -> {
-          AzureLocation location = new AzureLocation(loc);
-          if (!Objects.equals(location.getStorageAccount(), target.getStorageAccount())
-              || !Objects.equals(location.getContainer(), target.getContainer())
-              || !Objects.equals(location.getEndpoint(), target.getEndpoint())) {
-            throw new RuntimeException(
-                "Expect allowed read write locations belong to the same storage account and container");
-          }
-        });
   }
 
   /**
