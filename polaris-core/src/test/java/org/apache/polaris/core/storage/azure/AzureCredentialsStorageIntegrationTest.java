@@ -35,6 +35,7 @@ import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.UserDelegationKey;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
+import java.net.UnknownHostException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -134,6 +135,50 @@ public class AzureCredentialsStorageIntegrationTest {
     Assertions.assertThat(vendedCredentials.keyEnd()).isEqualTo(vendedCredentials.sasExpiry());
     Assertions.assertThat(vendedCredentials.accessConfig().expiresAt())
         .contains(vendedCredentials.sasExpiry().toInstant());
+  }
+
+  @Test
+  void computeRejectsUnresolvableStorageAccount() {
+    DefaultAzureCredential credential = Mockito.mock(DefaultAzureCredential.class);
+    Mockito.when(credential.getToken(Mockito.any(TokenRequestContext.class)))
+        .thenReturn(
+            Mono.just(
+                new AccessToken("access-token", OffsetDateTime.now().plus(Duration.ofHours(1)))));
+
+    RuntimeException sdkException =
+        new RuntimeException(
+            new UnknownHostException("account.blob.core.windows.net: Name or service not known"));
+    BlobServiceClient blobServiceClient = Mockito.mock(BlobServiceClient.class);
+    Mockito.when(blobServiceClient.getUserDelegationKey(Mockito.any(), Mockito.any()))
+        .thenThrow(sdkException);
+
+    AzureStorageConfigurationInfo storageConfig =
+        AzureStorageConfigurationInfo.builder()
+            .addAllowedLocation("wasbs://container@account.blob.core.windows.net/path")
+            .tenantId("tenant-id")
+            .build();
+    AzureStorageCredentialCacheKey key =
+        AzureStorageCredentialCacheKey.of(
+            "realm",
+            storageConfig,
+            false,
+            Set.of("wasbs://container@account.blob.core.windows.net/path"),
+            Set.of(),
+            Optional.empty(),
+            credential,
+            realmConfigWithDuration(3600));
+
+    try (MockedConstruction<BlobServiceClientBuilder> ignored =
+        Mockito.mockConstruction(
+            BlobServiceClientBuilder.class,
+            Mockito.withSettings().defaultAnswer(Answers.RETURNS_SELF),
+            (builder, context) ->
+                Mockito.when(builder.buildClient()).thenReturn(blobServiceClient))) {
+      Assertions.assertThatThrownBy(() -> AzureCredentialsStorageIntegration.compute(key))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("'account'")
+          .hasCause(sdkException);
+    }
   }
 
   private static VendedCredentials vendCredentials(int configuredDurationSeconds) {

@@ -154,6 +154,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Azure: vending credentials for a storage account whose hostname does not resolve (for example,
+  a deleted or misnamed account) now returns `400 Bad Request` naming the account, instead of
+  `500 Internal Server Error`.
 - Semantic models: a `datasets` field that is not a JSON array now returns `400 Bad Request`
   instead of being silently skipped, which bypassed every `dataset.source` check.
 - Re-creating an existing namespace now returns `409 Conflict` instead of `403 Forbidden` when
