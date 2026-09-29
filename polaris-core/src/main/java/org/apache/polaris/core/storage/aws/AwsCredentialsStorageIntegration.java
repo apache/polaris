@@ -402,6 +402,7 @@ public class AwsCredentialsStorageIntegration
           decryptionKeys,
           policyBuilder,
           canWrite,
+          storageConfigurationInfo.getAwsPartition(),
           region,
           storageConfigurationInfo.getAwsAccountId(),
           allowCrossAccountKmsKeys)) {
@@ -438,6 +439,7 @@ public class AwsCredentialsStorageIntegration
       List<String> decryptionKeys,
       IamPolicy.Builder policyBuilder,
       boolean canWrite,
+      String awsPartition,
       String region,
       String accountId,
       boolean allowCrossAccountKmsKeys) {
@@ -483,7 +485,7 @@ public class AwsCredentialsStorageIntegration
     boolean shouldAddWildcard = !hasEncryptionKeys && !hasDecryptionKeys && !canWrite && isAwsS3;
     if (shouldAddWildcard) {
       IamStatement.Builder allowKms = buildKmsDecryptionStatement();
-      addAllKeysResource(region, accountId, allowCrossAccountKmsKeys, allowKms);
+      addAllKeysResource(awsPartition, region, accountId, allowCrossAccountKmsKeys, allowKms);
       policyBuilder.addStatement(allowKms.build());
       statementAdded = true;
     }
@@ -525,20 +527,19 @@ public class AwsCredentialsStorageIntegration
   }
 
   private static void addAllKeysResource(
+      String awsPartition,
       String region,
       String accountId,
       boolean allowCrossAccountKmsKeys,
       IamStatement.Builder allowKms) {
-    String allKeysArn =
-        allowCrossAccountKmsKeys
-            ? String.format("arn:aws:kms:%s:*:key/*", region)
-            : arnKeyAll(region, accountId);
+    String allKeysArn = arnKeyAll(awsPartition, region, allowCrossAccountKmsKeys ? "*" : accountId);
     allowKms.addResource(IamResource.create(allKeysArn));
     LOGGER.debug("Adding KMS key policy for all keys in account {}", accountId);
   }
 
-  private static String arnKeyAll(String region, String accountId) {
-    return String.format("arn:aws:kms:%s:%s:key/*", region, accountId);
+  private static String arnKeyAll(String awsPartition, String region, String accountId) {
+    return String.format(
+        "arn:%s:kms:%s:%s:key/*", awsPartition != null ? awsPartition : "aws", region, accountId);
   }
 
   private static String arnPrefixForPartition(String awsPartition) {
