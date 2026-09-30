@@ -50,6 +50,8 @@ public final class CassandraSessionFactory {
       boolean cdiAuthenticationProviderConfigured,
       OptionsMap options) {
     validateAuthentication(configuration);
+    CassandraBackendConfig.validateConsistencyLevels(
+        configuration.consistencyLevel(), configuration.serialConsistencyLevel());
     CassandraDriverOptions.apply(configuration, cdiAuthenticationProviderConfigured, options);
     options.put(REQUEST_TIMEOUT, requestTimeout(configuration));
   }

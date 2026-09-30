@@ -22,6 +22,7 @@ import static org.apache.polaris.persistence.nosql.cassandra.CassandraBackendCon
 import static org.apache.polaris.persistence.nosql.cassandra.CassandraBackendConfig.DEFAULT_DML_TIMEOUT;
 import static org.apache.polaris.persistence.nosql.cassandra.CassandraBackendConfig.DEFAULT_KEYSPACE;
 
+import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
@@ -138,6 +139,22 @@ public interface CassandraConfiguration {
   /** The named Quarkus TLS Registry configuration to use for TLS or mTLS. */
   Optional<String> tlsConfigurationName();
 
+  /**
+   * Consistency for metadata reads and writes. Supported values are {@code LOCAL_QUORUM}, {@code
+   * QUORUM}, and {@code ALL}; weaker levels do not ensure quorum overlap. All Polaris instances
+   * accessing a realm must use compatible consistency settings.
+   */
+  @WithDefault("LOCAL_QUORUM")
+  DefaultConsistencyLevel consistencyLevel();
+
+  /**
+   * Serial consistency for conditional mutations: {@code LOCAL_SERIAL} or {@code SERIAL}. The
+   * default confines Paxos to the local data center; selecting {@code SERIAL} alone does not
+   * establish support for a deployment with writers in multiple data centers.
+   */
+  @WithDefault("LOCAL_SERIAL")
+  DefaultConsistencyLevel serialConsistencyLevel();
+
   /** Timeout used when creating tables. */
   @WithDefault(DEFAULT_DDL_TIMEOUT)
   @JsonFormat(shape = JsonFormat.Shape.STRING)
@@ -177,6 +194,18 @@ public interface CassandraConfiguration {
     @Value.Default
     default Map<String, String> driverOptions() {
       return Map.of();
+    }
+
+    @Override
+    @Value.Default
+    default DefaultConsistencyLevel consistencyLevel() {
+      return DefaultConsistencyLevel.LOCAL_QUORUM;
+    }
+
+    @Override
+    @Value.Default
+    default DefaultConsistencyLevel serialConsistencyLevel() {
+      return DefaultConsistencyLevel.LOCAL_SERIAL;
     }
 
     @Override
