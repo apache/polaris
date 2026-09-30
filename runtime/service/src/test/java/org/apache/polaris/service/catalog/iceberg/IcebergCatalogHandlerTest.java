@@ -749,7 +749,7 @@ class IcebergCatalogHandlerTest {
   }
 
   @Test
-  void reportMetricsDropsWhenResolvedLeafMissing() {
+  void reportMetricsPassesNullTableEntityWhenResolvedLeafMissing() {
     when(resolvedPath.getRawLeafEntity()).thenReturn(null);
     when(catalogEntity.getId()).thenReturn(7L);
     when(clock.instant()).thenReturn(Instant.parse("2026-01-01T00:00:00Z"));
@@ -760,11 +760,11 @@ class IcebergCatalogHandlerTest {
 
     assertThatCode(() -> handler.reportMetrics(TABLE2, scanMetricsRequest()))
         .doesNotThrowAnyException();
-    verify(metricsReporter, never()).reportMetric(any());
+    verify(metricsReporter).reportMetric(argThat(envelope -> envelope.tableEntity() == null));
   }
 
   @Test
-  void reportMetricsDropsWhenResolvedLeafIsNotTableLike() {
+  void reportMetricsPassesNullTableEntityWhenResolvedLeafIsNotTableLike() {
     PolarisEntity namespaceLeaf =
         new PolarisEntity(
             new PolarisBaseEntity.Builder()
@@ -782,7 +782,7 @@ class IcebergCatalogHandlerTest {
 
     assertThatCode(() -> handler.reportMetrics(TABLE2, scanMetricsRequest()))
         .doesNotThrowAnyException();
-    verify(metricsReporter, never()).reportMetric(any());
+    verify(metricsReporter).reportMetric(argThat(envelope -> envelope.tableEntity() == null));
   }
 
   private static ReportMetricsRequest scanMetricsRequest() {

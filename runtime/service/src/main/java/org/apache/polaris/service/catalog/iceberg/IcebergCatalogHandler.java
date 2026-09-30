@@ -828,29 +828,26 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
 
     // Metrics reporting is best-effort telemetry: resolution/reporting failures must never break
-    // the client request. Authorization above still fails closed.
+    // the client request. Authorization above still fails closed. The envelope may carry a null
+    // table entity (passthrough / unresolved leaf); reporters that need a TABLE_LIKE id drop
+    // themselves.
     try {
       CatalogEntity catalogEntity = getResolvedCatalogEntity();
-      long catalogId = catalogEntity.getId();
-
       PolarisResolvedPathWrapper resolvedTable =
           resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier));
       PolarisEntity tableEntity = resolvedTable == null ? null : resolvedTable.getRawLeafEntity();
-      if (tableEntity == null || tableEntity.getType() != PolarisEntityType.TABLE_LIKE) {
-        LOGGER.warn(
-            "Dropping {} metrics for {}; resolved leaf is missing or not TABLE_LIKE",
-            metricType,
-            identifier);
-        return;
+      if (tableEntity != null && tableEntity.getType() != PolarisEntityType.TABLE_LIKE) {
+        // Do not pass a namespace/catalog leaf through as if it were the table.
+        tableEntity = null;
       }
 
       metricsReporter()
           .reportMetric(
               new MetricsReportEnvelope(
                   catalogName(),
-                  catalogId,
+                  catalogEntity.getId(),
                   identifier,
-                  tableEntity.getId(),
+                  tableEntity,
                   metricType,
                   request.report(),
                   clock().instant()));
