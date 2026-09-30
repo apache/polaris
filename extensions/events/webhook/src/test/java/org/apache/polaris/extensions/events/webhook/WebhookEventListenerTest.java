@@ -24,6 +24,8 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -156,8 +158,10 @@ class WebhookEventListenerTest {
   }
 
   /**
-   * JDK-HttpClient-based transport for tests: the Quarkus REST client used in production needs a
-   * ServiceLoader-provided builder implementation that only exists inside a running Quarkus app.
+   * JDK-HttpClient-based transport for listener-behavior tests. Quarkus REST client construction
+   * needs a running CDI context; production transport status / Retry-After handling is covered by
+   * {@link #restClientTransportPreservesStatusFromResponse()} and {@link
+   * #restClientTransportPreservesStatusAndRetryAfterFromWebApplicationException()}.
    */
   private static final class JdkTransport implements WebhookEventListener.WebhookTransport {
     private final HttpClient client;
@@ -360,6 +364,32 @@ class WebhookEventListenerTest {
     } finally {
       listener.shutdown();
     }
+  }
+
+  @Test
+  void restClientTransportPreservesStatusFromResponse() throws Exception {
+    WebhookHttpClient client = (eventType, signature, payload) -> Response.status(400).build();
+    WebhookEventListener.WebhookTransport.Result result =
+        WebhookEventListener.restClientTransport(client).post("T", null, "{}");
+    assertThat(result.status()).isEqualTo(400);
+    assertThat(result.retryAfter()).isNull();
+    assertThat(WebhookEventListener.isTransient(result.status(), null)).isFalse();
+  }
+
+  @Test
+  void restClientTransportPreservesStatusAndRetryAfterFromWebApplicationException()
+      throws Exception {
+    // Simulates the MP default mapper path that disableDefaultMapper(true) avoids in production.
+    WebhookHttpClient client =
+        (eventType, signature, payload) -> {
+          throw new WebApplicationException(
+              Response.status(429).header("Retry-After", "7").build());
+        };
+    WebhookEventListener.WebhookTransport.Result result =
+        WebhookEventListener.restClientTransport(client).post("T", null, "{}");
+    assertThat(result.status()).isEqualTo(429);
+    assertThat(result.retryAfter()).isEqualTo("7");
+    assertThat(WebhookEventListener.isTransient(result.status(), null)).isTrue();
   }
 
   @Test
