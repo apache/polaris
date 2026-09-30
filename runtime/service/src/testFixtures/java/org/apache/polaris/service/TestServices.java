@@ -123,6 +123,7 @@ import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFac
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
+import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.storage.StsCredentialVendingMechanism;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.mockito.Mockito;
@@ -382,7 +383,11 @@ public record TestServices(
       @SuppressWarnings("unchecked")
       Instance<ConnectionCredentialVendor> mockCredentialVendors = Mockito.mock(Instance.class);
       SigV4ConnectionCredentialVendor sigV4Vendor =
-          new SigV4ConnectionCredentialVendor((destination) -> stsClient, serviceIdentityProvider);
+          new SigV4ConnectionCredentialVendor(
+              (destination) -> stsClient,
+              serviceIdentityProvider,
+              Mockito.mock(StorageConfiguration.class),
+              realmConfig);
       Mockito.when(
               mockCredentialVendors.select(
                   any(org.apache.polaris.service.credentials.connection.AuthType.Literal.class)))

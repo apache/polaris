@@ -107,9 +107,16 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
         config = new ImplicitAuthenticationParametersDpo();
         break;
       case SIGV4:
-        // SigV4 authentication is not secret-based
+        // SigV4 authentication is not secret-based: keys come either from STS role assumption or
+        // from a named server-side credential configuration
         SigV4AuthenticationParameters sigV4AuthenticationParametersModel =
             (SigV4AuthenticationParameters) authenticationParameters;
+        SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+            sigV4AuthenticationParametersModel.getRoleArn(),
+            sigV4AuthenticationParametersModel.getStorageName(),
+            sigV4AuthenticationParametersModel.getRoleSessionName(),
+            sigV4AuthenticationParametersModel.getExternalId(),
+            sigV4AuthenticationParametersModel.getSessionPolicy());
         config =
             new SigV4AuthenticationParametersDpo(
                 sigV4AuthenticationParametersModel.getRoleArn(),
@@ -117,7 +124,8 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
                 sigV4AuthenticationParametersModel.getExternalId(),
                 sigV4AuthenticationParametersModel.getSigningRegion(),
                 sigV4AuthenticationParametersModel.getSigningName(),
-                sigV4AuthenticationParametersModel.getSessionPolicy());
+                sigV4AuthenticationParametersModel.getSessionPolicy(),
+                sigV4AuthenticationParametersModel.getStorageName());
         break;
       default:
         throw new IllegalStateException(

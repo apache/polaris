@@ -53,6 +53,7 @@ import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
+import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -65,6 +66,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
 import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
+import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -102,6 +104,7 @@ import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -237,6 +240,44 @@ public class PolarisAdminServiceTest {
     adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog()));
 
     verify(userSecretsManager, never()).deleteSecret(any());
+  }
+
+  @Test
+  void testCreateCatalogWithSigV4StorageNameRequiresResolveByStorageName() {
+    setupExternalCatalogCreate(null, AuthenticationParameters.AuthenticationTypeEnum.SIGV4);
+    when(realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME))
+        .thenReturn(false);
+
+    assertThatThrownBy(
+            () ->
+                adminService.createCatalog(
+                    new CreateCatalogRequest(createExternalSigV4StorageNameCatalog())))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key());
+    verify(metaStoreManager, never()).createCatalog(any(), any(), any());
+  }
+
+  @Test
+  void testCreateCatalogWithSigV4StorageNameStoresOnlyTheName() {
+    setupExternalCatalogCreate(null, AuthenticationParameters.AuthenticationTypeEnum.SIGV4);
+    when(realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME))
+        .thenReturn(true);
+    ArgumentCaptor<PolarisBaseEntity> captor = ArgumentCaptor.forClass(PolarisBaseEntity.class);
+    when(metaStoreManager.createCatalog(any(), captor.capture(), any()))
+        .thenReturn(
+            new CreateCatalogResult(
+                createBaseCatalog("external-catalog"), createBaseCatalogRole()));
+
+    adminService.createCatalog(new CreateCatalogRequest(createExternalSigV4StorageNameCatalog()));
+
+    SigV4AuthenticationParametersDpo authParams =
+        (SigV4AuthenticationParametersDpo)
+            CatalogEntity.of(captor.getValue())
+                .getConnectionConfigInfoDpo()
+                .getAuthenticationParameters();
+    assertThat(authParams.getStorageName()).isEqualTo("sigv4-catalog");
+    assertThat(authParams.getRoleArn()).isNull();
+    verify(userSecretsManager, never()).writeSecret(any(), any());
   }
 
   private static CreateCatalogRequest secondMechanismCatalogRequest() {
@@ -1100,6 +1141,29 @@ public class PolarisAdminServiceTest {
                     .setClientId("client-id")
                     .setClientSecret("client-secret")
                     .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+                    .build())
+            .build();
+
+    return ExternalCatalog.builder()
+        .setType(Catalog.TypeEnum.EXTERNAL)
+        .setName("external-catalog")
+        .setProperties(CatalogProperties.builder("s3://bucket/path/to/data").build())
+        .setStorageConfigInfo(createAwsStorageConfig())
+        .setConnectionConfigInfo(connectionConfigInfo)
+        .build();
+  }
+
+  private Catalog createExternalSigV4StorageNameCatalog() {
+    ConnectionConfigInfo connectionConfigInfo =
+        IcebergRestConnectionConfigInfo.builder(
+                ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://example.com/polaris/api/catalog")
+            .setRemoteCatalogName("remote-catalog")
+            .setAuthenticationParameters(
+                SigV4AuthenticationParameters.builder()
+                    .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.SIGV4)
+                    .setStorageName("sigv4-catalog")
+                    .setSigningRegion("us-east-1")
                     .build())
             .build();
 
