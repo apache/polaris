@@ -20,7 +20,13 @@
 import java.net.URI
 import org.nosphere.apache.rat.RatTask
 
-buildscript { repositories { maven { url = java.net.URI("https://plugins.gradle.org/m2/") } } }
+buildscript {
+  repositories { maven { url = java.net.URI("https://plugins.gradle.org/m2/") } }
+  dependencies {
+    // Align the plugin classpath with startup actions using Testcontainers' Commons Compress.
+    classpath(libs.commons.lang3)
+  }
+}
 
 plugins {
   id("idea")

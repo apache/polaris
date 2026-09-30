@@ -24,7 +24,7 @@ uses the Apache Cassandra Java driver directly: Polaris creates and configures a
 it does not use a Quarkus Cassandra extension or the driver's Typesafe Config integration.
 
 For deployment configuration and bootstrapping instructions, see the
-Cassandra metastore documentation.
+[Cassandra metastore documentation](../../../../../site/content/in-dev/unreleased/metastores/nosql-cassandra.md).
 
 ## Runtime integration
 
