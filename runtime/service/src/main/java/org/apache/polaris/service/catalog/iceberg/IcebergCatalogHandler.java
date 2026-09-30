@@ -1070,7 +1070,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         // shared AuthorizationState. A request-selective authorizer may use the operation, not just
         // the target securable, to decide what inputs to resolve.
         authorizer()
-            .resolveAuthorizationInputs(
+            .analyzeAuthorizationInputs(
                 authorizationState,
                 new AuthorizationRequest(
                     polarisPrincipal(),
@@ -1079,6 +1079,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                         writeFallbackRequest.intents().getFirst(),
                         readOverwriteRequest.intents().getFirst(),
                         readFallbackRequest.intents().getFirst())));
+        authorizationState.resolve();
 
         try {
           authorizeResolvedRegisterTableOverwriteOrThrow(
@@ -1109,13 +1110,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         // Resolve both delegation intents before authorization so the read fallback can reuse the
         // same AuthorizationState without assuming operation-independent resolution.
         authorizer()
-            .resolveAuthorizationInputs(
+            .analyzeAuthorizationInputs(
                 authorizationState,
                 new AuthorizationRequest(
                     polarisPrincipal(),
                     List.of(
                         writeCreateRequest.intents().getFirst(),
                         readCreateRequest.intents().getFirst())));
+        authorizationState.resolve();
 
         try {
           authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
@@ -1321,7 +1323,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // deriving the final per-update operation set.
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     authorizer()
-        .resolveAuthorizationInputs(
+        .analyzeAuthorizationInputs(
             authorizationState,
             new AuthorizationRequest(
                 polarisPrincipal(),
@@ -1329,6 +1331,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                     new SingleTargetAuthorizationIntent(
                         PolarisAuthorizableOperation.UPDATE_TABLE,
                         PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier)))));
+    authorizationState.resolve();
 
     EnumSet<PolarisAuthorizableOperation> authorizableOperations =
         getUpdateTableAuthorizableOperations(request, getResolvedCatalogEntity());

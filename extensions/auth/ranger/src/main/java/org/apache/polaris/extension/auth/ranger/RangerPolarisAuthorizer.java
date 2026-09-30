@@ -29,6 +29,7 @@ import org.apache.polaris.core.auth.AuthorizationIntentResolver;
 import org.apache.polaris.core.auth.AuthorizationPreConditions;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.BasicResolutionSemantics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -37,6 +38,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
 import org.apache.ranger.authz.api.RangerAuthzException;
 import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
@@ -85,9 +87,10 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
    * resolve only the selections required by Ranger authorization.
    */
   @Override
-  public void resolveAuthorizationInputs(
+  public void analyzeAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    authzState.getResolutionManifest().resolveAll();
+    BasicResolutionSemantics.resolveSelections(authzState, request);
+    authzState.select(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES); // for the artificial root entity
   }
 
   @Override

@@ -42,7 +42,6 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthorizationDecision;
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
@@ -249,14 +248,6 @@ public record TestServices(
     public TestServices build() {
       RealmConfigurationSource configurationSource = (rc, name) -> config.get(name);
       PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
-      Mockito.doAnswer(
-              invocation -> {
-                AuthorizationState authzState = invocation.getArgument(0);
-                authzState.getResolutionManifest().resolveAll();
-                return null;
-              })
-          .when(authorizer)
-          .resolveAuthorizationInputs(any(), any());
       Mockito.when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
 
       // Application level

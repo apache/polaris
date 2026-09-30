@@ -802,10 +802,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   @Override
-  public void resolveAuthorizationInputs(
+  public void analyzeAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
-    resolutionManifest.resolveAll();
+    authzState.selectAll();
   }
 
   @Override

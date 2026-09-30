@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -52,7 +51,6 @@ import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthorizationDecision;
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
@@ -133,14 +131,6 @@ public class PolarisAdminServiceTest {
     when(resolutionManifest.resolveAll()).thenReturn(successStatus);
     when(resolutionManifest.getPrimaryResolverStatusOrThrow()).thenReturn(successStatus);
     when(resolutionManifest.getIsPassthroughFacade()).thenReturn(false);
-    doAnswer(
-            invocation -> {
-              AuthorizationState authzState = invocation.getArgument(0);
-              authzState.getResolutionManifest().resolveAll();
-              return null;
-            })
-        .when(authorizer)
-        .resolveAuthorizationInputs(any(), any());
     when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
 
     authenticatedPrincipal = PolarisPrincipal.of("test", AttributeMap.EMPTY, Set.of());

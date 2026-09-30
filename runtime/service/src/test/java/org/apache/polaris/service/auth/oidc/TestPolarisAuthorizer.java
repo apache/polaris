@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.auth.oidc;
 
-import java.util.Set;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
@@ -40,13 +39,11 @@ public class TestPolarisAuthorizer implements PolarisAuthorizer {
   public static final String DENY_PREFIX = "denied";
 
   @Override
-  public void resolveAuthorizationInputs(
+  public void analyzeAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     // nothing to resolve for this oidc authorizer, but the manifest must be in resolved state to
     // avoid errors in the authorization decision phase.
-    authzState
-        .getResolutionManifest()
-        .resolveSelections(Set.of(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES));
+    authzState.select(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES);
   }
 
   @Override

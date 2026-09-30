@@ -41,6 +41,7 @@ import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.BasicResolutionSemantics;
 import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -125,9 +126,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * resolve only the selections required by OPA authorization.
    */
   @Override
-  public void resolveAuthorizationInputs(
+  public void analyzeAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    authzState.getResolutionManifest().resolveAll();
+    BasicResolutionSemantics.resolveSelections(authzState, request);
   }
 
   @Override

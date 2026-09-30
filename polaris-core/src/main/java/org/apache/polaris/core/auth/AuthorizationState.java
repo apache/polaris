@@ -18,8 +18,10 @@
  */
 package org.apache.polaris.core.auth;
 
+import java.util.EnumSet;
 import java.util.Objects;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -30,6 +32,7 @@ import org.jspecify.annotations.NonNull;
  */
 public class AuthorizationState {
   private final PolarisResolutionManifest resolutionManifest;
+  private final EnumSet<Resolvable> selections = EnumSet.noneOf(Resolvable.class);
 
   public AuthorizationState(@NonNull PolarisResolutionManifest resolutionManifest) {
     this.resolutionManifest = Objects.requireNonNull(resolutionManifest, "resolutionManifest");
@@ -39,5 +42,21 @@ public class AuthorizationState {
   @NonNull
   public PolarisResolutionManifest getResolutionManifest() {
     return resolutionManifest;
+  }
+
+  public void select(@NonNull Resolvable resolvable) {
+    selections.add(resolvable);
+  }
+
+  public void selectAll() {
+    selections.clear();
+  }
+
+  public void resolve() {
+    if (selections.isEmpty()) {
+      resolutionManifest.resolveAll();
+    } else {
+      resolutionManifest.resolveSelections(selections);
+    }
   }
 }

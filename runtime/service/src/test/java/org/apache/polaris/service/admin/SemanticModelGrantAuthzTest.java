@@ -21,7 +21,6 @@ package org.apache.polaris.service.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -48,7 +47,6 @@ import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.SemanticModelGrant;
 import org.apache.polaris.core.admin.model.SemanticModelPrivilege;
 import org.apache.polaris.core.auth.AuthorizationDecision;
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
@@ -190,14 +188,6 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
 
   private PolarisAuthorizer externalAuthorizer(AuthorizationDecision decision) {
     PolarisAuthorizer authorizer = mock(PolarisAuthorizer.class);
-    doAnswer(
-            invocation -> {
-              AuthorizationState state = invocation.getArgument(0);
-              state.getResolutionManifest().resolveAll();
-              return null;
-            })
-        .when(authorizer)
-        .resolveAuthorizationInputs(any(), any());
     when(authorizer.authorize(any(), any())).thenReturn(decision);
     return authorizer;
   }

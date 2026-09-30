@@ -73,25 +73,6 @@ public class PolarisAuthorizerImplTest {
   }
 
   @Test
-  void resolveAuthorizationInputsResolvesAll() {
-    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(realmConfig());
-    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
-    AuthorizationState authzState = new AuthorizationState(manifest);
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role"));
-    AuthorizationRequest request =
-        new AuthorizationRequest(
-            principal,
-            List.of(
-                new SingleTargetAuthorizationIntent(
-                    PolarisAuthorizableOperation.GET_CATALOG,
-                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")))));
-
-    authorizer.resolveAuthorizationInputs(authzState, request);
-
-    verify(manifest).resolveAll();
-  }
-
-  @Test
   void authorizeUsesRootTargetForRootGrantRequestWithoutPrimaryTarget() {
     // Verify that new authorize SPI call without primary target uses root_container
     // for resolution and authorization

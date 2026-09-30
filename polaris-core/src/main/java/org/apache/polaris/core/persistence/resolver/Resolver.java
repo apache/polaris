@@ -839,7 +839,7 @@ public class Resolver {
    *
    * <p>TODO: synthetic principal and roles are a temporary workaround for external principals,
    * until external authorizers change their implementation of {@link
-   * org.apache.polaris.core.auth.PolarisAuthorizer#resolveAuthorizationInputs(AuthorizationState,
+   * org.apache.polaris.core.auth.PolarisAuthorizer#analyzeAuthorizationInputs(AuthorizationState,
    * AuthorizationRequest)} to avoid calling {@link PolarisResolutionManifest#resolveAll()}, and
    * instead only resolve the securables that are actually needed for authorization, cf. {@link
    * PolarisResolutionManifest#resolveSelections(Set)}.

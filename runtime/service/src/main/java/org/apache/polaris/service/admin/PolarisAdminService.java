@@ -124,6 +124,7 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -247,7 +248,8 @@ public class PolarisAdminService {
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     AuthorizationRequest authorizationRequest =
         new AuthorizationRequest(polarisPrincipal, List.of(new TargetlessAuthorizationIntent(op)));
-    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizer.analyzeAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizationState.resolve();
     PolarisResolvedPathWrapper rootContainerWrapper =
         resolutionManifest.getResolvedRootContainerEntityAsPath();
     authorizer.authorize(authorizationState, authorizationRequest).throwIfDenied();
@@ -269,13 +271,17 @@ public class PolarisAdminService {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(referenceCatalogName);
     resolutionManifest.addTopLevelName(topLevelEntityName, entityType, false /* isOptional */);
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    if (referenceCatalogName != null) {
+      authorizationState.select(Resolvable.REFERENCE_CATALOG);
+    }
     AuthorizationRequest authorizationRequest =
         new AuthorizationRequest(
             polarisPrincipal,
             List.of(
                 new SingleTargetAuthorizationIntent(
                     op, PolarisSecurable.of(new PathSegment(entityType, topLevelEntityName)))));
-    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizer.analyzeAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizationState.resolve();
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException(
@@ -341,7 +347,8 @@ public class PolarisAdminService {
             List.of(
                 new SingleTargetAuthorizationIntent(
                     op, PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName))));
-    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizer.analyzeAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizationState.resolve();
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofCatalogRole(catalogRoleName), true);
     if (target == null) {
@@ -365,7 +372,8 @@ public class PolarisAdminService {
                     op,
                     PolarisSecurable.of(
                         new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName)))));
-    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizer.analyzeAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizationState.resolve();
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
@@ -402,7 +410,8 @@ public class PolarisAdminService {
                         new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName)),
                     PolarisSecurable.of(
                         new PathSegment(PolarisEntityType.PRINCIPAL, principalName)))));
-    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizer.analyzeAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizationState.resolve();
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
@@ -440,7 +449,8 @@ public class PolarisAdminService {
                     PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName),
                     PolarisSecurable.of(
                         new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName)))));
-    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizer.analyzeAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizationState.resolve();
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
@@ -478,7 +488,8 @@ public class PolarisAdminService {
                     op,
                     PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, catalogName)),
                     PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName))));
-    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizer.analyzeAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizationState.resolve();
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
@@ -513,7 +524,8 @@ public class PolarisAdminService {
                     op,
                     PolarisSecurableMapper.namespace(catalogName, namespace),
                     PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName))));
-    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizer.analyzeAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizationState.resolve();
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
@@ -559,7 +571,8 @@ public class PolarisAdminService {
                     op,
                     PolarisSecurableMapper.tableLike(catalogName, identifier),
                     PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName))));
-    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizer.analyzeAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizationState.resolve();
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
@@ -611,7 +624,8 @@ public class PolarisAdminService {
                     op,
                     PolarisSecurableMapper.policy(catalogName, identifier),
                     PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName))));
-    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizer.analyzeAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizationState.resolve();
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
@@ -654,7 +668,8 @@ public class PolarisAdminService {
                     PolarisSecurableMapper.semanticModel(
                         catalogName, identifier.namespace(), identifier.name()),
                     PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName))));
-    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizer.analyzeAuthorizationInputs(authorizationState, authorizationRequest);
+    authorizationState.resolve();
     authorizer.authorize(authorizationState, authorizationRequest).throwIfDenied();
 
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();

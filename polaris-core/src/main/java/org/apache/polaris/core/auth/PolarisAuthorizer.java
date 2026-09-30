@@ -31,7 +31,7 @@ public interface PolarisAuthorizer {
    *
    * <p>This method should not perform authorization decisions directly.
    */
-  void resolveAuthorizationInputs(
+  void analyzeAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request);
 
   /**

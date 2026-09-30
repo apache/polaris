@@ -21,7 +21,6 @@ package org.apache.polaris.extension.auth.opa;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -645,27 +644,6 @@ public class OpaPolarisAuthorizerTest {
                               secondary == null ? null : List.of(secondary))))
                   .throwIfDenied();
             });
-  }
-
-  @Test
-  void resolveAuthorizationInputsResolvesAll() {
-    // resolveAll() is intentionally used for compatibility and is expected
-    // to be narrowed in a future refactoring.
-    OpaPolarisAuthorizer authorizer =
-        new OpaPolarisAuthorizer(
-            URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
-            mock(CloseableHttpClient.class),
-            JsonMapper.builder().build(),
-            null,
-            null,
-            "test-realm");
-    PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
-    AuthorizationState authzState = new AuthorizationState(resolutionManifest);
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1"));
-
-    authorizer.resolveAuthorizationInputs(authzState, requestWithCatalogTarget(principal));
-
-    verify(resolutionManifest).resolveAll();
   }
 
   @Test
