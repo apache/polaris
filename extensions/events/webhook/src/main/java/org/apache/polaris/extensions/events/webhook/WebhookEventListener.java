@@ -23,11 +23,13 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import io.quarkus.rest.client.reactive.QuarkusRestClientBuilder;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.ClientRequestContext;
 import jakarta.ws.rs.client.ClientRequestFilter;
 import jakarta.ws.rs.core.Response;
@@ -56,8 +58,6 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
-import org.eclipse.microprofile.rest.client.RestClientBuilder;
-import org.eclipse.microprofile.rest.client.ext.ResponseExceptionMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
@@ -235,14 +235,22 @@ public class WebhookEventListener implements PolarisEventListener {
   }
 
   protected WebhookTransport createTransport() {
+    // disableDefaultMapper is required: a ResponseExceptionMapper that returns null does not
+    // suppress the MP default mapper, which throws on >=400 and drops status / Retry-After.
     WebhookHttpClient client =
-        RestClientBuilder.newBuilder()
+        QuarkusRestClientBuilder.newBuilder()
             .baseUri(endpoint)
             .connectTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
             .readTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
+            .followRedirects(false)
+            .disableDefaultMapper(true)
             .register(new CustomHeadersFilter(headers))
-            .register(new NoopResponseExceptionMapper())
             .build(WebhookHttpClient.class);
+    return new RestClientTransport(client);
+  }
+
+  @VisibleForTesting
+  static WebhookTransport restClientTransport(WebhookHttpClient client) {
     return new RestClientTransport(client);
   }
 
@@ -255,9 +263,27 @@ public class WebhookEventListener implements PolarisEventListener {
 
     @Override
     public Result post(String eventType, String signature, String payload) {
-      try (Response response = client.post(eventType, signature, payload)) {
-        return new Result(response.getStatus(), response.getHeaderString("Retry-After"));
+      try {
+        try (Response response = client.post(eventType, signature, payload)) {
+          return toResult(response);
+        }
+      } catch (WebApplicationException e) {
+        // If the default mapper is still enabled, non-2xx arrive as WAE with the Response
+        // attached. Prefer disableDefaultMapper(true); this keeps status / Retry-After usable.
+        Response response = e.getResponse();
+        if (response == null) {
+          throw e;
+        }
+        try {
+          return toResult(response);
+        } finally {
+          response.close();
+        }
       }
+    }
+
+    private static Result toResult(Response response) {
+      return new Result(response.getStatus(), response.getHeaderString("Retry-After"));
     }
 
     @Override
@@ -284,18 +310,6 @@ public class WebhookEventListener implements PolarisEventListener {
               LOGGER.debug("Ignoring reserved custom webhook header '{}'", name);
             }
           });
-    }
-  }
-
-  /**
-   * Prevents the REST client from turning non-2xx responses into exceptions; the listener
-   * classifies status codes itself for retry decisions.
-   */
-  private static final class NoopResponseExceptionMapper
-      implements ResponseExceptionMapper<RuntimeException> {
-    @Override
-    public RuntimeException toThrowable(Response response) {
-      return null;
     }
   }
 
