@@ -52,3 +52,17 @@ You can verify the server is running by checking the health endpoint:
 ```bash
 curl http://localhost:8182/q/health
 ```
+
+## Configuration
+
+The binary distribution includes one configuration file for each component:
+
+- `server/config/application.properties` for the Polaris server (`bin/server`);
+- `admin/config/application.properties` for the admin tool (`bin/admin`).
+
+All the properties in these files are commented out, so both components use their default
+configuration. To change a setting, uncomment the property and edit its value, then restart the
+server.
+
+See [Configuring Polaris]({{% ref "../configuration/configuring-polaris.md" %}}) for the other ways
+to configure Polaris and for the available configuration options.
