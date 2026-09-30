@@ -1063,9 +1063,19 @@ components:
       properties:
         roleArn:
           type: string
-          description: The aws IAM role arn assumed by polaris userArn when signing requests
-          examples:
-            - "arn:aws:iam::123456789001:role/role-that-has-remote-catalog-access"
+          description: >-
+            The aws IAM role arn assumed by polaris userArn when signing requests. Required unless
+            storageName is provided; the two are mutually exclusive.
+          example: "arn:aws:iam::123456789001:role/role-that-has-remote-catalog-access"
+        storageName:
+          type: string
+          description: >-
+            An optional name referencing a server-side AWS credential configuration whose static
+            keys are used to sign requests directly, without AWS STS. Intended for SigV4-compatible
+            catalogs that are not AWS and therefore have no IAM role to assume. Requires
+            RESOLVE_CREDENTIALS_BY_STORAGE_NAME to be enabled, and is mutually exclusive with
+            roleArn.
+          example: "my-sigv4-catalog"
         roleSessionName:
           type: string
           description: The role session name to be used by the SigV4 protocol for signing requests
@@ -1104,7 +1114,6 @@ components:
           examples:
             - "https://sts.example.com:1234"
       required:
-        - roleArn
         - signingRegion
 
     ImplicitAuthenticationParameters:
