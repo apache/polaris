@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.semanticmodel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,6 +39,7 @@ import org.apache.polaris.core.admin.model.SemanticModelGrant;
 import org.apache.polaris.core.admin.model.SemanticModelPrivilege;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
@@ -162,6 +164,14 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
   @Test
   void loadResolvesAuthorizationInputsForSemanticModel() {
     PolarisAuthorizer authorizer = mock(PolarisAuthorizer.class);
+    doAnswer(
+            invocation -> {
+              AuthorizationState authorizationState = invocation.getArgument(0);
+              authorizationState.resolve0();
+              return null;
+            })
+        .when(authorizer)
+        .resolveAuthorizationInputs(any(), any());
     when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
 
     handler(authorizer).loadSemanticModel(identifier("m1"));
