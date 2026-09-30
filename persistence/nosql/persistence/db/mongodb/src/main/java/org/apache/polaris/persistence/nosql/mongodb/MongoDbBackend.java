@@ -51,8 +51,13 @@ import com.mongodb.MongoException;
 import com.mongodb.MongoExecutionTimeoutException;
 import com.mongodb.MongoInterruptedException;
 import com.mongodb.MongoServerUnavailableException;
+import com.mongodb.MongoSocketClosedException;
+import com.mongodb.MongoSocketReadException;
 import com.mongodb.MongoSocketReadTimeoutException;
+import com.mongodb.MongoSocketWriteException;
+import com.mongodb.MongoSocketWriteTimeoutException;
 import com.mongodb.MongoTimeoutException;
+import com.mongodb.MongoWriteConcernException;
 import com.mongodb.MongoWriteException;
 import com.mongodb.WriteError;
 import com.mongodb.bulk.BulkWriteError;
@@ -617,8 +622,15 @@ final class MongoDbBackend implements Backend {
     if (e instanceof MongoInterruptedException
         || e instanceof MongoTimeoutException
         || e instanceof MongoServerUnavailableException
+        || e instanceof MongoSocketClosedException
+        || e instanceof MongoSocketReadException
         || e instanceof MongoSocketReadTimeoutException
+        || e instanceof MongoSocketWriteException
+        || e instanceof MongoSocketWriteTimeoutException
         || e instanceof MongoExecutionTimeoutException) {
+      return new UnknownOperationResultException(e);
+    }
+    if (e instanceof MongoWriteConcernException) {
       return new UnknownOperationResultException(e);
     }
     if (e instanceof MongoWriteException mongoWriteException) {
