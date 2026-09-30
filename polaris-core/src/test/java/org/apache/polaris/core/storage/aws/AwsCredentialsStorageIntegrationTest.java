@@ -1842,7 +1842,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         Set.of("s3://bucket/path"),
         Set.of("s3://bucket/path"),
         Set.of("s3://bucket/path"),
-        Optional.empty(),
         roleSessionName,
         sessionTags,
         Mockito.mock(StsClientProvider.class),

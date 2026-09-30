@@ -16,21 +16,27 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
--- Changes from v4:
---  * Removed the `idempotency_records` table (the durable idempotency store it
---    backed was never wired into any request path and has been removed)
---  * `events.catalog_id` is nullable; events that are not catalog-scoped store NULL (issue #4674)
+-- CockroachDB schema (in sync with PostgreSQL schema)
+-- Features:
+--  * Uses INT4 explicitly for all integer columns (required for CockroachDB JDBC driver)
+--  * Includes all tables: version, entities, grant_records, principal_authentication_data,
+--    policy_mapping_record, events, scan_metrics_report, commit_metrics_report
+--  * Compatible with PostgreSQL wire protocol
 
+-- Note:
+-- INT4 is used directly in table definitions for CockroachDB JDBC compatibility.
+-- CockroachDB requires explicit INT4 type declarations to correctly map columns to Java's Integer type.
+-- Using generic INTEGER or INT types causes type mapping failures in CockroachDB's JDBC driver.
+-- INT4 is equivalent to INTEGER in PostgreSQL, ensuring compatibility with both databases.
 
 CREATE TABLE IF NOT EXISTS version (
     version_key TEXT PRIMARY KEY,
-    version_value INTEGER NOT NULL
+    version_value INT4 NOT NULL
 );
 INSERT INTO version (version_key, version_value)
-VALUES ('version', 5)
-ON CONFLICT (version_key) DO UPDATE
-SET version_value = EXCLUDED.version_value;
-COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
+VALUES ('version', 6)
+ON CONFLICT (version_key) DO NOTHING;
+COMMENT ON TABLE version IS 'JDBC schema version; updated manually as part of upgrade procedures.';
 
 CREATE TABLE IF NOT EXISTS entities (
     realm_id TEXT NOT NULL,
@@ -38,9 +44,9 @@ CREATE TABLE IF NOT EXISTS entities (
     id BIGINT NOT NULL,
     parent_id BIGINT NOT NULL,
     name TEXT NOT NULL,
-    entity_version INT NOT NULL,
-    type_code INT NOT NULL,
-    sub_type_code INT NOT NULL,
+    entity_version INT4 NOT NULL,
+    type_code INT4 NOT NULL,
+    sub_type_code INT4 NOT NULL,
     create_timestamp BIGINT NOT NULL,
     drop_timestamp BIGINT NOT NULL,
     purge_timestamp BIGINT NOT NULL,
@@ -48,7 +54,7 @@ CREATE TABLE IF NOT EXISTS entities (
     last_update_timestamp BIGINT NOT NULL,
     properties JSONB not null default '{}'::JSONB,
     internal_properties JSONB not null default '{}'::JSONB,
-    grant_records_version INT NOT NULL,
+    grant_records_version INT4 NOT NULL,
     location_without_scheme TEXT,
     PRIMARY KEY (realm_id, id),
     CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
@@ -58,7 +64,7 @@ CREATE TABLE IF NOT EXISTS entities (
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
 CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id ON entities (catalog_id, id);
 CREATE INDEX IF NOT EXISTS idx_locations
-    ON entities USING btree (realm_id, parent_id, location_without_scheme)
+    ON entities USING btree (realm_id, catalog_id, location_without_scheme)
     WHERE location_without_scheme IS NOT NULL;
 
 COMMENT ON TABLE entities IS 'all the entities';
@@ -85,7 +91,7 @@ CREATE TABLE IF NOT EXISTS grant_records (
     securable_id BIGINT NOT NULL,
     grantee_catalog_id BIGINT NOT NULL,
     grantee_id BIGINT NOT NULL,
-    privilege_code INTEGER,
+    privilege_code INT4,
     PRIMARY KEY (realm_id, securable_catalog_id, securable_id, grantee_catalog_id, grantee_id, privilege_code)
 );
 
@@ -97,9 +103,9 @@ COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee
 COMMENT ON COLUMN grant_records.grantee_id IS 'id of the grantee';
 COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
 
-CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee 
+CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee
     ON grant_records (realm_id, grantee_id);
-CREATE INDEX IF NOT EXISTS idx_grants_realm_securable 
+CREATE INDEX IF NOT EXISTS idx_grants_realm_securable
     ON grant_records (realm_id, securable_id);
 
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
@@ -118,7 +124,7 @@ CREATE TABLE IF NOT EXISTS policy_mapping_record (
     realm_id TEXT NOT NULL,
     target_catalog_id BIGINT NOT NULL,
     target_id BIGINT NOT NULL,
-    policy_type_code INTEGER NOT NULL,
+    policy_type_code INT4 NOT NULL,
     policy_catalog_id BIGINT NOT NULL,
     policy_id BIGINT NOT NULL,
     parameters JSONB NOT NULL DEFAULT '{}'::JSONB,
@@ -163,7 +169,7 @@ CREATE TABLE IF NOT EXISTS scan_metrics_report (
 
     -- Scan context
     snapshot_id BIGINT,
-    schema_id INTEGER,
+    schema_id INT4,
     filter_expression TEXT,
     projected_field_ids TEXT,
     projected_field_names TEXT,
@@ -255,7 +261,7 @@ CREATE TABLE IF NOT EXISTS commit_metrics_report (
 
     -- Duration and attempts
     total_duration_ms BIGINT DEFAULT 0,
-    attempts INTEGER DEFAULT 1,
+    attempts INT4 DEFAULT 1,
 
     -- Additional metadata (for extensibility)
     metadata JSONB DEFAULT '{}'::JSONB,

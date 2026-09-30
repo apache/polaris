@@ -23,7 +23,7 @@ release_version: "1.4.1"
 release_date: "2026-05-01"
 weight: -10401
 hide_summary: true
-exclude_search: false
+exclude_search: true
 type: downloads
 menus:
   main:

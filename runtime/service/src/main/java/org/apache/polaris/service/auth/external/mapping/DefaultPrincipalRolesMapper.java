@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.auth.external.mapping;
 
-import static org.apache.polaris.service.auth.external.tenant.OidcTenantResolvingAugmentor.getOidcTenantConfig;
+import static org.apache.polaris.service.auth.external.OidcIdentityPreparer.getOidcTenantConfig;
 
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.common.annotation.Identifier;

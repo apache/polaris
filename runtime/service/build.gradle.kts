@@ -44,6 +44,16 @@ dependencies {
   runtimeOnly(project(":polaris-persistence-nosql-metastore"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus-distcache"))
+  runtimeOnly(project(":polaris-persistence-nosql-inmemory")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-inmemory-quarkus")
+    }
+  }
+  runtimeOnly(project(":polaris-persistence-nosql-mongodb")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-mongodb-quarkus")
+    }
+  }
   runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
   runtimeOnly(project(":polaris-persistence-nosql-metastore-maintenance"))
 
@@ -105,6 +115,7 @@ dependencies {
   implementation("com.azure:azure-core")
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
+  implementation(libs.msal4j)
 
   compileOnly(libs.swagger.annotations)
 

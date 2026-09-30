@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.persistence.bootstrap.BootstrapOptions;
 import org.apache.polaris.core.persistence.bootstrap.ImmutableBootstrapOptions;
-import org.apache.polaris.core.persistence.bootstrap.ImmutableSchemaOptions;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import picocli.CommandLine;
@@ -125,7 +124,6 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
           ImmutableBootstrapOptions.builder()
               .realms(realms)
               .rootCredentialsSet(rootCredentialsSet)
-              .schemaOptions(ImmutableSchemaOptions.builder().build())
               .build();
 
       // Execute the bootstrap

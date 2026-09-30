@@ -16,22 +16,14 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
--- Changes from v2:
---  * Added `events` table
---  * Added `idempotency_records` table for REST idempotency
-
-CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
-SET search_path TO POLARIS_SCHEMA;
-
 CREATE TABLE IF NOT EXISTS version (
     version_key TEXT PRIMARY KEY,
     version_value INTEGER NOT NULL
 );
 INSERT INTO version (version_key, version_value)
-VALUES ('version', 4)
-ON CONFLICT (version_key) DO UPDATE
-SET version_value = EXCLUDED.version_value;
-COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
+VALUES ('version', 6)
+ON CONFLICT (version_key) DO NOTHING;
+COMMENT ON TABLE version IS 'JDBC schema version; updated manually as part of upgrade procedures.';
 
 CREATE TABLE IF NOT EXISTS entities (
     realm_id TEXT NOT NULL,
@@ -59,7 +51,7 @@ CREATE TABLE IF NOT EXISTS entities (
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
 CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id ON entities (catalog_id, id);
 CREATE INDEX IF NOT EXISTS idx_locations
-    ON entities USING btree (realm_id, parent_id, location_without_scheme)
+    ON entities USING btree (realm_id, catalog_id, location_without_scheme)
     WHERE location_without_scheme IS NOT NULL;
 
 COMMENT ON TABLE entities IS 'all the entities';
@@ -98,9 +90,9 @@ COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee
 COMMENT ON COLUMN grant_records.grantee_id IS 'id of the grantee';
 COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
 
-CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee 
+CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee
     ON grant_records (realm_id, grantee_id);
-CREATE INDEX IF NOT EXISTS idx_grants_realm_securable 
+CREATE INDEX IF NOT EXISTS idx_grants_realm_securable
     ON grant_records (realm_id, securable_id);
 
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
@@ -130,7 +122,7 @@ CREATE INDEX IF NOT EXISTS idx_policy_mapping_record ON policy_mapping_record (r
 
 CREATE TABLE IF NOT EXISTS events (
     realm_id TEXT NOT NULL,
-    catalog_id TEXT NOT NULL,
+    catalog_id TEXT,
     event_id TEXT NOT NULL,
     request_id TEXT,
     event_type TEXT NOT NULL,
@@ -141,34 +133,6 @@ CREATE TABLE IF NOT EXISTS events (
     additional_properties JSONB NOT NULL DEFAULT '{}'::JSONB,
     PRIMARY KEY (event_id)
 );
-
--- Idempotency records (key-only idempotency; durable replay)
-CREATE TABLE IF NOT EXISTS idempotency_records (
-    realm_id TEXT NOT NULL,
-    idempotency_key TEXT NOT NULL,
-    operation_type TEXT NOT NULL,
-    resource_id TEXT NOT NULL,            -- normalized request-derived resource identifier (not a generated entity id)
-
-    -- Finalization/replay
-    http_status INTEGER,                 -- NULL while IN_PROGRESS; set only on finalized 2xx/terminal 4xx
-    error_subtype TEXT,                  -- optional: e.g., already_exists, namespace_not_empty, idempotency_replay_failed
-    response_summary TEXT,               -- minimal body to reproduce equivalent response (JSON string)
-    response_headers TEXT,               -- small whitelisted headers to replay (JSON string)
-    finalized_at TIMESTAMP,              -- when http_status was written
-
-    -- Liveness/ops
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    heartbeat_at TIMESTAMP,              -- updated by owner while IN_PROGRESS
-    executor_id TEXT,                    -- owner pod/worker id
-    expires_at TIMESTAMP,
-
-    PRIMARY KEY (realm_id, idempotency_key)
-);
-
--- Helpful indexes
-CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
-    ON idempotency_records (realm_id, expires_at);
 
 -- ============================================================================
 -- SCAN METRICS REPORT TABLE

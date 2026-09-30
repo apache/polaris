@@ -23,7 +23,7 @@ release_version: "1.5.0"
 release_date: "2026-05-18"
 weight: -10500
 hide_summary: true
-exclude_search: false
+exclude_search: true
 type: downloads
 menus:
   main:

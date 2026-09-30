@@ -305,9 +305,10 @@ public class SemanticModelCatalog {
    * Resolves and validates every {@code dataset.source} in the parsed Ossie document against the
    * current catalog. Unlike engine-specific view SQL, {@code dataset.source} is a structured
    * catalog identifier, so validating it here prevents every client from persisting dangling
-   * references. Every dataset must define a string {@code source}; a missing or non-string source,
-   * or one that does not resolve to a {@code TABLE_LIKE} entity, fails with 400 and a JSON-Pointer
-   * to the offending dataset.
+   * references. A {@code datasets} field that is present but not an array fails with 400, so the
+   * per-dataset checks cannot be bypassed by sending it in another shape. Every dataset must define
+   * a string {@code source}; a missing or non-string source, or one that does not resolve to a
+   * {@code TABLE_LIKE} entity, fails with 400 and a JSON-Pointer to the offending dataset.
    */
   private void resolveAndValidateSources(JsonNode semanticModel) {
     if (!semanticModel.isObject()) {
@@ -315,8 +316,11 @@ public class SemanticModelCatalog {
     }
 
     JsonNode datasets = semanticModel.get("datasets");
-    if (datasets == null || !datasets.isArray()) {
+    if (datasets == null) {
       return;
+    }
+    if (!datasets.isArray()) {
+      throw new BadRequestException("Field 'semantic_model.datasets' must be a JSON array");
     }
     for (int datasetIdx = 0; datasetIdx < datasets.size(); datasetIdx++) {
       String pointer = String.format("/semantic_model/datasets/%d/source", datasetIdx);

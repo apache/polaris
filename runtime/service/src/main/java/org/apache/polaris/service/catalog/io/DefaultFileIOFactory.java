@@ -32,14 +32,15 @@ import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.jspecify.annotations.NonNull;
 
 /**
- * A default FileIO factory implementation for creating Iceberg {@link FileIO} instances with
- * contextual table-level properties.
+ * A default FileIO factory implementation for creating Iceberg {@link FileIO} instances used by the
+ * Polaris server.
  *
- * <p>This class acts as a translation layer between Polaris properties and the properties required
- * by Iceberg's {@link FileIO}.
+ * <p>Merge order: contextual properties, then {@link StorageAccessConfig} credentials /
+ * extraProperties / internalProperties (AccessConfig wins), then {@code polaris.storage.*} HTTP
+ * client settings from {@link S3AccessConfig}. Call sites must pass catalog-trusted context (for
+ * example {@code table-default.*}), not table {@code metadata.properties()}.
  *
- * <p>{@code polaris.storage.*} HTTP client settings from {@link S3AccessConfig} are applied to
- * Iceberg AWS FileIOs. Production CDI paths inject the live config; tests/fixtures can pass {@link
+ * <p>Production CDI paths inject the live {@link S3AccessConfig}; tests/fixtures can pass {@link
  * S3AccessConfig#empty()}.
  */
 @RequestScoped
@@ -59,13 +60,10 @@ public class DefaultFileIOFactory implements FileIOFactory {
       @NonNull String ioImplClassName,
       @NonNull Map<String, String> tableProperties) {
 
-    // Get subcoped creds
+    // Contextual properties first (e.g. catalog table-default.*). AccessConfig always overlays so
+    // storage-config credentials/endpoint win. Call sites must not pass table metadata.properties()
+    // (caller-controlled FileIO client keys such as s3.endpoint).
     Map<String, String> properties = new HashMap<>(tableProperties);
-
-    // Update the FileIO with the subscoped credentials
-    // Update with properties in case there are table-level overrides the credentials should
-    // always override table-level properties, since storage configuration will be found at
-    // whatever entity defines it
     properties.putAll(storageAccessConfig.credentials());
     properties.putAll(storageAccessConfig.extraProperties());
     properties.putAll(storageAccessConfig.internalProperties());

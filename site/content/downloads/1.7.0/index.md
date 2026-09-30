@@ -23,7 +23,7 @@ release_version: "1.7.0"
 release_date: "2026-08-02"
 weight: -10700
 hide_summary: true
-exclude_search: false
+exclude_search: true
 type: downloads
 menus:
   main:
