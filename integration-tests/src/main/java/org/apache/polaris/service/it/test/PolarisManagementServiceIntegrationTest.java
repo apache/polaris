@@ -2054,6 +2054,40 @@ public class PolarisManagementServiceIntegrationTest {
   }
 
   @Test
+  public void testGrantListRevokeTableReadMetrics() {
+    String catalogName = client.newEntityName("mycatalog_readmetrics_grant");
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    managementApi.createCatalog(catalog);
+
+    String catalogRoleName = client.newEntityName("mycr_readmetrics_grant");
+    managementApi.createCatalogRole(catalogName, catalogRoleName);
+
+    CatalogGrant grant =
+        new CatalogGrant(CatalogPrivilege.TABLE_READ_METRICS, GrantResource.TypeEnum.CATALOG);
+
+    managementApi.addGrant(catalogName, catalogRoleName, grant);
+    assertThat(managementApi.listGrants(catalogName, catalogRoleName).getGrants())
+        .filteredOn(
+            g ->
+                g instanceof CatalogGrant cg
+                    && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS)
+        .hasSize(1);
+
+    managementApi.revokeGrant(catalogName, catalogRoleName, grant);
+    assertThat(managementApi.listGrants(catalogName, catalogRoleName).getGrants())
+        .noneMatch(
+            g ->
+                g instanceof CatalogGrant cg
+                    && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS);
+  }
+
+  @Test
   public void testServiceAdminCanTransferCatalogAdmin() {
     // Create a PrincipalRole and a new catalog. Grant the catalog_admin role to the new principal
     // role
