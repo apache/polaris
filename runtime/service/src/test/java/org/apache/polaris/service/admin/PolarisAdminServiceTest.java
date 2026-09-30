@@ -22,6 +22,7 @@ import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -60,6 +61,9 @@ import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
+import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
+import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
@@ -79,6 +83,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
@@ -232,6 +237,103 @@ public class PolarisAdminServiceTest {
     adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog()));
 
     verify(userSecretsManager, never()).deleteSecret(any());
+  }
+
+  @Test
+  void testDeleteCatalogDeletesInlineOauthSecret() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogDelete(
+        new OAuthClientCredentialsParametersDpo(null, "client-id", secretReference, null));
+
+    adminService.deleteCatalog("external-catalog");
+
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testDeleteCatalogDeletesInlineBearerSecret() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:bearer", Map.of());
+    setupExternalCatalogDelete(new BearerAuthenticationParametersDpo(secretReference));
+
+    adminService.deleteCatalog("external-catalog");
+
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testDeleteCatalogSucceedsWhenSecretDeletionFails() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogDelete(
+        new OAuthClientCredentialsParametersDpo(null, "client-id", secretReference, null));
+    doThrow(new RuntimeException("cleanup failed")).when(userSecretsManager).deleteSecret(any());
+
+    adminService.deleteCatalog("external-catalog");
+
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testDeleteCatalogKeepsSecretsWhenDropFails() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogDelete(
+        new OAuthClientCredentialsParametersDpo(null, "client-id", secretReference, null));
+    when(metaStoreManager.dropEntityIfExists(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(
+            new DropEntityResult(BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, "not droppable"));
+
+    assertThatThrownBy(() -> adminService.deleteCatalog("external-catalog"))
+        .isInstanceOf(RuntimeException.class);
+
+    verify(userSecretsManager, never()).deleteSecret(any());
+  }
+
+  @Test
+  void testDeleteInternalCatalogDoesNotTouchSecrets() {
+    CatalogEntity catalogEntity =
+        new CatalogEntity.Builder().setName("internal-catalog").setId(200L).build();
+    mockCatalogResolution(catalogEntity);
+    when(metaStoreManager.dropEntityIfExists(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(new DropEntityResult());
+
+    adminService.deleteCatalog("internal-catalog");
+
+    verify(userSecretsManager, never()).deleteSecret(any());
+  }
+
+  private void setupExternalCatalogDelete(
+      org.apache.polaris.core.connection.AuthenticationParametersDpo authenticationParameters) {
+    CatalogEntity catalogEntity =
+        new CatalogEntity.Builder()
+            .setName("external-catalog")
+            .setId(200L)
+            .setConnectionConfigInfoDpo(
+                new IcebergRestConnectionConfigInfoDpo(
+                    "https://example.com/polaris/api/catalog",
+                    authenticationParameters,
+                    null,
+                    "remote-catalog",
+                    null))
+            .build();
+    mockCatalogResolution(catalogEntity);
+  }
+
+  private void mockCatalogResolution(CatalogEntity catalogEntity) {
+    PolarisResolvedPathWrapper wrapper = mock(PolarisResolvedPathWrapper.class);
+    when(wrapper.getRawLeafEntity()).thenReturn(catalogEntity);
+    ResolvedPolarisEntity resolvedLeaf = mock(ResolvedPolarisEntity.class);
+    when(resolvedLeaf.getEntity()).thenReturn(catalogEntity);
+    when(wrapper.getResolvedLeafEntity()).thenReturn(resolvedLeaf);
+    when(resolutionManifest.getResolvedTopLevelEntity(
+            eq(catalogEntity.getName()), eq(PolarisEntityType.CATALOG)))
+        .thenReturn(wrapper);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(catalogEntity);
+    when(realmConfig.getConfig(FeatureConfiguration.CLEANUP_ON_CATALOG_DROP)).thenReturn(false);
+    when(metaStoreManager.dropEntityIfExists(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(new DropEntityResult());
   }
 
   @Test

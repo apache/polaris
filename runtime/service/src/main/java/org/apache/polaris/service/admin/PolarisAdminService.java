@@ -28,6 +28,7 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -93,6 +94,9 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
+import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
@@ -795,24 +799,20 @@ public class PolarisAdminService {
     return secretReferences;
   }
 
-  private void deleteSecretReferencesAfterFailedCatalogCreate(
-      Map<String, SecretReference> secretReferences) {
-    secretReferences
-        .values()
-        .forEach(
-            secretReference -> {
-              try {
-                getUserSecretsManager().deleteSecret(secretReference);
-              } catch (RuntimeException e) {
-                LOGGER
-                    .atWarn()
-                    .setCause(e)
-                    .addKeyValue(StructuredLogKeys.SECRET_REFERENCE, secretReference.urn())
-                    .log(
-                        "Failed to clean up secret {} after catalog creation failure",
-                        secretReference.urn());
-              }
-            });
+  private void deleteSecretReferences(
+      Collection<SecretReference> secretReferences, String context) {
+    secretReferences.forEach(
+        secretReference -> {
+          try {
+            getUserSecretsManager().deleteSecret(secretReference);
+          } catch (RuntimeException e) {
+            LOGGER
+                .atWarn()
+                .setCause(e)
+                .addKeyValue(StructuredLogKeys.SECRET_REFERENCE, secretReference.urn())
+                .log("Failed to clean up secret {} while {}", secretReference.urn(), context);
+          }
+        });
   }
 
   /**
@@ -920,7 +920,8 @@ public class PolarisAdminService {
       return PolarisEntity.of(catalogResult.getCatalog());
     } finally {
       if (!catalogCreated) {
-        deleteSecretReferencesAfterFailedCatalogCreate(processedSecretReferences);
+        deleteSecretReferences(
+            processedSecretReferences.values(), "cleaning up after a failed catalog creation");
       }
     }
   }
@@ -939,6 +940,30 @@ public class PolarisAdminService {
 
     DropEntityFailureMapper.throwIfFailed(
         dropEntityResult, () -> String.format("Catalog '%s'", entity.getName()), null);
+
+    // The catalog entity is gone; release the inline connection secrets that were written to the
+    // secrets manager when the catalog was created.
+    deleteSecretReferences(
+        connectionSecretReferences(entity.getConnectionConfigInfoDpo()),
+        String.format("deleting catalog '%s'", entity.getName()));
+  }
+
+  /** Returns the secret references held by a federated catalog's connection configuration. */
+  private static List<SecretReference> connectionSecretReferences(
+      @Nullable ConnectionConfigInfoDpo connectionConfigInfoDpo) {
+    if (connectionConfigInfoDpo == null
+        || connectionConfigInfoDpo.getAuthenticationParameters() == null) {
+      return List.of();
+    }
+    AuthenticationParametersDpo authenticationParameters =
+        connectionConfigInfoDpo.getAuthenticationParameters();
+    if (authenticationParameters instanceof OAuthClientCredentialsParametersDpo oauth) {
+      return List.of(oauth.getClientSecretReference());
+    }
+    if (authenticationParameters instanceof BearerAuthenticationParametersDpo bearer) {
+      return List.of(bearer.getBearerTokenReference());
+    }
+    return List.of();
   }
 
   public @NonNull CatalogEntity getCatalog(String name) {
