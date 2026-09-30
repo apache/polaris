@@ -70,6 +70,12 @@ Commands:
 The Polaris Admin Tool must be executed with the same configuration as the Polaris server. The
 configuration can be done via environment variables or system properties.
 
+If you start the tool with the `bin/admin` script of the
+[binary distribution]({{% ref "getting-started/binary-distribution" %}}), you can also set the
+configuration in the `admin/config/application.properties` file. The script runs the tool from the
+`admin` directory; if you run `quarkus-run.jar` directly from another directory, the file is not
+read.
+
 At a minimum, it is necessary to configure the Polaris Admin Tool to connect to the same database
 used by the Polaris server.
 
