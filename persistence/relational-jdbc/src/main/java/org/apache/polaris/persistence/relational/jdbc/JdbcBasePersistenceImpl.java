@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -793,7 +794,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> parentPath,
+          T entity) {
     if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count()
         > MAX_LOCATION_COMPONENTS) {
       return Optional.empty();
@@ -804,24 +807,36 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             realmId, entity.getCatalogId(), entity.getBaseLocation());
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity());
-      if (!results.isEmpty()) {
-        StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
-        for (PolarisBaseEntity result : results) {
-          // JDBC materializes persisted rows as PolarisBaseEntity. Resolve the sibling location
-          // via PolarisEntityUtils instead of casting to LocationBasedEntity.
-          Optional<String> overlappingSiblingLocation =
-              PolarisEntityUtils.asLocationBasedEntity(PolarisEntity.of(result))
-                  .map(LocationBasedEntity::getBaseLocation)
-                  .filter(location -> location != null && !location.isBlank())
-                  .map(StorageLocation::of)
-                  .filter(
-                      potentialSiblingLocation ->
-                          entityLocation.isChildOf(potentialSiblingLocation)
-                              || potentialSiblingLocation.isChildOf(entityLocation))
-                  .map(StorageLocation::toString);
-          if (overlappingSiblingLocation.isPresent()) {
-            return Optional.of(overlappingSiblingLocation);
-          }
+      if (results.isEmpty()) {
+        return Optional.of(Optional.empty());
+      }
+      // The query matches every entity whose location is an ancestor of, equal to, or a descendant
+      // of the entity's location. The entity's own parent namespaces may match the ancestor terms:
+      // they always do when locations follow the namespace tree, as default locations do. Such an
+      // ancestor is not a sibling.
+      Set<Long> ancestorIds =
+          parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
+
+      StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
+      for (PolarisBaseEntity result : results) {
+        // JDBC materializes persisted rows as PolarisBaseEntity. Resolve the sibling location
+        // via PolarisEntityUtils instead of casting to LocationBasedEntity.
+        Optional<StorageLocation> resultLocation =
+            PolarisEntityUtils.asLocationBasedEntity(PolarisEntity.of(result))
+                .map(LocationBasedEntity::getBaseLocation)
+                .filter(location -> location != null && !location.isBlank())
+                .map(StorageLocation::of);
+        if (resultLocation.isEmpty()) {
+          continue;
+        }
+        boolean containsEntity = entityLocation.isChildOf(resultLocation.get());
+        boolean containedByEntity = resultLocation.get().isChildOf(entityLocation);
+        // An ancestor may contain the entity, but the entity may not sit at exactly its location.
+        if (containsEntity && !containedByEntity && ancestorIds.contains(result.getId())) {
+          continue;
+        }
+        if (containsEntity || containedByEntity) {
+          return Optional.of(Optional.of(resultLocation.get().toString()));
         }
       }
       return Optional.of(Optional.empty());
