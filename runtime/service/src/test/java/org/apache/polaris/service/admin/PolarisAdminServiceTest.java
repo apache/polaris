@@ -61,6 +61,7 @@ import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
 import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
@@ -304,8 +305,7 @@ public class PolarisAdminServiceTest {
     verify(userSecretsManager, never()).deleteSecret(any());
   }
 
-  private void setupExternalCatalogDelete(
-      org.apache.polaris.core.connection.AuthenticationParametersDpo authenticationParameters) {
+  private void setupExternalCatalogDelete(AuthenticationParametersDpo authenticationParameters) {
     CatalogEntity catalogEntity =
         new CatalogEntity.Builder()
             .setName("external-catalog")

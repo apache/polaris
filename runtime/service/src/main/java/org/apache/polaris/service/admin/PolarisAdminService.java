@@ -94,9 +94,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
-import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
-import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
@@ -955,15 +953,7 @@ public class PolarisAdminService {
         || connectionConfigInfoDpo.getAuthenticationParameters() == null) {
       return List.of();
     }
-    AuthenticationParametersDpo authenticationParameters =
-        connectionConfigInfoDpo.getAuthenticationParameters();
-    if (authenticationParameters instanceof OAuthClientCredentialsParametersDpo oauth) {
-      return List.of(oauth.getClientSecretReference());
-    }
-    if (authenticationParameters instanceof BearerAuthenticationParametersDpo bearer) {
-      return List.of(bearer.getBearerTokenReference());
-    }
-    return List.of();
+    return connectionConfigInfoDpo.getAuthenticationParameters().getSecretReferences();
   }
 
   public @NonNull CatalogEntity getCatalog(String name) {
