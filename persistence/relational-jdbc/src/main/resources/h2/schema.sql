@@ -17,12 +17,6 @@
 -- under the License.
 --
 
--- Changes from v2:
---  * Added `events` table
-
-CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
-SET SCHEMA POLARIS_SCHEMA;
-
 CREATE TABLE IF NOT EXISTS version (
     version_key VARCHAR PRIMARY KEY,
     version_value INTEGER NOT NULL
@@ -30,10 +24,10 @@ CREATE TABLE IF NOT EXISTS version (
 
 MERGE INTO version (version_key, version_value)
     KEY (version_key)
-    VALUES ('version', 3);
+    VALUES ('version', 6);
 
 -- H2 supports COMMENT, but some modes may ignore it
-COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
+COMMENT ON TABLE version IS 'JDBC schema version; updated manually as part of upgrade procedures.';
 
 CREATE TABLE IF NOT EXISTS entities (
     realm_id TEXT NOT NULL,
@@ -61,6 +55,7 @@ CREATE INDEX IF NOT EXISTS idx_locations ON entities(realm_id, catalog_id, locat
 
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
+CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id ON entities (catalog_id, id);
 
 COMMENT ON TABLE entities IS 'all the entities';
 
@@ -96,6 +91,11 @@ COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee
 COMMENT ON COLUMN grant_records.grantee_id IS 'id of the grantee';
 COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
 
+CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee
+    ON grant_records (realm_id, grantee_id);
+CREATE INDEX IF NOT EXISTS idx_grants_realm_securable
+    ON grant_records (realm_id, securable_id);
+
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
     realm_id TEXT NOT NULL,
     principal_id BIGINT NOT NULL,
@@ -123,7 +123,7 @@ CREATE INDEX IF NOT EXISTS idx_policy_mapping_record ON policy_mapping_record (r
 
 CREATE TABLE IF NOT EXISTS events (
     realm_id TEXT NOT NULL,
-    catalog_id TEXT NOT NULL,
+    catalog_id TEXT,
     event_id TEXT NOT NULL,
     request_id TEXT,
     event_type TEXT NOT NULL,
@@ -134,3 +134,133 @@ CREATE TABLE IF NOT EXISTS events (
     additional_properties TEXT NOT NULL,
     PRIMARY KEY (event_id)
 );
+
+-- ============================================================================
+-- SCAN METRICS REPORT TABLE
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS scan_metrics_report (
+    report_id TEXT NOT NULL,
+    realm_id TEXT NOT NULL,
+    catalog_id BIGINT NOT NULL,
+    table_id BIGINT NOT NULL,
+
+    -- Report metadata
+    timestamp_ms BIGINT NOT NULL,
+    principal_name TEXT,
+    request_id TEXT,
+
+    -- Trace correlation
+    otel_trace_id TEXT,
+    otel_span_id TEXT,
+    report_trace_id TEXT,
+
+    -- Scan context
+    snapshot_id BIGINT,
+    schema_id INTEGER,
+    filter_expression TEXT,
+    projected_field_ids TEXT,
+    projected_field_names TEXT,
+
+    -- Scan metrics
+    result_data_files BIGINT DEFAULT 0,
+    result_delete_files BIGINT DEFAULT 0,
+    total_file_size_bytes BIGINT DEFAULT 0,
+    total_data_manifests BIGINT DEFAULT 0,
+    total_delete_manifests BIGINT DEFAULT 0,
+    scanned_data_manifests BIGINT DEFAULT 0,
+    scanned_delete_manifests BIGINT DEFAULT 0,
+    skipped_data_manifests BIGINT DEFAULT 0,
+    skipped_delete_manifests BIGINT DEFAULT 0,
+    skipped_data_files BIGINT DEFAULT 0,
+    skipped_delete_files BIGINT DEFAULT 0,
+    total_planning_duration_ms BIGINT DEFAULT 0,
+
+    -- Equality/positional delete metrics
+    equality_delete_files BIGINT DEFAULT 0,
+    positional_delete_files BIGINT DEFAULT 0,
+    indexed_delete_files BIGINT DEFAULT 0,
+    total_delete_file_size_bytes BIGINT DEFAULT 0,
+
+    -- Additional metadata (for extensibility)
+    metadata TEXT DEFAULT '{}',
+
+    PRIMARY KEY (realm_id, report_id)
+);
+
+COMMENT ON TABLE scan_metrics_report IS 'Scan metrics reports as first-class entities';
+
+-- Index for retention cleanup by timestamp
+CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp ON scan_metrics_report(realm_id, timestamp_ms);
+
+-- Index for query lookups by catalog_id and table_id
+CREATE INDEX IF NOT EXISTS idx_scan_report_lookup ON scan_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
+
+-- ============================================================================
+-- COMMIT METRICS REPORT TABLE
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS commit_metrics_report (
+    report_id TEXT NOT NULL,
+    realm_id TEXT NOT NULL,
+    catalog_id BIGINT NOT NULL,
+    table_id BIGINT NOT NULL,
+
+    -- Report metadata
+    timestamp_ms BIGINT NOT NULL,
+    principal_name TEXT,
+    request_id TEXT,
+
+    -- Trace correlation
+    otel_trace_id TEXT,
+    otel_span_id TEXT,
+    report_trace_id TEXT,
+
+    -- Commit context
+    snapshot_id BIGINT NOT NULL,
+    sequence_number BIGINT,
+    operation TEXT NOT NULL,
+
+    -- File metrics
+    added_data_files BIGINT DEFAULT 0,
+    removed_data_files BIGINT DEFAULT 0,
+    total_data_files BIGINT DEFAULT 0,
+    added_delete_files BIGINT DEFAULT 0,
+    removed_delete_files BIGINT DEFAULT 0,
+    total_delete_files BIGINT DEFAULT 0,
+
+    -- Equality delete files
+    added_equality_delete_files BIGINT DEFAULT 0,
+    removed_equality_delete_files BIGINT DEFAULT 0,
+
+    -- Positional delete files
+    added_positional_delete_files BIGINT DEFAULT 0,
+    removed_positional_delete_files BIGINT DEFAULT 0,
+
+    -- Record metrics
+    added_records BIGINT DEFAULT 0,
+    removed_records BIGINT DEFAULT 0,
+    total_records BIGINT DEFAULT 0,
+
+    -- Size metrics
+    added_file_size_bytes BIGINT DEFAULT 0,
+    removed_file_size_bytes BIGINT DEFAULT 0,
+    total_file_size_bytes BIGINT DEFAULT 0,
+
+    -- Duration and attempts
+    total_duration_ms BIGINT DEFAULT 0,
+    attempts INTEGER DEFAULT 1,
+
+    -- Additional metadata (for extensibility)
+    metadata TEXT DEFAULT '{}',
+
+    PRIMARY KEY (realm_id, report_id)
+);
+
+COMMENT ON TABLE commit_metrics_report IS 'Commit metrics reports as first-class entities';
+
+-- Index for retention cleanup by timestamp
+CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp ON commit_metrics_report(realm_id, timestamp_ms);
+
+-- Index for query lookups by catalog_id and table_id
+CREATE INDEX IF NOT EXISTS idx_commit_report_lookup ON commit_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);

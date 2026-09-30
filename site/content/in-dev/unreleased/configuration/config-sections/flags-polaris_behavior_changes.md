@@ -44,15 +44,6 @@ Whether or not to use soft values in the entity cache
 
 ---
 
-##### `polaris.behavior-changes."SCHEMA_VERSION_FALL_BACK_ON_DNE"`
-
-If set to true, exceptions encountered while loading the VERSION table which appear to be caused by the VERSION table not existing will be interpreted as meaning that the schema version is currently 0.
-
-- **Type:** `Boolean`
-- **Default:** `true`
-
----
-
 ##### `polaris.behavior-changes."STORAGE_CONFIGURATION_MAX_LOCATIONS"`
 
 How many locations can be associated with a storage configuration, or -1 for unlimited locations

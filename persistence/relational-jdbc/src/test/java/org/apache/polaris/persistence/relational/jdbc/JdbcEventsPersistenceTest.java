@@ -28,31 +28,17 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
-import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.h2.jdbcx.JdbcConnectionPool;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.api.Test;
 
-/**
- * Tests event persistence across schema versions: schema versions before v5 declare
- * events.catalog_id NOT NULL, so realm-scoped events (null catalog id) must be stored with the
- * legacy sentinel; from v5 on they are stored as SQL NULL.
- */
 class JdbcEventsPersistenceTest {
 
-  static Stream<Integer> schemaVersions() {
-    // The events table exists from schema v3 on.
-    return SchemaVersions.discoverAsStream(DatabaseType.H2).filter(version -> version >= 3);
-  }
-
-  @ParameterizedTest
-  @MethodSource("schemaVersions")
-  void writeEventsStoresNullCatalogIdPerSchemaVersion(int schemaVersion) throws Exception {
+  @Test
+  void writeEventsStoresNullCatalogIdAsSqlNull() throws Exception {
     // The schema is provided by the datasource, not the persistence code: INIT creates
     // POLARIS_SCHEMA
     // and selects it on every connection (the DBA step + currentSchema driver setting in a real
@@ -68,7 +54,7 @@ class JdbcEventsPersistenceTest {
     DatasourceOperations datasourceOperations =
         new DatasourceOperations(
             dataSource, SimpleRelationalJdbcConfiguration.forDatabaseType(DatabaseType.H2));
-    try (InputStream schemaStream = DatabaseType.H2.openInitScriptResource(schemaVersion)) {
+    try (InputStream schemaStream = DatabaseType.H2.openInitScriptResource()) {
       datasourceOperations.executeScript(schemaStream);
     }
     JdbcBasePersistenceImpl persistence =
@@ -76,8 +62,7 @@ class JdbcEventsPersistenceTest {
             new PolarisDefaultDiagServiceImpl(),
             datasourceOperations,
             PrincipalSecretsGenerator.RANDOM_SECRETS,
-            "TEST_REALM",
-            schemaVersion);
+            "TEST_REALM");
 
     EventEntity realmScopedEvent =
         new EventEntity(
@@ -102,13 +87,7 @@ class JdbcEventsPersistenceTest {
 
     persistence.writeEvents(List.of(realmScopedEvent, catalogScopedEvent));
 
-    if (schemaVersion < 5) {
-      assertEquals(
-          ModelEvent.LEGACY_REALM_SCOPED_CATALOG_ID,
-          readStoredCatalogId(dataSource, "realm-event"));
-    } else {
-      assertNull(readStoredCatalogId(dataSource, "realm-event"));
-    }
+    assertNull(readStoredCatalogId(dataSource, "realm-event"));
     assertEquals("catalog-1", readStoredCatalogId(dataSource, "catalog-event"));
   }
 
@@ -116,8 +95,7 @@ class JdbcEventsPersistenceTest {
       throws Exception {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement =
-            connection.prepareStatement(
-                "SELECT catalog_id FROM POLARIS_SCHEMA.EVENTS WHERE event_id = ?")) {
+            connection.prepareStatement("SELECT catalog_id FROM EVENTS WHERE event_id = ?")) {
       statement.setString(1, eventId);
       try (ResultSet resultSet = statement.executeQuery()) {
         assertTrue(resultSet.next());
