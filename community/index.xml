@@ -107,7 +107,22 @@
 &lt;h2 id="description" id="description"&gt;Description&lt;a class="heading-anchor" href="#description" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
 &lt;p&gt;In Apache Iceberg, the table&amp;rsquo;s metadata files are control files: they tell readers
-which data files belong to the table and which table version to read.&lt;/p&gt;</description></item><item><title/><link>https://polaris.apache.org/community/security-report/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/security-report/</guid><description>&lt;h1 id="security-report" id="security-report"&gt;Security Report&lt;a class="heading-anchor" href="#security-report" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+which data files belong to the table and which table version to read.&lt;/p&gt;</description></item><item><title/><link>https://polaris.apache.org/community/security-advisories/cve-2026-97395/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/security-advisories/cve-2026-97395/</guid><description>&lt;h1 id="cve-2026-97395---allows-authorized-table-writers-to-redirect-server-side-iceberg-fileio-requests-to-attacker-controlled-endpoints-using-operation-scoped-storage-credentials" id="cve-2026-97395---allows-authorized-table-writers-to-redirect-server-side-iceberg-fileio-requests-to-attacker-controlled-endpoints-using-operation-scoped-storage-credentials"&gt;CVE-2026-97395 - Allows authorized table writers to redirect server-side Iceberg FileIO requests to attacker-controlled endpoints using operation-scoped storage credentials&lt;a class="heading-anchor" href="#cve-2026-97395---allows-authorized-table-writers-to-redirect-server-side-iceberg-fileio-requests-to-attacker-controlled-endpoints-using-operation-scoped-storage-credentials" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="abstract" id="abstract"&gt;Abstract&lt;a class="heading-anchor" href="#abstract" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;Allows authorized table writers to redirect server-side Iceberg FileIO requests to attacker-controlled endpoints using operation-scoped storage credentials&lt;/p&gt;
+&lt;h2 id="severity" id="severity"&gt;Severity&lt;a class="heading-anchor" href="#severity" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Important&lt;/strong&gt;&lt;/p&gt;
+&lt;h2 id="affected-versions" id="affected-versions"&gt;Affected versions&lt;a class="heading-anchor" href="#affected-versions" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;Apache Polaris &amp;lt; 1.8.0&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id="description" id="description"&gt;Description&lt;a class="heading-anchor" href="#description" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;Apache Polaris allows an authenticated principal with permission to create or update Iceberg table properties to set FileIO client settings such as s3.endpoint in table metadata.&lt;/p&gt;</description></item><item><title/><link>https://polaris.apache.org/community/security-report/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/security-report/</guid><description>&lt;h1 id="security" id="security"&gt;Security&lt;a class="heading-anchor" href="#security" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h1&gt;
 &lt;p&gt;Adhering to the specifications of The ASF, the Apache Polaris community maintains a highly proactive and open attitude towards addressing security issues.&lt;/p&gt;
 &lt;p&gt;We strongly recommend that users first report such issues on the &lt;a href="mailto:security@apache.org"&gt;security@apache.org&lt;/a&gt; and &lt;a href="mailto:private@polaris.apache.org"&gt;private@polaris.apache.org&lt;/a&gt;, using the procedure details on &lt;a href="https://www.apache.org/security/committers.html"&gt;The ASF Security page&lt;/a&gt;.&lt;/p&gt;
