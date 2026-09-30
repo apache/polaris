@@ -21,7 +21,7 @@
 
 This module implements the Polaris NoSQL persistence backend backed by Amazon DynamoDB. For
 deployment configuration and bootstrap instructions, see the
-DynamoDB metastore documentation (TODO: replace this line with the link).
+[DynamoDB metastore documentation](../../../../../site/content/in-dev/unreleased/metastores/nosql-dynamodb.md).
 
 ## Runtime integration
 
