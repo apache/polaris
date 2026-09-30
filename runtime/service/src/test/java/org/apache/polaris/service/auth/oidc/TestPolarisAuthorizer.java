@@ -39,7 +39,7 @@ public class TestPolarisAuthorizer implements PolarisAuthorizer {
   public static final String DENY_PREFIX = "denied";
 
   @Override
-  public void analyzeAuthorizationInputs(
+  public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     // nothing to resolve for this oidc authorizer, but the manifest must be in resolved state to
     // avoid errors in the authorization decision phase.

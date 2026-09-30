@@ -802,7 +802,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   @Override
-  public void analyzeAuthorizationInputs(
+  public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     authzState.selectAll();
   }

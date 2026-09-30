@@ -156,8 +156,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
                 new SingleTargetAuthorizationIntent(
                     op, PolarisSecurableMapper.policy(catalogName(), identifier))));
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer().analyzeAuthorizationInputs(authorizationState, authorizationRequest);
-    authorizationState.resolve();
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
 
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(
@@ -203,8 +202,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
                 new SingleTargetAuthorizationIntent(
                     op, PolarisSecurableMapper.catalog(catalogName()))));
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer().analyzeAuthorizationInputs(authorizationState, authorizationRequest);
-    authorizationState.resolve();
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
 
     PolarisResolvedPathWrapper targetCatalog =
         resolutionManifest.getResolvedReferenceCatalogEntity();
@@ -247,7 +245,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
         determineRequestedPolicyMappingOperation(target, isAttach);
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     authorizer()
-        .analyzeAuthorizationInputs(
+        .resolveAuthorizationInputs(
             authorizationState,
             new AuthorizationRequest(
                 polarisPrincipal(),
@@ -256,7 +254,6 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
                         requestedOp,
                         PolarisSecurableMapper.policy(catalogName(), identifier),
                         PolarisSecurableMapper.policyAttachmentTarget(catalogName(), target)))));
-    authorizationState.resolve();
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     throwNotFoundExceptionIfFailToResolve(status, identifier);

@@ -18,20 +18,26 @@
  */
 package org.apache.polaris.core.auth;
 
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.jspecify.annotations.NonNull;
 
 /** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {
   /**
-   * Resolve authorizer-specific inputs before authorization.
+   * Analyzes authorizer {@link AuthorizationRequest inputs}, prepares the {@link
+   * AuthorizationState} for entity {@link AuthorizationState#resolve() resolution} and resolves the
+   * {@link PolarisResolutionManifest} by calling {@link AuthorizationState#resolve()}.
    *
-   * <p>Implementations may resolve only the entities required for the request (for example, the
-   * caller principal, principal roles, catalog roles, and requested targets) and store that state
-   * in {@link AuthorizationState}.
+   * <p>Implementations should invoke {@link AuthorizationState#select(Resolvable)} or {@link
+   * AuthorizationState#selectAll()} as appropriate.
+   *
+   * <p>Implementations should be aware that the provided {@link AuthorizationState} may already
+   * have some selectors injected by the caller before invoking this method.
    *
    * <p>This method should not perform authorization decisions directly.
    */
-  void analyzeAuthorizationInputs(
+  void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request);
 
   /**

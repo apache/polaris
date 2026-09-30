@@ -384,7 +384,7 @@ class IcebergCatalogHandlerTest {
     assertVendedActions(PolarisStorageActions.READ, PolarisStorageActions.LIST);
     ArgumentCaptor<AuthorizationRequest> resolveRequestCaptor =
         ArgumentCaptor.forClass(AuthorizationRequest.class);
-    verify(authorizer).analyzeAuthorizationInputs(any(), resolveRequestCaptor.capture());
+    verify(authorizer).resolveAuthorizationInputs(any(), resolveRequestCaptor.capture());
     assertThat(
             resolveRequestCaptor.getValue().intents().stream()
                 .map(intent -> intent.operation())
@@ -423,7 +423,7 @@ class IcebergCatalogHandlerTest {
 
     handler.loadCredentials(TABLE2, Optional.empty());
 
-    verify(authorizer).analyzeAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
+    verify(authorizer).resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
     assertThat(stateCaptor.getValue().getResolutionManifest()).isSameAs(resolutionManifest);
     assertThat(requestCaptor.getValue().intents().getFirst().operation())
         .isEqualTo(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION);
@@ -464,7 +464,7 @@ class IcebergCatalogHandlerTest {
 
     handler.updateTable(TABLE2, request);
 
-    verify(authorizer).analyzeAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
+    verify(authorizer).resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
     assertThat(stateCaptor.getValue().getResolutionManifest()).isSameAs(resolutionManifest);
     assertThat(requestCaptor.getValue().intents().getFirst().operation())
         .isEqualTo(PolarisAuthorizableOperation.UPDATE_TABLE);

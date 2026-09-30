@@ -168,7 +168,7 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
 
     ArgumentCaptor<AuthorizationRequest> requestCaptor =
         ArgumentCaptor.forClass(AuthorizationRequest.class);
-    verify(authorizer).analyzeAuthorizationInputs(any(), requestCaptor.capture());
+    verify(authorizer).resolveAuthorizationInputs(any(), requestCaptor.capture());
     assertThat(requestCaptor.getValue().intents())
         .singleElement()
         .isInstanceOfSatisfying(

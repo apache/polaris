@@ -128,8 +128,7 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
                     PolarisSecurableMapper.semanticModel(
                         catalogName(), namespace, identifier.getName()))));
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer().analyzeAuthorizationInputs(authorizationState, authorizationRequest);
-    authorizationState.resolve();
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
 
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(

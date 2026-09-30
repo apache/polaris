@@ -182,8 +182,7 @@ public abstract class CatalogHandler {
                         ? PolarisSecurableMapper.catalog(catalogName())
                         : PolarisSecurableMapper.namespace(catalogName(), namespace))));
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer().analyzeAuthorizationInputs(authorizationState, authorizationRequest);
-    authorizationState.resolve();
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(namespace), true);
     if (target == null) {
@@ -219,8 +218,7 @@ public abstract class CatalogHandler {
                         ? PolarisSecurableMapper.catalog(catalogName())
                         : PolarisSecurableMapper.namespace(catalogName(), parentNamespace))));
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer().analyzeAuthorizationInputs(authorizationState, authorizationRequest);
-    authorizationState.resolve();
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(parentNamespace), true);
     if (target == null) {
@@ -255,8 +253,7 @@ public abstract class CatalogHandler {
                 new SingleTargetAuthorizationIntent(
                     op, PolarisSecurableMapper.namespace(catalogName(), namespace))));
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer().analyzeAuthorizationInputs(authorizationState, authorizationRequest);
-    authorizationState.resolve();
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
     authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
         authorizationState, authorizationRequest, identifier);
   }
@@ -320,8 +317,7 @@ public abstract class CatalogHandler {
             polarisPrincipal(),
             List.of(overwriteRequest.intents().getFirst(), fallbackRequest.intents().getFirst()));
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer().analyzeAuthorizationInputs(authorizationState, resolutionRequest);
-    authorizationState.resolve();
+    authorizer().resolveAuthorizationInputs(authorizationState, resolutionRequest);
     authorizeResolvedRegisterTableOverwriteOrThrow(
         authorizationState, overwriteRequest, fallbackRequest, identifier);
   }
@@ -396,8 +392,7 @@ public abstract class CatalogHandler {
             List.of(
                 new SingleTargetAuthorizationIntent(
                     op, PolarisSecurableMapper.tableLike(catalogName(), identifier))));
-    authorizer().analyzeAuthorizationInputs(authorizationState, authorizationRequest);
-    authorizationState.resolve();
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
   }
 
   protected void authorizeResolvedBasicTableLikeOperationOrThrow(
@@ -480,8 +475,7 @@ public abstract class CatalogHandler {
                 .<AuthorizationIntent>map(target -> new SingleTargetAuthorizationIntent(op, target))
                 .toList());
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer().analyzeAuthorizationInputs(authorizationState, authorizationRequest);
-    authorizationState.resolve();
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     // If one of the paths failed to resolve, throw exception based on the one that
@@ -530,8 +524,7 @@ public abstract class CatalogHandler {
                     PolarisSecurableMapper.tableLike(catalogName(), src),
                     PolarisSecurableMapper.namespace(catalogName(), dst.namespace()))));
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer().analyzeAuthorizationInputs(authorizationState, authorizationRequest);
-    authorizationState.resolve();
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
     if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED
         && status.getFailedToResolvePath().lastEntityType() == PolarisEntityType.NAMESPACE) {

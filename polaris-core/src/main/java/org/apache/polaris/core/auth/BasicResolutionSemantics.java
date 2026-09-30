@@ -24,9 +24,21 @@ import static org.apache.polaris.core.persistence.resolver.Resolvable.REQUESTED_
 import static org.apache.polaris.core.persistence.resolver.Resolvable.REQUESTED_TOP_LEVEL_ENTITIES;
 
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.jspecify.annotations.NonNull;
 
+/**
+ * Utility class for processing {@linke AuthorizationRequest} in context that do not involve
+ * internal Polaris RBAC.
+ */
 public class BasicResolutionSemantics {
+
+  /**
+   * Analyzes the provided {@link AuthorizationRequest} and adds {@link
+   * AuthorizationState#select(Resolvable) selectors} to the {@link AuthorizationState}, which would
+   * be required for the {@link PolarisResolutionManifest} to be able to find related entities.
+   */
   public static void resolveSelections(
       AuthorizationState authzState, AuthorizationRequest request) {
     mergeSelections(authzState, request);

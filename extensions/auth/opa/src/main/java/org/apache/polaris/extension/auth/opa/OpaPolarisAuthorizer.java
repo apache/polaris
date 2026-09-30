@@ -126,9 +126,10 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * resolve only the selections required by OPA authorization.
    */
   @Override
-  public void analyzeAuthorizationInputs(
+  public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     BasicResolutionSemantics.resolveSelections(authzState, request);
+    authzState.resolve0();
   }
 
   @Override

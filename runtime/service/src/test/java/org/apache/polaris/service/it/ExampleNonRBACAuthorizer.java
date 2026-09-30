@@ -47,9 +47,10 @@ public class ExampleNonRBACAuthorizer implements PolarisAuthorizer {
   }
 
   @Override
-  public void analyzeAuthorizationInputs(
+  public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     BasicResolutionSemantics.resolveSelections(authzState, request);
+    authzState.resolve0();
   }
 
   @Override

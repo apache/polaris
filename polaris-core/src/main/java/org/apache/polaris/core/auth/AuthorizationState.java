@@ -20,6 +20,7 @@ package org.apache.polaris.core.auth;
 
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.jspecify.annotations.NonNull;
@@ -44,15 +45,35 @@ public class AuthorizationState {
     return resolutionManifest;
   }
 
+  /**
+   * Records the specified {@link Resolvable} for later use in {@link #resolve()}.
+   *
+   * <p>If not {@link Resolvable} values are selected, the {@link #resolve()} method will delegate
+   * to {@link PolarisResolutionManifest#resolveAll()}.
+   *
+   * @see #selectAll()
+   */
   public void select(@NonNull Resolvable resolvable) {
     selections.add(resolvable);
   }
 
+  /**
+   * Clears previously recorded selectors in this class causing the {@link #resolve()} method to
+   * delegate to {@link PolarisResolutionManifest#resolveAll()}.
+   */
   public void selectAll() {
     selections.clear();
   }
 
-  public void resolve() {
+  /**
+   * Performs entity resolution in the {@link PolarisResolutionManifest} embedded in this class
+   * according to the current {@link #select(Resolvable) selectors}.
+   *
+   * <p>If some {@link #select(Resolvable) selectors} have been set, this method will delegate to
+   * {@link PolarisResolutionManifest#resolveSelections(Set)}, otherwise it will delegate to {@link
+   * PolarisResolutionManifest#resolveAll()}.
+   */
+  public void resolve0() {
     if (selections.isEmpty()) {
       resolutionManifest.resolveAll();
     } else {
