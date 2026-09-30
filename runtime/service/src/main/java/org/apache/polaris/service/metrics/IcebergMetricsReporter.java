@@ -24,9 +24,9 @@ import org.jspecify.annotations.NonNull;
 /**
  * SPI for reporting Iceberg metrics received by Polaris.
  *
- * <p>Implementations receive a {@link MetricsReportEnvelope} carrying the resolved table context,
- * the Iceberg metrics report, and an explicit {@link MetricType}. They can send the metrics to
- * external systems, log them, or persist them.
+ * <p>Implementations receive a {@link MetricsReportEnvelope} carrying catalog/table context (the
+ * table entity may be unresolved), the Iceberg metrics report, and an explicit {@link MetricType}.
+ * They can send the metrics to external systems, log them, or persist them.
  *
  * <p>Custom implementations should be annotated with the appropriate CDI scope and
  * {@code @Identifier("my-type")} for selection via the {@code

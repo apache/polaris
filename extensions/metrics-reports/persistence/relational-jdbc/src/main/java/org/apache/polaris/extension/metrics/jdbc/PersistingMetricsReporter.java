@@ -28,6 +28,8 @@ import org.apache.iceberg.metrics.CommitReport;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RequestIdSupplier;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
@@ -73,6 +75,17 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
 
   @Override
   public void reportMetric(@NonNull MetricsReportEnvelope envelope) {
+    PolarisEntity tableEntity = envelope.tableEntity();
+    if (tableEntity == null || tableEntity.getType() != PolarisEntityType.TABLE_LIKE) {
+      LOGGER.warn(
+          "Dropping {} metrics for {}.{}; resolved leaf is missing or not TABLE_LIKE",
+          envelope.metricType(),
+          envelope.catalogName(),
+          envelope.table());
+      return;
+    }
+    long tableId = tableEntity.getId();
+
     String principalName = resolvePrincipalName();
     String requestId = resolveRequestId();
     String otelTraceId = null;
@@ -89,7 +102,7 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
         ScanMetricsRecord record =
             MetricsRecordConverter.forScanReport((ScanReport) envelope.report())
                 .catalogId(envelope.catalogId())
-                .tableId(envelope.tableId())
+                .tableId(tableId)
                 .timestamp(envelope.receivedTimestamp())
                 .principalName(principalName)
                 .requestId(requestId)
@@ -117,7 +130,7 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
         CommitMetricsRecord record =
             MetricsRecordConverter.forCommitReport((CommitReport) envelope.report())
                 .catalogId(envelope.catalogId())
-                .tableId(envelope.tableId())
+                .tableId(tableId)
                 .timestamp(envelope.receivedTimestamp())
                 .principalName(principalName)
                 .requestId(requestId)

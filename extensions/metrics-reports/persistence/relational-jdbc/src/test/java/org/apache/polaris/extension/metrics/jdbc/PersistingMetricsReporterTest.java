@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +44,10 @@ import org.apache.iceberg.metrics.ImmutableScanReport;
 import org.apache.iceberg.metrics.ScanMetrics;
 import org.apache.iceberg.metrics.ScanMetricsResult;
 import org.apache.iceberg.metrics.ScanReport;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
@@ -124,12 +129,22 @@ class PersistingMetricsReporterTest {
         .build();
   }
 
+  private static PolarisEntity tableEntity() {
+    return new PolarisEntity(
+        new PolarisBaseEntity.Builder()
+            .id(2L)
+            .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+            .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
+            .name("t")
+            .build());
+  }
+
   private static MetricsReportEnvelope scanEnvelope() {
     return new MetricsReportEnvelope(
         "catalog",
         1L,
         TableIdentifier.of("ns", "t"),
-        2L,
+        tableEntity(),
         MetricType.SCAN,
         scanReport(),
         Instant.now());
@@ -140,7 +155,7 @@ class PersistingMetricsReporterTest {
         "catalog",
         1L,
         TableIdentifier.of("ns", "t"),
-        2L,
+        tableEntity(),
         MetricType.COMMIT,
         commitReport(),
         Instant.now());
@@ -194,5 +209,31 @@ class PersistingMetricsReporterTest {
 
     verify(persistence).writeCommitReport(any(CommitMetricsRecord.class));
     assertThat(logAppender.list).noneMatch(event -> event.getLevel().isGreaterOrEqual(Level.WARN));
+  }
+
+  @Test
+  void dropsWhenTableEntityMissing() {
+    MetricsPersistence persistence = mock(MetricsPersistence.class);
+    MetricsReportEnvelope envelope =
+        new MetricsReportEnvelope(
+            "catalog",
+            1L,
+            TableIdentifier.of("ns", "t"),
+            null,
+            MetricType.SCAN,
+            scanReport(),
+            Instant.now());
+
+    assertThatCode(() -> newReporter(persistence).reportMetric(envelope))
+        .doesNotThrowAnyException();
+
+    verify(persistence, never()).writeScanReport(any());
+    assertThat(logAppender.list)
+        .anySatisfy(
+            event -> {
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getFormattedMessage())
+                  .contains("resolved leaf is missing or not TABLE_LIKE");
+            });
   }
 }
