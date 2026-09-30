@@ -285,8 +285,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
     String principalName = client.newEntityName("snowman-rest");
     String principalRoleName = client.newEntityName("rest-admin");
-    ClientPrincipal testPrincipal = createTestPrincipal(client, principalName, principalRoleName);
-    principalToken = obtainToken(client, testPrincipal);
+    principalToken = obtainToken(client, principalName, principalRoleName);
 
     catalogApi = client.catalogApi(principalToken);
     genericTableApi = client.genericTableApi(principalToken);
@@ -331,7 +330,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
             .build();
 
     createPolarisCatalog(catalog);
-    managementApi.makeAdmin(principalRoleName, catalog);
+    makeAdmin(principalRoleName, catalog);
 
     ImmutableMap.Builder<String, String> restCatalogConfigBuilder = ImmutableMap.builder();
 
@@ -358,6 +357,10 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     restCatalog = initCatalog(currentCatalogName, Map.of());
   }
 
+  protected void makeAdmin(String principalRoleName, Catalog catalog) {
+    managementApi.makeAdmin(principalRoleName, catalog);
+  }
+
   /**
    * Creates a test principal with the specified name and role. Subclasses can override this method
    * to customize the principal creation process, e.g. when using federated principals.
@@ -371,6 +374,12 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         new ClientCredentials(
             principalWithCredentials.getCredentials().getClientId(),
             principalWithCredentials.getCredentials().getClientSecret()));
+  }
+
+  protected String obtainToken(
+      PolarisClient client, String principalName, String principalRoleName) {
+    ClientPrincipal principal = createTestPrincipal(client, principalName, principalRoleName);
+    return obtainToken(client, principal);
   }
 
   /**
