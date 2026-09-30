@@ -615,10 +615,9 @@ class JdbcBasePersistenceImplTest {
   @Test
   void rotatePrincipalSecrets_concurrentCollision_throwsRetryOnConcurrencyException()
       throws SQLException, IOException {
-    int schemaVersion = DatabaseType.H2.getLatestSchemaVersion();
     DatasourceOperations datasourceOperations =
-        newH2DatasourceOperations("rotate_secrets_collision", schemaVersion);
-    TestPersistence tp = newTestPersistence(datasourceOperations, schemaVersion);
+        newH2DatasourceOperations("rotate_secrets_collision");
+    TestPersistence tp = newTestPersistence(datasourceOperations);
     JdbcBasePersistenceImpl impl = tp.impl();
     PolarisCallContext callCtx = tp.callCtx();
 
