@@ -33,6 +33,15 @@ REST implementation), enabling a Polaris service to access table and view entiti
   `ConnectionConfigInfo.AuthenticationParameters`. OAuth2 client credentials, bearer tokens, GCP,
   and AWS SigV4 are supported; choose the scheme the remote service expects.
 
+  SigV4 comes in two forms. Supply `roleArn` for AWS services such as Glue: Polaris uses its own
+  AWS IAM service identity to assume that role through AWS STS. Supply `accessKeyId` and
+  `secretAccessKey` instead for SigV4-compatible catalogs that are not AWS, which have no role to
+  assume and no AWS STS endpoint to reach; the keys are used for signing directly. The two forms
+  are mutually exclusive, as are the parameters that only shape an STS request: `roleSessionName`,
+  `externalId` and `sessionPolicy` cannot be combined with static credentials, and are rejected
+  rather than silently ignored. The secret access key is offloaded to the configured secrets
+  manager and is never returned by the API.
+
 ## Feature configuration
 
 The catalog federation feature is disabled by default. Enable the necessary feature flag in your application.properties
