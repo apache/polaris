@@ -235,7 +235,7 @@ Released on September 28th, 2026.
   `DelegateFileIO`.
 - Async task retries no longer fail with a `NullPointerException` when the task entity has already been dropped by a previous attempt. Such a retry is now recognized as an already-completed task and exits cleanly, instead of exhausting all retry attempts and logging a `NullPointerException` on each one.
 
-#### Fixes
+#### Security Fixes
 
-This releqse fixes a security issue:
+This release fixes a security issue:
 * [CVE-2026-97395](../../community/security-advisories/cve-2026-97395/)
