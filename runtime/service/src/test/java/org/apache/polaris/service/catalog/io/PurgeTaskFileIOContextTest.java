@@ -40,9 +40,10 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Follow-up to excluding caller metadata from server FileIO (#5634): purge tasks must still carry
- * catalog-trusted table-default.* settings so TaskFileIOSupplier can rebuild FileIO when
- * AccessConfig is empty (SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION), without reintroducing caller
- * metadata FileIO client keys.
+ * catalog-trusted table-default.* FileIO context (same source as commit) so {@link
+ * TaskFileIOSupplier} can rebuild cleanup FileIO from the task without reintroducing caller
+ * metadata.properties() keys. An empty AccessConfig here exercises the task-properties path; when
+ * AccessConfig is present it still overlays.
  */
 public class PurgeTaskFileIOContextTest {
 

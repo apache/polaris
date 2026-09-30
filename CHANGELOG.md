@@ -157,8 +157,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Semantic models: a `datasets` field that is not a JSON array now returns `400 Bad Request`
   instead of being silently skipped, which bypassed every `dataset.source` check.
 - Table and view purge tasks now seed FileIO context from catalog `table-default.*` properties
-  (same trusted source as commit), while still excluding caller `metadata.properties()`. This
-  keeps cleanup working when `SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION` leaves AccessConfig empty.
+  (same trusted source as commit), while still excluding caller `metadata.properties()`.
+  `TaskFileIOSupplier` only sees what was persisted on the task after drop; AccessConfig still
+  overlays credentials when available.
 - Conditional `loadTable` (`If-None-Match` → HTTP 304) no longer attaches a null
   `LOAD_TABLE_RESPONSE` to the `AFTER_LOAD_TABLE` event. The persistence event listener also
   skips null attribute values instead of failing while pruning them.

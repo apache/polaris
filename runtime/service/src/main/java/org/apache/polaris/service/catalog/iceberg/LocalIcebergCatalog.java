@@ -585,11 +585,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
                   // Seed catalog-trusted table-default.* FileIO settings (same as commit), then
                   // storage-entity internals / io-impl / location. Do not copy
-                  // metadata.properties()
-                  // — those may include caller-controlled FileIO client settings (e.g.
-                  // s3.endpoint).
-                  // Needed when SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION leaves AccessConfig empty:
-                  // TaskFileIOSupplier rebuilds FileIO from these task properties alone.
+                  // metadata.properties() — those may include caller-controlled FileIO client
+                  // settings (e.g. s3.endpoint). TaskFileIOSupplier rebuilds cleanup FileIO from
+                  // these task properties plus AccessConfig; AccessConfig still overlays and wins
+                  // for credentials when present.
                   clone.putAll(tableDefaultProperties);
                   clone.put(CatalogProperties.FILE_IO_IMPL, ioImplClassName);
                   clone.putAll(properties);
