@@ -38,10 +38,26 @@ Cassandra metastore documentation.
 The driver is configured from `CassandraConfiguration` and its `driver` subsection. Polaris
 builds an in-memory driver configuration, so it neither reads nor requires a driver
 `application.conf` resource. The generic `driver` subsection maps exact Java-driver option paths
-to their typed driver values. Polaris owns the request timeout, metrics, and—when selected—TLS.
+to their typed driver values. Polaris owns the request timeout, consistency levels, metrics,
+and—when selected—TLS.
 Refer to the
 [Apache Cassandra Java Driver configuration manual](https://github.com/apache/cassandra-java-driver/blob/4.x/manual/core/configuration/README.md)
 for the driver option names and semantics.
+
+## Consistency
+
+`polaris.persistence.nosql.cassandra.consistency-level` defaults to `LOCAL_QUORUM` and also
+supports `QUORUM` and `ALL`. It controls object reads, writes, backend scans, and the commit phase
+of conditional mutations.
+
+`polaris.persistence.nosql.cassandra.serial-consistency-level` defaults to `LOCAL_SERIAL` and
+also supports `SERIAL`. It controls reference reads and the Paxos phase of conditional mutations.
+Reference reads resolve unfinished Paxos proposals before returning and are idempotent, allowing
+the driver to retry them. Object reads retain the regular consistency level.
+
+All Polaris instances accessing a realm must use compatible consistency settings. The default
+serial consistency confines Paxos to the local data center; selecting `SERIAL` alone does not
+establish support for writers in multiple data centers.
 
 ## Authentication
 
