@@ -44,7 +44,7 @@ public class TestPolarisAuthorizer implements PolarisAuthorizer {
     // nothing to resolve for this oidc authorizer, but the manifest must be in resolved state to
     // avoid errors in the authorization decision phase.
     authzState.select(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES);
-    authzState.resolve0();
+    authzState.resolve();
   }
 
   @Override

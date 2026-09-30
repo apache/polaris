@@ -252,7 +252,7 @@ public record TestServices(
       Mockito.doAnswer(
               invocation -> {
                 AuthorizationState authzState = invocation.getArgument(0);
-                authzState.resolve0();
+                authzState.resolve();
                 return null;
               })
           .when(authorizer)

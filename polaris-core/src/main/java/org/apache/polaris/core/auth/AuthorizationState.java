@@ -73,7 +73,7 @@ public class AuthorizationState {
    * {@link PolarisResolutionManifest#resolveSelections(Set)}, otherwise it will delegate to {@link
    * PolarisResolutionManifest#resolveAll()}.
    */
-  public void resolve0() {
+  public void resolve() {
     if (selections.isEmpty()) {
       resolutionManifest.resolveAll();
     } else {

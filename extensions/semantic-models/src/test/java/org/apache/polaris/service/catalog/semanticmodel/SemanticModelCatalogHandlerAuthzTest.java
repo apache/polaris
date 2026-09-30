@@ -167,7 +167,7 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
     doAnswer(
             invocation -> {
               AuthorizationState authorizationState = invocation.getArgument(0);
-              authorizationState.resolve0();
+              authorizationState.resolve();
               return null;
             })
         .when(authorizer)

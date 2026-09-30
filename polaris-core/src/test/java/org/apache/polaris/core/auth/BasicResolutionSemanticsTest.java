@@ -86,7 +86,7 @@ public class BasicResolutionSemanticsTest {
     AuthorizationRequest request = new AuthorizationRequest(PRINCIPAL, List.of(intents));
 
     BasicResolutionSemantics.resolveSelections(authzState, request);
-    authzState.resolve0();
+    authzState.resolve();
 
     verify(manifest).resolveSelections(expected);
   }
