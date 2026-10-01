@@ -19,6 +19,7 @@
 package org.apache.polaris.core.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
@@ -30,8 +31,9 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests the default batch {@link PolarisAuthorizer#authorize(AuthorizationState, List)}
- * implementation on the interface itself.
+ * Tests the default batch {@link PolarisAuthorizer#authorize(AuthorizationState, List)} and {@link
+ * PolarisAuthorizer#resolveAuthorizationInputs(AuthorizationState, List)} implementations on the
+ * interface itself.
  *
  * <p>This default is the production code path for every authorizer that does not override it, which
  * today is all of them ({@link PolarisAuthorizerImpl} and the Ranger extension). Callers such as
@@ -52,6 +54,7 @@ public class PolarisAuthorizerTest {
     private final Set<String> deniedLeafNames;
     private final List<AuthorizationRequest> seenRequests = new ArrayList<>();
     private final List<AuthorizationState> seenStates = new ArrayList<>();
+    private final List<AuthorizationRequest> seenResolveRequests = new ArrayList<>();
 
     RecordingAuthorizer(Set<String> deniedLeafNames) {
       this.deniedLeafNames = deniedLeafNames;
@@ -59,7 +62,9 @@ public class PolarisAuthorizerTest {
 
     @Override
     public void resolveAuthorizationInputs(
-        AuthorizationState authzState, AuthorizationRequest request) {}
+        AuthorizationState authzState, AuthorizationRequest request) {
+      seenResolveRequests.add(request);
+    }
 
     @Override
     public AuthorizationDecision authorize(
@@ -186,5 +191,51 @@ public class PolarisAuthorizerTest {
                 .toList();
 
     assertThat(batched).isEqualTo(individual);
+  }
+
+  @Test
+  void defaultBatchResolveDelegatesOnceWithEveryIntentInOrder() {
+    RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of());
+    AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
+    List<AuthorizationRequest> requests =
+        List.of(requestForTable("table1"), requestForTable("table2"), requestForTable("table3"));
+
+    authorizer.resolveAuthorizationInputs(state, requests);
+
+    // One delegation, not one per request: the shared state must be resolved at most once.
+    assertThat(authorizer.seenResolveRequests).hasSize(1);
+    AuthorizationRequest merged = authorizer.seenResolveRequests.get(0);
+    assertThat(merged.principal()).isEqualTo(PRINCIPAL);
+    assertThat(merged.intents())
+        .containsExactlyElementsOf(
+            requests.stream().flatMap(request -> request.intents().stream()).toList());
+  }
+
+  @Test
+  void defaultBatchResolveWithNoRequestsDoesNotDelegate() {
+    RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of());
+    AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
+
+    authorizer.resolveAuthorizationInputs(state, List.of());
+
+    assertThat(authorizer.seenResolveRequests).isEmpty();
+  }
+
+  @Test
+  void defaultBatchResolveRejectsMixedPrincipals() {
+    RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of());
+    AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
+    AuthorizationRequest otherPrincipal =
+        new AuthorizationRequest(
+            PolarisPrincipal.of("bob", Map.of(), Set.of("role1")),
+            requestForTable("table2").intents());
+
+    assertThatThrownBy(
+            () ->
+                authorizer.resolveAuthorizationInputs(
+                    state, List.of(requestForTable("table1"), otherPrincipal)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("one principal");
+    assertThat(authorizer.seenResolveRequests).isEmpty();
   }
 }

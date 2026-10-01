@@ -100,7 +100,7 @@ abstract class AbstractSemanticModelCatalogHandlerTest {
               return null;
             })
         .when(authorizer)
-        .resolveAuthorizationInputs(any(), any());
+        .resolveAuthorizationInputs(any(), any(AuthorizationRequest.class));
     Mockito.when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
         .thenReturn(AuthorizationDecision.allow());
     return handler(authorizer);

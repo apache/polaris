@@ -25,6 +25,7 @@ import jakarta.inject.Inject;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +76,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -2823,5 +2825,92 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_LIST));
 
     Assertions.assertThat(newHandler().listTables(NS1A, null, null).identifiers()).isEmpty();
+  }
+
+  // ─── Entity-level filtering prepares inputs through the authorizer ───────
+  //
+  // These authorizers override only the single-request resolveAuthorizationInputs, so the batch
+  // path reaches them through the interface default. Both fail if the handler resolves the
+  // filtering manifest itself instead of going through the authorizer.
+
+  /**
+   * The batch path must hand resolution to the authorizer, once, with every candidate's intent --
+   * the same phase the single-request path goes through. Results are unchanged.
+   */
+  @Test
+  public void testEntityLevelListFilteringResolvesThroughTheAuthorizer() {
+    enableEntityLevelListFiltering();
+    assertSuccess(
+        adminService.grantPrivilegeOnNamespaceToRole(
+            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_LIST));
+    assertSuccess(
+        adminService.grantPrivilegeOnTableToRole(
+            CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1A_1, PolarisPrivilege.TABLE_READ_PROPERTIES));
+
+    List<AuthorizationRequest> entityResolveRequests = new ArrayList<>();
+    PolarisAuthorizer recordingAuthorizer =
+        new PolarisAuthorizerImpl(realmConfig) {
+          @Override
+          public void resolveAuthorizationInputs(
+              AuthorizationState authzState, AuthorizationRequest request) {
+            if (request.intents().stream()
+                .allMatch(
+                    intent ->
+                        intent.getOperation() == PolarisAuthorizableOperation.LIST_TABLES_ENTITY)) {
+              entityResolveRequests.add(request);
+            }
+            super.resolveAuthorizationInputs(authzState, request);
+          }
+        };
+
+    Assertions.assertThat(
+            newHandlerWithAuthorizer(recordingAuthorizer)
+                .listTables(NS1A, null, null)
+                .identifiers())
+        .contains(TABLE_NS1A_1)
+        .doesNotContain(TABLE_NS1A_2);
+
+    Assertions.assertThat(entityResolveRequests).hasSize(1);
+    Assertions.assertThat(entityResolveRequests.get(0).intents())
+        .map(intent -> ((SingleTargetAuthorizationIntent) intent).target().getLeaf().name())
+        .contains(TABLE_NS1A_1.name(), TABLE_NS1A_2.name());
+  }
+
+  /**
+   * An authorizer that narrows its resolve phase to nothing for entity-visibility requests must see
+   * the batch path honour that, exactly as the single-request path would: reading results from an
+   * unresolved manifest fails loudly rather than the handler silently resolving it anyway.
+   */
+  @Test
+  public void testEntityLevelListFilteringHonoursAuthorizerResolutionNarrowing() {
+    enableEntityLevelListFiltering();
+    assertSuccess(
+        adminService.grantPrivilegeOnNamespaceToRole(
+            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_LIST));
+
+    PolarisAuthorizer narrowingAuthorizer =
+        new PolarisAuthorizerImpl(realmConfig) {
+          @Override
+          public void resolveAuthorizationInputs(
+              AuthorizationState authzState, AuthorizationRequest request) {
+            if (request.intents().stream()
+                .noneMatch(
+                    intent ->
+                        intent.getOperation() == PolarisAuthorizableOperation.LIST_TABLES_ENTITY)) {
+              super.resolveAuthorizationInputs(authzState, request);
+            }
+          }
+        };
+
+    Assertions.assertThatThrownBy(
+            () -> newHandlerWithAuthorizer(narrowingAuthorizer).listTables(NS1A, null, null))
+        .hasMessageContaining("resolver_not_run_before_access");
+  }
+
+  private IcebergCatalogHandler newHandlerWithAuthorizer(PolarisAuthorizer authorizer) {
+    return ImmutableIcebergCatalogHandler.builder()
+        .from(newHandler())
+        .authorizer(authorizer)
+        .build();
   }
 }

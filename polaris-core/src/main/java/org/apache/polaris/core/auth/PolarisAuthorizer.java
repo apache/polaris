@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.auth;
 
+import com.google.common.base.Preconditions;
 import java.util.List;
 import org.jspecify.annotations.NonNull;
 
@@ -34,6 +35,36 @@ public interface PolarisAuthorizer {
    */
   void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request);
+
+  /**
+   * Batch counterpart to {@link #resolveAuthorizationInputs(AuthorizationState,
+   * AuthorizationRequest)}, invoked once before {@link #authorize(AuthorizationState, List)} for
+   * requests that share one {@link AuthorizationState}.
+   *
+   * <p>All requests must carry the same principal. Implementations may narrow what they resolve,
+   * exactly as for the single-request method, and must resolve the shared state at most once.
+   * {@link #authorize(AuthorizationState, List)} may subsequently be called with a subset of {@code
+   * requests}.
+   *
+   * <p>The default implementation merges the intents of every request, in order, into one {@link
+   * AuthorizationRequest} and delegates to the single-request method, so any narrowing done there
+   * applies to the batch as well. Overriding is optional and only needed for batch-specific
+   * preparation.
+   */
+  default void resolveAuthorizationInputs(
+      @NonNull AuthorizationState authzState, @NonNull List<AuthorizationRequest> requests) {
+    if (requests.isEmpty()) {
+      return;
+    }
+    PolarisPrincipal principal = requests.get(0).principal();
+    Preconditions.checkArgument(
+        requests.stream().allMatch(request -> request.principal().equals(principal)),
+        "All requests in a batch must share one principal");
+    resolveAuthorizationInputs(
+        authzState,
+        new AuthorizationRequest(
+            principal, requests.stream().flatMap(request -> request.intents().stream()).toList()));
+  }
 
   /**
    * Core authorization entry point for the new SPI.
