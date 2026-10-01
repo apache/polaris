@@ -44,6 +44,7 @@ import com.azure.storage.file.datalake.sas.DataLakeServiceSasSignatureValues;
 import com.azure.storage.file.datalake.sas.PathSasPermission;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Throwables;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.time.Instant;
@@ -263,12 +264,14 @@ public class AzureCredentialsStorageIntegration
             String.format("Endpoint %s not supported", location.getEndpoint()));
       }
     } catch (RuntimeException ex) {
-      if (ex.getCause() instanceof UnknownHostException) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Azure storage account '%s' could not be resolved; it may have been deleted or misnamed",
-                location.getStorageAccount()),
-            ex);
+      for (Throwable cause : Throwables.getCausalChain(ex)) {
+        if (cause instanceof UnknownHostException unknownHost) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Unable to resolve Azure storage endpoint for account '%s' (%s)",
+                  location.getStorageAccount(), unknownHost.getMessage()),
+              ex);
+        }
       }
       throw ex;
     }

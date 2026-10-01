@@ -35,6 +35,9 @@ import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.UserDelegationKey;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
+import com.azure.storage.file.datalake.DataLakeServiceClient;
+import com.azure.storage.file.datalake.DataLakeServiceClientBuilder;
+import java.io.UncheckedIOException;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.time.Instant;
@@ -137,24 +140,31 @@ public class AzureCredentialsStorageIntegrationTest {
         .contains(vendedCredentials.sasExpiry().toInstant());
   }
 
-  @Test
-  void computeRejectsUnresolvableStorageAccount() {
+  @ParameterizedTest
+  @CsvSource({
+    "wasbs://container@account.blob.core.windows.net/path, account.blob.core.windows.net",
+    "abfss://container@account.dfs.core.windows.net/path, account.dfs.core.windows.net"
+  })
+  void computeRejectsUnresolvableStorageAccount(String location, String host) {
     DefaultAzureCredential credential = Mockito.mock(DefaultAzureCredential.class);
     Mockito.when(credential.getToken(Mockito.any(TokenRequestContext.class)))
         .thenReturn(
             Mono.just(
                 new AccessToken("access-token", OffsetDateTime.now().plus(Duration.ofHours(1)))));
 
+    String dnsError = host + ": Name or service not known";
     RuntimeException sdkException =
-        new RuntimeException(
-            new UnknownHostException("account.blob.core.windows.net: Name or service not known"));
+        new RuntimeException(new UncheckedIOException(new UnknownHostException(dnsError)));
     BlobServiceClient blobServiceClient = Mockito.mock(BlobServiceClient.class);
     Mockito.when(blobServiceClient.getUserDelegationKey(Mockito.any(), Mockito.any()))
+        .thenThrow(sdkException);
+    DataLakeServiceClient dataLakeServiceClient = Mockito.mock(DataLakeServiceClient.class);
+    Mockito.when(dataLakeServiceClient.getUserDelegationKey(Mockito.any(), Mockito.any()))
         .thenThrow(sdkException);
 
     AzureStorageConfigurationInfo storageConfig =
         AzureStorageConfigurationInfo.builder()
-            .addAllowedLocation("wasbs://container@account.blob.core.windows.net/path")
+            .addAllowedLocation(location)
             .tenantId("tenant-id")
             .build();
     AzureStorageCredentialCacheKey key =
@@ -162,21 +172,28 @@ public class AzureCredentialsStorageIntegrationTest {
             "realm",
             storageConfig,
             false,
-            Set.of("wasbs://container@account.blob.core.windows.net/path"),
+            Set.of(location),
             Set.of(),
             Optional.empty(),
             credential,
             realmConfigWithDuration(3600));
 
-    try (MockedConstruction<BlobServiceClientBuilder> ignored =
-        Mockito.mockConstruction(
-            BlobServiceClientBuilder.class,
-            Mockito.withSettings().defaultAnswer(Answers.RETURNS_SELF),
-            (builder, context) ->
-                Mockito.when(builder.buildClient()).thenReturn(blobServiceClient))) {
+    try (MockedConstruction<BlobServiceClientBuilder> ignoredBlob =
+            Mockito.mockConstruction(
+                BlobServiceClientBuilder.class,
+                Mockito.withSettings().defaultAnswer(Answers.RETURNS_SELF),
+                (builder, context) ->
+                    Mockito.when(builder.buildClient()).thenReturn(blobServiceClient));
+        MockedConstruction<DataLakeServiceClientBuilder> ignoredAdls =
+            Mockito.mockConstruction(
+                DataLakeServiceClientBuilder.class,
+                Mockito.withSettings().defaultAnswer(Answers.RETURNS_SELF),
+                (builder, context) ->
+                    Mockito.when(builder.buildClient()).thenReturn(dataLakeServiceClient))) {
       Assertions.assertThatThrownBy(() -> AzureCredentialsStorageIntegration.compute(key))
           .isInstanceOf(IllegalArgumentException.class)
-          .hasMessageContaining("'account'")
+          .hasMessage(
+              "Unable to resolve Azure storage endpoint for account 'account' (" + dnsError + ")")
           .hasCause(sdkException);
     }
   }
