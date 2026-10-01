@@ -38,6 +38,7 @@ import org.apache.polaris.service.types.CreateDirectoryRequest;
 import org.apache.polaris.service.types.DirectoryFilter;
 import org.apache.polaris.service.types.ListDirectoriesResponse;
 import org.apache.polaris.service.types.LoadDirectoryResponse;
+import org.apache.polaris.service.types.ScanDirectoryResponse;
 
 @RequestScoped
 public class DirectoryCatalogAdapter implements PolarisCatalogDirectoryApiService, CatalogAdapter {
@@ -111,6 +112,23 @@ public class DirectoryCatalogAdapter implements PolarisCatalogDirectoryApiServic
             NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR),
             directory));
     return Response.noContent().build();
+  }
+
+  @Override
+  public Response scanDirectory(
+      String prefix,
+      String namespace,
+      String directory,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    DirectoryCatalogHandler handler = newHandler(securityContext, prefix);
+    ScanDirectoryResponse response =
+        handler.scanDirectory(
+            TableIdentifier.of(
+                NamespaceUtils.splitNamespace(
+                    namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR),
+                directory));
+    return Response.ok(response).build();
   }
 
   @Override

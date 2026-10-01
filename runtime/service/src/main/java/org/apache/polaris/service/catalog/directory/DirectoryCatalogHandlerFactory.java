@@ -30,6 +30,8 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 
 @RequestScoped
 public class DirectoryCatalogHandlerFactory {
@@ -41,6 +43,8 @@ public class DirectoryCatalogHandlerFactory {
   @Inject PolarisCredentialManager credentialManager;
   @Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
   @Inject LocalCatalogFactory localCatalogFactory;
+  @Inject StorageAccessConfigProvider storageAccessConfigProvider;
+  @Inject FileIOFactory fileIOFactory;
 
   public DirectoryCatalogHandler createHandler(String catalogName, PolarisPrincipal principal) {
     return ImmutableDirectoryCatalogHandler.builder()
@@ -53,6 +57,8 @@ public class DirectoryCatalogHandlerFactory {
         .credentialManager(credentialManager)
         .federatedCatalogFactories(federatedCatalogFactories)
         .localCatalogFactory(localCatalogFactory)
+        .storageAccessConfigProvider(storageAccessConfigProvider)
+        .fileIOFactory(fileIOFactory)
         .build();
   }
 }

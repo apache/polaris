@@ -155,6 +155,9 @@ paths:
   /polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}:
     $ref: './polaris-catalog-apis/directories-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1directories~1{directory}'
 
+  /polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}/scan:
+    $ref: './polaris-catalog-apis/directories-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1directories~1{directory}~1scan'
+
   ######################
   # Polaris Policy API #
   ######################
