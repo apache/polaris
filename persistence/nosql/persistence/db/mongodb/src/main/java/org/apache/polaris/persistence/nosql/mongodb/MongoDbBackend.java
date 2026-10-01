@@ -345,7 +345,7 @@ final class MongoDbBackend implements Backend {
     try {
       refs().insertMany(docs, new InsertManyOptions().ordered(false));
     } catch (MongoBulkWriteException e) {
-      if (e.getWriteErrors().stream().anyMatch(we -> we.getCategory() != DUPLICATE_KEY)) {
+      if (isBulkWriteFailure(e)) {
         throw unhandledException(e);
       }
     } catch (RuntimeException e) {
@@ -637,6 +637,9 @@ final class MongoDbBackend implements Backend {
       return handleMongoWriteException(mongoWriteException);
     }
     if (e instanceof MongoBulkWriteException specific) {
+      if (specific.getWriteConcernError() != null) {
+        return new UnknownOperationResultException(e);
+      }
       for (BulkWriteError error : specific.getWriteErrors()) {
         switch (error.getCategory()) {
           case EXECUTION_TIMEOUT:
@@ -648,6 +651,16 @@ final class MongoDbBackend implements Backend {
       }
     }
     return e;
+  }
+
+  /**
+   * Whether a bulk write failed for a reason other than documents that already exist. A
+   * write-concern error means the writes may or may not have been applied, so it must be reported
+   * rather than treated like a duplicate key.
+   */
+  static boolean isBulkWriteFailure(MongoBulkWriteException e) {
+    return e.getWriteConcernError() != null
+        || e.getWriteErrors().stream().anyMatch(we -> we.getCategory() != DUPLICATE_KEY);
   }
 
   static RuntimeException handleMongoWriteException(MongoWriteException e) {
