@@ -57,6 +57,7 @@ import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.catalog.spi.DirectoryScanService;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.types.Directory;
 import org.apache.polaris.service.types.DirectoryFilter;
@@ -161,6 +162,8 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
   protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
 
   protected abstract FileIOFactory fileIOFactory();
+
+  protected abstract DirectoryScanService directoryScanService();
 
   private DirectoryCatalog directoryCatalog;
   private Catalog icebergCatalog;
@@ -318,12 +321,14 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
     try (FileIO sourceIO =
         fileIOFactory().loadFileIO(storageAccessConfig, ioImplClassName, Map.of())) {
       long fileCount =
-          DirectoryScanner.scan(
-              table,
-              sourceIO,
-              directory.getBaseLocation(),
-              parseJsonArray(directory.getFilterInclude()),
-              parseJsonArray(directory.getFilterExclude()));
+          directoryScanService()
+              .scan(
+                  identifier,
+                  table,
+                  sourceIO,
+                  directory.getBaseLocation(),
+                  parseJsonArray(directory.getFilterInclude()),
+                  parseJsonArray(directory.getFilterExclude()));
       return ScanDirectoryResponse.builder().setFileCount(fileCount).build();
     }
   }
