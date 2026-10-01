@@ -356,9 +356,9 @@ When enabled, allows RBAC operations to create synthetic entities for entities i
 
 ---
 
-##### `polaris.features."ENABLE_VOLUMES"`
+##### `polaris.features."ENABLE_DIRECTORIES"`
 
-If true, the volumes endpoints are enabled
+If true, the directories endpoints are enabled
 
 - **Type:** `Boolean`
 - **Default:** `true`

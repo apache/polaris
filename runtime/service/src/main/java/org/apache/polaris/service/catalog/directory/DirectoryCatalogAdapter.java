@@ -22,6 +22,7 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -71,7 +72,7 @@ public class DirectoryCatalogAdapter implements PolarisCatalogDirectoryApiServic
       String prefix,
       String namespace,
       CreateDirectoryRequest createDirectoryRequest,
-      String polarisDirectoryAccessDelegation,
+      List<String> polarisDirectoryAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
     DirectoryCatalogHandler handler = newHandler(securityContext, prefix);
@@ -132,7 +133,7 @@ public class DirectoryCatalogAdapter implements PolarisCatalogDirectoryApiServic
       String prefix,
       String namespace,
       String directory,
-      String polarisDirectoryAccessDelegation,
+      List<String> polarisDirectoryAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
     DirectoryCatalogHandler handler = newHandler(securityContext, prefix);
