@@ -1207,10 +1207,15 @@ components:
             credentialVendingMechanism:
               type: string
               example: "STS"
-              description: >-
+              description: |
                 How Polaris vends subscoped storage credentials for this catalog. Leave the field empty
-                to use the server's default mechanism. STS selects AWS STS AssumeRole against the
-                configured role. A server may provide further mechanisms. The value DEFAULT is reserved.
+                to use the server's default mechanism, which is STS in Apache Polaris.
+
+                Apache Polaris supports these values:
+                - `STS`: AWS STS AssumeRole against the configured role.
+
+                Later releases may add values. The server returns HTTP 400 for a value it does not
+                support. The value `DEFAULT` is reserved: leave the field empty instead.
 
     AzureStorageConfigInfo:
       type: object

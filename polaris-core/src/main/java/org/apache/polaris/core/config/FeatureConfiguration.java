@@ -411,7 +411,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .description(
                   "The credential vending mechanisms an S3 catalog in this realm may name explicitly. Names\n"
                       + "are case-sensitive and must match a mechanism's identifier exactly, for example STS.\n"
-                      + "STS is AWS STS AssumeRole; a server may provide further mechanisms. A catalog that\n"
+                      + "Apache Polaris supports STS, which is AWS STS AssumeRole. A catalog that\n"
                       + "leaves credentialVendingMechanism empty uses the server's default mechanism and is\n"
                       + "always allowed. Realm-level only; catalog properties cannot widen it. Enforced at\n"
                       + "catalog create and update, and when the server builds the storage integration that\n"

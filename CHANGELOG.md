@@ -38,8 +38,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - S3 storage configurations gain an optional string field, `credentialVendingMechanism`. A catalog
   that leaves it empty uses the server's default mechanism, AWS STS AssumeRole, and management API
-  responses omit the field for it; `STS` selects the same mechanism explicitly, and a server may
-  provide further mechanisms. Mechanisms are CDI beans discovered by their `@Identifier` at startup,
+  responses omit the field for it; `STS` selects the same mechanism explicitly and is the only value
+  this release supports. Mechanisms are CDI beans discovered by their `@Identifier` at startup,
   and each one can validate the catalogs that select it at create and update. A realm lists the
   explicit mechanisms it accepts in the new `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` feature
   (default `[STS]`), enforced at catalog create and update and when the server builds the storage
