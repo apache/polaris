@@ -182,6 +182,14 @@ The directory table might contain additional fields for credential vending.
 For instance, a token might be present (provided by a Polaris service/API) stored in the directory table (for each object)
 along with additional fields to verify the token.
 
+### Customizing the scan
+
+The scan is performed by a `DirectoryScanService` (package `org.apache.polaris.service.catalog.spi`). To
+change how a directory is scanned (for example to compute checksums, read object-store metadata or update
+the table incrementally), provide an `ApplicationScoped` CDI bean implementing this interface in an
+extension: it replaces the built-in implementation. The service receives the directory table, a `FileIO`
+with read and list access to the `base_location`, and the directory filters.
+
 ## External services (scanning services)
 
 The Polaris server provides a simple [scan endpoint](#scan-a-directory), but it does **not** schedule scans
