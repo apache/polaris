@@ -29,7 +29,7 @@ import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Utility class for processing {@linke AuthorizationRequest} in context that do not involve
+ * Utility class for processing {@linke AuthorizationRequest} in contexts that do not involve
  * internal Polaris RBAC.
  */
 public class BasicResolutionSemantics {
