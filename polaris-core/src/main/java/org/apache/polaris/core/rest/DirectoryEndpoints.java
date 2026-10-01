@@ -34,6 +34,9 @@ public class DirectoryEndpoints {
   public static final Endpoint V1_DELETE_DIRECTORY =
       Endpoint.create("DELETE", PolarisResourcePaths.V1_DIRECTORY);
 
+  public static final Endpoint V1_SCAN_DIRECTORY =
+      Endpoint.create("POST", PolarisResourcePaths.V1_DIRECTORY_SCAN);
+
   public static final Set<Endpoint> DIRECTORY_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
           .add(V1_LIST_DIRECTORIES)

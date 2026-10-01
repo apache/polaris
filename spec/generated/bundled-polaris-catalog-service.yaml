@@ -1797,6 +1797,40 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}/scan:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/namespace'
+      - $ref: '#/components/parameters/directory'
+    post:
+      tags:
+        - Directory API
+      summary: Scan a directory and refresh its inventory table
+      operationId: scanDirectory
+      description: |
+        Lists the objects under the directory `base_location`, applies the configured filter and replaces the content of the directory inventory table with the result in a single commit. If the scan fails, the inventory table is left unchanged.
+      responses:
+        '200':
+          $ref: '#/components/responses/ScanDirectoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - NoSuchTableError, directory to scan does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                DirectoryToScanDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTableError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
   /polaris/v1/{prefix}/namespaces/{namespace}/policies:
     parameters:
       - $ref: '#/components/parameters/prefix'
@@ -5225,6 +5259,16 @@ components:
             settings for storage access, such as the client region for S3.
           items:
             $ref: '#/components/schemas/StorageAccessConfig'
+    ScanDirectoryResponse:
+      description: Result of a directory scan.
+      type: object
+      required:
+        - file-count
+      properties:
+        file-count:
+          type: integer
+          format: int64
+          description: Number of objects recorded in the directory inventory table after the scan.
     PolicyType:
       description: The type of a policy
       type:
@@ -5704,6 +5748,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadDirectoryResponse'
+    ScanDirectoryResponse:
+      description: Number of objects recorded after a successful scan.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ScanDirectoryResponse'
     ListPoliciesResponse:
       description: a list of policy identifiers
       content:

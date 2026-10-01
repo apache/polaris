@@ -46,10 +46,18 @@ public class DirectoryConfigEndpoints implements CatalogConfigEndpointContributo
 
   /**
    * Get the directory endpoints. Returns DIRECTORY_ENDPOINTS if ENABLE_DIRECTORIES is set to true,
-   * otherwise, returns an empty set.
+   * plus the scan endpoint if ENABLE_DIRECTORY_SCAN is also true, otherwise, returns an empty set.
    */
   public static Set<Endpoint> getSupportedDirectoryEndpoints(RealmConfig realmConfig) {
-    boolean directoriesEnabled = realmConfig.getConfig(FeatureConfiguration.ENABLE_DIRECTORIES);
-    return directoriesEnabled ? DirectoryEndpoints.DIRECTORY_ENDPOINTS : ImmutableSet.of();
+    if (!realmConfig.getConfig(FeatureConfiguration.ENABLE_DIRECTORIES)) {
+      return ImmutableSet.of();
+    }
+    if (!realmConfig.getConfig(FeatureConfiguration.ENABLE_DIRECTORY_SCAN)) {
+      return DirectoryEndpoints.DIRECTORY_ENDPOINTS;
+    }
+    return ImmutableSet.<Endpoint>builder()
+        .addAll(DirectoryEndpoints.DIRECTORY_ENDPOINTS)
+        .add(DirectoryEndpoints.V1_SCAN_DIRECTORY)
+        .build();
   }
 }

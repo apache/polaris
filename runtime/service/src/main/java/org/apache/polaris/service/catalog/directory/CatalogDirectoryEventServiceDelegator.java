@@ -190,4 +190,14 @@ public class CatalogDirectoryEventServiceDelegator
                 .build()));
     return resp;
   }
+
+  @Override
+  public Response scanDirectory(
+      String prefix,
+      String namespace,
+      String directory,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.scanDirectory(prefix, namespace, directory, realmContext, securityContext);
+  }
 }

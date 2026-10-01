@@ -38,6 +38,7 @@ val directoryModels =
   listOf(
     "CreateDirectoryRequest",
     "LoadDirectoryResponse",
+    "ScanDirectoryResponse",
     "ListDirectoriesResponse",
     "Directory",
     "DirectoryFilter",
