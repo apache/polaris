@@ -315,6 +315,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - JDBC optimized location-overlap queries no longer include the lone `/` prefix term produced by
   scheme stripping (e.g. `s3://bucket/path` → `//bucket/path`). `//` and `///` are retained so
   scheme-root ancestors remain visible to the overlap check.
+- Staged table creates now honor the catalog's `table-default.*` and `table-override.*` properties
+  in the returned table metadata, matching the precedence applied to direct creates.
 
 ### Commits
 
