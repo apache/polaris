@@ -34,6 +34,7 @@ import org.jspecify.annotations.NonNull;
 public class AuthorizationState {
   private final PolarisResolutionManifest resolutionManifest;
   private final EnumSet<Resolvable> selections = EnumSet.noneOf(Resolvable.class);
+  private boolean selectAll;
 
   public AuthorizationState(@NonNull PolarisResolutionManifest resolutionManifest) {
     this.resolutionManifest = Objects.requireNonNull(resolutionManifest, "resolutionManifest");
@@ -48,8 +49,8 @@ public class AuthorizationState {
   /**
    * Records the specified {@link Resolvable} for later use in {@link #resolve()}.
    *
-   * <p>If not {@link Resolvable} values are selected, the {@link #resolve()} method will delegate
-   * to {@link PolarisResolutionManifest#resolveAll()}.
+   * <p>If no {@link Resolvable} values are selected, or {@link #selectAll()} is invoked, the {@link
+   * #resolve()} method will delegate to {@link PolarisResolutionManifest#resolveAll()}.
    *
    * @see #selectAll()
    */
@@ -58,23 +59,27 @@ public class AuthorizationState {
   }
 
   /**
-   * Clears previously recorded selectors in this class causing the {@link #resolve()} method to
-   * delegate to {@link PolarisResolutionManifest#resolveAll()}.
+   * Instructs the {@link #resolve()} method to delegate to {@link
+   * PolarisResolutionManifest#resolveAll()} regardless of what specific {@link #select(Resolvable)
+   * selectors} were recorded before.
    */
   public void selectAll() {
-    selections.clear();
+    selectAll = true;
   }
 
   /**
    * Performs entity resolution in the {@link PolarisResolutionManifest} embedded in this class
    * according to the current {@link #select(Resolvable) selectors}.
    *
-   * <p>If some {@link #select(Resolvable) selectors} have been set, this method will delegate to
-   * {@link PolarisResolutionManifest#resolveSelections(Set)}, otherwise it will delegate to {@link
+   * <p>If {@link #selectAll()} has been invoked, this method will delegate to {@link
    * PolarisResolutionManifest#resolveAll()}.
+   *
+   * <p>Otherwise, if some {@link #select(Resolvable) selectors} have been set, this method will
+   * delegate to {@link PolarisResolutionManifest#resolveSelections(Set)}, otherwise it will
+   * delegate to {@link PolarisResolutionManifest#resolveAll()}.
    */
   public void resolve() {
-    if (selections.isEmpty()) {
+    if (selectAll || selections.isEmpty()) {
       resolutionManifest.resolveAll();
     } else {
       resolutionManifest.resolveSelections(selections);
