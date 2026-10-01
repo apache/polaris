@@ -51,7 +51,7 @@ A directory is described by the following fields:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | `string` | Yes | The name of the directory. It is used in REST endpoint paths and becomes the name of the corresponding Iceberg table. |
-| `base_location` | `string` | Yes | The base location to use as a root for scanning objects in the object store (for example `s3://my-bucket/images/`, `gs://my-bucket/docs/`, or `file:///data/local/`). |
+| `base_location` | `string` | Yes | The external object store location to use as a root for scanning objects; this is not the location of the Iceberg inventory table, which is assigned by Polaris (for example `s3://my-bucket/images/`, `gs://my-bucket/docs/`, or `file:///data/local/`). |
 | `filter` | `object` | No | Include and exclude patterns that control which objects are added to the directory table during a scan. See [Filter](#filter). |
 | `scan-schedule` | `object` | No | Object representing a scan schedule (trigger, cron, ...). |
 
