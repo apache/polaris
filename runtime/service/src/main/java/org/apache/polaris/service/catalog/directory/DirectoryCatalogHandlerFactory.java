@@ -32,6 +32,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.catalog.spi.DirectoryScanService;
 
 @RequestScoped
 public class DirectoryCatalogHandlerFactory {
@@ -45,6 +46,7 @@ public class DirectoryCatalogHandlerFactory {
   @Inject LocalCatalogFactory localCatalogFactory;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject FileIOFactory fileIOFactory;
+  @Inject DirectoryScanService directoryScanService;
 
   public DirectoryCatalogHandler createHandler(String catalogName, PolarisPrincipal principal) {
     return ImmutableDirectoryCatalogHandler.builder()
@@ -59,6 +61,7 @@ public class DirectoryCatalogHandlerFactory {
         .localCatalogFactory(localCatalogFactory)
         .storageAccessConfigProvider(storageAccessConfigProvider)
         .fileIOFactory(fileIOFactory)
+        .directoryScanService(directoryScanService)
         .build();
   }
 }

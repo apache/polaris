@@ -89,6 +89,22 @@ class DirectoryScannerTest {
   }
 
   @Test
+  void defaultScanServiceScansTheLocation() throws IOException {
+    long count =
+        new DefaultDirectoryScanService()
+            .scan(
+                TableIdentifier.of("ns", "images"),
+                table,
+                sourceIO,
+                BASE,
+                List.of(".*\\.png$"),
+                null);
+
+    assertThat(count).isEqualTo(1);
+    assertThat(readUris()).containsExactly(BASE + "b.png");
+  }
+
+  @Test
   void rescanReplacesPreviousContent() throws IOException {
     DirectoryScanner.scan(table, sourceIO, BASE, null, null);
     sourceIO.deleteFile(BASE + "doc.txt");
