@@ -45,6 +45,8 @@ public class PolarisResourcePaths {
       "polaris/v1/{prefix}/namespaces/{namespace}/directories";
   public static final String V1_DIRECTORY =
       "polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}";
+  public static final String V1_DIRECTORY_SCAN =
+      "polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}/scan";
 
   // Policy Store endpoints
   public static final String V1_POLICIES = "/polaris/v1/{prefix}/namespaces/{namespace}/policies";

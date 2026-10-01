@@ -29,10 +29,14 @@ import jakarta.enterprise.inject.Instance;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.DirectoryCatalog;
@@ -45,12 +49,20 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.DirectoryEntity;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.types.Directory;
 import org.apache.polaris.service.types.DirectoryFilter;
 import org.apache.polaris.service.types.ListDirectoriesResponse;
 import org.apache.polaris.service.types.LoadDirectoryResponse;
+import org.apache.polaris.service.types.ScanDirectoryResponse;
 import org.apache.polaris.service.types.ScanSchedule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -145,6 +157,10 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
   protected abstract Instance<FederatedCatalogFactory> federatedCatalogFactories();
 
   protected abstract LocalCatalogFactory localCatalogFactory();
+
+  protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
+
+  protected abstract FileIOFactory fileIOFactory();
 
   private DirectoryCatalog directoryCatalog;
   private Catalog icebergCatalog;
@@ -268,6 +284,48 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
     }
 
     return this.directoryCatalog.dropDirectory(identifier);
+  }
+
+  public ScanDirectoryResponse scanDirectory(TableIdentifier identifier) {
+    FeatureConfiguration.enforceFeatureEnabledOrThrow(
+        realmConfig(), FeatureConfiguration.ENABLE_DIRECTORY_SCAN);
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_TABLE;
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.DIRECTORY, identifier);
+
+    DirectoryEntity directory = this.directoryCatalog.loadDirectory(identifier);
+    Table table = this.icebergCatalog.loadTable(identifier);
+
+    // The base location is external to the catalog: list it with read-only credentials scoped to it
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    PolarisResolvedPathWrapper resolvedPath =
+        resolutionManifest.getResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.DIRECTORY, true);
+    StorageAccessConfig storageAccessConfig =
+        storageAccessConfigProvider()
+            .getStorageAccessConfig(
+                identifier,
+                Set.of(directory.getBaseLocation()),
+                Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST),
+                Optional.empty(),
+                resolvedPath);
+    String ioImplClassName =
+        IcebergPropertiesValidation.determineFileIOClassName(
+            realmConfig(),
+            catalogEntity.getPropertiesAsMap(),
+            catalogEntity.getStorageConfigurationInfo());
+
+    try (FileIO sourceIO =
+        fileIOFactory().loadFileIO(storageAccessConfig, ioImplClassName, Map.of())) {
+      long fileCount =
+          DirectoryScanner.scan(
+              table,
+              sourceIO,
+              directory.getBaseLocation(),
+              parseJsonArray(directory.getFilterInclude()),
+              parseJsonArray(directory.getFilterExclude()));
+      return ScanDirectoryResponse.builder().setFileCount(fileCount).build();
+    }
   }
 
   public LoadDirectoryResponse loadDirectory(TableIdentifier identifier) {

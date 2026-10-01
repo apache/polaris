@@ -127,6 +127,29 @@ Returns the full configuration of the specified directory, including filter and 
 
 Removes the directory and its associated Iceberg table from the namespace.
 
+### Scan a directory
+
+**POST** `/v1/{prefix}/namespaces/{namespace}/directories/{directory}/scan`
+
+Lists the objects under the directory `base_location`, applies the configured [filter](#filter) and
+replaces the content of the directory table with the result in a single commit. The response contains
+the number of objects recorded in the table:
+
+```json
+{ "file-count": 42 }
+```
+
+Polaris lists the `base_location` with read-only credentials scoped to that location, and requires the
+`UPDATE_TABLE` privilege on the directory. The scan is synchronous and does not run on the
+`scan-schedule`: it is up to the caller (or an [external service](#external-services-scanning-services))
+to trigger it periodically. If the scan fails, the directory table remains unchanged.
+
+The scan service can be disabled with the `ENABLE_DIRECTORY_SCAN` feature flag (see
+[Configuration]({{% ref "configuration/configuration-reference" %}})), in which case the endpoint is rejected and no longer
+advertised in the catalog configuration. The scan populates `file_uri`, `content_type` (guessed from the
+file name), `size` and `last_modified` (as reported by the object store); the other columns are left empty.
+It requires an object store whose `FileIO` supports listing a prefix.
+
 ## Directory table
 
 When a directory is created, Polaris creates an Iceberg table in the same namespace using the directory
@@ -161,9 +184,9 @@ along with additional fields to verify the token.
 
 ## External services (scanning services)
 
-The Polaris server stores directory configurations and exposes the REST endpoints described above, but
-it does **not** perform object scanning or table updates by itself. These operations are handled by
-external services.
+The Polaris server provides a simple [scan endpoint](#scan-a-directory), but it does **not** schedule scans
+by itself. Scheduling, as well as richer scans (checksums, object-store metadata, incremental updates), can
+be handled by external services.
 
 ### How external services could work
 
