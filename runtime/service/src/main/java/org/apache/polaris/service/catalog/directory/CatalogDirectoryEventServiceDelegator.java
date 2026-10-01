@@ -25,6 +25,7 @@ import jakarta.decorator.Delegate;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
@@ -53,7 +54,7 @@ public class CatalogDirectoryEventServiceDelegator
       String prefix,
       String namespace,
       CreateDirectoryRequest createDirectoryRequest,
-      String polarisDirectoryAccessDelegation,
+      List<String> polarisDirectoryAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -155,7 +156,7 @@ public class CatalogDirectoryEventServiceDelegator
       String prefix,
       String namespace,
       String directory,
-      String polarisDirectoryAccessDelegation,
+      List<String> polarisDirectoryAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
