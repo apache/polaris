@@ -44,6 +44,16 @@ dependencies {
   runtimeOnly(project(":polaris-persistence-nosql-metastore"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus-distcache"))
+  runtimeOnly(project(":polaris-persistence-nosql-inmemory")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-inmemory-quarkus")
+    }
+  }
+  runtimeOnly(project(":polaris-persistence-nosql-mongodb")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-mongodb-quarkus")
+    }
+  }
   runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
   runtimeOnly(project(":polaris-persistence-nosql-metastore-maintenance"))
 
@@ -238,12 +248,9 @@ tasks.withType(Test::class.java).configureEach {
   // - Hadoop's stats-cleaner (org.apache.hadoop.fs.FileSystem.Statistics.STATS_DATA_CLEANER)
   // - Guava's 'MoreExecutors' (via Iceberg `ThreadPools`)`
   // Forcing a new JVM after each test class works around this issue.
-  if ("test" == name) {
-    forkEvery = 1
-
-    // enlarge the max heap size to avoid out of memory error
-    maxHeapSize = "4g"
-  }
+  forkEvery = 1
+  // enlarge the max heap size to avoid out of memory error
+  maxHeapSize = "4g"
 
   if ("intTest" == name || "cloutTest" == name) {
     val logsDir = buildDir.map { b -> b.asFile.resolve("logs") }

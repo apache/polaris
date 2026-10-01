@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -76,7 +77,6 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
-import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -90,7 +90,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private final DatasourceOperations datasourceOperations;
   private final PrincipalSecretsGenerator secretsGenerator;
   private final String realmId;
-  private final int schemaVersion;
 
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
@@ -114,13 +113,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PolarisDiagnostics diagnostics,
       DatasourceOperations databaseOperations,
       PrincipalSecretsGenerator secretsGenerator,
-      String realmId,
-      int schemaVersion) {
+      String realmId) {
     this.diagnostics = diagnostics;
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
     this.realmId = realmId;
-    this.schemaVersion = schemaVersion;
   }
 
   @Override
@@ -187,9 +184,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     datasourceOperations.executeSelectOverStream(
         connection,
         QueryGenerator.generateExistsQuery(
-            ModelEntity.getAllColumnNames(schemaVersion),
-            ModelEntity.TABLE_NAME,
-            entityKeyParams(entityId)),
+            ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, entityKeyParams(entityId)),
         ROW_EXISTS_CONVERTER,
         stream -> exists.set(stream.findAny().isPresent()));
     return exists.get();
@@ -202,7 +197,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       Connection connection,
       QueryAction queryAction)
       throws SQLException {
-    ModelEntity modelEntity = ModelEntity.fromEntity(entity, schemaVersion);
+    ModelEntity modelEntity = ModelEntity.fromEntity(entity);
     if (originalEntity == null) {
       try {
         List<Object> values =
@@ -210,10 +205,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         queryAction.apply(
             connection,
             QueryGenerator.generateInsertQuery(
-                ModelEntity.getAllColumnNames(schemaVersion),
-                ModelEntity.TABLE_NAME,
-                values,
-                realmId));
+                ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, values, realmId));
       } catch (SQLException e) {
         if (datasourceOperations.isUniquenessConstraintViolation(e)) {
           PolarisBaseEntity existingEntity =
@@ -261,10 +253,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             queryAction.apply(
                 connection,
                 QueryGenerator.generateUpdateQuery(
-                    ModelEntity.getAllColumnNames(schemaVersion),
-                    ModelEntity.TABLE_NAME,
-                    values,
-                    params));
+                    ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, values, params));
         if (rowsUpdated == 0) {
           throw new RetryOnConcurrencyException(
               "Entity '%s' id '%s' concurrently modified; expected entity_version=%s, grant_records_version=%s",
@@ -312,7 +301,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           QueryGenerator.generateInsertQuery(
               ModelEvent.ALL_COLUMNS,
               ModelEvent.TABLE_NAME,
-              ModelEvent.fromEvent(events.getFirst(), schemaVersion)
+              ModelEvent.fromEvent(events.getFirst())
                   .toMap(datasourceOperations.getDatabaseType())
                   .values()
                   .stream()
@@ -330,7 +319,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             QueryGenerator.generateInsertQuery(
                 ModelEvent.ALL_COLUMNS,
                 ModelEvent.TABLE_NAME,
-                ModelEvent.fromEvent(event, schemaVersion)
+                ModelEvent.fromEvent(event)
                     .toMap(datasourceOperations.getDatabaseType())
                     .values()
                     .stream()
@@ -359,7 +348,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public void deleteEntity(@NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity) {
-    ModelEntity modelEntity = ModelEntity.fromEntity(entity, schemaVersion);
+    ModelEntity modelEntity = ModelEntity.fromEntity(entity);
     Map<String, Object> params =
         Map.of(
             "id",
@@ -371,7 +360,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     try {
       datasourceOperations.executeUpdate(
           QueryGenerator.generateDeleteQuery(
-              ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
+              ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, params));
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to delete entity due to %s", e.getMessage()), e);
@@ -419,7 +408,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             datasourceOperations.execute(
                 connection,
                 QueryGenerator.generateDeleteQuery(
-                    ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
+                    ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, params));
             datasourceOperations.execute(
                 connection,
                 QueryGenerator.generateDeleteQuery(
@@ -451,7 +440,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         Map.of("catalog_id", catalogId, "id", entityId, "type_code", typeCode, "realm_id", realmId);
     return getPolarisBaseEntity(
         QueryGenerator.generateSelectQuery(
-            ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
+            ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, params));
   }
 
   private Map<String, Object> entityKeyParams(long entityId) {
@@ -479,13 +468,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             realmId);
     return getPolarisBaseEntity(
         QueryGenerator.generateSelectQuery(
-            ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
+            ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, params));
   }
 
   @Nullable
   private PolarisBaseEntity getPolarisBaseEntity(QueryGenerator.PreparedQuery query) {
     try {
-      var results = datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion));
+      var results = datasourceOperations.executeSelect(query, new ModelEntity());
       if (results.isEmpty()) {
         return null;
       } else if (results.size() > 1) {
@@ -507,11 +496,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public List<PolarisBaseEntity> lookupEntities(
       @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     if (entityIds == null || entityIds.isEmpty()) return new ArrayList<>();
-    PreparedQuery query =
-        QueryGenerator.generateSelectQueryWithEntityIds(realmId, schemaVersion, entityIds);
+    PreparedQuery query = QueryGenerator.generateSelectQueryWithEntityIds(realmId, entityIds);
     try {
       Map<PolarisEntityId, PolarisBaseEntity> idMap =
-          datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion)).stream()
+          datasourceOperations.executeSelect(query, new ModelEntity()).stream()
               .collect(
                   Collectors.toMap(
                       e -> new PolarisEntityId(e.getCatalogId(), e.getId()), Function.identity()));
@@ -653,14 +641,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               entityType,
               entitySubType,
               pageToken,
-              ModelEntity.getAllColumnNames(schemaVersion),
+              ModelEntity.getAllColumnNames(),
               // entityFilter is applied after the fetch, so a page size limit could under-fill a
               // page and drop its continuation token
               false);
       AtomicReference<Page<T>> results = new AtomicReference<>();
       datasourceOperations.executeSelectOverStream(
           query,
-          new ModelEntity(schemaVersion),
+          new ModelEntity(),
           stream -> {
             var data = stream.filter(entityFilter);
             results.set(Page.mapped(pageToken, data, transformer, EntityIdToken::fromEntity));
@@ -791,7 +779,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       var results =
           datasourceOperations.executeSelect(
               QueryGenerator.generateExistsQuery(
-                  ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params),
+                  ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, params),
               ROW_EXISTS_CONVERTER);
       return results != null && !results.isEmpty();
     } catch (SQLException e) {
@@ -802,47 +790,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
-  static int loadSchemaVersion(
-      DatasourceOperations datasourceOperations, boolean fallbackOnDoesNotExist) {
-    PreparedQuery query = QueryGenerator.generateVersionQuery();
-    try {
-      List<SchemaVersion> schemaVersion =
-          datasourceOperations.executeSelect(query, new SchemaVersion());
-      if (schemaVersion == null || schemaVersion.size() != 1) {
-        throw new RuntimeException("Failed to retrieve schema version");
-      }
-      return schemaVersion.getFirst().getValue();
-    } catch (SQLException e) {
-      if (fallbackOnDoesNotExist && datasourceOperations.isRelationDoesNotExist(e)) {
-        return SchemaVersion.MINIMUM.getValue();
-      }
-      LOGGER.error("Failed to load schema version due to {}", e.getMessage(), e);
-      throw new IllegalStateException("Failed to retrieve schema version", e);
-    }
-  }
-
-  static boolean entityTableExists(DatasourceOperations datasourceOperations) {
-    PreparedQuery query = QueryGenerator.generateEntityTableExistQuery();
-    try {
-      List<PolarisBaseEntity> entities =
-          datasourceOperations.executeSelect(query, new ModelEntity());
-      return entities != null && !entities.isEmpty();
-    } catch (SQLException e) {
-      if (datasourceOperations.isRelationDoesNotExist(e)) {
-        return false;
-      }
-      throw new IllegalStateException("Failed to check if Entities table exists", e);
-    }
-  }
-
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
-    if (this.schemaVersion < 2) {
-      return Optional.empty();
-    }
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> parentPath,
+          T entity) {
     if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count()
         > MAX_LOCATION_COMPONENTS) {
       return Optional.empty();
@@ -850,27 +804,39 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
     PreparedQuery query =
         QueryGenerator.generateOverlapQuery(
-            realmId, schemaVersion, entity.getCatalogId(), entity.getBaseLocation());
+            realmId, entity.getCatalogId(), entity.getBaseLocation());
     try {
-      var results = datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion));
-      if (!results.isEmpty()) {
-        StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
-        for (PolarisBaseEntity result : results) {
-          // JDBC materializes persisted rows as PolarisBaseEntity. Resolve the sibling location
-          // via PolarisEntityUtils instead of casting to LocationBasedEntity.
-          Optional<String> overlappingSiblingLocation =
-              PolarisEntityUtils.asLocationBasedEntity(PolarisEntity.of(result))
-                  .map(LocationBasedEntity::getBaseLocation)
-                  .filter(location -> location != null && !location.isBlank())
-                  .map(StorageLocation::of)
-                  .filter(
-                      potentialSiblingLocation ->
-                          entityLocation.isChildOf(potentialSiblingLocation)
-                              || potentialSiblingLocation.isChildOf(entityLocation))
-                  .map(StorageLocation::toString);
-          if (overlappingSiblingLocation.isPresent()) {
-            return Optional.of(overlappingSiblingLocation);
-          }
+      var results = datasourceOperations.executeSelect(query, new ModelEntity());
+      if (results.isEmpty()) {
+        return Optional.of(Optional.empty());
+      }
+      // The query matches every entity whose location is an ancestor of, equal to, or a descendant
+      // of the entity's location. The entity's own parent namespaces may match the ancestor terms:
+      // they always do when locations follow the namespace tree, as default locations do. Such an
+      // ancestor is not a sibling.
+      Set<Long> ancestorIds =
+          parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
+
+      StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
+      for (PolarisBaseEntity result : results) {
+        // JDBC materializes persisted rows as PolarisBaseEntity. Resolve the sibling location
+        // via PolarisEntityUtils instead of casting to LocationBasedEntity.
+        Optional<StorageLocation> resultLocation =
+            PolarisEntityUtils.asLocationBasedEntity(PolarisEntity.of(result))
+                .map(LocationBasedEntity::getBaseLocation)
+                .filter(location -> location != null && !location.isBlank())
+                .map(StorageLocation::of);
+        if (resultLocation.isEmpty()) {
+          continue;
+        }
+        boolean containsEntity = entityLocation.isChildOf(resultLocation.get());
+        boolean containedByEntity = resultLocation.get().isChildOf(entityLocation);
+        // An ancestor may contain the entity, but the entity may not sit at exactly its location.
+        if (containsEntity && !containedByEntity && ancestorIds.contains(result.getId())) {
+          continue;
+        }
+        if (containsEntity || containedByEntity) {
+          return Optional.of(Optional.of(resultLocation.get().toString()));
         }
       }
       return Optional.of(Optional.empty());

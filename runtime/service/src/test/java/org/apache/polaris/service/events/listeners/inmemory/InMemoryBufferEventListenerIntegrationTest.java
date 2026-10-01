@@ -157,10 +157,7 @@ class InMemoryBufferEventListenerIntegrationTest {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
     }
 
-    String query =
-        "SELECT * FROM polaris_schema.events WHERE realm_id = '"
-            + realm
-            + "' ORDER BY timestamp_ms";
+    String query = "SELECT * FROM events WHERE realm_id = '" + realm + "' ORDER BY timestamp_ms";
 
     List<EventEntity> events =
         await()

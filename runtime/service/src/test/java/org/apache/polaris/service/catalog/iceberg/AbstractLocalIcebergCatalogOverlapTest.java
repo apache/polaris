@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
@@ -317,6 +318,18 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         .isInstanceOf(AlreadyExistsException.class)
         .hasMessageContaining("Namespace already exists");
 
+    // Children at their default locations sit under the namespace's own location, as in #5521.
+    Namespace child = Namespace.of("overlap-recreate-parent", "child");
+    catalog().createNamespace(child);
+    catalog().buildTable(TableIdentifier.of(parent, "default-location-table"), SCHEMA).create();
+
+    assertThatThrownBy(() -> catalog().createNamespace(parent))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("Namespace already exists");
+    assertThatThrownBy(() -> catalog().createNamespace(child))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("Namespace already exists");
+
     // A new namespace at the existing namespace's location is still an overlap.
     Namespace intruder = Namespace.of("overlap-recreate-intruder");
     String parentLocation = STORAGE_LOCATION + "/overlap-recreate-parent";
@@ -326,6 +339,53 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
                     .createNamespace(
                         intruder,
                         Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, parentLocation)))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+  }
+
+  @Test
+  public void testDefaultLocationsUnderAncestorsAreNotOverlaps() {
+    // A namespace's default location is nested under its parent's location, and a table's default
+    // location is nested under its namespace's location. Those ancestors are not siblings and must
+    // never be reported as overlaps, regardless of which sibling-check implementation is active.
+    Namespace parent = Namespace.of("overlap-ancestor-parent");
+    catalog().createNamespace(parent);
+
+    Namespace child = Namespace.of("overlap-ancestor-parent", "child");
+    assertThatCode(() -> catalog().createNamespace(child)).doesNotThrowAnyException();
+
+    Namespace grandchild = Namespace.of("overlap-ancestor-parent", "child", "grandchild");
+    assertThatCode(() -> catalog().createNamespace(grandchild)).doesNotThrowAnyException();
+
+    // Being contained by an ancestor is fine; sitting at exactly an ancestor's location is not.
+    // Checked while the grandchild namespace is still empty, so the only entity that can conflict
+    // is the namespace itself.
+    TableIdentifier tableAtNamespaceLocation =
+        TableIdentifier.of(grandchild, "table-at-namespace-location");
+    String grandchildLocation = STORAGE_LOCATION + "/overlap-ancestor-parent/child/grandchild";
+    assertThatThrownBy(
+            () ->
+                catalog()
+                    .buildTable(tableAtNamespaceLocation, SCHEMA)
+                    .withLocation(grandchildLocation)
+                    .create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(grandchildLocation);
+
+    TableIdentifier table = TableIdentifier.of(grandchild, "table-at-default-location");
+    assertThatCode(() -> catalog().buildTable(table, SCHEMA).create()).doesNotThrowAnyException();
+
+    // Real overlaps between siblings are still rejected: a second namespace whose explicit
+    // location sits inside the child's default location.
+    Namespace intruder = Namespace.of("overlap-ancestor-parent", "intruder");
+    String childLocation = STORAGE_LOCATION + "/overlap-ancestor-parent/child/intruder";
+    assertThatThrownBy(
+            () ->
+                catalog()
+                    .createNamespace(
+                        intruder,
+                        Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, childLocation)))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }

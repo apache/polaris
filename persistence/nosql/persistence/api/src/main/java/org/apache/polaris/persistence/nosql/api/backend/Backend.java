@@ -27,6 +27,7 @@ import org.apache.polaris.ids.api.IdGenerator;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.PersistenceParams;
+import org.apache.polaris.persistence.nosql.api.exceptions.UnknownOperationResultException;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.jspecify.annotations.NonNull;
@@ -112,10 +113,25 @@ public interface Backend extends AutoCloseable {
   void scanBackend(
       @NonNull ReferenceScanCallback referenceConsumer, @NonNull ObjScanCallback objConsumer);
 
+  /**
+   * Create a reference if it does not already exist.
+   *
+   * @return {@code true} if the reference was created, {@code false} if it already exists
+   * @throws UnknownOperationResultException if the operation outcome is ambiguous; implementations
+   *     must throw this exception instead of returning {@code false}
+   */
   boolean createReference(@NonNull String realmId, @NonNull Reference newRef);
 
   void createReferences(@NonNull String realmId, @NonNull List<Reference> newRefs);
 
+  /**
+   * Update a reference when its pointer matches the expected pointer.
+   *
+   * @return {@code true} if the reference was updated, {@code false} if the expected pointer did
+   *     not match
+   * @throws UnknownOperationResultException if the operation outcome is ambiguous; implementations
+   *     must throw this exception instead of returning {@code false}
+   */
   boolean updateReference(
       @NonNull String realmId,
       @NonNull Reference updatedRef,
@@ -129,6 +145,13 @@ public interface Backend extends AutoCloseable {
 
   void delete(@NonNull String realmId, @NonNull Set<PersistId> ids);
 
+  /**
+   * Insert an object part if it does not already exist.
+   *
+   * @return {@code true} if the object part was inserted, {@code false} if it already exists
+   * @throws UnknownOperationResultException if the operation outcome is ambiguous; implementations
+   *     must throw this exception instead of returning {@code false}
+   */
   boolean conditionalInsert(
       @NonNull String realmId,
       String objTypeId,
@@ -137,6 +160,14 @@ public interface Backend extends AutoCloseable {
       @NonNull String versionToken,
       @NonNull byte[] serializedValue);
 
+  /**
+   * Update an object part when its version token matches the expected token.
+   *
+   * @return {@code true} if the object part was updated, {@code false} if the expected token did
+   *     not match
+   * @throws UnknownOperationResultException if the operation outcome is ambiguous; implementations
+   *     must throw this exception instead of returning {@code false}
+   */
   boolean conditionalUpdate(
       @NonNull String realmId,
       String objTypeId,
@@ -146,6 +177,14 @@ public interface Backend extends AutoCloseable {
       @NonNull String expectedToken,
       @NonNull byte[] serializedValue);
 
+  /**
+   * Delete an object part when its version token matches the expected token.
+   *
+   * @return {@code true} if the object part was deleted, {@code false} if the expected token did
+   *     not match
+   * @throws UnknownOperationResultException if the operation outcome is ambiguous; implementations
+   *     must throw this exception instead of returning {@code false}
+   */
   boolean conditionalDelete(
       @NonNull String realmId, @NonNull PersistId persistId, @NonNull String expectedToken);
 }

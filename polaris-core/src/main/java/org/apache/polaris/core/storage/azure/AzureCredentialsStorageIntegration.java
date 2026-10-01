@@ -104,11 +104,21 @@ public class AzureCredentialsStorageIntegration
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
-      @NonNull List<LocationGrant> grants,
-      @NonNull Optional<String> refreshEndpoint,
-      @NonNull CredentialVendingContext context) {
-    return buildCacheKey(
-        allowList(grants), readLocations(grants), writeLocations(grants), refreshEndpoint, context);
+      @NonNull List<LocationGrant> grants, @NonNull CredentialVendingContext context) {
+    return buildCacheKey(allowList(grants), readLocations(grants), writeLocations(grants), context);
+  }
+
+  @Override
+  protected StorageAccessConfig addExtraProperties(
+      @NonNull StorageAccessConfig accessConfig, @NonNull Optional<String> refreshEndpoint) {
+    return refreshEndpoint
+        .map(
+            endpoint ->
+                withExtraProperty(
+                    accessConfig,
+                    StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT,
+                    endpoint))
+        .orElse(accessConfig);
   }
 
   private static boolean allowList(List<LocationGrant> grants) {
@@ -136,7 +146,6 @@ public class AzureCredentialsStorageIntegration
       boolean allowList,
       @NonNull Set<String> locations,
       @NonNull Set<String> writeLocations,
-      @NonNull Optional<String> refreshEndpoint,
       @NonNull CredentialVendingContext context) {
     return AzureStorageCredentialCacheKey.of(
         context.realm().orElse(""),
@@ -144,7 +153,6 @@ public class AzureCredentialsStorageIntegration
         allowList,
         locations,
         writeLocations,
-        refreshEndpoint,
         defaultAzureCredential,
         realmConfig());
   }
@@ -157,8 +165,6 @@ public class AzureCredentialsStorageIntegration
     boolean allowList = key.allowedListAction();
     Set<String> locations = key.allowedReadLocations();
     Set<String> writeLocations = key.allowedWriteLocations();
-    Optional<String> refreshEndpoint = key.refreshCredentialsEndpoint();
-
     String loc =
         !writeLocations.isEmpty()
             ? writeLocations.stream().findAny().orElse(null)
@@ -268,7 +274,7 @@ public class AzureCredentialsStorageIntegration
         if (cause instanceof UnknownHostException unknownHost) {
           throw new IllegalArgumentException(
               String.format(
-                  "Unable to resolve Azure storage endpoint for account '%s' (%s)",
+                  "Host resolution failed while vending credentials for Azure storage account '%s': %s",
                   location.getStorageAccount(), unknownHost.getMessage()),
               ex);
         }
@@ -276,7 +282,7 @@ public class AzureCredentialsStorageIntegration
       throw ex;
     }
 
-    return toAccessConfig(sasToken, location, sanitizedEndTime.toInstant(), refreshEndpoint);
+    return toAccessConfig(sasToken, location, sanitizedEndTime.toInstant());
   }
 
   @VisibleForTesting
@@ -286,17 +292,10 @@ public class AzureCredentialsStorageIntegration
 
   @VisibleForTesting
   static StorageAccessConfig toAccessConfig(
-      String sasToken,
-      AzureLocation location,
-      Instant expiresAt,
-      Optional<String> refreshCredentialsEndpoint) {
+      String sasToken, AzureLocation location, Instant expiresAt) {
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
     handleAzureCredential(accessConfig, sasToken, location, expiresAt);
     accessConfig.expiresAt(expiresAt);
-    refreshCredentialsEndpoint.ifPresent(
-        endpoint -> {
-          accessConfig.put(StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
-        });
     return accessConfig.build();
   }
 

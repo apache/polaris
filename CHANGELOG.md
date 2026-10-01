@@ -53,6 +53,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
     WHERE location_without_scheme IS NOT NULL;
   ```
   H2 is unaffected.
+- Relational JDBC: The per-schema-version runtime fallback has been removed. The migration to schema
+  v6 is now **required** before starting this version of Polaris. The first request to any realm
+  whose recorded schema version does not match what the binary expects will fail fast with a clear
+  error message. See the [Relational JDBC metastore documentation] for the full upgrade path.
+
+[Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 
 - Relational JDBC: schema version 6 also declares `idx_grants_realm_grantee`,
   `idx_grants_realm_securable` and `idx_entities_catalog_id_id` on CockroachDB (see Fixes), which
@@ -101,6 +107,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The `PolarisPrincipal` interface has evolved. The `getAttributes()` method now returns 
   `org.apache.polaris.core.collection.ImmutableAttributeMap`. The attribute keys were moved to a
   new `org.apache.polaris.core.auth.PolarisPrincipalAttributes` class.
+- Relational JDBC: Per-version schema scripts (`schema-v1.sql` through `schema-v5.sql`) have been
+  replaced by a single `schema.sql` that is safe to run on every startup. Per-version runtime
+  compatibility fallbacks and the `SCHEMA_VERSION_FALL_BACK_ON_DNE` configuration key have been
+  removed. Operators must ensure their database is at the right schema version before upgrading to
+  this version.
 
 ### New Features
 
@@ -147,6 +158,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Table commits whose base metadata is already stale now fail before the new metadata file is
   written, saving an object-storage write and delete per conflict and returning the `409` to the
   client sooner.
+- `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
+  take the entity's resolved parent path, so implementations exclude the entity's own ancestors
+  without re-reading the parent chain from the metastore.
 
 ### Deprecations
 
@@ -154,11 +168,16 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
-- Azure: vending credentials for a storage account whose hostname does not resolve (for example,
-  a deleted or misnamed account) now returns `400 Bad Request` naming the account, instead of
-  `500 Internal Server Error`.
+- Azure: host-resolution failures while vending storage credentials now return `400 Bad Request`
+  with the underlying DNS error, instead of `500 Internal Server Error`.
+- Catalog federation: `connectionConfigInfo.properties` is now persisted and returned for `HADOOP`
+  and `HIVE` connection configurations. It was previously accepted by the management API but
+  silently dropped, so `GET /catalogs/{name}` never showed it.
 - Semantic models: a `datasets` field that is not a JSON array now returns `400 Bad Request`
   instead of being silently skipped, which bypassed every `dataset.source` check.
+- Conditional `loadTable` (`If-None-Match` → HTTP 304) no longer attaches a null
+  `LOAD_TABLE_RESPONSE` to the `AFTER_LOAD_TABLE` event. The persistence event listener also
+  skips null attribute values instead of failing while pruning them.
 - Re-creating an existing namespace now returns `409 Conflict` instead of `403 Forbidden` when
   `OPTIMIZED_SIBLING_CHECK` is on. Namespace creation checks for an existing namespace before
   validating locations, as table and view creation already do, so the existing namespace's own
@@ -196,6 +215,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   / `write.metadata.path` points at a bucket root without a trailing slash (e.g. `gs://bucket`).
   Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
   while building the access-boundary rules; GCS now handles it like the AWS integration.
+- Fixed `OPTIMIZED_SIBLING_CHECK` rejecting every entity created under a namespace. The location
+  index lookup returns the new entity's own parent namespaces, whose locations contain the new
+  location whenever locations follow the namespace tree, and each backend treated them as
+  overlapping siblings, so nested namespace creation and default-location table creation failed
+  with `403 Forbidden`. The JDBC, NoSQL, and in-memory implementations of `hasOverlappingSiblings`
+  now exclude the entity's ancestors (when they strictly contain it) before reporting an overlap,
+  matching the legacy sibling check.
+
 - Return HTTP 404 instead of 204 when a generic table or its catalog path disappears after resolution and before deletion.
 
 - Deleting a semantic model now returns HTTP 404 instead of HTTP 500 when the model or its

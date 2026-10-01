@@ -154,7 +154,7 @@ menu:
       parent: "community"
       url: "/community/community-guidelines"
       weight : 60
-    - name: "Security Report"
+    - name: "Security"
       parent: "community"
       url: "/community/security-report"
       weight: 70

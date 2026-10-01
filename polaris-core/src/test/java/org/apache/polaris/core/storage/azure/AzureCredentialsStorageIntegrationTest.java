@@ -68,9 +68,7 @@ public class AzureCredentialsStorageIntegrationTest {
     AzureLocation blobLocation =
         new AzureLocation("wasbs://container@myaccount." + AzureLocation.BLOB_ENDPOINT + "/path");
 
-    // ADLS location without refresh credentials endpoint.
-    StorageAccessConfig adlsNoRefreshResult =
-        toAccessConfig("sasToken", adlsLocation, expiresAt, Optional.empty());
+    StorageAccessConfig adlsNoRefreshResult = toAccessConfig("sasToken", adlsLocation, expiresAt);
     Assertions.assertThat(adlsNoRefreshResult.credentials()).hasSize(5);
     Assertions.assertThat(adlsNoRefreshResult.credentials())
         .containsKey("adls.sas-token.myaccount." + AzureLocation.ADLS_ENDPOINT);
@@ -88,29 +86,24 @@ public class AzureCredentialsStorageIntegrationTest {
         .doesNotContainKey(
             StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName());
 
-    // ADLS location with refresh credentials endpoint.
+    AzureCredentialsStorageIntegration integration =
+        new AzureCredentialsStorageIntegration(
+            AzureStorageConfigurationInfo.builder()
+                .addAllowedLocation("abfs://container@account.example/")
+                .tenantId("tenant-id")
+                .build(),
+            Mockito.mock(RealmConfig.class));
     StorageAccessConfig adlsWithRefreshResult =
-        toAccessConfig("sasToken", adlsLocation, expiresAt, Optional.of("endpoint/credentials"));
-    Assertions.assertThat(adlsWithRefreshResult.credentials()).hasSize(5);
+        integration.addExtraProperties(adlsNoRefreshResult, Optional.of("endpoint/credentials"));
     Assertions.assertThat(adlsWithRefreshResult.credentials())
-        .containsKey("adls.sas-token.myaccount");
-    Assertions.assertThat(adlsWithRefreshResult.credentials())
-        .containsKey("adls.sas-token-expires-at-ms.myaccount." + AzureLocation.ADLS_ENDPOINT);
-    Assertions.assertThat(adlsWithRefreshResult.credentials())
-        .containsKey("adls.sas-token.myaccount." + AzureLocation.ADLS_ENDPOINT);
-    Assertions.assertThat(adlsWithRefreshResult.credentials())
-        .containsEntry(StorageAccessProperty.AZURE_SAS_TOKEN_BARE.getPropertyName(), "sasToken");
-    Assertions.assertThat(adlsWithRefreshResult.credentials())
-        .containsEntry(StorageAccessProperty.AZURE_ACCOUNT_NAME.getPropertyName(), "myaccount");
-
+        .containsExactlyEntriesOf(adlsNoRefreshResult.credentials());
     Assertions.assertThat(adlsWithRefreshResult.extraProperties())
         .containsEntry(
             StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
             "endpoint/credentials");
 
     // Blob location.
-    StorageAccessConfig blobResult =
-        toAccessConfig("sasToken", blobLocation, expiresAt, Optional.empty());
+    StorageAccessConfig blobResult = toAccessConfig("sasToken", blobLocation, expiresAt);
     Assertions.assertThat(blobResult.credentials()).hasSize(5);
     Assertions.assertThat(blobResult.credentials()).containsKey("adls.sas-token.myaccount");
     Assertions.assertThat(blobResult.credentials())
@@ -174,7 +167,6 @@ public class AzureCredentialsStorageIntegrationTest {
             false,
             Set.of(location),
             Set.of(),
-            Optional.empty(),
             credential,
             realmConfigWithDuration(3600));
 
@@ -193,7 +185,8 @@ public class AzureCredentialsStorageIntegrationTest {
       Assertions.assertThatThrownBy(() -> AzureCredentialsStorageIntegration.compute(key))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage(
-              "Unable to resolve Azure storage endpoint for account 'account' (" + dnsError + ")")
+              "Host resolution failed while vending credentials for Azure storage account 'account': "
+                  + dnsError)
           .hasCause(sdkException);
     }
   }
@@ -229,7 +222,6 @@ public class AzureCredentialsStorageIntegrationTest {
             false,
             Set.of("wasbs://container@account.blob.core.windows.net/path"),
             Set.of(),
-            Optional.empty(),
             credential,
             realmConfig);
 
