@@ -18,7 +18,7 @@
 # under the License.
 #
 title: 'Apache Polaris Management Service OpenAPI Specification'
-linkTitle: 'Management API ↗'
+linkTitle: 'Management API'
 weight: 100
 params:
   show_page_toc: false
