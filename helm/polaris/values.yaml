@@ -34,7 +34,7 @@ image:
   pullPolicy: IfNotPresent
   # -- The image tag.
   # @section -- Image
-  tag: "latest"  # This tag will be replaced with the chart version at release time.
+  tag: "latest" # This tag will be replaced with the chart version at release time.
   # -- The path to the directory where the application.properties file, and other configuration
   # files, if any, should be mounted.
   # @section -- Image
@@ -50,7 +50,6 @@ image:
 imagePullSecrets: []
 #  - registry-creds
 
-
 serviceAccount:
   # -- Specifies whether a service account should be created.
   # @section -- Service Account
@@ -63,7 +62,6 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template.
   # @section -- Service Account
   name: ""
-
 
 # @schema additionalProperties: {type: string}
 # -- Annotations to apply to polaris pods.
@@ -178,7 +176,7 @@ service:
   # application will use for serving API requests. By default, it's 8181.
   # Note: port names must be unique and no more than 15 characters long.
   ports:
-    -  # @schema required
+    - # @schema required
       # -- The name of the port. Required.
       # @section -- Service
       name: polaris-http
@@ -189,13 +187,13 @@ service:
       # -- Number of the port to access on the pods targeted by the service.
       # If this is not specified or zero, the value of the 'port' field is used.
       # @section -- Service
-      targetPort: 0  # 8181
+      targetPort: 0 # 8181
       # -- The port on each node on which this service is exposed when type is NodePort or LoadBalancer.
       # Usually assigned by the system. If not specified or zero, a port will be allocated if this
       # Service requires one. If this field is specified when creating a Service which does not need
       # it, creation will fail.
       # @section -- Service
-      nodePort: 0  # 30000
+      nodePort: 0 # 30000
       # @schema enum: [TCP, UDP, SCTP]
       # -- The IP protocol for this port. Supports "TCP", "UDP", and "SCTP". Default is TCP.
       # @section -- Service
@@ -245,6 +243,10 @@ service:
   # -- Annotations to add to the service.
   # @section -- Service
   annotations: {}
+  # @schema additionalProperties: {type: string}
+  # -- Labels to add to the service.
+  # @section -- Service
+  labels: {}
 
 # Management service settings. These settings are used to configure liveness and readiness probes,
 # and to configure the dedicated headless service that will expose health checks and metrics, e.g.
@@ -261,7 +263,7 @@ managementService:
   # application will use for serving management requests. By default, it's 8182.
   # Note: port names must be unique and no more than 15 characters long.
   ports:
-    -  # @schema required
+    - # @schema required
       # -- The name of the management port. Required.
       # @section -- Management Service
       name: polaris-mgmt
@@ -273,13 +275,13 @@ managementService:
       # -- Number of the port to access on the pods targeted by the service.
       # If this is not specified or zero, the value of the 'port' field is used.
       # @section -- Management Service
-      targetPort: 0  # 8181
+      targetPort: 0 # 8181
       # -- The port on each node on which this service is exposed when type is NodePort or LoadBalancer.
       # Usually assigned by the system. If not specified or zero, a port will be allocated if this
       # Service requires one. If this field is specified when creating a Service which does not need
       # it, creation will fail.
       # @section -- Management Service
-      nodePort: 0  # 30000
+      nodePort: 0 # 30000
       # @schema enum: [TCP, UDP, SCTP]
       # -- The IP protocol for this port. Supports "TCP", "UDP", and "SCTP". Default is TCP.
       # @section -- Management Service
@@ -309,12 +311,16 @@ managementService:
   # -- Annotations to add to the service.
   # @section -- Management Service
   annotations: {}
+  # @schema additionalProperties: {type: string}
+  # -- Labels to add to the service.
+  # @section -- Service
+  labels: {}
 
 # Additional service definitions. All service definitions always select all Polaris pods. Use
 # this if you need to expose specific ports with different configurations, e.g. expose polaris-http
 # with an alternate LoadBalancer service instead of ClusterIP.
 extraServices:
-  -  # @schema required
+  - # @schema required
     # -- The suffix to append to the service name. Required. It must be unique. If it does not
     # start with a hyphen, a hyphen will be inserted between the base service name and the suffix.
     # @section -- Extra Services
@@ -326,28 +332,28 @@ extraServices:
     # @schema minItems: 1
     # The ports the extra service will listen on.
     ports:
-    -  # @schema required
-      # -- The name of the port. Required.
-      # @section -- Extra Services
-      name: polaris-extra
-      # @schema required
-      # -- The port the extra service listens on.
-      # @section -- Extra Services
-      port: 8183
-      # -- Number of the port to access on the pods targeted by the service.
-      # If this is not specified or zero, the value of the 'port' field is used.
-      # @section -- Extra Services
-      targetPort: 0  # 8181
-      # -- The port on each node on which this extra service is exposed when type is NodePort or LoadBalancer.
-      # Usually assigned by the system. If not specified or zero, a port will be allocated if this
-      # Service requires one. If this field is specified when creating a Service which does not need
-      # it, creation will fail.
-      # @section -- Extra Services
-      nodePort: 0  # 30000
-      # @schema enum: [TCP, UDP, SCTP]
-      # -- The IP protocol for this port. Supports "TCP", "UDP", and "SCTP". Default is TCP.
-      # @section -- Extra Services
-      protocol: TCP
+      - # @schema required
+        # -- The name of the port. Required.
+        # @section -- Extra Services
+        name: polaris-extra
+        # @schema required
+        # -- The port the extra service listens on.
+        # @section -- Extra Services
+        port: 8183
+        # -- Number of the port to access on the pods targeted by the service.
+        # If this is not specified or zero, the value of the 'port' field is used.
+        # @section -- Extra Services
+        targetPort: 0 # 8181
+        # -- The port on each node on which this extra service is exposed when type is NodePort or LoadBalancer.
+        # Usually assigned by the system. If not specified or zero, a port will be allocated if this
+        # Service requires one. If this field is specified when creating a Service which does not need
+        # it, creation will fail.
+        # @section -- Extra Services
+        nodePort: 0 # 30000
+        # @schema enum: [TCP, UDP, SCTP]
+        # -- The IP protocol for this port. Supports "TCP", "UDP", and "SCTP". Default is TCP.
+        # @section -- Extra Services
+        protocol: TCP
     # -- The cluster IP for the extra service.
     # @section -- Extra Services
     clusterIP: ""
@@ -371,6 +377,10 @@ extraServices:
     # -- Annotations to add to the extra service.
     # @section -- Extra Services
     annotations: {}
+    # @schema additionalProperties: {type: string}
+    # -- Labels to add to the service.
+    # @section -- Service
+    labels: {}
 
 # Polaris Ingress settings.
 # These settings generate an Ingress resource that routes external traffic to the Polaris service
@@ -390,19 +400,18 @@ ingress:
   # @schema additionalProperties: {type: string}
   # -- Annotations to add to the ingress.
   # @section -- Ingress
-  annotations: {
-    # nginx.ingress.kubernetes.io/upstream-hash-by: "$binary_remote_addr"
-  }
+  annotations: {}
+  # nginx.ingress.kubernetes.io/upstream-hash-by: "$binary_remote_addr"
   # A list of host paths used to configure the ingress.
   hosts:
-    -  # @schema required
+    - # @schema required
       # -- The host name. Required.
       # @section -- Ingress
       host: chart-example.local
       # @schema required; minItems: 1
       # A list of paths used to configure the ingress.
       paths:
-        -  # -- The path to match.
+        - # -- The path to match.
           # @section -- Ingress
           path: /
           # @schema enum: [Exact, Prefix, ImplementationSpecific]
@@ -411,7 +420,7 @@ ingress:
           pathType: Prefix
   # TLS termination configuration.
   tls:
-    -  # @schema required
+    - # @schema required
       # -- The name of the TLS secret to use to terminate TLS traffic on port 443. Required.
       # @section -- Ingress
       secretName: ""
@@ -440,7 +449,7 @@ gateway:
   # @schema minItems: 1
   # Gateway listeners configuration.
   listeners:
-    -  # @schema required
+    - # @schema required
       # -- The name of the listener. Required.
       # @section -- Gateway
       name: "http"
@@ -453,7 +462,7 @@ gateway:
       # -- Hostname specifies the virtual hostname to match for protocol types that define this
       # concept. When unspecified, all hostnames are matched.
       # @section -- Gateway
-      hostname: ""  # *.example.local
+      hostname: "" # *.example.local
       # -- AllowedRoutes defines the types of routes that MAY be attached to a Listener and the
       # trusted namespaces where those Route resources MAY be present.
       # @section -- Gateway
@@ -505,8 +514,7 @@ httproute:
 # choice for the user. This also increases chances charts run on environments with little
 # resources, such as Minikube. See [Resource Management](https://polaris.apache.org/in-dev/unreleased/helm-chart/production/#resource-management) for production recommendations.
 # @section -- Resources and Autoscaling
-resources:
-  {}
+resources: {}
   # limits:
   #   cpu: 100m
   #   memory: 128Mi
@@ -540,8 +548,7 @@ priorityClassName: ""
 # @schema additionalProperties: {type: string}
 # -- Node labels which must match for the polaris pod to be scheduled on that node. See [Node Selector](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector).
 # @section -- Scheduling
-nodeSelector:
-  {}
+nodeSelector: {}
   # kubernetes.io/os: linux
 
 # @schema item: object
@@ -748,8 +755,7 @@ metrics:
   # @schema additionalProperties: {type: string}
   # -- Additional tags (dimensional labels) to add to the metrics.
   # @section -- Observability
-  tags:
-    {}
+  tags: {}
     # service: polaris
     # environment: production
 
@@ -840,7 +846,7 @@ logging:
       # suffix ends with .gz or .zip, the rotated files will also be compressed using the
       # corresponding algorithm.
       # @section -- Logging
-      fileSuffix: ~  # .yyyy-MM-dd.gz
+      fileSuffix: ~ # .yyyy-MM-dd.gz
     # The log storage configuration. A persistent volume claim will be created using these settings.
     storage:
       # -- The storage class name of the persistent volume claim to create.
@@ -919,7 +925,7 @@ features:
 persistence:
   # -- The type of persistence to use. Three built-in types are supported: in-memory, relational-jdbc, and nosql (beta).
   # @section -- Persistence
-  type: in-memory  # relational-jdbc, nosql
+  type: in-memory # relational-jdbc, nosql
   # The configuration for the relational-jdbc persistence manager.
   relationalJdbc:
     # @schema additionalProperties: {type: string}
@@ -1017,7 +1023,7 @@ authentication:
     # symmetric-key. Only relevant when using internal (or mixed) authentication. When using
     # external authentication, the token broker is not used.
     # @section -- Authentication
-    type: rsa-key-pair  # symmetric-key
+    type: rsa-key-pair # symmetric-key
     # -- Maximum token generation duration (e.g., PT1H for 1 hour).
     # @section -- Authentication
     maxTokenGeneration: PT1H
@@ -1068,7 +1074,7 @@ oidc:
   # -- The authentication server URL. Must be provided if at least one realm is configured for external
   # authentication.
   # @section -- OIDC
-  authServeUrl: ""  # https://auth.example.com/realms/polaris
+  authServeUrl: "" # https://auth.example.com/realms/polaris
   # The client to use when authenticating with the authentication server.
   client:
     # -- The client ID to use when contacting the authentication server's introspection endpoint in
@@ -1114,7 +1120,7 @@ oidc:
     # -- A regular expression that matches the role names in the identity. Only roles that match this
     # regex will be included in the Polaris-specific roles.
     # @section -- OIDC
-    filter: ""  # ^(?!profile$|email$).*
+    filter: "" # ^(?!profile$|email$).*
     # @schema item: object
     # -- A list of regex mappings that will be applied to each role name in the identity. This can
     # be used to transform the role names in the identity into role names as expected by Polaris.
@@ -1148,12 +1154,12 @@ cors:
   exposedHeaders: []
   # -- The `Access-Control-Max-Age` response header value indicating how long the results of a pre-flight request can be cached. Must be a valid duration.
   # @section -- CORS
-  accessControlMaxAge: ""  # PT10M
+  accessControlMaxAge: "" # PT10M
   # @schema type:[boolean, null]
   # -- (bool) The `Access-Control-Allow-Credentials` response header.
   # The value of this header will default to `true` if `allowedOrigins` property is set and there is a match with the precise `Origin` header.
   # @section -- CORS
-  accessControlAllowCredentials: ~  # true
+  accessControlAllowCredentials: ~ # true
 
 # Polaris rate limiter configuration.
 rateLimiter:
@@ -1175,10 +1181,10 @@ rateLimiter:
 tasks:
   # -- The maximum number of concurrent tasks that can be executed at the same time. If unspecified or zero, defaults to the number of available cores.
   # @section -- Tasks
-  maxConcurrentTasks: 0  # 100
+  maxConcurrentTasks: 0 # 100
   # -- The maximum number of tasks that can be queued up for execution. If unspecified or zero, defaults to Integer.MAX_VALUE.
   # @section -- Tasks
-  maxQueuedTasks: 0  # 1000
+  maxQueuedTasks: 0 # 1000
 
 # @schema type: object
 # -- Configuration for Polaris maintenance tasks running as Kubernetes CronJobs.
@@ -1267,7 +1273,7 @@ maintenance:
     pullPolicy: IfNotPresent
     # -- The image tag.
     # @section -- Maintenance
-    tag: "latest"  # This tag will be replaced with the chart version at release time.
+    tag: "latest" # This tag will be replaced with the chart version at release time.
 
   # @schema additionalProperties: {type: object, required: [enabled, schedule]}
   # -- Define maintenance CronJobs.
@@ -1294,8 +1300,7 @@ maintenance:
       # is typically not suitable for short-lived maintenance jobs. Configure
       # resources explicitly when needed. Unset by default.
       # @section -- Maintenance
-      resources:
-        {}
+      resources: {}
         # limits:
         #   cpu: 100m
         #   memory: 128Mi
