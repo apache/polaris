@@ -107,6 +107,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   every newly started process to treat the realm as not bootstrapped (failing all requests,
   including the token endpoint), and re-running bootstrap could not cleanly repair it. It is now
   protected like the `service_admin` and `catalog_admin` roles.
+- Dropped-table purge on NoSQL no longer fails when a manifest or metadata path is longer than
+  the 500-byte index-key limit. Child cleanup task names are a short kind, the parent task id,
+  and a UUID. The full paths stay in the task payload.
 - Deleting an external catalog now also deletes the inline connection secrets (OAuth client secret
   or bearer token) that were written to the `UserSecretsManager` when the catalog was created.
   Previously they stayed in the secrets store with no entity referencing them.
