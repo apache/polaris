@@ -157,6 +157,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   scheme stripping (e.g. `s3://bucket/path` → `//bucket/path`). `//` and `///` are retained so
   scheme-root ancestors remain visible to the overlap check.
 - Honored pagination for policy API with applicable-policies endpoint excluded.
+- The NoSQL metastore now honors `ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG`: dropping a
+  non-empty passthrough-facade (federated) catalog previously always failed with NoSQL persistence,
+  even when the flag was enabled.
 
 ### Commits
 

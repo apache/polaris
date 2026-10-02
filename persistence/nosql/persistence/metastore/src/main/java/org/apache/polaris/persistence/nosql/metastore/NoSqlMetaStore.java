@@ -404,7 +404,10 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   DropEntityResult dropEntity(
-      PolarisBaseEntity entityToDrop, Map<String, String> cleanupProperties, boolean cleanup) {
+      PolarisBaseEntity entityToDrop,
+      Map<String, String> cleanupProperties,
+      boolean cleanup,
+      boolean dropNonEmptyCatalog) {
     requireNonNull(entityToDrop);
 
     LOGGER.atDebug().addArgument(() -> logEntityInfo(entityToDrop)).log("drop entity: {}");
@@ -412,7 +415,9 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     var results =
         performEntityMutations(
             updateKeyForCatalogAndEntityType(entityToDrop),
-            List.of(new EntityUpdate(EntityUpdate.Operation.DELETE, entityToDrop, cleanup)));
+            List.of(
+                new EntityUpdate(
+                    EntityUpdate.Operation.DELETE, entityToDrop, cleanup, dropNonEmptyCatalog)));
 
     if (cleanup && PolarisEntityType.POLICY == entityToDrop.getType()) {
       cleanup = false;
