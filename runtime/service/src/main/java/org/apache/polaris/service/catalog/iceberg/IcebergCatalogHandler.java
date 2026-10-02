@@ -1985,6 +1985,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     };
   }
 
+  /**
+   * One filtering candidate: the entity, the path it resolves under, and its visibility request.
+   */
+  private record Candidate<T>(T entity, ResolverPath path, AuthorizationRequest request) {}
+
   private <T> List<T> filterEntities(
       List<T> entities,
       Function<T, ResolverPath> toResolverPath,
@@ -1993,40 +1998,51 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (entities.isEmpty()) {
       return entities;
     }
-    PolarisResolutionManifest filterManifest = newResolutionManifest();
-    List<ResolverPath> paths = new ArrayList<>(entities.size());
+    var principal = polarisPrincipal();
+    PolarisAuthorizableOperation entityOp = entityVisibilityOperation(op);
+    List<Candidate<T>> candidates = new ArrayList<>(entities.size());
     for (T entity : entities) {
-      ResolverPath path = toResolverPath.apply(entity);
-      paths.add(path);
-      filterManifest.addPath(path);
+      candidates.add(
+          new Candidate<>(
+              entity,
+              toResolverPath.apply(entity),
+              new AuthorizationRequest(
+                  principal,
+                  List.of(
+                      new SingleTargetAuthorizationIntent(entityOp, toSecurable.apply(entity))))));
     }
-    filterManifest.resolveAll();
 
+    PolarisResolutionManifest filterManifest = newResolutionManifest();
+    candidates.forEach(candidate -> filterManifest.addPath(candidate.path()));
     AuthorizationState authzState = new AuthorizationState(filterManifest);
 
-    var principal = polarisPrincipal();
-    List<T> resolvable = new ArrayList<>();
-    List<AuthorizationRequest> requests = new ArrayList<>();
-    int pathIndex = 0;
-    for (T entity : entities) {
-      // Look the path up under the same key addPath registered it with, so the lookup key
-      // cannot drift from the registered one.
-      ResolverPath path = paths.get(pathIndex++);
-      if (filterManifest.getResolvedPath(ResolvedPathKey.of(path), true) != null) {
-        resolvable.add(entity);
-        requests.add(
-            new AuthorizationRequest(
-                principal,
-                List.of(
-                    new SingleTargetAuthorizationIntent(
-                        entityVisibilityOperation(op), toSecurable.apply(entity)))));
-      }
-    }
+    // Requests are built before resolution so the authorizer decides what to resolve, exactly as
+    // in the single-request path.
+    authorizer()
+        .resolveAuthorizationInputs(
+            authzState, candidates.stream().map(Candidate::request).toList());
 
-    List<AuthorizationDecision> decisions = authorizer().authorize(authzState, requests);
+    // Look each path up under the same key addPath registered it with, so the lookup key cannot
+    // drift from the registered one. Unresolvable candidates (e.g. deleted between list and
+    // filter) are dropped silently.
+    List<Candidate<T>> resolvable =
+        candidates.stream()
+            .filter(
+                candidate ->
+                    filterManifest.getResolvedPath(ResolvedPathKey.of(candidate.path()), true)
+                        != null)
+            .toList();
+
+    List<AuthorizationDecision> decisions =
+        authorizer().authorize(authzState, resolvable.stream().map(Candidate::request).toList());
+    Preconditions.checkState(
+        decisions.size() == resolvable.size(),
+        "Authorizer returned %s decisions for %s requests",
+        decisions.size(),
+        resolvable.size());
     return IntStream.range(0, resolvable.size())
         .filter(i -> decisions.get(i).isAllowed())
-        .mapToObj(resolvable::get)
+        .mapToObj(i -> resolvable.get(i).entity())
         .toList();
   }
 
