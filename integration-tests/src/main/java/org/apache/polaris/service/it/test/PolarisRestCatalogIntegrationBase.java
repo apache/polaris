@@ -116,6 +116,7 @@ import org.apache.polaris.service.it.env.RestCatalogConfig;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
+import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -2862,6 +2863,25 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
   }
 
+  // Valid url-safe base64 that is not a serialized page token, plain text, and not base64 at all.
+  // Client input, so the server must answer 400, not 500.
+  @ParameterizedTest
+  @ValueSource(strings = {"AAAA", "aGVsbG8gd29ybGQ=", "%%%not-base64%%%"})
+  public void testMalformedPageTokenIsBadRequest(String badToken) {
+    try (Response response =
+        catalogApi
+            .request(
+                "v1/{cat}/namespaces",
+                Map.of("cat", currentCatalogName),
+                Map.of("pageToken", badToken, "pageSize", "5"))
+            .get()) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
+          .extracting(r -> r.readEntity(ErrorResponse.class))
+          .returns("Invalid page token", ErrorResponse::message);
+    }
+  }
+
   @Test
   public void testPaginatedListTables() {
     String prefix = "testPaginatedListTables";
@@ -2940,6 +2960,36 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     nsResponse = catalogApi.listNamespaces(currentCatalogName, namespace, "fake-token", null);
     assertThat(nsResponse.namespaces()).hasSize(5);
     assertThat(nsResponse.nextPageToken()).isNull();
+  }
+
+  @Test
+  public void testPaginatedListGenericTables() {
+    String prefix = "testPaginatedListGenericTables";
+    Namespace namespace = Namespace.of(prefix);
+    restCatalog.createNamespace(namespace);
+    for (int i = 0; i < 30; i++) {
+      genericTableApi.createGenericTable(
+          currentCatalogName, TableIdentifier.of(namespace, prefix + i), "format", Map.of());
+    }
+
+    try {
+      assertThat(genericTableApi.listGenericTables(currentCatalogName, namespace)).hasSize(30);
+      for (var pageSize : List.of(1, 2, 3, 9, 10, 11, 19, 20, 21, 25, 2000)) {
+        int total = 0;
+        String pageToken = null;
+        do {
+          ListGenericTablesResponse response =
+              genericTableApi.listGenericTables(
+                  currentCatalogName, namespace, pageToken, String.valueOf(pageSize));
+          assertThat(response.getIdentifiers().size()).isLessThanOrEqualTo(pageSize);
+          total += response.getIdentifiers().size();
+          pageToken = response.getNextPageToken();
+        } while (pageToken != null);
+        assertThat(total).as("Total paginated results for pageSize = " + pageSize).isEqualTo(30);
+      }
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
   }
 
   @ParameterizedTest

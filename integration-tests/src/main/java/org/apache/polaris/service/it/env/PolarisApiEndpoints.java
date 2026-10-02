@@ -21,6 +21,7 @@ package org.apache.polaris.service.it.env;
 import java.io.Serializable;
 import java.net.URI;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -30,30 +31,39 @@ import java.util.stream.Collectors;
  */
 public final class PolarisApiEndpoints implements Serializable {
 
-  private final URI catalogApiEndpoint;
-  private final URI managementApiEndpoint;
-  private final URI openLineageApiEndpoint;
+  private final Supplier<URI> baseUriSupplier;
   private final String realmId;
   private final Map<String, String> headers;
+  private URI baseUri;
 
   public PolarisApiEndpoints(URI baseUri, String realmId, Map<String, String> headers) {
-    this.catalogApiEndpoint = appendPath(baseUri, "api/catalog");
-    this.managementApiEndpoint = appendPath(baseUri, "api/management");
-    this.openLineageApiEndpoint = appendPath(baseUri, "api/openlineage/v1");
+    this(() -> baseUri, realmId, headers);
+  }
+
+  public PolarisApiEndpoints(
+      Supplier<URI> baseUriSupplier, String realmId, Map<String, String> headers) {
+    this.baseUriSupplier = baseUriSupplier;
     this.realmId = realmId;
     this.headers = headers;
   }
 
+  private URI baseUri() {
+    if (baseUri == null) {
+      baseUri = baseUriSupplier.get();
+    }
+    return baseUri;
+  }
+
   public URI catalogApiEndpoint() {
-    return catalogApiEndpoint;
+    return appendPath(baseUri(), "api/catalog");
   }
 
   public URI managementApiEndpoint() {
-    return managementApiEndpoint;
+    return appendPath(baseUri(), "api/management");
   }
 
   public URI openLineageApiEndpoint() {
-    return openLineageApiEndpoint;
+    return appendPath(baseUri(), "api/openlineage/v1");
   }
 
   public String realmId() {

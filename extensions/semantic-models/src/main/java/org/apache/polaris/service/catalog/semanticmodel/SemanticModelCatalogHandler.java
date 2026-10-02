@@ -25,8 +25,6 @@ import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -46,10 +44,8 @@ import org.apache.polaris.service.catalog.semanticmodel.types.UpdateSemanticMode
  * Authorizes and delegates Apache Ossie semantic-model operations to {@link SemanticModelCatalog}.
  * Mirrors {@link org.apache.polaris.service.catalog.policy.PolicyCatalogHandler}.
  *
- * <p>Authorization is intentionally minimal in this phase: operations are gated by the coarse
- * {@code CATALOG_MANAGE_CONTENT} privilege (see {@code RbacOperationSemantics}). The dedicated
- * {@code SEMANTIC_MODEL_*} privilege matrix, the write-time source-access check, and the
- * independent/propagated read-time enforcement modes land in the authorization phase.
+ * <p>Operations use dedicated {@code SEMANTIC_MODEL_*} privileges. Source-access authorization is
+ * deferred.
  */
 @PolarisImmutable
 @SuppressWarnings("immutables:incompat")
@@ -86,8 +82,12 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_SEMANTIC_MODEL;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
-    return semanticModelCatalog.listSemanticModels(namespace, pageRequest);
+    PageToken pageRequest =
+        PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
+    ListSemanticModelsResponse response =
+        semanticModelCatalog.listSemanticModels(namespace, pageRequest);
+    rejectIncompleteListing(pageToken, pageSize, response.getNextPageToken());
+    return response;
   }
 
   public LoadSemanticModelResponse loadSemanticModel(SemanticModelIdentifier identifier) {
@@ -108,13 +108,6 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_SEMANTIC_MODEL;
     authorizeBasicSemanticModelOperationOrThrow(op, identifier);
     semanticModelCatalog.dropSemanticModel(identifier);
-  }
-
-  private boolean shouldDecodeToken() {
-    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
-    return catalogEntity == null
-        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED)
-        : realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED, catalogEntity);
   }
 
   private void authorizeBasicSemanticModelOperationOrThrow(

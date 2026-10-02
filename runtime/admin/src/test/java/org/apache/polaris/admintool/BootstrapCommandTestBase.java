@@ -101,6 +101,28 @@ public abstract class BootstrapCommandTestBase {
     assertThat(result.getOutput()).contains("realm: realm1 root principal credentials: ");
   }
 
+  @Test
+  public void testRealmWithoutCredentialsIsRefused(QuarkusMainLauncher launcher) {
+    LaunchResult result =
+        launcher.launch(
+            "bootstrap", "-r", "realm1", "-r", "realm2", "-c", "realm1,client1d,s3cr3t");
+    assertThat(result.exitCode()).isNotEqualTo(0);
+    assertThat(result.getErrorOutput()).contains("No credentials were supplied for realm(s)");
+    assertThat(result.getErrorOutput()).contains("realm2");
+    assertThat(result.getOutput()).doesNotContain("successfully bootstrapped");
+  }
+
+  @Test
+  public void testMisspelledCredentialRealmIsRefused(QuarkusMainLauncher launcher) {
+    LaunchResult result =
+        launcher.launch("bootstrap", "-r", "realm1", "-c", "realm2,client1d,s3cr3t");
+    assertThat(result.exitCode()).isNotEqualTo(0);
+    assertThat(result.getErrorOutput())
+        .contains("No credentials were supplied for realm(s)")
+        .contains("realm1");
+    assertThat(result.getOutput()).doesNotContain("successfully bootstrapped");
+  }
+
   private static Path copyResource(Path temp, String resource) throws IOException {
     URL source = Objects.requireNonNull(BootstrapCommandTestBase.class.getResource(resource));
     Path dest = temp.resolve(resource);

@@ -19,15 +19,26 @@
 package org.apache.polaris.service.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
+import org.apache.polaris.service.auth.AuthenticationConfiguration;
+import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
+import org.apache.polaris.service.auth.AuthenticationType;
+import org.apache.polaris.service.auth.CredentialMode;
+import org.apache.polaris.service.auth.external.OidcConfiguration;
+import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,6 +83,294 @@ class ProductionReadinessChecksTest {
               assertThat(error.offendingProperty()).isEqualTo(REFLECTION_FREE_SERIALIZERS_PROPERTY);
               assertThat(error.severe()).isTrue();
             });
+  }
+
+  @Test
+  void externalPrincipalsWithExternalTypeReturnsOk() {
+    ProductionReadinessCheck result =
+        checks.checkExternalPrincipals(
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void externalPrincipalsDisabledReturnsOk() {
+    ProductionReadinessCheck result =
+        checks.checkExternalPrincipals(
+            authenticationConfig(AuthenticationType.INTERNAL, CredentialMode.INTERNAL));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void externalPrincipalsWithInternalAuthenticationReturnsSevereError() {
+    ProductionReadinessCheck result =
+        checks.checkExternalPrincipals(
+            authenticationConfig(AuthenticationType.INTERNAL, CredentialMode.EXTERNAL));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.authentication.credential-mode");
+              assertThat(error.severe()).isTrue();
+            });
+  }
+
+  @ParameterizedTest
+  @EnumSource(AuthenticationType.class)
+  void internalPrincipalsWithInternalAuthorizerReturnsOk(AuthenticationType type) {
+    ProductionReadinessCheck result =
+        checks.checkExternalPrincipalsAuthorizer(
+            authenticationConfig(type, CredentialMode.INTERNAL), authorizationConfig("internal"));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void externalPrincipalsWithNonInternalAuthorizerReturnsOk() {
+    ProductionReadinessCheck result =
+        checks.checkExternalPrincipalsAuthorizer(
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
+            authorizationConfig("ranger"));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void externalPrincipalsWithInternalAuthorizerReturnsSevereError() {
+    ProductionReadinessCheck result =
+        checks.checkExternalPrincipalsAuthorizer(
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
+            authorizationConfig("internal"));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.authentication.credential-mode");
+              assertThat(error.severe()).isTrue();
+            });
+  }
+
+  @Test
+  void oidcMappingWithInternalAuthTypeReturnsOk() {
+    // OIDC is not involved; the check should be skipped regardless of claim-path config
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.INTERNAL, CredentialMode.INTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.empty(),
+                Optional.empty()));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void oidcMappingExternalModeWithNameClaimPathReturnsOk() {
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.of("preferred_username"),
+                Optional.empty()));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void oidcMappingExternalModeWithoutNameClaimPathReturnsSevereError() {
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.empty(),
+                Optional.empty()));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.oidc.principal-mapper.name-claim-path");
+              assertThat(error.severe()).isTrue();
+            });
+  }
+
+  @Test
+  void oidcMappingExternalModeWithIdClaimPathPresentReturnsWarning() {
+    // name-claim-path is set (required) but id-claim-path is also set (ignored in external mode)
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.of("preferred_username"),
+                Optional.of("sub")));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.oidc.principal-mapper.id-claim-path");
+              assertThat(error.severe()).isFalse();
+            });
+  }
+
+  @Test
+  void oidcMappingInternalModeWithNameClaimPathReturnsOk() {
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.INTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.of("preferred_username"),
+                Optional.empty()));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void oidcMappingInternalModeWithIdClaimPathReturnsOk() {
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.INTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.empty(),
+                Optional.of("sub")));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void oidcMappingInternalModeWithoutAnyPathReturnsSevereError() {
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.INTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.empty(),
+                Optional.empty()));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.oidc.principal-mapper.name-claim-path");
+              assertThat(error.severe()).isTrue();
+            });
+  }
+
+  @Test
+  void oidcMappingNamedTenantWithoutNameClaimPathReturnsWarningNotSevere() {
+    // Named tenants are only activated at runtime; misconfiguration is a warning, not a blocker
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
+            oidcConfig("idp1", "default", Optional.empty(), Optional.empty()));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.oidc.idp1.principal-mapper.name-claim-path");
+              assertThat(error.severe()).isFalse();
+            });
+  }
+
+  @Test
+  void oidcMappingWithCustomMapperTypeSkipsValidation() {
+    // Custom mappers handle their own name resolution; no check is applied
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "custom",
+                Optional.empty(),
+                Optional.empty()));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void oidcMappingMixedAuthTypeExternalModeWithoutNameClaimPathReturnsSevereError() {
+    ProductionReadinessCheck result =
+        checks.checkOidcPrincipalMapping(
+            authenticationConfig(AuthenticationType.MIXED, CredentialMode.EXTERNAL),
+            oidcConfig(
+                OidcConfiguration.DEFAULT_TENANT_KEY,
+                "default",
+                Optional.empty(),
+                Optional.empty()));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.oidc.principal-mapper.name-claim-path");
+              assertThat(error.severe()).isTrue();
+            });
+  }
+
+  private static OidcConfiguration oidcConfig(
+      String tenantId,
+      String mapperType,
+      Optional<String> nameClaimPath,
+      Optional<String> idClaimPath) {
+    OidcTenantConfiguration.PrincipalMapper pm =
+        mock(OidcTenantConfiguration.PrincipalMapper.class);
+    lenient().when(pm.type()).thenReturn(mapperType);
+    lenient().when(pm.nameClaimPath()).thenReturn(nameClaimPath);
+    lenient().when(pm.idClaimPath()).thenReturn(idClaimPath);
+    OidcTenantConfiguration tenant = mock(OidcTenantConfiguration.class);
+    lenient().when(tenant.principalMapper()).thenReturn(pm);
+    OidcConfiguration config = mock(OidcConfiguration.class);
+    lenient().when(config.tenants()).thenReturn(Map.of(tenantId, tenant));
+    return config;
+  }
+
+  private static AuthorizationConfiguration authorizationConfig(String type) {
+    AuthorizationConfiguration config = mock(AuthorizationConfiguration.class);
+    lenient().when(config.type()).thenReturn(type);
+    return config;
+  }
+
+  private static AuthenticationConfiguration authenticationConfig(
+      AuthenticationType type, CredentialMode mode) {
+    AuthenticationRealmConfiguration realmConfig = mock(AuthenticationRealmConfiguration.class);
+    lenient().when(realmConfig.type()).thenReturn(type);
+    lenient().when(realmConfig.credentialMode()).thenReturn(mode);
+    AuthenticationConfiguration config = mock(AuthenticationConfiguration.class);
+    lenient()
+        .when(config.realms())
+        .thenReturn(Map.of(AuthenticationConfiguration.DEFAULT_REALM_KEY, realmConfig));
+    return config;
   }
 
   private static Config configWithReflectionFreeSerializers(String value) {

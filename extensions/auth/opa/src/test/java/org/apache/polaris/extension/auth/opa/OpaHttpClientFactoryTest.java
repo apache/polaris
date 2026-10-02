@@ -19,13 +19,18 @@
 package org.apache.polaris.extension.auth.opa;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.file.Path;
 import java.time.Duration;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** Unit tests for OpaHttpClientFactory. */
 public class OpaHttpClientFactoryTest {
+
+  @TempDir Path tempDir;
 
   @Test
   void testCreateHttpClientWithHttpUrl() throws Exception {
@@ -45,5 +50,19 @@ public class OpaHttpClientFactoryTest {
     try (CloseableHttpClient client = OpaHttpClientFactory.createHttpClient(httpConfig)) {
       assertThat(client).isNotNull();
     }
+  }
+
+  @Test
+  void testCreateHttpClientFailsForMissingTrustStore() {
+    OpaAuthorizationConfig.HttpConfig httpConfig =
+        ImmutableHttpConfig.builder()
+            .timeout(Duration.ofSeconds(5))
+            .verifySsl(true)
+            .trustStorePath(tempDir.resolve("missing-truststore.jks"))
+            .build();
+
+    assertThatThrownBy(() -> OpaHttpClientFactory.createHttpClient(httpConfig))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("Failed to create HTTP client for OPA communication");
   }
 }

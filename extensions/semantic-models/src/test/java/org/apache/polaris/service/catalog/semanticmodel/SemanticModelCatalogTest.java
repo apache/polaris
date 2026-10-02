@@ -81,7 +81,7 @@ class SemanticModelCatalogTest {
   private static final SemanticModelIdentifier IDENTIFIER =
       SemanticModelIdentifier.builder().setNamespace(List.of("sales")).setName(MODEL).build();
   private static final String VALID_MODEL_JSON =
-      "[{\"name\":\"m\",\"datasets\":[{\"name\":\"d\",\"source\":\"sales.store_sales\"}]}]";
+      "{\"name\":\"m\",\"datasets\":[{\"name\":\"d\",\"source\":\"sales.store_sales\"}]}";
 
   private PolarisResolutionManifestCatalogView view;
   private PolarisMetaStoreManager metaStoreManager;
@@ -119,7 +119,7 @@ class SemanticModelCatalogTest {
 
   private SemanticModelDocument doc(String semanticModelJson) {
     return SemanticModelDocument.builder()
-        .setVersion("0.1.1")
+        .setVersion("0.2.0.dev0")
         .setSemanticModel(semanticModelJson)
         .build();
   }
@@ -143,7 +143,7 @@ class SemanticModelCatalogTest {
   private void stubExistingModel(int entityVersion) {
     SemanticModelEntity stored =
         new SemanticModelEntity.Builder(NS, MODEL)
-            .setSpecVersion("0.1.1")
+            .setSpecVersion("0.2.0.dev0")
             .setContent(VALID_MODEL_JSON)
             .setId(10L)
             .setCatalogId(CATALOG_ID)
@@ -167,7 +167,7 @@ class SemanticModelCatalogTest {
         catalog.createSemanticModel(IDENTIFIER, doc(VALID_MODEL_JSON));
 
     assertThat(response.getDocument().getSemanticModel()).isEqualTo(VALID_MODEL_JSON);
-    assertThat(response.getDocument().getVersion()).isEqualTo("0.1.1");
+    assertThat(response.getDocument().getVersion()).isEqualTo("0.2.0.dev0");
     assertThat(response.getEntityVersion()).isEqualTo("1");
   }
 
@@ -179,11 +179,41 @@ class SemanticModelCatalogTest {
   }
 
   @Test
+  void createRejectsArrayDocument() {
+    assertThatThrownBy(
+            () -> catalog.createSemanticModel(IDENTIFIER, doc("[" + VALID_MODEL_JSON + "]")))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("must be a JSON object");
+  }
+
+  @Test
+  void createRejectsObjectFormDatasets() {
+    // An object here would otherwise skip every dataset.source check, persisting a model whose
+    // sources were never resolved.
+    String objectDatasets = "{\"name\":\"m\",\"datasets\":{\"d\":{\"source\":\"does.not.exist\"}}}";
+    assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(objectDatasets)))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("'semantic_model.datasets' must be a JSON array");
+  }
+
+  @Test
+  void createAcceptsModelWithoutDatasets() {
+    when(metaStoreManager.generateNewEntityId(any())).thenReturn(new GenerateEntityIdResult(10L));
+    when(metaStoreManager.createEntityIfNotExists(any(), any(), any()))
+        .thenAnswer(SemanticModelCatalogTest::echoPersistedEntity);
+
+    String noDatasets = "{\"name\":\"m\"}";
+
+    assertThatCode(() -> catalog.createSemanticModel(IDENTIFIER, doc(noDatasets)))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
   void createRejectsDatasetWithoutSource() {
-    String noSource = "[{\"name\":\"m\",\"datasets\":[{\"name\":\"d\"}]}]";
+    String noSource = "{\"name\":\"m\",\"datasets\":[{\"name\":\"d\"}]}";
     assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(noSource)))
         .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("/semantic_model/0/datasets/0/source")
+        .hasMessageContaining("/semantic_model/datasets/0/source")
         .hasMessageContaining("must define a string 'source'");
   }
 
@@ -192,7 +222,7 @@ class SemanticModelCatalogTest {
     // No stub for the source table -> passthrough resolution returns null.
     assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(VALID_MODEL_JSON)))
         .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("/semantic_model/0/datasets/0/source")
+        .hasMessageContaining("/semantic_model/datasets/0/source")
         .hasMessageContaining("store_sales");
   }
 
@@ -238,6 +268,16 @@ class SemanticModelCatalogTest {
     LoadSemanticModelResponse response =
         catalog.updateSemanticModel(IDENTIFIER, doc(VALID_MODEL_JSON), "3");
     assertThat(response.getDocument().getSemanticModel()).isEqualTo(VALID_MODEL_JSON);
+  }
+
+  @Test
+  void updateRejectsObjectFormDatasets() {
+    // update shares resolveAndValidateSources with create, so the shape is rejected there too.
+    stubExistingModel(3);
+    String objectDatasets = "{\"name\":\"m\",\"datasets\":{\"d\":{\"source\":\"does.not.exist\"}}}";
+    assertThatThrownBy(() -> catalog.updateSemanticModel(IDENTIFIER, doc(objectDatasets), "3"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("'semantic_model.datasets' must be a JSON array");
   }
 
   @Test

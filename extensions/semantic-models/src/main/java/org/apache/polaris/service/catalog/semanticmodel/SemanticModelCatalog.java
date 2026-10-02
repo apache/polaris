@@ -305,30 +305,31 @@ public class SemanticModelCatalog {
    * Resolves and validates every {@code dataset.source} in the parsed Ossie document against the
    * current catalog. Unlike engine-specific view SQL, {@code dataset.source} is a structured
    * catalog identifier, so validating it here prevents every client from persisting dangling
-   * references. Every dataset must define a string {@code source}; a missing or non-string source,
-   * or one that does not resolve to a {@code TABLE_LIKE} entity, fails with 400 and a JSON-Pointer
-   * to the offending dataset.
+   * references. A {@code datasets} field that is present but not an array fails with 400, so the
+   * per-dataset checks cannot be bypassed by sending it in another shape. Every dataset must define
+   * a string {@code source}; a missing or non-string source, or one that does not resolve to a
+   * {@code TABLE_LIKE} entity, fails with 400 and a JSON-Pointer to the offending dataset.
    */
   private void resolveAndValidateSources(JsonNode semanticModel) {
-    if (!semanticModel.isArray()) {
-      return;
+    if (!semanticModel.isObject()) {
+      throw new BadRequestException("Field 'semantic_model' must be a JSON object");
     }
 
-    for (int modelIdx = 0; modelIdx < semanticModel.size(); modelIdx++) {
-      JsonNode datasets = semanticModel.get(modelIdx).get("datasets");
-      if (datasets == null || !datasets.isArray()) {
-        continue;
+    JsonNode datasets = semanticModel.get("datasets");
+    if (datasets == null) {
+      return;
+    }
+    if (!datasets.isArray()) {
+      throw new BadRequestException("Field 'semantic_model.datasets' must be a JSON array");
+    }
+    for (int datasetIdx = 0; datasetIdx < datasets.size(); datasetIdx++) {
+      String pointer = String.format("/semantic_model/datasets/%d/source", datasetIdx);
+      JsonNode source = datasets.get(datasetIdx).get("source");
+      if (source == null || !source.isTextual()) {
+        throw new BadRequestException(
+            "Semantic model dataset at %s must define a string 'source'", pointer);
       }
-      for (int datasetIdx = 0; datasetIdx < datasets.size(); datasetIdx++) {
-        String pointer =
-            String.format("/semantic_model/%d/datasets/%d/source", modelIdx, datasetIdx);
-        JsonNode source = datasets.get(datasetIdx).get("source");
-        if (source == null || !source.isTextual()) {
-          throw new BadRequestException(
-              "Semantic model dataset at %s must define a string 'source'", pointer);
-        }
-        resolveSourceOrThrow(source.asText(), pointer);
-      }
+      resolveSourceOrThrow(source.asText(), pointer);
     }
   }
 

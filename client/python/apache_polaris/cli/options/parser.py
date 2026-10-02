@@ -20,7 +20,7 @@ import argparse
 from typing import List, Optional, Dict, Any, Union
 
 from apache_polaris import __version__
-from apache_polaris.cli.constants import Arguments, DEFAULT_HEADER
+from apache_polaris.cli.constants import Arguments, DEFAULT_HEADER, Hints
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.options.option_tree import OptionTree, Option, Argument
 
@@ -83,6 +83,7 @@ class Parser(object):
         Argument(Arguments.PROFILE, str, hint="Polaris profile name"),
         Argument(Arguments.PROXY, str, hint="Proxy URL"),
         Argument(Arguments.DEBUG, bool, hint="Enable debug mode"),
+        Argument(Arguments.PAGE_SIZE, int, hint=Hints.PAGE_SIZE),
     ]
 
     @staticmethod

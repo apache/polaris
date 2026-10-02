@@ -46,7 +46,6 @@ class GcpStorageCredentialCacheKeyTest {
         Set.of("gs://bucket/path"),
         Set.of(),
         Set.of(),
-        Optional.empty(),
         principalName,
         CREDS,
         TRANSPORT,

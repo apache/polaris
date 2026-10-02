@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage.aws;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+import static org.apache.polaris.core.storage.StorageLocation.trimLeadingSlash;
 import static org.apache.polaris.core.storage.aws.AwsSessionNameBuilder.buildSessionName;
 import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
 
@@ -109,15 +110,20 @@ public class AwsCredentialsStorageIntegration
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
-      @NonNull List<LocationGrant> grants,
-      @NonNull Optional<String> refreshEndpoint,
-      @NonNull CredentialVendingContext context) {
+      @NonNull List<LocationGrant> grants, @NonNull CredentialVendingContext context) {
     return buildCacheKey(
-        readLocations(grants),
-        listLocations(grants),
-        writeLocations(grants),
-        refreshEndpoint,
-        context);
+        readLocations(grants), listLocations(grants), writeLocations(grants), context);
+  }
+
+  @Override
+  protected StorageAccessConfig addExtraProperties(
+      @NonNull StorageAccessConfig accessConfig, @NonNull Optional<String> refreshEndpoint) {
+    return refreshEndpoint
+        .map(
+            endpoint ->
+                withExtraProperty(
+                    accessConfig, StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint))
+        .orElse(accessConfig);
   }
 
   private static Set<String> readLocations(List<LocationGrant> grants) {
@@ -150,7 +156,6 @@ public class AwsCredentialsStorageIntegration
       @NonNull Set<String> readLocations,
       @NonNull Set<String> listLocations,
       @NonNull Set<String> writeLocations,
-      @NonNull Optional<String> refreshEndpoint,
       @NonNull CredentialVendingContext context) {
     RealmConfig realmConfig = realmConfig();
     String principalName = context.principalName().orElse("");
@@ -162,7 +167,6 @@ public class AwsCredentialsStorageIntegration
         readLocations,
         listLocations,
         writeLocations,
-        refreshEndpoint,
         roleSessionName,
         sessionTags,
         stsClientProvider,
@@ -265,11 +269,6 @@ public class AwsCredentialsStorageIntegration
     if (region != null) {
       accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
     }
-
-    key.refreshCredentialsEndpoint()
-        .ifPresent(
-            endpoint ->
-                accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint));
 
     URI endpointUri = awsStorageConfig.getEndpointUri();
     if (endpointUri != null) {
@@ -557,12 +556,5 @@ public class AwsCredentialsStorageIntegration
       }
     }
     return escaped.toString();
-  }
-
-  private static @NonNull String trimLeadingSlash(String path) {
-    if (path.startsWith("/")) {
-      path = path.substring(1);
-    }
-    return path;
   }
 }

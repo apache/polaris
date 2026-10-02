@@ -39,7 +39,7 @@ import org.jspecify.annotations.Nullable;
  */
 public class SemanticModelEntity extends PolarisEntity {
 
-  /** The declared Ossie spec version of the stored document (e.g. {@code 0.1.1}). */
+  /** The declared Ossie spec version of the stored document (e.g. {@code 0.2.0.dev0}). */
   public static final String SPEC_VERSION_KEY = "semantic-model.spec-version";
 
   /** The Ossie document serialized as a JSON string. */

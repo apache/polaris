@@ -21,7 +21,6 @@ package org.apache.polaris.service.catalog.iceberg;
 import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING;
 import static org.apache.polaris.core.config.FeatureConfiguration.ENABLE_ENTITY_LEVEL_LIST_FILTERING;
-import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
@@ -45,6 +44,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -120,6 +120,7 @@ import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PageTokenUtil;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -224,10 +225,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return catalogEntity;
   }
 
-  private boolean shouldDecodeToken() {
-    return realmConfig().getConfig(LIST_PAGINATION_ENABLED, getResolvedCatalogEntity());
-  }
-
   @Override
   protected void initializeCatalog() {
     CatalogEntity resolvedCatalogEntity = getResolvedCatalogEntity();
@@ -277,6 +274,31 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
   }
 
+  /**
+   * Bounds the page size forwarded to a federated catalog, using the same rule as {@link
+   * PageTokenUtil#boundPageSize}. An absent page size becomes the maximum, so the remote result set
+   * is not returned whole.
+   */
+  private @Nullable Integer boundedPageSize(@Nullable Integer requestedPageSize) {
+    OptionalInt requested =
+        requestedPageSize == null ? OptionalInt.empty() : OptionalInt.of(requestedPageSize);
+    OptionalInt bounded = PageTokenUtil.boundPageSize(requested, maxPageSize());
+    return bounded.isPresent() ? bounded.getAsInt() : null;
+  }
+
+  /**
+   * The page token forwarded to a federated catalog. {@code CatalogHandlerUtils} returns the whole
+   * result set when no token is given, so when a maximum is configured the specification's initial
+   * page token is supplied instead. That bounds the response and surfaces a continuation token when
+   * the result would have overflowed, which {@link #rejectIncompleteListing} then turns into an
+   * error for a request that asked for the complete listing.
+   */
+  private @Nullable String boundedPageToken(@Nullable String pageToken) {
+    return pageToken == null && maxPageSize() > 0
+        ? CatalogHandlerUtils.INITIAL_PAGE_TOKEN
+        : pageToken;
+  }
+
   public ListNamespacesResponse listNamespaces(
       Namespace parent, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
@@ -286,7 +308,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     if (isFederated) {
       ListNamespacesResponse response =
-          catalogHandlerUtils().listNamespaces(namespaceCatalog, parent, pageToken, pageSize);
+          catalogHandlerUtils()
+              .listNamespaces(
+                  namespaceCatalog, parent, boundedPageToken(pageToken), boundedPageSize(pageSize));
+      rejectIncompleteListing(pageToken, pageSize, response.nextPageToken());
       if (!filterEnabled) {
         return response;
       }
@@ -296,8 +321,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           .nextPageToken(response.nextPageToken())
           .build();
     } else {
-      PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
+      PageToken pageRequest =
+          PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listNamespaces(parent, pageRequest);
+      rejectIncompleteListing(pageToken, pageSize, results.encodedResponseToken());
       List<Namespace> items =
           filterEnabled ? filterNamespaces(results.items(), op) : results.items();
       return ListNamespacesResponse.builder()
@@ -396,7 +423,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     if (isFederated) {
       ListTablesResponse response =
-          catalogHandlerUtils().listTables(baseCatalog, namespace, pageToken, pageSize);
+          catalogHandlerUtils()
+              .listTables(
+                  baseCatalog, namespace, boundedPageToken(pageToken), boundedPageSize(pageSize));
+      rejectIncompleteListing(pageToken, pageSize, response.nextPageToken());
       if (!filterEnabled) {
         return response;
       }
@@ -406,8 +436,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           .nextPageToken(response.nextPageToken())
           .build();
     } else {
-      PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
+      PageToken pageRequest =
+          PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listTables(namespace, pageRequest);
+      rejectIncompleteListing(pageToken, pageSize, results.encodedResponseToken());
       List<TableIdentifier> items =
           filterEnabled ? filterTableIdentifiers(results.items(), op) : results.items();
       return ListTablesResponse.builder()
@@ -415,18 +447,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           .nextPageToken(results.encodedResponseToken())
           .build();
     }
-  }
-
-  /**
-   * Create a table.
-   *
-   * @param namespace the namespace to create the table in
-   * @param request the table creation request
-   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
-   */
-  public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
-    return createTableDirect(
-        namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
   }
 
   public void authorizeCreateTableDirect(
@@ -1655,7 +1675,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (isFederated) {
       if (baseCatalog instanceof ViewCatalog viewCatalog) {
         ListTablesResponse response =
-            catalogHandlerUtils().listViews(viewCatalog, namespace, pageToken, pageSize);
+            catalogHandlerUtils()
+                .listViews(
+                    viewCatalog, namespace, boundedPageToken(pageToken), boundedPageSize(pageSize));
+        rejectIncompleteListing(pageToken, pageSize, response.nextPageToken());
         if (!filterEnabled) {
           return response;
         }
@@ -1669,8 +1692,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           "Unsupported operation: listViews with baseCatalog type: %s",
           baseCatalog.getClass().getName());
     } else {
-      PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
+      PageToken pageRequest =
+          PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listViews(namespace, pageRequest);
+      rejectIncompleteListing(pageToken, pageSize, results.encodedResponseToken());
       List<TableIdentifier> items =
           filterEnabled ? filterTableIdentifiers(results.items(), op) : results.items();
       return ListTablesResponse.builder()
@@ -1857,6 +1882,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * Resolves the access delegation mode by delegating to the configured {@link
    * AccessDelegationModeResolver}.
    *
+   * <p>Remote signing is not implemented yet. Whenever the resolver settles on {@link
+   * AccessDelegationMode#REMOTE_SIGNING}, either because the client asked for it alone or because
+   * credential vending is not possible for the catalog and the client offered remote signing as the
+   * alternative, the request fails fast with a message that tells the client what to do. This
+   * matches how a vended-credentials-only request behaves when no credentials can be vended.
+   *
    * @param requestedModes The non-empty set of delegation modes requested by the client
    * @return The resolved access delegation mode, or empty if no delegation mode was resolved
    */
@@ -1868,11 +1899,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         accessDelegationModeResolver().resolve(requestedModes, catalogEntity);
 
     // TODO remove when remote signing is implemented
-    // Reject if the resolved mode is REMOTE_SIGNING since it's not yet supported
-    Preconditions.checkArgument(
-        resolvedMode.orElse(null) != AccessDelegationMode.REMOTE_SIGNING,
-        "Unsupported access delegation mode: %s",
-        AccessDelegationMode.REMOTE_SIGNING);
+    if (resolvedMode.orElse(null) == AccessDelegationMode.REMOTE_SIGNING) {
+      throw new IllegalArgumentException(
+          "This catalog cannot vend credentials or sign requests; request without "
+              + "X-Iceberg-Access-Delegation and configure storage credentials on the client");
+    }
 
     return resolvedMode;
   }

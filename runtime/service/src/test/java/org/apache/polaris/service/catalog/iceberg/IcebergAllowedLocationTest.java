@@ -791,6 +791,43 @@ public class IcebergAllowedLocationTest {
     }
   }
 
+  /**
+   * With custom namespace locations disabled, restating a namespace's existing default location was
+   * rejected because the update validated the pre-update entity against the namespace itself as its
+   * own parent.
+   */
+  @Test
+  void testNamespacePropertyUpdateAcceptsTheDefaultLocation(@TempDir Path tmpDir) {
+    TestServices services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE")))
+            .build();
+
+    Path warehouse = tmpDir.resolve("warehouse");
+    String catalogLocation = warehouse.toAbsolutePath().toUri().toString();
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+
+    // createCatalog derives default-base-location as <catalogLocation>/<catalog>, so the
+    // namespace's default location is one level below that.
+    String defaultLocation =
+        warehouse.resolve(catalog).resolve(namespace).toAbsolutePath().toUri().toString();
+    createNamespace(services, defaultLocation);
+
+    // Restating the location the namespace already has is not a custom location.
+    updateNamespaceProperties(services, Map.of("location", defaultLocation));
+
+    // A different location is still rejected.
+    String otherLocation = warehouse.resolve("elsewhere").toAbsolutePath().toUri().toString();
+    assertThatThrownBy(() -> updateNamespaceProperties(services, Map.of("location", otherLocation)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("has a custom location");
+  }
+
   private void createCatalog(
       TestServices services,
       Map<String, String> catalogConfig,

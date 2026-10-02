@@ -71,6 +71,37 @@ class TestGenericTablesCommand(CLITestBase):
         )
 
     @patch("apache_polaris.cli.command.generic_tables.GenericTableAPI")
+    def test_generic_table_list_with_paginate(
+        self, mock_generic_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_generic_api = mock_generic_api_class.return_value
+        ids = [MagicMock(to_json=MagicMock(return_value="{}")) for _ in range(3)]
+        page1 = MagicMock(identifiers=ids[:2], next_page_token="token")
+        page2 = MagicMock(identifiers=[ids[2]], next_page_token=None)
+        mock_generic_api.list_generic_tables.side_effect = [page1, page2]
+        self.mock_execute(
+            mock_client,
+            [
+                "generic-tables",
+                "list",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+                "--page-size",
+                "2",
+            ],
+        )
+        self.assertEqual(mock_generic_api.list_generic_tables.call_count, 2)
+        mock_generic_api.list_generic_tables.assert_any_call(
+            prefix="my-catalog", namespace="ns1", page_size=2, page_token=""
+        )
+        mock_generic_api.list_generic_tables.assert_any_call(
+            prefix="my-catalog", namespace="ns1", page_size=2, page_token="token"
+        )
+
+    @patch("apache_polaris.cli.command.generic_tables.GenericTableAPI")
     def test_generic_table_get(self, mock_generic_api_class: MagicMock) -> None:
         mock_client = self.build_mock_client()
         mock_generic_api = mock_generic_api_class.return_value

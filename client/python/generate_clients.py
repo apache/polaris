@@ -88,6 +88,8 @@ def generate_polaris_management_client() -> None:
             PYTHON_VERSION,
             "--additional-properties=generateSourceCodeOnly=true",
             "--skip-validate-spec",
+            "--openapi-normalizer",
+            "REFACTOR_ALLOF_WITH_PROPERTIES_ONLY=true",
             "--ignore-file-override",
             OPEN_API_GENERATOR_IGNORE,
             "--global-property=apiDocs=false,modelDocs=false,modelTests=false,apiTests=false",

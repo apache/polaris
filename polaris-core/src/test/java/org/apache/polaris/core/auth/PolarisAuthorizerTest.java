@@ -24,8 +24,8 @@ import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.junit.jupiter.api.Test;
@@ -80,7 +80,7 @@ public class PolarisAuthorizerTest {
   }
 
   private static final PolarisPrincipal PRINCIPAL =
-      PolarisPrincipal.of("alice", Map.of(), Set.of("role1"));
+      PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role1"));
 
   private static AuthorizationRequest requestForTable(String tableName) {
     PolarisSecurable target =
@@ -227,7 +227,7 @@ public class PolarisAuthorizerTest {
     AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
     AuthorizationRequest otherPrincipal =
         new AuthorizationRequest(
-            PolarisPrincipal.of("bob", Map.of(), Set.of("role1")),
+            PolarisPrincipal.of("bob", AttributeMap.EMPTY, Set.of("role1")),
             requestForTable("table2").intents());
 
     assertThatThrownBy(

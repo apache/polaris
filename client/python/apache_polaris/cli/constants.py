@@ -142,6 +142,7 @@ class Subcommands:
     APPLY = "apply"
     EXPORT = "export"
     SUMMARIZE = "summarize"
+    REGISTER = "register"
 
 
 class Actions:
@@ -248,6 +249,9 @@ class Arguments:
     REALM = "realm"
     HEADER = "header"
     IDENTIFIER = "identifier"
+    PAGE_SIZE = "page_size"
+    METADATA_LOCATION = "metadata_location"
+    OVERWRITE = "overwrite"
 
 
 class Hints:
@@ -281,6 +285,11 @@ class Hints:
         " no action is taken for the specified key. Multiple can be provided by specifying"
         " this option more than once"
     )
+    PAGE_SIZE = (
+        "Upper bound on the number of entries returned per API request where pagination is supported."
+        " Requires the server-side LIST_PAGINATION_ENABLED feature flag."
+        " If not set, fetches all results in a single API request."
+    )
 
     # Entities Hints
     CATALOG = "The name of a catalog"
@@ -290,6 +299,10 @@ class Hints:
     NAMESPACE = "A period-delimited namespace"
     TABLE = "The name of a table"
     VIEW = "The name of a view"
+
+    # Tables/Views Registration Hints
+    METADATA_LOCATION = "The absolute location of the Iceberg metadata file"
+    OVERWRITE = "Overwrite an existing table at the same identifier if the table is already registered"
 
     # Storage Hints
     ## S3

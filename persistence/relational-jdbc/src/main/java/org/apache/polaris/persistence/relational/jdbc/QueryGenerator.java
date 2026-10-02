@@ -164,19 +164,17 @@ public class QueryGenerator {
    * Builds a SELECT query using a list of entity ID pairs (catalog_id, id).
    *
    * @param realmId Realm to filter by.
-   * @param schemaVersion The schema version of entities table to query
    * @param entityIds List of PolarisEntityId pairs.
    * @return SELECT query to retrieve matching entities.
    * @throws IllegalArgumentException if entityIds is empty.
    */
   public static PreparedQuery generateSelectQueryWithEntityIds(
-      @NonNull String realmId, int schemaVersion, @NonNull List<PolarisEntityId> entityIds) {
-    return generateSelectQueryWithEntityIds(
-        realmId, ModelEntity.getAllColumnNames(schemaVersion), entityIds);
+      @NonNull String realmId, @NonNull List<PolarisEntityId> entityIds) {
+    return generateSelectQueryWithEntityIds(realmId, ModelEntity.getAllColumnNames(), entityIds);
   }
 
   /**
-   * Like {@link #generateSelectQueryWithEntityIds(String, int, List)} but selects only {@link
+   * Like {@link #generateSelectQueryWithEntityIds(String, List)} but selects only {@link
    * ModelEntity#VERSION_COLUMNS}. Used by {@code lookupEntityVersions} to avoid fetching large JSON
    * property blobs on the cache-validation hot path.
    */
@@ -349,9 +347,10 @@ public class QueryGenerator {
     return new QueryFragment(clause, parameters);
   }
 
-  @VisibleForTesting
-  static PreparedQuery generateVersionQuery() {
-    return new PreparedQuery("SELECT version_value FROM VERSION", List.of());
+  /** Returns a query that reads the current schema version. */
+  public static PreparedQuery generateVersionQuery() {
+    return new PreparedQuery(
+        "SELECT version_value FROM VERSION WHERE version_key = ?", List.of("version"));
   }
 
   /**
@@ -367,12 +366,6 @@ public class QueryGenerator {
     return new PreparedQuery(sql, where.parameters());
   }
 
-  @VisibleForTesting
-  static PreparedQuery generateEntityTableExistQuery() {
-    return new PreparedQuery(
-        String.format("SELECT * FROM %s LIMIT 1", ModelEntity.TABLE_NAME), List.of());
-  }
-
   /**
    * Generate a SELECT query to find any entities that have a given realm &amp; parent and that may
    * overlap with a given location. The check is performed without consideration for the scheme, so
@@ -381,17 +374,17 @@ public class QueryGenerator {
    *
    * <p>Equality terms are generated for each prefix of the location in both slash-terminated and
    * non-slash-terminated forms so that ancestors stored with or without a trailing slash are both
-   * matched.
+   * matched. The lone {@code /} prefix is skipped (not a meaningful storage location); {@code //}
+   * and {@code ///} are retained so scheme-root ancestors remain visible to the overlap check.
    *
    * @param realmId A realm to search within
-   * @param schemaVersion The schema version of entities table to query
    * @param catalogId A catalog entity to search within
    * @param baseLocation The base location to look for overlap with, with or without a scheme
    * @return The list of possibly overlapping entities that meet the criteria
    */
   @VisibleForTesting
   public static PreparedQuery generateOverlapQuery(
-      String realmId, int schemaVersion, long catalogId, String baseLocation) {
+      String realmId, long catalogId, String baseLocation) {
     StorageLocation baseStorageLocation = StorageLocation.of(baseLocation);
     String locationWithoutScheme = baseStorageLocation.withoutScheme();
 
@@ -418,15 +411,27 @@ public class QueryGenerator {
     prefixTerms.add(normalizedLocation + "/");
 
     for (String prefix : prefixTerms) {
+      // Skip only "/", which can never be a meaningful storage location. "//" is kept: in
+      // ALLOW_NAMESPACE_CUSTOM_LOCATION mode a namespace location may be a bare scheme root like
+      // s3:// (persisted as "//"), and it is a valid ancestor of locations below it. "///" (the
+      // root of file: URIs) is kept for the same reason.
+      if ("/".equals(prefix)) {
+        continue;
+      }
       conditions.add("location_without_scheme = ?");
       parameters.add(prefix);
     }
 
     // Add LIKE condition to match children. Slash-terminate the location so the pattern only
     // matches true descendants (e.g. //bucket/ns/tA/% matches //bucket/ns/tA/child but not
-    // //bucket/ns/tA_backup).
-    conditions.add("location_without_scheme LIKE ?");
-    parameters.add(StorageLocation.ensureTrailingSlash(locationWithoutScheme) + "%");
+    // //bucket/ns/tA_backup). LIKE wildcards (% and _) and the escape character (\) that appear
+    // literally in the location are escaped, with an explicit ESCAPE clause: otherwise a location
+    // such as //bucket/my_table/ would be treated as a wildcard, where % and _ over-fetch rows
+    // (the caller's precise re-check still filters those) and a literal \ could hide true
+    // descendants.
+    conditions.add("location_without_scheme LIKE ? ESCAPE '\\'");
+    parameters.add(
+        escapeLikePattern(StorageLocation.ensureTrailingSlash(locationWithoutScheme)) + "%");
 
     String locationClause = String.join(" OR ", conditions);
     String clause = " WHERE realm_id = ? AND catalog_id = ? AND (" + locationClause + ")";
@@ -440,10 +445,17 @@ public class QueryGenerator {
     QueryFragment where = new QueryFragment(clause, finalParams);
     PreparedQuery query =
         generateSelectQuery(
-            ModelEntity.getAllColumnNames(schemaVersion),
-            ModelEntity.TABLE_NAME,
-            where.sql(),
-            null);
+            ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, where.sql(), null);
     return new PreparedQuery(query.sql(), where.parameters());
+  }
+
+  /**
+   * Escapes the LIKE metacharacters {@code %} and {@code _} and the escape character {@code \} in a
+   * literal so it can be used safely as a fixed prefix in a {@code LIKE ? ESCAPE '\'} pattern. The
+   * backslash is escaped first so the escapes introduced for {@code %} and {@code _} are not
+   * double-escaped.
+   */
+  private static String escapeLikePattern(String literal) {
+    return literal.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
   }
 }

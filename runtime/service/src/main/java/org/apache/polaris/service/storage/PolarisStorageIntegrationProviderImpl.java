@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -60,7 +59,6 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 @ApplicationScoped
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
-  private final PolarisDiagnostics diagnostics;
   private final Function<AwsStorageConfigurationInfo, AwsCredentialsStorageIntegration> awsFactory;
   private final Function<GcpStorageConfigurationInfo, GcpCredentialsStorageIntegration> gcpFactory;
   private final Function<AzureStorageConfigurationInfo, AzureCredentialsStorageIntegration>
@@ -73,9 +71,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       StsClientProvider stsClientProvider,
       RealmConfig realmConfig,
       Clock clock,
-      StorageCredentialCache cache,
-      PolarisDiagnostics diagnostics) {
-    this.diagnostics = diagnostics;
+      StorageCredentialCache cache) {
     this.awsFactory =
         storageConfig ->
             new AwsCredentialsStorageIntegration(
@@ -108,9 +104,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       Optional<AwsCredentialsProvider> stsCredentials,
       Supplier<GoogleCredentials> gcpCredsProvider,
       StorageCredentialCache cache,
-      RealmConfig realmConfig,
-      PolarisDiagnostics diagnostics) {
-    this.diagnostics = diagnostics;
+      RealmConfig realmConfig) {
     this.awsFactory =
         storageConfig ->
             new AwsCredentialsStorageIntegration(

@@ -34,10 +34,11 @@ class QuarkusAppDependencyFilter : DependencyFilter {
   override fun filter(data: ProjectData?): ProjectData {
     data!!
 
-    val dependenciesFile = data.project.file("build/quarkus-app/quarkus-app-dependencies.txt")
+    val dependenciesFile =
+      data.project.file("build/quarkus-build/app/quarkus-app/quarkus-app-dependencies.txt")
     if (!dependenciesFile.isFile) {
       throw GradleException(
-        "Expected Quarkus dependency inventory at '${dependenciesFile.path}'. Run quarkusBuild before generating the license report."
+        "Expected Quarkus dependency inventory at '${dependenciesFile.path}'. Run quarkusAppPartsBuild before generating the license report."
       )
     }
 

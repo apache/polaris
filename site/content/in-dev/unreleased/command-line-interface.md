@@ -56,6 +56,7 @@ Global Options:
   --profile PROFILE              Polaris profile name
   --proxy PROXY                  Proxy URL
   --debug                        Enable debug mode
+  --page-size PAGE_SIZE          Upper bound on the number of entries returned per API request where pagination is supported. Requires the server-side LIST_PAGINATION_ENABLED feature flag. If not set, fetches all results in a single API request.
 ```
 
 `COMMAND` must be one of the following:
@@ -1731,6 +1732,7 @@ The `tables` command is used to manage Iceberg tables within a Polaris Catalog.
 2. get
 3. summarize
 4. delete
+5. register
 
 #### list
 
@@ -1825,6 +1827,32 @@ Command Options:
 polaris tables delete my_table --catalog my_catalog --namespace ns1
 ```
 
+#### register
+
+The `register` subcommand is used to register a table to catalog by its metadata location
+
+```
+usage: polaris tables register [-h] [options] TABLE_NAME
+
+positional arguments:
+  TABLE_NAME                             table
+
+options:
+  -h, --help                             show this help message and exit
+
+Command Options:
+  --catalog CATALOG                      The name of a catalog
+  --namespace NAMESPACE                  A period-delimited namespace
+  --metadata-location METADATA_LOCATION  The absolute location of the Iceberg metadata file
+  --overwrite                            Overwrite an existing table at the same identifier if the table is already registered
+```
+
+##### Examples
+
+```
+polaris tables register my_table --catalog my_catalog --namespace ns1 --metadata-location s3://bucket/path/00001-(uuid).metadata.json
+```
+
 ### Views
 
 The `views` command is used to manage Iceberg views within a Polaris Catalog.
@@ -1835,6 +1863,7 @@ The `views` command is used to manage Iceberg views within a Polaris Catalog.
 2. get
 3. summarize
 4. delete
+5. register
 
 #### list
 
@@ -1927,6 +1956,31 @@ Command Options:
 
 ```
 polaris views delete my_view --catalog my_catalog --namespace ns1
+```
+
+#### register
+
+The `register` subcommand is used to register a view to catalog by its metadata location
+
+```
+usage: polaris views register [-h] [options] VIEW_NAME
+
+positional arguments:
+  VIEW_NAME                              view
+
+options:
+  -h, --help                             show this help message and exit
+
+Command Options:
+  --catalog CATALOG                      The name of a catalog
+  --namespace NAMESPACE                  A period-delimited namespace
+  --metadata-location METADATA_LOCATION  The absolute location of the Iceberg metadata file
+```
+
+##### Examples
+
+```
+polaris views register my_view --catalog my_catalog --namespace ns1 --metadata-location s3://bucket/path/00001-(uuid).metadata.json
 ```
 
 ### Generic Tables

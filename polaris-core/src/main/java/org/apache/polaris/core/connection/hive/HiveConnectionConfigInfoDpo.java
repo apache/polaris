@@ -50,8 +50,11 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
           @Nullable AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "warehouse", required = false) @Nullable String warehouse,
       @JsonProperty(value = "serviceIdentity", required = false)
-          @Nullable ServiceIdentityInfoDpo serviceIdentity) {
-    super(ConnectionType.HIVE.getCode(), uri, authenticationParameters, serviceIdentity);
+          @Nullable ServiceIdentityInfoDpo serviceIdentity,
+      @JsonProperty(value = "properties", required = false)
+          @Nullable Map<String, String> properties) {
+    super(
+        ConnectionType.HIVE.getCode(), uri, authenticationParameters, serviceIdentity, properties);
     this.warehouse = warehouse;
   }
 
@@ -66,6 +69,7 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
         .add("uri", getUri())
         .add("warehouse", getWarehouse())
         .add("authenticationParameters", getAuthenticationParameters().toString())
+        .add("properties", getProperties())
         .toString();
   }
 
@@ -93,7 +97,7 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
   public ConnectionConfigInfoDpo withServiceIdentity(
       @NonNull ServiceIdentityInfoDpo serviceIdentityInfo) {
     return new HiveConnectionConfigInfoDpo(
-        getUri(), getAuthenticationParameters(), warehouse, serviceIdentityInfo);
+        getUri(), getAuthenticationParameters(), warehouse, serviceIdentityInfo, getProperties());
   }
 
   @Override
@@ -111,6 +115,7 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
                     serviceIdentityInfoDpo ->
                         serviceIdentityInfoDpo.asServiceIdentityInfoModel(serviceIdentityProvider))
                 .orElse(null))
+        .setProperties(getProperties())
         .build();
   }
 }

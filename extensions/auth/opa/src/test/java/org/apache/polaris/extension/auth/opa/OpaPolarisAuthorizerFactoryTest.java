@@ -20,6 +20,7 @@ package org.apache.polaris.extension.auth.opa;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -38,7 +39,6 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -46,6 +46,9 @@ import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
+import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
@@ -223,7 +226,8 @@ public class OpaPolarisAuthorizerFactoryTest {
         OpaPolarisAuthorizer authorizer =
             (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
 
-        PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
+        PolarisPrincipal principal =
+            PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
         assertThatNoException()
             .isThrownBy(
                 () ->
@@ -282,7 +286,8 @@ public class OpaPolarisAuthorizerFactoryTest {
         OpaPolarisAuthorizer authorizer =
             (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
 
-        PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
+        PolarisPrincipal principal =
+            PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
         assertThatNoException()
             .isThrownBy(
                 () ->
@@ -345,7 +350,12 @@ public class OpaPolarisAuthorizerFactoryTest {
         OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
         PolarisPrincipal principal =
-            PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+            PolarisPrincipal.of(
+                "eve",
+                ImmutableAttributeMap.builder()
+                    .put(new AttributeKey<>("department"), "finance")
+                    .build(),
+                Set.of("auditor"));
         assertThatNoException()
             .isThrownBy(
                 () ->
@@ -409,7 +419,12 @@ public class OpaPolarisAuthorizerFactoryTest {
 
         RealmConfig realmConfig = mock(RealmConfig.class);
         PolarisPrincipal principal =
-            PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+            PolarisPrincipal.of(
+                "eve",
+                ImmutableAttributeMap.builder()
+                    .put(new AttributeKey<>("department"), "finance")
+                    .build(),
+                Set.of("auditor"));
         // First "request": factory.create() is called fresh, as it would be for each incoming
         // HTTP request via the @RequestScoped PolarisAuthorizer producer.
         OpaPolarisAuthorizer firstAuthorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
@@ -448,6 +463,35 @@ public class OpaPolarisAuthorizerFactoryTest {
       }
     } finally {
       server.stop(0);
+    }
+  }
+
+  @Test
+  public void testInitializeFailsWhenTrustStorePathIsInvalid() {
+    Path missingTrustStore = tempDir.resolve("does-not-exist.jks");
+    OpaAuthorizationConfig opaConfig =
+        ImmutableOpaAuthorizationConfig.builder()
+            .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
+            .auth(
+                ImmutableAuthenticationConfig.builder()
+                    .type(OpaAuthorizationConfig.AuthenticationType.NONE)
+                    .build())
+            .http(
+                ImmutableHttpConfig.builder()
+                    .timeout(Duration.ofSeconds(2))
+                    .verifySsl(true)
+                    .trustStorePath(missingTrustStore)
+                    .build())
+            .build();
+
+    try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+      OpaPolarisAuthorizerFactory factory =
+          new OpaPolarisAuthorizerFactory(
+              opaConfig, Clock.systemUTC(), asyncExec, () -> null, () -> "test-realm");
+
+      assertThatThrownBy(factory::initialize)
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("Failed to create HTTP client for OPA communication");
     }
   }
 

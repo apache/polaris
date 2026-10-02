@@ -49,7 +49,7 @@ import org.jspecify.annotations.NonNull;
 /** Provides telemetry and tracing for all persistence backend operations. */
 @ApplicationScoped
 @Default
-public class ObservingBackend implements Backend {
+class ObservingBackend implements Backend {
   public static final String TELEMETRY_PREFIX = "polaris.persistence.nosql";
 
   private final Backend backend;

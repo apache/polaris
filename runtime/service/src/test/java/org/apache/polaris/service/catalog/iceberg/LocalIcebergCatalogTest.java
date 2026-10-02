@@ -39,6 +39,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -74,7 +75,8 @@ class LocalIcebergCatalogTest {
   @Mock PolarisEntity ns2;
   @Mock PolarisEntity table3;
 
-  private final PolarisPrincipal principal = PolarisPrincipal.of("test", Map.of(), Set.of());
+  private final PolarisPrincipal principal =
+      PolarisPrincipal.of("test", AttributeMap.EMPTY, Set.of());
 
   private LocalIcebergCatalog catalog;
   private ResolvedPolarisEntity rns1 = new ResolvedPolarisEntity(ns1, List.of(), List.of());

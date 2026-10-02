@@ -110,7 +110,7 @@ public class CatalogHandlerUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(CatalogHandlerUtils.class);
 
   private static final Schema EMPTY_SCHEMA = new Schema();
-  private static final String INITIAL_PAGE_TOKEN = "";
+  static final String INITIAL_PAGE_TOKEN = "";
   private static final String CONFLICT_RESOLUTION_ACTION =
       "polaris.internal.conflict-resolution.by-operation-type.replace";
   private static final Field LAST_SEQUENCE_NUMBER_FIELD;

@@ -20,11 +20,11 @@ package org.apache.polaris.service.task;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.StreamSupport;
 import org.apache.iceberg.ContentFile;
@@ -51,8 +51,10 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
       LoggerFactory.getLogger(ManifestFileCleanupTaskHandler.class);
 
   public ManifestFileCleanupTaskHandler(
-      TaskFileIOSupplier fileIOSupplier, ExecutorService executorService) {
-    super(fileIOSupplier, executorService);
+      TaskFileIOSupplier fileIOSupplier,
+      ExecutorService executorService,
+      Duration fileDeletionTimeout) {
+    super(fileIOSupplier, executorService, fileDeletionTimeout);
   }
 
   @Override
@@ -97,30 +99,20 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
           contentFileDeletes.size(),
           manifestFile.path(),
           manifestFile.content());
-      try {
-        // wait for all content files to be deleted, then wait for the manifest itself to be deleted
-        CompletableFuture.allOf(contentFileDeletes.toArray(CompletableFuture[]::new))
-            .thenCompose(
-                (v) -> {
-                  LOGGER
-                      .atInfo()
-                      .addKeyValue(StructuredLogKeys.MANIFEST_FILE, manifestFile.path())
-                      .log("All content files in manifest deleted - deleting manifest");
-                  return tryDelete(
-                      tableId, fileIO, manifestFile.path(), manifestFile.path(), null, 1);
-                })
-            .get();
-        return;
-      } catch (InterruptedException e) {
-        LOGGER.error(
-            "Interrupted exception deleting content files from manifest {}",
-            manifestFile.path(),
-            e);
-        throw new RuntimeException(e);
-      } catch (ExecutionException e) {
-        LOGGER.error("Unable to delete content files from manifest {}", manifestFile.path(), e);
-        throw new RuntimeException(e);
-      }
+      // wait for all content files to be deleted, then wait for the manifest itself to be deleted
+      CompletableFuture<Void> deletion =
+          CompletableFuture.allOf(contentFileDeletes.toArray(CompletableFuture[]::new))
+              .thenCompose(
+                  (v) -> {
+                    LOGGER
+                        .atInfo()
+                        .addKeyValue(StructuredLogKeys.MANIFEST_FILE, manifestFile.path())
+                        .log("All content files in manifest deleted - deleting manifest");
+                    return tryDelete(
+                        tableId, fileIO, manifestFile.path(), manifestFile.path(), null, 1);
+                  });
+      awaitCompletion(deletion, "deletion of files in manifest " + manifestFile.path());
+      return;
     } catch (IOException e) {
       // Catches from ManifestFiles.read() (resource creation), from inside the block
       // (e.g. manifest iteration), or from close(). We throw (wrapping) so the original

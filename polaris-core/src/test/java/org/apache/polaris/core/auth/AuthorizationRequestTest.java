@@ -21,8 +21,8 @@ package org.apache.polaris.core.auth;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.junit.jupiter.api.Test;
 
@@ -43,7 +43,7 @@ public class AuthorizationRequestTest {
     assertThatThrownBy(
             () ->
                 new AuthorizationRequest(
-                    PolarisPrincipal.of("alice", Map.of(), Set.of("role")), List.of()))
+                    PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role")), List.of()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("must contain at least one intent");
   }

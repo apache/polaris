@@ -109,11 +109,11 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
       PolarisResolutionManifest resolutionManifest,
       AuthorizationIntent intent) {
     RangerPolarisOperationSemantics semantics =
-        RangerPolarisOperationSemantics.forOperation(intent.getOperation());
+        RangerPolarisOperationSemantics.forOperation(intent.operation());
     if (semantics == null) {
       return AuthorizationDecision.deny(
           String.format(
-              RANGER_AUTH_FAILED_ERROR, polarisPrincipal.getName(), intent.getOperation().name()));
+              RANGER_AUTH_FAILED_ERROR, polarisPrincipal.getName(), intent.operation().name()));
     }
     boolean prependRootContainer =
         semantics.rooting() == RangerPolarisOperationSemantics.ResolvedPathRooting.ROOT;
@@ -124,7 +124,7 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
       authorizeRangerOrThrow(
           polarisPrincipal,
           resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-          intent.getOperation(),
+          intent.operation(),
           resolvedIntent.targets(),
           resolvedIntent.secondaries());
       return AuthorizationDecision.allow();

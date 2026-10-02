@@ -1255,6 +1255,51 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testNotificationInDisallowedLocationCreatesNoNamespaces() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    // A notification whose metadata location is outside the catalog's allowed locations must be
+    // rejected before any parent namespaces are auto-created, so it cannot leave orphaned
+    // namespaces behind.
+    final String tableLocation = "s3://forbidden-table-location/table/";
+    final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
+    LocalIcebergCatalog catalog = catalog();
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.UPDATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(tableMetadataLocation);
+    update.setTableName(table.name());
+    update.setTableUuid(UUID.randomUUID().toString());
+    update.setTimestamp(230950845L);
+    request.setPayload(update);
+
+    fileIO.addFile(
+        tableMetadataLocation,
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
+
+    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid location");
+
+    Assertions.assertThat(catalog.namespaceExists(namespace))
+        .as("Child namespace must not be created when the notification location is disallowed")
+        .isFalse();
+    Assertions.assertThat(catalog.namespaceExists(Namespace.of("parent")))
+        .as("Parent namespace must not be created when the notification location is disallowed")
+        .isFalse();
+  }
+
+  @Test
   public void testCreateNotificationCreateTableInExternalLocation() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
@@ -2545,6 +2590,40 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testRegisterTableTreatsTableAsExistingWhenStoredMetadataIsMissing() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_overwrite_missing_metadata");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table created = catalog.buildTable(table, SCHEMA).create();
+    TableMetadata currentMetadata = ((BaseTable) created).operations().current();
+    String staleMetadataLocation = currentMetadata.metadataFileLocation();
+    String metadataDir =
+        staleMetadataLocation.substring(0, staleMetadataLocation.lastIndexOf('/') + 1);
+    String newMetadataLocation = metadataDir + "recovered-v1.metadata.json";
+    fileIO.addFile(
+        newMetadataLocation, TableMetadataParser.toJson(currentMetadata).getBytes(UTF_8));
+
+    // The metadata file the table still points at is gone; re-registering is how that is repaired,
+    // so the existence check must not depend on reading it.
+    fileIO.deleteFile(staleMetadataLocation);
+
+    // The table is still there, so a register without overwrite must report it as existing
+    // rather than fail on the unreadable file.
+    Assertions.assertThatThrownBy(() -> catalog.registerTable(table, newMetadataLocation, false))
+        .isInstanceOf(AlreadyExistsException.class);
+
+    catalog.registerTable(table, newMetadataLocation, true);
+
+    Assertions.assertThat(
+            ((BaseTable) catalog.loadTable(table)).operations().current().metadataFileLocation())
+        .isEqualTo(newMetadataLocation);
+  }
+
+  @Test
   public void testRegisterTableOverwriteCreatesWhenMissing() {
     LocalIcebergCatalog catalog = catalog();
     Namespace namespace = Namespace.of("register_overwrite_create");
@@ -3506,7 +3585,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   private static PageToken nextRequest(Page<?> previousPage) {
-    return PageToken.build(previousPage.encodedResponseToken(), null, () -> true);
+    return PageToken.build(previousPage.encodedResponseToken(), null, -1, () -> true);
   }
 
   @Test
@@ -3649,7 +3728,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   public void dropAfterRenameDoesntCorruptTable() {}
 
   @Test
-  public void testFailedTableCommitDeletesOrphanMetadataFile() {
+  public void testConflictingTableCommitDoesNotWriteMetadataFile() {
     LocalIcebergCatalog catalog = this.catalog();
     if (this.requiresNamespaceCreate()) {
       catalog.createNamespace(NS);
@@ -3680,9 +3759,59 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> spyOps.commit(staleBase, attempted))
         .isInstanceOf(CommitFailedException.class);
 
-    Assertions.assertThat(writtenLocations).isNotEmpty();
-    String orphanLocation = writtenLocations.get(writtenLocations.size() - 1);
-    Assertions.assertThat(fileIO.fileExists(orphanLocation)).isFalse();
+    Assertions.assertThat(writtenLocations).isEmpty();
+  }
+
+  @Test
+  public void testFailedTableCommitDeletesWrittenMetadataFile() {
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    LocalIcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    if (this.requiresNamespaceCreate()) {
+      spiedCatalog.createNamespace(NS);
+    }
+
+    spiedCatalog.buildTable(TABLE, SCHEMA).withPartitionSpec(SPEC).create();
+
+    List<String> writtenLocations = new ArrayList<>();
+    List<String> deletedLocations = new ArrayList<>();
+    FileIO spyIO = spy(fileIO);
+    doAnswer(
+            inv -> {
+              writtenLocations.add(inv.getArgument(0));
+              return inv.callRealMethod();
+            })
+        .when(spyIO)
+        .newOutputFile(anyString());
+    doAnswer(
+            inv -> {
+              deletedLocations.add(inv.getArgument(0));
+              return inv.callRealMethod();
+            })
+        .when(spyIO)
+        .deleteFile(anyString());
+
+    TableOperations realOps = ((BaseTable) spiedCatalog.loadTable(TABLE)).operations();
+    TableOperations spyOps = spy(realOps);
+    Mockito.when(spyOps.io()).thenReturn(spyIO);
+
+    TableMetadata base = realOps.current();
+    TableMetadata updated =
+        TableMetadata.buildFrom(base).setProperties(Map.of("cleanup-check", "v1")).build();
+
+    // Persistence fails after the pre-write conflict check passes and the metadata file is written.
+    doReturn(new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
+        .when(spiedManager)
+        .updateEntityPropertiesIfNotChanged(any(), anyList(), any());
+
+    Assertions.assertThatThrownBy(() -> spyOps.commit(base, updated))
+        .isInstanceOf(CommitConflictException.class);
+
+    Assertions.assertThat(writtenLocations).hasSize(1);
+    Assertions.assertThat(deletedLocations).containsExactlyElementsOf(writtenLocations);
   }
 
   @Test

@@ -66,6 +66,7 @@ params:
   active_releases:
     # Mention all active releases here, in semver descending order.
     # Remove any version that should be moved to the "EOL" category.
+    - "1.8.0"
     - "1.7.0"
     - "1.6.0"
     - "1.5.0"
@@ -76,7 +77,6 @@ params:
     - "1.1.0"
     - "1.0.1"
     - "1.0.0"
-    - "0.9.0"
 
   ui:
     ul_show: 1
@@ -154,7 +154,7 @@ menu:
       parent: "community"
       url: "/community/community-guidelines"
       weight : 60
-    - name: "Security Report"
+    - name: "Security"
       parent: "community"
       url: "/community/security-report"
       weight: 70

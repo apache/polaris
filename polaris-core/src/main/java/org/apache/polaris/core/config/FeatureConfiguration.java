@@ -481,7 +481,26 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("LIST_PAGINATION_ENABLED")
           .catalogConfig("polaris.config.list-pagination-enabled")
           .description("If set to true, pagination for APIs like listTables is enabled.")
-          .defaultValue(false)
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
+  public static final PolarisConfiguration<Integer> LIST_PAGINATION_MAX_PAGE_SIZE =
+      PolarisConfiguration.<Integer>builder()
+          .key("LIST_PAGINATION_MAX_PAGE_SIZE")
+          .catalogConfig("polaris.config.list-pagination-max-page-size")
+          .description(
+              "The largest page size a client may request for APIs like listTables. Larger requested"
+                  + " page sizes are reduced to this value. The Iceberg REST specification treats the"
+                  + " requested page size as an upper bound. For local catalogs this takes effect only"
+                  + " when LIST_PAGINATION_ENABLED is true; with pagination disabled the requested page"
+                  + " size is ignored and the full result set is returned. For federated catalogs it"
+                  + " always applies, because Polaris paginates those listings itself. Values <= 0 mean"
+                  + " unlimited (no max page size enforced), which is the default. A request that"
+                  + " supplies neither pageToken nor pageSize asks for the complete listing, so when"
+                  + " the result does not fit the maximum it is rejected rather than truncated and"
+                  + " answered with a continuation token. An empty pageToken starts a paginated"
+                  + " listing and is capped like any other paginated request.")
+          .defaultValue(-1)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =

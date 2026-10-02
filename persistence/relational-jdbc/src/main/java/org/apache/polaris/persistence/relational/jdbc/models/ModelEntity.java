@@ -51,33 +51,11 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
           "last_update_timestamp",
           "properties",
           "internal_properties",
-          "grant_records_version");
-
-  private static final List<String> ALL_COLUMNS_V2 =
-      List.of(
-          "id",
-          "catalog_id",
-          "parent_id",
-          "type_code",
-          "name",
-          "entity_version",
-          "sub_type_code",
-          "create_timestamp",
-          "drop_timestamp",
-          "purge_timestamp",
-          "to_purge_timestamp",
-          "last_update_timestamp",
-          "properties",
-          "internal_properties",
           "grant_records_version",
           "location_without_scheme");
 
-  public static List<String> getAllColumnNames(int schemaVersion) {
-    if (schemaVersion < 2) {
-      return ALL_COLUMNS;
-    } else {
-      return ALL_COLUMNS_V2;
-    }
+  public static List<String> getAllColumnNames() {
+    return ALL_COLUMNS;
   }
 
   public static final List<String> ENTITY_LOOKUP_COLUMNS =
@@ -135,14 +113,6 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
 
   // location for the entity but without a scheme, when applicable
   private String locationWithoutScheme;
-
-  // schema version of the entity
-  // NOTE: this field is not stored in the database, but is used to handle schema changes
-  private int schemaVersion;
-
-  public ModelEntity(int schemaVersion) {
-    this.schemaVersion = schemaVersion;
-  }
 
   public ModelEntity() {}
 
@@ -210,10 +180,6 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     return locationWithoutScheme;
   }
 
-  public int getSchemaVersion() {
-    return schemaVersion;
-  }
-
   public static Builder builder() {
     return new Builder();
   }
@@ -238,8 +204,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
             .properties(r.getString("properties"))
             .internalProperties(r.getString("internal_properties"))
             .grantRecordsVersion(r.getInt("grant_records_version"))
-            .locationWithoutScheme(
-                this.schemaVersion >= 2 ? r.getString("location_without_scheme") : null)
+            .locationWithoutScheme(r.getString("location_without_scheme"))
             .build();
 
     return toEntity(modelEntity);
@@ -268,9 +233,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
       map.put("internal_properties", this.getInternalProperties());
     }
     map.put("grant_records_version", this.getGrantRecordsVersion());
-    if (this.getSchemaVersion() >= 2) {
-      map.put("location_without_scheme", this.getLocationWithoutScheme());
-    }
+    map.put("location_without_scheme", this.getLocationWithoutScheme());
     return map;
   }
 
@@ -361,17 +324,12 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
       return this;
     }
 
-    public Builder schemaVersion(int schemaVersion) {
-      entity.schemaVersion = schemaVersion;
-      return this;
-    }
-
     public ModelEntity build() {
       return entity;
     }
   }
 
-  public static ModelEntity fromEntity(PolarisBaseEntity entity, int schemaVersion) {
+  public static ModelEntity fromEntity(PolarisBaseEntity entity) {
     var builder =
         ModelEntity.builder()
             .catalogId(entity.getCatalogId())
@@ -405,8 +363,6 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
                   entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
               .withoutScheme());
     }
-
-    builder.schemaVersion(schemaVersion);
 
     return builder.build();
   }

@@ -78,7 +78,7 @@ class BootstrapCommandTest {
     int exitCode = commandLine.execute("-r", "realm1");
 
     assertThat(exitCode).isEqualTo(BaseCommand.EXIT_CODE_BOOTSTRAP_ERROR);
-    assertThat(err.toString()).contains("--credentials").contains("--print-credentials");
+    assertThat(err.toString()).contains("--credential").contains("--print-credentials");
   }
 
   @Test

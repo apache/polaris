@@ -802,9 +802,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             || internalProps.get(
                     PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
                 != null;
-    PolarisPrincipalSecrets secrets =
-        ((IntegrationPersistence) ms)
-            .rotatePrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash);
+    PolarisPrincipalSecrets secrets;
+    try {
+      secrets =
+          ((IntegrationPersistence) ms)
+              .rotatePrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash);
+    } catch (RetryOnConcurrencyException e) {
+      return new PrincipalSecretsResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());
+    }
 
     PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
     if (reset
@@ -1775,9 +1781,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> parentPath,
+          T entity) {
     BasePersistence ms = callContext.getMetaStore();
-    return ms.hasOverlappingSiblings(callContext, entity);
+    return ms.hasOverlappingSiblings(callContext, parentPath, entity);
   }
 
   @Override

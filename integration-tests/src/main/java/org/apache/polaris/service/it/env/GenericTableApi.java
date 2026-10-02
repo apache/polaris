@@ -25,6 +25,8 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
@@ -51,11 +53,40 @@ public class GenericTableApi extends PolarisRestApi {
 
   public List<TableIdentifier> listGenericTables(String catalog, Namespace namespace) {
     String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    Map<String, String> templateValues = Map.of("cat", catalog, "ns", ns);
+    List<TableIdentifier> identifiers = new ArrayList<>();
+    Map<String, String> queryParams = new HashMap<>();
+    String nextPageToken = null;
+    do {
+      if (nextPageToken != null) {
+        queryParams.put("pageToken", nextPageToken);
+      }
+      try (Response res =
+          request("polaris/v1/{cat}/namespaces/{ns}/generic-tables", templateValues, queryParams)
+              .get()) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+        ListGenericTablesResponse response = res.readEntity(ListGenericTablesResponse.class);
+        identifiers.addAll(response.getIdentifiers());
+        nextPageToken = response.getNextPageToken();
+      }
+    } while (nextPageToken != null);
+    return identifiers;
+  }
+
+  public ListGenericTablesResponse listGenericTables(
+      String catalog, Namespace namespace, String pageToken, String pageSize) {
+    String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("pageToken", pageToken);
+    queryParams.put("pageSize", pageSize);
     try (Response res =
-        request("polaris/v1/{cat}/namespaces/{ns}/generic-tables", Map.of("cat", catalog, "ns", ns))
+        request(
+                "polaris/v1/{cat}/namespaces/{ns}/generic-tables",
+                Map.of("cat", catalog, "ns", ns),
+                queryParams)
             .get()) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-      return res.readEntity(ListGenericTablesResponse.class).getIdentifiers().stream().toList();
+      return res.readEntity(ListGenericTablesResponse.class);
     }
   }
 

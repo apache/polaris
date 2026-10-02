@@ -19,10 +19,15 @@
 package org.apache.polaris.persistence.nosql.metastore;
 
 import static org.apache.polaris.core.entity.PolarisEntityConstants.ENTITY_BASE_LOCATION;
+import static org.apache.polaris.core.entity.PolarisEntitySubType.NULL_SUBTYPE;
+import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
+import static org.apache.polaris.persistence.nosql.api.index.IndexKey.key;
+import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping.POLICY_MAPPING_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.metastore.mutation.PolicyMutation.MAX_POLICY_MAPPING_INDEX_VALUE_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.InstanceOfAssertFactories.BOOLEAN;
 
@@ -44,6 +49,7 @@ import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -62,12 +68,15 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
+import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogsObj;
 import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping;
 import org.assertj.core.api.SoftAssertions;
@@ -154,6 +163,22 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   }
 
   @Test
+  public void rejectsPaginationTokenWhenReferencedSnapshotDoesNotExist() {
+    var noSqlToken =
+        NoSqlPaginationToken.paginationToken(
+            objRef(CatalogsObj.TYPE, Long.MAX_VALUE), key("catalog"));
+    var responsePage = Page.page(PageToken.fromLimit(1), List.of("catalog"), noSqlToken);
+    var pageToken = PageToken.build(responsePage.encodedResponseToken(), null, -1, () -> true);
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                metaStore.listFullEntities(
+                    callContext, List.of(), CATALOG, NULL_SUBTYPE, pageToken))
+        .withMessage("Invalid or expired NoSQL pagination token");
+  }
+
+  @Test
   public void rotatePrincipalSecretsWhenClientIdIndexIsStriped() {
     Persistence persistence = realmPersistenceFactory.newBuilder().realmId(realmId).build();
 
@@ -234,6 +259,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
+                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://bucket/foo/newchild/")
@@ -270,6 +296,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
+                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://bucket/foo/")
@@ -286,6 +313,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
       soft.assertThat(
               metaStore.hasOverlappingSiblings(
                   callContext,
+                  List.of(PolarisEntity.toCore(catalog)),
                   new NamespaceEntity.Builder(Namespace.of("x"))
                       .setCatalogId(catalog.getId())
                       .setBaseLocation(check)
@@ -297,6 +325,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
+                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://other/data/stuff/")
@@ -310,6 +339,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
+                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://bucket/foo/bar")
@@ -327,6 +357,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
+                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://bucket/foo/bar")

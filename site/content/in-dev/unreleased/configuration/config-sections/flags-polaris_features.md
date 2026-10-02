@@ -463,8 +463,18 @@ If set to true, principal name will be included in temporary subscoped credentia
 If set to true, pagination for APIs like listTables is enabled.
 
 - **Type:** `Boolean`
-- **Default:** `false`
+- **Default:** `true`
 - **Catalog Config:** `polaris.config.list-pagination-enabled`
+
+---
+
+##### `polaris.features."LIST_PAGINATION_MAX_PAGE_SIZE"`
+
+The largest page size a client may request for APIs like listTables. Larger requested page sizes are reduced to this value. The Iceberg REST specification treats the requested page size as an upper bound. For local catalogs this takes effect only when LIST_PAGINATION_ENABLED is true; with pagination disabled the requested page size is ignored and the full result set is returned. For federated catalogs it always applies, because Polaris paginates those listings itself. Values <= 0 mean unlimited (no max page size enforced), which is the default. A request that supplies neither pageToken nor pageSize asks for the complete listing, so when the result does not fit the maximum it is rejected rather than truncated and answered with a continuation token. An empty pageToken starts a paginated listing and is capped like any other paginated request.
+
+- **Type:** `Integer`
+- **Default:** `-1`
+- **Catalog Config:** `polaris.config.list-pagination-max-page-size`
 
 ---
 

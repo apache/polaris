@@ -70,7 +70,7 @@ public class AzureLocation extends StorageLocation {
     this.storageAccount = hostParts[0];
     this.endpoint = hostParts[1];
     String path = matcher.group(3);
-    filePath = path == null ? "" : path.startsWith("/") ? path.substring(1) : path;
+    filePath = StorageLocation.trimLeadingSlash(path);
   }
 
   /** Get the storage account */

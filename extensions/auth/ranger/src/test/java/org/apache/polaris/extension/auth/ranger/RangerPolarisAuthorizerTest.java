@@ -36,6 +36,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -58,17 +59,21 @@ import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
 import org.apache.polaris.core.auth.RootPrivilegeGrantAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
 import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
 import org.apache.ranger.authz.model.RangerAuthzResult;
 import org.apache.ranger.authz.model.RangerMultiAuthzRequest;
 import org.apache.ranger.authz.model.RangerMultiAuthzResult;
+import org.apache.ranger.authz.util.RangerResourceNameParser;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.DatabindException;
@@ -85,8 +90,9 @@ public class RangerPolarisAuthorizerTest {
 
   private final PolarisAuthorizer authorizer;
 
-  public RangerPolarisAuthorizerTest() {
-    RangerPolarisAuthorizerFactory factory = new RangerPolarisAuthorizerFactory(createConfig());
+  public RangerPolarisAuthorizerTest(@TempDir Path tempDir) {
+    RangerPolarisAuthorizerFactory factory =
+        new RangerPolarisAuthorizerFactory(createConfig(tempDir));
     RangerPolarisAuthorizer rangerPolarisAuthorizer = factory.create(createRealmConfig());
     rangerPolarisAuthorizer.setRealmContext(createRealmContext());
     this.authorizer = rangerPolarisAuthorizer;
@@ -130,6 +136,78 @@ public class RangerPolarisAuthorizerTest {
   }
 
   @Test
+  void resourceNameKeepsNestedNamespaceInOneSegment() throws Exception {
+    PolarisResolvedPathWrapper tablePath =
+        resolvedPath(
+            PolarisEntityType.ROOT,
+            "root",
+            PolarisEntityType.CATALOG,
+            "catalog",
+            PolarisEntityType.NAMESPACE,
+            "ns1",
+            PolarisEntityType.NAMESPACE,
+            "ns2",
+            PolarisEntityType.TABLE_LIKE,
+            "table");
+
+    String resourceName = RangerUtils.toResourcePath(tablePath, "POLARIS");
+
+    assertThat(
+            new RangerResourceNameParser("table:root/catalog/namespace/table")
+                .parseToMap(resourceName))
+        .containsEntry("catalog", "catalog")
+        .containsEntry("namespace", "ns1/ns2")
+        .containsEntry("table", "table");
+  }
+
+  @Test
+  void resourceNameKeepsNestedNamespaceInOneSegmentForPolicy() throws Exception {
+    PolarisResolvedPathWrapper policyPath =
+        resolvedPath(
+            PolarisEntityType.ROOT,
+            "root",
+            PolarisEntityType.CATALOG,
+            "catalog",
+            PolarisEntityType.NAMESPACE,
+            "ns1",
+            PolarisEntityType.NAMESPACE,
+            "ns2",
+            PolarisEntityType.POLICY,
+            "policy");
+
+    String resourceName = RangerUtils.toResourcePath(policyPath, "POLARIS");
+
+    assertThat(
+            new RangerResourceNameParser("policy:root/catalog/namespace/policy")
+                .parseToMap(resourceName))
+        .containsEntry("catalog", "catalog")
+        .containsEntry("namespace", "ns1/ns2")
+        .containsEntry("policy", "policy");
+  }
+
+  @Test
+  void resourceNameKeepsNestedNamespaceInOneSegmentWhenItIsTheLeaf() throws Exception {
+    PolarisResolvedPathWrapper namespacePath =
+        resolvedPath(
+            PolarisEntityType.ROOT,
+            "root",
+            PolarisEntityType.CATALOG,
+            "catalog",
+            PolarisEntityType.NAMESPACE,
+            "ns1",
+            PolarisEntityType.NAMESPACE,
+            "ns2");
+
+    String resourceName = RangerUtils.toResourcePath(namespacePath, "POLARIS");
+
+    assertThat(
+            new RangerResourceNameParser("namespace:root/catalog/namespace")
+                .parseToMap(resourceName))
+        .containsEntry("catalog", "catalog")
+        .containsEntry("namespace", "ns1/ns2");
+  }
+
+  @Test
   void authorizeUsesIntentResolvedTarget() throws Exception {
     RangerEmbeddedAuthorizer embeddedAuthorizer = mock(RangerEmbeddedAuthorizer.class);
     RangerPolarisAuthorizer authorizer =
@@ -146,7 +224,8 @@ public class RangerPolarisAuthorizerTest {
             "ns",
             PolarisEntityType.TABLE_LIKE,
             "table");
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Collections.emptySet());
+    PolarisPrincipal principal =
+        PolarisPrincipal.of("alice", AttributeMap.EMPTY, Collections.emptySet());
     AuthorizationRequest request =
         new AuthorizationRequest(
             principal,
@@ -190,7 +269,8 @@ public class RangerPolarisAuthorizerTest {
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     PolarisResolvedPathWrapper catalogPath =
         resolvedPath(PolarisEntityType.ROOT, "root", PolarisEntityType.CATALOG, "catalog");
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Collections.emptySet());
+    PolarisPrincipal principal =
+        PolarisPrincipal.of("alice", AttributeMap.EMPTY, Collections.emptySet());
     AuthorizationRequest request =
         new AuthorizationRequest(
             principal,
@@ -423,7 +503,7 @@ public class RangerPolarisAuthorizerTest {
 
       String name = nameNode != null ? nameNode.asString() : null;
 
-      return PolarisPrincipal.of(name, Collections.emptyMap(), Collections.emptySet());
+      return PolarisPrincipal.of(name, AttributeMap.EMPTY, Collections.emptySet());
     }
   }
 
