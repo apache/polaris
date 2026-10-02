@@ -161,6 +161,8 @@ public final class IndexKey implements Comparable<IndexKey> {
   }
 
   public static void skip(ByteBuffer buffer) {
+    // Count decoded key length, matching deserializeKey. Escaped ESC/EOF bytes are one decoded
+    // unit each; counting wire bytes here would reject keys that serialize and deserialize fine.
     var l = 0;
     while (true) {
       var b = buffer.get();
@@ -177,10 +179,8 @@ public final class IndexKey implements Comparable<IndexKey> {
           }
           default -> throw new IllegalArgumentException("Invalid escaped value " + b);
         }
-        l += 2;
-      } else {
-        l++;
       }
+      l++;
       checkArgument(l <= MAX_LENGTH, "Deserialized key too long");
     }
   }

@@ -176,6 +176,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Conditional `loadTable` (`If-None-Match` → HTTP 304) no longer attaches a null
   `LOAD_TABLE_RESPONSE` to the `AFTER_LOAD_TABLE` event. The persistence event listener also
   skips null attribute values instead of failing while pruning them.
+- NoSQL index keys: `IndexKey.skip` now counts decoded key length the same way as
+  `deserializeKey`. Previously it counted two units per escaped `0x01`/`0x02` byte against the
+  same 500 limit, so a key that had been written successfully (for example 251 bytes of `0x01`)
+  could make index deserialization throw and leave the index container unreadable.
 - Re-creating an existing namespace now returns `409 Conflict` instead of `403 Forbidden` when
   `OPTIMIZED_SIBLING_CHECK` is on. Namespace creation checks for an existing namespace before
   validating locations, as table and view creation already do, so the existing namespace's own
