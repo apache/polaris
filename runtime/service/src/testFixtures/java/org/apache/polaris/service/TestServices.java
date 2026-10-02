@@ -84,6 +84,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApi;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.config.CatalogConfigHandler;
+import org.apache.polaris.service.catalog.directory.DirectoryConfigEndpoints;
 import org.apache.polaris.service.catalog.generic.CatalogGenericTableEventServiceDelegator;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogAdapter;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
@@ -427,6 +428,8 @@ public record TestServices(
                 new IcebergViewConfigEndpoints();
             CatalogConfigEndpointContributor genericTableEndpoints =
                 new GenericTableConfigEndpoints(realmConfig);
+            CatalogConfigEndpointContributor directoryEndpoints =
+                new DirectoryConfigEndpoints(realmConfig);
             CatalogConfigEndpointContributor policyEndpoints =
                 new PolicyConfigEndpoints(realmConfig);
             Mockito.when(configEndpointContributors.handlesStream())
@@ -435,6 +438,8 @@ public record TestServices(
                         Stream.of(
                             endpointContributorHandle(
                                 GenericTableConfigEndpoints.class, genericTableEndpoints),
+                            endpointContributorHandle(
+                                DirectoryConfigEndpoints.class, directoryEndpoints),
                             endpointContributorHandle(PolicyConfigEndpoints.class, policyEndpoints),
                             endpointContributorHandle(
                                 IcebergRestConfigEndpoints.class, icebergRestEndpoints),

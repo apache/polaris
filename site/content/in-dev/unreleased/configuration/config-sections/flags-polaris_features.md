@@ -356,6 +356,24 @@ When enabled, allows RBAC operations to create synthetic entities for entities i
 
 ---
 
+##### `polaris.features."ENABLE_DIRECTORIES"`
+
+If true, the directories endpoints are enabled
+
+- **Type:** `Boolean`
+- **Default:** `true`
+
+---
+
+##### `polaris.features."ENABLE_DIRECTORY_SCAN"`
+
+If true, the directory scan endpoint is enabled. It lets Polaris list the objects of a directory base location and populate the directory table
+
+- **Type:** `Boolean`
+- **Default:** `true`
+
+---
+
 ##### `polaris.features."ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING"`
 
 If set to true, require that principals must rotate their credentials before being used for anything else.
