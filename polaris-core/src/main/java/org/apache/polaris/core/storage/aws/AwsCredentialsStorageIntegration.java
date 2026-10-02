@@ -232,7 +232,8 @@ public class AwsCredentialsStorageIntegration
                           key.allowedReadLocations(),
                           key.allowedListLocations(),
                           key.allowedWriteLocations(),
-                          region)
+                          region,
+                          realmConfig.getConfig(FeatureConfiguration.ALLOW_CROSS_ACCOUNT_KMS_KEYS))
                       .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
 
@@ -316,7 +317,8 @@ public class AwsCredentialsStorageIntegration
       Set<String> readLocations,
       Set<String> listLocations,
       Set<String> writeLocations,
-      String region) {
+      String region,
+      boolean allowCrossAccountKmsKeys) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
     IamStatement.Builder allowGetObjectStatementBuilder =
         IamStatement.builder()
@@ -398,8 +400,10 @@ public class AwsCredentialsStorageIntegration
           decryptionKeys,
           policyBuilder,
           canWrite,
+          storageConfigurationInfo.getAwsPartition(),
           region,
-          storageConfigurationInfo.getAwsAccountId())) {
+          storageConfigurationInfo.getAwsAccountId(),
+          allowCrossAccountKmsKeys)) {
         statementCount++;
       }
     }
@@ -433,8 +437,10 @@ public class AwsCredentialsStorageIntegration
       List<String> decryptionKeys,
       IamPolicy.Builder policyBuilder,
       boolean canWrite,
+      String awsPartition,
       String region,
-      String accountId) {
+      String accountId,
+      boolean allowCrossAccountKmsKeys) {
 
     boolean hasEncryptionKeys = hasKmsKeys(encryptionKeys);
     boolean hasDecryptionKeys = hasKmsKeys(decryptionKeys);
@@ -477,7 +483,7 @@ public class AwsCredentialsStorageIntegration
     boolean shouldAddWildcard = !hasEncryptionKeys && !hasDecryptionKeys && !canWrite && isAwsS3;
     if (shouldAddWildcard) {
       IamStatement.Builder allowKms = buildKmsDecryptionStatement();
-      addAllKeysResource(region, accountId, allowKms);
+      addAllKeysResource(awsPartition, region, accountId, allowCrossAccountKmsKeys, allowKms);
       policyBuilder.addStatement(allowKms.build());
       statementAdded = true;
     }
@@ -519,14 +525,19 @@ public class AwsCredentialsStorageIntegration
   }
 
   private static void addAllKeysResource(
-      String region, String accountId, IamStatement.Builder allowKms) {
-    String allKeysArn = arnKeyAll(region, accountId);
+      String awsPartition,
+      String region,
+      String accountId,
+      boolean allowCrossAccountKmsKeys,
+      IamStatement.Builder allowKms) {
+    String allKeysArn = arnKeyAll(awsPartition, region, allowCrossAccountKmsKeys ? "*" : accountId);
     allowKms.addResource(IamResource.create(allKeysArn));
     LOGGER.debug("Adding KMS key policy for all keys in account {}", accountId);
   }
 
-  private static String arnKeyAll(String region, String accountId) {
-    return String.format("arn:aws:kms:%s:%s:key/*", region, accountId);
+  private static String arnKeyAll(String awsPartition, String region, String accountId) {
+    return String.format(
+        "arn:%s:kms:%s:%s:key/*", awsPartition != null ? awsPartition : "aws", region, accountId);
   }
 
   private static String arnPrefixForPartition(String awsPartition) {

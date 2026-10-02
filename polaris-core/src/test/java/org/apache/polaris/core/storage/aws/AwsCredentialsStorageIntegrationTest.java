@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.aws;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_CROSS_ACCOUNT_KMS_KEYS;
 import static org.apache.polaris.core.config.FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL;
 import static org.apache.polaris.core.config.FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -1241,6 +1242,89 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table"))),
+            Optional.empty(),
+            CredentialVendingContext.empty());
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "aws, us-east-2, false",
+    "aws, us-east-2, true",
+    "aws-cn, cn-north-1, false",
+    "aws-cn, cn-north-1, true",
+    "aws-us-gov, us-gov-west-1, false",
+    "aws-us-gov, us-gov-west-1, true"
+  })
+  public void testCrossAccountKmsFeatureFlag(String partition, String region, boolean enabled) {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String accountId = "012345678901";
+    String bucket = "bucket";
+    String location = s3Path(bucket, "path/to/warehouse/table");
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              IamPolicy policy =
+                  IamPolicy.fromJson(invocation.<AssumeRoleRequest>getArgument(0).policy());
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      statement ->
+                          assertThat(statement.resources())
+                              .containsExactly(
+                                  IamResource.create(
+                                      String.format(
+                                          "arn:%s:kms:%s:%s:key/*",
+                                          partition, region, enabled ? "*" : accountId))));
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(location)
+            .roleARN(String.format("arn:%s:iam::%s:role/jdoe", partition, accountId))
+            .externalId("externalId")
+            .region(region)
+            .build();
+    RealmConfig realmConfig =
+        enabled ? enabledFeatures(ALLOW_CROSS_ACCOUNT_KMS_KEYS) : EMPTY_REALM_CONFIG;
+
+    new AwsCredentialsStorageIntegration(stsClient, config, realmConfig)
+        .getStorageAccessConfig(
+            toGrants(Set.of(location), Set.of(location), Set.of()),
+            Optional.empty(),
+            CredentialVendingContext.empty());
+  }
+
+  @Test
+  public void testCrossAccountKmsFeatureFlagDoesNotAffectWritePolicy() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String location = s3Path("bucket", "path/to/warehouse/table");
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              IamPolicy policy =
+                  IamPolicy.fromJson(invocation.<AssumeRoleRequest>getArgument(0).policy());
+              assertThat(policy.statements())
+                  .noneSatisfy(
+                      statement ->
+                          assertThat(statement.resources())
+                              .anySatisfy(
+                                  resource ->
+                                      assertThat(resource.value()).startsWith("arn:aws:kms:")));
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(location)
+            .roleARN("arn:aws:iam::012345678901:role/jdoe")
+            .externalId("externalId")
+            .region("us-east-2")
+            .build();
+
+    new AwsCredentialsStorageIntegration(
+            stsClient, config, enabledFeatures(ALLOW_CROSS_ACCOUNT_KMS_KEYS))
+        .getStorageAccessConfig(
+            toGrants(Set.of(location), Set.of(location), Set.of(location)),
             Optional.empty(),
             CredentialVendingContext.empty());
   }
