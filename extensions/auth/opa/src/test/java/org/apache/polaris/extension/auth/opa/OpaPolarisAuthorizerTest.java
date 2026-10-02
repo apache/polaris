@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -69,9 +70,11 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.extension.auth.opa.token.BearerTokenProvider;
 import org.apache.polaris.extension.auth.opa.token.StaticBearerTokenProvider;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 /**
  * Unit tests for OpaPolarisAuthorizer including basic functionality and bearer token authentication
@@ -648,9 +651,7 @@ public class OpaPolarisAuthorizerTest {
   }
 
   @Test
-  void resolveAuthorizationInputsResolvesAll() {
-    // resolveAll() is intentionally used for compatibility and is expected
-    // to be narrowed in a future refactoring.
+  void resolveAuthorizationInputsResolvesRequiredSelections() {
     OpaPolarisAuthorizer authorizer =
         new OpaPolarisAuthorizer(
             URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
@@ -660,12 +661,47 @@ public class OpaPolarisAuthorizerTest {
             null,
             "test-realm");
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
+    when(resolutionManifest.getCatalogName()).thenReturn("catalog-1");
     AuthorizationState authzState = new AuthorizationState(resolutionManifest);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1"));
 
     authorizer.resolveAuthorizationInputs(authzState, requestWithCatalogTarget(principal));
 
-    verify(resolutionManifest).resolveAll();
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Set<Resolvable>> selectionsCaptor = ArgumentCaptor.forClass(Set.class);
+    verify(resolutionManifest).resolveSelections(selectionsCaptor.capture());
+    assertThat(selectionsCaptor.getValue())
+        .containsExactlyInAnyOrder(
+            Resolvable.REFERENCE_CATALOG,
+            Resolvable.REQUESTED_PATHS,
+            Resolvable.REQUESTED_TOP_LEVEL_ENTITIES);
+  }
+
+  @Test
+  void resolveAuthorizationInputsWithoutCatalogResolvesOnlyTopLevelEntities() {
+    // A manifest without a reference catalog is used for root operations and the
+    // principal/principal-role operations. Requesting REFERENCE_CATALOG or REQUESTED_PATHS there is
+    // rejected by ResolvePlan.fromSelections(), so the selection set must exclude both.
+    OpaPolarisAuthorizer authorizer =
+        new OpaPolarisAuthorizer(
+            URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
+            mock(CloseableHttpClient.class),
+            JsonMapper.builder().build(),
+            null,
+            null,
+            "test-realm");
+    PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
+    when(resolutionManifest.getCatalogName()).thenReturn(null);
+    AuthorizationState authzState = new AuthorizationState(resolutionManifest);
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1"));
+
+    authorizer.resolveAuthorizationInputs(authzState, requestWithCatalogTarget(principal));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Set<Resolvable>> selectionsCaptor = ArgumentCaptor.forClass(Set.class);
+    verify(resolutionManifest).resolveSelections(selectionsCaptor.capture());
+    assertThat(selectionsCaptor.getValue())
+        .containsExactly(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES);
   }
 
   @Test
