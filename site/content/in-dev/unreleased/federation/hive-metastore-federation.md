@@ -151,6 +151,28 @@ prefixes. If your IAM trust policy requires an `externalId` or explicit `userArn
 optional fields in `storageConfigInfo`. Polaris persists them and supplies them when assuming the
 role cited by `roleArn` during metadata commits.
 
+## Connection properties
+
+`connectionConfigInfo.properties` holds settings for the Hive client that Polaris creates for the
+federated catalog. Unlike catalog-level `properties`, these values are visible only through the
+Management API and are never returned to catalog clients via `/v1/config`, so they are the right
+place for non-secret client settings. Only the following keys are forwarded to the Iceberg
+`HiveCatalog`; any other key is stored but ignored:
+
+| Key | Purpose |
+|-----|---------|
+| `clients` | Hive metastore client pool size |
+| `list-all-tables` | List non-Iceberg tables as well |
+| `s3.endpoint`, `s3.path-style-access`, `client.region` | Non-secret FileIO client settings for S3-compatible warehouses |
+
+The `s3.*` and `client.region` keys only take effect when the catalog uses `S3FileIO`. `HiveCatalog`
+defaults to `HadoopFileIO`, which ignores them, so set
+`io-impl=org.apache.iceberg.aws.s3.S3FileIO` in the catalog-level `properties` (it is not accepted
+as a connection property) when you rely on them.
+
+Connection properties take precedence over catalog-level `properties` when the same key is present.
+Credentials must never be placed here; use the Polaris process identity as described above.
+
 ## Limitations and operational notes
 
 - **Single identity:** Because only `IMPLICIT` authentication is permitted, Polaris cannot mix
