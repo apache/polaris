@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
@@ -68,6 +69,16 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
   }
 
   public abstract @NonNull AuthenticationParameters asAuthenticationParametersModel();
+
+  /**
+   * Returns the references to the secrets that were offloaded to the {@code UserSecretsManager}
+   * when the owning entity was created, so that they can be deleted together with the entity.
+   * Authentication types without inline secrets return an empty list.
+   */
+  @JsonIgnore
+  public @NonNull List<SecretReference> getSecretReferences() {
+    return List.of();
+  }
 
   public static AuthenticationParametersDpo fromAuthenticationParametersModelWithSecrets(
       AuthenticationParameters authenticationParameters,

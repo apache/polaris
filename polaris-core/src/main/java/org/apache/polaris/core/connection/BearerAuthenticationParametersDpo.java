@@ -18,8 +18,10 @@
  */
 package org.apache.polaris.core.connection;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
+import java.util.List;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.secrets.SecretReference;
@@ -43,6 +45,12 @@ public class BearerAuthenticationParametersDpo extends AuthenticationParametersD
 
   public @NonNull SecretReference getBearerTokenReference() {
     return bearerTokenReference;
+  }
+
+  @JsonIgnore
+  @Override
+  public @NonNull List<SecretReference> getSecretReferences() {
+    return List.of(bearerTokenReference);
   }
 
   @Override
