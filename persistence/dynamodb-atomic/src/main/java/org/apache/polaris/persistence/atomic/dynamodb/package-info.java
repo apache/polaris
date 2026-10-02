@@ -32,4 +32,4 @@
  * <p>The implementation lands incrementally across a series of pull requests; this initial module
  * provides the skeleton and build wiring only.
  */
-package org.apache.polaris.persistence.dynamodb;
+package org.apache.polaris.persistence.atomic.dynamodb;
