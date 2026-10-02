@@ -44,6 +44,8 @@ import com.azure.storage.file.datalake.sas.DataLakeServiceSasSignatureValues;
 import com.azure.storage.file.datalake.sas.PathSasPermission;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Throwables;
+import java.net.UnknownHostException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -231,40 +233,53 @@ public class AzureCredentialsStorageIntegration
         .addKeyValue(StructuredLogKeys.FILE_PATH, filePath)
         .log("Subscope Azure SAS");
     String sasToken;
-    if (location.getEndpoint().equalsIgnoreCase(AzureLocation.BLOB_ENDPOINT)) {
-      sasToken =
-          getBlobUserDelegationSas(
-              startTime,
-              sanitizedEndTime,
-              sanitizedEndTime,
-              storageDnsName,
-              location.getContainer(),
-              blobSasPermission,
-              Mono.just(accessToken));
-    } else if (location.getEndpoint().equalsIgnoreCase(AzureLocation.ADLS_ENDPOINT)) {
-      String path = null;
-      if (Boolean.TRUE.equals(azureStorageConfig.isHierarchical())) {
-        Preconditions.checkArgument(
-            locations.size() <= 1, "Allowed read locations must not have more that one entry");
-        Preconditions.checkArgument(
-            writeLocations.size() <= 1,
-            "Allowed write locations must not have more that one entry");
-        path = location.getFilePath();
-      }
+    try {
+      if (location.getEndpoint().equalsIgnoreCase(AzureLocation.BLOB_ENDPOINT)) {
+        sasToken =
+            getBlobUserDelegationSas(
+                startTime,
+                sanitizedEndTime,
+                sanitizedEndTime,
+                storageDnsName,
+                location.getContainer(),
+                blobSasPermission,
+                Mono.just(accessToken));
+      } else if (location.getEndpoint().equalsIgnoreCase(AzureLocation.ADLS_ENDPOINT)) {
+        String path = null;
+        if (Boolean.TRUE.equals(azureStorageConfig.isHierarchical())) {
+          Preconditions.checkArgument(
+              locations.size() <= 1, "Allowed read locations must not have more that one entry");
+          Preconditions.checkArgument(
+              writeLocations.size() <= 1,
+              "Allowed write locations must not have more that one entry");
+          path = location.getFilePath();
+        }
 
-      sasToken =
-          getAdlsUserDelegationSas(
-              startTime,
-              sanitizedEndTime,
-              sanitizedEndTime,
-              storageDnsName,
-              location.getContainer(),
-              pathSasPermission,
-              path,
-              Mono.just(accessToken));
-    } else {
-      throw new RuntimeException(
-          String.format("Endpoint %s not supported", location.getEndpoint()));
+        sasToken =
+            getAdlsUserDelegationSas(
+                startTime,
+                sanitizedEndTime,
+                sanitizedEndTime,
+                storageDnsName,
+                location.getContainer(),
+                pathSasPermission,
+                path,
+                Mono.just(accessToken));
+      } else {
+        throw new RuntimeException(
+            String.format("Endpoint %s not supported", location.getEndpoint()));
+      }
+    } catch (RuntimeException ex) {
+      for (Throwable cause : Throwables.getCausalChain(ex)) {
+        if (cause instanceof UnknownHostException unknownHost) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Host resolution failed while vending credentials for Azure storage account '%s': %s",
+                  location.getStorageAccount(), unknownHost.getMessage()),
+              ex);
+        }
+      }
+      throw ex;
     }
 
     return toAccessConfig(sasToken, location, sanitizedEndTime.toInstant());
