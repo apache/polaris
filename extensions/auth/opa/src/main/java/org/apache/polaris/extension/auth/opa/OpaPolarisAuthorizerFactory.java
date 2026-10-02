@@ -111,7 +111,8 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
         objectMapper,
         bearerTokenProvider,
         requestIdSupplier.getRequestId(),
-        realmContext.getRealmIdentifier());
+        realmContext.getRealmIdentifier(),
+        realmConfig);
   }
 
   @PreDestroy
