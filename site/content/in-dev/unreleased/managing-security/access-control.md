@@ -243,6 +243,39 @@ privileges must be granted at namespace or catalog scope.
 Grant revocation uses the same request body with `POST` to the role's grants endpoint.
 The existing role-grants listing returns grants with their model, namespace, or catalog scope.
 
+### Lineage privileges
+
+| Privilege | Target | Description |
+| --------- | ------ | ----------- |
+| LINEAGE_READ | Catalog, namespace, table | Enables querying the lineage graph for the entity. |
+| LINEAGE_INGEST | Catalog, namespace, table | Enables submitting OpenLineage events that record lineage for the entity. |
+
+Lineage is a property of the entity it describes rather than a separate child entity, so these
+privileges ride the entity's existing grants. `LINEAGE_READ` is also conferred by
+`TABLE_READ_PROPERTIES`, `TABLE_READ_DATA`, `TABLE_WRITE_PROPERTIES`, `TABLE_WRITE_DATA`,
+`TABLE_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and `CATALOG_MANAGE_CONTENT`. `LINEAGE_INGEST`
+is also conferred by the write ones: `TABLE_WRITE_PROPERTIES`, `TABLE_WRITE_DATA`,
+`TABLE_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and `CATALOG_MANAGE_CONTENT`. A principal that
+can already read a table can therefore read its lineage, and a principal that can write one can
+record lineage for it, without an additional grant.
+
+`LINEAGE_INGEST` does not confer `LINEAGE_READ`. Ingest is append-only event submission, so a
+principal granted only `LINEAGE_INGEST` cannot query the lineage graph.
+
+Granting either privilege on a catalog or namespace covers the tables beneath it, so a
+namespace-scoped grant satisfies a table-scoped check without a per-table grant.
+
+A single OpenLineage event names both the datasets a job read and the datasets it wrote, and the two
+are authorized differently. Each **output** dataset requires `LINEAGE_INGEST` on the table; when the
+output table does not exist yet, as with a CREATE TABLE AS SELECT, the check falls back to the
+parent namespace, so a principal that may create the table may also record the lineage that creates
+it. Each **input** dataset requires only read access to that table, expressed as
+`TABLE_READ_PROPERTIES`. Citing a table as a source is not reading its lineage, so `LINEAGE_READ` is
+not required either; ordinary readers can record lineage from the sources they read without being
+granted write-level privileges on them. Note that `TABLE_CREATE` alone does not satisfy the input
+check: a principal that may only create tables in a namespace cannot name an existing table there as
+a lineage input unless it can also read that table.
+
 ## RBAC example
 
 The following diagram illustrates how RBAC works in Polaris and

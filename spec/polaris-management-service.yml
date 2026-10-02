@@ -1559,6 +1559,8 @@ components:
         - TABLE_REMOVE_STATISTICS
         - TABLE_REMOVE_PARTITION_SPECS
         - TABLE_MANAGE_STRUCTURE
+        - LINEAGE_READ
+        - LINEAGE_INGEST
 
     SemanticModelPrivilege:
       type: string
@@ -1641,6 +1643,8 @@ components:
         - TABLE_REMOVE_STATISTICS
         - TABLE_REMOVE_PARTITION_SPECS
         - TABLE_MANAGE_STRUCTURE
+        - LINEAGE_READ
+        - LINEAGE_INGEST
 
     CatalogPrivilege:
       type: string
@@ -1703,6 +1707,8 @@ components:
         - TABLE_REMOVE_STATISTICS
         - TABLE_REMOVE_PARTITION_SPECS
         - TABLE_MANAGE_STRUCTURE
+        - LINEAGE_READ
+        - LINEAGE_INGEST
 
     AddGrantRequest:
       type: object
