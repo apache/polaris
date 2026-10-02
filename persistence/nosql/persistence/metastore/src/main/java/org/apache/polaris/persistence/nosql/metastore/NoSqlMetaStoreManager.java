@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -210,6 +211,19 @@ record NoSqlMetaStoreManager(
       @NonNull PolarisEntityType entityType,
       @NonNull PolarisEntitySubType entitySubType,
       @NonNull PageToken pageToken) {
+    return listFullEntities(
+        callCtx, catalogPath, entityType, entitySubType, entity -> true, pageToken);
+  }
+
+  @NonNull
+  @Override
+  public Page<PolarisBaseEntity> listFullEntities(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull Predicate<PolarisBaseEntity> entityFilter,
+      @NonNull PageToken pageToken) {
     var catalogStableId =
         (catalogPath != null && !catalogPath.isEmpty()) ? catalogPath.getFirst().getId() : 0L;
 
@@ -224,7 +238,7 @@ record NoSqlMetaStoreManager(
             entitySubType,
             pageToken,
             objBase -> mapToEntity(objBase, catalogStableId),
-            entity -> true,
+            entityFilter,
             Function.identity());
   }
 

@@ -205,6 +205,7 @@ class Command(ABC):
                 subcommand,
                 catalog_name=options_get(Arguments.CATALOG),
                 namespace=options_get(Arguments.NAMESPACE),
+                page_size=options_get(Arguments.PAGE_SIZE),
                 policy_name=options_get(Arguments.POLICY),
                 policy_file=options_get(Arguments.POLICY_FILE),
                 policy_type=options_get(Arguments.POLICY_TYPE),

@@ -54,6 +54,7 @@ import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
@@ -159,6 +160,11 @@ public class PolicyCatalog {
   }
 
   public List<PolicyIdentifier> listPolicies(Namespace namespace, @Nullable PolicyType policyType) {
+    return listPolicies(namespace, policyType, PageToken.readEverything()).items();
+  }
+
+  public Page<PolicyIdentifier> listPolicies(
+      Namespace namespace, @Nullable PolicyType policyType, PageToken pageToken) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(namespace));
     if (resolvedEntities == null) {
@@ -176,30 +182,29 @@ public class PolicyCatalog {
               catalogPath,
               PolarisEntityType.POLICY,
               PolarisEntitySubType.NULL_SUBTYPE,
-              PageToken.readEverything());
+              pageToken);
       if (!listEntitiesResult.isSuccess()) {
         throw new IllegalStateException("Failed to list policies in namespace: " + namespace);
       }
-      return listEntitiesResult.getEntities().stream()
+      return listEntitiesResult
+          .getPage()
           .map(
               entity ->
-                  PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build())
-          .toList();
+                  PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build());
     }
-    // with a policyType filter we need to load the full PolicyEntity to apply the filter
+    // with a policyType filter we push the predicate to the store so pagination happens over
+    // matching policies
     return metaStoreManager
-        .listFullEntitiesAll(
+        .listFullEntities(
             callContext.getPolarisCallContext(),
             catalogPath,
             PolarisEntityType.POLICY,
-            PolarisEntitySubType.NULL_SUBTYPE)
-        .stream()
-        .map(PolicyEntity::of)
-        .filter(policyEntity -> policyEntity.getPolicyType() == policyType)
+            PolarisEntitySubType.NULL_SUBTYPE,
+            entity -> PolicyEntity.of(entity).getPolicyType() == policyType,
+            pageToken)
         .map(
             entity ->
-                PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build())
-        .toList();
+                PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build());
   }
 
   public Policy loadPolicy(PolicyIdentifier policyIdentifier) {
