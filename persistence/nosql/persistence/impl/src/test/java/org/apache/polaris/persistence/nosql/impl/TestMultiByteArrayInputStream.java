@@ -19,6 +19,7 @@
 package org.apache.polaris.persistence.nosql.impl;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.io.ByteArrayOutputStream;
@@ -28,6 +29,7 @@ import java.util.stream.Stream;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -36,6 +38,25 @@ import org.junit.jupiter.params.provider.MethodSource;
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestMultiByteArrayInputStream {
   @InjectSoftAssertions protected SoftAssertions soft;
+
+  @Test
+  public void zeroLengthReadAtEofReturnsZero() throws IOException {
+    var empty = new MultiByteArrayInputStream(List.of());
+    soft.assertThat(empty.read(new byte[0], 0, 0)).isZero();
+    soft.assertThat(empty.read()).isEqualTo(-1);
+
+    var stream = new MultiByteArrayInputStream(List.of("a".getBytes(UTF_8)));
+    soft.assertThat(stream.read(new byte[0], 0, 0)).isZero();
+    soft.assertThat(stream.read()).isEqualTo('a');
+    soft.assertThat(stream.read(new byte[0], 0, 0)).isZero();
+  }
+
+  @Test
+  public void zeroLengthReadAtEofValidatesBounds() {
+    var empty = new MultiByteArrayInputStream(List.of());
+    assertThatThrownBy(() -> empty.read(new byte[0], 1, 0))
+        .isInstanceOf(IndexOutOfBoundsException.class);
+  }
 
   @ParameterizedTest
   @MethodSource

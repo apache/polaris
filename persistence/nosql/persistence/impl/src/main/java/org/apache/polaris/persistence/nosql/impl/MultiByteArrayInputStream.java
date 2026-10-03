@@ -23,6 +23,7 @@ import static java.util.Objects.requireNonNull;
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import org.jspecify.annotations.NonNull;
 
 final class MultiByteArrayInputStream extends InputStream {
@@ -36,6 +37,11 @@ final class MultiByteArrayInputStream extends InputStream {
 
   @Override
   public int read(@NonNull byte[] b, int off, int len) {
+    Objects.checkFromIndexSize(off, len, b.length);
+    if (len == 0) {
+      return 0;
+    }
+
     while (true) {
       if (checkCurrentEof()) {
         return -1;
