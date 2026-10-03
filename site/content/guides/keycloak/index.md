@@ -35,31 +35,45 @@ menus:
 
 ## Overview
 
-This example uses Keycloak as an **external** identity provider for Polaris. The "iceberg" realm is automatically
-created and configured from the `iceberg-realm.json` file.
+This example uses Keycloak as an **external** identity provider for Polaris, while keeping Polaris's **built-in**
+(internal) authorizer, which authorizes requests using grants recorded in the Polaris metastore. The "iceberg" realm
+is automatically created and configured from the `iceberg-realm.json` file.
 
-This Keycloak realm contains 1 client definition: `client1:s3cr3t`. It is configured to return tokens with the following
-fixed claims:
+This Keycloak realm contains 1 client definition, `client1:s3cr3t`, and 1 real user, `keycloak-admin:s3cr3t`, who is
+granted the `service_admin` role on `client1`. Unlike the claims used in some other Polaris examples, nothing here is
+hardcoded: the token's claims come naturally from this real user and the role granted to it in Keycloak.
 
-- `principal_id`: the principal ID of the user. It is always set to zero (0) in this example.
-- `principal_name`: the principal name of the user. It is always set to "root" in this example.
-- `principal_roles`: the principal roles of the user. It is always set to `["server_admin"]` in this example.
+- `preferred_username`: a standard OIDC claim, set to the authenticated user's username, "keycloak-admin".
+- `resource_access.client1.roles`: a standard OIDC claim listing the authenticated user's roles for the `client1`
+  client, `["service_admin"]`.
 
-This is obviously not a realistic configuration. In a real-world scenario, you would configure Keycloak to return the
-actual principal ID, name and roles of the user. Note that principals and principal roles must have been created in
-Polaris beforehand, and the principal ID, name and roles must match the ones returned by Keycloak.
+Note that there is no `principal_id` claim, and `polaris.oidc.principal-mapper.id-claim-path` is intentionally left
+unset: **principals should always be matched by name when using an external IDP**. Polaris principal IDs are an
+internal implementation detail, assigned by the metastore and never exposed by the management API, so there is no
+reliable way for an IDP to know, ahead of time, what ID a given principal will be assigned.
 
-Polaris is configured with 3 realms:
+Because the built-in authorizer requires every principal to exist in the Polaris metastore, this example creates a
+real Polaris principal named `keycloak-admin` and grants it the `service_admin` principal role, so that tokens
+issued by Keycloak for `keycloak-admin` resolve to an authorized principal. See
+[Starting the Example](#starting-the-example) below for how this is set up.
 
-- `realm-internal`: This is the default realm, and is configured to use the internal authentication only. It accepts
-  token issued by Polaris itself only.
-- `realm-external`: This realm is configured to use an external identity provider (IDP) for authentication only. It
-  accepts tokens issued by Keycloak only.
-- `realm-mixed`: This realm is configured to use both the internal and external authentication. It accepts tokens 
-  issued by both Polaris and Keycloak.
+Polaris is configured with authentication type `mixed`, which is required for two reasons:
+
+- It keeps the internal token endpoint active, which is needed once during setup (see below).
+- It accepts tokens issued by Keycloak, which is needed to authenticate as `keycloak-admin`.
 
 For more information about how to configure Polaris with external authentication, see the
-[Polaris documentation](/releases/latest/).
+[IDP integration documentation](/releases/latest/managing-security/external-idp/).
+
+If you are instead interested in **fully external principals** — principals that never need to exist in the Polaris
+metastore at all — see the [Keycloak + OPA example](/guides/keycloak-opa/), which uses an external
+authorizer ([OPA](https://www.openpolicyagent.org/)) instead of the built-in one. The table below compares both
+examples:
+
+| Example                                                                  | Authentication Type | Credential Mode      | Principal Pre-sync Required? | Comments                                                                                                     |
+|--------------------------------------------------------------------------|---------------------|----------------------|------------------------------|--------------------------------------------------------------------------------------------------------------|
+| Keycloak + Internal Principals + Built-in Authorizer (this guide)        | `mixed`             | `internal` (default) | Yes                          | The principal must already exist in Polaris, matched by name, with the roles it needs granted ahead of time. |
+| [Keycloak + External Principals + OPA](/guides/keycloak-opa/) | `external`          | `external`           | No                           | The principal is authenticated and authorized entirely from the token; it never needs to exist in Polaris.   |
 
 ## Starting the Example
 
@@ -78,65 +92,25 @@ For more information about how to configure Polaris with external authentication
     docker compose -f site/content/guides/keycloak/docker-compose.yml up
     ```
 
+    This also runs a setup step that creates the `keycloak-admin` principal and grants it the `service_admin`
+    principal role. This setup step uses the bootstrap `root` principal's own, internally-issued Polaris token to do
+    so; `root` is never used to call the REST API for anything else, and in particular is never used to authenticate
+    as a caller in the examples below.
+
 ## Requesting a Token
 
 Note: the commands below require `jq` to be installed on your machine.
 
-### From Polaris
-
-You can request a token from Polaris for realms `realm-internal` and `realm-mixed`:
-
-1. Open a terminal and run the following command to request an access token for the `realm-internal` realm:
-
-    ```shell
-    polaris_token_realm_internal=$(curl -s http://localhost:8181/api/catalog/v1/oauth/tokens \
-      --user root:s3cr3t \
-      -H 'Polaris-Realm: realm-internal' \
-      -d 'grant_type=client_credentials' \
-      -d 'scope=PRINCIPAL_ROLE:ALL' | jq -r .access_token)
-    ```
-   
-    This token is valid only for the `realm-internal` realm.
-   
-2. Open a terminal and run the following command to request an access token for the `realm-mixed` realm:
-
-    ```shell
-    polaris_token_realm_mixed=$(curl -s http://localhost:8181/api/catalog/v1/oauth/tokens \
-      --user root:s3cr3t \
-      -H 'Polaris-Realm: realm-mixed' \
-      -d 'grant_type=client_credentials' \
-      -d 'scope=PRINCIPAL_ROLE:ALL' | jq -r .access_token)
-    ```
-   
-    This token is valid only for the `realm-mixed` realm.
-
-Polaris tokens are valid for 1 hour.
-
-Note: if you request a Polaris token for the `realm-external` realm, it will not work because Polaris won't issue tokens
-for this realm:
-
-<!-- the '|| true' is there to let Guides CI not fail on this command -->
-```shell
-curl -v http://localhost:8181/api/catalog/v1/oauth/tokens \
-  --user root:s3cr3t \
-  -H 'Polaris-Realm: realm-external' \
-  -d 'grant_type=client_credentials' \
-  -d 'scope=PRINCIPAL_ROLE:ALL' || true
-```
-
-This will return a `501 Not Implemented` error because for this realm, the internal token endpoint has been deactivated.
-
-### From Keycloak
-
-You can request a token from Keycloak for the `realm-external` and `realm-mixed` realms:
-
-1. Open a terminal and run the following command to request an access token from Keycloak:
+1. Open a terminal and run the following command to request an access token from Keycloak on behalf of the
+   `keycloak-admin` user:
 
     ```shell
     keycloak_token=$(curl -s http://keycloak:8080/realms/iceberg/protocol/openid-connect/token \
       --resolve keycloak:8080:127.0.0.1 \
       --user client1:s3cr3t \
-      -d 'grant_type=client_credentials' | jq -r .access_token)
+      -d 'grant_type=password' \
+      -d 'username=keycloak-admin' \
+      -d 'password=s3cr3t' | jq -r .access_token)
     ```
 
 Note the `--resolve` option: it is used to send the request with the `Host` header set to `keycloak`. This is necessary
@@ -144,81 +118,27 @@ because Keycloak issues tokens with the `iss` claim matching the request's `Host
 not be valid when used against Polaris because the `iss` claim would be `127.0.0.1`, but Polaris expects it to be
 `keycloak`, since that's Keycloak's hostname within the Docker network.
 
-Tokens issued by Keycloak can be used to access Polaris with the `realm-external` or `realm-mixed` realms. Access tokens
-are valid for 1 hour.
+This uses the "password" grant (also known as Resource Owner Password Credentials, or ROPC), which lets a client
+obtain a token directly from a username and password, without a browser-based redirect. **This grant is deprecated by
+OAuth 2.1 and should not be used in production**; it is used here only because it is the simplest way to obtain a
+token tied to a real user identity in a non-interactive, scriptable guide. A production integration would instead use
+the `authorization_code` grant, which requires a browser to complete the login redirect.
+
+This token is valid for 1 hour and authenticates as `keycloak-admin`.
 
 You can also access the Keycloak admin console. Open a browser and go to [http://localhost:8080](http://localhost:8080),
 then log in with the username `admin` and password `admin` (you can change this in the docker-compose file).
 
-## Accessing Polaris with the Tokens
+## Accessing Polaris with the Token
 
-You can access Polaris using the tokens you obtained above. The following examples show how to use the tokens with
-`curl`:
+Open a terminal and run the following command to list the catalogs:
 
-### Using the Polaris Token
-
-1. Open a terminal and run the following command to list the principal roles in the `realm-internal` realm:
-
-    ```shell
-    curl -v http://localhost:8181/api/management/v1/catalogs \
-      -H "Authorization: Bearer $polaris_token_realm_internal" \
-      -H 'Polaris-Realm: realm-internal' \
-      -H 'Accept: application/json'
-    ```
-   
-2. Open a terminal and run the following command to list the principal roles in the `realm-mixed` realm:
-
-    ```shell
-    curl -v http://localhost:8181/api/management/v1/catalogs \
-      -H "Authorization: Bearer $polaris_token_realm_mixed" \
-      -H 'Polaris-Realm: realm-mixed' \
-      -H 'Accept: application/json'
-    ```
-
-Note: you cannot mix tokens from different realms. For example, you cannot use a token from the `realm-internal` realm to access
-the `realm-mixed` realm:
-
-<!-- the '|| true' is there to let Guides CI not fail on this command -->
-```shell
-curl -v http://localhost:8181/api/management/v1/catalogs \
-  -H "Authorization: Bearer $polaris_token_realm_internal" \
-  -H 'Polaris-Realm: realm-mixed' \
-  -H 'Accept: application/json' || true
-```
-
-This will return a `401 Unauthorized` error because the token is not valid for the `realm-mixed` realm.
-
-### Using the Keycloak Token
-
-The same Keycloak token can be used to access both the `realm-external` and `realm-mixed` realms, as it is valid for
-both (both realms share the same OIDC tenant configuration).
-
-1. Open a terminal and run the following command to list the principal roles in the `realm-external` realm:
-
-    ```shell
-    curl -v http://localhost:8181/api/management/v1/catalogs \
-      -H "Authorization: Bearer $keycloak_token" \
-      -H 'Polaris-Realm: realm-external' \
-      -H 'Accept: application/json'
-    ```
-   
-2. Open a terminal and run the following command to list the principal roles in the `realm-mixed` realm:
-
-    ```shell
-    curl -v http://localhost:8181/api/management/v1/catalogs \
-      -H "Authorization: Bearer $keycloak_token" \
-      -H 'Polaris-Realm: realm-mixed' \
-      -H 'Accept: application/json'
-    ```
-
-Note: you cannot use a Keycloak token to access the `realm-internal` realm:
-
-<!-- the '|| true' is there to let Guides CI not fail on this command -->
 ```shell
 curl -v http://localhost:8181/api/management/v1/catalogs \
   -H "Authorization: Bearer $keycloak_token" \
-  -H 'Polaris-Realm: realm-internal' \
-  -H 'Accept: application/json' || true
+  -H 'Polaris-Realm: POLARIS' \
+  -H 'Accept: application/json'
 ```
 
-This will return a `401 Unauthorized` error because the token is not valid for the `realm-internal` realm.
+This succeeds because `keycloak-admin` is a real Polaris principal, granted the `service_admin` principal role during
+setup, and the token's `preferred_username` claim ("keycloak-admin") matches it.

@@ -293,5 +293,6 @@ requirements, both enforced at startup (the service refuses to boot otherwise):
 
 ### Additional Links 
 
-* For complete Keycloak integration example, see: [Keycloak External IDP Configuration Guide]({{< relref "../../getting-started/using-polaris/keycloak-idp.md" >}})
+* For a complete Keycloak integration example, see the [Keycloak External IDP]({{< relref "../../getting-started/using-polaris/keycloak-idp.md" >}}) getting-started guide.
+* For a complete example combining Keycloak with fully external principals and OPA, see the [Keycloak + OPA External IDP]({{< relref "../../getting-started/using-polaris/keycloak-opa-idp.md" >}}) getting-started guide.
 * See [Developer Notes]({{< relref "idp-dev-notes.md" >}}) with internal implementation details for developers who want to understand or extend Polaris authentication.
