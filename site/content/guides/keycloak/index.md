@@ -1,3 +1,4 @@
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -62,17 +63,17 @@ Polaris is configured with authentication type `mixed`, which is required for tw
 - It accepts tokens issued by Keycloak, which is needed to authenticate as `keycloak-admin`.
 
 For more information about how to configure Polaris with external authentication, see the
-[IDP integration documentation]({{% relref "../../managing-security/external-idp" %}}).
+[IDP integration documentation](/releases/latest/managing-security/external-idp/).
 
 If you are instead interested in **fully external principals** — principals that never need to exist in the Polaris
-metastore at all — see the [Keycloak + OPA example]({{% relref "../keycloak-opa" %}}), which uses an external
+metastore at all — see the [Keycloak + OPA example](/guides/keycloak-opa/), which uses an external
 authorizer ([OPA](https://www.openpolicyagent.org/)) instead of the built-in one. The table below compares both
 examples:
 
 | Example                                                                  | Authentication Type | Credential Mode      | Principal Pre-sync Required? | Comments                                                                                                     |
 |--------------------------------------------------------------------------|---------------------|----------------------|------------------------------|--------------------------------------------------------------------------------------------------------------|
 | Keycloak + Internal Principals + Built-in Authorizer (this guide)        | `mixed`             | `internal` (default) | Yes                          | The principal must already exist in Polaris, matched by name, with the roles it needs granted ahead of time. |
-| [Keycloak + External Principals + OPA]({{% relref "../keycloak-opa" %}}) | `external`          | `external`           | No                           | The principal is authenticated and authorized entirely from the token; it never needs to exist in Polaris.   |
+| [Keycloak + External Principals + OPA](/guides/keycloak-opa/) | `external`          | `external`           | No                           | The principal is authenticated and authorized entirely from the token; it never needs to exist in Polaris.   |
 
 ## Starting the Example
 

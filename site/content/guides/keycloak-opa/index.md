@@ -1,3 +1,4 @@
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -19,7 +20,7 @@
 linkTitle: "Authentication: Keycloak + OPA"
 title: "Getting Started with Apache Polaris, Fully External Principals, Keycloak and OPA"
 description: "Uses Keycloak as an external identity provider and OPA as an external authorizer to support fully external principals."
-weight: 110
+weight: 100
 tags:
   - authorization
   - keycloak
@@ -31,13 +32,13 @@ cascade:
 menus:
     main:
         parent: Guides
-        weight: 110
+        weight: 100
 ---
 
 ## Overview
 
 This example uses Keycloak as an **external** identity provider for Polaris. Unlike the [Keycloak
-IDP example]({{% relref "../keycloak" %}}), it demonstrates **fully external principals**: a
+IDP example](/guides/keycloak/), it demonstrates **fully external principals**: a
 principal authenticated by Keycloak that never needs to exist in the Polaris metastore at all.
 
 Enabling fully external principals is done by setting the option
@@ -78,18 +79,18 @@ this realm, and is never used to call the REST API, since both the authenticatio
 external — Polaris never even accepts a token issued to "root" here.
 
 For more information about how to configure Polaris with external authentication and external principals, see the
-[IDP integration documentation]({{% relref "../../managing-security/external-idp" %}}). The table below compares
-this example with the [Keycloak IDP example]({{% relref "../keycloak" %}}):
+[IDP integration documentation](/releases/latest/managing-security/external-idp/). The table below compares
+this example with the [Keycloak IDP example](/guides/keycloak/):
 
 | Example                                                                              | Authentication Type | Credential Mode      | Principal Pre-sync Required? | Comments                                                                                                     |
 |--------------------------------------------------------------------------------------|---------------------|----------------------|------------------------------|--------------------------------------------------------------------------------------------------------------|
-| [Keycloak + Internal Principals + Built-in Authorizer]({{% relref "../keycloak" %}}) | `mixed`             | `internal` (default) | Yes                          | The principal must already exist in Polaris, matched by name, with the roles it needs granted ahead of time. |
+| [Keycloak + Internal Principals + Built-in Authorizer](/guides/keycloak/) | `mixed`             | `internal` (default) | Yes                          | The principal must already exist in Polaris, matched by name, with the roles it needs granted ahead of time. |
 | Keycloak + External Principals + OPA (this guide)                                    | `external`          | `external`           | No                           | The principal is authenticated and authorized entirely from the token; it never needs to exist in Polaris.   |
 
 ## Authorization with OPA
 
 Because there are no metastore-backed grants for this external principal, Polaris is configured to authorize the
-realm with [OPA]({{% relref "../../managing-security/external-pdp/opa" %}}) instead of its built-in authorizer. The
+realm with [OPA](/releases/latest/managing-security/external-pdp/opa/) instead of its built-in authorizer. The
 policy used by this example is defined in `polaris-authz.rego`:
 
 ```rego
@@ -128,7 +129,7 @@ allow if {
 ```
 
 The roles sent to OPA for a fully external principal are whatever the `resource_access.client1.roles` claim of the
-token contains, after going through the [Role Mapping]({{% relref "../../managing-security/external-idp#role-mapping" %}})
+token contains, after going through the [Role Mapping](/releases/latest/managing-security/external-idp/#role-mapping)
 configuration. This example does not customize the role mapper, so the claim's values (e.g. `service_admin`) are
 passed through to OPA unprefixed and unchanged.
 

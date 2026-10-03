@@ -26,9 +26,10 @@ default allow := false
 # Principals with the "service_admin" role can manage catalogs, namespaces and tables.
 #
 # Operations that manage Polaris's internal privilege system (principals, principal
-# roles, catalog roles, grants, policies, ...) are intentionally left out of this list
-# and therefore remain denied: privilege management stays within Polaris's native
-# authorization system, it is not delegated to OPA.
+# roles, catalog roles, grants, policies, ...) are intentionally left out of this list.
+# With OPA configured as the authorizer, Polaris's built-in RBAC checks are bypassed
+# entirely, so these operations are not handled elsewhere: they simply fall through to
+# the "default allow := false" rule above and are always denied.
 allow if {
 	"service_admin" in input.actor.roles
 	input.action in {
