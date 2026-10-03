@@ -1,0 +1,32 @@
+{
+  "coverage": {
+    "comparison_scope": "same-revision-exports",
+    "html_drawings": 0,
+    "html_images": 1,
+    "html_tables": 65,
+    "image_gaps": [],
+    "markdown_images": 1,
+    "markdown_tables": 65,
+    "missing_image_occurrences": 0,
+    "warnings": [
+      "Image/table coverage is not a full semantic or visual fidelity proof."
+    ]
+  },
+  "files": {
+    "assets/a041201bf35f0c3e7922dab300bfcf2ac92d5a05962e4c82fba45daf34c7e327.png": "a041201bf35f0c3e7922dab300bfcf2ac92d5a05962e4c82fba45daf34c7e327",
+    "document.md": "4b1a8fec3105709383853b10f1e1b5dbf5fc57c769b0557d7919e64290ed13b2",
+    "source.md": "ff48dbbcae68f1f120f850da999233fac0b6c5cdc9daabb0c8d780f0a3d4a5ad"
+  },
+  "format": 1,
+  "source": {
+    "capture_mode": "revision-export",
+    "document_id": "1rIJGzcsmGhfrBiRXPac51hr-jeJuuKQQBYjgBdOb9-k",
+    "download_url": "https://docs.google.com/document/d/1rIJGzcsmGhfrBiRXPac51hr-jeJuuKQQBYjgBdOb9-k/export?format=md&revision=3625",
+    "original_url": "https://docs.google.com/document/d/1rIJGzcsmGhfrBiRXPac51hr-jeJuuKQQBYjgBdOb9-k/edit",
+    "revision": "3625"
+  },
+  "tool": {
+    "sha256": "841e2775efbc1d563f53ecc723ad73f19cf1d0dbcdcacd30b724bacb3afaa4b3",
+    "version": "0.4.0"
+  }
+}
