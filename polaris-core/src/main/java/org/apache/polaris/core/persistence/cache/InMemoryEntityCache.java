@@ -21,7 +21,6 @@ package org.apache.polaris.core.persistence.cache;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalListener;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -29,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -53,14 +51,18 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** An in-memory entity cache with a limit of 100k entities and a 1h TTL. */
+/**
+ * An in-memory entity cache holding entities in two internally consistent indexes: one keyed by
+ * entity id and one keyed by entity name. Both indexes are bounded by the same weight budget
+ * ({@code ENTITY_CACHE_WEIGHER_TARGET}) and expire entries after 1h of no access.
+ */
 public class InMemoryEntityCache implements EntityCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryEntityCache.class);
   public static final int MAX_CACHE_REFRESH_ATTEMPTS = 100;
   private final PolarisDiagnostics diagnostics;
   private final PolarisMetaStoreManager polarisMetaStoreManager;
   private final Cache<Long, ResolvedPolarisEntity> byId;
-  private final AbstractMap<EntityCacheByNameKey, ResolvedPolarisEntity> byName;
+  private final Cache<EntityCacheByNameKey, ResolvedPolarisEntity> byName;
 
   /**
    * Constructor. Cache can be private or shared
@@ -73,8 +75,21 @@ public class InMemoryEntityCache implements EntityCache {
       @NonNull PolarisMetaStoreManager polarisMetaStoreManager) {
     this.diagnostics = diagnostics;
 
-    // by name cache
-    this.byName = new ConcurrentHashMap<>();
+    // by name cache, bounded with same capacity and TTL as byId to prevent OOM
+    long weigherTarget = realmConfig.getConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
+    Caffeine<EntityCacheByNameKey, ResolvedPolarisEntity> byNameBuilder =
+        Caffeine.newBuilder()
+            .maximumWeight(weigherTarget)
+            .weigher(EntityWeigher.byName())
+            .expireAfterAccess(1, TimeUnit.HOURS);
+
+    boolean useSoftValues =
+        realmConfig.getConfig(BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES);
+    if (useSoftValues) {
+      byNameBuilder.softValues();
+    }
+
+    this.byName = byNameBuilder.build();
 
     // When an entry is removed, we simply remove it from the byName map
     RemovalListener<Long, ResolvedPolarisEntity> removalListener =
@@ -84,20 +99,17 @@ public class InMemoryEntityCache implements EntityCache {
             EntityCacheByNameKey nameKey = new EntityCacheByNameKey(value.getEntity());
 
             // if it is still active, remove it from the name key
-            this.byName.remove(nameKey, value);
+            this.byName.asMap().remove(nameKey, value);
           }
         };
 
-    long weigherTarget = realmConfig.getConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
     Caffeine<Long, ResolvedPolarisEntity> byIdBuilder =
         Caffeine.newBuilder()
             .maximumWeight(weigherTarget)
-            .weigher(EntityWeigher.asWeigher())
+            .weigher(EntityWeigher.byId())
             .expireAfterAccess(1, TimeUnit.HOURS) // Expire entries after 1 hour of no access
             .removalListener(removalListener); // Set the removal listener
 
-    boolean useSoftValues =
-        realmConfig.getConfig(BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES);
     if (useSoftValues) {
       byIdBuilder.softValues();
     }
@@ -123,7 +135,7 @@ public class InMemoryEntityCache implements EntityCache {
     this.byId.asMap().remove(cacheEntry.getEntity().getId(), cacheEntry);
 
     // remove it from the name key
-    this.byName.remove(nameKey, cacheEntry);
+    this.byName.asMap().remove(nameKey, cacheEntry);
   }
 
   /**
@@ -159,7 +171,7 @@ public class InMemoryEntityCache implements EntityCache {
       // old name
       EntityCacheByNameKey oldNameKey = new EntityCacheByNameKey(oldCacheEntry.getEntity());
       if (!oldNameKey.equals(nameKey)) {
-        this.byName.remove(oldNameKey, oldCacheEntry);
+        this.byName.asMap().remove(oldNameKey, oldCacheEntry);
       }
     }
   }
@@ -239,7 +251,7 @@ public class InMemoryEntityCache implements EntityCache {
    */
   public @Nullable ResolvedPolarisEntity getEntityByName(
       @NonNull EntityCacheByNameKey entityNameKey) {
-    return byName.get(entityNameKey);
+    return byName.getIfPresent(entityNameKey);
   }
 
   /**

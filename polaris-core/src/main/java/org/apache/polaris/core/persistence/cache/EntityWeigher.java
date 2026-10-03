@@ -66,4 +66,22 @@ public class EntityWeigher implements Weigher<Long, ResolvedPolarisEntity> {
   public static Weigher<Long, ResolvedPolarisEntity> asWeigher() {
     return getInstance();
   }
+
+  /**
+   * A {@link Weigher} whose key type is not used for weighing. Both cache indexes of {@link
+   * InMemoryEntityCache} store the same {@link ResolvedPolarisEntity} values, so they must use the
+   * same weight function.
+   */
+  private static final Weigher<Object, ResolvedPolarisEntity> WEIGHER_IGNORING_KEY =
+      (key, value) -> getInstance().weigh(null, value);
+
+  /** Factory method to provide a typed Weigher keyed by entity id */
+  public static Weigher<Long, ResolvedPolarisEntity> byId() {
+    return asWeigher();
+  }
+
+  /** Factory method to provide a typed Weigher keyed by {@link EntityCacheByNameKey} */
+  public static Weigher<EntityCacheByNameKey, ResolvedPolarisEntity> byName() {
+    return WEIGHER_IGNORING_KEY::weigh;
+  }
 }
