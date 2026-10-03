@@ -129,6 +129,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
@@ -1980,6 +1981,48 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThat(catalog.tableExists(table))
         .as("Table should be dropped on receiving notification")
         .isFalse();
+  }
+
+  @Test
+  public void testDropTableWithPurgeSeedsCatalogTableDefaultsAndExcludesCallerEndpoint() {
+    Namespace purgeNs = Namespace.of("purge_defaults_ns");
+    TableIdentifier purgeTable = TableIdentifier.of(purgeNs, "t1");
+    String trustedEndpoint = "http://trusted-minio:9000";
+    String callerEndpoint = "http://attacker.example";
+    LocalIcebergCatalog purgeCatalog =
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, fileIOFactory);
+    purgeCatalog.setCatalogFileIo(new InMemoryFileIO());
+    purgeCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .put(CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.endpoint", trustedEndpoint)
+            .putAll(TABLE_PREFIXES)
+            .buildKeepingLast());
+    if (this.requiresNamespaceCreate()) {
+      purgeCatalog.createNamespace(purgeNs);
+    }
+
+    Table table =
+        purgeCatalog
+            .buildTable(purgeTable, SCHEMA)
+            .withProperty("s3.endpoint", callerEndpoint)
+            .create();
+    Assertions.assertThat(table.properties()).containsEntry("s3.endpoint", callerEndpoint);
+
+    Assertions.assertThat(purgeCatalog.dropTable(purgeTable, true)).isTrue();
+    TaskEntity taskEntity =
+        TaskEntity.of(
+            metaStoreManager
+                .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+                .getEntities()
+                .getFirst());
+    Map<String, String> taskProperties = taskEntity.getInternalPropertiesAsMap();
+    Assertions.assertThat(taskProperties)
+        .containsEntry("s3.endpoint", trustedEndpoint)
+        .containsEntry("default-key1", "catalog-default-key1")
+        .doesNotContainEntry("s3.endpoint", callerEndpoint)
+        .containsKey(PolarisTaskConstants.STORAGE_LOCATION);
   }
 
   @Test
