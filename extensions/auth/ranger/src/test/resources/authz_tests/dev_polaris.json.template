@@ -199,6 +199,23 @@
           ],
           "users": [ "admin1" ] }
       ]
+    },
+    {
+      "id": 8, "name": "table:POLARIS/catalog1/namespace1/table1 (no table-properties grants)",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "catalog1" ] },
+        "namespace": { "values": [ "namespace1" ] },
+        "table":     { "values": [ "table1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "table-data-write" },
+            { "type": "table-create" }
+          ],
+          "users": [ "datawriter1" ] }
+      ]
     }
   ]
 }
