@@ -19,6 +19,7 @@
 package org.apache.polaris.service;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 
 import com.google.auth.oauth2.AccessToken;
@@ -32,6 +33,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -260,6 +262,23 @@ public record TestServices(
           .resolveAuthorizationInputs(any(), any(AuthorizationRequest.class));
       Mockito.when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
           .thenReturn(AuthorizationDecision.allow());
+      // A Mockito mock does not run the interface's default methods, so the batch overloads must
+      // be stubbed too. Without this they return null, and callers that batch-authorize (such as
+      // entity-level list filtering) fail on the mock rather than on anything under test.
+      Mockito.doAnswer(
+              invocation -> {
+                AuthorizationState authzState = invocation.getArgument(0);
+                authzState.getResolutionManifest().resolveAll();
+                return null;
+              })
+          .when(authorizer)
+          .resolveAuthorizationInputs(any(), anyList());
+      Mockito.when(authorizer.authorize(any(), anyList()))
+          .thenAnswer(
+              invocation ->
+                  invocation.<List<AuthorizationRequest>>getArgument(1).stream()
+                      .map(request -> AuthorizationDecision.allow())
+                      .toList());
 
       // Application level
       StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;

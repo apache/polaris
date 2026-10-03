@@ -2016,7 +2016,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     candidates.forEach(candidate -> filterManifest.addPath(candidate.path()));
     AuthorizationState authzState = new AuthorizationState(filterManifest);
 
-    // Requests are built before resolution so the authorizer decides what to resolve, exactly as
+    // Requests are built before resolution so the authorizer decides what to resolve, same as
     // in the single-request path.
     authorizer()
         .resolveAuthorizationInputs(
