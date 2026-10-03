@@ -69,7 +69,12 @@ class DefaultPrincipalMapperTest {
   }
 
   static Stream<Arguments> mapPrincipalId() {
-    return Stream.of(Arguments.of(123L, 123L), Arguments.of("123", 123L), Arguments.of(null, -1));
+    return Stream.of(
+        Arguments.of(123L, 123L),
+        Arguments.of("123", 123L),
+        Arguments.of(null, -1),
+        Arguments.of("550e8400-e29b-41d4-a716-446655440000", -1),
+        Arguments.of("not-a-number", -1));
   }
 
   @ParameterizedTest
