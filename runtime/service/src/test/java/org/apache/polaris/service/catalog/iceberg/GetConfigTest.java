@@ -37,6 +37,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.rest.GenericTableEndpoints;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.policy.PolicyEndpoints;
+import org.apache.polaris.service.catalog.tag.TagEndpoints;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -50,6 +51,20 @@ public class GetConfigTest {
     assertThat(configResponse.endpoints()).contains(PolicyEndpoints.V1_CREATE_POLICY);
     assertEndpointOrder(configResponse, enableGenericTable);
     assertGenericTableEndpoints(configResponse, enableGenericTable);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testGetConfigTagStore(boolean enableTagStore) {
+    ConfigResponse configResponse = getConfig(Map.of("ENABLE_TAG_STORE", enableTagStore));
+    assertTagEndpoints(configResponse, enableTagStore);
+  }
+
+  @Test
+  public void testGetConfigTagStoreOffByDefault() {
+    // The tag store ships disabled: with no explicit flag, tag endpoints are not advertised.
+    ConfigResponse configResponse = getConfig(Map.of());
+    assertTagEndpoints(configResponse, false);
   }
 
   @Test
@@ -141,6 +156,22 @@ public class GetConfigTest {
           .doesNotContain(GenericTableEndpoints.V1_LIST_GENERIC_TABLES);
       assertThat(configResponse.endpoints())
           .doesNotContain(GenericTableEndpoints.V1_LOAD_GENERIC_TABLE);
+    }
+  }
+
+  private static void assertTagEndpoints(ConfigResponse configResponse, boolean enableTagStore) {
+    if (enableTagStore) {
+      assertThat(configResponse.endpoints()).contains(TagEndpoints.V1_LIST_TAGS);
+      assertThat(configResponse.endpoints()).contains(TagEndpoints.V1_CREATE_TAG);
+      assertThat(configResponse.endpoints()).contains(TagEndpoints.V1_LOAD_TAG);
+      assertThat(configResponse.endpoints()).contains(TagEndpoints.V1_UPDATE_TAG);
+      assertThat(configResponse.endpoints()).contains(TagEndpoints.V1_DROP_TAG);
+    } else {
+      assertThat(configResponse.endpoints()).doesNotContain(TagEndpoints.V1_LIST_TAGS);
+      assertThat(configResponse.endpoints()).doesNotContain(TagEndpoints.V1_CREATE_TAG);
+      assertThat(configResponse.endpoints()).doesNotContain(TagEndpoints.V1_LOAD_TAG);
+      assertThat(configResponse.endpoints()).doesNotContain(TagEndpoints.V1_UPDATE_TAG);
+      assertThat(configResponse.endpoints()).doesNotContain(TagEndpoints.V1_DROP_TAG);
     }
   }
 }

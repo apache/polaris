@@ -546,6 +546,51 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Integer> LIST_PAGINATION_DEFAULT_PAGE_SIZE =
+      PolarisConfiguration.<Integer>builder()
+          .key("LIST_PAGINATION_DEFAULT_PAGE_SIZE")
+          .catalogConfig("polaris.config.list-pagination-default-page-size")
+          .description(
+              "The page size a paginated listing uses when the request does not say how large a page"
+                  + " it wants. Only the tag endpoints read this today.")
+          .defaultValue(100)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> LIST_PAGINATION_MAX_PAGE_SIZE_CEILING =
+      PolarisConfiguration.<Integer>builder()
+          .key("LIST_PAGINATION_MAX_PAGE_SIZE_CEILING")
+          .catalogConfig("polaris.config.list-pagination-max-page-size-ceiling")
+          .description(
+              "The largest page a paginated listing will return when no deployment maximum is"
+                  + " configured, so that a page stays bounded by default."
+                  + " LIST_PAGINATION_MAX_PAGE_SIZE wins wherever it is set to a positive value."
+                  + " Only the tag endpoints read this today.")
+          .defaultValue(1000)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> LIST_PAGINATION_UNPAGINATED_MAX_RESULTS =
+      PolarisConfiguration.<Integer>builder()
+          .key("LIST_PAGINATION_UNPAGINATED_MAX_RESULTS")
+          .catalogConfig("polaris.config.list-pagination-unpaginated-max-results")
+          .description(
+              "The most results a listing will return when the request asks for the complete result"
+                  + " instead of a page. A request whose full result would exceed this is rejected and"
+                  + " told to page through it, rather than being silently truncated or switched to"
+                  + " paged mode. Zero or less means no limit. Only the tag endpoints read this"
+                  + " today.")
+          .defaultValue(10000)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_TAG_STORE =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_TAG_STORE")
+          .description(
+              "If true, the tag-store endpoints are enabled. Disabled by default: enable it on "
+                  + "deployments backed by the JDBC or in-memory metastores. The NoSQL metastore "
+                  + "does not support tags yet.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ENABLE_SEMANTIC_MODELS =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_SEMANTIC_MODELS")
