@@ -69,7 +69,8 @@ public class PolarisEntityResolver {
    *
    * @param callCtx call context
    * @param ms meta store in read mode
-   * @param catalogPath path within the catalog. The first element MUST be a catalog entity.
+   * @param catalogPath path within the catalog; must be null or non-empty. The first element of a
+   *     non-empty path MUST be a catalog entity
    * @param resolvedEntity optional entity to resolve under that catalog path. If a non-null value
    *     is supplied, we will resolve it with the rest, as if it had been concatenated to the input
    *     path. If catalogPath is null, this MUST be a top-level entity
@@ -145,8 +146,8 @@ public class PolarisEntityResolver {
    *
    * @param callCtx call context
    * @param ms meta store in read mode
-   * @param catalogPath input path, can be null or empty list if the entity is a top-level entity
-   *     like a catalog.
+   * @param catalogPath input path; must be null or non-empty. A non-empty path must start with the
+   *     catalog
    */
   PolarisEntityResolver(
       @NonNull PolarisDiagnostics diagnostics,
@@ -161,8 +162,8 @@ public class PolarisEntityResolver {
    *
    * @param callCtx call context
    * @param ms meta store in read mode
-   * @param catalogPath input path, can be null or empty list if the entity is a top-level entity
-   *     like a catalog.
+   * @param catalogPath input path; must be null or non-empty. A non-empty path must start with the
+   *     catalog
    * @param resolvedEntityDto resolved entity DTO
    */
   PolarisEntityResolver(
@@ -179,8 +180,8 @@ public class PolarisEntityResolver {
    *
    * @param callCtx call context
    * @param ms meta store in read mode
-   * @param catalogPath input path, can be null or empty list if the entity is a top-level entity
-   *     like a catalog.
+   * @param catalogPath input path; must be null or non-empty. A non-empty path must start with the
+   *     catalog
    * @param entity Polaris base entity
    */
   PolarisEntityResolver(
@@ -229,8 +230,8 @@ public class PolarisEntityResolver {
    *
    * @param callCtx call context
    * @param ms meta store in read mode
-   * @param catalogPath path within the catalog. The first element MUST be a catalog. Null or empty
-   *     for top-level entities like catalog
+   * @param catalogPath path within the catalog; must be null or non-empty. The first element of a
+   *     non-empty path MUST be a catalog
    * @param resolvedEntity optional entity to resolve under that catalog path. If a non-null value
    *     is supplied, we will resolve it with the rest, as if it had been concatenated to the input
    *     path.
