@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.auth;
 
+import java.util.function.Consumer;
 import org.jspecify.annotations.NonNull;
 
 /** Authorization intent describing an operation and its target resource shape. */
@@ -39,4 +40,6 @@ public sealed interface AuthorizationIntent
   default @NonNull PolarisAuthorizableOperation getOperation() {
     return operation();
   }
+
+  void visitSecurables(Consumer<PolarisSecurable> visitor);
 }

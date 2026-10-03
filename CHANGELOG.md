@@ -161,6 +161,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
   take the entity's resolved parent path, so implementations exclude the entity's own ancestors
   without re-reading the parent chain from the metastore.
+- Minor adjustment to the semantics of `PolarisAuthorizer.resolveAuthorizationInputs()`.
+  Existing implementations that used to call `PolarisResolutionManifest.resolveAll()`
+  are expected to be compatible with the new Polaris code. Still, adjustments are recommended as
+  noted in javadoc.
 
 ### Deprecations
 

@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.extension.auth.opa;
 
+import static org.apache.polaris.core.persistence.resolver.Resolvable.REFERENCE_CATALOG;
+import static org.apache.polaris.core.persistence.resolver.Resolvable.REQUESTED_PATHS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.mock;
@@ -37,6 +39,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -660,7 +663,7 @@ public class OpaPolarisAuthorizerTest {
   }
 
   @Test
-  void resolveAuthorizationInputsResolvesAll() {
+  void resolveAuthorizationInputsResolvesSelections() {
     // resolveAll() is intentionally used for compatibility and is expected
     // to be narrowed in a future refactoring.
     OpaPolarisAuthorizer authorizer =
@@ -678,7 +681,7 @@ public class OpaPolarisAuthorizerTest {
 
     authorizer.resolveAuthorizationInputs(authzState, requestWithCatalogTarget(principal));
 
-    verify(resolutionManifest).resolveAll();
+    verify(resolutionManifest).resolveSelections(EnumSet.of(REFERENCE_CATALOG, REQUESTED_PATHS));
   }
 
   @Test
