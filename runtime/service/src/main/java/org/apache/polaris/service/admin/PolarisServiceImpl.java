@@ -59,6 +59,7 @@ import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.SemanticModelGrant;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.admin.model.StorageConfigInfos;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
@@ -130,6 +131,7 @@ public class PolarisServiceImpl
       CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
+    validateNamedStorageConfigs(catalog.getStorageConfigInfos());
     validateExternalCatalog(catalog);
     validateCatalogProperties(catalog.getProperties());
     Catalog newCatalog =
@@ -163,6 +165,21 @@ public class PolarisServiceImpl
         }
       }
     }
+  }
+
+  /**
+   * Adding or replacing named storage configurations needs {@link
+   * FeatureConfiguration#ENABLE_NAMED_STORAGE_CONFIGURATIONS}, and each one passes the same checks
+   * as the default storage configuration. A null list (field omitted) or an empty list (remove them
+   * all) adds nothing, so neither needs the flag.
+   */
+  private void validateNamedStorageConfigs(List<StorageConfigInfo> storageConfigInfos) {
+    if (storageConfigInfos == null || storageConfigInfos.isEmpty()) {
+      return;
+    }
+    FeatureConfiguration.enforceFeatureEnabledOrThrow(
+        realmConfig, FeatureConfiguration.ENABLE_NAMED_STORAGE_CONFIGURATIONS);
+    storageConfigInfos.forEach(this::validateStorageConfig);
   }
 
   private void validateExternalCatalog(Catalog catalog) {
@@ -246,6 +263,7 @@ public class PolarisServiceImpl
     if (updateRequest.getStorageConfigInfo() != null) {
       validateStorageConfig(updateRequest.getStorageConfigInfo());
     }
+    validateNamedStorageConfigs(updateRequest.getStorageConfigInfos());
     validateCatalogProperties(updateRequest.getProperties());
     return Response.ok(
             adminService
@@ -261,6 +279,51 @@ public class PolarisServiceImpl
     Catalogs catalogs = new Catalogs(catalogList);
     LOGGER.debug("listCatalogs returning: {}", catalogs);
     return Response.ok(catalogs).build();
+  }
+
+  /** From PolarisCatalogsApiService */
+  @Override
+  public Response listStorageConfigs(
+      String catalogName, RealmContext realmContext, SecurityContext securityContext) {
+    StorageConfigInfos storageConfigInfos =
+        new StorageConfigInfos(List.copyOf(adminService.listStorageConfigs(catalogName).values()));
+    return Response.ok(storageConfigInfos).build();
+  }
+
+  /** From PolarisCatalogsApiService */
+  @Override
+  public Response getStorageConfig(
+      String catalogName,
+      String storageConfigName,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return Response.ok(adminService.getStorageConfig(catalogName, storageConfigName)).build();
+  }
+
+  /** From PolarisCatalogsApiService */
+  @Override
+  public Response putStorageConfig(
+      String catalogName,
+      String storageConfigName,
+      StorageConfigInfo storageConfigInfo,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    validateNamedStorageConfigs(List.of(storageConfigInfo));
+    CatalogEntity updatedCatalog =
+        adminService.putStorageConfig(catalogName, storageConfigName, storageConfigInfo);
+    return Response.ok(updatedCatalog.getNamedStorageConfigInfos().get(storageConfigName.trim()))
+        .build();
+  }
+
+  /** From PolarisCatalogsApiService */
+  @Override
+  public Response deleteStorageConfig(
+      String catalogName,
+      String storageConfigName,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    adminService.deleteStorageConfig(catalogName, storageConfigName);
+    return Response.status(Response.Status.NO_CONTENT).build();
   }
 
   /** From PolarisPrincipalsApiService */

@@ -19,8 +19,11 @@
 
 package org.apache.polaris.core.storage;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
@@ -28,6 +31,7 @@ import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -114,5 +118,34 @@ public class PolarisStorageConfigurationInfoTest {
                 .addAllowedLocations("file:///tmp/bar", "file:///meep/moo")
                 .build(),
             "{\"@type\":\"FileStorageConfigurationInfo\",\"allowedLocations\":[\"file:///tmp/bar\",\"file:///meep/moo\"],\"storageType\":\"FILE\",\"fileIoImplClassName\":\"org.apache.iceberg.hadoop.HadoopFileIO\"}"));
+  }
+
+  @Test
+  public void serializeMapRoundTripsHeterogeneousTypes() {
+    PolarisStorageConfigurationInfo hot =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocations("s3://hot/bucket")
+            .roleARN("arn:aws:iam::123456789012:role/polaris-test")
+            .storageName("hot")
+            .build();
+    PolarisStorageConfigurationInfo archive =
+        AzureStorageConfigurationInfo.builder()
+            .addAllowedLocations("abfs://cold@archive.blob.core.windows.net/")
+            .tenantId("tenant-id")
+            .storageName("archive")
+            .build();
+    Map<String, PolarisStorageConfigurationInfo> configs = new LinkedHashMap<>();
+    configs.put("hot", hot);
+    configs.put("archive", archive);
+
+    String serialized = PolarisStorageConfigurationInfo.serializeMap(configs);
+
+    // The persisted value is one JSON object with nested config objects as values, so it must
+    // contain no per-entry escaped quotes from double-encoding.
+    assertThat(serialized).doesNotContain("\\\"");
+
+    Map<String, PolarisStorageConfigurationInfo> deserialized =
+        PolarisStorageConfigurationInfo.deserializeMap(serialized);
+    assertThat(deserialized).isEqualTo(configs);
   }
 }

@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -43,11 +44,14 @@ import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -703,5 +707,415 @@ public class CatalogEntityTest {
                             .build())
                     .build())
         .isInstanceOf(BadRequestException.class);
+  }
+
+  // --- Named storage configurations (storageConfigInfos) ---
+
+  private static AwsStorageConfigInfo namedAwsConfig(String storageName, String... locations) {
+    return AwsStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+        .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+        .setAllowedLocations(List.of(locations))
+        .setStorageName(storageName)
+        .build();
+  }
+
+  private static AwsStorageConfigInfo defaultAwsConfig(String... locations) {
+    return AwsStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+        .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+        .setAllowedLocations(List.of(locations))
+        .build();
+  }
+
+  @Test
+  public void testNamedStorageConfigsAbsentWhenNotSet() {
+    CatalogEntity entity =
+        new CatalogEntity.Builder()
+            .setName("test-catalog")
+            .setDefaultBaseLocation("s3://bucket/")
+            .setStorageConfigurationInfo(realmConfig, defaultAwsConfig("s3://bucket/"))
+            .build();
+    assertThat(entity.getNamedStorageConfigurationInfos()).isEmpty();
+    assertThat(entity.getInternalPropertiesAsMap())
+        .doesNotContainKey(PolarisEntityConstants.getStorageConfigInfosPropertyName());
+  }
+
+  @Test
+  public void testNamedStorageConfigsPersistedAndRetrievable() {
+    CatalogEntity entity =
+        new CatalogEntity.Builder()
+            .setName("test-catalog")
+            .setDefaultBaseLocation("s3://bucket/")
+            .setStorageConfigurationInfo(realmConfig, defaultAwsConfig("s3://bucket/"))
+            .setStorageConfigurationInfos(
+                realmConfig,
+                List.of(
+                    namedAwsConfig("hot-us-east", "s3://hot/bucket/"),
+                    namedAwsConfig("cold-archive", "s3://cold/bucket/")))
+            .build();
+
+    assertThat(entity.getNamedStorageConfigurationInfos())
+        .containsOnlyKeys("hot-us-east", "cold-archive");
+    assertThat(entity.getNamedStorageConfigurationInfos().get("hot-us-east").getAllowedLocations())
+        .containsExactly("s3://hot/bucket/");
+  }
+
+  @Test
+  public void testNamedStorageConfigNameTrimmed() {
+    CatalogEntity entity =
+        new CatalogEntity.Builder()
+            .setName("test-catalog")
+            .setDefaultBaseLocation("s3://bucket/")
+            .setStorageConfigurationInfo(realmConfig, defaultAwsConfig("s3://bucket/"))
+            .setStorageConfigurationInfos(
+                realmConfig, List.of(namedAwsConfig("  hot  ", "s3://hot/bucket/")))
+            .build();
+
+    assertThat(entity.getNamedStorageConfigurationInfos()).containsOnlyKeys("hot");
+    // The entry is keyed by its trimmed name, so its own payload must carry that same name:
+    // otherwise the API response and the later credential-set lookup would both see "  hot  ".
+    assertThat(entity.getNamedStorageConfigurationInfos().get("hot").getStorageName())
+        .isEqualTo("hot");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"", "   "})
+  public void testNamedStorageConfigBlankNameRejected(String blankName) {
+    assertThatThrownBy(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation("s3://bucket/")
+                    .setStorageConfigurationInfos(
+                        realmConfig, List.of(namedAwsConfig(blankName, "s3://hot/bucket/")))
+                    .build())
+        .isInstanceOf(BadRequestException.class);
+  }
+
+  @Test
+  public void testNamedStorageConfigAbsentNameRejected() {
+    AwsStorageConfigInfo noName =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setAllowedLocations(List.of("s3://hot/bucket/"))
+            .build();
+    assertThatThrownBy(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation("s3://bucket/")
+                    .setStorageConfigurationInfos(realmConfig, List.of(noName))
+                    .build())
+        .isInstanceOf(BadRequestException.class);
+  }
+
+  @Test
+  public void testNamedStorageConfigInvalidNameSyntaxRejected() {
+    assertThatThrownBy(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation("s3://bucket/")
+                    .setStorageConfigurationInfos(
+                        realmConfig, List.of(namedAwsConfig("bad name!", "s3://hot/bucket/")))
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testNamedStorageConfigNameLengthBoundary() {
+    String name128 = "a".repeat(128);
+    assertThatCode(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation("s3://bucket/")
+                    .setStorageConfigurationInfos(
+                        realmConfig, List.of(namedAwsConfig(name128, "s3://hot/bucket/")))
+                    .build())
+        .doesNotThrowAnyException();
+
+    String name129 = "a".repeat(129);
+    assertThatThrownBy(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation("s3://bucket/")
+                    .setStorageConfigurationInfos(
+                        realmConfig, List.of(namedAwsConfig(name129, "s3://hot/bucket/")))
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testNamedStorageConfigDuplicateNameRejected() {
+    assertThatThrownBy(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation("s3://bucket/")
+                    .setStorageConfigurationInfos(
+                        realmConfig,
+                        List.of(
+                            namedAwsConfig("hot", "s3://hot/bucket-1/"),
+                            namedAwsConfig("hot", "s3://hot/bucket-2/")))
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testNamedStorageConfigCollidesWithDefaultNameRejected() {
+    AwsStorageConfigInfo defaultConfig =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setAllowedLocations(List.of("s3://bucket/"))
+            .setStorageName("hot")
+            .build();
+    assertThatThrownBy(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation("s3://bucket/")
+                    .setStorageConfigurationInfo(realmConfig, defaultConfig)
+                    .setStorageConfigurationInfos(
+                        realmConfig, List.of(namedAwsConfig("hot", "s3://hot/bucket/")))
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void testDefaultStorageConfigRenamedOntoExistingNamedConfigRejected() {
+    // An update may supply only the default config while the named set is carried forward, so the
+    // collision check must hold in this direction too, not only when the named array is supplied.
+    CatalogEntity original =
+        new CatalogEntity.Builder()
+            .setName("test-catalog")
+            .setDefaultBaseLocation("s3://bucket/")
+            .setStorageConfigurationInfo(realmConfig, defaultAwsConfig("s3://bucket/"))
+            .setStorageConfigurationInfos(
+                realmConfig, List.of(namedAwsConfig("hot", "s3://hot/bucket/")))
+            .build();
+
+    AwsStorageConfigInfo renamedDefault =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setAllowedLocations(List.of("s3://bucket/"))
+            .setStorageName("hot")
+            .build();
+
+    assertThatThrownBy(
+            () ->
+                new CatalogEntity.Builder(original)
+                    .setStorageConfigurationInfo(realmConfig, renamedDefault)
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("collides with the catalog's default storage configuration name");
+  }
+
+  @Test
+  public void testNamedStorageConfigCaseSensitiveNamesCoexist() {
+    CatalogEntity entity =
+        new CatalogEntity.Builder()
+            .setName("test-catalog")
+            .setDefaultBaseLocation("s3://bucket/")
+            .setStorageConfigurationInfos(
+                realmConfig,
+                List.of(
+                    namedAwsConfig("hot", "s3://hot/bucket-1/"),
+                    namedAwsConfig("HOT", "s3://hot/bucket-2/")))
+            .build();
+    assertThat(entity.getNamedStorageConfigurationInfos()).containsOnlyKeys("hot", "HOT");
+  }
+
+  @Test
+  public void testNamedStorageConfigExceedsMaxLocationsRejectedIndependently() {
+    RealmConfigurationSource source =
+        (rc, name) -> "STORAGE_CONFIGURATION_MAX_LOCATIONS".equals(name) ? 1 : null;
+    RealmConfig maxOneLocationConfig = new RealmConfigImpl(source, () -> "realm");
+
+    assertThatThrownBy(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation("s3://bucket/")
+                    .setStorageConfigurationInfo(
+                        maxOneLocationConfig, defaultAwsConfig("s3://bucket/"))
+                    .setStorageConfigurationInfos(
+                        maxOneLocationConfig,
+                        List.of(
+                            namedAwsConfig("within-cap", "s3://within/bucket/"),
+                            namedAwsConfig(
+                                "over-cap", "s3://over/bucket-1/", "s3://over/bucket-2/")))
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("exceeds the limit");
+  }
+
+  @Test
+  public void testNamedStorageConfigWrongPrefixForOwnTypeRejected() {
+    AzureStorageConfigInfo azureNamedConfig =
+        AzureStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+            .setTenantId("tenant-id")
+            .setAllowedLocations(List.of("s3://wrong/scheme/"))
+            .setStorageName("archive")
+            .build();
+    assertThatThrownBy(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation("s3://bucket/")
+                    .setStorageConfigurationInfos(realmConfig, List.of(azureNamedConfig))
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid azure location uri");
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  public void testNamedStorageConfigEmptyAllowedLocationsRejected(List<String> allowedLocations) {
+    AwsStorageConfigInfo noLocations =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setAllowedLocations(allowedLocations)
+            .setStorageName("hot")
+            .build();
+    assertThatThrownBy(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation("s3://bucket/")
+                    .setStorageConfigurationInfos(realmConfig, List.of(noLocations))
+                    .build())
+        .isInstanceOf(BadRequestException.class);
+  }
+
+  public static Stream<Arguments> testNamedStorageConfigEmptyAllowedLocationsRejected() {
+    return Stream.of(Arguments.of(List.of()), Arguments.of((Object) null));
+  }
+
+  @Test
+  public void testNamedStorageConfigDoesNotRequireDefaultBaseLocation() {
+    // Named entries have their own allowedLocations and no per-entry base-location fallback, so
+    // a catalog with only named configs (no default) must not be forced to set a default base
+    // location just because the default-config code path requires one.
+    assertThatCode(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setStorageConfigurationInfos(
+                        realmConfig, List.of(namedAwsConfig("hot", "s3://hot/bucket/")))
+                    .build())
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  public void testNamedStorageConfigsOmittedLeavesExistingSetUntouched() {
+    CatalogEntity original =
+        new CatalogEntity.Builder()
+            .setName("test-catalog")
+            .setDefaultBaseLocation("s3://bucket/")
+            .setStorageConfigurationInfo(realmConfig, defaultAwsConfig("s3://bucket/"))
+            .setStorageConfigurationInfos(
+                realmConfig, List.of(namedAwsConfig("hot", "s3://hot/bucket/")))
+            .build();
+
+    // Simulate an update that never calls setStorageConfigurationInfos(...): the field stays
+    // null, so processStorageConfigurationInfos() must leave internalProperties untouched.
+    CatalogEntity updated = new CatalogEntity.Builder(original).build();
+
+    assertThat(updated.getNamedStorageConfigurationInfos()).containsOnlyKeys("hot");
+  }
+
+  @Test
+  public void testNamedStorageConfigsEmptyArrayRemovesKeyEntirely() {
+    CatalogEntity original =
+        new CatalogEntity.Builder()
+            .setName("test-catalog")
+            .setDefaultBaseLocation("s3://bucket/")
+            .setStorageConfigurationInfo(realmConfig, defaultAwsConfig("s3://bucket/"))
+            .setStorageConfigurationInfos(
+                realmConfig, List.of(namedAwsConfig("hot", "s3://hot/bucket/")))
+            .build();
+
+    CatalogEntity updated =
+        new CatalogEntity.Builder(original)
+            .setStorageConfigurationInfos(realmConfig, List.of())
+            .build();
+
+    assertThat(updated.getNamedStorageConfigurationInfos()).isEmpty();
+    assertThat(updated.getInternalPropertiesAsMap())
+        .doesNotContainKey(PolarisEntityConstants.getStorageConfigInfosPropertyName());
+  }
+
+  @Test
+  public void testNamedStorageConfigHeterogeneousTypesPersistIndependently() {
+    AzureStorageConfigInfo archiveConfig =
+        AzureStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+            .setTenantId("tenant-id")
+            .setAllowedLocations(List.of("abfs://archive@storageaccount.blob.windows.net/"))
+            .setStorageName("archive")
+            .build();
+    CatalogEntity entity =
+        new CatalogEntity.Builder()
+            .setName("test-catalog")
+            .setDefaultBaseLocation("s3://bucket/")
+            .setStorageConfigurationInfo(realmConfig, defaultAwsConfig("s3://bucket/"))
+            .setStorageConfigurationInfos(realmConfig, List.of(archiveConfig))
+            .build();
+
+    Map<String, PolarisStorageConfigurationInfo> namedConfigs =
+        entity.getNamedStorageConfigurationInfos();
+    assertThat(namedConfigs.get("archive").getStorageType())
+        .isEqualTo(PolarisStorageConfigurationInfo.StorageType.AZURE);
+    assertThat(entity.getStorageConfigurationInfo().getStorageType())
+        .isEqualTo(PolarisStorageConfigurationInfo.StorageType.S3);
+  }
+
+  @Test
+  public void testPreExistingCatalogWithoutNamedConfigKeyLoadsCleanly() {
+    // Simulates a catalog entity persisted before this capability existed: only the legacy
+    // storage_configuration_info key is present, storage_configuration_infos was never written.
+    CatalogEntity original =
+        new CatalogEntity.Builder()
+            .setName("legacy-catalog")
+            .setDefaultBaseLocation("s3://bucket/")
+            .setStorageConfigurationInfo(realmConfig, defaultAwsConfig("s3://bucket/"))
+            .build();
+
+    // Simulate a fresh load from the metastore, going through the same PolarisBaseEntity ->
+    // CatalogEntity path a read API call uses.
+    CatalogEntity loaded = CatalogEntity.of(original);
+
+    assertThat(loaded.getNamedStorageConfigurationInfos()).isEmpty();
+    assertThatCode(loaded::asCatalog).doesNotThrowAnyException();
+    Catalog asCatalog = loaded.asCatalog();
+    assertThat(asCatalog.getStorageConfigInfos()).isNull();
+    assertThat(asCatalog.getStorageConfigInfo()).isNotNull();
+  }
+
+  @Test
+  public void testNamedStorageConfigNameNotValidatedAgainstServerCredentials() {
+    // D8: acceptance of a named config depends only on the request payload and the catalog's own
+    // state, never on whether the server has a matching deployment-time credential set configured
+    // for that name. This change has no credential registry to check against, so any
+    // syntactically valid name must be accepted.
+    CatalogEntity entity =
+        new CatalogEntity.Builder()
+            .setName("test-catalog")
+            .setDefaultBaseLocation("s3://bucket/")
+            .setStorageConfigurationInfo(realmConfig, defaultAwsConfig("s3://bucket/"))
+            .setStorageConfigurationInfos(
+                realmConfig, List.of(namedAwsConfig("no-such-credential-set", "s3://hot/bucket/")))
+            .build();
+
+    assertThat(entity.getNamedStorageConfigurationInfos())
+        .containsOnlyKeys("no-such-credential-set");
   }
 }
