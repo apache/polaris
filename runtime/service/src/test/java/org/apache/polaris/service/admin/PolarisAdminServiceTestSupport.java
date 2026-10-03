@@ -18,14 +18,23 @@
  */
 package org.apache.polaris.service.admin;
 
+import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.storage.DefaultCredentialVendingMechanism;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
+import org.apache.polaris.service.storage.StsCredentialVendingMechanism;
+import org.mockito.Mockito;
+import software.amazon.awssdk.services.sts.StsClient;
 
 public final class PolarisAdminServiceTestSupport {
   private PolarisAdminServiceTestSupport() {}
@@ -39,6 +48,22 @@ public final class PolarisAdminServiceTestSupport {
       PolarisPrincipal principal,
       PolarisAuthorizer authorizer,
       ReservedProperties reservedProperties) {
+    RealmConfig realmConfig = callContext.getRealmConfig();
+    S3CredentialVendingMechanisms vendingMechanisms =
+        new S3CredentialVendingMechanisms(
+            Map.of(
+                S3CredentialVendingMechanism.STS,
+                new StsCredentialVendingMechanism(
+                    destination -> Mockito.mock(StsClient.class),
+                    Optional.empty(),
+                    null,
+                    realmConfig),
+                S3CredentialVendingMechanism.DEFAULT,
+                new DefaultCredentialVendingMechanism(
+                    destination -> Mockito.mock(StsClient.class),
+                    Optional.empty(),
+                    null,
+                    realmConfig)));
     return new PolarisAdminService(
         callContext,
         resolutionManifestFactory,
@@ -47,6 +72,7 @@ public final class PolarisAdminServiceTestSupport {
         serviceIdentityProvider,
         principal,
         authorizer,
-        reservedProperties);
+        reservedProperties,
+        vendingMechanisms);
   }
 }

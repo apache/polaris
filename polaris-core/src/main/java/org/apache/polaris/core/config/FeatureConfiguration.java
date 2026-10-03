@@ -24,6 +24,7 @@ import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.persistence.cache.EntityWeigher;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 
 /**
  * Configurations for features within Polaris. These configurations are intended to be customized
@@ -402,6 +403,23 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   StorageConfigInfo.StorageTypeEnum.AZURE.name(),
                   StorageConfigInfo.StorageTypeEnum.GCS.name()))
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<List<String>>
+      SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS =
+          PolarisConfiguration.<List<String>>builder()
+              .key("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS")
+              .description(
+                  "The credential vending mechanisms an S3 catalog in this realm may name explicitly. Names\n"
+                      + "are case-sensitive and must match a mechanism's identifier exactly, for example STS.\n"
+                      + "Apache Polaris supports STS, which is AWS STS AssumeRole. A catalog that\n"
+                      + "leaves credentialVendingMechanism empty uses the server's default mechanism and is\n"
+                      + "always allowed. Realm-level only; catalog properties cannot widen it. Enforced at\n"
+                      + "catalog create and update, and when the server builds the storage integration that\n"
+                      + "vends credentials for a catalog. A listed mechanism with no implementation in this\n"
+                      + "server is reported at startup and refused at catalog create and update and whenever\n"
+                      + "a credential is vended for a catalog that names it.")
+              .defaultValue(List.of(S3CredentialVendingMechanism.STS))
+              .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
       PolarisConfiguration.<Boolean>builder()

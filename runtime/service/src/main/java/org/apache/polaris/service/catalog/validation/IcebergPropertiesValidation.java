@@ -21,7 +21,9 @@ package org.apache.polaris.service.catalog.validation;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_INSECURE_STORAGE_TYPES;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_SPECIFYING_FILE_IO_IMPL;
 import static org.apache.polaris.core.config.FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES;
+import static org.apache.polaris.core.config.FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS;
 
+import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.exceptions.ValidationException;
@@ -81,6 +83,22 @@ public class IcebergPropertiesValidation {
     }
 
     return ioImpl;
+  }
+
+  /**
+   * The realm allowlist for an explicit mechanism. An empty value (null) selects the server's
+   * default mechanism and is always allowed, so it is not checked here.
+   */
+  public static void validateS3CredentialVendingMechanismAllowed(
+      @NonNull RealmConfig realmConfig, @Nullable String mechanism) {
+    if (mechanism == null) {
+      return;
+    }
+    List<String> allowed = realmConfig.getConfig(SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS);
+    if (!allowed.contains(mechanism)) {
+      throw new ValidationException(
+          "S3 credential vending mechanism %s is not enabled in this realm", mechanism);
+    }
   }
 
   public static boolean safeStorageType(String name) {

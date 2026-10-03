@@ -32,6 +32,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -70,6 +71,9 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -117,7 +121,10 @@ import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
+import org.apache.polaris.service.storage.DefaultCredentialVendingMechanism;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
+import org.apache.polaris.service.storage.StsCredentialVendingMechanism;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -148,6 +155,8 @@ public record TestServices(
     PolarisEventDispatcher polarisEventDispatcher,
     PolarisEventMetadataFactory eventMetadataFactory,
     StorageAccessConfigProvider storageAccessConfigProvider,
+    Map<String, S3CredentialVendingMechanism> installedMechanisms,
+    S3CredentialVendingMechanisms vendingMechanisms,
     IdempotencyRequestContext idempotencyRequestContext) {
 
   public PolarisCatalogsApi catalogsApi() {
@@ -183,6 +192,7 @@ public record TestServices(
     private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient;
+    private Map<String, S3CredentialVendingMechanism> additionalVendingMechanisms = Map.of();
     private boolean useEventDelegator = false;
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
     private UnaryOperator<PolarisMetaStoreManager> metaStoreManagerDecorator =
@@ -236,6 +246,17 @@ public record TestServices(
       return this;
     }
 
+    /**
+     * Mechanisms installed in addition to the defaults; an entry with a default identifier replaces
+     * the default. The map behind the registry stays mutable and is exposed as {@code
+     * installedMechanisms()}, so a test can uninstall a mechanism after a catalog selected it.
+     */
+    public Builder additionalVendingMechanisms(
+        Map<String, S3CredentialVendingMechanism> additionalVendingMechanisms) {
+      this.additionalVendingMechanisms = additionalVendingMechanisms;
+      return this;
+    }
+
     public Builder withEventDelegator(boolean useEventDelegator) {
       this.useEventDelegator = useEventDelegator;
       return this;
@@ -266,10 +287,22 @@ public record TestServices(
 
       RealmConfig realmConfig = new RealmConfigImpl(configurationSource, realmContext);
 
+      Map<String, S3CredentialVendingMechanism> vendingMechanismsMap = new HashMap<>();
+      vendingMechanismsMap.put(
+          S3CredentialVendingMechanism.STS,
+          new StsCredentialVendingMechanism(
+              (destination) -> stsClient, Optional.empty(), storageCredentialCache, realmConfig));
+      vendingMechanismsMap.put(
+          S3CredentialVendingMechanism.DEFAULT,
+          new DefaultCredentialVendingMechanism(
+              (destination) -> stsClient, Optional.empty(), storageCredentialCache, realmConfig));
+      vendingMechanismsMap.putAll(additionalVendingMechanisms);
+      S3CredentialVendingMechanisms vendingMechanisms =
+          new S3CredentialVendingMechanisms(vendingMechanismsMap);
+
       PolarisStorageIntegrationProviderImpl storageIntegrationProvider =
           new PolarisStorageIntegrationProviderImpl(
-              (destination) -> stsClient,
-              Optional.empty(),
+              vendingMechanisms,
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())),
               storageCredentialCache,
               realmConfig);
@@ -564,7 +597,8 @@ public record TestServices(
                     serviceIdentityProvider,
                     principal,
                     authorizer,
-                    reservedProperties);
+                    reservedProperties,
+                    vendingMechanisms);
             return new PolarisCatalogsApi(
                 new PolarisServiceImpl(
                     realmConfig, reservedProperties, adminService, serviceIdentityProvider));
@@ -593,6 +627,8 @@ public record TestServices(
           polarisEventDispatcher,
           eventMetadataFactory,
           storageAccessConfigProvider,
+          vendingMechanismsMap,
+          vendingMechanisms,
           idempotencyRequestContext);
     }
   }
@@ -614,5 +650,21 @@ public record TestServices(
         realmContext,
         metaStoreManagerFactory.getOrCreateSession(realmContext),
         configurationSource);
+  }
+
+  /**
+   * A mechanism that vends a fixed fake credential triple: for tests that need an installed second
+   * mechanism. A Mockito mock of the integration would return null from getStorageAccessConfig and
+   * break table creation whenever credential subscoping is not skipped.
+   */
+  public static S3CredentialVendingMechanism fakeMechanism() {
+    return storageConfig ->
+        (grants, refreshEndpoint, context) ->
+            StorageAccessConfig.builder()
+                .putCredential(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "FAKE_KEY")
+                .putCredential(
+                    StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "FAKE_SECRET")
+                .putCredential(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "FAKE_TOKEN")
+                .build();
   }
 }
