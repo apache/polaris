@@ -42,6 +42,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -256,8 +257,9 @@ public record TestServices(
                 return null;
               })
           .when(authorizer)
-          .resolveAuthorizationInputs(any(), any());
-      Mockito.when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
+          .resolveAuthorizationInputs(any(), any(AuthorizationRequest.class));
+      Mockito.when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
+          .thenReturn(AuthorizationDecision.allow());
 
       // Application level
       StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
