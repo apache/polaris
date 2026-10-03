@@ -174,6 +174,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Catalog federation: `connectionConfigInfo.properties` is now persisted and returned for `HADOOP`
   and `HIVE` connection configurations. It was previously accepted by the management API but
   silently dropped, so `GET /catalogs/{name}` never showed it.
+- Creating a table or view at exactly its namespace's own location is now rejected under the
+  default (non-optimized) sibling-overlap check, matching the behavior already enforced when
+  `OPTIMIZED_SIBLING_CHECK` is enabled. Such a location is a prefix of every sibling created later
+  under the namespace, which blocked all subsequent sibling creates and over-scoped credentials
+  vended for that entity to the whole namespace.
 - Semantic models: a `datasets` field that is not a JSON array now returns `400 Bad Request`
   instead of being silently skipped, which bypassed every `dataset.source` check.
 - Conditional `loadTable` (`If-None-Match` → HTTP 304) no longer attaches a null
