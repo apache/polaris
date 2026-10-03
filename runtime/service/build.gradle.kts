@@ -136,6 +136,8 @@ dependencies {
 
   testCompileOnly(project(":polaris-immutables"))
   testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
+  testFixturesCompileOnly(project(":polaris-immutables"))
+  testFixturesAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   testFixturesApi(project(":polaris-tests")) {
     // exclude all spark dependencies
