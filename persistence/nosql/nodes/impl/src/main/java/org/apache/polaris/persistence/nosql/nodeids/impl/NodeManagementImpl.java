@@ -26,7 +26,11 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Ints;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.BeforeDestroyed;
+import jakarta.enterprise.event.Observes;
+import jakarta.enterprise.event.Reception;
 import jakarta.inject.Inject;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
@@ -333,6 +337,27 @@ class NodeManagementImpl implements NodeManagement {
     throw new IllegalStateException("Could not lease any node ID");
   }
 
+  /**
+   * Observe {@link BeforeDestroyed @BeforeDestroyed} to ensure that a persistence backend is still
+   * "alive".
+   *
+   * <p>A {@link PreDestroy @PreDestroy} on {@link #close()} can run <em>after</em> a persistence
+   * backend or its database client has been closed. Running {@link #close()} too late risks that
+   * any {@link NodeLease lease} cannot be released and remains unusable until the lease expires,
+   * see {@link NodeManagementConfig#leaseDuration()}. The {@link Priority priority} value of {@code
+   * 2900} (@link {@link jakarta.interceptor.Interceptor.Priority#LIBRARY_AFTER}{@code - 100} is
+   * meant to make {@link #close()} run quite before any {@link PreDestroy @PreDestroy} runs.
+   *
+   * <p>{@link #close()} retains the {@link PreDestroy @PreDestroy} as an idempotent fallback.
+   */
+  void releaseLeasesBeforeApplicationShutdown(
+      @Observes(notifyObserver = Reception.IF_EXISTS)
+          @Priority(2900)
+          @BeforeDestroyed(ApplicationScoped.class)
+          Object ignored) {
+    close();
+  }
+
   @Override
   @PreDestroy
   public void close() {
@@ -542,22 +567,29 @@ class NodeManagementImpl implements NodeManagement {
           return;
         }
         var id = lp.nodeId;
-        LOGGER.info("Releasing lease for node id {}", id);
+        LOGGER.debug("Releasing lease for node id {}...", id);
 
-        var now = clock.currentInstant();
-        var activeState = lp.nodeState;
-        var nodeAsReleased =
-            ImmutableNodeState.builder().from(activeState).expirationTimestamp(now).build();
+        try {
+          var now = clock.currentInstant();
+          var activeState = lp.nodeState;
+          var nodeAsReleased =
+              ImmutableNodeState.builder().from(activeState).expirationTimestamp(now).build();
 
-        leaseParams = null;
+          leaseParams = null;
 
-        var updated = nodeStore.persist(id, Optional.of(activeState), nodeAsReleased);
-        checkState(
-            updated != null && updated.equals(nodeAsReleased),
-            "State of the node %s has been unexpectedly changed: value of persisted %s != to-persist %s",
-            id,
-            updated,
-            nodeAsReleased);
+          var updated = nodeStore.persist(id, Optional.of(activeState), nodeAsReleased);
+          checkState(
+              updated != null && updated.equals(nodeAsReleased),
+              "State of the node %s has been unexpectedly changed: value of persisted %s != to-persist %s",
+              id,
+              updated,
+              nodeAsReleased);
+
+          LOGGER.info("Released lease for node id {}", id);
+        } catch (RuntimeException e) {
+          throw new RuntimeException(
+              String.format("Failed to release lease for node id %d: %s", id, e), e);
+        }
       } finally {
         lock.unlock();
       }
