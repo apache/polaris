@@ -47,6 +47,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
+import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -57,6 +58,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -436,6 +438,62 @@ public class ManagementServiceTest {
     assertThatThrownBy(
             () -> polarisAdminService.assignPrincipalRole(principal.getName(), role.getName()))
         .isInstanceOf(ValidationException.class);
+  }
+
+  @Test
+  public void testDeletePrincipalRoleDoesNotScheduleACleanupTask() {
+    PolarisMetaStoreManager metaStoreManager = services.metaStoreManager();
+    PolarisCallContext callContext = services.newCallContext();
+    PolarisAdminService polarisAdminService =
+        setupPolarisAdminService(metaStoreManager, callContext);
+
+    PrincipalRoleEntity role = createRole(metaStoreManager, callContext, "role_to_drop", false);
+    assertThat(metaStoreManager.createEntityIfNotExists(callContext, null, role).isSuccess())
+        .isTrue();
+
+    polarisAdminService.deletePrincipalRole(role.getName());
+
+    // A cleanup task carrying a PRINCIPAL_ROLE payload could never run: no registered handler
+    // accepts it, and nothing reaps TASK entities, so scheduling one only leaks a row.
+    assertThat(
+            metaStoreManager
+                .loadTasks(callContext, "test-executor", PageToken.fromLimit(10))
+                .getEntities())
+        .isEmpty();
+  }
+
+  @Test
+  public void testDeleteCatalogRoleDoesNotScheduleACleanupTask() {
+    PolarisMetaStoreManager metaStoreManager = services.metaStoreManager();
+    PolarisCallContext callContext = services.newCallContext();
+    PolarisAdminService polarisAdminService =
+        setupPolarisAdminService(metaStoreManager, callContext);
+
+    String catalogName = "catalog_with_roles";
+    assertThat(
+            metaStoreManager
+                .createCatalog(
+                    callContext,
+                    new PolarisBaseEntity(
+                        PolarisEntityConstants.getNullId(),
+                        metaStoreManager.generateNewEntityId(callContext).getId(),
+                        PolarisEntityType.CATALOG,
+                        PolarisEntitySubType.NULL_SUBTYPE,
+                        PolarisEntityConstants.getRootEntityId(),
+                        catalogName),
+                    List.of())
+                .isSuccess())
+        .isTrue();
+
+    polarisAdminService.createCatalogRole(
+        catalogName, new CatalogRoleEntity.Builder().setName("role_to_drop").build());
+    polarisAdminService.deleteCatalogRole(catalogName, "role_to_drop");
+
+    assertThat(
+            metaStoreManager
+                .loadTasks(callContext, "test-executor", PageToken.fromLimit(10))
+                .getEntities())
+        .isEmpty();
   }
 
   @Test
