@@ -196,6 +196,28 @@ public class DefaultServiceIdentityProviderTest {
   }
 
   @Test
+  void testAllocateServiceIdentityWithStaticSigV4CredentialsReturnsEmpty() {
+    Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
+    DefaultServiceIdentityProvider provider =
+        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+
+    ConnectionConfigInfo connectionConfig =
+        IcebergRestConnectionConfigInfo.builder()
+            .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://example.com/catalog")
+            .setAuthenticationParameters(
+                SigV4AuthenticationParameters.builder()
+                    .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.SIGV4)
+                    .setAccessKeyId("AKIAEXAMPLE")
+                    .setSecretAccessKey("secret")
+                    .setSigningRegion("us-west-2")
+                    .build())
+            .build();
+
+    Assertions.assertThat(provider.allocateServiceIdentity(connectionConfig)).isEmpty();
+  }
+
+  @Test
   void testAllocateServiceIdentityWithBearerAuthenticationReturnsEmpty() {
     // Test allocateServiceIdentity with non-SigV4 authentication returns empty
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
