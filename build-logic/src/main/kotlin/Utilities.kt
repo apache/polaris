@@ -25,9 +25,10 @@ val noSourceCheckProjects = listOf(":polaris-spark-3.5_2.13")
  * <project>-<sparkVersion>_<scalaVersion>, for example: polaris-spark-3.5_2.12.
  */
 fun Project.getAndUseScalaVersionForProject(): String {
-  val sparkScala = project.name.split("-").last().split("_")
-
-  val scalaVersion = sparkScala[1]
+  // project names are like:
+  //   polaris-spark-3.5_2.12
+  //   polaris-spark-4.0_2.13-integration
+  val scalaVersion = project.name.split("-").last { it.contains("_") }.split("_")[1]
 
   // direct the build to build/<scalaVersion> to avoid potential collision problem
   project.layout.buildDirectory.set(layout.buildDirectory.dir(scalaVersion).get())
