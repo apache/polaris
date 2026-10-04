@@ -127,6 +127,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
+- Catalog federation: `connectionConfigInfo.properties` is now applied when Polaris initializes
+  the Iceberg client for `HADOOP` and `HIVE` catalogs. As for `ICEBERG_REST`, only an explicit
+  allow-list is forwarded: `suppress-permission-error` (Hadoop), `clients` and `list-all-tables`
+  (Hive), plus the non-secret FileIO settings `s3.endpoint`,
+  `s3.path-style-access` and `client.region` for both. Other keys are stored but ignored.
 - Azure credential vending now maps MSAL authentication failures using their HTTP status codes,
   including the existing `401` to `403` and `404` to `400` mappings.
 
