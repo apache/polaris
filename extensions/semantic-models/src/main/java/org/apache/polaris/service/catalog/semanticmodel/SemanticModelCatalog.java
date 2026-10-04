@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Splitter;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -73,8 +74,9 @@ public class SemanticModelCatalog {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   /**
-   * Separator between the namespace path and the name in an Ossie {@code dataset.source}, per the
-   * IRC catalog object-identifier scheme (e.g. {@code sales.store_sales}).
+   * Separator used in Ossie {@code dataset.source} strings (e.g. {@code sales.store_sales}). Entity
+   * names may themselves contain {@code '.'}; resolution tries every split and requires exactly one
+   * match so dotted names are addressable without silently binding the wrong table.
    */
   private static final char SOURCE_SEPARATOR = '.';
 
@@ -334,30 +336,51 @@ public class SemanticModelCatalog {
   }
 
   private void resolveSourceOrThrow(String source, String pointer) {
-    TableIdentifier tableIdentifier = parseSource(source, pointer);
+    List<TableIdentifier> candidates = parseSourceCandidates(source, pointer);
     // Sources are parsed from the opaque document, so they cannot be pre-registered on this
-    // request's resolution manifest. Resolve each one with a fresh single-use manifest that
+    // request's resolution manifest. Resolve each candidate with a fresh single-use manifest that
     // registers the table path as an optional passthrough.
-    PolarisResolutionManifest manifest =
-        resolutionManifestFactory.createResolutionManifest(principal, catalogEntity.getName());
-    manifest.addPassthroughPath(
-        new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier),
-            PolarisEntityType.TABLE_LIKE,
-            true /* optional */));
-    PolarisResolvedPathWrapper resolved =
-        manifest.getPassthroughResolvedPath(
-            ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ANY_SUBTYPE);
-    if (resolved == null
-        || resolved.getRawLeafEntity() == null
-        || resolved.getRawLeafEntity().getType() != PolarisEntityType.TABLE_LIKE) {
+    TableIdentifier matched = null;
+    for (TableIdentifier tableIdentifier : candidates) {
+      PolarisResolutionManifest manifest =
+          resolutionManifestFactory.createResolutionManifest(principal, catalogEntity.getName());
+      manifest.addPassthroughPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier),
+              PolarisEntityType.TABLE_LIKE,
+              true /* optional */));
+      PolarisResolvedPathWrapper resolved =
+          manifest.getPassthroughResolvedPath(
+              ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ANY_SUBTYPE);
+      if (resolved == null
+          || resolved.getRawLeafEntity() == null
+          || resolved.getRawLeafEntity().getType() != PolarisEntityType.TABLE_LIKE) {
+        continue;
+      }
+      if (matched != null) {
+        throw new BadRequestException(
+            "Semantic model source '%s' at %s is ambiguous: matches more than one table or view "
+                + "in catalog '%s'",
+            source, pointer, catalogEntity.getName());
+      }
+      matched = tableIdentifier;
+    }
+    if (matched == null) {
       throw new BadRequestException(
           "Semantic model source '%s' at %s does not resolve to a table or view in catalog '%s'",
           source, pointer, catalogEntity.getName());
     }
   }
 
-  private TableIdentifier parseSource(String source, String pointer) {
+  /**
+   * Builds every namespace/name partition of a dotted {@code dataset.source}.
+   *
+   * <p>For {@code a.b.c} that is {@code ns=[a], name=b.c} and {@code ns=[a, b], name=c}. Entity
+   * names may contain {@code '.'} ({@code EntityNameValidator} allows that), so a single
+   * last-segment split would make dotted table names unaddressable and could bind the wrong entity
+   * when both partitions exist.
+   */
+  private static List<TableIdentifier> parseSourceCandidates(String source, String pointer) {
     List<String> parts = Splitter.on(SOURCE_SEPARATOR).splitToList(source);
     if (parts.size() < 2 || parts.stream().anyMatch(String::isEmpty)) {
       throw new BadRequestException(
@@ -365,9 +388,13 @@ public class SemanticModelCatalog {
               + "'<namespace-path>.<name>'",
           source, pointer);
     }
-    String name = parts.get(parts.size() - 1);
-    String[] levels = parts.subList(0, parts.size() - 1).toArray(new String[0]);
-    return TableIdentifier.of(Namespace.of(levels), name);
+    List<TableIdentifier> candidates = new ArrayList<>(parts.size() - 1);
+    for (int k = 1; k < parts.size(); k++) {
+      String[] levels = parts.subList(0, k).toArray(new String[0]);
+      String name = String.join(".", parts.subList(k, parts.size()));
+      candidates.add(TableIdentifier.of(Namespace.of(levels), name));
+    }
+    return candidates;
   }
 
   private static Namespace toNamespace(SemanticModelIdentifier identifier) {
