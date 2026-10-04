@@ -22,6 +22,7 @@ import static jakarta.ws.rs.core.Response.Status.CREATED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 
 import jakarta.ws.rs.core.Response;
 import java.util.HashMap;
@@ -48,6 +49,7 @@ import org.apache.polaris.service.catalog.policy.PolicyEndpoints;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 public class GetConfigTest {
@@ -183,6 +185,34 @@ public class GetConfigTest {
                     .restConfigurationApi()
                     .getConfig(catalogName, services.realmContext(), services.securityContext()))
         .isInstanceOf(ForbiddenException.class);
+  }
+
+  @Test
+  public void testResolveAuthorizationInputsIncludesBothConfigIntents() {
+    PolarisAuthorizer authorizer = authorizerDenying();
+    TestServices services =
+        TestServices.builder()
+            .config(baseConfig(Map.of("ENFORCE_CATALOG_CONFIG_AUTHORIZATION", true)))
+            .authorizer(authorizer)
+            .build();
+    String catalogName = createCatalog(services);
+    // createCatalog exercises other AuthZ paths; only assert the getConfig resolve call.
+    Mockito.clearInvocations(authorizer);
+
+    Response response =
+        services
+            .restConfigurationApi()
+            .getConfig(catalogName, services.realmContext(), services.securityContext());
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+
+    ArgumentCaptor<AuthorizationRequest> resolutionRequest =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
+    verify(authorizer).resolveAuthorizationInputs(any(), resolutionRequest.capture());
+    assertThat(resolutionRequest.getValue().intents())
+        .extracting(intent -> intent.getOperation())
+        .containsExactly(
+            PolarisAuthorizableOperation.GET_CATALOG_CONFIG,
+            PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES);
   }
 
   private static ConfigResponse getConfig(Map<String, Object> extraConfig) {
