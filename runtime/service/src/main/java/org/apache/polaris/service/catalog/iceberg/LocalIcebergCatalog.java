@@ -1645,10 +1645,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           .map(StorageLocation::of)
           .ifPresent(
               ancestorLocation -> {
-                // isChildOf treats equal locations as a match, so containment in both directions
-                // means the two locations are the same (ignoring trailing-slash differences).
-                if (targetLocation.isChildOf(ancestorLocation)
-                    && ancestorLocation.isChildOf(targetLocation)) {
+                if (targetLocation.isSameLocation(ancestorLocation)) {
                   throw new ForbiddenException(
                       "Unable to create entity at location '%s' because it conflicts with existing table or namespace at "
                           + "location '%s'",
