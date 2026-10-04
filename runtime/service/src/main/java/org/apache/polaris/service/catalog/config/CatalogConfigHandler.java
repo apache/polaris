@@ -105,9 +105,17 @@ public class CatalogConfigHandler {
                 new SingleTargetAuthorizationIntent(
                     PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES,
                     PolarisSecurableMapper.catalog(catalogName))));
-    // Resolve once (PolarisAuthorizerImpl.resolveAuthorizationInputs always resolveAll()s the
-    // manifest; a second call would fail). Authorize uses separate requests below.
-    authorizer.resolveAuthorizationInputs(authorizationState, configAuthzRequest);
+    // Resolve every intent that may be authorized from this shared AuthorizationState. A
+    // request-selective authorizer may use the operation, not just the target securable, to
+    // decide what inputs to resolve. Authorize still uses separate requests below so a
+    // properties denial cannot AND-combine into a bootstrap 403.
+    AuthorizationRequest resolutionRequest =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                configAuthzRequest.intents().getFirst(),
+                propertiesAuthzRequest.intents().getFirst()));
+    authorizer.resolveAuthorizationInputs(authorizationState, resolutionRequest);
 
     ResolverStatus resolverStatus = resolutionManifest.getPrimaryResolverStatusOrThrow();
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
