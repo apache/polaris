@@ -168,6 +168,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- The `root` principal can no longer be dropped or renamed. Realm bootstrap identifies a
+  bootstrapped realm by the presence of a principal named `root`, so removing or renaming it caused
+  every newly started process to treat the realm as not bootstrapped (failing all requests,
+  including the token endpoint), and re-running bootstrap could not cleanly repair it. It is now
+  protected like the `service_admin` and `catalog_admin` roles.
 - Deleting an external catalog now also deletes the inline connection secrets (OAuth client secret
   or bearer token) that were written to the `UserSecretsManager` when the catalog was created.
   Previously they stayed in the secrets store with no entity referencing them.
