@@ -937,7 +937,7 @@ public class ManagementServiceTest {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
     Catalog fetched = fetch(svc, "stays-empty");
-    UpdateCatalogRequest toDefault =
+    UpdateCatalogRequest toEmpty =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/stays-empty"),
@@ -946,7 +946,7 @@ public class ManagementServiceTest {
             () ->
                 svc.catalogsApi()
                     .updateCatalog(
-                        "stays-empty", toDefault, svc.realmContext(), svc.securityContext()))
+                        "stays-empty", toEmpty, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(refused);
   }
@@ -1013,15 +1013,14 @@ public class ManagementServiceTest {
             .setAllowedLocations(List.of("s3://second-bucket/base/"))
             .setEndpoint("https://s3.example.test")
             .build();
-    UpdateCatalogRequest toDefault =
+    UpdateCatalogRequest toEmpty =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/sts-then-empty"),
             backToDefault);
     try (Response response =
         svc.catalogsApi()
-            .updateCatalog(
-                "sts-then-empty", toDefault, svc.realmContext(), svc.securityContext())) {
+            .updateCatalog("sts-then-empty", toEmpty, svc.realmContext(), svc.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
     assertThat(
