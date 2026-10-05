@@ -43,6 +43,7 @@ from apache_polaris.sdk.catalog import IcebergCatalogAPI
 from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
 from apache_polaris.sdk.catalog.exceptions import NotFoundException, ConflictException
 from apache_polaris.sdk.catalog.models.create_policy_request import CreatePolicyRequest
+from apache_polaris.sdk.catalog.models import RegisterTableRequest, RegisterViewRequest
 from apache_polaris.cli.command.principals import PrincipalsCommand
 from apache_polaris.cli.command.principal_roles import PrincipalRolesCommand
 from apache_polaris.cli.command.catalogs import CatalogsCommand
@@ -406,6 +407,12 @@ class SetupCommand(Command):
                 catalog_info["namespaces"] = self._export_namespaces_for_catalog(
                     api, c.name, namespaces
                 )
+                catalog_info["tables"] = self._export_tables_for_catalog(
+                    api, c.name, namespaces
+                )
+                catalog_info["views"] = self._export_views_for_catalog(
+                    api, c.name, namespaces
+                )
                 catalog_info["policies"] = self._export_policies_for_catalog(
                     api, c.name, namespaces
                 )
@@ -414,6 +421,10 @@ class SetupCommand(Command):
                     del catalog_info["roles"]
                 if not catalog_info.get("namespaces"):
                     del catalog_info["namespaces"]
+                if not catalog_info.get("tables"):
+                    del catalog_info["tables"]
+                if not catalog_info.get("views"):
+                    del catalog_info["views"]
                 if not catalog_info.get("policies"):
                     del catalog_info["policies"]
                 if not catalog_info.get("properties"):
@@ -521,6 +532,106 @@ class SetupCommand(Command):
                 f"Failed to export namespaces for catalog '{catalog_name}'"
             )
         return namespaces_list
+
+    def _export_tables_for_catalog(
+        self,
+        api: PolarisDefaultApi,
+        catalog_name: str,
+        namespaces: List[List[str]],
+    ) -> List[Dict[str, Any]]:
+        """Export all tables for a given catalog."""
+        tables_list: List[Dict[str, Any]] = []
+        catalog_api = IcebergCatalogAPI(self._get_catalog_api(api))
+        for ns in namespaces:
+            namespace_str = UNIT_SEPARATOR.join(ns)
+            ns_name = ".".join(ns)
+            try:
+                for resp in paginate(
+                    catalog_api.list_tables,
+                    page_size=self.page_size,
+                    prefix=catalog_name,
+                    namespace=namespace_str,
+                ):
+                    for identifier in resp.identifiers or []:
+                        if identifier.namespace != ns:
+                            continue
+                        try:
+                            load = catalog_api.load_table(
+                                prefix=catalog_name,
+                                namespace=namespace_str,
+                                table=identifier.name,
+                            )
+                        except Exception:
+                            self._record_failure(
+                                f"Failed to load table '{ns_name}.{identifier.name}'"
+                            )
+                            continue
+                        # Skip staged table within a transaction
+                        if not load.metadata_location:
+                            logger.warning(
+                                f"Skipping table '{ns_name}.{identifier.name}' with no metadata_location (may be staged)."
+                            )
+                            continue
+                        tables_list.append(
+                            {
+                                "name": identifier.name,
+                                "namespace": ns,
+                                "metadata_location": load.metadata_location,
+                            }
+                        )
+            except Exception:
+                self._record_failure(
+                    f"Failed to list tables in '{catalog_name}.{ns_name}'"
+                )
+        tables_list.sort(key=lambda t: (t["namespace"], t["name"]))
+        return tables_list
+
+    def _export_views_for_catalog(
+        self,
+        api: PolarisDefaultApi,
+        catalog_name: str,
+        namespaces: List[List[str]],
+    ) -> List[Dict[str, Any]]:
+        """Export all views for a given catalog as register entries."""
+        views_list: List[Dict[str, Any]] = []
+        catalog_api = IcebergCatalogAPI(self._get_catalog_api(api))
+        for ns in namespaces:
+            namespace_str = UNIT_SEPARATOR.join(ns)
+            ns_name = ".".join(ns)
+            try:
+                for resp in paginate(
+                    catalog_api.list_views,
+                    page_size=self.page_size,
+                    prefix=catalog_name,
+                    namespace=namespace_str,
+                ):
+                    for identifier in resp.identifiers or []:
+                        if identifier.namespace != ns:
+                            continue
+                        try:
+                            load = catalog_api.load_view(
+                                prefix=catalog_name,
+                                namespace=namespace_str,
+                                view=identifier.name,
+                            )
+                        except Exception:
+                            self._record_failure(
+                                f"Failed to load view '{ns_name}.{identifier.name}'"
+                            )
+                            continue
+                        views_list.append(
+                            {
+                                "name": identifier.name,
+                                "namespace": ns,
+                                "metadata_location": load.metadata_location,
+                            }
+                        )
+            except Exception:
+                self._record_failure(
+                    f"Failed to list views in '{catalog_name}.{ns_name}'"
+                )
+        views_list.sort(key=lambda v: (v["namespace"], v["name"]))
+        return views_list
 
     def _export_policies_for_catalog(
         self,
@@ -630,6 +741,18 @@ class SetupCommand(Command):
                     api,
                     catalog_name,
                     catalog_data.get("namespaces", []),
+                    dry_run=self.dry_run,
+                )
+                self._register_tables(
+                    api,
+                    catalog_name,
+                    catalog_data.get("tables", []),
+                    dry_run=self.dry_run,
+                )
+                self._register_views(
+                    api,
+                    catalog_name,
+                    catalog_data.get("views", []),
                     dry_run=self.dry_run,
                 )
                 self._create_catalog_roles(
@@ -1380,6 +1503,192 @@ class SetupCommand(Command):
         logger.info(
             f"--- Finished processing namespaces for catalog: {catalog_name} ---"
         )
+
+    def _register_tables(
+        self,
+        api: PolarisDefaultApi,
+        catalog_name: str,
+        tables_config: List[Dict[str, Any]],
+        dry_run: bool = False,
+    ) -> None:
+        """Register tables in a specific catalog by their metadata locations."""
+        logger.info(f"--- Registering tables for catalog: {catalog_name} ---")
+        if not tables_config:
+            logger.info(
+                f"--- Finished registering tables for catalog: {catalog_name} ---"
+            )
+            return
+        catalog_api = IcebergCatalogAPI(self._get_catalog_api(api))
+        for entry in tables_config:
+            if not isinstance(entry, dict):
+                logger.warning(f"Skipping invalid table entry: {entry}")
+                continue
+            table_name = entry.get("name")
+            if not table_name:
+                logger.warning(
+                    f"Skipping table entry with no name in catalog '{catalog_name}'"
+                )
+                continue
+            namespace_parts = self._namespace_parts(entry.get("namespace"))
+            if not namespace_parts:
+                logger.warning(
+                    f"Skipping table '{table_name}' due to missing or invalid namespace."
+                )
+                continue
+            full_name = f"{'.'.join(namespace_parts)}.{table_name}"
+            metadata_location = entry.get("metadata_location")
+            if not metadata_location or not metadata_location.strip():
+                self._record_failure(
+                    f"Missing metadata_location for table '{full_name}'"
+                )
+                continue
+            metadata_location = metadata_location.strip()
+            namespace_str = UNIT_SEPARATOR.join(namespace_parts)
+            table_exists = False
+            try:
+                catalog_api.load_table(
+                    prefix=catalog_name, namespace=namespace_str, table=table_name
+                )
+                table_exists = True
+            except NotFoundException:
+                table_exists = False
+            except Exception:
+                if dry_run:
+                    self._record_failure(
+                        f"Could not verify existence of table '{full_name}'"
+                    )
+                else:
+                    logger.warning(
+                        f"Could not verify existence of table '{full_name}', "
+                        "attempting registration.",
+                        exc_info=True,
+                    )
+                table_exists = False
+            if table_exists:
+                logger.info(
+                    f"Skipping registration for already existing table '{full_name}' in catalog '{catalog_name}'"
+                )
+                continue
+            if dry_run:
+                self._log_dry_run(
+                    "register",
+                    "table",
+                    full_name,
+                    {"catalog": catalog_name, "metadata_location": metadata_location},
+                )
+            else:
+                try:
+                    logger.info(
+                        f"Registering table '{full_name}' in catalog '{catalog_name}'"
+                    )
+                    catalog_api.register_table(
+                        prefix=catalog_name,
+                        namespace=namespace_str,
+                        register_table_request=RegisterTableRequest(
+                            name=table_name,
+                            metadata_location=metadata_location,
+                            overwrite=False,
+                        ),
+                    )
+                    logger.info(f"Table '{full_name}' registered successfully.")
+                except Exception:
+                    self._record_failure(
+                        f"Failed to register table '{full_name}' in catalog '{catalog_name}'"
+                    )
+        logger.info(f"--- Finished registering tables for catalog: {catalog_name} ---")
+
+    def _register_views(
+        self,
+        api: PolarisDefaultApi,
+        catalog_name: str,
+        views_config: List[Dict[str, Any]],
+        dry_run: bool = False,
+    ) -> None:
+        """Register views in a specific catalog by their metadata locations."""
+        logger.info(f"--- Registering views for catalog: {catalog_name} ---")
+        if not views_config:
+            logger.info(
+                f"--- Finished registering views for catalog: {catalog_name} ---"
+            )
+            return
+        catalog_api = IcebergCatalogAPI(self._get_catalog_api(api))
+        for entry in views_config:
+            if not isinstance(entry, dict):
+                logger.warning(f"Skipping invalid view entry: {entry}")
+                continue
+            view_name = entry.get("name")
+            if not view_name:
+                logger.warning(
+                    f"Skipping view entry with no name in catalog '{catalog_name}'"
+                )
+                continue
+            namespace_parts = self._namespace_parts(entry.get("namespace"))
+            if not namespace_parts:
+                logger.warning(
+                    f"Skipping view '{view_name}' due to missing or invalid namespace."
+                )
+                continue
+            full_name = f"{'.'.join(namespace_parts)}.{view_name}"
+            metadata_location = entry.get("metadata_location")
+            if not metadata_location or not metadata_location.strip():
+                self._record_failure(
+                    f"Missing metadata_location for view '{full_name}'"
+                )
+                continue
+            metadata_location = metadata_location.strip()
+            namespace_str = UNIT_SEPARATOR.join(namespace_parts)
+            view_exists = False
+            try:
+                catalog_api.load_view(
+                    prefix=catalog_name, namespace=namespace_str, view=view_name
+                )
+                view_exists = True
+            except NotFoundException:
+                view_exists = False
+            except Exception:
+                if dry_run:
+                    self._record_failure(
+                        f"Could not verify existence of view '{full_name}'"
+                    )
+                else:
+                    logger.warning(
+                        f"Could not verify existence of view '{full_name}', "
+                        "attempting registration.",
+                        exc_info=True,
+                    )
+                view_exists = False
+            if view_exists:
+                logger.info(
+                    f"Skipping registration for already existing view '{full_name}' in catalog '{catalog_name}'"
+                )
+                continue
+            if dry_run:
+                self._log_dry_run(
+                    "register",
+                    "view",
+                    full_name,
+                    {"catalog": catalog_name, "metadata_location": metadata_location},
+                )
+            else:
+                try:
+                    logger.info(
+                        f"Registering view '{full_name}' in catalog '{catalog_name}'"
+                    )
+                    catalog_api.register_view(
+                        prefix=catalog_name,
+                        namespace=namespace_str,
+                        register_view_request=RegisterViewRequest(
+                            name=view_name,
+                            metadata_location=metadata_location,
+                        ),
+                    )
+                    logger.info(f"View '{full_name}' registered successfully.")
+                except Exception:
+                    self._record_failure(
+                        f"Failed to register view '{full_name}' in catalog "
+                        f"'{catalog_name}'"
+                    )
+        logger.info(f"--- Finished registering views for catalog: {catalog_name} ---")
 
     def _create_policies_and_attachments(
         self,

@@ -1110,3 +1110,315 @@ class TestSetupCommand(CLITestBase):
         apply_client.create_catalog.assert_called_once()
         created = apply_client.create_catalog.call_args[0][0].catalog
         self.assertEqual(created.storage_config_info.hierarchical, True)
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_export_tables_and_views(
+        self, mock_catalog_api_class: MagicMock
+    ) -> None:
+        catalog_api = mock_catalog_api_class.return_value
+
+        def list_tables(prefix: str, namespace: str) -> SimpleNamespace:
+            if namespace == f"ns1{UNIT_SEPARATOR}ns1a":
+                return SimpleNamespace(
+                    identifiers=[
+                        SimpleNamespace(
+                            namespace=["ns1", "ns1a"], name="my_table_b"
+                        ),
+                        SimpleNamespace(
+                            namespace=["ns1", "ns1a"], name="my_table_a"
+                        ),
+                    ]
+                )
+            if namespace == "ns2":
+                return SimpleNamespace(
+                    identifiers=[
+                        SimpleNamespace(namespace=["ns2"], name="my_table_c")
+                    ]
+                )
+            return SimpleNamespace(identifiers=[])
+
+        def load_table(prefix: str, namespace: str, table: str) -> SimpleNamespace:
+            return SimpleNamespace(
+                metadata_location=(
+                    f"s3://bucket/{namespace}/{table}/metadata/00001-abcd.metadata.json"
+                )
+            )
+
+        def list_views(prefix: str, namespace: str) -> SimpleNamespace:
+            if namespace == f"ns1{UNIT_SEPARATOR}ns1a":
+                return SimpleNamespace(
+                    identifiers=[
+                        SimpleNamespace(namespace=["ns1", "ns1a"], name="my_view")
+                    ]
+                )
+            return SimpleNamespace(identifiers=[])
+
+        def load_view(prefix: str, namespace: str, view: str) -> SimpleNamespace:
+            return SimpleNamespace(
+                metadata_location=(
+                    f"s3://bucket/{namespace}/{view}/metadata/00001-abcd.metadata.json"
+                )
+            )
+
+        catalog_api.list_tables.side_effect = list_tables
+        catalog_api.load_table.side_effect = load_table
+        catalog_api.list_views.side_effect = list_views
+        catalog_api.load_view.side_effect = load_view
+
+        command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        namespaces = [["ns1", "ns1a"], ["ns2"]]
+
+        tables = command._export_tables_for_catalog(
+            MagicMock(), "catalog", namespaces
+        )
+        views = command._export_views_for_catalog(MagicMock(), "catalog", namespaces)
+
+        # Results are sorted
+        self.assertEqual(
+            tables,
+            [
+                {
+                    "name": "my_table_a",
+                    "namespace": ["ns1", "ns1a"],
+                    "metadata_location": (
+                        f"s3://bucket/ns1{UNIT_SEPARATOR}ns1a/my_table_a/"
+                        "metadata/00001-abcd.metadata.json"
+                    ),
+                },
+                {
+                    "name": "my_table_b",
+                    "namespace": ["ns1", "ns1a"],
+                    "metadata_location": (
+                        f"s3://bucket/ns1{UNIT_SEPARATOR}ns1a/my_table_b/"
+                        "metadata/00001-abcd.metadata.json"
+                    ),
+                },
+                {
+                    "name": "my_table_c",
+                    "namespace": ["ns2"],
+                    "metadata_location": (
+                        "s3://bucket/ns2/my_table_c/metadata/00001-abcd.metadata.json"
+                    ),
+                },
+            ],
+        )
+        self.assertEqual(
+            views,
+            [
+                {
+                    "name": "my_view",
+                    "namespace": ["ns1", "ns1a"],
+                    "metadata_location": (
+                        f"s3://bucket/ns1{UNIT_SEPARATOR}ns1a/my_view/"
+                        "metadata/00001-abcd.metadata.json"
+                    ),
+                }
+            ],
+        )
+        self.assertEqual(command._failure_count, 0)
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_export_skips_tables_with_no_metadata_location(
+        self, mock_catalog_api_class: MagicMock
+    ) -> None:
+        catalog_api = mock_catalog_api_class.return_value
+        catalog_api.list_tables.return_value = SimpleNamespace(
+            identifiers=[SimpleNamespace(namespace=["ns1"], name="my_table")]
+        )
+        catalog_api.load_table.return_value = SimpleNamespace(metadata_location=None)
+
+        command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        with self.assertLogs(
+            "apache_polaris.cli.command.setup", level="WARNING"
+        ) as logs:
+            tables = command._export_tables_for_catalog(
+                MagicMock(), "catalog", [["ns1"]]
+            )
+        self.assertEqual(tables, [])
+        self.assertIn("no metadata_location", logs.output[0])
+        self.assertEqual(command._failure_count, 0)
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_apply_registers_tables_and_views(
+        self, mock_catalog_api_class: MagicMock
+    ) -> None:
+        catalog_api = mock_catalog_api_class.return_value
+        catalog_api.load_table.side_effect = NotFoundException()
+        catalog_api.load_view.side_effect = NotFoundException()
+
+        command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            _catalog_api=MagicMock(),
+        )
+        command._register_tables(
+            MagicMock(),
+            "catalog",
+            [
+                {
+                    "name": "my_table",
+                    "namespace": ["ns1"],
+                    "metadata_location": (
+                        "s3://bucket/ns1/my_table/metadata/00001-abcd.metadata.json"
+                    ),
+                }
+            ],
+        )
+        command._register_views(
+            MagicMock(),
+            "catalog",
+            [
+                {
+                    "name": "my_view",
+                    "namespace": ["ns1"],
+                    "metadata_location": (
+                        "s3://bucket/ns1/my_view/metadata/00001-abcd.metadata.json"
+                    ),
+                }
+            ],
+        )
+
+        catalog_api.register_table.assert_called_once()
+        table_req = catalog_api.register_table.call_args.kwargs["register_table_request"]
+        self.assertEqual(table_req.name, "my_table")
+        self.assertEqual(
+            table_req.metadata_location,
+            "s3://bucket/ns1/my_table/metadata/00001-abcd.metadata.json",
+        )
+        self.assertFalse(table_req.overwrite)
+
+        catalog_api.register_view.assert_called_once()
+        view_req = catalog_api.register_view.call_args.kwargs["register_view_request"]
+        self.assertEqual(view_req.name, "my_view")
+        self.assertEqual(
+            view_req.metadata_location,
+            "s3://bucket/ns1/my_view/metadata/00001-abcd.metadata.json",
+        )
+        self.assertEqual(command._failure_count, 0)
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_apply_skips_existing_tables_and_views(
+        self, mock_catalog_api_class: MagicMock
+    ) -> None:
+        catalog_api = mock_catalog_api_class.return_value
+        catalog_api.load_table.return_value = SimpleNamespace()
+        catalog_api.load_view.return_value = SimpleNamespace()
+
+        command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            _catalog_api=MagicMock(),
+        )
+        with self.assertLogs(
+            "apache_polaris.cli.command.setup", level="INFO"
+        ) as logs:
+            command._register_tables(
+                MagicMock(),
+                "catalog",
+                [
+                    {
+                        "name": "my_table",
+                        "namespace": ["ns1"],
+                        "metadata_location": (
+                            "s3://bucket/ns1/my_table/metadata/00001-abcd.metadata.json"
+                        ),
+                    }
+                ],
+            )
+            command._register_views(
+                MagicMock(),
+                "catalog",
+                [
+                    {
+                        "name": "my_view",
+                        "namespace": ["ns1"],
+                        "metadata_location": (
+                            "s3://bucket/ns1/my_view/metadata/00001-abcd.metadata.json"
+                        ),
+                    }
+                ],
+            )
+        catalog_api.register_table.assert_not_called()
+        catalog_api.register_view.assert_not_called()
+        joined = "\n".join(logs.output)
+        self.assertIn("Skipping registration for already existing table", joined)
+        self.assertIn("Skipping registration for already existing view", joined)
+        self.assertEqual(command._failure_count, 0)
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_apply_dry_run_reports_table_and_view_registration(
+        self, mock_catalog_api_class: MagicMock
+    ) -> None:
+        catalog_api = mock_catalog_api_class.return_value
+        catalog_api.load_table.side_effect = NotFoundException()
+        catalog_api.load_view.side_effect = NotFoundException()
+
+        command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            dry_run=True,
+            _catalog_api=MagicMock(),
+        )
+        with self.assertLogs(
+            "apache_polaris.cli.command.setup", level="INFO"
+        ) as logs:
+            command._register_tables(
+                MagicMock(),
+                "catalog",
+                [
+                    {
+                        "name": "my_table",
+                        "namespace": ["ns1"],
+                        "metadata_location": (
+                            "s3://bucket/ns1/my_table/metadata/00001-abcd.metadata.json"
+                        ),
+                    }
+                ],
+                dry_run=True,
+            )
+            command._register_views(
+                MagicMock(),
+                "catalog",
+                [
+                    {
+                        "name": "my_view",
+                        "namespace": ["ns1"],
+                        "metadata_location": (
+                            "s3://bucket/ns1/my_view/metadata/00001-abcd.metadata.json"
+                        ),
+                    }
+                ],
+                dry_run=True,
+            )
+        catalog_api.register_table.assert_not_called()
+        catalog_api.register_view.assert_not_called()
+        joined = "\n".join(logs.output)
+        self.assertIn("DRY-RUN: Would register table ns1.my_table", joined)
+        self.assertIn("DRY-RUN: Would register view ns1.my_view", joined)
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_apply_records_failure_on_empty_metadata_location(
+        self, mock_catalog_api_class: MagicMock
+    ) -> None:
+        catalog_api = mock_catalog_api_class.return_value
+        command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            _catalog_api=MagicMock(),
+        )
+        command._register_tables(
+            MagicMock(),
+            "catalog",
+            [
+                {
+                    "name": "my_table",
+                    "namespace": ["ns1"],
+                    "metadata_location": " ",
+                }
+            ],
+        )
+        catalog_api.load_table.assert_not_called()
+        catalog_api.register_table.assert_not_called()
+        self.assertEqual(command._failure_count, 1)

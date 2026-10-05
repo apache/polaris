@@ -124,6 +124,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.additionalProperties.currentSchema` in the Helm chart.
 - Python CLI: `catalogs create` and `catalogs update` now support `--storage-name` to set an optional name referencing a server-side storage configuration.
 - Python CLI: added `register` support for both `tables` and `views` commands
+- Python CLI: `setup export` and `setup apply` now support both Iceberg tables and views as register entries.
 
 ### Changes
 
