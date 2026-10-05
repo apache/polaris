@@ -2296,9 +2296,8 @@ paths:
           $ref: '#/components/responses/CreateTagResponse'
         '400':
           description: |
-            Bad Request - the values list is invalid, or a supplied target-types list is invalid,
-            meaning it is an explicit null, empty, or holds a duplicate or unknown kind. Omitting
-            target-types is valid and selects every v1 target kind.
+            Bad Request - the values list is invalid, or a supplied target-types list is null, empty,
+            or contains duplicate or unknown kinds.
 
             InvalidJson covers a body that is not syntactically valid JSON, and ValidationError covers a
             missing name or a field sent with the wrong schema type. Where this operation names its own
@@ -2420,7 +2419,9 @@ paths:
 
         A rename preserves the definition's identity: its id, its assignments and its values list all carry
         over unchanged, and clients that recorded the id can recognize the definition under its new name.
-        The version token changes on success.
+        A request that performs the rename returns 200 with the version token produced by that write.
+        It does not return the full definition or require permission to read it. The returned token can
+        be used for a subsequent update or rename, subject to the usual concurrent-change checks.
 
         current-tag-version is required and must be the source definition's current token. A missing, null,
         empty, or non-string value returns the shared request-validation 400 response, and a token that no
@@ -2432,8 +2433,10 @@ paths:
         revision does; the check is applied atomically with the rename.
 
         After a successful rename, an ordinary request that still uses the old name may return 404 NoSuchTag,
-        while a recognized retry returns 204 without renaming again, on the terms the Idempotency-Key
-        parameter describes.
+        while a recognized retry returns 204 without a body or another rename, on the terms the
+        Idempotency-Key parameter describes. This includes a concurrent duplicate that recognizes the
+        other request's successful write. Recognition returns neither the original write's token nor
+        the definition's current token. A client needing the current state after a 204 must load it.
 
         A rename is authorized on both sides: it requires permission to delete the source definition,
         because the name it holds stops resolving, and permission to create a definition in the catalog for
@@ -2449,15 +2452,24 @@ paths:
             schema:
               $ref: '#/components/schemas/RenameTagRequest'
       responses:
+        '200':
+          description: The version produced by this request's committed rename
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RenameTagResponse'
         '204':
-          description: Success - the definition was renamed. No content is returned.
+          description: |
+            The request was recognized as an earlier successful rename. No content is returned, and
+            the definition is not renamed again, even if it has since changed or been renamed again.
         '400':
           description: |
             Bad Request - the request cannot be applied as written; the error type names the cause.
 
             BadRequest covers a destination that fails TagName validation and a destination equal to the
-            source. ValidationError covers a body that is not valid JSON against this schema, including a
-            missing source or destination and a missing, null, empty or non-string current-tag-version.
+            source. InvalidJson covers a body that is not syntactically valid JSON. ValidationError
+            covers a body that fails schema validation, including a missing source or destination and a
+            missing, null, empty or non-string current-tag-version.
             InvalidIdempotencyKey covers a present but malformed Idempotency-Key header, rejected by the
             shared handler before this operation runs. Where this operation names its own type for a case,
             as it does for the destination rules above, that type takes precedence.
@@ -2612,9 +2624,7 @@ paths:
           description: |
             Bad Request - target-types was supplied on update, including as an explicit null (it is
             create-only), or the values list is invalid, meaning it is empty or holds an empty or
-            duplicate member, or a member exceeds 2000 bytes. The limit is measured on the decoded value in
-            UTF-8 bytes: JSON escaping does not count toward it, and it does not prescribe how the server
-            represents the string internally.
+            duplicate member, or a member exceeds 2000 decoded UTF-8 bytes.
 
             A missing values list, or one present as an explicit JSON null, returns BadRequest: the tag
             validation row for an invalid definition values list names that type, and it takes precedence.
@@ -2775,15 +2785,26 @@ paths:
     put:
       tags:
         - Tag API
-      summary: Assign a tag value to a target
-      operationId: assignTag
+      summary: Assign or unassign a tag on a target
+      operationId: updateTagAssignment
       description: |
-        Create or replace the assignment of this tag definition on one target.
+        Set or remove the direct assignment of this tag definition on one target.
 
-        The query parameters name the target and the request body carries only the selected values. The
-        values list must contain exactly one value, and that value must appear in the definition's
-        current values list. The target kind must appear in the definition's target-types list.
-        Reassigning the same tag on the same target replaces the stored value.
+        The JSON body carries an explicit `action` and a `target`. There is no default action.
+        Target names are original strings in JSON, without URI encoding. Per-target reads continue to
+        use the query parameters on getObjectTags.
+
+        - `assign` requires `values` containing exactly one value from the definition's current values
+          list. The target kind must appear in the definition's target-types. Reassigning the same tag
+          on the same target replaces the stored value.
+        - `unassign` accepts an absent or empty `values` list and removes the existing direct assignment.
+          It does not re-check the definition's target-types or values. If no direct assignment exists, it
+          returns 404 NoSuchAssignment. Removing a direct assignment may reveal an inherited value.
+
+        An absent, null or empty values list never selects unassign. A rejected request changes no
+        assignment. Neither action recognizes completed requests through Idempotency-Key. Retrying
+        unassign after a successful removal therefore returns 404 NoSuchAssignment if the assignment
+        is still absent.
 
         A tag can be assigned at any of the target kinds:
         1. **COLUMN:** one top-level column of an Iceberg table. Column targets are limited to Iceberg
@@ -2804,36 +2825,63 @@ paths:
         resolves to, and the parent and schema facts the kind requires. A change to an unrelated property
         of the target is not a conflict.
 
-        Requires permission to attach on the definition and the corresponding permission to attach a tag on
-        the target; a column target is checked through the table that contains it.
-      parameters:
-        - $ref: '#/components/parameters/target-type'
-        - $ref: '#/components/parameters/target-namespace'
-        - $ref: '#/components/parameters/target-name'
-        - $ref: '#/components/parameters/target-column'
+        The action selects the authorization check. Assign requires permission to attach on the
+        definition and the corresponding permission to attach a tag on the target. Unassign requires
+        permission to detach on the definition and the corresponding permission to detach a tag from
+        the target. A column target is checked through the table that contains it.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AssignTagRequest'
+              $ref: '#/components/schemas/UpdateTagAssignmentRequest'
+            examples:
+              AssignColumn:
+                summary: Assign a value to the literal top-level column named '.'
+                value:
+                  action: assign
+                  target:
+                    type: COLUMN
+                    path:
+                      - sales
+                      - eu
+                      - customers
+                    column:
+                      - .
+                  values:
+                    - confidential
+              UnassignColumn:
+                summary: Remove that column's direct assignment
+                value:
+                  action: unassign
+                  target:
+                    type: COLUMN
+                    path:
+                      - sales
+                      - eu
+                      - customers
+                    column:
+                      - .
       responses:
         '204':
           description: Success, no content
         '400':
           description: |
-            Bad Request - the target is unsupported or malformed, the target kind is excluded by the
-            definition's target-types, the values list is an explicit null, is empty, or contains an
-            empty or duplicate member, more than one value was selected, or the selected value is not
-            currently allowed.
+            BadRequest covers an unsupported target kind, a malformed or incomplete address for the
+            stated kind, and null or a non-empty `values` array supplied with `action: unassign`.
+            For `action: assign`, it also covers a kind excluded by the definition's target-types,
+            explicit null or empty values, empty or duplicate members, more than one selected value,
+            a value exceeding 2000 decoded UTF-8 bytes, or a value not currently allowed.
 
-            This operation names BadRequest for those cases and that type takes precedence for them.
-            InvalidJson covers a body that is not syntactically valid JSON, and ValidationError covers a
-            values field that is absent or, when not null, not a JSON array, neither of which is a
-            selected value this operation can judge; an explicit null is invalid and answers 400
-            BadRequest, and a rejected request neither creates nor replaces an assignment.
-            InvalidIdempotencyKey covers a present but malformed
-            Idempotency-Key header: the shared handler inspects the header on any write it sees, and
+            ValidationError covers a missing, null, unknown or non-string `action`, a missing, null or
+            non-object `target`, a missing or null `target.type`, and other schema-type violations.
+            For `action: assign`, a missing values field or a non-null value that is not a JSON array
+            is ValidationError. The operation-specific BadRequest cases above take precedence over
+            shared schema validation, including an unknown target kind and null or non-empty arrays
+            supplied with unassign.
+            InvalidJson covers a body that is not syntactically valid JSON.
+            InvalidIdempotencyKey covers a present but malformed Idempotency-Key header:
+            the shared handler inspects the header on any write it sees, and
             rejecting a malformed one does not make this operation recognize a retry.
 
             Possible error types: BadRequest, ValidationError, InvalidJson, InvalidIdempotencyKey.
@@ -2863,80 +2911,15 @@ paths:
 
             Possible error types: NoSuchCatalog (the catalog identified by {prefix}),
             NoSuchTag (the tag definition), NoSuchTarget (the target or the named
-            column).
+            column), NoSuchAssignment (unassign only, when no direct assignment exists).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PolarisErrorResponse'
               examples:
-                TagToAssignDoesNotExist:
+                TagDoesNotExist:
                   $ref: '#/components/examples/NoSuchTagError'
-                TargetToAssignDoesNotExist:
-                  $ref: '#/components/examples/examples-NoSuchTargetError'
-        '503':
-          $ref: '#/components/responses/TagServiceUnavailableResponse'
-        5XX:
-          $ref: '#/components/responses/TagServerErrorResponse'
-    delete:
-      tags:
-        - Tag API
-      summary: Remove the assignment of a tag from a target
-      operationId: unassignTag
-      description: |
-        Remove the existing assignment of this tag definition from one target.
-
-        The query parameters name the target, exactly as they do on assignTag, and there is no request
-        body. The operation removes an existing assignment; it does not re-check the definition's
-        target-types. The target must be inside the catalog identified by {prefix} and must resolve
-        from the request.
-
-        Requires permission to detach on the definition and the corresponding permission to detach a tag
-        from the target; a column target is checked through the table that contains it.
-      parameters:
-        - $ref: '#/components/parameters/target-type'
-        - $ref: '#/components/parameters/target-namespace'
-        - $ref: '#/components/parameters/target-name'
-        - $ref: '#/components/parameters/target-column'
-      responses:
-        '204':
-          description: Success, no content
-        '400':
-          description: |
-            Bad Request - the target is unsupported or malformed.
-
-            This operation names BadRequest for that case and that type takes precedence for it.
-            InvalidIdempotencyKey covers a present but malformed Idempotency-Key header: the shared handler
-            inspects the header on any write it sees, and rejecting a malformed one does not make this
-            operation recognize a retry.
-
-            Possible error types: BadRequest, InvalidIdempotencyKey.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PolarisErrorResponse'
-              examples:
-                UnsupportedTarget:
-                  $ref: '#/components/examples/UnsupportedTargetError'
-        '401':
-          $ref: '#/components/responses/TagUnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/TagForbiddenResponse'
-        '404':
-          description: |
-            Not Found - the request addresses something that does not exist; the error type names
-            the cause.
-
-            Possible error types: NoSuchCatalog (the catalog identified by {prefix}),
-            NoSuchTag (the tag definition), NoSuchTarget (the target or the named
-            column), NoSuchAssignment (the assignment).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PolarisErrorResponse'
-              examples:
-                TagToUnassignDoesNotExist:
-                  $ref: '#/components/examples/NoSuchTagError'
-                TargetToUnassignDoesNotExist:
+                TargetDoesNotExist:
                   $ref: '#/components/examples/examples-NoSuchTargetError'
                 AssignmentToRemoveDoesNotExist:
                   $ref: '#/components/examples/NoSuchAssignmentError'
@@ -3032,11 +3015,11 @@ paths:
     get:
       tags:
         - Tag API
-      summary: Get the tags of a catalog, namespace, table, or column
+      summary: Get the tags of a catalog, namespace, table, view, or column
       operationId: getObjectTags
       description: |
-        Retrieves the tags of one target. The target is named with the same query parameters assignTag
-        and unassignTag use: a required `target-type` plus the parameters that kind needs. The per-kind
+        Retrieves the tags of one target. The target is named with a required `target-type` query
+        parameter plus the parameters that kind needs. Assignment writes use a JSON target. The per-kind
         combination table lives on the `target-type` parameter, and a combination that does not match
         `target-type` is rejected.
 
@@ -3074,9 +3057,10 @@ paths:
         hierarchy or falls back to a direct read.
 
         The kind is always stated, never inferred: a request without `target-type` is rejected and is
-        never treated as a catalog read. `TagAttachmentTarget` remains the response shape that reports
-        which target a result belongs to, and these query parameters carry a reversible encoding of the
-        same names. A complete request for the column sales.eu.customers.email is
+        never treated as a catalog read. `TagAttachmentTarget` is the structured target used by writes
+        and returned by reads. These query parameters address the same targets: `namespace` contains
+        the namespace levels of `path`, `target-name` is its final table or view name when applicable,
+        and `column` is the single column name. A complete request for sales.eu.customers.email is
 
         `?target-type=COLUMN&namespace=sales%1Feu&target-name=customers&column=email&view=effective`
 
@@ -3114,8 +3098,10 @@ paths:
             Bad Request - the parameters do not match the `target-type` given, they name a target this
             implementation does not support, such as a column of a view or of a generic table, a
             present `target-name`, `namespace`, or `column` is empty, a namespace level is empty
-            after splitting, `view` is present but empty or unknown, `target-type` is missing or
-            unknown, or a target-address parameter is repeated.
+            after splitting, `view` is present but empty or unknown, `target-type` is present but empty
+            or unknown, or a target-address parameter is repeated. These cases use BadRequest.
+
+            A missing required `target-type` uses ValidationError.
 
             A malformed percent escape or another malformed URI is rejected before the Tag handler
             and uses the HTTP layer's shared 400 response; validation in the Tag handler uses
@@ -3124,11 +3110,11 @@ paths:
             This operation takes no request body, so no JSON parse failure can arise on it. Where it names
             its own type for a case, that type takes precedence.
 
-            Possible error types: BadRequest, and for the pagination parameters
-            ValidationError, or BadRequest for invalid pagination input, a repeated pagination
-            parameter, `pagination=false` combined with `pageToken` or `pageSize`, an invalid or expired
+            Possible error types: ValidationError, BadRequest (the target-address cases above,
+            invalid pagination input, a repeated pagination parameter, `pagination=false` combined with
+            `pageToken` or `pageSize`, an invalid or expired
             token, a request that would exceed the response-size or work limits, or a paged request that
-            cannot make safe progress within its work budget.
+            cannot make safe progress within its work budget).
           content:
             application/json:
               schema:
@@ -5816,11 +5802,28 @@ components:
           minLength: 1
           example: rev-b
           description: |
-            The source definition's current version token, as returned by a previous create, load, or
-            update. Send it back unchanged; do not parse, order, or increment it. The token identifies the
-            definition as well as its revision: a token from a definition that was deleted and recreated
-            under the same name, or from a definition whose name another definition was renamed into, is
+            The source definition's current version token, as returned by a previous create, load,
+            update, or newly committed rename. Send it back unchanged. Do not parse, order, or increment
+            it. The token identifies the definition as well as its revision: a token from a definition
+            that was deleted and recreated under the same name, or from a definition whose name another
+            definition was renamed into, is
             refused as a version mismatch.
+    RenameTagResponse:
+      type: object
+      description: |
+        The result of a request that performed a rename. A recognized retry returns 204 with no body
+        instead. This response contains the version produced by the committed rename, not a token
+        fetched by a later read. Concurrent changes may make it stale before the caller receives it.
+      required:
+        - version
+      properties:
+        version:
+          type: string
+          minLength: 1
+          description: |
+            The renamed definition's opaque version token. Send it back unchanged as
+            `current-tag-version` on a subsequent update or rename. Do not parse, order, or increment it.
+          example: rev-c
     UpdateTagRequest:
       type: object
       description: |
@@ -5865,17 +5868,18 @@ components:
           minLength: 1
           example: rev-b
           description: |
-            The definition's current version token, as returned by a previous create, load, or update.
-            Send it back unchanged; do not parse, order, or increment it. The token identifies the
+            The definition's current version token, as returned by a previous create, load, update, or
+            newly committed rename.
+            Send it back unchanged. Do not parse, order, or increment it. The token identifies the
             definition as well as its revision: a token from a definition that was deleted and recreated
             under the same name, or from a definition whose name another definition was renamed into, is
             refused as a version mismatch.
     TagAttachmentTarget:
       type: object
       description: |
-        One catalog object or top-level Iceberg column, as returned by a read. Assignment requests name
-        their target with query parameters instead; this object is the response shape that reports which
-        target a result belongs to. A field combination that does not match `type` is invalid.
+        One catalog object or top-level Iceberg column, supplied by an assignment write or returned by
+        a read. A field combination that does not match `type` is invalid. The kind is required and never
+        inferred, so an incomplete address cannot select a broader target.
 
         The fields per target type are:
 
@@ -5884,12 +5888,20 @@ components:
         - `TABLE`: `path` is the namespace levels followed by the table name, `column` absent or empty.
         - `VIEW`: `path` is the namespace levels followed by the view name, `column` absent or empty.
         - `COLUMN`: `path` is the namespace levels followed by the containing table name, and `column`
-          is one top-level column name.
+          is an array containing exactly one non-empty top-level column name.
+
+        A supplied `path` or `column` must be a JSON array of strings, never null. Every `path` member
+        must be non-empty.
 
         Each namespace level must be non-empty and must not contain U+001F, the character the query
         parameters use to separate levels. A JSON body carries the original names as separate strings
         without URI encoding. The rule covers every namespace level, including the levels that locate a
         table or a column.
+
+        A column name is one literal string, even when it contains dots, slashes, plus signs or percent
+        sequences. In particular, `column: ["."]` and `column: [".."]` name literal top-level columns.
+        No path normalization, percent decoding or dot splitting is applied to JSON names. Existing
+        catalog and schema naming rules still apply.
       required:
         - type
       properties:
@@ -5952,22 +5964,37 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/TaggedObject'
-    AssignTagRequest:
+    UpdateTagAssignmentRequest:
       type: object
       description: |
-        The values selected for an assignment. The target is named by the operation's query parameters,
-        not by this body.
+        An explicit assignment action on one target. `action` and `target` are required and non-null.
+        For `assign`, `values` is required and must contain exactly one allowed value. For `unassign`,
+        `values` must be absent or an empty array. Null or a non-empty array returns 400 BadRequest.
+        An empty array means no selected values and never selects the action.
+        The action-specific field rules are checked by the operation before applying any change.
       required:
-        - values
+        - action
+        - target
       properties:
+        action:
+          type: string
+          enum:
+            - assign
+            - unassign
+          description: |
+            Whether to set or remove the direct assignment. There is no default. A missing, null,
+            unknown or non-string action returns 400 ValidationError.
+        target:
+          $ref: '#/components/schemas/TagAttachmentTarget'
         values:
           type: array
           items:
             type: string
           description: |
-            The selected values. The v1 server requires exactly one member, it must appear in the
-            definition's current values list, and it is limited to 2000 bytes. The limit is measured on
-            the decoded value in UTF-8 bytes: JSON escaping does not count toward it, and it does not
+            Required for assign, absent or empty for unassign. The v1 server requires exactly one member
+            for assign. It must appear in the definition's current values list and is limited to
+            2000 bytes. The limit is measured on the decoded value in UTF-8 bytes: JSON escaping does
+            not count toward it, and it does not
             prescribe how the server represents the string internally. A longer value returns
             400 BadRequest.
             The list shape leaves room for later value forms.
@@ -7138,8 +7165,8 @@ components:
         write that would add another key is rejected with 503 ServiceUnavailable and a Retry-After header
         rather than ending recognition of an existing key, and the write is not applied.
 
-        dropTag, assignTag and unassignTag accept the header through the shared request layer, and none of
-        them recognizes a retry.
+        dropTag and both actions of updateTagAssignment accept the header through the shared request
+        layer, and none of them recognizes a retry.
 
         A missing or blank header supplies no key, and the request follows the ordinary path. When the
         shared idempotency handler is enabled, a non-blank value that is not a UUID is rejected with 400
@@ -7176,7 +7203,8 @@ components:
         | `COLUMN` | required | required | required |
 
         A combination that does not match target-type returns 400 BadRequest. `target-type` is always
-        required: a request that omits it is rejected, and is never treated as addressing the catalog.
+        required: a request that omits it returns 400 ValidationError, and is never treated as addressing
+        the catalog.
       schema:
         $ref: '#/components/schemas/TargetType'
     target-namespace:
