@@ -21,11 +21,14 @@ package org.apache.polaris.service.auth;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ResourceInfo;
+import jakarta.ws.rs.core.SecurityContext;
+import java.lang.reflect.Method;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
@@ -41,7 +44,8 @@ import org.jboss.resteasy.reactive.server.ServerRequestFilter;
  */
 public class CredentialRotationFilter {
 
-  private static final String ROTATE_CREDENTIALS_METHOD = "rotateCredentials";
+  /** The generated resource method for the rotate-credentials endpoint. */
+  static final Method ROTATE_CREDENTIALS = rotateCredentialsMethod();
 
   @Inject RealmConfig realmConfig;
 
@@ -50,9 +54,9 @@ public class CredentialRotationFilter {
       ContainerRequestContext requestContext, ResourceInfo resourceInfo) {
     if (requestContext.getSecurityContext().getUserPrincipal() instanceof PolarisPrincipal principal
         && mustRotateCredentials(principal)
-        && !isRotateCredentials(resourceInfo)
         && realmConfig.getConfig(
-            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING)) {
+            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING)
+        && !isRotateCredentials(resourceInfo)) {
       throw new ForbiddenException(
           "Principal '%s' is not authorized because it must rotate credentials first",
           principal.getName());
@@ -60,8 +64,17 @@ public class CredentialRotationFilter {
   }
 
   private static boolean isRotateCredentials(ResourceInfo resourceInfo) {
-    return PolarisPrincipalsApi.class.isAssignableFrom(resourceInfo.getResourceClass())
-        && resourceInfo.getResourceMethod().getName().equals(ROTATE_CREDENTIALS_METHOD);
+    return ROTATE_CREDENTIALS.equals(resourceInfo.getResourceMethod());
+  }
+
+  private static Method rotateCredentialsMethod() {
+    try {
+      // The method name is derived from the OpenAPI spec operationId
+      return PolarisPrincipalsApi.class.getMethod(
+          "rotateCredentials", String.class, RealmContext.class, SecurityContext.class);
+    } catch (NoSuchMethodException e) {
+      throw new IllegalStateException("Cannot find the rotate-credentials resource method", e);
+    }
   }
 
   private static boolean mustRotateCredentials(PolarisPrincipal principal) {

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.auth;
 
+import static org.apache.polaris.service.auth.CredentialRotationFilter.ROTATE_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -61,30 +62,44 @@ class CredentialRotationFilterTest {
 
   @Test
   void rejectsOtherEndpoints() {
-    assertThatThrownBy(() -> filter(true, MUST_ROTATE, "listPrincipals"))
+    assertThatThrownBy(() -> filter(true, MUST_ROTATE, listPrincipals()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("must rotate credentials first");
   }
 
   @Test
   void allowsRotateCredentialsEndpoint() {
-    assertThatCode(() -> filter(true, MUST_ROTATE, "rotateCredentials")).doesNotThrowAnyException();
+    assertThatCode(() -> filter(true, MUST_ROTATE, ROTATE_CREDENTIALS)).doesNotThrowAnyException();
   }
 
   @Test
   void allowsWhenEnforcementDisabled() {
-    assertThatCode(() -> filter(false, MUST_ROTATE, "listPrincipals")).doesNotThrowAnyException();
+    assertThatCode(() -> filter(false, MUST_ROTATE, listPrincipals())).doesNotThrowAnyException();
   }
 
   @Test
   void allowsPrincipalThatDoesNotNeedToRotate() {
-    assertThatCode(() -> filter(true, REGULAR, "listPrincipals")).doesNotThrowAnyException();
+    assertThatCode(() -> filter(true, REGULAR, listPrincipals())).doesNotThrowAnyException();
+  }
+
+  @Test
+  void ignoresNonPolarisPrincipal() {
+    ContainerRequestContext requestContext = requestContext(mock(Principal.class));
+    assertThatCode(() -> newFilter(true).checkCredentialRotationRequired(requestContext, null))
+        .doesNotThrowAnyException();
   }
 
   @Test
   void ignoresUnauthenticatedRequests() {
-    ContainerRequestContext requestContext = requestContext(mock(Principal.class));
+    ContainerRequestContext requestContext = requestContext(null);
     assertThatCode(() -> newFilter(true).checkCredentialRotationRequired(requestContext, null))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void doesNotInspectResourceWhenEnforcementDisabled() {
+    ContainerRequestContext requestContext = requestContext(MUST_ROTATE);
+    assertThatCode(() -> newFilter(false).checkCredentialRotationRequired(requestContext, null))
         .doesNotThrowAnyException();
   }
 
@@ -98,12 +113,14 @@ class CredentialRotationFilterTest {
     return filter;
   }
 
-  private static void filter(boolean enforce, PolarisPrincipal principal, String methodName) {
-    Method method =
-        Arrays.stream(PolarisPrincipalsApi.class.getMethods())
-            .filter(m -> m.getName().equals(methodName))
-            .findFirst()
-            .orElseThrow();
+  private static Method listPrincipals() {
+    return Arrays.stream(PolarisPrincipalsApi.class.getMethods())
+        .filter(m -> m.getName().equals("listPrincipals"))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private static void filter(boolean enforce, PolarisPrincipal principal, Method method) {
     ResourceInfo resourceInfo = mock(ResourceInfo.class);
     when(resourceInfo.getResourceClass()).thenAnswer(i -> PolarisPrincipalsApi.class);
     when(resourceInfo.getResourceMethod()).thenReturn(method);
