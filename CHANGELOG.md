@@ -102,6 +102,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- The H2 relational JDBC init script no longer overwrites the recorded schema version. It now seeds
+  the `version` table only when absent, matching the `ON CONFLICT DO NOTHING` behavior of the
+  PostgreSQL and CockroachDB scripts. Previously, running bootstrap against an older, unmigrated H2
+  database silently stamped it with the current version, which defeated the schema-compatibility
+  check and let the server run against an unmigrated schema.
 - NoSQL maintenance: spilled `IndexStripeObj` segments are retained when identify walks an index via
   `indexForRead` (`RetainedCollectorImpl.buildReadIndex`), and `PrincipalsObj.byClientId` is retained
   explicitly. Previously only a subset of indexes got `indexRetain`, so after a spill past
