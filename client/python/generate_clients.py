@@ -41,7 +41,7 @@ PACKAGE_NAME_POLARIS_MANAGEMENT = (
 PACKAGE_NAME_POLARIS_CATALOG = (
     "--additional-properties=packageName=apache_polaris.sdk.catalog"
 )
-PYTHON_VERSION = "--additional-properties=pythonVersion=3.10"
+PYTHON_VERSION = "--additional-properties=pythonVersion=3.11"
 
 # Cleanup
 EXCLUDE_PATHS = [
