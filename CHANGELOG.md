@@ -37,7 +37,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   external IDP and an external PDP, such as OPA or Ranger.
 
 - S3 storage configurations gain an optional string field, `credentialVendingMechanism`. A catalog
-  that leaves it empty uses the server's default mechanism, AWS STS AssumeRole, and management API
+  that leaves it empty uses the server's default mechanism, STS AssumeRole, and management API
   responses omit the field for it; `STS` selects the same mechanism explicitly and is the only value
   this release supports. Mechanisms are CDI beans discovered by their `@Identifier` at startup,
   and each one can validate the catalogs that select it at create and update. A realm lists the
@@ -50,13 +50,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Upgrade notes
 
 - `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists the explicit mechanisms a realm accepts; an empty
-  `credentialVendingMechanism` is always allowed. The value `DEFAULT` is reserved and cannot be set on
-  a catalog. Startup reports a listed mechanism with no installed bean, and a listed `DEFAULT`, as
-  non-severe readiness warnings.
+  `credentialVendingMechanism` is always allowed. Startup reports a listed mechanism with no
+  installed bean as a non-severe readiness warning. Startup fails (a severe readiness issue) when no
+  `STS` mechanism is installed, because every catalog with an empty field depends on it.
 - Rolling upgrades: a node still running an earlier release does not know `credentialVendingMechanism`.
   It ignores the field in a stored configuration and vends through STS, and it drops the field from
   the catalog create and update requests it serves. Keep S3 storage configurations unchanged during
-  the upgrade and set `credentialVendingMechanism` only once every node runs this release.
+  the upgrade.
 - Polaris-managed AWS SDK clients now use Apache HttpClient 5, which disables HTTP
   `Expect: 100-continue` by default. Set `polaris.storage.expect-continue-enabled=true`
   to preserve the previous behavior. Iceberg S3 clients continue to use Apache HttpClient 4

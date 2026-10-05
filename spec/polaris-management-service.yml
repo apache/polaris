@@ -1212,10 +1212,10 @@ components:
                 to use the server's default mechanism, which is STS in Apache Polaris.
 
                 Apache Polaris supports these values:
-                - `STS`: AWS STS AssumeRole against the configured role.
+                - `STS`: STS AssumeRole against the configured role.
 
                 Later releases may add values. The server returns HTTP 400 for a value it does not
-                support. The value `DEFAULT` is reserved: leave the field empty instead.
+                support.
 
     AzureStorageConfigInfo:
       type: object
