@@ -22,4 +22,25 @@ plugins {
   id("org.kordamp.gradle.jandex")
 }
 
-dependencies { implementation(project(":polaris-core")) }
+dependencies {
+  implementation(project(":polaris-core"))
+  implementation(libs.slf4j.api)
+  implementation(libs.guava)
+
+  // AWS SDK v2 DynamoDB client (BOM-managed), mirroring how relational-jdbc pulls its driver.
+  implementation(platform(libs.awssdk.bom))
+  implementation("software.amazon.awssdk:dynamodb")
+
+  compileOnly(libs.jspecify)
+  compileOnly(libs.jakarta.enterprise.cdi.api)
+  compileOnly(libs.jakarta.inject.api)
+
+  implementation(libs.smallrye.common.annotation) // @Identifier
+
+  testImplementation(libs.mockito.junit.jupiter)
+  testImplementation(libs.jakarta.enterprise.cdi.api)
+  testImplementation(testFixtures(project(":polaris-core"))) // shared conformance suite
+
+  testImplementation(platform(libs.testcontainers.bom))
+  testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+}
