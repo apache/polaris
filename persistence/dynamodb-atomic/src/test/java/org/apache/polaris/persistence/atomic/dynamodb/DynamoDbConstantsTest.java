@@ -16,15 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.persistence.atomic.dynamodb;
 
-plugins {
-  id("polaris-server")
-  id("org.kordamp.gradle.jandex")
-}
+import static org.assertj.core.api.Assertions.assertThat;
 
-dependencies {
-  implementation(project(":polaris-core"))
+import org.junit.jupiter.api.Test;
 
-  implementation(platform(libs.awssdk.bom))
-  implementation("software.amazon.awssdk:dynamodb")
+class DynamoDbConstantsTest {
+
+  @Test
+  void entityPkCombinesRealmAndId() {
+    assertThat(DynamoDbConstants.entityPk("realm1", 42L)).isEqualTo("realm1#42");
+  }
+
+  @Test
+  void sentinelPkCombinesParentCoordinatesAndName() {
+    assertThat(DynamoDbConstants.sentinelPk("realm1", 7L, 3L, 2, "my_table"))
+        .isEqualTo("realm1#7#3#2#my_table");
+  }
+
+  @Test
+  void byNameGsiPkCombinesParentCoordinates() {
+    assertThat(DynamoDbConstants.byNameGsiPk("realm1", 7L, 3L, 2)).isEqualTo("realm1#7#3#2");
+  }
 }
