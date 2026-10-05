@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.ENABLE_ENTITY_LEVEL_LIST_FILTERING;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
@@ -148,6 +149,9 @@ class IcebergCatalogHandlerTest {
   private IcebergCatalogHandler newHandler() {
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
     when(callContext.getRealmContext()).thenReturn(mock(RealmContext.class));
+    // The list methods read this flag unconditionally; an unstubbed Boolean would unbox to an NPE.
+    when(realmConfig.getConfig(ENABLE_ENTITY_LEVEL_LIST_FILTERING, catalogEntity))
+        .thenReturn(false);
 
     // Resolution manifest factory always returns our pre-configured manifest mock so we can
     // observe and stub interactions with it.
@@ -162,7 +166,8 @@ class IcebergCatalogHandlerTest {
     when(resolutionManifest.getResolvedPath(any(), any())).thenReturn(resolvedPath);
     when(resolutionManifest.getResolvedPath(any())).thenReturn(resolvedPath);
     when(resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
-    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
+    when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
+        .thenReturn(AuthorizationDecision.allow());
 
     // initializeCatalog() reads the resolved catalog entity to decide federated vs. local.
     // Return a CatalogEntity without a connection config so we take the local-catalog path.
@@ -317,7 +322,7 @@ class IcebergCatalogHandlerTest {
     when(authorizer.authorize(
             any(),
             argThat(
-                request ->
+                (AuthorizationRequest request) ->
                     hasOperation(
                         request,
                         PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION))))
@@ -364,7 +369,7 @@ class IcebergCatalogHandlerTest {
     when(authorizer.authorize(
             any(),
             argThat(
-                request ->
+                (AuthorizationRequest request) ->
                     hasOperation(
                         request,
                         PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION))))
@@ -416,7 +421,7 @@ class IcebergCatalogHandlerTest {
     when(authorizer.authorize(
             any(),
             argThat(
-                request ->
+                (AuthorizationRequest request) ->
                     hasOperation(
                         request, PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION))))
         .thenReturn(AuthorizationDecision.deny("write delegation denied"));

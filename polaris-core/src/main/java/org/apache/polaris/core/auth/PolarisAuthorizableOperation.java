@@ -21,12 +21,24 @@ package org.apache.polaris.core.auth;
 /** Intent-level Polaris operations that can be authorized. */
 public enum PolarisAuthorizableOperation {
   LIST_NAMESPACES,
+  /**
+   * Per-entity visibility check used when filtering listNamespaces results. Distinct from
+   * LIST_NAMESPACES so that authorizers can require a stronger, entity-scoped permission than the
+   * container-level permission that gates the list call itself.
+   */
+  LIST_NAMESPACES_ENTITY,
   CREATE_NAMESPACE,
   LOAD_NAMESPACE_METADATA,
   NAMESPACE_EXISTS,
   DROP_NAMESPACE,
   UPDATE_NAMESPACE_PROPERTIES,
   LIST_TABLES,
+  /**
+   * Per-entity visibility check used when filtering listTables results. Distinct from LIST_TABLES
+   * so that authorizers can require a stronger, entity-scoped permission than the container-level
+   * permission that gates the list call itself.
+   */
+  LIST_TABLES_ENTITY,
   CREATE_TABLE_DIRECT,
   CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
   CREATE_TABLE_STAGED,
@@ -48,6 +60,12 @@ public enum PolarisAuthorizableOperation {
   RENAME_TABLE,
   COMMIT_TRANSACTION,
   LIST_VIEWS,
+  /**
+   * Per-entity visibility check used when filtering listViews results. Distinct from LIST_VIEWS so
+   * that authorizers can require a stronger, entity-scoped permission than the container-level
+   * permission that gates the list call itself.
+   */
+  LIST_VIEWS_ENTITY,
   CREATE_VIEW,
   REGISTER_VIEW,
   LOAD_VIEW,
