@@ -381,7 +381,7 @@ extraServices:
     annotations: {}
     # @schema additionalProperties: {type: string}
     # -- Labels to add to the service.
-    # @section -- Service
+    # @section -- Extra Services
     labels: {}
 
 # Polaris Ingress settings.
