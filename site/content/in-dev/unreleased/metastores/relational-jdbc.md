@@ -143,7 +143,7 @@ unaffected.
 
 ### Schema Structure
 
-Starting with Polaris 1.8.0, each Polaris binary ships a single `schema.sql` script for each
+Starting with Polaris 1.9.0, each Polaris binary ships a single `schema.sql` script for each
 supported database type.
 
 For this release ({{< releaseVersion >}}), the corresponding SQL files are:
@@ -155,7 +155,7 @@ The `schema.sql` file is versioned, and contains the SQL statements to create th
 tables, as well as the initial data for the `version` table that tracks the schema version.
 
 {{< alert note >}}
-Prior to Polaris 1.8.0, each schema version used to have its own SQL file, e.g. `schema-v1.sql`,
+Prior to Polaris 1.9.0, each schema version used to have its own SQL file, e.g. `schema-v1.sql`,
 `schema-v2.sql`, etc.
 {{< /alert >}}
 
