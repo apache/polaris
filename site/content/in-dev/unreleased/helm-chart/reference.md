@@ -82,6 +82,9 @@ weight: 900
 | service.externalTrafficPolicy | string | `"Cluster"` | Controls how traffic from external sources is routed. Valid values are Cluster and Local. The default value is Cluster. Set the field to Cluster to route traffic to all ready endpoints. Set the field to Local to only route to ready node-local endpoints. If the traffic policy is Local and there are no node-local endpoints, traffic is dropped by kube-proxy. |
 | service.trafficDistribution | string | `nil` | The traffic distribution field provides another way to influence traffic routing within a Kubernetes Service. While traffic policies focus on strict semantic guarantees, traffic distribution allows you to express preferences such as routing to topologically closer endpoints. The only valid value is: PreferClose. The default value is implementation-specific. |
 | service.annotations | object | `{}` | Annotations to add to the service. |
+| service.labels | object | `{}` | Labels to add to the service. |
+| managementService.labels | object | `{}` | Labels to add to the service. |
+| extraServices[0].labels | object | `{}` | Labels to add to the service. |
 
 ### Management Service
 

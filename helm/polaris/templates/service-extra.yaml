@@ -30,7 +30,7 @@ metadata:
   namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "polaris.labels" $ | nindent 4 }}
-    {{- with .Values.service.labels }}
+    {{- with $svc.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   {{- with $svc.annotations }}
