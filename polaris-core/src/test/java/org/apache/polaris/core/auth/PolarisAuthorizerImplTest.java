@@ -35,8 +35,6 @@ import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationIntentResolver.ResolvedIntent;
 import org.apache.polaris.core.collection.AttributeMap;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -52,14 +50,6 @@ import org.mockito.ArgumentMatchers;
 
 public class PolarisAuthorizerImplTest {
 
-  private static RealmConfig realmConfig() {
-    RealmConfig realmConfig = mock(RealmConfig.class);
-    when(realmConfig.getConfig(
-            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING))
-        .thenReturn(false);
-    return realmConfig;
-  }
-
   @ParameterizedTest
   @EnumSource(PolarisPrivilege.class)
   void subsumingPrivilegesOf(PolarisPrivilege privilege) {
@@ -74,7 +64,7 @@ public class PolarisAuthorizerImplTest {
 
   @Test
   void resolveAuthorizationInputsResolvesAll() {
-    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(realmConfig());
+    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl();
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role"));
@@ -95,7 +85,7 @@ public class PolarisAuthorizerImplTest {
   void authorizeUsesRootTargetForRootGrantRequestWithoutPrimaryTarget() {
     // Verify that new authorize SPI call without primary target uses root_container
     // for resolution and authorization
-    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(realmConfig()));
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl());
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper rootWrapper = mock(PolarisResolvedPathWrapper.class);
@@ -138,7 +128,7 @@ public class PolarisAuthorizerImplTest {
   void authorizeUsesRootTargetForListCatalogsRequestWithoutPrimaryTarget() {
     // Verify that new authorize SPI call without primary target uses root_container
     // for resolution and authorization
-    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(realmConfig()));
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl());
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper rootWrapper = mock(PolarisResolvedPathWrapper.class);
@@ -174,7 +164,7 @@ public class PolarisAuthorizerImplTest {
   void authorizeResolvesNamespaceTargetUsingCatalog() {
     // Verify authorize call that includes Catalog name in the PolarisSecurable
     // successfully resolves the correct namespace
-    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(realmConfig()));
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl());
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper namespaceWrapper = mock(PolarisResolvedPathWrapper.class);
@@ -217,7 +207,7 @@ public class PolarisAuthorizerImplTest {
 
   @Test
   void authorizeSingleOperationMultiIntentRequestEvaluatesSequentially() {
-    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(realmConfig()));
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl());
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper firstCatalogWrapper = mock(PolarisResolvedPathWrapper.class);
@@ -267,7 +257,7 @@ public class PolarisAuthorizerImplTest {
 
   @Test
   void authorizeUpdateTableMultiIntentRequestEvaluatesSequentially() {
-    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(realmConfig()));
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl());
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper tableWrapper = mock(PolarisResolvedPathWrapper.class);
@@ -329,7 +319,7 @@ public class PolarisAuthorizerImplTest {
 
   @Test
   void authorizeReturnsDenyDecision() {
-    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(realmConfig()));
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl());
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
@@ -364,7 +354,7 @@ public class PolarisAuthorizerImplTest {
 
   @Test
   void authorizeLogsMissingPrivilegeDetailsServerSide() {
-    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(realmConfigWithDefaults());
+    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl();
     PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("reader"));
     PolarisResolvedPathWrapper namespace = resolvedPath(namespaceEntity("ns1"));
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
@@ -401,7 +391,7 @@ public class PolarisAuthorizerImplTest {
     // CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION requires both TABLE_CREATE and TABLE_WRITE_DATA
     // on the target namespace. With no grants at all, both should be logged server-side but NOT
     // exposed in the client-facing exception.
-    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(realmConfigWithDefaults());
+    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl();
     PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("reader"));
     PolarisResolvedPathWrapper namespace = resolvedPath(namespaceEntity("ns1"));
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
@@ -437,7 +427,7 @@ public class PolarisAuthorizerImplTest {
     // RENAME_TABLE: target privilege TABLE_DROP on the existing table; secondary privileges
     // TABLE_LIST and TABLE_CREATE on the destination namespace. Secondary details must NOT
     // appear in the client-facing exception.
-    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(realmConfigWithDefaults());
+    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl();
     PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("reader"));
     PolarisResolvedPathWrapper srcTable = resolvedPath(tableEntity("src_t"));
     PolarisResolvedPathWrapper dstNamespace = resolvedPath(namespaceEntity("dst_ns"));
@@ -483,7 +473,7 @@ public class PolarisAuthorizerImplTest {
   void findMissingPrivilegesReturnsEmptyWhenNothingRequiredFails() {
     // When the authorizer would say "yes", the helper must return an empty list — this is the
     // invariant relied on by isAuthorized.
-    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(realmConfigWithDefaults()));
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl());
     PolarisResolvedPathWrapper namespace = resolvedPath(namespaceEntity("ns1"));
     // Stub hasTransitivePrivilege to always return true so we exercise the empty-result branch
     // of findMissingPrivileges without rebuilding a full grant graph.
@@ -541,17 +531,5 @@ public class PolarisAuthorizerImplTest {
         .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
         .setName(name)
         .build();
-  }
-
-  private static RealmConfig realmConfigWithDefaults() {
-    // The credential-rotation-required gate auto-unboxes a Boolean from RealmConfig.getConfig;
-    // Mockito's default null answer would NPE before we ever reach the authorization logic.
-    // Returning false (the production default for the configuration flag) sends control through
-    // to findMissingPrivileges, which is what we want to exercise.
-    RealmConfig realmConfig = mock(RealmConfig.class);
-    when(realmConfig.getConfig(
-            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING))
-        .thenReturn(false);
-    return realmConfig;
   }
 }

@@ -32,6 +32,6 @@ class DefaultPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
 
   @Override
   public PolarisAuthorizer create(RealmConfig realmConfig) {
-    return new PolarisAuthorizerImpl(realmConfig);
+    return new PolarisAuthorizerImpl();
   }
 }
