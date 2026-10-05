@@ -201,12 +201,12 @@ public class AwsStorageConfigurationInfoTest {
   }
 
   @Test
-  void anEmptyMechanismReadsAsNullAndResolvesToTheServerDefault() {
+  void anEmptyMechanismReadsAsNullAndResolvesToSts() {
     AwsStorageConfigurationInfo config =
         newBuilder().addAllowedLocation("s3://bucket/path/").build();
     assertThat(config.getCredentialVendingMechanism()).isNull();
     assertThat(config.resolvedCredentialVendingMechanism())
-        .isEqualTo(S3CredentialVendingMechanism.DEFAULT);
+        .isEqualTo(S3CredentialVendingMechanism.STS);
     assertThat(config.serialize()).doesNotContain("credentialVendingMechanism");
   }
 
@@ -231,7 +231,7 @@ public class AwsStorageConfigurationInfoTest {
         (AwsStorageConfigurationInfo) PolarisStorageConfigurationInfo.deserialize(json);
     assertThat(info.getCredentialVendingMechanism()).isNull();
     assertThat(info.resolvedCredentialVendingMechanism())
-        .isEqualTo(S3CredentialVendingMechanism.DEFAULT);
+        .isEqualTo(S3CredentialVendingMechanism.STS);
   }
 
   @Test

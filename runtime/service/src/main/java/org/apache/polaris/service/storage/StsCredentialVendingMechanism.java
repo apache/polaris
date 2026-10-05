@@ -22,16 +22,42 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Optional;
+import java.util.function.Function;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
-/** AWS STS AssumeRole, selected explicitly by {@code credentialVendingMechanism: STS}. */
+/**
+ * STS AssumeRole against the catalog's role. A catalog that leaves {@code
+ * credentialVendingMechanism} empty uses this mechanism. A server build replaces it with an
+ * {@code @Alternative} bean of a higher {@code @Priority} that carries {@code @Identifier("STS")}.
+ */
 @ApplicationScoped
 @Identifier(S3CredentialVendingMechanism.STS)
-public class StsCredentialVendingMechanism extends AbstractStsCredentialVendingMechanism {
+public class StsCredentialVendingMechanism implements S3CredentialVendingMechanism {
+
+  private final StsClientProvider stsClientProvider;
+  private final Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>>
+      credentialsResolver;
+  private final StorageCredentialCache cache;
+  private final RealmConfig realmConfig;
+
+  /**
+   * For the client proxy ArC generates for this normal-scoped bean: the proxy subclass needs a
+   * no-args constructor. A working instance always comes from one of the constructors below.
+   */
+  protected StsCredentialVendingMechanism() {
+    this.stsClientProvider = null;
+    this.credentialsResolver = null;
+    this.cache = null;
+    this.realmConfig = null;
+  }
 
   @Inject
   public StsCredentialVendingMechanism(
@@ -39,7 +65,16 @@ public class StsCredentialVendingMechanism extends AbstractStsCredentialVendingM
       StsClientProvider stsClientProvider,
       StorageCredentialCache cache,
       RealmConfig realmConfig) {
-    super(storageConfiguration, stsClientProvider, cache, realmConfig);
+    this.stsClientProvider = stsClientProvider;
+    this.cache = cache;
+    this.realmConfig = realmConfig;
+    this.credentialsResolver =
+        config -> {
+          if (realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
+            return Optional.of(storageConfiguration.stsCredentials(config.getStorageName()));
+          }
+          return Optional.of(storageConfiguration.stsCredentials());
+        };
   }
 
   /** Test constructor: a fixed credentials provider and the realm config to vend under. */
@@ -48,6 +83,15 @@ public class StsCredentialVendingMechanism extends AbstractStsCredentialVendingM
       Optional<AwsCredentialsProvider> stsCredentials,
       StorageCredentialCache cache,
       RealmConfig realmConfig) {
-    super(stsClientProvider, stsCredentials, cache, realmConfig);
+    this.stsClientProvider = stsClientProvider;
+    this.cache = cache;
+    this.realmConfig = realmConfig;
+    this.credentialsResolver = config -> stsCredentials;
+  }
+
+  @Override
+  public PolarisStorageIntegration integrationFor(AwsStorageConfigurationInfo storageConfig) {
+    return new AwsCredentialsStorageIntegration(
+        stsClientProvider, credentialsResolver, cache, storageConfig, realmConfig);
   }
 }

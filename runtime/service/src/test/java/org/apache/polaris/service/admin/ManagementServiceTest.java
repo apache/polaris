@@ -917,11 +917,9 @@ public class ManagementServiceTest {
   }
 
   @Test
-  public void theLiteralDefaultIsReservedAtCreateAndUpdate() {
+  public void theLiteralDefaultIsRefusedLikeAnyUnknownValueAtCreateAndUpdate() {
     TestServices svc = mechanismServices(List.of("STS"), true);
-    String reserved =
-        "S3 credential vending mechanism DEFAULT is reserved; leave the field empty to use the"
-            + " server default";
+    String refused = "S3 credential vending mechanism DEFAULT is not enabled in this realm";
     AwsStorageConfigInfo namesDefault =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setCredentialVendingMechanism("DEFAULT")
@@ -929,7 +927,7 @@ public class ManagementServiceTest {
             .build();
     assertThatThrownBy(() -> create(svc, catalogNamed("names-default", namesDefault)))
         .isInstanceOf(ValidationException.class)
-        .hasMessage(reserved);
+        .hasMessage(refused);
 
     AwsStorageConfigInfo empty =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
@@ -950,7 +948,7 @@ public class ManagementServiceTest {
                     .updateCatalog(
                         "stays-empty", toDefault, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
-        .hasMessage(reserved);
+        .hasMessage(refused);
   }
 
   @Test
@@ -986,7 +984,7 @@ public class ManagementServiceTest {
   }
 
   @Test
-  public void anExplicitStsCanBeUpdatedBackToTheEmptyDefault() {
+  public void anExplicitStsCanBeUpdatedBackToTheEmptyField() {
     EndpointRequiringMechanism recording = new EndpointRequiringMechanism();
     TestServices svc =
         TestServices.builder()
@@ -994,7 +992,7 @@ public class ManagementServiceTest {
                 Map.of(
                     "SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3"),
                     "SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS")))
-            .additionalVendingMechanisms(Map.of(S3CredentialVendingMechanism.DEFAULT, recording))
+            .additionalVendingMechanisms(Map.of(S3CredentialVendingMechanism.STS, recording))
             .build();
     AwsStorageConfigInfo explicitSts =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
@@ -1002,6 +1000,7 @@ public class ManagementServiceTest {
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
             .setExternalId("external-id")
             .setAllowedLocations(List.of("s3://second-bucket/base/"))
+            .setEndpoint("https://s3.example.test")
             .build();
     try (Response response = create(svc, catalogNamed("sts-then-empty", explicitSts))) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
@@ -1029,10 +1028,13 @@ public class ManagementServiceTest {
             ((AwsStorageConfigInfo) fetch(svc, "sts-then-empty").getStorageConfigInfo())
                 .getCredentialVendingMechanism())
         .isNull();
-    assertThat(recording.currents).hasSize(1);
-    assertThat(recording.currents.get(0).getCredentialVendingMechanism()).isEqualTo("STS");
-    assertThat(recording.updateds).hasSize(1);
-    assertThat(recording.updateds.get(0).getCredentialVendingMechanism()).isNull();
+    // The STS override validates the explicit create, then the update back to the empty field.
+    assertThat(recording.currents).hasSize(2);
+    assertThat(recording.currents.get(0)).isNull();
+    assertThat(recording.currents.get(1).getCredentialVendingMechanism()).isEqualTo("STS");
+    assertThat(recording.updateds).hasSize(2);
+    assertThat(recording.updateds.get(0).getCredentialVendingMechanism()).isEqualTo("STS");
+    assertThat(recording.updateds.get(1).getCredentialVendingMechanism()).isNull();
   }
 
   @Test

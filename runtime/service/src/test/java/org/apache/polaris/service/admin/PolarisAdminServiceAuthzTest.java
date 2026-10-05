@@ -53,10 +53,8 @@ import org.mockito.Mockito;
 public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   private final S3CredentialVendingMechanism stsMechanism =
       Mockito.mock(S3CredentialVendingMechanism.class);
-  private final S3CredentialVendingMechanism defaultMechanism =
-      Mockito.mock(S3CredentialVendingMechanism.class);
   private final S3CredentialVendingMechanisms vendingMechanisms =
-      new S3CredentialVendingMechanisms(Map.of("STS", stsMechanism, "DEFAULT", defaultMechanism));
+      new S3CredentialVendingMechanisms(Map.of("STS", stsMechanism));
 
   private PolarisAdminService newTestAdminService() {
     final PolarisPrincipal authenticatedPrincipal =

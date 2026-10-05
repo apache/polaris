@@ -30,7 +30,6 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.storage.DefaultCredentialVendingMechanism;
 import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.apache.polaris.service.storage.StsCredentialVendingMechanism;
 import org.mockito.Mockito;
@@ -54,12 +53,6 @@ public final class PolarisAdminServiceTestSupport {
             Map.of(
                 S3CredentialVendingMechanism.STS,
                 new StsCredentialVendingMechanism(
-                    destination -> Mockito.mock(StsClient.class),
-                    Optional.empty(),
-                    null,
-                    realmConfig),
-                S3CredentialVendingMechanism.DEFAULT,
-                new DefaultCredentialVendingMechanism(
                     destination -> Mockito.mock(StsClient.class),
                     Optional.empty(),
                     null,

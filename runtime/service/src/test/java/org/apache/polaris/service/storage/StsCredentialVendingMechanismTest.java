@@ -216,16 +216,11 @@ class StsCredentialVendingMechanismTest {
   }
 
   @Test
-  void theDefaultMechanismBuildsTheSameIntegrationAsSts() {
+  void theStsMechanismBuildsAnAwsCredentialsIntegration() {
     StsClientProvider stsClientProvider = destination -> mock(StsClient.class);
     AwsStorageConfigurationInfo config = storageConfig();
     RealmConfig realmConfig = realmConfig(Map.of());
 
-    assertThat(
-            new DefaultCredentialVendingMechanism(
-                    stsClientProvider, Optional.empty(), null, realmConfig)
-                .integrationFor(config))
-        .isInstanceOf(AwsCredentialsStorageIntegration.class);
     assertThat(
             new StsCredentialVendingMechanism(
                     stsClientProvider, Optional.empty(), null, realmConfig)

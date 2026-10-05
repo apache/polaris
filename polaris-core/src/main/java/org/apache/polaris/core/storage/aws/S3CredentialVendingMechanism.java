@@ -25,11 +25,11 @@ import org.jspecify.annotations.Nullable;
 /**
  * How Polaris vends S3 credentials for one S3 catalog. Implementations are CDI beans annotated with
  * {@code @Identifier("<mechanism>")}; a catalog's {@code credentialVendingMechanism} selects one by
- * that identifier, and a catalog that leaves the field empty selects {@link #DEFAULT}. A realm
- * lists the explicit mechanisms it accepts in {@code SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}; a
+ * that identifier, and a catalog that leaves the field empty selects {@link #STS}. A realm lists
+ * the explicit mechanisms it accepts in {@code SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}; a
  * listed mechanism with no bean in the running server is refused at catalog create and update, and
  * whenever a credential is vended for a catalog that selects it. A server replaces a mechanism,
- * {@link #DEFAULT} included, with an {@code @Alternative} bean of a higher {@code @Priority} that
+ * {@link #STS} included, with an {@code @Alternative} bean of a higher {@code @Priority} that
  * carries the same identifier. An implementation must be {@code @ApplicationScoped} and
  * thread-safe: the registry resolves every bean once at startup, before any request context exists,
  * and one instance serves all concurrent requests for the lifetime of the server. An implementation
@@ -38,15 +38,8 @@ import org.jspecify.annotations.Nullable;
  */
 public interface S3CredentialVendingMechanism {
 
-  /** AWS STS AssumeRole against the catalog's role. */
+  /** STS AssumeRole against the catalog's role. A catalog that leaves the field empty uses it. */
   String STS = "STS";
-
-  /**
-   * The server's default mechanism, selected by leaving {@code credentialVendingMechanism} empty.
-   * The identifier itself is reserved: a request that names it is refused. Polaris maps it to
-   * {@link #STS}; a server build may install a different default.
-   */
-  String DEFAULT = "DEFAULT";
 
   /** The storage integration that vends for one S3 catalog under this mechanism. */
   PolarisStorageIntegration integrationFor(AwsStorageConfigurationInfo storageConfig);

@@ -74,7 +74,6 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.secrets.UserSecretsManager;
-import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
@@ -88,7 +87,6 @@ import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
-import org.apache.polaris.service.storage.DefaultCredentialVendingMechanism;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.apache.polaris.service.storage.StsCredentialVendingMechanism;
@@ -199,9 +197,6 @@ public abstract class PolarisAuthzTestBase {
             Map.of(
                 "STS",
                 new StsCredentialVendingMechanism(
-                    destination -> stsClient, Optional.empty(), null, null),
-                S3CredentialVendingMechanism.DEFAULT,
-                new DefaultCredentialVendingMechanism(
                     destination -> stsClient, Optional.empty(), null, null)));
     PolarisStorageIntegrationProviderImpl mock =
         new PolarisStorageIntegrationProviderImpl(

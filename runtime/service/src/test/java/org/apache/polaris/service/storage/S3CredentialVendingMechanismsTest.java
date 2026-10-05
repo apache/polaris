@@ -45,9 +45,9 @@ class S3CredentialVendingMechanismsTest {
 
   private static final class StsBean {}
 
-  private static final class DefaultBean {}
+  private static final class OtherBean {}
 
-  private static final class OverridingDefaultBean {}
+  private static final class OverridingStsBean {}
 
   private static final class SecondBean {}
 
@@ -58,21 +58,21 @@ class S3CredentialVendingMechanismsTest {
 
   @Test
   void identifiersComeFromEveryBeanAndResolutionUsesTheSelectedBean() {
-    S3CredentialVendingMechanism sts = mock(S3CredentialVendingMechanism.class);
     S3CredentialVendingMechanism override = mock(S3CredentialVendingMechanism.class);
+    S3CredentialVendingMechanism other = mock(S3CredentialVendingMechanism.class);
     beans(
         bean(StsBean.class, Identifier.Literal.of("STS")),
-        bean(DefaultBean.class, Identifier.Literal.of("DEFAULT")),
-        bean(OverridingDefaultBean.class, Identifier.Literal.of("DEFAULT")));
-    resolves("STS", sts);
-    resolves("DEFAULT", override);
+        bean(OverridingStsBean.class, Identifier.Literal.of("STS")),
+        bean(OtherBean.class, Identifier.Literal.of("OTHER")));
+    resolves("STS", override);
+    resolves("OTHER", other);
 
     S3CredentialVendingMechanisms registry =
         new S3CredentialVendingMechanisms(candidates, beanManager);
 
-    assertThat(registry.availableIds()).containsExactly("DEFAULT", "STS");
-    assertThat(registry.require("DEFAULT")).isSameAs(override);
-    assertThat(registry.require("STS")).isSameAs(sts);
+    assertThat(registry.availableIds()).containsExactly("OTHER", "STS");
+    assertThat(registry.require("STS")).isSameAs(override);
+    assertThat(registry.require("OTHER")).isSameAs(other);
   }
 
   @Test

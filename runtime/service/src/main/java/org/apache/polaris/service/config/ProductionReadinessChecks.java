@@ -451,12 +451,12 @@ public class ProductionReadinessChecks {
   /**
    * Every explicit name in {@code SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}, in the defaults (or
    * the flag's code default when the defaults do not set it) and in each realm override, must be
-   * installed in this server; DEFAULT is reserved and has no effect in the list. A server without a
-   * {@code DEFAULT} mechanism is a severe issue, because every catalog that leaves {@code
-   * credentialVendingMechanism} empty selects it. A listed-but-uninstalled mechanism is not severe:
-   * the mechanism is refused at catalog create and update, and whenever a credential is vended for
-   * a catalog that selects it. Apart from a missing {@code DEFAULT}, only the registry's own
-   * constructor (a bean with no {@code @Identifier}, or two beans sharing one) aborts startup.
+   * installed in this server. A server without an {@code STS} mechanism is a severe issue, because
+   * every catalog that leaves {@code credentialVendingMechanism} empty selects it. A
+   * listed-but-uninstalled mechanism is not severe: the mechanism is refused at catalog create and
+   * update, and whenever a credential is vended for a catalog that selects it. Apart from a missing
+   * {@code STS}, only the registry's own constructor (a bean with no {@code @Identifier}, or two
+   * beans sharing one) aborts startup.
    */
   @Produces
   public ProductionReadinessCheck checkS3CredentialVendingMechanisms(
@@ -464,15 +464,15 @@ public class ProductionReadinessChecks {
     var flag = FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS;
     var mapper = JsonMapper.builder().build();
     var errors = new ArrayList<Error>();
-    if (!mechanisms.isAvailable(S3CredentialVendingMechanism.DEFAULT)) {
+    if (!mechanisms.isAvailable(S3CredentialVendingMechanism.STS)) {
       errors.add(
           Error.ofSevere(
               format(
-                  "No S3 credential vending mechanism carries the DEFAULT identifier; catalogs "
+                  "No S3 credential vending mechanism carries the STS identifier; catalogs "
                       + "that leave credentialVendingMechanism empty cannot vend credentials. "
                       + "Available: %s",
                   mechanisms.availableIds()),
-              "S3CredentialVendingMechanism @Identifier(\"DEFAULT\")"));
+              "S3CredentialVendingMechanism @Identifier(\"STS\")"));
     }
     @SuppressWarnings("unchecked")
     var defaults =
@@ -510,20 +510,8 @@ public class ProductionReadinessChecks {
       String offendingProperty,
       S3CredentialVendingMechanisms mechanisms,
       List<Error> errors) {
-    if (S3CredentialVendingMechanism.DEFAULT.equals(name)) {
-      errors.add(
-          Error.of(
-              format(
-                  "S3 credential vending mechanism 'DEFAULT' listed in %s has no effect: a catalog"
-                      + " that leaves credentialVendingMechanism empty always uses the server's"
-                      + " default mechanism, and a catalog cannot name DEFAULT explicitly",
-                  offendingProperty),
-              offendingProperty));
-      return;
-    }
     if (!mechanisms.isAvailable(name)) {
       List<String> available = new ArrayList<>(mechanisms.availableIds());
-      available.remove(S3CredentialVendingMechanism.DEFAULT);
       errors.add(
           Error.of(
               format(

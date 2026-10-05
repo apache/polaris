@@ -68,7 +68,6 @@ public class PolarisServiceImplTest {
   private ReservedProperties reservedProperties;
   private RealmConfig realmConfig;
   private S3CredentialVendingMechanism stsMechanism;
-  private S3CredentialVendingMechanism defaultMechanism;
 
   private PolarisAdminService adminService;
   private PolarisServiceImpl polarisService;
@@ -84,7 +83,6 @@ public class PolarisServiceImplTest {
     reservedProperties = Mockito.mock(ReservedProperties.class);
     realmConfig = Mockito.mock(RealmConfig.class);
     stsMechanism = Mockito.mock(S3CredentialVendingMechanism.class);
-    defaultMechanism = Mockito.mock(S3CredentialVendingMechanism.class);
     PolarisPrincipal principal = Mockito.mock(PolarisPrincipal.class);
 
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
@@ -95,7 +93,7 @@ public class PolarisServiceImplTest {
         .thenReturn(List.of("OAUTH"));
 
     S3CredentialVendingMechanisms vendingMechanisms =
-        new S3CredentialVendingMechanisms(Map.of("STS", stsMechanism, "DEFAULT", defaultMechanism));
+        new S3CredentialVendingMechanisms(Map.of("STS", stsMechanism));
     adminService =
         new PolarisAdminService(
             callContext,

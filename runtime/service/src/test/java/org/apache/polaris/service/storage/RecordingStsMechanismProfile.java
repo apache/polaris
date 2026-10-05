@@ -23,15 +23,15 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Installs {@link RecordingDefaultCredentialVendingMechanism} as a CDI alternative for the DEFAULT
+ * Installs {@link RecordingStsCredentialVendingMechanism} as a CDI alternative for the STS
  * identifier. Only {@code STS} is allowlisted explicitly: an empty {@code
- * credentialVendingMechanism}, which resolves to DEFAULT, needs no allowlist entry of its own.
+ * credentialVendingMechanism}, which resolves to STS, needs no allowlist entry of its own.
  */
-public class RecordingDefaultMechanismProfile implements QuarkusTestProfile {
+public class RecordingStsMechanismProfile implements QuarkusTestProfile {
 
   @Override
   public Set<Class<?>> getEnabledAlternatives() {
-    return Set.of(RecordingDefaultCredentialVendingMechanism.class);
+    return Set.of(RecordingStsCredentialVendingMechanism.class);
   }
 
   @Override

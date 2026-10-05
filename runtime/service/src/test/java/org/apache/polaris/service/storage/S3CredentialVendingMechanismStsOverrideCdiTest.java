@@ -54,72 +54,82 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
- * Proves that a server's enabled alternative for the DEFAULT identifier is what an empty {@code
- * credentialVendingMechanism} resolves to, and that the STS bean stays reachable alongside it. Runs
- * under {@link RecordingDefaultMechanismProfile}, which enables {@link
- * RecordingDefaultCredentialVendingMechanism} as a CDI alternative carrying
- * {@code @Identifier(DEFAULT)}.
+ * Proves that a server's enabled alternative for the STS identifier serves both an empty {@code
+ * credentialVendingMechanism} and an explicit {@code STS}. Runs under {@link
+ * RecordingStsMechanismProfile}, which enables {@link RecordingStsCredentialVendingMechanism} as a
+ * CDI alternative carrying {@code @Identifier(STS)}.
  */
 @QuarkusTest
-@TestProfile(RecordingDefaultMechanismProfile.class)
+@TestProfile(RecordingStsMechanismProfile.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
-class S3CredentialVendingMechanismDefaultOverrideCdiTest {
+class S3CredentialVendingMechanismStsOverrideCdiTest {
 
   @Inject S3CredentialVendingMechanisms mechanisms;
 
   @Inject
-  @Identifier(S3CredentialVendingMechanism.DEFAULT)
-  RecordingDefaultCredentialVendingMechanism override;
+  @Identifier(S3CredentialVendingMechanism.STS)
+  RecordingStsCredentialVendingMechanism override;
 
   @Test
-  void anEmptyMechanismVendsThroughTheEnabledAlternativeAndStsStaysItself(
+  void anEmptyAndAnExplicitStsMechanismBothVendThroughTheEnabledAlternative(
       PolarisApiEndpoints endpoints, ClientCredentials credentials) throws Exception {
     override.clear();
-    assertThat(mechanisms.availableIds()).containsExactly("DEFAULT", "STS");
-    assertThat(mechanisms.require("DEFAULT"))
-        .isInstanceOf(RecordingDefaultCredentialVendingMechanism.class);
-    assertThat(mechanisms.require("STS")).isInstanceOf(StsCredentialVendingMechanism.class);
+    assertThat(mechanisms.availableIds()).containsExactly("STS");
+    assertThat(mechanisms.require("STS"))
+        .isInstanceOf(RecordingStsCredentialVendingMechanism.class);
 
     try (PolarisClient client = PolarisClient.polarisClient(endpoints)) {
       String adminToken = client.obtainToken(credentials);
       ManagementApi managementApi = client.managementApi(adminToken);
       CatalogApi catalogApi = client.catalogApi(adminToken);
 
-      String catalog = "cdi-default-override-cat";
-      managementApi.createCatalog(emptyMechanismCatalog(catalog));
-      managementApi.addGrant(
-          catalog,
-          PolarisEntityConstants.getNameOfCatalogAdminRole(),
-          new CatalogGrant(
-              CatalogPrivilege.CATALOG_MANAGE_CONTENT, GrantResource.TypeEnum.CATALOG));
-      catalogApi.createNamespace(catalog, "ns");
-      createTable(catalogApi, catalog, "ns", "t");
-
-      LoadTableResponse loaded =
-          catalogApi.loadTableWithAccessDelegation(
-              catalog, TableIdentifier.of(Namespace.of("ns"), "t"), null);
-      assertThat(loaded.credentials()).hasSize(1);
-      assertThat(loaded.credentials().get(0).config())
-          .containsEntry(
-              StorageAccessProperty.AWS_KEY_ID.getPropertyName(),
-              RecordingDefaultCredentialVendingMechanism.FAKE_KEY_FOR_TEST);
-      assertThat(override.calls()).isNotEmpty();
-      assertThat(override.calls())
-          .allSatisfy(
-              call -> assertThat(call.storageConfig().getCredentialVendingMechanism()).isNull());
+      assertVendsThroughOverride(
+          managementApi, catalogApi, "cdi-sts-override-empty-cat", /* explicitSts= */ false);
+      assertVendsThroughOverride(
+          managementApi, catalogApi, "cdi-sts-override-explicit-cat", /* explicitSts= */ true);
     }
   }
 
-  private static Catalog emptyMechanismCatalog(String name) {
+  private void assertVendsThroughOverride(
+      ManagementApi managementApi, CatalogApi catalogApi, String catalog, boolean explicitSts) {
+    override.clear();
+    managementApi.createCatalog(mechanismCatalog(catalog, explicitSts));
+    managementApi.addGrant(
+        catalog,
+        PolarisEntityConstants.getNameOfCatalogAdminRole(),
+        new CatalogGrant(CatalogPrivilege.CATALOG_MANAGE_CONTENT, GrantResource.TypeEnum.CATALOG));
+    catalogApi.createNamespace(catalog, "ns");
+    createTable(catalogApi, catalog, "ns", "t");
+
+    LoadTableResponse loaded =
+        catalogApi.loadTableWithAccessDelegation(
+            catalog, TableIdentifier.of(Namespace.of("ns"), "t"), null);
+    assertThat(loaded.credentials()).hasSize(1);
+    assertThat(loaded.credentials().get(0).config())
+        .containsEntry(
+            StorageAccessProperty.AWS_KEY_ID.getPropertyName(),
+            RecordingStsCredentialVendingMechanism.FAKE_KEY_FOR_TEST);
+    assertThat(override.calls()).isNotEmpty();
+    assertThat(override.calls())
+        .allSatisfy(
+            call ->
+                assertThat(call.storageConfig().getCredentialVendingMechanism())
+                    .isEqualTo(explicitSts ? "STS" : null));
+  }
+
+  private static Catalog mechanismCatalog(String name, boolean explicitSts) {
+    AwsStorageConfigInfo.Builder storage =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/r")
+            .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"));
+    if (explicitSts) {
+      storage.setCredentialVendingMechanism("STS");
+    }
     return PolarisCatalog.builder()
         .setType(Catalog.TypeEnum.INTERNAL)
         .setName(name)
         .setProperties(new CatalogProperties("s3://bucket/base/" + name))
-        .setStorageConfigInfo(
-            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                .setRoleArn("arn:aws:iam::123456789012:role/r")
-                .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"))
-                .build())
+        .setStorageConfigInfo(storage.build())
         .build();
   }
 

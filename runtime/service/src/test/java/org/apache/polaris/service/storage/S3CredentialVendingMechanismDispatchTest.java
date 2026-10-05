@@ -57,11 +57,6 @@ class S3CredentialVendingMechanismDispatchTest {
         destination -> Mockito.mock(StsClient.class), Optional.empty(), null, realmConfig);
   }
 
-  private static S3CredentialVendingMechanism testDefaultMechanism(RealmConfig realmConfig) {
-    return new DefaultCredentialVendingMechanism(
-        destination -> Mockito.mock(StsClient.class), Optional.empty(), null, realmConfig);
-  }
-
   private static PolarisStorageIntegrationProviderImpl provider(
       RealmConfig realmConfig, Map<String, S3CredentialVendingMechanism> mechanisms) {
     return new PolarisStorageIntegrationProviderImpl(
@@ -72,9 +67,7 @@ class S3CredentialVendingMechanismDispatchTest {
   }
 
   private static PolarisStorageIntegrationProviderImpl provider(RealmConfig realmConfig) {
-    return provider(
-        realmConfig,
-        Map.of("STS", testStsMechanism(realmConfig), "DEFAULT", testDefaultMechanism(realmConfig)));
+    return provider(realmConfig, Map.of("STS", testStsMechanism(realmConfig)));
   }
 
   private static CatalogEntity catalog(RealmConfig realmConfig, AwsStorageConfigInfo model) {

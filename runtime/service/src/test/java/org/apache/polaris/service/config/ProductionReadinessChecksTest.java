@@ -421,7 +421,7 @@ class ProductionReadinessChecksTest {
             featuresConfig(
                 Map.of(MECHANISMS_KEY, "[\"STS\"]"),
                 Map.of("r1", overrides(Map.of(MECHANISMS_KEY, "[\"STS\"]")))),
-            installed("STS", "DEFAULT"));
+            installed("STS"));
     assertThat(result.ready()).isTrue();
   }
 
@@ -430,7 +430,7 @@ class ProductionReadinessChecksTest {
     ProductionReadinessCheck result =
         checks.checkS3CredentialVendingMechanisms(
             featuresConfig(Map.of(MECHANISMS_KEY, "[\"STS\",\"BOGUS\"]"), Map.of()),
-            installed("STS", "DEFAULT"));
+            installed("STS"));
     assertThat(result.getErrors())
         .singleElement()
         .satisfies(
@@ -446,12 +446,12 @@ class ProductionReadinessChecksTest {
   void anUnconfiguredAllowlistChecksTheCodeDefault() {
     ProductionReadinessCheck result =
         checks.checkS3CredentialVendingMechanisms(
-            featuresConfig(Map.of(), Map.of()), installed("DEFAULT"));
+            featuresConfig(Map.of(), Map.of()), installed("SECOND"));
     assertThat(result.getErrors())
+        .filteredOn(error -> !error.severe())
         .singleElement()
         .satisfies(
             error -> {
-              assertThat(error.severe()).isFalse();
               assertThat(error.offendingProperty())
                   .isEqualTo("polaris.features.\"" + MECHANISMS_KEY + "\"");
               assertThat(error.message()).contains("STS");
@@ -459,10 +459,10 @@ class ProductionReadinessChecksTest {
   }
 
   @Test
-  void anUnconfiguredAllowlistIsReadyWhenTheDefaultMechanismIsInstalled() {
+  void anUnconfiguredAllowlistIsReadyWhenStsIsInstalled() {
     ProductionReadinessCheck result =
         checks.checkS3CredentialVendingMechanisms(
-            featuresConfig(Map.of(), Map.of()), installed("STS", "DEFAULT"));
+            featuresConfig(Map.of(), Map.of()), installed("STS"));
     assertThat(result.ready()).isTrue();
   }
 
@@ -471,7 +471,7 @@ class ProductionReadinessChecksTest {
     ProductionReadinessCheck result =
         checks.checkS3CredentialVendingMechanisms(
             featuresConfig(Map.of(), Map.of("r1", overrides(Map.of(MECHANISMS_KEY, "[\"NOPE\"]")))),
-            installed("STS", "DEFAULT"));
+            installed("STS"));
     assertThat(result.getErrors())
         .singleElement()
         .satisfies(
@@ -483,34 +483,19 @@ class ProductionReadinessChecksTest {
   }
 
   @Test
-  void aMissingDefaultMechanismIsASevereError() {
+  void aMissingStsMechanismIsASevereError() {
     ProductionReadinessCheck result =
         checks.checkS3CredentialVendingMechanisms(
-            featuresConfig(Map.of(MECHANISMS_KEY, "[\"STS\"]"), Map.of()), installed("STS"));
+            featuresConfig(Map.of(MECHANISMS_KEY, "[\"SECOND\"]"), Map.of()), installed("SECOND"));
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
         .satisfies(
             error -> {
               assertThat(error.severe()).isTrue();
-              assertThat(error.message()).contains("DEFAULT");
+              assertThat(error.message()).contains("STS");
               assertThat(error.offendingProperty())
-                  .isEqualTo("S3CredentialVendingMechanism @Identifier(\"DEFAULT\")");
-            });
-  }
-
-  @Test
-  void aListedDefaultIsANonSevereWarningEvenThoughItIsInstalled() {
-    ProductionReadinessCheck result =
-        checks.checkS3CredentialVendingMechanisms(
-            featuresConfig(Map.of(MECHANISMS_KEY, "[\"STS\",\"DEFAULT\"]"), Map.of()),
-            installed("STS", "DEFAULT"));
-    assertThat(result.getErrors())
-        .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.severe()).isFalse();
-              assertThat(error.message()).contains("DEFAULT").contains("has no effect");
+                  .isEqualTo("S3CredentialVendingMechanism @Identifier(\"STS\")");
             });
   }
 }

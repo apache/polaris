@@ -30,19 +30,18 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 
 /**
- * A recording replacement for the DEFAULT mechanism, enabled only under {@link
- * RecordingDefaultMechanismProfile}: proves that an enabled alternative carrying the DEFAULT
- * identifier is what an empty credentialVendingMechanism resolves to, while the STS bean stays
- * untouched.
+ * A recording replacement for the STS mechanism, enabled only under {@link
+ * RecordingStsMechanismProfile}: proves that an enabled alternative carrying the STS identifier
+ * serves both an empty credentialVendingMechanism and an explicit STS.
  */
 @ApplicationScoped
 @Alternative
-@Identifier(S3CredentialVendingMechanism.DEFAULT)
-public class RecordingDefaultCredentialVendingMechanism implements S3CredentialVendingMechanism {
+@Identifier(S3CredentialVendingMechanism.STS)
+public class RecordingStsCredentialVendingMechanism implements S3CredentialVendingMechanism {
 
-  public static final String FAKE_KEY_FOR_TEST = "DEFAULT_OVERRIDE_FAKE_KEY";
-  public static final String FAKE_SECRET_FOR_TEST = "DEFAULT_OVERRIDE_FAKE_SECRET";
-  public static final String FAKE_TOKEN_FOR_TEST = "DEFAULT_OVERRIDE_FAKE_TOKEN";
+  public static final String FAKE_KEY_FOR_TEST = "STS_OVERRIDE_FAKE_KEY";
+  public static final String FAKE_SECRET_FOR_TEST = "STS_OVERRIDE_FAKE_SECRET";
+  public static final String FAKE_TOKEN_FOR_TEST = "STS_OVERRIDE_FAKE_TOKEN";
 
   /** One call: the storage config {@link #integrationFor} was given. */
   public record Call(AwsStorageConfigurationInfo storageConfig) {}

@@ -54,8 +54,7 @@ public class S3CredentialVendingMechanisms {
       @Any Instance<S3CredentialVendingMechanism> candidates, BeanManager beanManager) {
     // getBeans(Type, Annotation...) returns every enabled bean without ambiguity resolution.
     // Instance#handles() on the unqualified @Any Instance would resolve ambiguity across all
-    // mechanism beans, which drops the bean an enabled alternative replaces (and any bean carrying
-    // the DEFAULT identifier once a non-default alternative exists).
+    // mechanism beans, which drops the bean an enabled alternative replaces.
     Set<String> ids = new TreeSet<>();
     for (Bean<?> bean :
         beanManager.getBeans(S3CredentialVendingMechanism.class, Any.Literal.INSTANCE)) {

@@ -116,7 +116,6 @@ public class PolarisAdminServiceTest {
   @Mock private PolarisResolvedPathWrapper resolvedPathWrapper;
   @Mock private RealmConfig realmConfig;
   @Mock private S3CredentialVendingMechanism stsMechanism;
-  @Mock private S3CredentialVendingMechanism defaultMechanism;
 
   private PolarisAdminService adminService;
 
@@ -153,7 +152,7 @@ public class PolarisAdminServiceTest {
     authenticatedPrincipal = PolarisPrincipal.of("test", AttributeMap.EMPTY, Set.of());
 
     S3CredentialVendingMechanisms vendingMechanisms =
-        new S3CredentialVendingMechanisms(Map.of("STS", stsMechanism, "DEFAULT", defaultMechanism));
+        new S3CredentialVendingMechanisms(Map.of("STS", stsMechanism));
     adminService =
         new PolarisAdminService(
             callContext,
@@ -293,7 +292,7 @@ public class PolarisAdminServiceTest {
     verify(metaStoreManager, never()).createCatalog(any(), any(), any());
   }
 
-  /** The registry this test's adminService holds carries only STS and DEFAULT mocks. */
+  /** The registry this test's adminService holds carries only an STS mock. */
   @Test
   void authorizedCreateCatalogWithAnUninstalledMechanismIsRefusedAfterAuthorization() {
     when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS))

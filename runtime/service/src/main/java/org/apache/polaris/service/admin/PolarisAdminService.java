@@ -966,9 +966,9 @@ public class PolarisAdminService {
 
   /**
    * The mechanism checks that run after authorization, so an unauthorized caller learns nothing
-   * about the realm's configuration: the reserved DEFAULT identifier, the realm allowlist for an
-   * explicit value, then availability in this server. Returns the mechanism the catalog selects, or
-   * null for a storage config that is not S3.
+   * about the realm's configuration: the realm allowlist for an explicit value, then availability
+   * in this server. Returns the mechanism the catalog selects, or null for a storage config that is
+   * not S3.
    */
   private @Nullable S3CredentialVendingMechanism validateS3CredentialVendingMechanism(
       @Nullable StorageConfigInfo storageConfigInfo) {
@@ -976,15 +976,10 @@ public class PolarisAdminService {
       return null;
     }
     String requested = s3Config.getCredentialVendingMechanism();
-    if (S3CredentialVendingMechanism.DEFAULT.equals(requested)) {
-      throw new ValidationException(
-          "S3 credential vending mechanism DEFAULT is reserved; leave the field empty to use the"
-              + " server default");
-    }
     String explicit = AwsStorageConfigurationInfo.credentialVendingMechanismOf(requested);
     IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(realmConfig, explicit);
     return vendingMechanisms.require(
-        explicit == null ? S3CredentialVendingMechanism.DEFAULT : explicit);
+        explicit == null ? S3CredentialVendingMechanism.STS : explicit);
   }
 
   /**

@@ -121,7 +121,6 @@ import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
-import org.apache.polaris.service.storage.DefaultCredentialVendingMechanism;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.apache.polaris.service.storage.StsCredentialVendingMechanism;
@@ -291,10 +290,6 @@ public record TestServices(
       vendingMechanismsMap.put(
           S3CredentialVendingMechanism.STS,
           new StsCredentialVendingMechanism(
-              (destination) -> stsClient, Optional.empty(), storageCredentialCache, realmConfig));
-      vendingMechanismsMap.put(
-          S3CredentialVendingMechanism.DEFAULT,
-          new DefaultCredentialVendingMechanism(
               (destination) -> stsClient, Optional.empty(), storageCredentialCache, realmConfig));
       vendingMechanismsMap.putAll(additionalVendingMechanisms);
       S3CredentialVendingMechanisms vendingMechanisms =

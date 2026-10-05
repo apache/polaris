@@ -67,8 +67,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * {@code @Nested} test classes ({@code io.quarkus.test.junit.QuarkusTestExtension}: "@Nested tests
  * may not contain @TestProfile annotations"), and the two scenarios need different application
  * instances regardless: {@code getEnabledAlternatives()} is profile-wide, and {@link
- * S3CredentialVendingMechanismCdiTest} asserts {@code availableIds()} is exactly {@code {DEFAULT,
- * STS}} in its own application instance, which this test's third mechanism would otherwise widen.
+ * S3CredentialVendingMechanismCdiTest} asserts {@code availableIds()} is exactly {@code {STS}} in
+ * its own application instance, which this test's third mechanism would otherwise widen.
  */
 @QuarkusTest
 @TestProfile(ThirdMechanismProfile.class)
@@ -86,7 +86,7 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
       PolarisApiEndpoints endpoints, ClientCredentials credentials) throws Exception {
     testMechanism.clear();
     assertThat(mechanisms.availableIds())
-        .containsExactly("DEFAULT", "STS", RecordingThirdCredentialVendingMechanism.ID);
+        .containsExactly("STS", RecordingThirdCredentialVendingMechanism.ID);
     try (PolarisClient client = PolarisClient.polarisClient(endpoints)) {
       String adminToken = client.obtainToken(credentials);
       ManagementApi managementApi = client.managementApi(adminToken);

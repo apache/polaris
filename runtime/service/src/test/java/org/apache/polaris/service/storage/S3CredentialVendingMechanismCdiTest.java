@@ -70,9 +70,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * container, and the standalone contract this module alone must satisfy: an allowlisted mechanism
  * with no bean installed is refused at create, at update, and whenever a stored catalog that
  * selected it vends a credential, but keeps serving the catalog's metadata routes, never confused
- * with DEFAULT or STS, and never aborts startup, while the DEFAULT and STS beans are proven to
- * still vend through the real registry dispatch. No cloud calls: every catalog's table content goes
- * through {@link TestInMemoryFileIOFactory} (selected by {@code
+ * with STS, and never aborts startup, while the STS bean is proven to still vend through the real
+ * registry dispatch, for an empty field and for an explicit STS. No cloud calls: every catalog's
+ * table content goes through {@link TestInMemoryFileIOFactory} (selected by {@code
  * polaris.file-io.type=test-in-memory}).
  *
  * <p>The container cannot uninstall a bean, so the first test method installs, for its own duration
@@ -88,15 +88,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * against {@link #TEST_MECHANISM} cover a mechanism that was installed when a catalog selected it
  * and is later removed from the live registry.
  *
- * <p>This class installs only the {@code DEFAULT} and {@code STS} mechanisms (the server's real,
- * shipped beans) plus, for the first test method's own live registry, a fake it adds itself, and
- * allowlists {@code UNINSTALLED_MECHANISM} without ever installing it. {@link
+ * <p>This class installs only the {@code STS} mechanism (the server's real, shipped bean) plus, for
+ * the first test method's own live registry, a fake it adds itself, and allowlists {@code
+ * UNINSTALLED_MECHANISM} without ever installing it. {@link
  * S3CredentialVendingMechanismThirdMechanismCdiTest} swaps in a test-only mechanism as a real CDI
  * bean, under its own profile, to prove the registry and the gates work for a mechanism the server
  * itself does not ship. Quarkus does not allow {@code @TestProfile} on a {@code @Nested} class, so
  * that scenario cannot share this file: it needs its own application instance, since {@code
  * getEnabledAlternatives()} is a profile-wide, one-instance setting, and this class asserts {@code
- * availableIds()} is exactly {@code {DEFAULT, STS}}.
+ * availableIds()} is exactly {@code {STS}}.
  */
 @QuarkusTest
 @TestProfile(S3CredentialVendingMechanismCdiTest.Profile.class)
@@ -143,10 +143,6 @@ class S3CredentialVendingMechanismCdiTest {
   @Identifier(S3CredentialVendingMechanism.STS)
   S3CredentialVendingMechanism stsBean;
 
-  @Inject
-  @Identifier(S3CredentialVendingMechanism.DEFAULT)
-  S3CredentialVendingMechanism defaultBean;
-
   /**
    * With the default readiness settings (no {@code polaris.readiness.ignore-severe-issues}
    * override) and two mechanisms allowlisted but not installed, the application starts, only {@code
@@ -164,15 +160,13 @@ class S3CredentialVendingMechanismCdiTest {
     // The application started at all, with two mechanisms allowlisted and neither installed, and
     // default readiness settings, is itself part of what this proves; availableIds() shows only
     // STS installed.
-    assertThat(mechanisms.availableIds()).containsExactly("DEFAULT", "STS");
+    assertThat(mechanisms.availableIds()).containsExactly("STS");
 
     Map<String, S3CredentialVendingMechanism> live =
         new ConcurrentHashMap<>(
             Map.of(
                 S3CredentialVendingMechanism.STS,
                 stsBean,
-                S3CredentialVendingMechanism.DEFAULT,
-                defaultBean,
                 TEST_MECHANISM,
                 TestServices.fakeMechanism()));
     QuarkusMock.installMockForType(
@@ -325,26 +319,25 @@ class S3CredentialVendingMechanismCdiTest {
   }
 
   /**
-   * Proves the second half of STS discovery that the other test method cannot: that the DEFAULT and
-   * STS beans actually vend through the registry, not merely that the gate admits them. That test
-   * method's realm has {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION} on, so {@code
+   * Proves the second half of STS discovery that the other test method cannot: that the STS bean
+   * actually vends through the registry, not merely that the gate admits it. That test method's
+   * realm has {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION} on, so {@code
    * StorageAccessConfigProvider} returns before ever calling the registry; its 200s show only that
    * the route works. This method runs in a realm with the skip flag off, on catalogs with {@code
    * stsUnavailable: true}, so no real STS call is made: {@code
    * buildLoadTableResponseWithDelegationCredentials} calls {@code StorageAccessConfigProvider}
    * unconditionally on every load, delegation requested or not, which reaches the registry, which
-   * resolves the catalog's mechanism (an absent value resolving to {@code @Identifier("DEFAULT")},
-   * an explicit one to {@code @Identifier("STS")}) and runs {@code
-   * AwsCredentialsStorageIntegration}, which checks {@code stsUnavailable}, skips the AssumeRole
-   * call entirely, and returns only the catalog's non-credential storage properties (its region and
-   * endpoint). A load succeeding with those properties present and no access key anywhere in the
-   * response is only possible if the registry actually resolved the bean and ran its integration.
-   * The sequence runs once for each mechanism, on its own catalog. This method runs against the
-   * real registry: Quarkus restores it after the previous test method installed a mock over it for
-   * its own duration only.
+   * resolves the catalog's mechanism (an absent value and an explicit one both resolving to
+   * {@code @Identifier("STS")}) and runs {@code AwsCredentialsStorageIntegration}, which checks
+   * {@code stsUnavailable}, skips the AssumeRole call entirely, and returns only the catalog's
+   * non-credential storage properties (its region and endpoint). A load succeeding with those
+   * properties present and no access key anywhere in the response is only possible if the registry
+   * actually resolved the bean and ran its integration. The sequence runs once for each mechanism,
+   * on its own catalog. This method runs against the real registry: Quarkus restores it after the
+   * previous test method installed a mock over it for its own duration only.
    */
   @Test
-  void theDefaultAndStsMechanismsVendThroughTheRegistryWithoutARealStsCall(
+  void theStsMechanismVendsThroughTheRegistryForAnEmptyAndAnExplicitFieldWithoutARealStsCall(
       PolarisApiEndpoints endpoints, ClientCredentials credentials) throws Exception {
     try (PolarisClient client = PolarisClient.polarisClient(endpoints)) {
       String adminToken = client.obtainToken(credentials);
@@ -357,7 +350,7 @@ class S3CredentialVendingMechanismCdiTest {
       String region = "us-east-1";
 
       Map<String, String> scenarios = new LinkedHashMap<>();
-      scenarios.put("cdi-default-unavailable-cat", null);
+      scenarios.put("cdi-empty-unavailable-cat", null);
       scenarios.put("cdi-sts-unavailable-cat", "STS");
 
       for (Map.Entry<String, String> scenario : scenarios.entrySet()) {
