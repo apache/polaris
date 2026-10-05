@@ -170,6 +170,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Azure: host-resolution failures while vending storage credentials now return `400 Bad Request`
   with the underlying DNS error, instead of `500 Internal Server Error`.
+- Deleting an external catalog now also deletes the inline connection secrets (OAuth client secret
+  or bearer token) that were written to the `UserSecretsManager` when the catalog was created.
+  Previously they stayed in the secrets store with no entity referencing them.
 - Catalog federation: `connectionConfigInfo.properties` is now persisted and returned for `HADOOP`
   and `HIVE` connection configurations. It was previously accepted by the management API but
   silently dropped, so `GET /catalogs/{name}` never showed it.
@@ -178,6 +181,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Conditional `loadTable` (`If-None-Match` → HTTP 304) no longer attaches a null
   `LOAD_TABLE_RESPONSE` to the `AFTER_LOAD_TABLE` event. The persistence event listener also
   skips null attribute values instead of failing while pruning them.
+- NoSQL index keys: `IndexKey.skip` now counts decoded key length the same way as
+  `deserializeKey`. Previously it counted two units per escaped `0x01`/`0x02` byte against the
+  same 500 limit, so a key that had been written successfully (for example 251 bytes of `0x01`)
+  could make index deserialization throw and leave the index container unreadable.
+- The OPA authorizer now enforces the credential-rotation pre-condition. With
+  `ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING` enabled, a principal whose credentials
+  were reset but never rotated was refused by the internal and Ranger authorizers but not by OPA.
+  The rotation state is not part of the OPA input document, so a policy could not compensate.
 - Re-creating an existing namespace now returns `409 Conflict` instead of `403 Forbidden` when
   `OPTIMIZED_SIBLING_CHECK` is on. Namespace creation checks for an existing namespace before
   validating locations, as table and view creation already do, so the existing namespace's own
@@ -317,6 +328,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - JDBC optimized location-overlap queries no longer include the lone `/` prefix term produced by
   scheme stripping (e.g. `s3://bucket/path` → `//bucket/path`). `//` and `///` are retained so
   scheme-root ancestors remain visible to the overlap check.
+- Honored pagination for policy API with applicable-policies endpoint excluded.
 
 ### Commits
 

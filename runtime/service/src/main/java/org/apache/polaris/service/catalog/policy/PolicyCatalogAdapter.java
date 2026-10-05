@@ -94,7 +94,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     PolicyType type = PolicyCatalogUtils.resolvePolicyTypeFilter(policyType);
     PolicyCatalogHandler handler = newHandler(securityContext, prefix);
-    ListPoliciesResponse response = handler.listPolicies(ns, type);
+    ListPoliciesResponse response = handler.listPolicies(ns, type, pageToken, pageSize);
     return Response.ok(response).build();
   }
 
