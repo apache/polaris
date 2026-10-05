@@ -22,4 +22,9 @@ plugins {
   id("org.kordamp.gradle.jandex")
 }
 
-dependencies { implementation(project(":polaris-core")) }
+dependencies {
+  implementation(project(":polaris-core"))
+
+  implementation(platform(libs.awssdk.bom))
+  implementation("software.amazon.awssdk:dynamodb")
+}
