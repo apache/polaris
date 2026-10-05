@@ -8419,6 +8419,12 @@ Gradle property to include &lt;code&gt;BIGQUERY&lt;/code&gt; (and any other non-
  &lt;td&gt;&lt;code&gt;{}&lt;/code&gt;&lt;/td&gt;
  &lt;td&gt;Annotations to add to the service.&lt;/td&gt;
  &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;service.labels&lt;/td&gt;
+ &lt;td&gt;object&lt;/td&gt;
+ &lt;td&gt;&lt;code&gt;{}&lt;/code&gt;&lt;/td&gt;
+ &lt;td&gt;Labels to add to the service.&lt;/td&gt;
+ &lt;/tr&gt;
  &lt;/tbody&gt;
 &lt;/table&gt;
 &lt;h3 id="management-service" id="management-service"&gt;Management Service&lt;a class="heading-anchor" href="#management-service" aria-label="Anchor"&gt;🔗&lt;/a&gt;
@@ -8504,6 +8510,12 @@ Gradle property to include &lt;code&gt;BIGQUERY&lt;/code&gt; (and any other non-
  &lt;td&gt;object&lt;/td&gt;
  &lt;td&gt;&lt;code&gt;{}&lt;/code&gt;&lt;/td&gt;
  &lt;td&gt;Annotations to add to the service.&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;managementService.labels&lt;/td&gt;
+ &lt;td&gt;object&lt;/td&gt;
+ &lt;td&gt;&lt;code&gt;{}&lt;/code&gt;&lt;/td&gt;
+ &lt;td&gt;Labels to add to the service.&lt;/td&gt;
  &lt;/tr&gt;
  &lt;/tbody&gt;
 &lt;/table&gt;
@@ -8596,6 +8608,12 @@ Gradle property to include &lt;code&gt;BIGQUERY&lt;/code&gt; (and any other non-
  &lt;td&gt;object&lt;/td&gt;
  &lt;td&gt;&lt;code&gt;{}&lt;/code&gt;&lt;/td&gt;
  &lt;td&gt;Annotations to add to the extra service.&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;extraServices[0].labels&lt;/td&gt;
+ &lt;td&gt;object&lt;/td&gt;
+ &lt;td&gt;&lt;code&gt;{}&lt;/code&gt;&lt;/td&gt;
+ &lt;td&gt;Labels to add to the service.&lt;/td&gt;
  &lt;/tr&gt;
  &lt;/tbody&gt;
 &lt;/table&gt;
