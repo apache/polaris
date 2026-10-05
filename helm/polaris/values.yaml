@@ -315,7 +315,7 @@ managementService:
   annotations: {}
   # @schema additionalProperties: {type: string}
   # -- Labels to add to the service.
-  # @section -- Service
+  # @section -- Management Service
   labels: {}
 
 # Additional service definitions. All service definitions always select all Polaris pods. Use
