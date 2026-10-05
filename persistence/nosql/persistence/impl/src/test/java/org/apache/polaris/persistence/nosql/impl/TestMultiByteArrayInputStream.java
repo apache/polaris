@@ -41,20 +41,20 @@ public class TestMultiByteArrayInputStream {
 
   @Test
   public void zeroLengthReadAtEofReturnsZero() throws IOException {
-    var empty = new MultiByteArrayInputStream(List.of());
-    soft.assertThat(empty.read(new byte[0], 0, 0)).isZero();
-    soft.assertThat(empty.read()).isEqualTo(-1);
-
-    var stream = new MultiByteArrayInputStream(List.of("a".getBytes(UTF_8)));
+    var stream =
+        new MultiByteArrayInputStream(List.of("a".getBytes(UTF_8), "b".getBytes(UTF_8)));
     soft.assertThat(stream.read(new byte[0], 0, 0)).isZero();
-    soft.assertThat(stream.read()).isEqualTo('a');
+    soft.assertThat(new String(stream.readAllBytes(), UTF_8)).isEqualTo("ab");
     soft.assertThat(stream.read(new byte[0], 0, 0)).isZero();
   }
 
   @Test
-  public void zeroLengthReadAtEofValidatesBounds() {
-    var empty = new MultiByteArrayInputStream(List.of());
-    assertThatThrownBy(() -> empty.read(new byte[0], 1, 0))
+  public void zeroLengthReadAtEofValidatesBounds() throws IOException {
+    var stream =
+        new MultiByteArrayInputStream(List.of("a".getBytes(UTF_8), "b".getBytes(UTF_8)));
+    stream.readAllBytes();
+
+    assertThatThrownBy(() -> stream.read(new byte[0], 1, 0))
         .isInstanceOf(IndexOutOfBoundsException.class);
   }
 
