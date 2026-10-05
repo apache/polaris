@@ -186,6 +186,12 @@ paths:
   /polaris/v1/{prefix}/tags/{tag-name}:
     $ref: './polaris-catalog-apis/tag-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1tags~1{tag-name}'
 
+  /polaris/v1/{prefix}/tags/{tag-name}/assign:
+    $ref: './polaris-catalog-apis/tag-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1tags~1{tag-name}~1assign'
+
+  /polaris/v1/{prefix}/tags/{tag-name}/unassign:
+    $ref: './polaris-catalog-apis/tag-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1tags~1{tag-name}~1unassign'
+
   /polaris/v1/{prefix}/tags/{tag-name}/assignments:
     $ref: './polaris-catalog-apis/tag-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1tags~1{tag-name}~1assignments'
 

@@ -2778,33 +2778,27 @@ paths:
           $ref: '#/components/responses/TagServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/TagServerErrorResponse'
-  /polaris/v1/{prefix}/tags/{tag-name}/assignments:
+  /polaris/v1/{prefix}/tags/{tag-name}/assign:
     parameters:
       - $ref: '#/components/parameters/catalog-prefix'
       - $ref: '#/components/parameters/tag-name'
-    put:
+    post:
       tags:
         - Tag API
-      summary: Assign or unassign a tag on a target
-      operationId: updateTagAssignment
+      summary: Assign a tag to a target
+      operationId: assignTag
       description: |
-        Set or remove the direct assignment of this tag definition on one target.
+        Set the direct assignment of this tag definition on one target. Reassigning the same tag on
+        the same target replaces the stored value.
 
-        The JSON body carries an explicit `action` and a `target`. There is no default action.
+        The JSON body carries a `target` and `values` containing exactly one value from the
+        definition's current values list. The target kind must appear in the definition's target-types.
         Target names are original strings in JSON, without URI encoding. Per-target reads continue to
         use the query parameters on getObjectTags.
 
-        - `assign` requires `values` containing exactly one value from the definition's current values
-          list. The target kind must appear in the definition's target-types. Reassigning the same tag
-          on the same target replaces the stored value.
-        - `unassign` accepts an absent or empty `values` list and removes the existing direct assignment.
-          It does not re-check the definition's target-types or values. If no direct assignment exists, it
-          returns 404 NoSuchAssignment. Removing a direct assignment may reveal an inherited value.
-
-        An absent, null or empty values list never selects unassign. A rejected request changes no
-        assignment. Neither action recognizes completed requests through Idempotency-Key. Retrying
-        unassign after a successful removal therefore returns 404 NoSuchAssignment if the assignment
-        is still absent.
+        An absent, null or empty values list is invalid and never removes an assignment. A rejected
+        request changes no assignment. This operation does not recognize completed requests through
+        Idempotency-Key.
 
         A tag can be assigned at any of the target kinds:
         1. **COLUMN:** one top-level column of an Iceberg table. Column targets are limited to Iceberg
@@ -2816,7 +2810,7 @@ paths:
         5. **CATALOG:** the catalog identified by {prefix}.
 
         The target must be inside the catalog identified by {prefix}. Polaris resolves request names
-        to durable identifiers before storing an assignment: a tag definition has a stable id, a target has
+        to durable identifiers before changing an assignment: a tag definition has a stable id, a target has
         a stable entity id, and a column is identified by its containing table's id together with its
         Iceberg field id. A rename that preserves the underlying entity keeps the assignment, while
         dropping and recreating the same name produces a different identity and inherits nothing.
@@ -2825,21 +2819,18 @@ paths:
         resolves to, and the parent and schema facts the kind requires. A change to an unrelated property
         of the target is not a conflict.
 
-        The action selects the authorization check. Assign requires permission to attach on the
-        definition and the corresponding permission to attach a tag on the target. Unassign requires
-        permission to detach on the definition and the corresponding permission to detach a tag from
-        the target. A column target is checked through the table that contains it.
+        Requires permission to attach on the definition and the corresponding permission to attach a
+        tag on the target. A column target is checked through the table that contains it.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateTagAssignmentRequest'
+              $ref: '#/components/schemas/AssignTagRequest'
             examples:
               AssignColumn:
                 summary: Assign a value to the literal top-level column named '.'
                 value:
-                  action: assign
                   target:
                     type: COLUMN
                     path:
@@ -2850,35 +2841,20 @@ paths:
                       - .
                   values:
                     - confidential
-              UnassignColumn:
-                summary: Remove that column's direct assignment
-                value:
-                  action: unassign
-                  target:
-                    type: COLUMN
-                    path:
-                      - sales
-                      - eu
-                      - customers
-                    column:
-                      - .
       responses:
         '204':
           description: Success, no content
         '400':
           description: |
             BadRequest covers an unsupported target kind, a malformed or incomplete address for the
-            stated kind, and null or a non-empty `values` array supplied with `action: unassign`.
-            For `action: assign`, it also covers a kind excluded by the definition's target-types,
-            explicit null or empty values, empty or duplicate members, more than one selected value,
-            a value exceeding 2000 decoded UTF-8 bytes, or a value not currently allowed.
+            stated kind, a kind excluded by the definition's target-types, explicit null or empty
+            values, empty or duplicate members, more than one selected value, a value exceeding
+            2000 decoded UTF-8 bytes, or a value not currently allowed.
 
-            ValidationError covers a missing, null, unknown or non-string `action`, a missing, null or
-            non-object `target`, a missing or null `target.type`, and other schema-type violations.
-            For `action: assign`, a missing values field or a non-null value that is not a JSON array
-            is ValidationError. The operation-specific BadRequest cases above take precedence over
-            shared schema validation, including an unknown target kind and null or non-empty arrays
-            supplied with unassign.
+            ValidationError covers a missing, null or non-object `target`, a missing or null
+            `target.type`, a missing values field, a non-null values field that is not a JSON array,
+            and other schema-type violations. The operation-specific BadRequest cases above take
+            precedence over shared schema validation, including an unknown target kind or null values.
             InvalidJson covers a body that is not syntactically valid JSON.
             InvalidIdempotencyKey covers a present but malformed Idempotency-Key header:
             the shared handler inspects the header on any write it sees, and
@@ -2910,8 +2886,112 @@ paths:
             the cause.
 
             Possible error types: NoSuchCatalog (the catalog identified by {prefix}),
+            NoSuchTag (the tag definition), NoSuchTarget (the target or the named column).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                TagDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+                TargetDoesNotExist:
+                  $ref: '#/components/examples/examples-NoSuchTargetError'
+        '503':
+          $ref: '#/components/responses/TagServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/TagServerErrorResponse'
+  /polaris/v1/{prefix}/tags/{tag-name}/unassign:
+    parameters:
+      - $ref: '#/components/parameters/catalog-prefix'
+      - $ref: '#/components/parameters/tag-name'
+    post:
+      tags:
+        - Tag API
+      summary: Remove a direct tag assignment from a target
+      operationId: unassignTag
+      description: |
+        Remove the existing direct assignment of this tag definition on one target. The JSON body
+        carries only a `target`; `values` must not be supplied. Removing a direct assignment may
+        reveal an inherited value. This operation does not re-check the definition's target-types or
+        values.
+
+        If no direct assignment exists, the request returns 404 NoSuchAssignment. This operation does
+        not recognize completed requests through Idempotency-Key. Retrying after a successful removal
+        therefore returns 404 NoSuchAssignment if the assignment is still absent. A rejected request
+        changes no assignment.
+
+        Target kinds and address fields follow TagAttachmentTarget. Column targets are limited to
+        top-level columns of Iceberg tables, because generic tables and views define no stable column
+        identifier in v1. Target names are original strings in JSON, without URI encoding. Per-target
+        reads continue to use the query parameters on getObjectTags.
+
+        The target must be inside the catalog identified by {prefix}. Polaris resolves request names
+        to durable identifiers before changing an assignment: a tag definition has a stable id, a target has
+        a stable entity id, and a column is identified by its containing table's id together with its
+        Iceberg field id. A rename that preserves the underlying entity keeps the assignment, while
+        dropping and recreating the same name produces a different identity and inherits nothing.
+
+        The write depends on those facts and no others: that the target exists, which identity the name
+        resolves to, and the parent and schema facts the kind requires. A change to an unrelated property
+        of the target is not a conflict.
+
+        Requires permission to detach on the definition and the corresponding permission to detach a
+        tag from the target. A column target is checked through the table that contains it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnassignTagRequest'
+            examples:
+              UnassignColumn:
+                summary: Remove the direct assignment from the literal top-level column named '.'
+                value:
+                  target:
+                    type: COLUMN
+                    path:
+                      - sales
+                      - eu
+                      - customers
+                    column:
+                      - .
+      responses:
+        '204':
+          description: Success, no content
+        '400':
+          description: |
+            BadRequest covers an unsupported target kind, a malformed or incomplete address for the
+            stated kind, or a supplied `values` field, including null or an empty array.
+
+            ValidationError covers a missing, null or non-object `target`, a missing or null
+            `target.type`, and other schema-type violations. The operation-specific BadRequest cases
+            above take precedence over shared schema validation, including an unknown target kind or
+            a supplied values field.
+            InvalidJson covers a body that is not syntactically valid JSON.
+            InvalidIdempotencyKey covers a present but malformed Idempotency-Key header:
+            the shared handler inspects the header on any write it sees, and
+            rejecting a malformed one does not make this operation recognize a retry.
+
+            Possible error types: BadRequest, ValidationError, InvalidJson, InvalidIdempotencyKey.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisErrorResponse'
+              examples:
+                UnsupportedTarget:
+                  $ref: '#/components/examples/UnsupportedTargetError'
+        '401':
+          $ref: '#/components/responses/TagUnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/TagForbiddenResponse'
+        '404':
+          description: |
+            Not Found - the request addresses something that does not exist; the error type names
+            the cause.
+
+            Possible error types: NoSuchCatalog (the catalog identified by {prefix}),
             NoSuchTag (the tag definition), NoSuchTarget (the target or the named
-            column), NoSuchAssignment (unassign only, when no direct assignment exists).
+            column), NoSuchAssignment (when no direct assignment exists).
           content:
             application/json:
               schema:
@@ -2927,6 +3007,10 @@ paths:
           $ref: '#/components/responses/TagServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/TagServerErrorResponse'
+  /polaris/v1/{prefix}/tags/{tag-name}/assignments:
+    parameters:
+      - $ref: '#/components/parameters/catalog-prefix'
+      - $ref: '#/components/parameters/tag-name'
     get:
       tags:
         - Tag API
@@ -5932,6 +6016,41 @@ components:
             one column segment is invalid.
           example:
             - email
+    AssignTagRequest:
+      type: object
+      description: |
+        Set a direct assignment on one target. `target` and `values` are required and non-null.
+        The values list must contain exactly one allowed value; an absent, null or empty list never
+        removes an assignment.
+      required:
+        - target
+        - values
+      properties:
+        target:
+          $ref: '#/components/schemas/TagAttachmentTarget'
+        values:
+          type: array
+          items:
+            type: string
+          description: |
+            The v1 server requires exactly one member. It must appear in the definition's current
+            values list and is limited to 2000 bytes. The limit is measured on the decoded value in
+            UTF-8 bytes: JSON escaping does not count toward it, and it does not prescribe how the
+            server represents the string internally. A longer value returns 400 BadRequest.
+            The list shape leaves room for later value forms.
+          example:
+            - confidential
+    UnassignTagRequest:
+      type: object
+      description: |
+        Remove a direct assignment from one target. `target` is required and non-null. A `values`
+        field must not be supplied, including null or an empty array; the operation rejects it with
+        400 BadRequest before applying any change.
+      required:
+        - target
+      properties:
+        target:
+          $ref: '#/components/schemas/TagAttachmentTarget'
     TaggedObject:
       type: object
       description: |
@@ -5964,42 +6083,6 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/TaggedObject'
-    UpdateTagAssignmentRequest:
-      type: object
-      description: |
-        An explicit assignment action on one target. `action` and `target` are required and non-null.
-        For `assign`, `values` is required and must contain exactly one allowed value. For `unassign`,
-        `values` must be absent or an empty array. Null or a non-empty array returns 400 BadRequest.
-        An empty array means no selected values and never selects the action.
-        The action-specific field rules are checked by the operation before applying any change.
-      required:
-        - action
-        - target
-      properties:
-        action:
-          type: string
-          enum:
-            - assign
-            - unassign
-          description: |
-            Whether to set or remove the direct assignment. There is no default. A missing, null,
-            unknown or non-string action returns 400 ValidationError.
-        target:
-          $ref: '#/components/schemas/TagAttachmentTarget'
-        values:
-          type: array
-          items:
-            type: string
-          description: |
-            Required for assign, absent or empty for unassign. The v1 server requires exactly one member
-            for assign. It must appear in the definition's current values list and is limited to
-            2000 bytes. The limit is measured on the decoded value in UTF-8 bytes: JSON escaping does
-            not count toward it, and it does not
-            prescribe how the server represents the string internally. A longer value returns
-            400 BadRequest.
-            The list shape leaves room for later value forms.
-          example:
-            - confidential
     ObjectTag:
       type: object
       description: |
@@ -6775,28 +6858,6 @@ components:
           message: The tag definition is assigned to one or more targets and detach-all is not set to true
           type: TagInUse
           code: 400
-    ListObjectsByTagNonEmptyExample:
-      summary: A page of direct assignments of one tag definition
-      value:
-        objects:
-          - target:
-              type: TABLE
-              path:
-                - sales
-                - customers
-            values:
-              - internal
-            apply-method: DIRECT
-          - target:
-              type: COLUMN
-              path:
-                - sales
-                - customers
-              column:
-                - email
-            values:
-              - confidential
-            apply-method: DIRECT
     UnsupportedTargetError:
       summary: The requested target is unsupported or malformed
       value:
@@ -6846,6 +6907,28 @@ components:
           message: The given tag is not assigned to the given target
           type: NoSuchAssignment
           code: 404
+    ListObjectsByTagNonEmptyExample:
+      summary: A page of direct assignments of one tag definition
+      value:
+        objects:
+          - target:
+              type: TABLE
+              path:
+                - sales
+                - customers
+            values:
+              - internal
+            apply-method: DIRECT
+          - target:
+              type: COLUMN
+              path:
+                - sales
+                - customers
+              column:
+                - email
+            values:
+              - confidential
+            apply-method: DIRECT
     GetObjectTagsEffectiveExample:
       summary: |
         An effective read of a column that inherits one tag and carries one direct tag, complete in one
@@ -7165,8 +7248,8 @@ components:
         write that would add another key is rejected with 503 ServiceUnavailable and a Retry-After header
         rather than ending recognition of an existing key, and the write is not applied.
 
-        dropTag and both actions of updateTagAssignment accept the header through the shared request
-        layer, and none of them recognizes a retry.
+        dropTag, assignTag and unassignTag accept the header through the shared request layer, and none
+        of them recognizes a retry.
 
         A missing or blank header supplies no key, and the request follows the ordinary path. When the
         shared idempotency handler is enabled, a non-blank value that is not a UUID is rejected with 400
