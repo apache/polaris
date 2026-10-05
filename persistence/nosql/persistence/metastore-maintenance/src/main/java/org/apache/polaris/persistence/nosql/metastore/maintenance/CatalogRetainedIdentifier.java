@@ -181,17 +181,15 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
               POLICY_MAPPINGS_REF_NAME,
               PolicyMappingsObj.class,
               policyMappingsContinue,
-              policyMappingsObj -> {
-                collector.indexRetain(policyMappingsObj.policyMappings());
-                policyMappingsObj
-                    .policyMappings()
-                    .indexForRead(collector.realmPersistence(), POLICY_MAPPING_SERIALIZER)
-                    .forEach(
-                        e -> {
-                          var policyMapping = e.value();
-                          policyMapping.externalMapping().ifPresent(collector::retainObject);
-                        });
-              });
+              policyMappingsObj ->
+                  policyMappingsObj
+                      .policyMappings()
+                      .indexForRead(collector.realmPersistence(), POLICY_MAPPING_SERIALIZER)
+                      .forEach(
+                          e -> {
+                            var policyMapping = e.value();
+                            policyMapping.externalMapping().ifPresent(collector::retainObject);
+                          }));
         });
 
     // per catalog
@@ -219,7 +217,6 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                   var catalogObjRef = entry.value();
                   currentCatalogs.putIfAbsent(catalogKey, catalogObjRef);
                 }
-                collector.indexRetain(catalogs.nameToObjRef());
                 collector.indexRetain(catalogs.stableIdToName());
               });
 
@@ -266,7 +263,6 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
                         @Override
                         public void onCommit(CatalogStateObj catalogStateObj, long commit) {
-                          // nameToObjRef stripes are retained by refRetainIndexToSingleObj
                           collector.indexRetain(catalogStateObj.stableIdToName());
                           catalogStateObj.locations().ifPresent(collector::indexRetain);
                           catalogStateObj.changes().ifPresent(collector::indexRetain);

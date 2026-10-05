@@ -212,12 +212,10 @@ public interface RetainedCollector {
           //  inspecting already seen index segments (as a performance optimization.), but that
           //  requires some changes to the index APIs.
 
-          // Walking an index via indexForRead does not retain IndexStripeObj segments; those are
-          // separate objs and must be kept explicitly or maintenance can purge them.
-          var indexContainer = indexToObjIdFromRetainedObj.apply(obj);
-          indexRetain(indexContainer);
-
-          for (var entry : indexContainer.indexForRead(realmPersistence(), OBJ_REF_SERIALIZER)) {
+          for (var entry :
+              indexToObjIdFromRetainedObj
+                  .apply(obj)
+                  .indexForRead(realmPersistence(), OBJ_REF_SERIALIZER)) {
             ObjRef indexedObjRef = entry.value();
             retainObject(indexedObjRef);
             // ^ is for persistence.fetch(principalEntry.getValue(), PrincipalObj.class);
