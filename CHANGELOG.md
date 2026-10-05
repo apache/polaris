@@ -168,6 +168,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- NoSQL maintenance: spilled `IndexStripeObj` segments for indexes that identify walks (for example
+  `CatalogStateObj.nameToObjRef`, realm ACL indexes, policy mappings, and `PrincipalsObj.byClientId`)
+  are now retained. Previously only a subset of indexes got `indexRetain`, so after a spill past
+  `maxEmbeddedIndexSize` maintenance could delete still-needed stripes and leave catalog indexes
+  unreadable (`references a reference index, which does not exist`).
 - Deleting an external catalog now also deletes the inline connection secrets (OAuth client secret
   or bearer token) that were written to the `UserSecretsManager` when the catalog was created.
   Previously they stayed in the secrets store with no entity referencing them.
