@@ -115,6 +115,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- SigV4 catalog federation now accepts static credentials (`accessKeyId` / `secretAccessKey`) as an
+  alternative to `roleArn`. This makes SigV4-compatible catalogs that are not AWS reachable, since
+  they have no IAM role to assume and no AWS STS endpoint. The two forms are mutually exclusive, as
+  are `roleSessionName` / `externalId` / `sessionPolicy`, which shape an STS request and are rejected
+  alongside static credentials rather than silently ignored. The secret access key is offloaded to
+  the configured secrets manager rather than stored on the catalog. Static-credential catalogs do
+  not allocate an AWS service identity.
 - Semantic models now support dedicated privileges for listing, creating, reading, updating,
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
