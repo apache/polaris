@@ -71,6 +71,7 @@ import org.testcontainers.utility.DockerImageName;
  */
 // spotless:on
 public final class ContainerSpecHelper {
+  private final String dockerFilePrefix;
   private final String name;
   private final Class<?> containerClass;
   private final Function<String, String> systemPropertyLookup;
@@ -85,14 +86,26 @@ public final class ContainerSpecHelper {
       Class<?> containerClass,
       Function<String, String> systemPropertyLookup,
       Function<String, String> envLookup) {
-    return new ContainerSpecHelper(name, containerClass, systemPropertyLookup, envLookup);
+    return containerSpecHelper("Dockerfile", name, containerClass, systemPropertyLookup, envLookup);
   }
 
-  private ContainerSpecHelper(
+  static ContainerSpecHelper containerSpecHelper(
+      String dockerFilePrefix,
       String name,
       Class<?> containerClass,
       Function<String, String> systemPropertyLookup,
       Function<String, String> envLookup) {
+    return new ContainerSpecHelper(
+        dockerFilePrefix, name, containerClass, systemPropertyLookup, envLookup);
+  }
+
+  private ContainerSpecHelper(
+      String dockerFilePrefix,
+      String name,
+      Class<?> containerClass,
+      Function<String, String> systemPropertyLookup,
+      Function<String, String> envLookup) {
+    this.dockerFilePrefix = dockerFilePrefix;
     this.name = name;
     this.containerClass = containerClass;
     this.systemPropertyLookup = systemPropertyLookup;
@@ -112,7 +125,7 @@ public final class ContainerSpecHelper {
       return DockerImageName.parse(explicitImageName);
     }
 
-    String dockerfile = format("Dockerfile-%s-version", name());
+    String dockerfile = format("%s-%s-version", dockerFilePrefix, name());
     URL resource = containerClass().getResource(dockerfile);
     Objects.requireNonNull(resource, dockerfile + " not found");
 
