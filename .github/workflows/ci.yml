@@ -39,11 +39,30 @@ jobs:
       python_client: ${{ github.event_name != 'pull_request' || steps.filter.outputs.python_client == 'true' }}
       docs: ${{ github.event_name != 'pull_request' || steps.filter.outputs.docs == 'true' }}
     steps:
+      - name: Checkout
+        # Needed for git-based diffing below; the default GitHub-API-based mode of
+        # dorny/paths-filter computes changed files against the PR's merge-base, which
+        # misses changes already on the base branch that the PR's test merge commit
+        # actually incorporates. Checking out the PR head and diffing explicitly against
+        # the base branch's current tip (github.event.pull_request.base.sha) avoids that.
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
       - name: Filter changed paths
         id: filter
         if: github.event_name == 'pull_request'
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
+          # Empty token forces git-based diffing (see Checkout step above) instead of
+          # the GitHub-API-based mode, which is otherwise used unconditionally for
+          # pull_request-triggered workflows and ignores the 'base' input below.
+          token: ''
+          # A commit SHA (rather than a branch name) makes paths-filter diff directly
+          # against this commit instead of computing a merge-base with it.
+          base: ${{ github.event.pull_request.base.sha }}
           # 'some-with-excludes' makes the '!'-prefixed patterns below true exclusions.
           # With the default 'some', a lone '**' already matches every file and the
           # exclusions are evaluated as independent (and so mostly moot) match patterns,
