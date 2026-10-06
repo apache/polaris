@@ -313,4 +313,19 @@ RewriteRule ^releases/latest$ /releases/[major].[minor].[patch]/ [R=302,L]
 RewriteRule ^releases/latest/(.*)$ /releases/[major].[minor].[patch]/$1 [R=302,L]
 ```
 
+Finally, edit the `doap.rdf` file at the root of the repository (used by the ASF projects directory) and add a new
+`<release>` entry for the new release, next to the existing one(s):
+
+```xml
+<release>
+  <Version>
+    <name>[major].[minor].[patch]</name>
+    <created>[YYYY-MM-DD]</created>
+    <revision>[major].[minor].[patch]</revision>
+  </Version>
+</release>
+```
+
+The `created` date is the release date (the same date used on the downloads page).
+
 Then open a PR against the `main` branch with your changes.
