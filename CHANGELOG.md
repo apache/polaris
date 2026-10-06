@@ -102,6 +102,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- NoSQL maintenance: realm purging now honors its own state filter consistently. `purgeRealms`
+  keeps only realms in `PURGING`/`PURGED` state (and logs the rest as "will therefore not be
+  purged"), but the direct `backend.deleteRealms(...)` call and the subsequent realm-status update
+  used the unfiltered run-spec list, so a realm the filter had excluded (for example an `ACTIVE`
+  realm whose ID was listed in a stale spec) could still be wiped while the log claimed it was
+  skipped, and the attempt to mark it `PURGED` failed the whole run on an invalid state transition.
+  The direct deletion, the purged-realm count, and the status update now use the same filtered set
+  as the scan-based deletion.
 - NoSQL maintenance: spilled `IndexStripeObj` segments are retained when identify walks an index via
   `indexForRead` (`RetainedCollectorImpl.buildReadIndex`), and `PrincipalsObj.byClientId` is retained
   explicitly. Previously only a subset of indexes got `indexRetain`, so after a spill past

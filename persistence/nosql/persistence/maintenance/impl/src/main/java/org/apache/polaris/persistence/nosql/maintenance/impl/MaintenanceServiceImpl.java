@@ -232,12 +232,12 @@ class MaintenanceServiceImpl implements MaintenanceService {
           identifyAgainstRealm(SYSTEM_REALM_ID, allRetained);
         }
 
-        if (!maintenanceRunSpec.realmsToPurge().isEmpty() && backend.supportsRealmDeletion()) {
+        if (!realmsToPurge.isEmpty() && backend.supportsRealmDeletion()) {
           LOGGER.info(
               "Purging realms {} directly against the backend database...",
-              String.join(", ", maintenanceRunSpec.realmsToPurge()));
-          backend.deleteRealms(maintenanceRunSpec.realmsToPurge());
-          runInfo.purgedRealms(maintenanceRunSpec.realmsToPurge().size());
+              String.join(", ", realmsToPurge));
+          backend.deleteRealms(realmsToPurge);
+          runInfo.purgedRealms(realmsToPurge.size());
         } else {
           runInfo.purgedRealms(0);
         }
@@ -331,7 +331,7 @@ class MaintenanceServiceImpl implements MaintenanceService {
         }
 
         if (canDelete) {
-          updateRealmsAsPurged(maintenanceRunSpec, seenRealmsToPurge);
+          updateRealmsAsPurged(realmsToPurge, seenRealmsToPurge);
         }
 
         runInfo.success(true);
@@ -362,11 +362,10 @@ class MaintenanceServiceImpl implements MaintenanceService {
     return info;
   }
 
-  private void updateRealmsAsPurged(
-      MaintenanceRunSpec maintenanceRunSpec, HashSet<String> seenRealmsToPurge) {
+  private void updateRealmsAsPurged(Set<String> realmsToPurge, HashSet<String> seenRealmsToPurge) {
     // Update the realm status of the realms that were specified to be purged as `PURGED` if no
     // data for those realms has been seen.
-    maintenanceRunSpec.realmsToPurge().stream()
+    realmsToPurge.stream()
         .filter(r -> !seenRealmsToPurge.contains(r))
         .map(realmManagement::get)
         .filter(Optional::isPresent)
