@@ -26,7 +26,11 @@ from apache_polaris.cli.command.utils import get_catalog_api_client, paginate
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from apache_polaris.cli.options.option_tree import Argument
-from apache_polaris.sdk.catalog import IcebergCatalogAPI, CreateNamespaceRequest
+from apache_polaris.sdk.catalog import (
+    IcebergCatalogAPI,
+    CreateNamespaceRequest,
+    UpdateNamespacePropertiesRequest,
+)
 from apache_polaris.sdk.management import PolarisDefaultApi
 from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
 
@@ -42,6 +46,7 @@ class NamespacesCommand(Command):
         * polaris namespaces create --catalog my_schema my_namespace
         * polaris namespaces list --catalog my_catalog
         * polaris namespaces delete --catalog my_catalog my_namespace.inner
+        * polaris namespaces update --catalog my_catalog my_namespace --set-property k=v --remove-property old
     """
 
     namespaces_subcommand: str
@@ -50,11 +55,15 @@ class NamespacesCommand(Command):
     parent: Optional[List[StrictStr]] = None
     location: Optional[str] = None
     properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
+    set_properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
+    remove_properties: Optional[List[str]] = None
     page_size: Optional[int] = None
 
     def __post_init__(self) -> None:
         if self.properties is None:
             self.properties = {}
+        if self.set_properties is None:
+            self.set_properties = {}
 
     def validate(self) -> None:
         if not self.catalog:
@@ -65,6 +74,7 @@ class NamespacesCommand(Command):
             Subcommands.CREATE,
             Subcommands.DELETE,
             Subcommands.GET,
+            Subcommands.UPDATE,
             Subcommands.SUMMARIZE,
         }:
             if not self.namespace:
@@ -111,6 +121,16 @@ class NamespacesCommand(Command):
                     prefix=catalog_name,
                     namespace=UNIT_SEPARATOR.join(namespace),
                 ).to_json()
+            )
+        elif self.namespaces_subcommand == Subcommands.UPDATE:
+            request = UpdateNamespacePropertiesRequest(
+                updates=self.set_properties,
+                removals=self.remove_properties or [],
+            )
+            catalog_api.update_properties(
+                prefix=catalog_name,
+                namespace=UNIT_SEPARATOR.join(namespace),
+                update_namespace_properties_request=request,
             )
         elif self.namespaces_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(catalog_api)

@@ -33,7 +33,7 @@ class TestNamespacesCommand(CLITestBase):
             "Missing required argument: --catalog",
         )
         # Missing positional namespace
-        for sub in ["create", "delete", "get", "summarize"]:
+        for sub in ["create", "delete", "get", "update", "summarize"]:
             with self.subTest(subcommand=sub):
                 with self.assertRaises(SystemExit):
                     self.mock_execute(
@@ -172,6 +172,59 @@ class TestNamespacesCommand(CLITestBase):
         mock_iceberg_api.load_namespace_metadata.assert_called_once_with(
             prefix="my-catalog", namespace=UNIT_SEPARATOR.join(["ns1", "ns2"])
         )
+
+    @patch("apache_polaris.cli.command.namespaces.IcebergCatalogAPI")
+    def test_namespace_update(self, mock_iceberg_api_class: MagicMock) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        self.mock_execute(
+            mock_client,
+            [
+                "namespaces",
+                "update",
+                "ns1.ns2",
+                "--catalog",
+                "my-catalog",
+                "--set-property",
+                "k1=v1",
+                "--set-property",
+                "k2=v2",
+                "--remove-property",
+                "old",
+            ],
+        )
+        mock_iceberg_api.update_properties.assert_called_once()
+        _, kwargs = mock_iceberg_api.update_properties.call_args
+        self.assertEqual(kwargs["prefix"], "my-catalog")
+        self.assertEqual(kwargs["namespace"], UNIT_SEPARATOR.join(["ns1", "ns2"]))
+        request = kwargs["update_namespace_properties_request"]
+        self.assertEqual(request.updates, {"k1": "v1", "k2": "v2"})
+        self.assertEqual(request.removals, ["old"])
+
+    @patch("apache_polaris.cli.command.namespaces.IcebergCatalogAPI")
+    def test_namespace_update_remove_only(
+        self, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        self.mock_execute(
+            mock_client,
+            [
+                "namespaces",
+                "update",
+                "ns1",
+                "--catalog",
+                "my-catalog",
+                "--remove-property",
+                "a",
+                "--remove-property",
+                "b",
+            ],
+        )
+        _, kwargs = mock_iceberg_api.update_properties.call_args
+        request = kwargs["update_namespace_properties_request"]
+        self.assertEqual(request.updates, {})
+        self.assertEqual(request.removals, ["a", "b"])
 
     @patch("apache_polaris.cli.command.namespaces.PolicyAPI")
     @patch("apache_polaris.cli.command.namespaces.IcebergCatalogAPI")
