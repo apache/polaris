@@ -80,6 +80,12 @@ public class SemanticModelCatalog {
    */
   private static final char SOURCE_SEPARATOR = '.';
 
+  /**
+   * Hard cap on dotted {@code dataset.source} segments. Each segment boundary is a candidate split
+   * and a resolution-manifest round-trip; the value is user input.
+   */
+  private static final int MAX_SOURCE_SEGMENTS = 16;
+
   private final CallContext callContext;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
@@ -359,8 +365,7 @@ public class SemanticModelCatalog {
       }
       if (matched != null) {
         throw new BadRequestException(
-            "Semantic model source '%s' at %s is ambiguous: matches more than one table or view "
-                + "in catalog '%s'",
+            "Semantic model source '%s' at %s could not be resolved uniquely in catalog '%s'",
             source, pointer, catalogEntity.getName());
       }
       matched = tableIdentifier;
@@ -373,12 +378,15 @@ public class SemanticModelCatalog {
   }
 
   /**
-   * Builds every namespace/name partition of a dotted {@code dataset.source}.
+   * Builds every namespace / table-name partition of a dotted {@code dataset.source}.
    *
-   * <p>For {@code a.b.c} that is {@code ns=[a], name=b.c} and {@code ns=[a, b], name=c}. Entity
+   * <p>For {@code a.b.c} that is {@code ns=[a], name=b.c} and {@code ns=[a, b], name=c}. Table
    * names may contain {@code '.'} ({@code EntityNameValidator} allows that), so a single
-   * last-segment split would make dotted table names unaddressable and could bind the wrong entity
-   * when both partitions exist.
+   * last-segment split would make those tables unaddressable and could bind the wrong entity when
+   * both partitions exist.
+   *
+   * <p>This does not enumerate dotted namespace levels (for example {@code ns=["a.b"], name=c}).
+   * Covering every segment grouping is exponential; that needs a different identifier form.
    */
   private static List<TableIdentifier> parseSourceCandidates(String source, String pointer) {
     List<String> parts = Splitter.on(SOURCE_SEPARATOR).splitToList(source);
@@ -387,6 +395,11 @@ public class SemanticModelCatalog {
           "Semantic model source '%s' at %s must be a namespace-qualified identifier "
               + "'<namespace-path>.<name>'",
           source, pointer);
+    }
+    if (parts.size() > MAX_SOURCE_SEGMENTS) {
+      throw new BadRequestException(
+          "Semantic model source '%s' at %s has too many '.'-separated segments (max %s)",
+          source, pointer, MAX_SOURCE_SEGMENTS);
     }
     List<TableIdentifier> candidates = new ArrayList<>(parts.size() - 1);
     for (int k = 1; k < parts.size(); k++) {

@@ -292,7 +292,19 @@ class SemanticModelCatalogTest {
     assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(model)))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("/semantic_model/datasets/0/source")
-        .hasMessageContaining("ambiguous");
+        .hasMessageContaining("could not be resolved uniquely");
+  }
+
+  @Test
+  void createRejectsSourceWithTooManySegments() {
+    String tooMany =
+        "{\"name\":\"m\",\"datasets\":[{\"name\":\"d\",\"source\":\""
+            + "a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q"
+            + "\"}]}";
+    assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(tooMany)))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("/semantic_model/datasets/0/source")
+        .hasMessageContaining("too many");
   }
 
   @Test
