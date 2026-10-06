@@ -227,6 +227,87 @@ class SemanticModelCatalogTest {
   }
 
   @Test
+  void createAcceptsDottedTableNameWhenUnambiguous() {
+    // EntityNameValidator allows '.' in names. source "a.b.c" must be able to bind ns=[a],
+    // table=b.c when that is the only matching TABLE_LIKE.
+    Namespace nsA = Namespace.of("a");
+    PolarisEntity nsEntity = entity(PolarisEntityType.NAMESPACE, 20L, "a", CATALOG_ID);
+    PolarisEntity dottedTable =
+        new PolarisEntity.Builder()
+            .setType(PolarisEntityType.TABLE_LIKE)
+            .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
+            .setId(21L)
+            .setCatalogId(CATALOG_ID)
+            .setParentId(20L)
+            .setName("b.c")
+            .build();
+    when(sourceManifest.getPassthroughResolvedPath(
+            eq(ResolvedPathKey.ofTableLike(TableIdentifier.of(nsA, "b.c"))),
+            eq(PolarisEntitySubType.ANY_SUBTYPE)))
+        .thenReturn(path(catalogEntity, nsEntity, dottedTable));
+    when(metaStoreManager.generateNewEntityId(any())).thenReturn(new GenerateEntityIdResult(10L));
+    when(metaStoreManager.createEntityIfNotExists(any(), any(), any()))
+        .thenAnswer(SemanticModelCatalogTest::echoPersistedEntity);
+
+    String model = "{\"name\":\"m\",\"datasets\":[{\"name\":\"d\",\"source\":\"a.b.c\"}]}";
+    assertThatCode(() -> catalog.createSemanticModel(IDENTIFIER, doc(model)))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void createRejectsAmbiguousDottedSource() {
+    // Both ns=[a], table=b.c and ns=[a, b], table=c exist -> refuse to guess.
+    Namespace nsA = Namespace.of("a");
+    Namespace nsAB = Namespace.of("a", "b");
+    PolarisEntity nsAEntity = entity(PolarisEntityType.NAMESPACE, 20L, "a", CATALOG_ID);
+    PolarisEntity nsBEntity = entity(PolarisEntityType.NAMESPACE, 21L, "b", CATALOG_ID);
+    PolarisEntity dottedTable =
+        new PolarisEntity.Builder()
+            .setType(PolarisEntityType.TABLE_LIKE)
+            .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
+            .setId(22L)
+            .setCatalogId(CATALOG_ID)
+            .setParentId(20L)
+            .setName("b.c")
+            .build();
+    PolarisEntity nestedTable =
+        new PolarisEntity.Builder()
+            .setType(PolarisEntityType.TABLE_LIKE)
+            .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
+            .setId(23L)
+            .setCatalogId(CATALOG_ID)
+            .setParentId(21L)
+            .setName("c")
+            .build();
+    when(sourceManifest.getPassthroughResolvedPath(
+            eq(ResolvedPathKey.ofTableLike(TableIdentifier.of(nsA, "b.c"))),
+            eq(PolarisEntitySubType.ANY_SUBTYPE)))
+        .thenReturn(path(catalogEntity, nsAEntity, dottedTable));
+    when(sourceManifest.getPassthroughResolvedPath(
+            eq(ResolvedPathKey.ofTableLike(TableIdentifier.of(nsAB, "c"))),
+            eq(PolarisEntitySubType.ANY_SUBTYPE)))
+        .thenReturn(path(catalogEntity, nsAEntity, nsBEntity, nestedTable));
+
+    String model = "{\"name\":\"m\",\"datasets\":[{\"name\":\"d\",\"source\":\"a.b.c\"}]}";
+    assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(model)))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("/semantic_model/datasets/0/source")
+        .hasMessageContaining("could not be resolved uniquely");
+  }
+
+  @Test
+  void createRejectsSourceWithTooManySegments() {
+    String tooMany =
+        "{\"name\":\"m\",\"datasets\":[{\"name\":\"d\",\"source\":\""
+            + "a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q"
+            + "\"}]}";
+    assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(tooMany)))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("/semantic_model/datasets/0/source")
+        .hasMessageContaining("too many");
+  }
+
+  @Test
   void createRejectsExistingModel() {
     stubResolvableSource();
     when(metaStoreManager.generateNewEntityId(any())).thenReturn(new GenerateEntityIdResult(10L));
