@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.service.it;
 
-import static org.apache.polaris.test.commons.MinioRustProfile.ACCESS_KEY;
-import static org.apache.polaris.test.commons.MinioRustProfile.SECRET_KEY;
+import static org.apache.polaris.test.commons.FlociAwsProfile.ACCESS_KEY;
+import static org.apache.polaris.test.commons.FlociAwsProfile.SECRET_KEY;
 
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -34,14 +34,14 @@ import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.service.it.env.RestCatalogConfig;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.it.test.PolarisRestCatalogIntegrationBase;
-import org.apache.polaris.test.commons.MinioRustProfile;
+import org.apache.polaris.test.commons.FlociAwsProfile;
 import org.apache.polaris.test.floci.aws.FlociAws;
 import org.apache.polaris.test.floci.aws.FlociAwsAccess;
 import org.apache.polaris.test.floci.aws.FlociAwsTestResource;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @QuarkusIntegrationTest
-@TestProfile(MinioRustProfile.class)
+@TestProfile(FlociAwsProfile.class)
 @QuarkusTestResource(
     value = FlociAwsTestResource.class,
     initArgs = {

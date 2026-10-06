@@ -16,27 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.nosql;
-
-import static org.apache.polaris.test.commons.NoSqlInMemoryProfile.NOSQL_PERSISTENCE;
+package org.apache.polaris.test.commons;
 
 import com.google.common.collect.ImmutableMap;
-import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.TestProfile;
+import io.quarkus.test.junit.QuarkusTestProfile;
 import java.util.Map;
-import org.apache.polaris.service.it.PolarisRestCatalogFlociS3IT;
-import org.apache.polaris.test.commons.FlociAwsProfile;
 
-@QuarkusIntegrationTest
-@TestProfile(value = NoSqlCatalogIT.NoSqlCatalogProfile.class)
-public class NoSqlCatalogIT extends PolarisRestCatalogFlociS3IT {
-  public static class NoSqlCatalogProfile extends FlociAwsProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(NOSQL_PERSISTENCE)
-          .putAll(super.getConfigOverrides())
-          .build();
-    }
+public class FlociAwsProfile implements QuarkusTestProfile {
+  // Credentials for the deployer principal seeded by FlociAwsContainer under IAM enforcement.
+  public static final String ACCESS_KEY = "floci";
+  public static final String SECRET_KEY = "floci";
+
+  @Override
+  public Map<String, String> getConfigOverrides() {
+    return ImmutableMap.<String, String>builder()
+        .put("polaris.storage.aws.access-key", ACCESS_KEY)
+        .put("polaris.storage.aws.secret-key", SECRET_KEY)
+        .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "false")
+        .build();
   }
 }
