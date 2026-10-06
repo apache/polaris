@@ -312,6 +312,7 @@
           "table-data-read",
           "table-properties-read",
           "table-properties-set",
+          "table-properties-write",
           "table-properties-remove",
           "table-uuid-assign",
           "table-format-version-upgrade",
