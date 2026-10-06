@@ -102,6 +102,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
+  selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
+  readiness monitoring without configuration changes.
 - NoSQL maintenance: spilled `IndexStripeObj` segments are retained when identify walks an index via
   `indexForRead` (`RetainedCollectorImpl.buildReadIndex`), and `PrincipalsObj.byClientId` is retained
   explicitly. Previously only a subset of indexes got `indexRetain`, so after a spill past
