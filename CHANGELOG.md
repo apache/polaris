@@ -102,6 +102,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- NoSQL maintenance: spilled `IndexStripeObj` segments are retained when identify walks an index via
+  `indexForRead` (`RetainedCollectorImpl.buildReadIndex`), and `PrincipalsObj.byClientId` is retained
+  explicitly. Previously only a subset of indexes got `indexRetain`, so after a spill past
+  `maxEmbeddedIndexSize` maintenance could delete still-needed stripes and leave catalog indexes
+  unreadable (`references a reference index, which does not exist`).
 - The `root` principal can no longer be dropped or renamed. Realm bootstrap identifies a
   bootstrapped realm by the presence of a principal named `root`, so removing or renaming it caused
   every newly started process to treat the realm as not bootstrapped (failing all requests,
