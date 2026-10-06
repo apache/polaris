@@ -589,6 +589,105 @@ paths:
         404:
           description: "The principal role does not exist"
 
+  /catalogs/{catalogName}/storage-configs:
+    parameters:
+      - name: catalogName
+        in: path
+        description: The catalog that holds the named storage configurations
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
+    get:
+      operationId: listStorageConfigs
+      description: List the named storage configurations held by a catalog. The catalog's default storageConfigInfo is not included.
+      responses:
+        200:
+          description: The named storage configurations of the catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfigInfos"
+        403:
+          description: "The caller does not have permission to read catalog details"
+        404:
+          description: "The catalog does not exist"
+
+  /catalogs/{catalogName}/storage-configs/{storageConfigName}:
+    parameters:
+      - name: catalogName
+        in: path
+        description: The catalog that holds the named storage configuration
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
+      - name: storageConfigName
+        in: path
+        description: The name of the named storage configuration. Surrounding whitespace is trimmed; the result must match ^[a-zA-Z0-9_-]{1,128}$.
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+    get:
+      operationId: getStorageConfig
+      description: Get one named storage configuration of a catalog
+      responses:
+        200:
+          description: The named storage configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfigInfo"
+        403:
+          description: "The caller does not have permission to read catalog details"
+        404:
+          description: "The catalog or the named storage configuration does not exist"
+
+    put:
+      operationId: putStorageConfig
+      description: Create or replace one named storage configuration of a catalog, leaving the catalog's other storage configurations unchanged. If the payload sets storageName, it must equal the storageConfigName path parameter; if it does not, the path parameter is used as the name.
+      requestBody:
+        description: The storage configuration to store under this name
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StorageConfigInfo"
+      responses:
+        200:
+          description: The stored named storage configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfigInfo"
+        400:
+          description: "The storage configuration is invalid, or replacing it would make a change that is not allowed"
+        403:
+          description: "The caller does not have permission to update catalog details"
+        404:
+          description: "The catalog does not exist"
+        409:
+          description: "The catalog was modified concurrently; retry"
+
+    delete:
+      operationId: deleteStorageConfig
+      description: Remove one named storage configuration from a catalog
+      responses:
+        204:
+          description: "Success, no content"
+        403:
+          description: "The caller does not have permission to update catalog details"
+        404:
+          description: "The catalog or the named storage configuration does not exist"
+        409:
+          description: "The catalog was modified concurrently; retry"
+
   /catalogs/{catalogName}/catalog-roles:
     parameters:
       - name: catalogName
@@ -828,6 +927,17 @@ components:
       required:
         - catalogs
 
+    StorageConfigInfos:
+      type: object
+      description: A list of named storage configurations
+      properties:
+        storageConfigInfos:
+          type: array
+          items:
+            $ref: "#/components/schemas/StorageConfigInfo"
+      required:
+        - storageConfigInfos
+
     CreateCatalogRequest:
       type: object
       description: Request to create a new catalog
@@ -879,6 +989,12 @@ components:
           description: The version of the catalog object used to determine if the catalog metadata has changed
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
+        storageConfigInfos:
+          type: array
+          nullable: true
+          description: Optional list of additional named storage configurations held by the catalog, alongside its default storageConfigInfo. Each entry is identified by its storageName, which is required. Names are trimmed, must match ^[a-zA-Z0-9_-]{1,128}$, are case-sensitive, must be unique within the list, and must differ from the storageName of the default storageConfigInfo. Unlike the default storageConfigInfo, each entry must list at least one allowedLocations entry.
+          items:
+            $ref: "#/components/schemas/StorageConfigInfo"
       required:
         - name
         - type
@@ -1303,6 +1419,12 @@ components:
             type: string
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
+        storageConfigInfos:
+          type: array
+          nullable: true
+          description: Optional replacement set of named storage configurations. When present, replaces the catalog's entire set of named storage configurations (an empty array removes them all); when absent, the existing set is left unaltered. Entries follow the same rules as Catalog.storageConfigInfos.
+          items:
+            $ref: "#/components/schemas/StorageConfigInfo"
 
     Principals:
       description: A list of Principals

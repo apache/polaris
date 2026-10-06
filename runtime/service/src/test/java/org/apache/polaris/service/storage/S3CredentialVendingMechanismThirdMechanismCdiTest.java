@@ -188,7 +188,8 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
                       List.of(
                           "s3://bucket/base/" + catalog + "/",
                           "s3://bucket/base/" + catalog + "-extra/"))
-                  .build());
+                  .build(),
+              null);
       try (Response r =
           managementApi
               .request("v1/catalogs/{name}", Map.of("name", catalog))
