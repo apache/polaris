@@ -22,7 +22,7 @@ import java.util.Optional;
 
 /**
  * Configuration for the DynamoDB persistence backend, sourced from {@code
- * polaris.persistence.dynamodb.*} (mirroring {@code polaris.persistence.relational.jdbc.*}).
+ * polaris.persistence.dynamodb.*}.
  *
  * <p>The DynamoDB client itself (region, credentials, connection) is configured separately via the
  * AWS SDK; this interface carries only Polaris-level settings for the backend.
