@@ -28,6 +28,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ## [Unreleased]
 
 ### Highlights
+
 - Polaris now fully supports "external" principals, that is, principals that are not backed by an 
   entity in Polaris metastore. By enabling external principals, either globally or per-realm,
   Polaris now skips the principal entity metastore lookup. This means that synchronizing principals 
@@ -36,23 +37,31 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   are not compatible with internal authentication and internal authorization; you must configure an
   external IDP and an external PDP, such as OPA or Ranger.
 
+- S3 storage configurations gain an optional string field, `credentialVendingMechanism`. A catalog
+  that leaves it empty uses the server's default mechanism, STS AssumeRole, and management API
+  responses omit the field for it; `STS` selects the same mechanism explicitly and is the only value
+  this release supports. Mechanisms are CDI beans discovered by their `@Identifier` at startup,
+  and each one can validate the catalogs that select it at create and update. A realm lists the
+  explicit mechanisms it accepts in the new `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` feature
+  (default `[STS]`), enforced at catalog create and update and when the server builds the storage
+  integration that vends credentials for a catalog. A catalog that names a mechanism this server
+  does not provide is refused at create and update, and whenever a credential is vended for it,
+  with "S3 credential vending mechanism `<id>` is not available in this server".
+
 ### Upgrade notes
 
+- `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists the explicit mechanisms a realm accepts; an empty
+  `credentialVendingMechanism` is always allowed. Startup reports a listed mechanism with no
+  installed bean as a non-severe readiness warning. Startup fails (a severe readiness issue) when no
+  `STS` mechanism is installed, because every catalog with an empty field depends on it.
+- Rolling upgrades: a node still running an earlier release does not know `credentialVendingMechanism`.
+  It ignores the field in a stored configuration and vends through STS, and it drops the field from
+  the catalog create and update requests it serves. Keep S3 storage configurations unchanged during
+  the upgrade.
 - Polaris-managed AWS SDK clients now use Apache HttpClient 5, which disables HTTP
   `Expect: 100-continue` by default. Set `polaris.storage.expect-continue-enabled=true`
   to preserve the previous behavior. Iceberg S3 clients continue to use Apache HttpClient 4
   and retain their existing default.
-
-- Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
-  (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris
-  has no automated schema migrations, existing Postgres/CockroachDB deployments keep the old,
-  ineffective index until an operator recreates it manually:
-  ```sql
-  DROP INDEX polaris_schema.idx_locations;
-  CREATE INDEX idx_locations ON polaris_schema.entities USING btree (realm_id, catalog_id, location_without_scheme)
-    WHERE location_without_scheme IS NOT NULL;
-  ```
-  H2 is unaffected.
 - Relational JDBC: The per-schema-version runtime fallback has been removed. The migration to schema
   v6 is now **required** before starting this version of Polaris. The first request to any realm
   whose recorded schema version does not match what the binary expects will fail fast with a clear
@@ -60,44 +69,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 [Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 
-- Relational JDBC: schema version 6 also declares `idx_grants_realm_grantee`,
-  `idx_grants_realm_securable` and `idx_entities_catalog_id_id` on CockroachDB (see Fixes), which
-  the Postgres and H2 schemas have declared since schema v4. Fresh bootstraps get them
-  automatically; existing CockroachDB deployments, including any already at schema version 6,
-  need them created manually:
-  ```sql
-  CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee ON polaris_schema.grant_records (realm_id, grantee_id);
-  CREATE INDEX IF NOT EXISTS idx_grants_realm_securable ON polaris_schema.grant_records (realm_id, securable_id);
-  CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id ON polaris_schema.entities (catalog_id, id);
-  ```
-  Postgres and H2 are unaffected.
-
 ### Breaking changes
 
-- Concurrent table commits that hit a stale sequence number now return a retryable `409` instead of a fatal `400`, for both single-table commits and `commitTransaction`.
-- The Relational JDBC backend no longer creates its database schema during bootstrap: creating the
-  schema is a privileged operation that belongs to a database administrator. Fresh installations
-  must create the schema (by default `CREATE SCHEMA polaris_schema;` on PostgreSQL) before running
-  the admin tool's `bootstrap` command. Existing deployments are unaffected — their schema already
-  exists, and the shipped `currentSchema` default (`POLARIS_SCHEMA`) preserves the previous
-  behavior on upgrade — with one exception:
-
-  If your JDBC URL already sets `currentSchema`, check it before upgrading. Polaris previously
-  qualified every query with `POLARIS_SCHEMA`, so the setting was ignored; it now selects the
-  schema Polaris reads and writes, and the JDBC driver gives a value in the URL precedence over
-  the shipped default. An upgrade would otherwise point Polaris away from its existing tables,
-  and a subsequent `bootstrap` would create a second, empty set of tables in the other schema.
-  Either remove the setting from the URL, or point it at the schema that already holds your
-  Polaris tables.
-- PolarisAuthorizer inputs now reflect the intent-based authorization SPI more directly. Resource
-  targets and parent paths no longer include Polaris's internal synthetic `ROOT` container. For
-  example, catalog targets now have empty parent paths, root-scoped operations such as
-  `LIST_CATALOGS` no longer include a synthetic `ROOT` target.
-- PolarisAuthorizer requests with multiple intents are now evaluated one intent at a time. OPA
-  deployments will observe this as separate OPA queries per intent, so existing Rego policies that
-  depend on the previous combined-intent input shape may need to be updated. Same applies to other
-  PolarisAuthorizer implementations.
-- Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
 - `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
   invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
   size or supplying a page token. A request that supplies neither still returns all results, unless
@@ -115,56 +88,17 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
-- Semantic models now support dedicated privileges for listing, creating, reading, updating,
-  and dropping. Privileges can be granted to catalog roles on individual models or at namespace
-  or catalog scope, with separate controls for managing model grants.
-- Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
-- Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
-- Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
-- The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.additionalProperties.currentSchema` in the Helm chart.
-- Python CLI: `catalogs create` and `catalogs update` now support `--storage-name` to set an optional name referencing a server-side storage configuration.
 - Python CLI: added `register` support for both `tables` and `views` commands
 
 ### Changes
 
 - Azure credential vending now maps MSAL authentication failures using their HTTP status codes,
   including the existing `401` to `403` and `404` to `400` mappings.
-
-- A metastore failure during authentication now returns a fixed `Service unavailable` message
-  instead of naming the lookup that failed; the principal lookup previously returned `Unable to
-  fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which
-  operators can match to the client error through the request id, returned by default as
-  `X-Request-ID` and printed by the default log format as `requestId`.
-- `DROP_WITH_PURGE_ENABLED` now applies to Iceberg tables only. It previously also gated the
-  metadata purge that a view drop performs internally, so with its default of `false` and
-  `PURGE_VIEW_METADATA_ON_DROP` defaulting to `true`, dropping any view failed with HTTP 403 under
-  the default configuration. A view drop is now governed by `PURGE_VIEW_METADATA_ON_DROP` alone,
-  while the guard continues to protect a client-requested Iceberg table purge.
-- `TokenBroker.verify` now returns `null` for tokens not recognized by the internal broker
-  (instead of failing auth), so MIXED mode can delegate to other mechanisms. Exceptions from
-  `verify` are forwarded as-is rather than mapped to auth failure or MIXED fallback.
-- Client-requested list page sizes can now be bounded by a server-side maximum, configured with
-  `LIST_PAGINATION_MAX_PAGE_SIZE` (overridable per catalog via
-  `polaris.config.list-pagination-max-page-size`). It defaults to `-1`, meaning unlimited, so the
-  maximum is opt-in. Once set, a request for a larger page is reduced to the maximum rather than
-  rejected, since the Iceberg REST specification treats the requested page size as an upper bound.
-  For local catalogs the maximum takes effect only when `LIST_PAGINATION_ENABLED` is true, since
-  with pagination disabled the requested page size is ignored and the full result set is returned;
-  for federated catalogs it always applies, because Polaris paginates those listings itself.
-  A request that supplies neither `pageToken` nor `pageSize` asks for the complete listing, so when
-  the result does not fit the maximum it is rejected rather than truncated and answered with a
-  continuation token. An empty `pageToken` starts a paginated listing and is capped like any other
-  paginated request. This applies to the Iceberg, generic-table and semantic-model listings alike.
-- Table commits whose base metadata is already stale now fail before the new metadata file is
-  written, saving an object-storage write and delete per conflict and returning the `409` to the
-  client sooner.
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
   take the entity's resolved parent path, so implementations exclude the entity's own ancestors
   without re-reading the parent chain from the metastore.
 
 ### Deprecations
-
-- Deprecated the `ADD_TRAILING_SLASH_TO_LOCATION` feature flag; Polaris now always appends a trailing slash to table and namespace base locations, so the key is accepted-but-ignored (a startup warning is emitted only when it is `false` in `polaris.features` defaults or realm overrides) and will be removed in a future release.
 
 ### Fixes
 
@@ -173,6 +107,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   explicitly. Previously only a subset of indexes got `indexRetain`, so after a spill past
   `maxEmbeddedIndexSize` maintenance could delete still-needed stripes and leave catalog indexes
   unreadable (`references a reference index, which does not exist`).
+- The `root` principal can no longer be dropped or renamed. Realm bootstrap identifies a
+  bootstrapped realm by the presence of a principal named `root`, so removing or renaming it caused
+  every newly started process to treat the realm as not bootstrapped (failing all requests,
+  including the token endpoint), and re-running bootstrap could not cleanly repair it. It is now
+  protected like the `service_admin` and `catalog_admin` roles.
 - Deleting an external catalog now also deletes the inline connection secrets (OAuth client secret
   or bearer token) that were written to the `UserSecretsManager` when the catalog was created.
   Previously they stayed in the secrets store with no entity referencing them.
@@ -225,10 +164,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Table notifications (`CREATE`/`UPDATE`) that reference a metadata location outside the catalog's
   allowed locations are now rejected before any missing parent namespaces are auto-created, so a
   rejected notification no longer leaves orphaned namespaces behind.
-- GCS credential vending no longer fails with HTTP 500 when a table's location or `write.data.path`
-  / `write.metadata.path` points at a bucket root without a trailing slash (e.g. `gs://bucket`).
-  Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
-  while building the access-boundary rules; GCS now handles it like the AWS integration.
 - Fixed `OPTIMIZED_SIBLING_CHECK` rejecting every entity created under a namespace. The location
   index lookup returns the new entity's own parent namespaces, whose locations contain the new
   location whenever locations follow the namespace tree, and each backend treated them as
@@ -236,9 +171,125 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   with `403 Forbidden`. The JDBC, NoSQL, and in-memory implementations of `hasOverlappingSiblings`
   now exclude the entity's ancestors (when they strictly contain it) before reporting an overlap,
   matching the legacy sibling check.
+- Semantic-model create and update requests now require `semantic_model` JSON to be an object and
+  validate every dataset source. Previously, invalid root shapes could bypass source validation or
+  be accepted under the obsolete array contract.
+- Python client deserialization and CLI `setup export` now preserve the remote catalog name and
+  warehouse for Iceberg REST, Hadoop, and Hive external catalogs.
+- Honored pagination for generic table API.
+- JDBC optimized location-overlap queries no longer include the lone `/` prefix term produced by
+  scheme stripping (e.g. `s3://bucket/path` → `//bucket/path`). `//` and `///` are retained so
+  scheme-root ancestors remain visible to the overlap check.
+- Honored pagination for policy API with applicable-policies endpoint excluded.
 
+### Commits
+
+## [1.8.0]
+
+### Upgrade notes
+
+- Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
+  (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris
+  has no automated schema migrations, existing Postgres/CockroachDB deployments keep the old,
+  ineffective index until an operator recreates it manually:
+  ```sql
+  DROP INDEX polaris_schema.idx_locations;
+  CREATE INDEX idx_locations ON polaris_schema.entities USING btree (realm_id, catalog_id, location_without_scheme)
+    WHERE location_without_scheme IS NOT NULL;
+  ```
+  H2 is unaffected.
+- Relational JDBC: schema version 6 also declares `idx_grants_realm_grantee`,
+  `idx_grants_realm_securable` and `idx_entities_catalog_id_id` on CockroachDB (see Fixes), which
+  the Postgres and H2 schemas have declared since schema v4. Fresh bootstraps get them
+  automatically; existing CockroachDB deployments, including any already at schema version 6,
+  need them created manually:
+  ```sql
+  CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee ON polaris_schema.grant_records (realm_id, grantee_id);
+  CREATE INDEX IF NOT EXISTS idx_grants_realm_securable ON polaris_schema.grant_records (realm_id, securable_id);
+  CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id ON polaris_schema.entities (catalog_id, id);
+  ```
+  Postgres and H2 are unaffected.
+
+### Breaking changes
+
+- Concurrent table commits that hit a stale sequence number now return a retryable `409` instead of a fatal `400`, for both single-table commits and `commitTransaction`.
+- The Relational JDBC backend no longer creates its database schema during bootstrap: creating the
+  schema is a privileged operation that belongs to a database administrator. Fresh installations
+  must create the schema (by default `CREATE SCHEMA polaris_schema;` on PostgreSQL) before running
+  the admin tool's `bootstrap` command. Existing deployments are unaffected — their schema already
+  exists, and the shipped `currentSchema` default (`POLARIS_SCHEMA`) preserves the previous
+  behavior on upgrade — with one exception:
+
+  If your JDBC URL already sets `currentSchema`, check it before upgrading. Polaris previously
+  qualified every query with `POLARIS_SCHEMA`, so the setting was ignored; it now selects the
+  schema Polaris reads and writes, and the JDBC driver gives a value in the URL precedence over
+  the shipped default. An upgrade would otherwise point Polaris away from its existing tables,
+  and a subsequent `bootstrap` would create a second, empty set of tables in the other schema.
+  Either remove the setting from the URL, or point it at the schema that already holds your
+  Polaris tables.
+- PolarisAuthorizer inputs now reflect the intent-based authorization SPI more directly. Resource
+  targets and parent paths no longer include Polaris's internal synthetic `ROOT` container. For
+  example, catalog targets now have empty parent paths, root-scoped operations such as
+  `LIST_CATALOGS` no longer include a synthetic `ROOT` target.
+- PolarisAuthorizer requests with multiple intents are now evaluated one intent at a time. OPA
+  deployments will observe this as separate OPA queries per intent, so existing Rego policies that
+  depend on the previous combined-intent input shape may need to be updated. Same applies to other
+  PolarisAuthorizer implementations.
+- Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
+
+### New Features
+
+- Semantic models now support dedicated privileges for listing, creating, reading, updating,
+  and dropping. Privileges can be granted to catalog roles on individual models or at namespace
+  or catalog scope, with separate controls for managing model grants.
+- Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
+- Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
+- Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
+- The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.additionalProperties.currentSchema` in the Helm chart.
+- Python CLI: `catalogs create` and `catalogs update` now support `--storage-name` to set an optional name referencing a server-side storage configuration.
+
+### Changes
+
+- A metastore failure during authentication now returns a fixed `Service unavailable` message
+  instead of naming the lookup that failed; the principal lookup previously returned `Unable to
+  fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which
+  operators can match to the client error through the request id, returned by default as
+  `X-Request-ID` and printed by the default log format as `requestId`.
+- `DROP_WITH_PURGE_ENABLED` now applies to Iceberg tables only. It previously also gated the
+  metadata purge that a view drop performs internally, so with its default of `false` and
+  `PURGE_VIEW_METADATA_ON_DROP` defaulting to `true`, dropping any view failed with HTTP 403 under
+  the default configuration. A view drop is now governed by `PURGE_VIEW_METADATA_ON_DROP` alone,
+  while the guard continues to protect a client-requested Iceberg table purge.
+- `TokenBroker.verify` now returns `null` for tokens not recognized by the internal broker
+  (instead of failing auth), so MIXED mode can delegate to other mechanisms. Exceptions from
+  `verify` are forwarded as-is rather than mapped to auth failure or MIXED fallback.
+- Client-requested list page sizes can now be bounded by a server-side maximum, configured with
+  `LIST_PAGINATION_MAX_PAGE_SIZE` (overridable per catalog via
+  `polaris.config.list-pagination-max-page-size`). It defaults to `-1`, meaning unlimited, so the
+  maximum is opt-in. Once set, a request for a larger page is reduced to the maximum rather than
+  rejected, since the Iceberg REST specification treats the requested page size as an upper bound.
+  For local catalogs the maximum takes effect only when `LIST_PAGINATION_ENABLED` is true, since
+  with pagination disabled the requested page size is ignored and the full result set is returned;
+  for federated catalogs it always applies, because Polaris paginates those listings itself.
+  Setting a maximum deviates from the Iceberg REST specification, which requires a request that
+  does not supply a `pageToken` to receive the complete result with a null `next-page-token`: such
+  a request is then truncated to the maximum and answered with a continuation token, so a client
+  that does not follow continuations sees only the first page.
+- Table commits whose base metadata is already stale now fail before the new metadata file is
+  written, saving an object-storage write and delete per conflict and returning the `409` to the
+  client sooner.
+
+### Deprecations
+
+- Deprecated the `ADD_TRAILING_SLASH_TO_LOCATION` feature flag; Polaris now always appends a trailing slash to table and namespace base locations, so the key is accepted-but-ignored (a startup warning is emitted only when it is `false` in `polaris.features` defaults or realm overrides) and will be removed in a future release.
+
+### Fixes
+
+- GCS credential vending no longer fails with HTTP 500 when a table's location or `write.data.path`
+  / `write.metadata.path` points at a bucket root without a trailing slash (e.g. `gs://bucket`).
+  Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
+  while building the access-boundary rules; GCS now handles it like the AWS integration.
 - Return HTTP 404 instead of 204 when a generic table or its catalog path disappears after resolution and before deletion.
-
 - Deleting a semantic model now returns HTTP 404 instead of HTTP 500 when the model or its
   catalog path disappears after resolution and before the deletion is persisted.
 - Return HTTP 404 instead of 500 when a policy or its catalog path disappears after resolution and before deletion.
@@ -254,11 +305,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `Unsupported access delegation mode: REMOTE_SIGNING`.
 - Iceberg REST: renaming a table or view with a missing `source` or `destination` now returns `400 Bad Request` instead of `500 Internal Server Error`.
 - Async file-cleanup tasks now bound how long they wait for object-store deletions via the new `polaris.tasks.file-deletion-timeout` (default 1h), so a stalled storage endpoint can no longer pin a task-executor thread indefinitely; a timeout is terminal for the current run rather than immediately retried, so it does not stack more deletions onto the stalled endpoint.
-- Semantic-model create and update requests now require `semantic_model` JSON to be an object and
-  validate every dataset source. Previously, invalid root shapes could bypass source validation or
-  be accepted under the obsolete array contract.
-- Python client deserialization and CLI `setup export` now preserve the remote catalog name and
-  warehouse for Iceberg REST, Hadoop, and Hive external catalogs.
 - Python CLI `catalogs create --type external` now validates `--storage-type` and `--default-base-location` up front, matching the behavior for internal catalogs and the flags' documented "(Required)" status. Previously, omitting either produced an opaque pydantic `ValidationError` at request-build time.
 - Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
   error envelope (`{"error": {...}}`) instead of a flat `{"code", "message"}` body, so Iceberg
@@ -327,13 +373,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   backend, since `S3FileIO`, `GCSFileIO`, `ADLSFileIO` and `HadoopFileIO` all implement
   `DelegateFileIO`.
 - Async task retries no longer fail with a `NullPointerException` when the task entity has already been dropped by a previous attempt. Such a retry is now recognized as an already-completed task and exits cleanly, instead of exhausting all retry attempts and logging a `NullPointerException` on each one.
-- Honored pagination for generic table API.
-- JDBC optimized location-overlap queries no longer include the lone `/` prefix term produced by
-  scheme stripping (e.g. `s3://bucket/path` → `//bucket/path`). `//` and `///` are retained so
-  scheme-root ancestors remain visible to the overlap check.
-- Honored pagination for policy API with applicable-policies endpoint excluded.
-
-### Commits
 
 ## [1.7.0]
 
@@ -376,6 +415,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   storage provider, such as `s3.session-token-expires-at-ms` for S3.
 
 ### New Features
+
 - Added AWS KMS decryption-key access through the `decryptionKeys` catalog storage configuration property.
 - Added Kafka PolarisEventListener for publishing events to Kafka.
 - Added GCS principal attribution for vended credentials (the GCP counterpart of AWS STS session tags). Set `GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true` to activate; the feature flags `GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE`, `GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER`, and `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE` are then required (a missing value is a fatal configuration error). Also requires a `gcpServiceAccount` on the catalog StorageConfiguration. When enabled, credential vending chains a catalog-signed JWT through a Workload Identity Federation token exchange and service-account impersonation, so the Polaris principal appears in GCS Data Access audit logs (`serviceAccountDelegationInfo.principalSubject`) for any client. `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID` sets the JWT `kid` for JWKS key rotation. Attribution is keyed per-principal in the credential cache; when disabled (default), GCP vending behaviour is unchanged.
@@ -402,6 +442,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The field `clientSecret` of the Polaris management API type `ResetPrincipalRequest` is now using `format: password`. This does not change the wire format, but code generated from the OpenAPI may require downstream changes.
 
 ### Deprecations
+
 - The `currentKmsKey` and `allowedKmsKeys` AWS storage configuration properties are deprecated. Use `encryptionKeys` instead.
 - Deprecated `ALLOW_EXTERNAL_TABLE_LOCATION`. Use `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` for external metadata file locations, including catalog config `polaris.config.allow.external.metadata.file.location`.
 
@@ -738,7 +779,8 @@ Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
 
 Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release. Only the source distribution is available for this release.
 
-[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.7.0...HEAD
+[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.8.0...HEAD
+[1.8.0]: https://github.com/apache/polaris/compare/apache-polaris-1.7.0...apache-polaris-1.8.0
 [1.7.0]: https://github.com/apache/polaris/compare/apache-polaris-1.6.0...apache-polaris-1.7.0
 [1.6.0]: https://github.com/apache/polaris/compare/apache-polaris-1.5.0...apache-polaris-1.6.0
 [1.5.0]: https://github.com/apache/polaris/compare/apache-polaris-1.4.0...apache-polaris-1.5.0

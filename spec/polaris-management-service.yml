@@ -1204,6 +1204,18 @@ components:
               type: boolean
               description: >-
                 if set to `true`, instructs Polaris Servers to avoid adding KMS key policies.
+            credentialVendingMechanism:
+              type: string
+              example: "STS"
+              description: |
+                How Polaris vends subscoped storage credentials for this catalog. Leave the field empty
+                to use the server's default mechanism, which is STS in Apache Polaris.
+
+                Apache Polaris supports these values:
+                - `STS`: STS AssumeRole against the configured role.
+
+                Later releases may add values. The server returns HTTP 400 for a value it does not
+                support.
 
     AzureStorageConfigInfo:
       type: object

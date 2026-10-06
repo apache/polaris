@@ -30,7 +30,11 @@ dependencies {
   implementation(libs.slf4j.api)
   implementation(libs.guava)
 
-  compileOnly(enforcedPlatform(libs.quarkus.bom))
+  compileOnly(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+  }
   compileOnly("io.vertx:vertx-core")
 
   compileOnly(platform(libs.jackson3.bom))
@@ -48,7 +52,11 @@ dependencies {
   testFixturesApi(libs.jakarta.inject.api)
   testFixturesApi(libs.jakarta.enterprise.cdi.api)
 
-  testFixturesApi(enforcedPlatform(libs.quarkus.bom))
+  testFixturesApi(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+  }
   testFixturesApi("io.vertx:vertx-core")
 
   testImplementation(testFixtures(project(":polaris-async-api")))
