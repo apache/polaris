@@ -36,6 +36,7 @@ import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
@@ -49,6 +50,7 @@ import org.apache.polaris.service.context.TestRealmContextResolver;
 import org.apache.polaris.service.credentials.connection.AuthType;
 import org.apache.polaris.service.metrics.MetricsConfiguration;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
 import org.slf4j.Logger;
@@ -444,6 +446,80 @@ public class ProductionReadinessChecks {
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  /**
+   * Every explicit name in {@code SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}, in the defaults (or
+   * the flag's code default when the defaults do not set it) and in each realm override, must be
+   * installed in this server. A server without an {@code STS} mechanism is a severe issue, because
+   * every catalog that leaves {@code credentialVendingMechanism} empty selects it. A
+   * listed-but-uninstalled mechanism is not severe: the mechanism is refused at catalog create and
+   * update, and whenever a credential is vended for a catalog that selects it. Apart from a missing
+   * {@code STS}, only the registry's own constructor (a bean with no {@code @Identifier}, or two
+   * beans sharing one) aborts startup.
+   */
+  @Produces
+  public ProductionReadinessCheck checkS3CredentialVendingMechanisms(
+      FeaturesConfiguration featureConfiguration, S3CredentialVendingMechanisms mechanisms) {
+    var flag = FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS;
+    var mapper = JsonMapper.builder().build();
+    var errors = new ArrayList<Error>();
+    if (!mechanisms.isAvailable(S3CredentialVendingMechanism.STS)) {
+      errors.add(
+          Error.ofSevere(
+              format(
+                  "No S3 credential vending mechanism carries the STS identifier; catalogs "
+                      + "that leave credentialVendingMechanism empty cannot vend credentials. "
+                      + "Available: %s",
+                  mechanisms.availableIds()),
+              "S3CredentialVendingMechanism @Identifier(\"STS\")"));
+    }
+    @SuppressWarnings("unchecked")
+    var defaults =
+        (List<String>)
+            featureConfiguration
+                .parseDefaults(mapper)
+                .getOrDefault(flag.key(), flag.defaultValue());
+    defaults.forEach(
+        name ->
+            checkMechanismAvailable(
+                name, format("polaris.features.\"%s\"", flag.key()), mechanisms, errors));
+    featureConfiguration
+        .parseRealmOverrides(mapper)
+        .forEach(
+            (realmId, overrides) -> {
+              @SuppressWarnings("unchecked")
+              var names = (List<String>) overrides.getOrDefault(flag.key(), List.of());
+              names.forEach(
+                  name ->
+                      checkMechanismAvailable(
+                          name,
+                          format(
+                              "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                              realmId, flag.key()),
+                          mechanisms,
+                          errors));
+            });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  private static void checkMechanismAvailable(
+      String name,
+      String offendingProperty,
+      S3CredentialVendingMechanisms mechanisms,
+      List<Error> errors) {
+    if (!mechanisms.isAvailable(name)) {
+      List<String> available = new ArrayList<>(mechanisms.availableIds());
+      errors.add(
+          Error.of(
+              format(
+                  "S3 credential vending mechanism '%s' listed in %s is not available in this "
+                      + "server; catalogs that select it are refused at use. Available: %s",
+                  name, offendingProperty, available),
+              offendingProperty));
+    }
   }
 
   @Produces

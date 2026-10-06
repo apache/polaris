@@ -68,6 +68,15 @@ tests:
             app.kubernetes.io/version: 4.5.6
             app.kubernetes.io/managed-by: Helm
             helm.sh/chart: polaris-1.2.3
+  - it: should set service custom labels
+    set:
+      service.labels:
+        foo: bar
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            foo: bar
 
   # metadata.annotations
   - it: should not set service annotations by default
@@ -166,8 +175,8 @@ tests:
             name: polaris-http
     asserts:
       - equal:
-         path: spec.type
-         value: NodePort
+          path: spec.type
+          value: NodePort
       - equal:
           path: spec.ports
           value:
