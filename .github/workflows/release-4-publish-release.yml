@@ -35,7 +35,7 @@ on:
 jobs:
   publish-release:
     name: Release - 4 - Publish Release After Vote Success
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     outputs:
@@ -418,7 +418,7 @@ jobs:
 
   publish-python-client:
     name: Publish Python Client to PyPI
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [publish-release]
     permissions:
       contents: read

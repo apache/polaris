@@ -51,7 +51,7 @@ env:
 jobs:
   smoke-tests:
     name: Smoke Tests (Iceberg Nightly)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.repository == 'apache/polaris'
     steps:
       - name: Detect latest Iceberg snapshot version
