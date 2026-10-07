@@ -1412,17 +1412,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       // if 1, drop the last catalog role. Should be the catalog admin role but don't validate this
       if (!catalogRoles.isEmpty()) {
         // drop the last catalog role in that catalog, should be the admin catalog role
-        PolarisBaseEntity lastCatalogRole = catalogRoles.get(0);
-        PolarisBaseEntity catalogRoleToDrop =
-            ms.lookupEntityInCurrentTxn(
-                callCtx,
-                lastCatalogRole.getCatalogId(),
-                lastCatalogRole.getId(),
-                lastCatalogRole.getTypeCode());
-        // null means it was dropped concurrently, which leaves nothing to do
-        if (catalogRoleToDrop != null) {
-          this.dropEntity(callCtx, ms, catalogRoleToDrop);
-        }
+        this.dropEntity(callCtx, ms, catalogRoles.get(0));
       }
     } else if (refreshEntityToDrop.getType() == PolarisEntityType.NAMESPACE) {
       if (ms.hasChildrenInCurrentTxn(
