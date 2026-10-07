@@ -264,9 +264,12 @@ public enum PolarisPrivilege {
   SEMANTIC_MODEL_FULL_METADATA(108, PolarisEntityType.SEMANTIC_MODEL),
   SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE(109, PolarisEntityType.SEMANTIC_MODEL),
   /**
-   * Read-only access to table scan and commit metrics reports. Does not grant access to table data.
-   * Implied by {@code TABLE_FULL_METADATA} (see {@code SUPER_PRIVILEGES} in {@link
-   * org.apache.polaris.core.auth.PolarisAuthorizerImpl}).
+   * Read-only access to table scan and commit metrics reports. Does not grant access to table data,
+   * and is not implied by {@code TABLE_FULL_METADATA}: metrics reports are closer to an activity
+   * log than to table metadata, so this privilege must be granted explicitly. It is implied by
+   * {@code CATALOG_MANAGE_CONTENT} (see {@code SUPER_PRIVILEGES} in {@link
+   * org.apache.polaris.core.auth.PolarisAuthorizerImpl}), consistent with that privilege already
+   * implying {@code TABLE_READ_DATA}.
    *
    * <p>The metrics ingestion and query paths only cover Iceberg tables today; granting this on a
    * generic table authorizes successfully but returns no reports.
