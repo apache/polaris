@@ -155,7 +155,15 @@ public class IcebergExceptionMapperTest {
         Arguments.of(new CommitStateUnknownException(new RuntimeException("db timeout")), 500),
         Arguments.of(new CommitFailedException("commit failed"), 409),
         Arguments.of(new AlreadyExistsException("already exists"), 409),
-        Arguments.of(new ValidationException("invalid"), 400));
+        Arguments.of(new ValidationException("invalid"), 400),
+        Arguments.of(
+            new IllegalArgumentException(
+                "Unable to resolve Azure storage endpoint for account 'myblob' "
+                    + "(myblob.blob.core.windows.net: Name or service not known)",
+                new RuntimeException(
+                    new UnknownHostException(
+                        "myblob.blob.core.windows.net: Name or service not known"))),
+            400));
   }
 
   @ParameterizedTest

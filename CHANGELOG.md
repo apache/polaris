@@ -83,7 +83,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Relational JDBC: Per-version schema scripts (`schema-v1.sql` through `schema-v5.sql`) have been
   replaced by a single `schema.sql` that is safe to run on every startup. Per-version runtime
   compatibility fallbacks and the `SCHEMA_VERSION_FALL_BACK_ON_DNE` configuration key have been
-  removed. Operators must ensure their database is at the right schema version before upgrading to 
+  removed. Operators must ensure their database is at the right schema version before upgrading to
   this version.
 
 ### New Features
@@ -102,6 +102,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Azure: host-resolution failures while vending storage credentials now return `400 Bad Request`
+  with the underlying DNS error, instead of `500 Internal Server Error`.
 - NoSQL maintenance: spilled `IndexStripeObj` segments are retained when identify walks an index via
   `indexForRead` (`RetainedCollectorImpl.buildReadIndex`), and `PrincipalsObj.byClientId` is retained
   explicitly. Previously only a subset of indexes got `indexRetain`, so after a spill past
