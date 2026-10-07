@@ -31,6 +31,7 @@ from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 from apache_polaris.sdk.catalog.exceptions import NotFoundException
 from apache_polaris.sdk.management import (
     PolarisCatalog,
+    ExternalCatalog,
     CatalogProperties,
     ConnectionConfigInfo,
     FileStorageConfigInfo,
@@ -1219,6 +1220,126 @@ class TestSetupCommand(CLITestBase):
             ],
         )
         self.assertEqual(command._failure_count, 0)
+
+    @patch("apache_polaris.cli.command.setup.PolicyAPI")
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_export_catalogs_routes_tables_and_views_by_catalog_type(
+        self,
+        mock_catalog_api_class: MagicMock,
+        mock_policy_api_class: MagicMock,
+    ) -> None:
+        catalog_api = mock_catalog_api_class.return_value
+        catalog_api.list_namespaces.side_effect = lambda prefix, parent=None: (
+            SimpleNamespace(namespaces=[["ns1"]] if parent is None else [])
+        )
+        catalog_api.load_namespace_metadata.return_value = GetNamespaceResponse(
+            namespace=["ns1"], properties={}
+        )
+        catalog_api.list_tables.return_value = SimpleNamespace(
+            identifiers=[SimpleNamespace(namespace=["ns1"], name="my_table")]
+        )
+        catalog_api.load_table.return_value = SimpleNamespace(
+            metadata_location=(
+                "s3://bucket/ns1/my_table/metadata/00001-abcd.metadata.json"
+            )
+        )
+        catalog_api.list_views.return_value = SimpleNamespace(
+            identifiers=[SimpleNamespace(namespace=["ns1"], name="my_view")]
+        )
+        catalog_api.load_view.return_value = SimpleNamespace(
+            metadata_location=(
+                "s3://bucket/ns1/my_view/metadata/00001-abcd.metadata.json"
+            )
+        )
+        mock_policy_api_class.return_value.list_policies.return_value = SimpleNamespace(
+            identifiers=[]
+        )
+
+        internal_catalog = PolarisCatalog(
+            type="INTERNAL",
+            name="internal_catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="file:///tmp/warehouse/internal",
+                additional_properties={},
+            ),
+            storage_config_info=FileStorageConfigInfo(
+                storage_type="FILE",
+                allowed_locations=["file:///tmp/warehouse/internal"],
+            ),
+        )
+        external_catalog = ExternalCatalog(
+            type="EXTERNAL",
+            name="external_catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="file:///tmp/warehouse/external",
+                additional_properties={},
+            ),
+            storage_config_info=FileStorageConfigInfo(
+                storage_type="FILE",
+                allowed_locations=["file:///tmp/warehouse/external"],
+            ),
+            connection_config_info=ConnectionConfigInfo.from_dict(
+                {
+                    "connectionType": "ICEBERG_REST",
+                    "uri": "http://example.come:8181/api/catalog",
+                    "remoteCatalogName": "test-catalog-local",
+                }
+            ),
+        )
+        catalogs_by_name = {
+            "external_catalog": external_catalog,
+            "internal_catalog": internal_catalog,
+        }
+        mock_client = self.build_mock_client()
+        mock_client.list_catalogs.return_value.catalogs = [
+            SimpleNamespace(name=name) for name in catalogs_by_name
+        ]
+        mock_client.get_catalog.side_effect = catalogs_by_name.__getitem__
+        mock_client.list_catalog_roles.return_value = SimpleNamespace(roles=[])
+
+        command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        exported = {
+            catalog["name"]: catalog
+            for catalog in command._export_catalogs(mock_client)
+        }
+
+        self.assertEqual(command._failure_count, 0)
+        self.assertEqual(sorted(exported), ["external_catalog", "internal_catalog"])
+        self.assertEqual(
+            exported["internal_catalog"]["tables"],
+            [
+                {
+                    "name": "my_table",
+                    "namespace": ["ns1"],
+                    "metadata_location": (
+                        "s3://bucket/ns1/my_table/metadata/00001-abcd.metadata.json"
+                    ),
+                }
+            ],
+        )
+        self.assertEqual(
+            exported["internal_catalog"]["views"],
+            [
+                {
+                    "name": "my_view",
+                    "namespace": ["ns1"],
+                    "metadata_location": (
+                        "s3://bucket/ns1/my_view/metadata/00001-abcd.metadata.json"
+                    ),
+                }
+            ],
+        )
+        self.assertNotIn("tables", exported["external_catalog"])
+        self.assertNotIn("views", exported["external_catalog"])
+        for list_call in list(catalog_api.list_tables.call_args_list) + list(
+            catalog_api.list_views.call_args_list
+        ):
+            self.assertEqual(list_call.kwargs["prefix"], "internal_catalog")
 
     @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
     def test_setup_export_skips_tables_with_no_metadata_location(
