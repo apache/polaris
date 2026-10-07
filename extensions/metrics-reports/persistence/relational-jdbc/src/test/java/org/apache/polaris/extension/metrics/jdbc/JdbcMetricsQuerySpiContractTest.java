@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.extension.metrics.jdbc;
 
-import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,6 +29,7 @@ import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.extension.metrics.spi.AbstractMetricsQuerySpiContractTest;
 import org.apache.polaris.extension.metrics.spi.MetricsQuerySpi;
+import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.h2.jdbcx.JdbcConnectionPool;
@@ -54,10 +54,7 @@ class JdbcMetricsQuerySpiContractTest extends AbstractMetricsQuerySpiContractTes
             "sa",
             "");
     datasourceOperations = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
-
-    ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
-    InputStream schemaStream = classLoader.getResourceAsStream("h2/schema-v4.sql");
-    datasourceOperations.executeScript(schemaStream);
+    datasourceOperations.executeScript(DatabaseType.H2.openInitScriptResource());
     perRealm.clear();
   }
 
