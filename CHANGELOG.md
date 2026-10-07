@@ -117,6 +117,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   skipped, and the attempt to mark it `PURGED` failed the whole run on an invalid state transition.
   The direct deletion, the purged-realm count, and the status update now use the same filtered set
   as the scan-based deletion.
+- Creating a table or view at exactly its namespace's own location is now rejected under the
+  default (non-optimized) sibling-overlap check, matching the behavior already enforced when
+  `OPTIMIZED_SIBLING_CHECK` is enabled. Such a location is a prefix of every sibling created later
+  under the namespace, which blocked all subsequent sibling creates and over-scoped credentials
+  vended for that entity to the whole namespace.
 - NoSQL maintenance: spilled `IndexStripeObj` segments are retained when identify walks an index via
   `indexForRead` (`RetainedCollectorImpl.buildReadIndex`), and `PrincipalsObj.byClientId` is retained
   explicitly. Previously only a subset of indexes got `indexRetain`, so after a spill past

@@ -60,6 +60,38 @@ public class StorageLocationTest {
   }
 
   @Test
+  public void testIsSameLocationIgnoresTrailingSlashAndPrefixDifferences() {
+    StorageLocation standard = StorageLocation.of("file:///path/to/ns");
+    StorageLocation trailingSlash = StorageLocation.of("file:///path/to/ns/");
+    StorageLocation singleSlashPrefix = StorageLocation.of("file:/path/to/ns");
+
+    // Equal locations, including trailing-slash and prefix-normalization differences, are the same.
+    Assertions.assertThat(standard.isSameLocation(standard)).isTrue();
+    Assertions.assertThat(standard.isSameLocation(trailingSlash)).isTrue();
+    Assertions.assertThat(trailingSlash.isSameLocation(standard)).isTrue();
+    Assertions.assertThat(standard.isSameLocation(singleSlashPrefix)).isTrue();
+
+    // A parent and its strict child are not the same location.
+    StorageLocation child = StorageLocation.of("file:///path/to/ns/table");
+    Assertions.assertThat(standard.isSameLocation(child)).isFalse();
+    Assertions.assertThat(child.isSameLocation(standard)).isFalse();
+
+    // Unrelated locations are not the same.
+    StorageLocation sibling = StorageLocation.of("file:///path/to/other");
+    Assertions.assertThat(standard.isSameLocation(sibling)).isFalse();
+
+    // The same holds for scheme-based locations such as S3.
+    Assertions.assertThat(
+            StorageLocation.of("s3://bucket/ns")
+                .isSameLocation(StorageLocation.of("s3://bucket/ns/")))
+        .isTrue();
+    Assertions.assertThat(
+            StorageLocation.of("s3://bucket/ns")
+                .isSameLocation(StorageLocation.of("s3://bucket/ns/table")))
+        .isFalse();
+  }
+
+  @Test
   public void testSpecialCharacters() {
     // Blob Storage does not have validations
     String specialCharsBlobStorage = "s3://test-bucket/quote'/equals=/period/../myfile.parquet";
