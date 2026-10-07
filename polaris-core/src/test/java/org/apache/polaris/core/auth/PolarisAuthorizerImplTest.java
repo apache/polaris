@@ -72,6 +72,17 @@ public class PolarisAuthorizerImplTest {
     assertThat(actual).isEqualTo(expected);
   }
 
+  @ParameterizedTest
+  @EnumSource(
+      value = PolarisPrivilege.class,
+      names = {"TABLE_SET_PROPERTIES", "TABLE_ADD_SCHEMA", "TABLE_MANAGE_STRUCTURE"})
+  void catalogReadConfigSubsumedByFineGrainedTablePrivileges(PolarisPrivilege privilege) {
+    // Catalog-scoped holders of these fine-grained table privileges must still bootstrap
+    // GET /v1/config when ENFORCE_CATALOG_CONFIG_AUTHORIZATION is enabled.
+    assertThat(PolarisAuthorizerImpl.subsumingPrivilegesOf(PolarisPrivilege.CATALOG_READ_CONFIG))
+        .contains(privilege);
+  }
+
   @Test
   void resolveAuthorizationInputsResolvesAll() {
     PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(realmConfig());
