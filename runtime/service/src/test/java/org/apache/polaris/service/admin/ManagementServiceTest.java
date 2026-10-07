@@ -395,7 +395,7 @@ public class ManagementServiceTest {
         new UnsafeInMemorySecretsManager(),
         new DefaultServiceIdentityProvider(),
         principal,
-        new PolarisAuthorizerImpl(services.realmConfig()),
+        new PolarisAuthorizerImpl(),
         ReservedProperties.NONE,
         services.vendingMechanisms());
   }

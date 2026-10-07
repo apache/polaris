@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -57,7 +56,6 @@ import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.auth.RenameAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
@@ -65,12 +63,9 @@ import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
 import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
@@ -101,8 +96,7 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm",
-              realmConfig(false));
+              "test-realm");
 
       PolarisPrincipal principal =
           PolarisPrincipal.of(
@@ -164,8 +158,7 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "prod-realm",
-              realmConfig(false));
+              "prod-realm");
 
       // Set up a realistic principal
       PolarisPrincipal principal =
@@ -310,8 +303,7 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "analytics-realm",
-              realmConfig(false));
+              "analytics-realm");
 
       // Set up a realistic principal
       PolarisPrincipal principal =
@@ -488,8 +480,7 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm",
-              realmConfig(false));
+              "test-realm");
 
       PolarisPrincipal principal =
           PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
@@ -545,8 +536,7 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             tokenProvider,
             null,
-            "test-realm",
-            realmConfig(false));
+            "test-realm");
 
     assertThat(authorizer).isNotNull();
   }
@@ -567,8 +557,7 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             tokenProvider,
             null,
-            "test-realm",
-            realmConfig(false)) {
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -621,8 +610,7 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             tokenProvider,
             null,
-            "test-realm",
-            realmConfig(false)) {
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -670,8 +658,7 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "test-realm",
-            realmConfig(false));
+            "test-realm");
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(resolutionManifest);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1"));
@@ -700,8 +687,7 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "test-realm",
-            realmConfig(false)) {
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -751,8 +737,7 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "test-realm",
-            realmConfig(false)) {
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -795,8 +780,7 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "catalog-realm",
-            realmConfig(false)) {
+            "catalog-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -846,8 +830,7 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm",
-              realmConfig(false));
+              "test-realm");
 
       PolarisEntity rootEntity =
           new PolarisEntity.Builder()
@@ -921,8 +904,7 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm",
-              realmConfig(false));
+              "test-realm");
 
       PolarisEntity rootEntity =
           new PolarisEntity.Builder()
@@ -992,8 +974,7 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "test-realm",
-            realmConfig(false)) {
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -1060,8 +1041,7 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "test-realm",
-            realmConfig(false)) {
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -1149,8 +1129,7 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "test-realm",
-            realmConfig(false)) {
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -1191,8 +1170,7 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "explicit-realm",
-              realmConfig(false));
+              "explicit-realm");
 
       PolarisPrincipal principal =
           PolarisPrincipal.of("eve", AttributeMap.EMPTY, Set.of("auditor"));
@@ -1235,8 +1213,7 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "tenant-xyz",
-              realmConfig(false));
+              "tenant-xyz");
 
       PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
       AuthorizationState authzState = new AuthorizationState(resolutionManifest);
@@ -1271,8 +1248,7 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               "test-id",
-              "test-realm",
-              realmConfig(false));
+              "test-realm");
 
       PolarisPrincipal principal =
           PolarisPrincipal.of(
@@ -1322,8 +1298,7 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm",
-              realmConfig(false));
+              "test-realm");
 
       PolarisPrincipal principal =
           PolarisPrincipal.of(
@@ -1500,87 +1475,5 @@ public class OpaPolarisAuthorizerTest {
           .as("Authorization header should not be present when token provider returns null")
           .isFalse();
     }
-  }
-
-  @Test
-  void authorizeRejectsPrincipalThatMustRotateCredentials() {
-    // An unreachable policy URI: contacting OPA at all would surface as a connection failure, so a
-    // clean denial proves the pre-condition is evaluated before OPA is consulted.
-    OpaPolarisAuthorizer authorizer =
-        new OpaPolarisAuthorizer(
-            URI.create("http://127.0.0.1:1/v1/data/polaris/allow"),
-            HttpClients.createDefault(),
-            JsonMapper.builder().build(),
-            null,
-            null,
-            "test-realm",
-            realmConfig(true));
-
-    AuthorizationDecision decision =
-        authorizer.authorize(
-            new AuthorizationState(mock(PolarisResolutionManifest.class)),
-            new AuthorizationRequest(
-                rotationRequiredPrincipal(),
-                authorizationIntents(PolarisAuthorizableOperation.LOAD_TABLE, null, null)));
-
-    assertThat(decision.isAllowed()).isFalse();
-    assertThat(decision.getMessage())
-        .hasValueSatisfying(
-            message -> assertThat(message).contains("must rotate credentials first"));
-  }
-
-  @Test
-  void authorizeAllowsCredentialRotationForPrincipalThatMustRotate() throws Exception {
-    HttpServer server = createServerWithAllowResponse();
-    try {
-      OpaPolarisAuthorizer authorizer =
-          new OpaPolarisAuthorizer(
-              URI.create(
-                  "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow"),
-              HttpClients.createDefault(),
-              JsonMapper.builder().build(),
-              null,
-              null,
-              "test-realm",
-              realmConfig(true));
-
-      assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              rotationRequiredPrincipal(),
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.ROTATE_CREDENTIALS, null, null)))
-                      .throwIfDenied());
-    } finally {
-      server.stop(0);
-    }
-  }
-
-  /** A principal flagged as needing to rotate its credentials before doing anything else. */
-  private static PolarisPrincipal rotationRequiredPrincipal() {
-    return PolarisPrincipal.of(
-        "alice",
-        ImmutableAttributeMap.builder()
-            .put(
-                PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-                new PrincipalEntity.Builder()
-                    .setName("alice")
-                    .setCredentialRotationRequiredState()
-                    .build())
-            .build(),
-        Set.of("role"));
-  }
-
-  /** A {@link RealmConfig} answering the credential-rotation flag, as {@code polaris-core} does. */
-  private static RealmConfig realmConfig(boolean enforceCredentialRotation) {
-    RealmConfig realmConfig = mock(RealmConfig.class);
-    when(realmConfig.getConfig(
-            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING))
-        .thenReturn(enforceCredentialRotation);
-    return realmConfig;
   }
 }

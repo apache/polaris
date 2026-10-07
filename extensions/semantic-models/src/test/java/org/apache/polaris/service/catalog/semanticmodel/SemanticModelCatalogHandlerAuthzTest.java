@@ -420,7 +420,7 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
         .callContext(services.newCallContext())
         .resolutionManifestFactory(services.resolutionManifestFactory())
         .metaStoreManager(services.metaStoreManager())
-        .authorizer(new PolarisAuthorizerImpl(services.realmConfig()))
+        .authorizer(new PolarisAuthorizerImpl())
         .build();
   }
 }

@@ -85,6 +85,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   compatibility fallbacks and the `SCHEMA_VERSION_FALL_BACK_ON_DNE` configuration key have been
   removed. Operators must ensure their database is at the right schema version before upgrading to 
   this version.
+- The event attribute `EventAttributes.ACCESS_DELEGATION_MODE` (`String`) has been replaced with
+  `EventAttributes.ACCESS_DELEGATION_MODES` (`List<String>`). Accordingly, the OpenTelemetry event
+  listener now emits `polaris.access_delegation_modes` instead of `polaris.access_delegation_mode`.
 
 ### New Features
 
@@ -97,14 +100,23 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
   take the entity's resolved parent path, so implementations exclude the entity's own ancestors
   without re-reading the parent chain from the metastore.
+- Apache Iceberg has been upgraded to 1.12.0. The Java REST client now encodes spaces in namespace
+  and table names as `%20` instead of `+` (apache/iceberg#15989). Polaris decodes path segments
+  per RFC 3986 and has always treated `+` as a literal character, so the server behaves the same for
+  all clients.
 
 ### Deprecations
 
 ### Fixes
 
-- The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
-  selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
-  readiness monitoring without configuration changes.
+- NoSQL maintenance: realm purging now honors its own state filter consistently. `purgeRealms`
+  keeps only realms in `PURGING`/`PURGED` state (and logs the rest as "will therefore not be
+  purged"), but the direct `backend.deleteRealms(...)` call and the subsequent realm-status update
+  used the unfiltered run-spec list, so a realm the filter had excluded (for example an `ACTIVE`
+  realm whose ID was listed in a stale spec) could still be wiped while the log claimed it was
+  skipped, and the attempt to mark it `PURGED` failed the whole run on an invalid state transition.
+  The direct deletion, the purged-realm count, and the status update now use the same filtered set
+  as the scan-based deletion.
 - NoSQL maintenance: spilled `IndexStripeObj` segments are retained when identify walks an index via
   `indexForRead` (`RetainedCollectorImpl.buildReadIndex`), and `PrincipalsObj.byClientId` is retained
   explicitly. Previously only a subset of indexes got `indexRetain`, so after a spill past
@@ -133,10 +145,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `deserializeKey`. Previously it counted two units per escaped `0x01`/`0x02` byte against the
   same 500 limit, so a key that had been written successfully (for example 251 bytes of `0x01`)
   could make index deserialization throw and leave the index container unreadable.
-- The OPA authorizer now enforces the credential-rotation pre-condition. With
-  `ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING` enabled, a principal whose credentials
-  were reset but never rotated was refused by the internal and Ranger authorizers but not by OPA.
-  The rotation state is not part of the OPA input document, so a policy could not compensate.
+- The credential-rotation pre-condition is now enforced by a JAX-RS filter instead of by each
+  authorizer. With `ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING` enabled, a principal
+  whose credentials were reset but never rotated can only call the rotate-credentials endpoint,
+  whichever authorizer is configured. Previously the internal and Ranger authorizers enforced it
+  but OPA did not, and the rotation state is not part of the OPA input document, so a policy could
+  not compensate.
 - Re-creating an existing namespace now returns `409 Conflict` instead of `403 Forbidden` when
   `OPTIMIZED_SIBLING_CHECK` is on. Namespace creation checks for an existing namespace before
   validating locations, as table and view creation already do, so the existing namespace's own
@@ -147,6 +161,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Ranger authorizer: a table or policy under a nested namespace is no longer mapped to the wrong
   Ranger resource. Namespace levels now occupy a single namespace resource instead of one each,
   so a policy written for the nested namespace matches.
+- Ranger authorizer: `table-data-write` now confers `table-properties-write`, as the built-in
+  authorizer already does. Without it, a Ranger policy granting only `table-data-write` was
+  refused operations the same grant allows under the built-in authorizer. Existing deployments
+  must re-register the updated service definition with Ranger Admin for this to take effect;
+  upgrading Polaris alone does not change the definition already persisted there.
 - Policy API: detaching a policy from a target it was never attached to now returns
   `404 Not Found` with error type `NoSuchMappingException`, as the policy API specification
   requires, instead of `500 Internal Server Error`.
@@ -187,6 +206,16 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   scheme stripping (e.g. `s3://bucket/path` → `//bucket/path`). `//` and `///` are retained so
   scheme-root ancestors remain visible to the overlap check.
 - Honored pagination for policy API with applicable-policies endpoint excluded.
+- The NoSQL metastore now honors `ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG`: dropping a
+  non-empty passthrough-facade (federated) catalog previously always failed with NoSQL persistence,
+  even when the flag was enabled.
+- The refresh-credentials endpoint advertised by `loadTable` and `loadCredentials`, and the
+  generic-table paths used by the Spark plugin, now encode spaces in namespace and table names as
+  `%20` instead of `+`. Previously, credential refresh failed for tables whose namespace or name
+  contained a space.
+- The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
+  selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
+  readiness monitoring without configuration changes.
 
 ### Commits
 

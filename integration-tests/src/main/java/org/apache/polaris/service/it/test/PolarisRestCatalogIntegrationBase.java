@@ -2124,14 +2124,18 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
       managementApi.createCatalogRole(currentCatalogName, "catalogrole1");
 
-      Stream<TableGrant> tableGrants =
+      List<TableGrant> tableGrants =
           Arrays.stream(TablePrivilege.values())
               .map(
                   p -> {
                     return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
-                  });
+                  })
+              .toList();
 
       tableGrants.forEach(g -> managementApi.addGrant(currentCatalogName, "catalogrole1", g));
+
+      GrantResources grants = managementApi.listGrants(currentCatalogName, "catalogrole1");
+      assertThat(grants.getGrants()).containsExactlyInAnyOrderElementsOf(tableGrants);
 
     } finally {
       genericTableApi.purge(currentCatalogName, namespace);
