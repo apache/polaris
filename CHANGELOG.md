@@ -213,6 +213,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   generic-table paths used by the Spark plugin, now encode spaces in namespace and table names as
   `%20` instead of `+`. Previously, credential refresh failed for tables whose namespace or name
   contained a space.
+- The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
+  selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
+  readiness monitoring without configuration changes.
 
 ### Commits
 
