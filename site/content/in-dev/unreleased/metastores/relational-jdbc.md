@@ -143,7 +143,7 @@ unaffected.
 
 ### Schema Structure
 
-Starting with Polaris 1.8.0, each Polaris binary ships a single `schema.sql` script for each
+Starting with Polaris 1.9.0, each Polaris binary ships a single `schema.sql` script for each
 supported database type.
 
 For this release ({{< releaseVersion >}}), the corresponding SQL files are:
@@ -155,7 +155,7 @@ The `schema.sql` file is versioned, and contains the SQL statements to create th
 tables, as well as the initial data for the `version` table that tracks the schema version.
 
 {{< alert note >}}
-Prior to Polaris 1.8.0, each schema version used to have its own SQL file, e.g. `schema-v1.sql`,
+Prior to Polaris 1.9.0, each schema version used to have its own SQL file, e.g. `schema-v1.sql`,
 `schema-v2.sql`, etc.
 {{< /alert >}}
 
@@ -229,9 +229,9 @@ first.
 
 ## Schema Upgrades
 
-Starting with schema version v6 (Polaris 1.9.0), schema changes are versioned in git, and you can
-use regular diff tools to compare the two files and see the differences between two release tags.
-Polaris release git tags are of the form: `apache-polaris-<version>`, e.g. `apache-polaris-1.9.0`.
+Starting with Polaris 1.9.0, schemas are versioned in git, and you can use regular diff tools
+to compare schema files and see the differences between two release tags. Polaris release git tags
+are of the form: `apache-polaris-<version>`, e.g. `apache-polaris-1.9.0`.
 
 For example, to get the diff between the PostgreSQL schema SQL file between Polaris 1.9.0 and
 1.10.0, you can run the following command:
@@ -244,10 +244,10 @@ Refer to the [Schema Version Reference](#schema-version-reference) table for lin
 schema SQL file for each database type.
 
 {{< alert important >}}
-Git diffs of `schema.sql` are only possible starting from schema v6 (Polaris 1.9.0).
+Git diffs of `schema.sql` are only possible starting from Polaris 1.9.0.
 {{< /alert >}}
 
-Older schema versions had each their own versioned schema file. Refer to the [Schema Version
+Older Polaris versions had each their own versioned schema file. Refer to the [Schema Version
 Reference](#schema-version-reference) table for links to the specific SQL file for each database
 type at the desired version.
 
@@ -262,7 +262,7 @@ The table below maps each released Polaris version to the JDBC schema version it
 | v3             | 1.2.0&#8209;incubating – 1.3.0&#8209;incubating | Added `events` table                                                                                                                               | [PG][v3-pg]                 |
 | v4             | 1.4.0 – 1.6.0                                   | Added `scan_metrics_report` and `commit_metrics_report` tables; added `idempotency_records` table; added indexes on `entities` and `grant_records` | [PG][v4-pg] · [CRD][v4-crd] |
 | v5             | 1.7.0                                           | `events.catalog_id` made nullable; `idempotency_records` removed                                                                                   | [PG][v5-pg] · [CRD][v5-crd] |
-| v6             | In Development                                  | Switched to single `schema.sql` script; changed `idx_locations` index definition                                                                   |                             |
+| v6             | 1.8.0                                           | Changed `idx_locations` index definition; added missing indexes on CockroachDB                                                                     | [PG][v6-pg] · [CRD][v6-crd] |
 
 [Quarkus configuration reference]: https://quarkus.io/guides/config-reference
 [Quarkus datasource documentation]: https://quarkus.io/guides/datasource
@@ -274,3 +274,5 @@ The table below maps each released Polaris version to the JDBC schema version it
 [v4-crd]: https://github.com/apache/polaris/blob/apache-polaris-1.4.0/persistence/relational-jdbc/src/main/resources/cockroachdb/schema-v4.sql
 [v5-pg]: https://github.com/apache/polaris/blob/apache-polaris-1.7.0/persistence/relational-jdbc/src/main/resources/postgres/schema-v5.sql
 [v5-crd]: https://github.com/apache/polaris/blob/apache-polaris-1.7.0/persistence/relational-jdbc/src/main/resources/cockroachdb/schema-v5.sql
+[v6-pg]: https://github.com/apache/polaris/blob/apache-polaris-1.8.0/persistence/relational-jdbc/src/main/resources/postgres/schema-v6.sql
+[v6-crd]: https://github.com/apache/polaris/blob/apache-polaris-1.8.0/persistence/relational-jdbc/src/main/resources/cockroachdb/schema-v6.sql
