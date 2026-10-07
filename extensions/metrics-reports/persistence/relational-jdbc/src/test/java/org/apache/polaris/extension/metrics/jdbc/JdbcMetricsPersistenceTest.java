@@ -182,8 +182,7 @@ class JdbcMetricsPersistenceTest {
             "");
     DatasourceOperations datasourceOperations =
         new DatasourceOperations(dataSource, new TestJdbcConfiguration());
-    datasourceOperations.executeScript(
-        DatabaseType.H2.openInitScriptResource(DatabaseType.H2.getLatestSchemaVersion()));
+    datasourceOperations.executeScript(DatabaseType.H2.openInitScriptResource());
     JdbcMetricsPersistence persistence =
         new JdbcMetricsPersistence(datasourceOperations, () -> "TEST_REALM");
 
