@@ -454,6 +454,18 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
   protected LocalIcebergCatalog newIcebergCatalog(
       String catalogName, PolarisMetaStoreManager metaStoreManager, FileIOFactory fileIOFactory) {
+    return newIcebergCatalog(
+        catalogName,
+        metaStoreManager,
+        fileIOFactory,
+        new TableMetadataCache(TableMetadataCacheTestConfiguration.withMaxBytes(1024 * 1024)));
+  }
+
+  protected LocalIcebergCatalog newIcebergCatalog(
+      String catalogName,
+      PolarisMetaStoreManager metaStoreManager,
+      FileIOFactory fileIOFactory,
+      TableMetadataCache tableMetadataCache) {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, authenticatedRoot, catalogName);
@@ -469,7 +481,18 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         storageAccessConfigProvider,
         fileIOFactory,
         polarisEventDispatcher,
-        eventMetadataFactory);
+        eventMetadataFactory,
+        tableMetadataCache);
+  }
+
+  /** Initializes the catalog over in-memory storage and creates {@code TABLE}. */
+  private static void initializeWithTable(LocalIcebergCatalog catalog) {
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
   }
 
   @Test
@@ -573,6 +596,23 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> catalog.createNamespace(child1))
         .isInstanceOf(NoSuchNamespaceException.class)
         .hasMessageContaining("Parent");
+  }
+
+  @Test
+  public void testCommitSucceedsWhenMetadataCachePopulationFails() {
+    TableMetadataCache throwingCache =
+        new TableMetadataCache(TableMetadataCacheTestConfiguration.withMaxBytes(1024 * 1024)) {
+          @Override
+          public void put(String realmId, long tableEntityId, TableMetadata metadata) {
+            throw new RuntimeException("cache population failed");
+          }
+        };
+    LocalIcebergCatalog catalog =
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, fileIOFactory, throwingCache);
+    catalog.setCatalogFileIo(new InMemoryFileIO());
+    initializeWithTable(catalog);
+    catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
+    assertFiles(catalog.loadTable(TABLE), FILE_A);
   }
 
   @Test
@@ -3097,15 +3137,18 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             catalog.newTableOps(TABLE, updateMetadataOnCommit);
     LocalIcebergCatalog.BasePolarisTableOperations ops = Mockito.spy(realOps);
 
+    // Each metadata load parses the document once through fromJson(location, json).
     try (MockedStatic<TableMetadataParser> mocked =
         Mockito.mockStatic(TableMetadataParser.class, Mockito.CALLS_REAL_METHODS)) {
       TableMetadata base1 = ops.current();
       mocked.verify(
-          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
+          () -> TableMetadataParser.fromJson(Mockito.anyString(), Mockito.anyString()),
+          Mockito.times(1));
 
       TableMetadata base2 = ops.refresh();
       mocked.verify(
-          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
+          () -> TableMetadataParser.fromJson(Mockito.anyString(), Mockito.anyString()),
+          Mockito.times(1));
 
       Assertions.assertThat(base1.metadataFileLocation()).isEqualTo(base2.metadataFileLocation());
       Assertions.assertThat(base1).isEqualTo(base2);
@@ -3116,20 +3159,74 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
           TableMetadata.buildFrom(base1).setCurrentSchema(newSchema, 100).build();
       ops.commit(base2, newMetadata);
       mocked.verify(
-          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
+          () -> TableMetadataParser.fromJson(Mockito.anyString(), Mockito.anyString()),
+          Mockito.times(1));
 
       ops.current();
       int expectedReads = updateMetadataOnCommit ? 1 : 2;
       mocked.verify(
-          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()),
+          () -> TableMetadataParser.fromJson(Mockito.anyString(), Mockito.anyString()),
           Mockito.times(expectedReads));
       ops.refresh();
       mocked.verify(
-          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()),
+          () -> TableMetadataParser.fromJson(Mockito.anyString(), Mockito.anyString()),
           Mockito.times(expectedReads));
     } finally {
       catalog.dropTable(TABLE, true);
     }
+  }
+
+  @Test
+  public void testRefreshAfterCommitServedFromMetadataCache() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
+    LocalIcebergCatalog cachingCatalog =
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured);
+    initializeWithTable(cachingCatalog);
+    cachingCatalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
+
+    // The commit seeded the cache, so a fresh ops instance refreshes without reading storage.
+    measured.newInputFileExceptionSupplier =
+        Optional.of(() -> new RuntimeException("metadata should be served from the cache"));
+    TableMetadata metadata = cachingCatalog.newTableOps(TABLE).current();
+    measured.newInputFileExceptionSupplier = Optional.empty();
+    TableMetadata stored =
+        TableMetadataParser.read(new InMemoryFileIO(), metadata.metadataFileLocation());
+    Assertions.assertThat(TableMetadataParser.toJson(metadata))
+        .isEqualTo(TableMetadataParser.toJson(stored));
+
+    cachingCatalog.dropTable(TABLE, true);
+  }
+
+  @Test
+  public void testRefreshAfterRegisterOverwriteAtSameLocationServesRegisteredMetadata() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    LocalIcebergCatalog cachingCatalog =
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, fileIOFactory);
+    initializeWithTable(cachingCatalog);
+    TableMetadata created = cachingCatalog.newTableOps(TABLE).current();
+
+    // An external writer recreates the table and rewrites the same metadata file name.
+    String location = created.metadataFileLocation();
+    String recreatedUuid = UUID.randomUUID().toString();
+    new InMemoryFileIO()
+        .addFile(
+            location,
+            TableMetadataParser.toJson(created)
+                .replace(created.uuid(), recreatedUuid)
+                .getBytes(UTF_8));
+    cachingCatalog.registerTable(TABLE, location, true);
+
+    Assertions.assertThat(cachingCatalog.newTableOps(TABLE).current().uuid())
+        .isEqualTo(recreatedUuid);
+
+    cachingCatalog.dropTable(TABLE, true);
   }
 
   @ParameterizedTest
