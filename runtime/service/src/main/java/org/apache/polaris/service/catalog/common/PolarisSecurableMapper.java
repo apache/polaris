@@ -47,6 +47,13 @@ public final class PolarisSecurableMapper {
         .build();
   }
 
+  public static PolarisSecurable tag(String catalogName, String tagName) {
+    return ImmutablePolarisSecurable.builder()
+        .addPathSegment(new PathSegment(PolarisEntityType.CATALOG, catalogName))
+        .addPathSegment(new PathSegment(PolarisEntityType.TAG, tagName))
+        .build();
+  }
+
   public static PolarisSecurable namespace(String catalogName, Namespace namespace) {
     if (namespace.isEmpty()) {
       throw new IllegalArgumentException("Namespace target must not be empty");

@@ -62,13 +62,27 @@ public class RestApi {
       Map<String, String> templateValues,
       Map<String, String> queryParams,
       Map<String, String> headers) {
+    WebTarget target = target(path, templateValues);
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    return request(target, headers);
+  }
+
+  /**
+   * Resolves the path template and hands back the target, so a subclass can shape a query the
+   * {@link Map}-based helpers cannot express, such as a parameter that appears more than once.
+   */
+  protected WebTarget target(String path, Map<String, String> templateValues) {
     WebTarget target = client.target(uri).path(path);
     for (Map.Entry<String, String> entry : templateValues.entrySet()) {
       target = target.resolveTemplate(entry.getKey(), entry.getValue());
     }
-    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-      target = target.queryParam(entry.getKey(), entry.getValue());
-    }
+    return target;
+  }
+
+  /** Turns a caller-shaped target into a request carrying this helper's content type. */
+  protected Invocation.Builder request(WebTarget target, Map<String, String> headers) {
     Invocation.Builder request = target.request(contentType);
     headers.forEach(request::header);
     return request;
