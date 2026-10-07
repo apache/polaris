@@ -338,7 +338,13 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
               objClazz,
               historyContinue,
               ContainerObj::nameToObjRef,
-              containerObj -> collector.indexRetain(containerObj.stableIdToName()));
+              containerObj -> {
+                collector.indexRetain(containerObj.stableIdToName());
+                // PrincipalsObj also keeps a by-client-id index that is never walked above.
+                if (containerObj instanceof PrincipalsObj principalsObj) {
+                  collector.indexRetain(principalsObj.byClientId());
+                }
+              });
         });
   }
 

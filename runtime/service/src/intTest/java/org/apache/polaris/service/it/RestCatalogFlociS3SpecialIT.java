@@ -24,8 +24,8 @@ import static org.apache.iceberg.aws.s3.S3FileIOProperties.ACCESS_KEY_ID;
 import static org.apache.iceberg.aws.s3.S3FileIOProperties.ENDPOINT;
 import static org.apache.iceberg.aws.s3.S3FileIOProperties.SECRET_ACCESS_KEY;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
-import static org.apache.polaris.test.commons.MinioRustProfile.ACCESS_KEY;
-import static org.apache.polaris.test.commons.MinioRustProfile.SECRET_KEY;
+import static org.apache.polaris.test.commons.FlociAwsProfile.ACCESS_KEY;
+import static org.apache.polaris.test.commons.FlociAwsProfile.SECRET_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -44,7 +44,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
-import org.apache.polaris.test.commons.MinioRustProfile;
+import org.apache.polaris.test.commons.FlociAwsProfile;
 import org.apache.polaris.test.floci.aws.FlociAws;
 import org.apache.polaris.test.floci.aws.FlociAwsAccess;
 import org.apache.polaris.test.floci.aws.FlociAwsTestResource;
@@ -61,7 +61,7 @@ import org.junit.jupiter.params.provider.ValueSource;
  * responses with some S3-specific options.
  */
 @QuarkusIntegrationTest
-@TestProfile(MinioRustProfile.class)
+@TestProfile(FlociAwsProfile.class)
 @QuarkusTestResource(
     value = FlociAwsTestResource.class,
     initArgs = {

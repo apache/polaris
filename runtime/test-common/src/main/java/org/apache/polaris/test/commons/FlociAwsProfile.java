@@ -16,23 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.metastore.mutation;
+package org.apache.polaris.test.commons;
 
-import org.apache.polaris.core.entity.PolarisBaseEntity;
+import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import java.util.Map;
 
-/**
- * @param dropNonEmptyCatalog for {@link Operation#DELETE} of a catalog, whether the catalog may be
- *     dropped even if it still contains namespaces or tables
- */
-public record EntityUpdate(
-    Operation operation, PolarisBaseEntity entity, boolean cleanup, boolean dropNonEmptyCatalog) {
-  public EntityUpdate(Operation operation, PolarisBaseEntity entity) {
-    this(operation, entity, false, false);
-  }
+public class FlociAwsProfile implements QuarkusTestProfile {
+  // Credentials for the deployer principal seeded by FlociAwsContainer under IAM enforcement.
+  public static final String ACCESS_KEY = "floci";
+  public static final String SECRET_KEY = "floci";
 
-  public enum Operation {
-    CREATE,
-    UPDATE,
-    DELETE
+  @Override
+  public Map<String, String> getConfigOverrides() {
+    return ImmutableMap.<String, String>builder()
+        .put("polaris.storage.aws.access-key", ACCESS_KEY)
+        .put("polaris.storage.aws.secret-key", SECRET_KEY)
+        .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "false")
+        .build();
   }
 }

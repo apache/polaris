@@ -104,11 +104,19 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Azure: host-resolution failures while vending storage credentials now return `400 Bad Request`
   with the underlying DNS error, instead of `500 Internal Server Error`.
+- NoSQL maintenance: spilled `IndexStripeObj` segments are retained when identify walks an index via
+  `indexForRead` (`RetainedCollectorImpl.buildReadIndex`), and `PrincipalsObj.byClientId` is retained
+  explicitly. Previously only a subset of indexes got `indexRetain`, so after a spill past
+  `maxEmbeddedIndexSize` maintenance could delete still-needed stripes and leave catalog indexes
+  unreadable (`references a reference index, which does not exist`).
 - The `root` principal can no longer be dropped or renamed. Realm bootstrap identifies a
   bootstrapped realm by the presence of a principal named `root`, so removing or renaming it caused
   every newly started process to treat the realm as not bootstrapped (failing all requests,
   including the token endpoint), and re-running bootstrap could not cleanly repair it. It is now
   protected like the `service_admin` and `catalog_admin` roles.
+- Dropped-table purge on NoSQL no longer fails when a manifest or metadata path is longer than
+  the 500-byte index-key limit. Child cleanup task names are a short kind, the parent task id,
+  and a UUID. The full paths stay in the task payload.
 - Deleting an external catalog now also deletes the inline connection secrets (OAuth client secret
   or bearer token) that were written to the `UserSecretsManager` when the catalog was created.
   Previously they stayed in the secrets store with no entity referencing them.
@@ -138,6 +146,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Ranger authorizer: a table or policy under a nested namespace is no longer mapped to the wrong
   Ranger resource. Namespace levels now occupy a single namespace resource instead of one each,
   so a policy written for the nested namespace matches.
+- Ranger authorizer: `table-data-write` now confers `table-properties-write`, as the built-in
+  authorizer already does. Without it, a Ranger policy granting only `table-data-write` was
+  refused operations the same grant allows under the built-in authorizer. Existing deployments
+  must re-register the updated service definition with Ranger Admin for this to take effect;
+  upgrading Polaris alone does not change the definition already persisted there.
 - Policy API: detaching a policy from a target it was never attached to now returns
   `404 Not Found` with error type `NoSuchMappingException`, as the policy API specification
   requires, instead of `500 Internal Server Error`.
@@ -178,6 +191,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   scheme stripping (e.g. `s3://bucket/path` → `//bucket/path`). `//` and `///` are retained so
   scheme-root ancestors remain visible to the overlap check.
 - Honored pagination for policy API with applicable-policies endpoint excluded.
+- The NoSQL metastore now honors `ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG`: dropping a
+  non-empty passthrough-facade (federated) catalog previously always failed with NoSQL persistence,
+  even when the flag was enabled.
 
 ### Commits
 

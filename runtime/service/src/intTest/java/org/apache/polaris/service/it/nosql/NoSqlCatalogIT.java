@@ -18,11 +18,25 @@
  */
 package org.apache.polaris.service.it.nosql;
 
+import static org.apache.polaris.test.commons.NoSqlInMemoryProfile.NOSQL_PERSISTENCE;
+
+import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
+import java.util.Map;
 import org.apache.polaris.service.it.PolarisRestCatalogFlociS3IT;
-import org.apache.polaris.test.commons.NoSqlInMemoryProfile;
+import org.apache.polaris.test.commons.FlociAwsProfile;
 
 @QuarkusIntegrationTest
-@TestProfile(value = NoSqlInMemoryProfile.class)
-public class NoSqlCatalogIT extends PolarisRestCatalogFlociS3IT {}
+@TestProfile(value = NoSqlCatalogIT.NoSqlCatalogProfile.class)
+public class NoSqlCatalogIT extends PolarisRestCatalogFlociS3IT {
+  public static class NoSqlCatalogProfile extends FlociAwsProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return ImmutableMap.<String, String>builder()
+          .putAll(NOSQL_PERSISTENCE)
+          .putAll(super.getConfigOverrides())
+          .build();
+    }
+  }
+}
