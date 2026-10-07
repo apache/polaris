@@ -407,7 +407,7 @@ class SetupCommand(Command):
                 catalog_info["namespaces"] = self._export_namespaces_for_catalog(
                     api, c.name, namespaces
                 )
-                if c.type.lower() == CatalogType.EXTERNAL.value:
+                if c.type.lower() == CatalogType.INTERNAL.value:
                     catalog_info["tables"] = self._export_tables_for_catalog(
                         api, c.name, namespaces
                     )
