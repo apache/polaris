@@ -178,7 +178,7 @@ public abstract class AbstractLocalIcebergCatalogViewTest
                 .build(),
             Set.of());
 
-    authorizer = new PolarisAuthorizerImpl(realmConfig);
+    authorizer = new PolarisAuthorizerImpl();
     reservedProperties = ReservedProperties.NONE;
 
     newAdminService()

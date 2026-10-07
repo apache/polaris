@@ -194,7 +194,7 @@ public abstract class AbstractPolicyCatalogTest {
             Set.of());
     polarisPrincipalHolder.set(authenticatedRoot);
 
-    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
+    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl();
     ReservedProperties reservedProperties = ReservedProperties.NONE;
 
     adminService =

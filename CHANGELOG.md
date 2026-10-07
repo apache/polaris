@@ -107,6 +107,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   PostgreSQL and CockroachDB scripts. Previously, running bootstrap against an older, unmigrated H2
   database silently stamped it with the current version, which defeated the schema-compatibility
   check and let the server run against an unmigrated schema.
+- NoSQL maintenance: realm purging now honors its own state filter consistently. `purgeRealms`
+  keeps only realms in `PURGING`/`PURGED` state (and logs the rest as "will therefore not be
+  purged"), but the direct `backend.deleteRealms(...)` call and the subsequent realm-status update
+  used the unfiltered run-spec list, so a realm the filter had excluded (for example an `ACTIVE`
+  realm whose ID was listed in a stale spec) could still be wiped while the log claimed it was
+  skipped, and the attempt to mark it `PURGED` failed the whole run on an invalid state transition.
+  The direct deletion, the purged-realm count, and the status update now use the same filtered set
+  as the scan-based deletion.
 - NoSQL maintenance: spilled `IndexStripeObj` segments are retained when identify walks an index via
   `indexForRead` (`RetainedCollectorImpl.buildReadIndex`), and `PrincipalsObj.byClientId` is retained
   explicitly. Previously only a subset of indexes got `indexRetain`, so after a spill past
@@ -135,10 +143,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `deserializeKey`. Previously it counted two units per escaped `0x01`/`0x02` byte against the
   same 500 limit, so a key that had been written successfully (for example 251 bytes of `0x01`)
   could make index deserialization throw and leave the index container unreadable.
-- The OPA authorizer now enforces the credential-rotation pre-condition. With
-  `ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING` enabled, a principal whose credentials
-  were reset but never rotated was refused by the internal and Ranger authorizers but not by OPA.
-  The rotation state is not part of the OPA input document, so a policy could not compensate.
+- The credential-rotation pre-condition is now enforced by a JAX-RS filter instead of by each
+  authorizer. With `ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING` enabled, a principal
+  whose credentials were reset but never rotated can only call the rotate-credentials endpoint,
+  whichever authorizer is configured. Previously the internal and Ranger authorizers enforced it
+  but OPA did not, and the rotation state is not part of the OPA input document, so a policy could
+  not compensate.
 - Re-creating an existing namespace now returns `409 Conflict` instead of `403 Forbidden` when
   `OPTIMIZED_SIBLING_CHECK` is on. Namespace creation checks for an existing namespace before
   validating locations, as table and view creation already do, so the existing namespace's own
