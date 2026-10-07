@@ -222,6 +222,15 @@ jobs:
         uses: ./.github/actions/setup-test-env
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Start Develocity Docker build agent
+        # Only branch builds of apache/polaris have the access key.
+        if: github.repository == 'apache/polaris' && startsWith(github.ref, 'refs/heads/')
+        uses: gradle/develocity-actions/setup-docker@f852d93dada312948b1ba533226c28e05d756866 # v2.4
+        with:
+          develocity-url: https://develocity.apache.org
+          develocity-access-key: ${{ secrets.DEVELOCITY_ACCESS_KEY }} # zizmor: ignore[secrets-outside-env]
+          develocity-project-id: polaris
+          drain-timeout: 60
       - name: Image build
         env: *gradle_env_vars
         run: |
