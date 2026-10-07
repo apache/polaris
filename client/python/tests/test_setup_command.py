@@ -1400,6 +1400,48 @@ class TestSetupCommand(CLITestBase):
         self.assertIn("DRY-RUN: Would register view ns1.my_view", joined)
 
     @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_apply_with_existence_check_fails(
+        self, mock_catalog_api_class: MagicMock
+    ) -> None:
+        catalog_api = mock_catalog_api_class.return_value
+        catalog_api.load_table.side_effect = RuntimeError("Unknown error")
+        catalog_api.load_view.side_effect = RuntimeError("Unknown error")
+
+        command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            _catalog_api=MagicMock(),
+        )
+        command._register_tables(
+            MagicMock(),
+            "catalog",
+            [
+                {
+                    "name": "my_table",
+                    "namespace": ["ns1"],
+                    "metadata_location": (
+                        "s3://bucket/ns1/my_table/metadata/00001-abcd.metadata.json"
+                    ),
+                }
+            ],
+        )
+        command._register_views(
+            MagicMock(),
+            "catalog",
+            [
+                {
+                    "name": "my_view",
+                    "namespace": ["ns1"],
+                    "metadata_location": (
+                        "s3://bucket/ns1/my_view/metadata/00001-abcd.metadata.json"
+                    ),
+                }
+            ],
+        )
+        catalog_api.register_table.assert_not_called()
+        catalog_api.register_view.assert_not_called()
+        self.assertEqual(command._failure_count, 2)
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
     def test_setup_apply_records_failure_on_empty_metadata_location(
         self, mock_catalog_api_class: MagicMock
     ) -> None:

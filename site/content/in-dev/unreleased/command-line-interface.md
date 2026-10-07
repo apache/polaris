@@ -1659,7 +1659,7 @@ The `repair` command is a bash script wrapper used to regenerate Python client c
 
 ### Setup
 
-The `setup` command is used to automate the creation of various entities in Polaris, such as principals, roles, catalogs, namespaces, tables, vuews, privileges, and policies, based on a configuration file. This simplifies the process of setting up a Polaris environment.
+The `setup` command is used to automate the creation of various entities in Polaris, such as principals, roles, catalogs, namespaces, tables, views, privileges, and policies, based on a configuration file. This simplifies the process of setting up a Polaris environment. Tables and views are only exported for internal catalogs.
 
 `setup` supports the following subcommands:
 

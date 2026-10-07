@@ -407,12 +407,19 @@ class SetupCommand(Command):
                 catalog_info["namespaces"] = self._export_namespaces_for_catalog(
                     api, c.name, namespaces
                 )
-                catalog_info["tables"] = self._export_tables_for_catalog(
-                    api, c.name, namespaces
-                )
-                catalog_info["views"] = self._export_views_for_catalog(
-                    api, c.name, namespaces
-                )
+                if c.type.lower() == CatalogType.EXTERNAL.value:
+                    catalog_info["tables"] = self._export_tables_for_catalog(
+                        api, c.name, namespaces
+                    )
+                    catalog_info["views"] = self._export_views_for_catalog(
+                        api, c.name, namespaces
+                    )
+                else:
+                    catalog_info["tables"] = []
+                    catalog_info["views"] = []
+                    logger.info(
+                        f"Skipping tables/views export for external catalog {c.name}."
+                    )
                 catalog_info["policies"] = self._export_policies_for_catalog(
                     api, c.name, namespaces
                 )
@@ -1553,17 +1560,10 @@ class SetupCommand(Command):
             except NotFoundException:
                 table_exists = False
             except Exception:
-                if dry_run:
-                    self._record_failure(
-                        f"Could not verify existence of table '{full_name}'"
-                    )
-                else:
-                    logger.warning(
-                        f"Could not verify existence of table '{full_name}', "
-                        "attempting registration.",
-                        exc_info=True,
-                    )
-                table_exists = False
+                self._record_failure(
+                    f"Could not verify existence of table '{full_name}'"
+                )
+                continue
             if table_exists:
                 logger.info(
                     f"Skipping registration for already existing table '{full_name}' in catalog '{catalog_name}'"
@@ -1646,17 +1646,10 @@ class SetupCommand(Command):
             except NotFoundException:
                 view_exists = False
             except Exception:
-                if dry_run:
-                    self._record_failure(
-                        f"Could not verify existence of view '{full_name}'"
-                    )
-                else:
-                    logger.warning(
-                        f"Could not verify existence of view '{full_name}', "
-                        "attempting registration.",
-                        exc_info=True,
-                    )
-                view_exists = False
+                self._record_failure(
+                    f"Could not verify existence of view '{full_name}'"
+                )
+                continue
             if view_exists:
                 logger.info(
                     f"Skipping registration for already existing view '{full_name}' in catalog '{catalog_name}'"
