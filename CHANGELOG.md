@@ -194,6 +194,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The NoSQL metastore now honors `ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG`: dropping a
   non-empty passthrough-facade (federated) catalog previously always failed with NoSQL persistence,
   even when the flag was enabled.
+- The Ranger authorizer no longer fails with `NoClassDefFoundError: javax/ws/rs/core/Cookie` when
+  using `RangerAdminRESTClient` as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
+  API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
 
 ### Commits
 
