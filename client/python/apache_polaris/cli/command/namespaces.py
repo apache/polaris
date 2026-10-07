@@ -81,6 +81,13 @@ class NamespacesCommand(Command):
                 raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.NAMESPACE)}"
                 )
+        if self.namespaces_subcommand == Subcommands.UPDATE and not (
+            self.set_properties or self.remove_properties
+        ):
+            raise CliError(
+                f"At least one of {Argument.to_flag_name(Arguments.SET_PROPERTY)} or "
+                f"{Argument.to_flag_name(Arguments.REMOVE_PROPERTY)} is required"
+            )
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api_client = get_catalog_api_client(api)

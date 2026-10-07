@@ -39,6 +39,13 @@ class TestNamespacesCommand(CLITestBase):
                     self.mock_execute(
                         mock_client, ["namespaces", sub, "--catalog", "my_catalog"]
                     )
+        # update with nothing to change
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client, ["namespaces", "update", "ns1", "--catalog", "my_catalog"]
+            ),
+            "At least one of --set-property or --remove-property is required",
+        )
 
     def test_namespace_input_normalization(self) -> None:
         cmd = NamespacesCommand(
