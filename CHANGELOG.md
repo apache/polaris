@@ -241,6 +241,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   readiness monitoring without configuration changes.
 - Fixed an unbounded memory growth in the in-memory entity cache that could lead to out-of-memory
   errors: lookups by name no longer hold entities outside the cache's weight and expiry limits.
+- The Ranger authorizer no longer fails with `NoClassDefFoundError: javax/ws/rs/core/Cookie` when
+  using `RangerAdminRESTClient` as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
+  API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
 
 ### Commits
 
