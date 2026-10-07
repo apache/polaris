@@ -26,13 +26,11 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationIntentResolver;
-import org.apache.polaris.core.auth.AuthorizationPreConditions;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -62,20 +60,15 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
 
   private final RangerEmbeddedAuthorizer authorizer;
   private final String serviceName;
-  private RealmContext realmContext;
-  private String realmConextIdentifier;
-  private final RealmConfig realmConfig;
+  private String realmContextIdentifier;
 
-  public RangerPolarisAuthorizer(
-      RangerEmbeddedAuthorizer authorizer, String serviceName, RealmConfig realmConfig) {
+  public RangerPolarisAuthorizer(RangerEmbeddedAuthorizer authorizer, String serviceName) {
     this.authorizer = authorizer;
     this.serviceName = serviceName;
-    this.realmConfig = realmConfig;
   }
 
-  public void setRealmContext(RealmContext aRealmContext) {
-    this.realmContext = aRealmContext;
-    this.realmConextIdentifier = aRealmContext.getRealmIdentifier();
+  public void setRealmContext(RealmContext realmContext) {
+    this.realmContextIdentifier = realmContext.getRealmIdentifier();
   }
 
   /**
@@ -161,9 +154,6 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
     }
 
     try {
-      AuthorizationPreConditions.checkCredentialRotationRequired(
-          polarisPrincipal, authzOp, realmConfig);
-
       if (!isAccessAuthorized(polarisPrincipal, authzOp, targets, secondaries)) {
         throw new ForbiddenException(
             RANGER_AUTH_FAILED_ERROR, polarisPrincipal.getName(), authzOp.name());
@@ -197,12 +187,12 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
       for (PolarisResolvedPathWrapper target : targets) {
         accessInfos.add(
             RangerUtils.toAccessInfo(
-                target, authzOp, semantics.targetPrivileges(), realmConextIdentifier));
+                target, authzOp, semantics.targetPrivileges(), realmContextIdentifier));
       }
     } else if (isTargetSpecified) {
       LOG.warn(
           "No privileges specified for target authorization. Ignoring target {}, op: {}, user: {}",
-          RangerUtils.toResourcePath(targets, realmConextIdentifier),
+          RangerUtils.toResourcePath(targets, realmContextIdentifier),
           authzOp.name(),
           principal.getName());
     }
@@ -217,12 +207,12 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
       for (PolarisResolvedPathWrapper secondary : secondaries) {
         accessInfos.add(
             RangerUtils.toAccessInfo(
-                secondary, authzOp, semantics.secondaryPrivileges(), realmConextIdentifier));
+                secondary, authzOp, semantics.secondaryPrivileges(), realmContextIdentifier));
       }
     } else if (isSecondarySpecified) {
       LOG.warn(
           "No privileges specified for secondary authorization. Ignoring secondaries {}, op: {}, user: {}",
-          RangerUtils.toResourcePath(secondaries, realmConextIdentifier),
+          RangerUtils.toResourcePath(secondaries, realmContextIdentifier),
           authzOp.name(),
           principal.getName());
     }

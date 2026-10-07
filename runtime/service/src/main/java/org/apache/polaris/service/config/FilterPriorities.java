@@ -21,10 +21,17 @@ package org.apache.polaris.service.config;
 import jakarta.ws.rs.Priorities;
 
 public final class FilterPriorities {
+
+  // Pre-Authentication filters
+
   public static final int REQUEST_ID_FILTER = Priorities.AUTHENTICATION - 101;
-  public static final int REALM_CONTEXT_FILTER = REQUEST_ID_FILTER + 1;
+  public static final int REALM_CONTEXT_FILTER = Priorities.AUTHENTICATION - 100;
+  public static final int MDC_FILTER = Priorities.AUTHENTICATION - 99;
+  public static final int TRACING_FILTER = Priorities.AUTHENTICATION - 98;
+  public static final int IDEMPOTENCY_KEY_FILTER = Priorities.AUTHENTICATION - 97;
+
+  // Post-Authentication filters
+
+  public static final int CREDENTIAL_ROTATION_FILTER = Priorities.AUTHORIZATION;
   public static final int RATE_LIMITER_FILTER = Priorities.USER;
-  public static final int MDC_FILTER = REALM_CONTEXT_FILTER + 1;
-  public static final int TRACING_FILTER = REALM_CONTEXT_FILTER + 2;
-  public static final int IDEMPOTENCY_KEY_FILTER = REALM_CONTEXT_FILTER + 3;
 }

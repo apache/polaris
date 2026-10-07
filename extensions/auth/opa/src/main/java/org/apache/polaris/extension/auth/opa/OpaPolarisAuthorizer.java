@@ -37,10 +37,8 @@ import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationIntent;
-import org.apache.polaris.core.auth.AuthorizationPreConditions;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PathSegment;
@@ -55,7 +53,6 @@ import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
 import org.apache.polaris.core.auth.RootPrivilegeGrantAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
 import org.apache.polaris.extension.auth.opa.model.ImmutableContext;
 import org.apache.polaris.extension.auth.opa.model.ImmutableOpaAuthorizationInput;
@@ -89,7 +86,6 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private final ObjectMapper objectMapper;
   private final String requestId;
   private final String realm;
-  private final RealmConfig realmConfig;
 
   /**
    * Public constructor that accepts a complete policy URI and the current realm identifier.
@@ -105,8 +101,6 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    *     the originating HTTP request. Resolved once by the caller since this authorizer is
    *     constructed fresh per request.
    * @param realm The realm identifier (from RealmContext) for isolation in OPA policies.
-   * @param realmConfig The realm configuration, used to evaluate authorization pre-conditions that
-   *     Polaris enforces before consulting OPA.
    */
   public OpaPolarisAuthorizer(
       @NonNull URI policyUri,
@@ -114,8 +108,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       @NonNull ObjectMapper objectMapper,
       @Nullable BearerTokenProvider tokenProvider,
       @Nullable String requestId,
-      @NonNull String realm,
-      @NonNull RealmConfig realmConfig) {
+      @NonNull String realm) {
 
     this.policyUri = policyUri;
     this.tokenProvider = tokenProvider;
@@ -123,7 +116,6 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     this.objectMapper = objectMapper;
     this.requestId = requestId;
     this.realm = realm;
-    this.realmConfig = realmConfig;
   }
 
   /**
@@ -144,12 +136,6 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     for (AuthorizationIntent intent : request.intents()) {
       PolarisAuthorizableOperation operation = intent.operation();
-      try {
-        AuthorizationPreConditions.checkCredentialRotationRequired(
-            request.principal(), operation, realmConfig);
-      } catch (ForbiddenException e) {
-        return AuthorizationDecision.deny(e.getMessage());
-      }
       List<ResourceEntity> targets;
       List<ResourceEntity> secondaries;
       switch (intent) {
