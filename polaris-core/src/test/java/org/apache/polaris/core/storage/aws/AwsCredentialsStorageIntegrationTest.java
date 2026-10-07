@@ -1246,6 +1246,124 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @Test
+  public void testCrossAccountKmsDecryption() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+    String region = "us-east-2";
+    String accountId = "012345678901";
+
+    RealmConfig crossAccountConfig =
+        enabledFeatures(FeatureConfiguration.ALLOW_CROSS_ACCOUNT_KMS_DECRYPTION);
+
+    // Read-only, no explicit keys, flag enabled → cross-account wildcard
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      stmt -> {
+                        assertThat(stmt.resources())
+                            .contains(
+                                IamResource.create(
+                                    String.format("arn:aws:kms:%s:*:key/*", region)));
+                      });
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    AwsStorageConfigurationInfo configNoKeys =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region(region)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient, configNoKeys, crossAccountConfig)
+        .getStorageAccessConfig(
+            toGrants(
+                Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+                Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+                Set.of()),
+            Optional.empty(),
+            CredentialVendingContext.empty());
+    Mockito.verify(stsClient).assumeRole(Mockito.isA(AssumeRoleRequest.class));
+
+    // Read-only, no explicit keys, flag disabled → same-account wildcard (default behavior)
+    Mockito.reset(stsClient);
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      stmt -> {
+                        assertThat(stmt.resources())
+                            .contains(
+                                IamResource.create(
+                                    String.format("arn:aws:kms:%s:%s:key/*", region, accountId)));
+                      });
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    new AwsCredentialsStorageIntegration(stsClient, configNoKeys, EMPTY_REALM_CONFIG)
+        .getStorageAccessConfig(
+            toGrants(
+                Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+                Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+                Set.of()),
+            Optional.empty(),
+            CredentialVendingContext.empty());
+    Mockito.verify(stsClient).assumeRole(Mockito.isA(AssumeRoleRequest.class));
+
+    // Read-only, explicit decryption keys, flag enabled → explicit keys unchanged
+    Mockito.reset(stsClient);
+    String decryptionKey =
+        "arn:aws:kms:us-east-1:999999999999:key/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      stmt ->
+                          assertThat(stmt.resources()).contains(IamResource.create(decryptionKey)));
+              // No wildcard should be present when explicit keys are configured
+              assertThat(policy.statements())
+                  .noneSatisfy(
+                      stmt ->
+                          assertThat(stmt.resources())
+                              .contains(
+                                  IamResource.create(
+                                      String.format("arn:aws:kms:%s:*:key/*", region))));
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    AwsStorageConfigurationInfo configWithKeys =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region(region)
+            .decryptionKeys(List.of(decryptionKey))
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient, configWithKeys, crossAccountConfig)
+        .getStorageAccessConfig(
+            toGrants(
+                Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+                Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+                Set.of()),
+            Optional.empty(),
+            CredentialVendingContext.empty());
+    Mockito.verify(stsClient).assumeRole(Mockito.isA(AssumeRoleRequest.class));
+  }
+
+  @Test
   public void testGetSubscopedCredsLongPrincipalName() {
     StsClient stsClient = Mockito.mock(StsClient.class);
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";

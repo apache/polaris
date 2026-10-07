@@ -281,6 +281,20 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ALLOW_CROSS_ACCOUNT_KMS_DECRYPTION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_CROSS_ACCOUNT_KMS_DECRYPTION")
+          .description(
+              "If set to true, the wildcard KMS ARN in read-only STS session policies uses a\n"
+                  + "cross-account scope (arn:<partition>:kms:<region>:*:key/*) instead of restricting\n"
+                  + "to the catalog's own AWS account. This allows decrypting S3 objects encrypted with\n"
+                  + "SSE-KMS keys owned by a different AWS account. Only affects the wildcard fallback\n"
+                  + "path when no explicit encryption or decryption keys are configured. Operators must\n"
+                  + "configure the corresponding cross-account KMS key policies and IAM trust\n"
+                  + "relationships independently.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_TABLE_LOCATION_OVERLAP")
