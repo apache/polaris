@@ -111,6 +111,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 import org.apache.polaris.core.exceptions.CommitConflictException;
@@ -2236,7 +2237,9 @@ public class PolarisAdminService {
               if (baseEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
                   || baseEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
                 TableIdentifier identifier =
-                    IcebergTableLikeEntity.of(baseEntity).getTableIdentifier();
+                    baseEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE
+                        ? GenericTableEntity.of(baseEntity).getTableIdentifier()
+                        : IcebergTableLikeEntity.of(baseEntity).getTableIdentifier();
                 TableGrant grant =
                     new TableGrant(
                         List.of(identifier.namespace().levels()),
