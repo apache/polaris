@@ -84,6 +84,7 @@ dependencies {
 
     api(project(":polaris-persistence-nosql-inmemory"))
     api(project(":polaris-persistence-nosql-mongodb"))
+    api(project(":polaris-persistence-nosql-dynamodb"))
 
     api(project(":polaris-persistence-nosql-maintenance-api"))
     api(project(":polaris-persistence-nosql-maintenance-impl"))
@@ -97,6 +98,7 @@ dependencies {
     api(project(":polaris-extensions-lineage"))
 
     api(project(":polaris-relational-jdbc"))
+    api(project(":polaris-persistence-dynamodb-atomic"))
 
     api(project(":polaris-extensions-auth-opa"))
     api(project(":polaris-extensions-auth-ranger"))

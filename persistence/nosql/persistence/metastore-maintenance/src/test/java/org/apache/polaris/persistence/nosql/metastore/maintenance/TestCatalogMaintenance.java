@@ -74,10 +74,13 @@ import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.ids.mocks.MutableMonotonicClock;
+import org.apache.polaris.misc.types.memorysize.MemorySize;
 import org.apache.polaris.persistence.nosql.api.Persistence;
+import org.apache.polaris.persistence.nosql.api.PersistenceParams;
 import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
 import org.apache.polaris.persistence.nosql.api.cache.CacheBackend;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
+import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.apache.polaris.persistence.nosql.coretypes.acl.AclObj;
 import org.apache.polaris.persistence.nosql.coretypes.acl.GrantTriplet;
@@ -87,17 +90,20 @@ import org.apache.polaris.persistence.nosql.coretypes.realm.ImmediateTasksObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMappingsObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsObj;
 import org.apache.polaris.persistence.nosql.coretypes.refs.References;
+import org.apache.polaris.persistence.nosql.impl.indexes.IndexStripeObj;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceConfig;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInformation;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunSpec;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceService;
 import org.apache.polaris.persistence.nosql.maintenance.impl.MutableMaintenanceConfig;
+import org.apache.polaris.persistence.nosql.weld.MutablePersistenceParams;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
 import org.jboss.weld.junit5.EnableWeld;
 import org.jboss.weld.junit5.WeldInitiator;
 import org.jboss.weld.junit5.WeldSetup;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -128,6 +134,8 @@ public class TestCatalogMaintenance {
 
   @BeforeEach
   protected void setup() {
+    MutablePersistenceParams.reset();
+
     // Set the "grace time" to 0 so tests can write refs+objs and get those purged
     MutableMaintenanceConfig.setCurrent(
         MaintenanceConfig.builder().createdAtGraceTime(GRACE_TIME).build());
@@ -147,6 +155,80 @@ public class TestCatalogMaintenance {
             .principalsRetain("false")
             .immediateTasksRetain("false")
             .build());
+  }
+
+  @AfterEach
+  protected void resetPersistenceParams() {
+    MutablePersistenceParams.reset();
+  }
+
+  @Test
+  public void maintenanceRetainsSpilledNameToObjRefStripes() {
+    // Lower the embedded budget so a modest table count spills CatalogStateObj.nameToObjRef into
+    // IndexStripeObj segments. Without indexRetain on that container, maintenance would purge the
+    // stripes and the next catalog-state index read would fail.
+    MutablePersistenceParams.setCurrent(
+        PersistenceParams.BuildablePersistenceParams.builder()
+            .maxEmbeddedIndexSize(MemorySize.ofBytes(256))
+            .build());
+
+    var testSetup = bootstrapRealm();
+    var manager = testSetup.manager();
+    var callCtx = testSetup.callCtx();
+    var persistence = testSetup.persistence();
+
+    var catalog = createCatalog(manager, callCtx, persistence);
+    mandatoryCatalogObjsForTestImpl(persistence, catalog.getId());
+    var namespace = createNamespace(manager, callCtx, catalog, persistence, "stripe-ns");
+
+    var tables = new ArrayList<PolarisBaseEntity>();
+    List<ObjRef> nameToObjRefStripes = List.of();
+    for (var batch = 0; batch < 20 && nameToObjRefStripes.isEmpty(); batch++) {
+      tables.addAll(
+          createTables(
+              manager,
+              callCtx,
+              catalog,
+              namespace,
+              persistence,
+              10,
+              "stripe-table-" + batch + "-"));
+      nameToObjRefStripes = catalogStateNameToObjRefStripes(persistence, catalog.getId());
+    }
+
+    assertThat(nameToObjRefStripes)
+        .describedAs("expected CatalogStateObj.nameToObjRef to spill under a 256-byte budget")
+        .isNotEmpty();
+
+    mutableMonotonicClock.advanceBoth(GRACE_TIME);
+    assertThat(runMaintenance().success()).isTrue();
+
+    purgeBackendCache("after spilled-stripe maintenance");
+
+    for (var stripeRef : nameToObjRefStripes) {
+      soft.assertThat(persistence.fetch(stripeRef, IndexStripeObj.class))
+          .describedAs("nameToObjRef stripe %s must survive maintenance", stripeRef)
+          .isNotNull();
+    }
+
+    soft.assertThatCode(
+            () -> {
+              var catalogState =
+                  persistence
+                      .fetchReferenceHead(
+                          format(CATALOG_STATE_REF_NAME_PATTERN, catalog.getId()),
+                          CatalogStateObj.class)
+                      .orElseThrow();
+              var count = 0;
+              for (var ignored :
+                  catalogState.nameToObjRef().indexForRead(persistence, OBJ_REF_SERIALIZER)) {
+                count++;
+              }
+              assertThat(count).isGreaterThanOrEqualTo(tables.size());
+            })
+        .doesNotThrowAnyException();
+
+    checkEntities("tables after spilled-stripe maintenance", tables);
   }
 
   @Test
@@ -584,6 +666,19 @@ public class TestCatalogMaintenance {
             .realmsToProcess(Set.of(realmId))
             .build(),
         OptionalLong.empty());
+  }
+
+  private static List<ObjRef> catalogStateNameToObjRefStripes(
+      Persistence persistence, long catalogId) {
+    return persistence
+        .fetchReferenceHead(
+            format(CATALOG_STATE_REF_NAME_PATTERN, catalogId), CatalogStateObj.class)
+        .map(
+            catalogState ->
+                catalogState.nameToObjRef().stripes().stream()
+                    .map(stripe -> stripe.segment())
+                    .toList())
+        .orElseGet(List::of);
   }
 
   private static long countPolicyMappingsForPolicy(

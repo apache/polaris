@@ -76,6 +76,7 @@ dependencies {
   testImplementation(testFixtures(project(":polaris-persistence-nosql-maintenance-impl")))
   testImplementation(project(":polaris-persistence-nosql-impl"))
 
+  testImplementation(testFixtures(project(":polaris-persistence-nosql-cdi-weld")))
   testRuntimeOnly(testFixtures(project(":polaris-persistence-nosql-cdi-weld")))
   testImplementation(platform(libs.weld.core.bom))
   testImplementation("org.jboss.weld.se:weld-se-core")
