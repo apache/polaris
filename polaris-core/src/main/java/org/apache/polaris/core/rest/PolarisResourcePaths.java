@@ -79,9 +79,7 @@ public class PolarisResourcePaths {
         "v1",
         prefix,
         "namespaces",
-        // FIXME use RESTUtil.encodeNamespaceAsPathSegment(), see
-        // https://github.com/apache/iceberg/pull/15989
-        RESTUtil.encodeNamespace(ns, namespaceSeparatorEncoded),
+        RESTUtil.encodeNamespaceAsPathSegment(ns, namespaceSeparatorEncoded),
         "generic-tables");
   }
 
@@ -90,12 +88,9 @@ public class PolarisResourcePaths {
         "v1",
         prefix,
         "namespaces",
-        // FIXME use RESTUtil.encodeNamespaceAsPathSegment(), see
-        // https://github.com/apache/iceberg/pull/15989
-        RESTUtil.encodeNamespace(ident.namespace(), namespaceSeparatorEncoded),
+        RESTUtil.encodeNamespaceAsPathSegment(ident.namespace(), namespaceSeparatorEncoded),
         "tables",
-        // FIXME use RESTUtil.encodePathSegment(), see https://github.com/apache/iceberg/pull/15989
-        RESTUtil.encodeString(ident.name()),
+        RESTUtil.encodePathSegment(ident.name()),
         "credentials");
   }
 
@@ -105,11 +100,8 @@ public class PolarisResourcePaths {
         "v1",
         prefix,
         "namespaces",
-        // FIXME use RESTUtil.encodeNamespaceAsPathSegment(), see
-        // https://github.com/apache/iceberg/pull/15989
-        RESTUtil.encodeNamespace(ident.namespace(), namespaceSeparatorEncoded),
+        RESTUtil.encodeNamespaceAsPathSegment(ident.namespace(), namespaceSeparatorEncoded),
         "generic-tables",
-        // FIXME use RESTUtil.encodePathSegment(), see https://github.com/apache/iceberg/pull/15989
-        RESTUtil.encodeString(ident.name()));
+        RESTUtil.encodePathSegment(ident.name()));
   }
 }
