@@ -42,6 +42,8 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_READ_
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_USAGE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.LINEAGE_INGEST;
+import static org.apache.polaris.core.entity.PolarisPrivilege.LINEAGE_READ;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DETACH_POLICY;
@@ -729,6 +731,32 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE,
         List.of(SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE, CATALOG_MANAGE_ACCESS));
+
+    // Lineage privileges. Lineage is a property of the entity it describes, so LINEAGE_READ follows
+    // the entity's read uber-grants and LINEAGE_INGEST follows its write uber-grants. Grantability
+    // at root, catalog and namespace scope comes from hasTransitivePrivilege's path walk, not from
+    // this map. LINEAGE_INGEST deliberately does not confer LINEAGE_READ: ingest is append-only
+    // event submission, and an engine principal has no need to query the graph.
+    SUPER_PRIVILEGES.putAll(
+        LINEAGE_READ,
+        List.of(
+            LINEAGE_READ,
+            TABLE_READ_PROPERTIES,
+            TABLE_READ_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_WRITE_DATA,
+            TABLE_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        LINEAGE_INGEST,
+        List.of(
+            LINEAGE_INGEST,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_WRITE_DATA,
+            TABLE_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
 
     // Policy privileges
     SUPER_PRIVILEGES.putAll(
