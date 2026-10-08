@@ -557,6 +557,7 @@ class IcebergCatalogHandlerTest {
         StorageAccessConfig.builder()
             .putCredential("fake.access.key", "AKIAFAKE")
             .putCredential("fake.secret.key", "fakeSecret")
+            .putExtraProperty("fake.access.key", "extraAccessKey")
             .putExtraProperty(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-east-2")
             .build();
     when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
