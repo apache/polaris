@@ -105,18 +105,32 @@ class PolarisServerTestRunnerPluginTest {
         archiveBaseName.set("startup-action")
       }
 
+      val startupActionClassName = layout.buildDirectory.file("startup-action-class-name.txt")
+      val startupActionValue = layout.buildDirectory.file("startup-action-value.txt")
+      val writeStartupActionInputs by tasks.registering {
+        outputs.files(startupActionClassName, startupActionValue)
+        doLast {
+          startupActionClassName.get().asFile.writeText("test.StartupAction")
+          startupActionValue.get().asFile.writeText("started")
+        }
+      }
+
       tasks.named<Jar>("jar") {
         manifest { attributes("Main-Class" to "test.FakeServer") }
       }
 
       tasks.test {
+        dependsOn(writeStartupActionInputs)
         useJUnitPlatform()
         withPolarisServer(configurations.named("serverRuntime")) {
           arguments.add(layout.buildDirectory.file("server-stopped.txt").get().asFile.absolutePath)
           arguments.add(layout.buildDirectory.file("server-started.txt").get().asFile.absolutePath)
           startupActionClasspath.from(startupActionJar)
-          startupActionClass.set("test.StartupAction")
-          startupActionParameters.put("value", "started")
+          startupActionClass.set(providers.fileContents(startupActionClassName).asText.map { it.trim() })
+          startupActionParameters.put(
+            "value",
+            providers.fileContents(startupActionValue).asText.map { it.trim() },
+          )
         }
       }
       """
@@ -130,6 +144,90 @@ class PolarisServerTestRunnerPluginTest {
     assertThat(result.task(":test")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(projectDir.resolve("build/server-stopped.txt")).exists()
     assertThat(projectDir.resolve("build/server-started.txt")).hasContent("started")
+  }
+
+  @Test
+  fun `starts server with task-produced system property`() {
+    writeSettings()
+    writeBuild(
+      $$"""
+      import org.gradle.api.file.RegularFileProperty
+      import org.gradle.api.tasks.OutputFile
+      import org.gradle.api.tasks.TaskAction
+      import org.gradle.jvm.tasks.Jar
+
+      plugins {
+        java
+        id("polaris-server-test-runner")
+      }
+
+      repositories { mavenCentral() }
+
+      dependencies {
+        testImplementation(platform("org.junit:junit-bom:6.1.0"))
+        testImplementation("org.junit.jupiter:junit-jupiter")
+        testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+      }
+
+      abstract class WriteServerProperty : DefaultTask() {
+        @get:OutputFile abstract val outputFile: RegularFileProperty
+
+        @TaskAction
+        fun writeProperty() {
+          outputFile.get().asFile.writeText("produced")
+        }
+      }
+
+      val serverRuntime by configurations.creating
+
+      dependencies {
+        serverRuntime(files(tasks.named("jar")))
+      }
+
+      val writeServerProperty by tasks.registering(WriteServerProperty::class) {
+        outputFile.set(layout.buildDirectory.file("server-property.txt"))
+      }
+
+      tasks.named<Jar>("jar") {
+        manifest { attributes("Main-Class" to "test.FakeServer") }
+      }
+
+      tasks.test {
+        dependsOn(writeServerProperty)
+        useJUnitPlatform()
+        withPolarisServer(configurations.named("serverRuntime")) {
+          arguments.add(layout.buildDirectory.file("server-stopped.txt").get().asFile.absolutePath)
+          arguments.add(layout.buildDirectory.file("server-started.txt").get().asFile.absolutePath)
+          systemProperties.put(
+            "produced.value",
+            providers.fileContents(writeServerProperty.flatMap { it.outputFile }).asText.map { it.trim() },
+          )
+          environment.put(
+            "PRODUCED_ENV",
+            providers.fileContents(writeServerProperty.flatMap { it.outputFile }).asText.map { it.trim() },
+          )
+          jvmArguments.add(
+            providers.fileContents(writeServerProperty.flatMap { it.outputFile }).asText.map {
+              "-Dproduced.jvm=${it.trim()}"
+            }
+          )
+          arguments.add(
+            providers.fileContents(writeServerProperty.flatMap { it.outputFile }).asText.map { it.trim() }
+          )
+        }
+      }
+      """
+        .trimIndent()
+    )
+    writeFakeServer(propertyName = "produced.value", expectedPropertyValue = "produced")
+    writePropertyTest()
+
+    val first = gradleRunner("test", "--configuration-cache", "--build-cache").build()
+    val second = gradleRunner("test", "--configuration-cache", "--build-cache").build()
+
+    assertThat(first.task(":writeServerProperty")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(projectDir.resolve("build/server-started.txt")).hasContent("produced")
+    assertThat(second.output).contains("Reusing configuration cache.")
   }
 
   @Test
@@ -223,7 +321,9 @@ class PolarisServerTestRunnerPluginTest {
 
   private fun writeFakeServer(
     listenLine: String =
-      "Listening on: http://0.0.0.0:12345. Management interface listening on http://0.0.0.0:12346."
+      "Listening on: http://0.0.0.0:12345. Management interface listening on http://0.0.0.0:12346.",
+    propertyName: String = "startup.value",
+    expectedPropertyValue: String = "started",
   ) {
     val sourceDir = projectDir.resolve("src/main/java/test").createDirectories()
     sourceDir
@@ -240,9 +340,16 @@ class PolarisServerTestRunnerPluginTest {
           public static void main(String[] args) throws Exception {
             Path stopped = Path.of(args[0]);
             if (args.length > 1) {
-              String startupValue = System.getProperty("startup.value");
-              if (!"started".equals(startupValue)) {
+              String startupValue = System.getProperty("$propertyName");
+              if (!"$expectedPropertyValue".equals(startupValue)) {
                 throw new IllegalStateException("Unexpected startup value: " + startupValue);
+              }
+              if (args.length > 2) {
+                String jvmValue = System.getProperty("produced.jvm");
+                String environmentValue = System.getenv("PRODUCED_ENV");
+                if (!args[2].equals(jvmValue) || !args[2].equals(environmentValue)) {
+                  throw new IllegalStateException("Unexpected produced launch input");
+                }
               }
               Files.writeString(Path.of(args[1]), startupValue);
             }
@@ -253,7 +360,7 @@ class PolarisServerTestRunnerPluginTest {
                 throw new RuntimeException(e);
               }
             }));
-            System.out.println("${listenLine}");
+            System.out.println("$listenLine");
             new CountDownLatch(1).await();
           }
         }
