@@ -204,6 +204,8 @@
 
 This product bundles and includes code from Apache Iceberg.
 
+* Maven group:artifact IDs: org.apache.iceberg:iceberg-spark-runtime-4.0_2.13
+
 * plugins/spark/v4.0/spark/src/main/java/org/apache/polaris/spark/SparkCatalog.java
 
 Copyright: 2017-2025 The Apache Software Foundation

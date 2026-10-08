@@ -24,7 +24,10 @@ import org.gradle.api.plugins.jvm.JvmTestSuite
 plugins {
   id("polaris-client")
   id("polaris-server-test-runner")
+  id("polaris-spark-license-checks")
 }
+
+apply(from = "../../licensee.gradle.kts")
 
 checkstyle {
   configProperties =
