@@ -104,7 +104,12 @@ public class PolarisResourcePaths {
 
   public String directories(Namespace ns) {
     return SLASH.join(
-        "polaris", "v1", prefix, "namespaces", RESTUtil.encodeNamespace(ns), "directories");
+        "polaris",
+        "v1",
+        prefix,
+        "namespaces",
+        RESTUtil.encodeNamespaceAsPathSegment(ns, namespaceSeparatorEncoded),
+        "directories");
   }
 
   public String directory(TableIdentifier ident) {
@@ -113,9 +118,9 @@ public class PolarisResourcePaths {
         "v1",
         prefix,
         "namespaces",
-        RESTUtil.encodeNamespace(ident.namespace()),
+        RESTUtil.encodeNamespaceAsPathSegment(ident.namespace(), namespaceSeparatorEncoded),
         "directories",
-        RESTUtil.encodeString(ident.name()));
+        RESTUtil.encodePathSegment(ident.name()));
   }
 
   public String genericTable(TableIdentifier ident) {
