@@ -21,12 +21,15 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.ws.rs.core.Response;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.RetryableValidationException;
@@ -34,6 +37,7 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
@@ -41,11 +45,18 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.view.ViewMetadata;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
@@ -54,6 +65,8 @@ import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class CommitTransactionTest {
   private static final String namespace = "ns";
@@ -175,6 +188,166 @@ public class CommitTransactionTest {
         .hasMessageContaining("Validation failed, please retry");
   }
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY
+      })
+  void commitTransactionRejectsWritePathChangeAsBadRequest(String propertyKey) {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+    String tableName = "write-path-change-table";
+    createTable(testServices, tableName, catalogLocation);
+
+    assertThatThrownBy(
+            () ->
+                commitSingleUpdate(
+                    testServices,
+                    tableName,
+                    new MetadataUpdate.SetProperties(
+                        Map.of(propertyKey, writePathUnder(tableName, "relocated")))))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("changes the locations of table")
+        .hasMessageContaining(tableName);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY
+      })
+  void commitTransactionRejectsWritePathRemovalAsBadRequest(String propertyKey) {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+    String tableName = "write-path-removal-table";
+    createTable(
+        testServices,
+        tableName,
+        catalogLocation,
+        Map.of(propertyKey, writePathUnder(tableName, "custom")));
+
+    assertThatThrownBy(
+            () ->
+                commitSingleUpdate(
+                    testServices,
+                    tableName,
+                    new MetadataUpdate.RemoveProperties(Set.of(propertyKey))))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("changes the locations of table")
+        .hasMessageContaining(tableName);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY
+      })
+  void commitTransactionAcceptsWritePathSetToItsExistingValue(String propertyKey) {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+    String tableName = "write-path-unchanged-table";
+    String writePath = writePathUnder(tableName, "custom");
+    createTable(testServices, tableName, catalogLocation, Map.of(propertyKey, writePath));
+
+    assertThatCode(
+            () ->
+                commitSingleUpdate(
+                    testServices,
+                    tableName,
+                    new MetadataUpdate.SetProperties(Map.of(propertyKey, writePath))))
+        .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY
+      })
+  void commitTransactionAcceptsWritePathRemovalWhenTheTableHasNone(String propertyKey) {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+    String tableName = "write-path-absent-table";
+    createTable(testServices, tableName, catalogLocation);
+
+    assertThatCode(
+            () ->
+                commitSingleUpdate(
+                    testServices,
+                    tableName,
+                    new MetadataUpdate.RemoveProperties(Set.of(propertyKey))))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void commitTransactionAcceptsAPropertyChangeThatLeavesTheWritePathsAlone() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+    String tableName = "unrelated-property-table";
+    createTable(
+        testServices,
+        tableName,
+        catalogLocation,
+        Map.of(
+            IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+            writePathUnder(tableName, "custom")));
+
+    assertThatCode(
+            () ->
+                commitSingleUpdate(
+                    testServices,
+                    tableName,
+                    new MetadataUpdate.SetProperties(Map.of("my.custom.property", "value"))))
+        .doesNotThrowAnyException();
+  }
+
+  /**
+   * A table written before Polaris 1.3.0 does not record its locations on the entity, so every
+   * commit revalidates them and reaches the overlap check, whatever the update does.
+   */
+  @Test
+  void commitTransactionRejectsATableThatDoesNotRecordItsLocations() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+    String tableName = "unrecorded-locations-table";
+    createTable(testServices, tableName, catalogLocation);
+    removeRecordedLocations(testServices, tableName);
+
+    assertThatThrownBy(
+            () ->
+                commitSingleUpdate(
+                    testServices,
+                    tableName,
+                    new MetadataUpdate.SetProperties(Map.of("my.custom.property", "value"))))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("changes the locations of table")
+        .hasMessageContaining(tableName);
+  }
+
+  /**
+   * The rejection sits inside the overlap validation, which reads {@code
+   * ALLOW_TABLE_LOCATION_OVERLAP} for the catalog. When that validation is skipped anyway, the
+   * transaction has nothing to reject.
+   */
+  @Test
+  void commitTransactionAcceptsSetLocationWhenTableLocationOverlapAllowed() {
+    TestServices testServices = createTestServices(Map.of("ALLOW_TABLE_LOCATION_OVERLAP", "true"));
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+    String tableName = "set-location-overlap-allowed-table";
+    createTable(testServices, tableName, catalogLocation);
+
+    assertThatCode(
+            () ->
+                commitSingleUpdate(
+                    testServices,
+                    tableName,
+                    new MetadataUpdate.SetLocation(writePathUnder(tableName, "relocated"))))
+        .doesNotThrowAnyException();
+  }
+
   @Test
   void testLoadTableResponsesInCommitTransaction() {
     TestServices testServices = createTestServices();
@@ -244,18 +417,26 @@ public class CommitTransactionTest {
   }
 
   private void createTable(TestServices services, String tableName, String baseLocation) {
-    CreateTableRequest createTableRequest =
+    createTable(services, tableName, baseLocation, Map.of());
+  }
+
+  private void createTable(
+      TestServices services,
+      String tableName,
+      String baseLocation,
+      Map<String, String> properties) {
+    CreateTableRequest.Builder requestBuilder =
         CreateTableRequest.builder()
             .withName(tableName)
             .withLocation(String.format("%s/%s/%s/%s", baseLocation, catalog, namespace, tableName))
-            .withSchema(SCHEMA)
-            .build();
+            .withSchema(SCHEMA);
+    properties.forEach(requestBuilder::setProperty);
     services
         .restApi()
         .createTable(
             catalog,
             namespace,
-            createTableRequest,
+            requestBuilder.build(),
             null,
             IDEMPOTENCY_KEY,
             services.realmContext(),
@@ -264,16 +445,83 @@ public class CommitTransactionTest {
 
   /** Creates TestServices with event delegator enabled for event testing. */
   private TestServices createTestServices() {
-    Map<String, Object> config =
-        Map.of(
-            "ALLOW_INSECURE_STORAGE_TYPES",
-            "true",
-            "SUPPORTED_CATALOG_STORAGE_TYPES",
-            List.of("FILE"));
+    return createTestServices(Map.of());
+  }
+
+  private TestServices createTestServices(Map<String, Object> extraConfig) {
+    Map<String, Object> config = new HashMap<>();
+    config.put("ALLOW_INSECURE_STORAGE_TYPES", "true");
+    config.put("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("FILE"));
+    config.putAll(extraConfig);
     return TestServices.builder()
         .config(config)
         .withEventDelegator(true) // Enable event delegator
         .build();
+  }
+
+  /** Drops the locations recorded on the table entity, as for a table written before 1.3.0. */
+  private void removeRecordedLocations(TestServices services, String tableName) {
+    PolarisCallContext callContext = services.newCallContext();
+    PolarisMetaStoreManager metaStoreManager = services.metaStoreManager();
+    PolarisEntity catalogEntity =
+        PolarisEntity.of(
+            metaStoreManager
+                .readEntityByName(
+                    callContext,
+                    null,
+                    PolarisEntityType.CATALOG,
+                    PolarisEntitySubType.NULL_SUBTYPE,
+                    catalog)
+                .getEntity());
+    PolarisEntity namespaceEntity =
+        PolarisEntity.of(
+            metaStoreManager
+                .readEntityByName(
+                    callContext,
+                    List.of(catalogEntity),
+                    PolarisEntityType.NAMESPACE,
+                    PolarisEntitySubType.NULL_SUBTYPE,
+                    namespace)
+                .getEntity());
+    List<PolarisEntityCore> path = List.of(catalogEntity, namespaceEntity);
+    IcebergTableLikeEntity entity =
+        IcebergTableLikeEntity.of(
+            metaStoreManager
+                .readEntityByName(
+                    callContext,
+                    path,
+                    PolarisEntityType.TABLE_LIKE,
+                    PolarisEntitySubType.ICEBERG_TABLE,
+                    tableName)
+                .getEntity());
+    Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
+    internalProperties.remove(IcebergTableLikeEntity.LOCATION);
+    assertThat(
+            metaStoreManager
+                .updateEntityPropertiesIfNotChanged(
+                    callContext,
+                    path,
+                    new IcebergTableLikeEntity.Builder(entity)
+                        .setInternalProperties(internalProperties)
+                        .build())
+                .isSuccess())
+        .isTrue();
+  }
+
+  private String writePathUnder(String tableName, String suffix) {
+    return String.format("%s/%s/%s/%s/%s", catalogLocation, catalog, namespace, tableName, suffix);
+  }
+
+  private void commitSingleUpdate(TestServices services, String tableName, MetadataUpdate update) {
+    CommitTransactionRequest request =
+        new CommitTransactionRequest(
+            List.of(
+                UpdateTableRequest.create(
+                    TableIdentifier.of(namespace, tableName), List.of(), List.of(update))));
+    services
+        .restApi()
+        .commitTransaction(
+            catalog, request, IDEMPOTENCY_KEY, services.realmContext(), services.securityContext());
   }
 
   /**

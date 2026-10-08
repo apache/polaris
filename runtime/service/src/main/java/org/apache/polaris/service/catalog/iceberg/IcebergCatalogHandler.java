@@ -1578,21 +1578,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             // CatalogHandlerUtils to avoid divergence as complexity grows.
             TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
             for (MetadataUpdate singleUpdate : change.updates()) {
-              // Note: If location-overlap checking is refactored to be atomic, we could
-              // support validation within a single multi-table transaction as well, but
-              // will need to update the TransactionWorkspaceMetaStoreManager to better
-              // expose the concept of being able to read uncommitted updates.
-              if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
-                if (!currentMetadata.location().equals(setLocation.location())
-                    && !realmConfig()
-                        .getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
-                  throw new BadRequestException(
-                      "Unsupported operation: commitTransaction containing SetLocation"
-                          + " for table '%s' and new location '%s'",
-                      change.identifier(), ((MetadataUpdate.SetLocation) singleUpdate).location());
-                }
-              }
-
               // Apply updates to builder
               try {
                 singleUpdate.applyTo(metadataBuilder);
