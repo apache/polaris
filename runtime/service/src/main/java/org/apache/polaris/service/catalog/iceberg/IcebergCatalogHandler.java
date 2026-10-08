@@ -1277,8 +1277,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return credentials;
     }
 
-    Map<String, String> scopedCredentials = new HashMap<>(credentials);
-    scopedCredentials.putAll(extraProperties);
+    Map<String, String> scopedCredentials = new HashMap<>(extraProperties);
+    scopedCredentials.putAll(credentials);
     return scopedCredentials;
   }
 
