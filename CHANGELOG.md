@@ -109,6 +109,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- NoSQL commits resend unresolved object writes on retry, preventing successful commits from
+  referencing objects left unwritten by a previous attempt.
 - The H2 relational JDBC init script no longer overwrites the recorded schema version. It now seeds
   the `version` table only when absent, matching the `ON CONFLICT DO NOTHING` behavior of the
   PostgreSQL and CockroachDB scripts. Previously, running bootstrap against an older, unmigrated H2

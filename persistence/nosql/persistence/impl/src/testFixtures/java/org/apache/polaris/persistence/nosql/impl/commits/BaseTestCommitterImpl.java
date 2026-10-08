@@ -21,8 +21,10 @@ package org.apache.polaris.persistence.nosql.impl.commits;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -51,6 +53,8 @@ import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @ExtendWith({PersistenceTestExtension.class, SoftAssertionsExtension.class})
 public abstract class BaseTestCommitterImpl {
@@ -295,6 +299,91 @@ public abstract class BaseTestCommitterImpl {
                 objRef(anotherObj1.withNumParts(1)),
                 objRef(anotherObj2.withNumParts(1))))
         .containsExactly(anotherObj1.withNumParts(1), anotherObj2.withNumParts(1));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"1, false", "2, false", "1, true", "2, true"})
+  public void unknownObjectWriteRetriesReusedObjects(
+      int failedWrites, boolean reuseHead, TestInfo testInfo) throws Exception {
+    var referenceName = testInfo.getTestMethod().orElseThrow().getName();
+    var child = AnotherTestObj.builder().id(persistence.generateId()).text("child").build();
+    var secondChild =
+        AnotherTestObj.builder().id(persistence.generateId()).text("second child").build();
+    var reusedHead =
+        CommitTestObj.builder()
+            .id(persistence.generateId())
+            .seq(1)
+            .tail(new long[0])
+            .text("reused head")
+            .build();
+    var writeAttempts = new AtomicInteger();
+    var pointerUpdates = new AtomicInteger();
+    var batches = new ArrayList<List<ObjRef>>();
+
+    persistence.createReference(referenceName, Optional.empty());
+
+    var partiallyFailingPersistence =
+        new DelegatingPersistence(persistence) {
+          @Override
+          @SafeVarargs
+          public final <T extends Obj> T[] writeMany(Class<T> clazz, T... objs) {
+            batches.add(Arrays.stream(objs).map(ObjRef::objRef).toList());
+            if (writeAttempts.incrementAndGet() <= failedWrites) {
+              // Persist the head, but leave the child unwritten.
+              delegate.write(objs[objs.length - 1], clazz);
+              throw new UnknownOperationResultException(
+                  new RuntimeException("simulated partial object write"));
+            }
+            return delegate.writeMany(clazz, objs);
+          }
+
+          @Override
+          public Optional<Reference> updateReferencePointer(
+              Reference reference, ObjRef newPointer) {
+            pointerUpdates.incrementAndGet();
+            soft.assertThat(persistence.fetch(objRef(child.withNumParts(1)), AnotherTestObj.class))
+                .isEqualTo(child.withNumParts(1));
+            soft.assertThat(
+                    persistence.fetch(objRef(secondChild.withNumParts(1)), AnotherTestObj.class))
+                .isEqualTo(secondChild.withNumParts(1));
+            return delegate.updateReferencePointer(reference, newPointer);
+          }
+        };
+
+    var committer =
+        new CommitterImpl<>(
+            partiallyFailingPersistence, referenceName, CommitTestObj.class, CommitTestObj.class);
+    var result =
+        committer.commit(
+            (state, refObjSupplier) -> {
+              var refObj = refObjSupplier.get();
+              state.writeIfNew("child", child);
+              if (writeAttempts.get() > 0) {
+                state.writeIfNew("second child", secondChild);
+              }
+              if (reuseHead) {
+                return Optional.of(reusedHead);
+              }
+              return Optional.of(
+                  CommitTestObj.builder()
+                      .id(persistence.generateId())
+                      .seq(refObj.map(CommitTestObj::seq).orElse(0L) + 1)
+                      .tail(new long[0])
+                      .text("result-" + writeAttempts.get())
+                      .build());
+            });
+
+    soft.assertThat(writeAttempts).hasValue(failedWrites + 1);
+    soft.assertThat(pointerUpdates).hasValue(1);
+    soft.assertThat(batches)
+        .allSatisfy(
+            batch -> soft.assertThat(batch).contains(objRef(child)).doesNotHaveDuplicates());
+    soft.assertThat(result)
+        .get()
+        .extracting(CommitTestObj::text)
+        .isEqualTo(reuseHead ? "reused head" : "result-" + failedWrites);
+    soft.assertThat(persistence.fetchReferenceHead(referenceName, CommitTestObj.class))
+        .isEqualTo(result);
   }
 
   @Test
