@@ -109,6 +109,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- The H2 relational JDBC init script no longer overwrites the recorded schema version. It now seeds
+  the `version` table only when absent, matching the `ON CONFLICT DO NOTHING` behavior of the
+  PostgreSQL and CockroachDB scripts. Previously, running bootstrap against an older, unmigrated H2
+  database silently stamped it with the current version, which defeated the schema-compatibility
+  check and let the server run against an unmigrated schema.
 - NoSQL maintenance: realm purging now honors its own state filter consistently. `purgeRealms`
   keeps only realms in `PURGING`/`PURGED` state (and logs the rest as "will therefore not be
   purged"), but the direct `backend.deleteRealms(...)` call and the subsequent realm-status update

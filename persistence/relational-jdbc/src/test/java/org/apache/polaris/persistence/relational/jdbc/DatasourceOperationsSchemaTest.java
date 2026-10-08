@@ -70,6 +70,18 @@ class DatasourceOperationsSchemaTest {
     }
   }
 
+  /** The schema version currently recorded in the VERSION table. */
+  private static Integer readSchemaVersion(DataSource dataSource) throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement =
+            connection.prepareStatement(
+                "SELECT version_value FROM VERSION WHERE version_key = 'version'")) {
+      try (ResultSet resultSet = statement.executeQuery()) {
+        return resultSet.next() ? resultSet.getInt(1) : null;
+      }
+    }
+  }
+
   @Test
   void bootstrapsIntoDatasourceConfiguredSchema() throws SQLException {
     DataSource dataSource = createDataSource("custom_polaris");
@@ -126,6 +138,36 @@ class DatasourceOperationsSchemaTest {
       statement.executeUpdate();
     }
 
+    assertThatThrownBy(ops::validateSchemaCompatibility)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Incompatible JDBC schema version " + staleVersion)
+        .hasMessageContaining("expected " + DatasourceOperations.CURRENT_SCHEMA_VERSION);
+  }
+
+  @Test
+  void rerunningInitScriptDoesNotOverwriteExistingVersion() throws SQLException {
+    DataSource dataSource = createDataSource(null);
+    DatasourceOperations ops =
+        new DatasourceOperations(
+            dataSource, SimpleRelationalJdbcConfiguration.forDatabaseType(DatabaseType.H2));
+    ops.executeScript(openSchemaScript());
+
+    // Simulate an older, unmigrated database.
+    int staleVersion = DatasourceOperations.CURRENT_SCHEMA_VERSION - 1;
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement =
+            connection.prepareStatement(
+                "UPDATE VERSION SET version_value = ? WHERE version_key = 'version'")) {
+      statement.setInt(1, staleVersion);
+      statement.executeUpdate();
+    }
+
+    // Re-running the init script is what a bootstrap invocation does. It must not stamp the
+    // database with the current version, otherwise it would mask an unmigrated schema and defeat
+    // the compatibility check.
+    ops.executeScript(openSchemaScript());
+
+    assertThat(readSchemaVersion(dataSource)).isEqualTo(staleVersion);
     assertThatThrownBy(ops::validateSchemaCompatibility)
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Incompatible JDBC schema version " + staleVersion)
