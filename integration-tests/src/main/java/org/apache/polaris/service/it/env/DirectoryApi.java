@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.types.CreateDirectoryRequest;
 import org.apache.polaris.service.types.Directory;
 import org.apache.polaris.service.types.ListDirectoriesResponse;
@@ -50,7 +50,7 @@ public class DirectoryApi extends PolarisRestApi {
   }
 
   public List<TableIdentifier> listDirectories(String catalog, Namespace namespace) {
-    String ns = RESTUtil.encodeNamespace(namespace);
+    String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         request("polaris/v1/{cat}/namespaces/{ns}/directories", Map.of("cat", catalog, "ns", ns))
             .get()) {
@@ -60,7 +60,8 @@ public class DirectoryApi extends PolarisRestApi {
   }
 
   public void dropDirectory(String catalog, TableIdentifier id) {
-    String ns = RESTUtil.encodeNamespace(id.namespace());
+    String ns =
+        NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         request(
                 "polaris/v1/{cat}/namespaces/{ns}/directories/{directory}",
@@ -71,7 +72,8 @@ public class DirectoryApi extends PolarisRestApi {
   }
 
   public Directory getDirectory(String catalog, TableIdentifier id) {
-    String ns = RESTUtil.encodeNamespace(id.namespace());
+    String ns =
+        NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         request(
                 "polaris/v1/{cat}/namespaces/{ns}/directories/{directory}",
@@ -83,7 +85,8 @@ public class DirectoryApi extends PolarisRestApi {
 
   public Directory createDirectory(
       String catalog, TableIdentifier id, String baseLocation, Map<String, String> properties) {
-    String ns = RESTUtil.encodeNamespace(id.namespace());
+    String ns =
+        NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         request("polaris/v1/{cat}/namespaces/{ns}/directories/", Map.of("cat", catalog, "ns", ns))
             .post(
