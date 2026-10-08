@@ -52,14 +52,14 @@ use db1.schema1;
 insert into iceberg_tb values (123), (234), (111);
 select * from iceberg_tb order by col1;
 
-create table delta_tb1(col1 string) using delta location 'file:///tmp/spark_catalog/delta_tb1';
+create table delta_tb1(col1 string) using delta location 'file:///tmp/spark_catalog/db1/schema1/delta_tb1';
 insert into delta_tb1 values ('ab'), ('bb'), ('dd');
 select * from delta_tb1 order by col1;
 
 show tables;
 
 use db1;
-create table delta_tb2(col1 int) using delta location 'file:///tmp/spark_catalog/delta_tb2';
+create table delta_tb2(col1 int) using delta location 'file:///tmp/spark_catalog/db1/delta_tb2';
 insert into delta_tb2 values (1), (2), (3) order by col1;
 select * from delta_tb2;
 
