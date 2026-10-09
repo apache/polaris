@@ -38,11 +38,15 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     extends BasePolarisMetaStoreManagerTest {
@@ -143,6 +147,49 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             metaStoreManager.hasOverlappingSiblings(
                 callContext, List.of(PolarisEntity.toCore(catalog)), nonOverlappingNamespace))
         .contains(Optional.empty());
+  }
+
+  @Test
+  void dropCatalogListsAtMostTwoCatalogRoleIdentities() {
+    var metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager();
+    var callContext = polarisTestMetaStoreManager.polarisCallContext();
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStoreManager.generateNewEntityId(callContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "counted_catalog_roles");
+    catalog = metaStoreManager.createCatalog(callContext, catalog, List.of()).getCatalog();
+
+    BasePersistence spiedPersistence = Mockito.spy(callContext.getMetaStore());
+    PolarisCallContext spiedCallContext =
+        new PolarisCallContext(callContext.getRealmContext(), spiedPersistence);
+
+    metaStoreManager.dropEntityIfExists(spiedCallContext, null, catalog, Map.of(), false);
+
+    Mockito.verify(spiedPersistence, Mockito.never())
+        .listFullEntities(
+            Mockito.any(),
+            Mockito.anyLong(),
+            Mockito.anyLong(),
+            Mockito.eq(PolarisEntityType.CATALOG_ROLE),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any());
+
+    ArgumentCaptor<PageToken> pageToken = ArgumentCaptor.forClass(PageToken.class);
+    Mockito.verify(spiedPersistence)
+        .listEntities(
+            Mockito.any(),
+            Mockito.anyLong(),
+            Mockito.anyLong(),
+            Mockito.eq(PolarisEntityType.CATALOG_ROLE),
+            Mockito.any(),
+            pageToken.capture());
+    Assertions.assertThat(pageToken.getValue().pageSize()).hasValue(2);
   }
 
   private static PolarisBaseEntity buildLocationBasedNamespace(
