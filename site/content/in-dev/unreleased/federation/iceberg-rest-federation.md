@@ -112,9 +112,9 @@ polaris catalogs update analytics_rest \
     --set-property header.x-goog-user-project=my-gcp-project
 ```
 
-The warning above applies: headers set this way are visible to catalog clients through `/config`,
-so use the connection's authentication parameters for credentials, never a `header.Authorization`
-property.
+The warning in Outbound HTTP settings applies: headers set this way are visible to catalog clients
+through `/config`, so use the connection's authentication parameters for credentials, never a
+`header.Authorization` property.
 
 ## Operational notes
 

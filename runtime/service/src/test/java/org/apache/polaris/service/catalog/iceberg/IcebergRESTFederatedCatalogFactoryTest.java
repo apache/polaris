@@ -28,19 +28,37 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iceberg.catalog.Catalog;
-import org.apache.iceberg.catalog.SupportsNamespaces;
+import java.util.stream.Stream;
+import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.polaris.core.connection.ImplicitAuthenticationParametersDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.service.distcache.HttpTestServer;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class IcebergRESTFederatedCatalogFactoryTest {
 
-  @Test
-  void headerPropertiesAreSentOnEveryRemoteRequest() throws IOException {
+  static Stream<Arguments> headerProperties() {
+    return Stream.of(
+        Arguments.of(
+            Map.of("header.x-goog-user-project", "test-project"),
+            Map.of(),
+            "x-goog-user-project",
+            "test-project"),
+        Arguments.of(Map.of(), Map.of("header.x-custom", "test-value"), "x-custom", "test-value"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("headerProperties")
+  void headerPropertiesAreSentOnEveryRemoteRequest(
+      Map<String, String> connectionProperties,
+      Map<String, String> catalogProperties,
+      String headerName,
+      String headerValue)
+      throws IOException {
     Map<String, Headers> requestHeadersByPath = new ConcurrentHashMap<>();
     try (HttpTestServer server =
         new HttpTestServer(
@@ -65,24 +83,26 @@ class IcebergRESTFederatedCatalogFactoryTest {
               new ImplicitAuthenticationParametersDpo(),
               null,
               "remote-catalog",
-              Map.of("header.x-goog-user-project", "test-project"));
+              connectionProperties);
       PolarisCredentialManager credentialManager = mock(PolarisCredentialManager.class);
       when(credentialManager.getConnectionCredentials(connectionConfig))
           .thenReturn(ConnectionCredentials.EMPTY);
 
-      Catalog catalog =
-          new IcebergRESTFederatedCatalogFactory()
-              .createCatalog(connectionConfig, credentialManager, Map.of());
-      ((SupportsNamespaces) catalog).listNamespaces();
+      try (RESTCatalog catalog =
+          (RESTCatalog)
+              new IcebergRESTFederatedCatalogFactory()
+                  .createCatalog(connectionConfig, credentialManager, catalogProperties)) {
+        catalog.listNamespaces();
 
-      // The config request carries the headers regardless (RESTSessionCatalog#fetchConfig passes
-      // them explicitly); the requests after initialization depend on the HTTP client being built
-      // with them.
-      assertThat(requestHeadersByPath).containsKeys("/v1/config", "/v1/namespaces");
-      assertThat(requestHeadersByPath.get("/v1/config").getFirst("x-goog-user-project"))
-          .isEqualTo("test-project");
-      assertThat(requestHeadersByPath.get("/v1/namespaces").getFirst("x-goog-user-project"))
-          .isEqualTo("test-project");
+        // The config request carries the headers regardless (RESTSessionCatalog#fetchConfig passes
+        // them explicitly); the requests after initialization depend on the HTTP client being built
+        // with them.
+        assertThat(requestHeadersByPath).containsKeys("/v1/config", "/v1/namespaces");
+        assertThat(requestHeadersByPath.get("/v1/config").getFirst(headerName))
+            .isEqualTo(headerValue);
+        assertThat(requestHeadersByPath.get("/v1/namespaces").getFirst(headerName))
+            .isEqualTo(headerValue);
+      }
     }
   }
 }
