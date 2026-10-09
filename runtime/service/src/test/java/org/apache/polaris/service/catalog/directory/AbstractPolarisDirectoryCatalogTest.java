@@ -309,6 +309,21 @@ public abstract class AbstractPolarisDirectoryCatalogTest {
   }
 
   @Test
+  public void testInventoryTableCoexistsWithDirectory() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+    TableIdentifier directoryId = TableIdentifier.of("ns", "d1");
+    directoryCatalog.createDirectory(directoryId, "s3://bucket/path", null, null, null, Map.of());
+
+    TableIdentifier inventoryId = DirectoryCatalogHandler.inventoryTableIdentifier(directoryId);
+    icebergCatalog.createTable(inventoryId, DirectoryCatalogHandler.DIRECTORY_TABLE_SCHEMA);
+
+    Assertions.assertThat(icebergCatalog.tableExists(inventoryId)).isTrue();
+    Assertions.assertThat(directoryCatalog.loadDirectory(directoryId).getBaseLocation())
+        .isEqualTo("s3://bucket/path");
+  }
+
+  @Test
   public void testIcebergTableAlreadyExists() {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);

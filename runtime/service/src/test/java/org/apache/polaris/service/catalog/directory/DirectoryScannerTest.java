@@ -40,6 +40,7 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.FileInfo;
 import org.apache.iceberg.io.SupportsPrefixOperations;
 import org.apache.iceberg.parquet.Parquet;
+import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -131,6 +132,15 @@ class DirectoryScannerTest {
               assertThat(r.getField("size")).isEqualTo(3L);
               assertThat(r.getField("last_modified")).isNotNull();
             });
+  }
+
+  @Test
+  void scanSupportsFileIOWrappedByTheFileIOFactory() throws IOException {
+    long count =
+        DirectoryScanner.scan(table, ExceptionMappingFileIO.wrap(sourceIO), BASE, null, null);
+
+    assertThat(count).isEqualTo(4);
+    assertThat(readUris()).hasSize(4);
   }
 
   @Test
