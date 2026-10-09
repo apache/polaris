@@ -106,14 +106,34 @@ public final class AuthorizationIntentResolver {
               getResolvedSecurable(
                   resolutionManifest, roleAssignmentIntent.assignee(), prependRootContainer));
     } else if (intent instanceof PrivilegeGrantAuthorizationIntent privilegeGrantIntent) {
-      resolvedTargets =
-          List.of(
-              getResolvedSecurable(
-                  resolutionManifest, privilegeGrantIntent.grantTarget(), prependRootContainer));
-      resolvedSecondaries =
-          List.of(
-              getResolvedSecurable(
-                  resolutionManifest, privilegeGrantIntent.grantee(), prependRootContainer));
+      if (intent.operation()
+              == PolarisAuthorizableOperation.ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE
+          || intent.operation()
+              == PolarisAuthorizableOperation.REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE) {
+        resolvedTargets =
+            List.of(
+                resolutionManifest.getResolvedPathForAuthorization(
+                    ResolvedPathKey.of(
+                        getPathNamesWithinCatalog(privilegeGrantIntent.grantTarget()),
+                        PolarisEntityType.SEMANTIC_MODEL),
+                    prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                resolutionManifest.getResolvedPathForAuthorization(
+                    ResolvedPathKey.of(
+                        getPathNamesWithinCatalog(privilegeGrantIntent.grantee()),
+                        PolarisEntityType.CATALOG_ROLE),
+                    prependRootContainer));
+      } else {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, privilegeGrantIntent.grantTarget(), prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, privilegeGrantIntent.grantee(), prependRootContainer));
+      }
     } else if (intent instanceof RootPrivilegeGrantAuthorizationIntent rootPrivilegeGrantIntent) {
       resolvedTargets = List.of(resolutionManifest.getResolvedRootContainerEntityAsPath());
       resolvedSecondaries =
