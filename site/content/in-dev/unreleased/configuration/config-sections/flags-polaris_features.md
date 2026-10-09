@@ -448,6 +448,15 @@ If set to true, principal name will be included in temporary subscoped credentia
 
 ---
 
+##### `polaris.features."LINEAGE_NAMESPACE_CATALOGS"`
+
+Maps OpenLineage dataset namespaces to Polaris catalog names, as a list of "<dataset-namespace>=<catalog-name>" entries. A dataset whose namespace is listed names a table in the mapped catalog. An unlisted namespace is only treated as Polaris when it looks like a Polaris Iceberg REST catalog endpoint, in which case the dataset name must carry the catalog itself as "<catalog>.<namespace>.<table>". Every other dataset is recorded as external. Set this for any deployment that serves the catalog from a non-default path.
+
+- **Type:** `List<String>`
+- **Default:** `[]`
+
+---
+
 ##### `polaris.features."LIST_PAGINATION_ENABLED"`
 
 If set to true, pagination for APIs like listTables is enabled.
