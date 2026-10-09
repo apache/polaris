@@ -1004,6 +1004,27 @@ class OptionTree:
                     input_metavar="NAMESPACE",
                 ),
                 Option(
+                    Subcommands.UPDATE,
+                    hint="Update properties of a namespace",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(
+                            Arguments.SET_PROPERTY,
+                            str,
+                            Hints.SET_PROPERTY,
+                            allow_repeats=True,
+                        ),
+                        Argument(
+                            Arguments.REMOVE_PROPERTY,
+                            str,
+                            Hints.REMOVE_PROPERTY,
+                            allow_repeats=True,
+                        ),
+                    ],
+                    input_name=Arguments.NAMESPACE,
+                    input_metavar="NAMESPACE",
+                ),
+                Option(
                     Subcommands.SUMMARIZE,
                     hint="Display a summary for a namespace",
                     args=[Argument(Arguments.CATALOG, str, Hints.CATALOG)],

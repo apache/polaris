@@ -92,6 +92,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### New Features
 
 - Python CLI: added `register` support for both `tables` and `views` commands
+- Python CLI: added `namespaces update` to set and remove namespace properties
 
 ### Changes
 
