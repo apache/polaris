@@ -19,18 +19,19 @@
 openapi: 3.0.3
 info:
   title: Polaris Shares API
-  version: 0.0.3
+  version: 0.0.6
   description:
-    Defines the management APIs for sharing catalog content with consumers outside the
-    catalog's identity domain. A share enumerates what is shared; an external consumer is
-    a restricted, first-class identity; a listing is the only binding between a consumer
-    and a share and is the unit of audit. Consumers read shared data through the standard
-    Iceberg REST Catalog protocol using the connection material from their listing's
-    endpoint configuration. Shares are realm-level objects, addressed by name across the
-    service, and each share is bound to one catalog whose objects it can contain. This API
-    is served under the management root, next to the management API, and is in a beta
-    state and may change in a backward-incompatible way; it is served only when the
-    shares feature flag is enabled, and it is disabled by default.
+    Defines the management APIs for sharing catalog content with parties that are not
+    users of the catalog. A share lists what is shared. An external consumer represents a
+    restricted identity that can only read the shares granted by its listings. A listing
+    binds one consumer to one share and is the unit of audit. Consumers read shared tables
+    with any Iceberg REST client, using the connection details from their listing's
+    endpoint configuration. This version supports consumers with Polaris-issued client
+    credentials only. External identity providers are not supported yet. Shares are
+    realm-level objects addressed by name, and each share is bound to one catalog. This API
+    is served under the management root, next to the management API. It is in beta and may
+    change in a backward-incompatible way, and it is served only when the shares feature
+    flag is enabled (off by default).
 servers:
   - url: "{scheme}://{host}/api/management/v1"
     description: Server URL when the port can be inferred from the scheme
@@ -53,33 +54,38 @@ paths:
         - name: pageToken
           in: query
           required: false
+          description: The continuation token returned with the previous page. Absent for the first page
           schema:
             type: string
         - name: pageSize
           in: query
           required: false
+          description:
+            Maximum number of items to return, at least 1. If absent, or larger than the service's
+            maximum, the service's maximum is used
           schema:
             type: integer
+            minimum: 1
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. List all shares in this Polaris service."
+        "List all shares in this Polaris service."
       responses:
         200:
-          description: List of shares
+          description: A page of shares
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Shares"
         403:
           description: "The caller does not have permission to list shares"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
     post:
       operationId: createShare
       summary: Create a share
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Create a new share bound to the catalog named in the
-        request. A new share contains no members and is bound to no consumer until
-        members are added and a listing is created."
+        "Create a share bound to the catalog named in the request. A new share has no members and no
+        consumers until members are added and a listing is created. Not idempotent: a retry
+        after a lost response returns 409 because the share exists. Fetch it by name."
       requestBody:
         description: The share to create
         required: true
@@ -94,12 +100,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Share"
+        400:
+          description: "The share name is invalid, or the request is malformed"
         403:
           description: "The caller does not have permission to create a share, or to create a catalog role in the bound catalog"
         404:
           description: "The bound catalog does not exist"
         409:
           description: "A share with the specified name already exists"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
 
   /shares/{shareName}:
     parameters:
@@ -113,8 +123,7 @@ paths:
       operationId: getShare
       summary: Get a share
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Get a share by name."
+        "Get a share by name."
       responses:
         200:
           description: The share
@@ -126,13 +135,16 @@ paths:
           description: "The caller does not have permission to read this share"
         404:
           description: "The share does not exist"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
     put:
       operationId: updateShare
       summary: Update a share
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Update a share's description or properties. Share
-        membership is updated through the members resource, not through this operation."
+        "Update a share's description or properties: an
+        absent field changes nothing, an empty description clears it, properties are
+        merged by key, and removeProperties lists the keys to drop. Share membership is
+        updated through the members resource, not through this operation."
       requestBody:
         description: The update to apply
         required: true
@@ -147,19 +159,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Share"
+        400:
+          description: "A property key is both set and removed, or a reserved key is set or removed"
         403:
           description: "The caller does not have permission to update this share"
         404:
           description: "The share does not exist"
         409:
-          description: "The share was concurrently modified; fetch and retry"
+          description: "The share was concurrently modified. Fetch and retry"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
     delete:
       operationId: deleteShare
       summary: Delete a share
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Delete a share. Every listing of this share is
-        revoked immediately; consumer access through those listings ends with them."
+        "Delete a share. Every listing of this share is
+        revoked immediately. Consumer access through those listings ends with them."
       responses:
         204:
           description: "Success, no content"
@@ -167,6 +182,10 @@ paths:
           description: "The caller does not have permission to delete this share"
         404:
           description: "The share does not exist"
+        409:
+          description: "The share was concurrently modified. Fetch and retry"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
 
   /shares/{shareName}/members:
     parameters:
@@ -183,19 +202,23 @@ paths:
         - name: pageToken
           in: query
           required: false
+          description: The continuation token returned with the previous page. Absent for the first page
           schema:
             type: string
         - name: pageSize
           in: query
           required: false
+          description:
+            Maximum number of items to return, at least 1. If absent, or larger than the service's
+            maximum, the service's maximum is used
           schema:
             type: integer
+            minimum: 1
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. List the members of a share."
+        "List the members of a share."
       responses:
         200:
-          description: The members of the share
+          description: A page of the share's members
           content:
             application/json:
               schema:
@@ -204,18 +227,22 @@ paths:
           description: "The caller does not have permission to read this share"
         404:
           description: "The share does not exist"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
     post:
       operationId: updateShareMembers
       summary: Update share members
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Apply an ordered list of member additions and
-        removals to the share's membership record atomically: either every update is
-        recorded or none is. The read grants implied by membership converge with the
-        record immediately after the commit; a service documents its behavior when
-        grant materialization fails partway. Every member must belong to the share's
-        bound catalog. Removing a member immediately removes it from every consumer's
-        view of the share."
+        "Atomically apply a list of member additions and removals: either every update is applied or
+        none is. A member may appear at most once in a batch. The batch is applied against one version of the share
+        (currentEntityVersion if given, otherwise the version the service reads). Any
+        concurrent change to the share, including another member update, returns 409. Fetch
+        the share and retry. A stale currentEntityVersion returns 409 before any update is
+        applied. Adding a member that is already present returns 400, and removing one that
+        is absent returns 404. Every member must belong to the share's catalog. A removed
+        member disappears from every consumer's view immediately. Read grants follow the
+        membership record once the update commits. If granting fails partway, the service
+        documents its behavior."
       requestBody:
         description: The membership updates to apply
         required: true
@@ -225,19 +252,22 @@ paths:
               $ref: "#/components/schemas/UpdateShareMembersRequest"
       responses:
         200:
-          description: The resulting members of the share
+          description:
+            The updated share, with its new entityVersion
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ShareMembers"
+                $ref: "#/components/schemas/Share"
         400:
-          description: "An update in the list is invalid, or a member is outside the share's bound catalog"
+          description: "An update in the list is invalid, a member appears more than once, or a member is outside the share's bound catalog"
         403:
           description: "The caller does not have permission to update this share's members"
         404:
           description: "The share, or a referenced member object, does not exist"
         409:
-          description: "The share was concurrently modified; fetch and retry"
+          description: "The share was concurrently modified. Fetch and retry"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
 
   /shares/{shareName}/listings:
     parameters:
@@ -254,19 +284,23 @@ paths:
         - name: pageToken
           in: query
           required: false
+          description: The continuation token returned with the previous page. Absent for the first page
           schema:
             type: string
         - name: pageSize
           in: query
           required: false
+          description:
+            Maximum number of items to return, at least 1. If absent, or larger than the service's
+            maximum, the service's maximum is used
           schema:
             type: integer
+            minimum: 1
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. List the listings of a share."
+        "List the listings of a share."
       responses:
         200:
-          description: The listings of the share
+          description: A page of the share's listings
           content:
             application/json:
               schema:
@@ -275,14 +309,15 @@ paths:
           description: "The caller does not have permission to read this share's listings"
         404:
           description: "The share does not exist"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
     post:
       operationId: createListing
       summary: Create a listing
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Create a listing, binding an external consumer to
-        this share. The listing is the only path that connects a consumer to a share,
-        and it is the unit of audit: every consumer read is attributable to its listing."
+        "Create a listing, which grants an external consumer access to this share. A listing is the
+        only link between a consumer and a share, and every consumer read is audited against
+        its listing. Not idempotent: a retry after a lost response returns 409 because the listing exists; fetch it by name."
       requestBody:
         description: The listing to create
         required: true
@@ -297,12 +332,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Listing"
+        400:
+          description: "The listing name is invalid, or the request is malformed"
         403:
           description: "The caller does not have permission to create a listing on this share"
         404:
           description: "The share or the external consumer does not exist"
         409:
-          description: "A listing with the specified name already exists on this share, or a listing already binds this consumer to this share (at most one listing binds a given consumer to a given share)"
+          description: "Conflict. ListingNameTaken: a listing with this name already exists on this share. ConsumerAlreadyListed: this consumer already has a listing on this share (at most one listing per consumer per share). Other conflicts, such as a concurrent change to the share or the consumer, use ShareServiceException"
+          content:
+            application/json:
+              schema:
+                $ref: "./iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
 
   /shares/{shareName}/listings/{listingName}:
     parameters:
@@ -322,8 +365,7 @@ paths:
       operationId: getListing
       summary: Get a listing
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Get a listing by name."
+        "Get a listing by name."
       responses:
         200:
           description: The listing
@@ -335,12 +377,13 @@ paths:
           description: "The caller does not have permission to read this listing"
         404:
           description: "The share or listing does not exist"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
     delete:
       operationId: deleteListing
       summary: Delete a listing
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Delete a listing. The bound consumer's access to
+        "Delete a listing. The bound consumer's access to
         this share through this listing is revoked immediately."
       responses:
         204:
@@ -349,6 +392,10 @@ paths:
           description: "The caller does not have permission to delete this listing"
         404:
           description: "The share or listing does not exist"
+        409:
+          description: "The share was concurrently modified. Fetch and retry"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
 
   /shares/{shareName}/listings/{listingName}/endpoint-config:
     parameters:
@@ -368,8 +415,7 @@ paths:
       operationId: getListingEndpointConfig
       summary: Get a listing's endpoint configuration
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Get the connection material for a listing: the
+        "Get the connection material for a listing: the
         Iceberg REST Catalog endpoint, prefix, and authentication configuration the
         external consumer uses to read the share with any standard Iceberg REST client.
         The provider transmits this material to the consumer out of band."
@@ -384,6 +430,10 @@ paths:
           description: "The caller does not have permission to read this listing"
         404:
           description: "The share or listing does not exist"
+        409:
+          description: "This realm only authenticates externally and cannot serve consumers, so no endpoint configuration is available"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
 
   /external-consumers:
     get:
@@ -393,35 +443,41 @@ paths:
         - name: pageToken
           in: query
           required: false
+          description: The continuation token returned with the previous page. Absent for the first page
           schema:
             type: string
         - name: pageSize
           in: query
           required: false
+          description:
+            Maximum number of items to return, at least 1. If absent, or larger than the service's
+            maximum, the service's maximum is used. A page may contain fewer items than
+            requested, or none, while more remain. Keep paging until no continuation token is
+            returned
           schema:
             type: integer
+            minimum: 1
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. List all external consumers in this Polaris service."
+        "List all external consumers in this Polaris service."
       responses:
         200:
-          description: List of external consumers
+          description: A page of external consumers
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExternalConsumers"
         403:
           description: "The caller does not have permission to list external consumers"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
     post:
       operationId: createExternalConsumer
       summary: Create an external consumer
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Create an external consumer: a restricted,
-        first-class identity representing a data consumer outside this catalog's
-        identity domain. An external consumer can be bound to shares through listings
-        and can hold consumer credentials; it cannot be granted any other role, right,
-        or privilege."
+        "Create an external consumer, which represents a restricted identity of this realm for a
+        party that is not a user of the catalog. It authenticates with credentials issued
+        through this API and can only read the shares granted by its listings, each under
+        that share's role. It cannot be granted any other role or privilege."
       requestBody:
         description: The external consumer to create
         required: true
@@ -436,10 +492,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExternalConsumer"
+        400:
+          description: "The consumer name is invalid, or the request is malformed"
         403:
           description: "The caller does not have permission to create an external consumer"
         409:
           description: "An external consumer with the specified name already exists"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
 
   /external-consumers/{consumerName}:
     parameters:
@@ -453,8 +513,7 @@ paths:
       operationId: getExternalConsumer
       summary: Get an external consumer
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Get an external consumer by name."
+        "Get an external consumer by name."
       responses:
         200:
           description: The external consumer
@@ -466,12 +525,13 @@ paths:
           description: "The caller does not have permission to read this external consumer"
         404:
           description: "The external consumer does not exist"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
     delete:
       operationId: deleteExternalConsumer
       summary: Delete an external consumer
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Delete an external consumer. Every listing bound to
+        "Delete an external consumer. Every listing bound to
         this consumer is revoked and every credential of this consumer is invalidated,
         immediately and irreversibly."
       responses:
@@ -481,6 +541,10 @@ paths:
           description: "The caller does not have permission to delete this external consumer"
         404:
           description: "The external consumer does not exist"
+        409:
+          description: "A share the consumer is listed on was concurrently modified. Retry"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
 
   /external-consumers/{consumerName}/listings:
     parameters:
@@ -497,20 +561,24 @@ paths:
         - name: pageToken
           in: query
           required: false
+          description: The continuation token returned with the previous page. Absent for the first page
           schema:
             type: string
         - name: pageSize
           in: query
           required: false
+          description:
+            Maximum number of items to return, at least 1. If absent, or larger than the service's
+            maximum, the service's maximum is used
           schema:
             type: integer
+            minimum: 1
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. List every listing bound to this external consumer,
+        "List every listing bound to this external consumer,
         across all shares."
       responses:
         200:
-          description: The listings bound to this consumer
+          description: A page of the listings bound to this consumer
           content:
             application/json:
               schema:
@@ -519,6 +587,8 @@ paths:
           description: "The caller does not have permission to read this external consumer"
         404:
           description: "The external consumer does not exist"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
 
   /external-consumers/{consumerName}/credentials:
     parameters:
@@ -535,16 +605,20 @@ paths:
         - name: pageToken
           in: query
           required: false
+          description: The continuation token returned with the previous page. Absent for the first page
           schema:
             type: string
         - name: pageSize
           in: query
           required: false
+          description:
+            Accepted for uniformity. A consumer has at most one credential, so the listing
+            fits one page and never returns a continuation token
           schema:
             type: integer
+            minimum: 1
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. List this consumer's credentials. Secrets are never
+        "List this consumer's credentials. Secrets are never
         returned by this operation."
       responses:
         200:
@@ -557,23 +631,17 @@ paths:
           description: "The caller does not have permission to read this external consumer"
         404:
           description: "The external consumer does not exist"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
     post:
       operationId: createExternalConsumerCredential
       summary: Create a consumer credential
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Create an OAuth2 client-credentials pair for this
-        consumer. The client secret is returned exactly once, in this response, and
-        cannot be retrieved later. A service MAY limit a consumer to one active
-        credential, in which case creating a new credential replaces the existing
-        one."
-      requestBody:
-        description: Options for the credential to create
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateConsumerCredentialRequest"
+        "Create an OAuth2 client credential pair for this consumer. The client secret is returned
+        only in this response. A consumer has at most one active credential: creating another
+        while one is active returns 409. To replace it, rotate it, or revoke it and create a
+        new one. To give a party several independent credentials, create several external
+        consumers, each with its own listing."
       responses:
         201:
           description: The created credential, including its secret (returned only here)
@@ -585,6 +653,10 @@ paths:
           description: "The caller does not have permission to manage this consumer's credentials"
         404:
           description: "The external consumer does not exist"
+        409:
+          description: "A credential is already active for this consumer (rotate or revoke it first), or the consumer was concurrently modified. Retry"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
 
   /external-consumers/{consumerName}/credentials/{credentialId}:
     parameters:
@@ -604,8 +676,9 @@ paths:
       operationId: revokeExternalConsumerCredential
       summary: Revoke a consumer credential
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Revoke a credential immediately."
+        "Revoke a credential immediately: its secrets stop authenticating at once. Tokens already
+        issued live out their lifetime. The credential stays listed as revoked until a new
+        one is created."
       responses:
         204:
           description: "Success, no content"
@@ -613,6 +686,10 @@ paths:
           description: "The caller does not have permission to manage this consumer's credentials"
         404:
           description: "The external consumer or credential does not exist"
+        409:
+          description: "The credential is not active (never issued, or already revoked), or the consumer was concurrently modified. Retry"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
 
   /external-consumers/{consumerName}/credentials/{credentialId}/rotate:
     parameters:
@@ -632,20 +709,11 @@ paths:
       operationId: rotateExternalConsumerCredential
       summary: Rotate a consumer credential
       description:
-        "**Beta:** this API is under active development and may change in a
-        backward-incompatible way. Rotate a credential: a new client-credentials pair is
-        created and returned (the new secret is returned exactly once), and the previous
-        credential remains valid for a service-defined overlap window so a running
-        consumer can roll over without interruption. A service without bounded
-        credential expiry keeps the previous credential valid until the next rotation
-        or revocation, and documents that behavior."
-      requestBody:
-        description: Options for the rotation
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RotateConsumerCredentialRequest"
+        "Rotate a credential: create and return a new client credential pair (the new secret is
+        returned only once). The previous credential stays valid for a service-defined
+        overlap window, so a running consumer can switch over without interruption. A service
+        without bounded credential expiry keeps the previous credential valid until the next
+        rotation or revocation, and documents this."
       responses:
         201:
           description: The replacement credential, including its secret (returned only here)
@@ -657,15 +725,19 @@ paths:
           description: "The caller does not have permission to manage this consumer's credentials"
         404:
           description: "The external consumer or credential does not exist"
+        409:
+          description: "The credential is not active (never issued, or revoked), or the consumer was concurrently modified. Retry"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
 
 components:
   securitySchemes:
     OAuth2:
       type: oauth2
       description:
-        Uses OAuth 2 with the client credentials flow. The token endpoint is
-        deployment-defined and is delivered to each consumer via its listing's
-        endpoint configuration (oauth2ServerUri); the URL below is illustrative only.
+        OAuth2 client credentials for provider administrators, as in the Polaris Management API.
+        Consumers do not use this scheme. They get tokens from the endpoint in their
+        listing's endpoint configuration. The token URL below is illustrative.
       flows:
         clientCredentials:
           tokenUrl: "https://auth.example.invalid/oauth/tokens"
@@ -674,35 +746,45 @@ components:
   schemas:
     Share:
       description:
-        A share; an explicit, named, realm-level container enumerating shared objects.
-        A share is bound to one catalog; its members are objects of that catalog. Share
-        names are unique across the service. The one-catalog binding is a rule of this
-        version rather than of the addressing, so a later version may bind further
-        catalogs without changing any path.
+        A named, realm-level container that lists shared objects. A share is bound to one catalog,
+        and its members are objects in that catalog. Share names are unique across the
+        service.
       type: object
       properties:
         name:
           type: string
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          maxLength: 256
+          description: The share's name, unique across the realm's shares. Letters, digits, underscore and hyphen, starting with a letter or digit, at most 256 characters
         catalogName:
           type: string
           description:
-            The catalog this share is bound to, whose objects it can contain; required at
-            creation, immutable afterwards. Exactly one catalog is bound in this version
+            The catalog this share is bound to, whose objects it can contain. Required at creation,
+            immutable afterwards. Exactly one catalog is bound
         description:
           type: string
         properties:
           type: object
           additionalProperties:
             type: string
+          description:
+            User-defined properties. Keys with the reserved "share." prefix belong to the service. They
+            are never returned here and are rejected (400) when set
         createTimestamp:
           type: integer
           format: int64
+          description: Epoch milliseconds of the creation time. Set by the service
+          readOnly: true
         lastUpdateTimestamp:
           type: integer
           format: int64
+          description: Epoch milliseconds of the last update time. Set by the service
+          readOnly: true
         entityVersion:
           type: integer
-          description: The version of the share object used to determine if the share metadata has changed
+          description:
+            The share's version, incremented on every change. Send it as currentEntityVersion with an
+            update to detect concurrent modification
       required:
         - name
         - catalogName
@@ -713,8 +795,7 @@ components:
         nextPageToken:
           type: string
           description:
-            Present when more results exist; absent on the last page, and never
-            returned by a non-paginating service
+            Present when more results exist. Absent on the last page
         shares:
           type: array
           items:
@@ -729,55 +810,67 @@ components:
         - share
 
     UpdateShareRequest:
-      description: Updates to apply to a share's description or properties
+      description:
+        Updates to apply to a share's description or properties. Every field is
+        optional and an absent field changes nothing. The fields present are applied
+        together, under the version check when currentEntityVersion is given
       type: object
       properties:
         currentEntityVersion:
           type: integer
-          description: The version of the object onto which this update is applied
+          description:
+            The version of the object onto which this update is applied. If the object
+            changed, the update will fail and the caller should retry after fetching the
+            latest version
         description:
           type: string
+          description:
+            The new description. An empty string clears the description. An absent
+            field leaves it unchanged
         properties:
           type: object
           additionalProperties:
             type: string
+          description:
+            Properties to set, merged into the share's properties by key. Other keys are kept. An absent
+            or empty map sets nothing. Keys with the reserved "share." prefix are rejected
+            (400)
+        removeProperties:
+          type: array
+          items:
+            type: string
+          description:
+            Keys to remove from the share's properties. A key that is not set is ignored. A key both set
+            in properties and listed here is rejected (400), as is a key with the reserved
+            "share." prefix
 
     ShareMember:
       description:
-        A member of a share. The canonical identity names the object inside the share's
-        bound catalog. A service pins each member to the underlying object's stable id
-        at add time, so a renamed member remains the same member under its current name,
-        and a new object reusing an old name is not a member. The exposed identity is
-        reserved for a future aliasing capability; aliasing is all-or-nothing (a
-        complete virtual namespace), it is not offered in this version, and a service
-        rejects an exposed identity that differs from the canonical identity.
+        A member of a share. Consumers see the member under its canonical identity in the share's
+        catalog. A member is pinned to the object's stable ID when it is added, so a renamed
+        object stays a member under its new name, and a new object that reuses an old name is
+        not a member. Aliasing (exposing a member under another identity) is not supported in
+        this version.
       type: object
       properties:
-        kind:
+        type:
           type: string
           description:
-            The member kind. TABLE is the only kind defined in this version; the set
-            is open (future versions add kinds), and a service rejects kinds it does
-            not support
+            The member type. TABLE is the only type defined. The set is open, and a service rejects
+            types it does not support
         canonical:
           $ref: "#/components/schemas/MemberIdentity"
-        exposed:
-          $ref: "#/components/schemas/MemberIdentity"
       required:
-        - kind
+        - type
         - canonical
 
     MemberIdentity:
       description:
         The identity of a member object, as a namespace and a name inside the share's
-        bound catalog
+        bound catalog. The catalog is the share's and is not repeated here. It is the
+        identifier a consumer's Iceberg REST client uses for the member
       type: object
       properties:
-        catalog:
-          type: string
-          description:
-            The catalog containing the object; optional, and when present it must equal
-            the share's bound catalog
         namespace:
           type: array
           items:
@@ -794,23 +887,22 @@ components:
         nextPageToken:
           type: string
           description:
-            Present when more results exist; absent on the last page, and never
-            returned by a non-paginating service
+            Present when more results exist. Absent on the last page
         members:
           type: array
           items:
             $ref: "#/components/schemas/ShareMember"
 
     UpdateShareMembersRequest:
-      description: An ordered list of membership updates, applied atomically
+      description: A list of membership updates, applied atomically. Each member may appear at most once
       type: object
       properties:
         currentEntityVersion:
           type: integer
           description:
-            The share version this update was computed against; the request conflicts
-            when the share has moved past it. The member list is a read-modify-write,
-            so compare-and-set is recommended for every writer
+            The share version this batch applies to. If the share has changed, the request returns 409.
+            Fetch the latest version and retry. Optional. Without it, the service applies the
+            batch against the version it reads, and a concurrent change still returns 409
         updates:
           type: array
           items:
@@ -834,26 +926,37 @@ components:
 
     ExternalConsumer:
       description:
-        A restricted, first-class identity representing a data consumer outside this
-        catalog's identity domain
+        Represents a restricted identity of this realm for a party that is not a user of the catalog.
+        It can only read the shares granted by its listings
       type: object
       properties:
         name:
           type: string
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          maxLength: 256
+          description: The consumer's name, unique across the realm's consumers. Letters, digits, underscore and hyphen, starting with a letter or digit, at most 256 characters
         description:
           type: string
         properties:
           type: object
           additionalProperties:
             type: string
+          description:
+            User-defined properties. Keys with the reserved "share." prefix belong to the service. They
+            are never returned here and are rejected (400) when set
         createTimestamp:
           type: integer
           format: int64
+          description: Epoch milliseconds of the creation time. Set by the service
+          readOnly: true
         lastUpdateTimestamp:
           type: integer
           format: int64
+          description: Epoch milliseconds of the last update time. Set by the service
+          readOnly: true
         entityVersion:
           type: integer
+          description: The version of the consumer object, incremented by every change
       required:
         - name
 
@@ -863,8 +966,7 @@ components:
         nextPageToken:
           type: string
           description:
-            Present when more results exist; absent on the last page, and never
-            returned by a non-paginating service
+            Present when more results exist. Absent on the last page
         externalConsumers:
           type: array
           items:
@@ -880,12 +982,15 @@ components:
 
     Listing:
       description:
-        The binding between an external consumer and a share; the only path that
+        The binding between an external consumer and a share. The only path that
         connects a consumer to a share, and the unit of audit
       type: object
       properties:
         name:
           type: string
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          maxLength: 256
+          description: The listing's name, unique across the share's listings. Letters, digits, underscore and hyphen, starting with a letter or digit, at most 256 characters
         shareName:
           type: string
         consumerName:
@@ -896,12 +1001,17 @@ components:
           type: object
           additionalProperties:
             type: string
+          description:
+            User-defined properties. Keys with the reserved "share." prefix belong to the service. They
+            are never returned here and are rejected (400) when set
         createTimestamp:
           type: integer
           format: int64
+          description: Epoch milliseconds of the creation time. Set by the service
+          readOnly: true
         entityVersion:
           type: integer
-          description: The version of the listing object, carried into audit attribution
+          description: The version of the listing object, incremented by every change and carried into audit attribution
       required:
         - name
         - shareName
@@ -913,8 +1023,7 @@ components:
         nextPageToken:
           type: string
           description:
-            Present when more results exist; absent on the last page, and never
-            returned by a non-paginating service
+            Present when more results exist. Absent on the last page
         listings:
           type: array
           items:
@@ -925,6 +1034,9 @@ components:
       properties:
         name:
           type: string
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          maxLength: 256
+          description: The listing's name, unique across the share's listings. Letters, digits, underscore and hyphen, starting with a letter or digit, at most 256 characters
         consumerName:
           type: string
         description:
@@ -933,6 +1045,9 @@ components:
           type: object
           additionalProperties:
             type: string
+          description:
+            User-defined properties. Keys with the reserved "share." prefix belong to the service. They
+            are never returned here and are rejected (400) when set
       required:
         - name
         - consumerName
@@ -953,11 +1068,14 @@ components:
         oauth2ServerUri:
           type: string
           format: uri
-          description: The token endpoint the consumer's client uses for the OAuth2 client credentials flow
+          description:
+            The token endpoint for the consumer's OAuth2 client credentials flow, set per deployment and
+            delivered per listing. The consumer sends its client id and secret (form body or
+            Basic header). No bearer token is needed
         scope:
           type: string
           description:
-            The OAuth2 scope the consumer's client requests; required by deployments
+            The OAuth2 scope the consumer's client requests. Required by deployments
             whose token service mandates a scope, and delivered here because a stock
             client cannot discover it in-band
         additionalHeaders:
@@ -984,7 +1102,7 @@ components:
         status:
           type: string
           description:
-            EXPIRING appears only on services with bounded overlap support; a service
+            EXPIRING appears only on services with bounded overlap support. A service
             without it reports ACTIVE or REVOKED only
           enum:
             - ACTIVE
@@ -993,10 +1111,15 @@ components:
         createTimestamp:
           type: integer
           format: int64
+          description: Epoch milliseconds of the creation time. Set by the service
+          readOnly: true
         expirationTimestamp:
           type: integer
           format: int64
-          description: Present when the credential is expiring, such as after a rotation overlap window
+          readOnly: true
+          description:
+            Epoch milliseconds. Present when the credential is expiring, such as after a
+            rotation overlap window
       required:
         - credentialId
         - clientId
@@ -1008,15 +1131,14 @@ components:
         nextPageToken:
           type: string
           description:
-            Present when more results exist; absent on the last page, and never
-            returned by a non-paginating service
+            Present when more results exist. Absent on the last page
         credentials:
           type: array
           items:
             $ref: "#/components/schemas/ConsumerCredential"
 
     ConsumerCredentialWithSecret:
-      description: A consumer credential including its secret; returned exactly once, at creation or rotation
+      description: A consumer credential including its secret. Returned exactly once, at creation or rotation
       allOf:
         - $ref: "#/components/schemas/ConsumerCredential"
         - type: object
@@ -1025,24 +1147,3 @@ components:
               type: string
           required:
             - clientSecret
-
-    CreateConsumerCredentialRequest:
-      type: object
-      properties:
-        expirationTimestamp:
-          type: integer
-          format: int64
-          description:
-            Optional expiry for the credential; a service without credential-expiry
-            support rejects a request that sets it
-
-    RotateConsumerCredentialRequest:
-      type: object
-      properties:
-        overlapSeconds:
-          type: integer
-          description:
-            Advisory. How long the previous credential should remain valid after
-            rotation; the service applies its configured policy, and a service without
-            bounded credential expiry ignores this value and keeps the previous
-            credential valid until the next rotation or revocation
