@@ -95,6 +95,9 @@ import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
 public class DynamoDbBackend implements Backend {
   private static final Logger LOGGER = LoggerFactory.getLogger(DynamoDbBackend.class);
 
+  /** Cap on resending {@code UnprocessedItems} from {@code BatchWriteItem}. */
+  static final int MAX_BATCH_WRITE_ATTEMPTS = 10;
+
   final DynamoDbClient client;
   private final boolean closeClient;
 
@@ -366,8 +369,7 @@ public class DynamoDbBackend implements Backend {
     var numWrites = writes.size();
     for (var i = 0; i < numWrites; i += BATCH_WRITE_LIMIT) {
       var batchWrites = writes.subList(i, Math.min(numWrites, i + BATCH_WRITE_LIMIT));
-      var req = BatchWriteItemRequest.builder();
-      req.requestItems(
+      batchWriteItemWithRetry(
           Map.of(
               tableObjs,
               batchWrites.stream()
@@ -388,7 +390,51 @@ public class DynamoDbBackend implements Backend {
                                       .build())
                               .build())
                   .toList()));
-      client.batchWriteItem(req.build());
+    }
+  }
+
+  /**
+   * DynamoDB {@code BatchWriteItem} can return successfully with {@code UnprocessedItems} when
+   * throttled or partially failed. The SDK does not retry those; callers must resend them or risk
+   * silently dropping writes/deletes.
+   */
+  void batchWriteItemWithRetry(Map<String, List<WriteRequest>> requestItems) {
+    var remaining = requestItems;
+    for (var attempt = 1; attempt <= MAX_BATCH_WRITE_ATTEMPTS; attempt++) {
+      if (remaining == null || remaining.isEmpty()) {
+        return;
+      }
+      var response =
+          client.batchWriteItem(BatchWriteItemRequest.builder().requestItems(remaining).build());
+      remaining = response.unprocessedItems();
+      if (remaining == null || remaining.isEmpty()) {
+        return;
+      }
+      LOGGER.warn(
+          "DynamoDB batchWriteItem left unprocessed items on attempt {}/{}; retrying",
+          attempt,
+          MAX_BATCH_WRITE_ATTEMPTS);
+      if (attempt == MAX_BATCH_WRITE_ATTEMPTS) {
+        break;
+      }
+      sleepBeforeBatchWriteRetry(attempt - 1);
+    }
+    throw new UnknownOperationResultException(
+        "DynamoDB batchWriteItem still had unprocessed items after "
+            + MAX_BATCH_WRITE_ATTEMPTS
+            + " attempts",
+        null);
+  }
+
+  /** Package-visible so unit tests can stub the backoff. */
+  void sleepBeforeBatchWriteRetry(int attempt) {
+    var delayMs = Math.min(1_000L, 25L << Math.min(attempt, 5));
+    try {
+      Thread.sleep(delayMs);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new UnknownOperationResultException(
+          "Interrupted while retrying DynamoDB batchWriteItem", e);
     }
   }
 
