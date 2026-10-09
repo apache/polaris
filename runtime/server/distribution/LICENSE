@@ -421,6 +421,7 @@ This product bundles Quarkus Amazon Services.
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-apache5-client-internal
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-common
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-common-spi
+* Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-dynamodb
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-netty-client-internal
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-opentelemetry-internal
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-rds
@@ -1988,6 +1989,7 @@ This product bundles AWS SDK for Java.
 * Maven group:artifact IDs: software.amazon.awssdk:checksums-spi
 * Maven group:artifact IDs: software.amazon.awssdk:cloudwatchlogs
 * Maven group:artifact IDs: software.amazon.awssdk:crt-core
+* Maven group:artifact IDs: software.amazon.awssdk:dynamodb
 * Maven group:artifact IDs: software.amazon.awssdk:endpoints-spi
 * Maven group:artifact IDs: software.amazon.awssdk:http-auth
 * Maven group:artifact IDs: software.amazon.awssdk:http-auth-aws
@@ -2010,6 +2012,7 @@ This product bundles AWS SDK for Java.
 * Maven group:artifact IDs: software.amazon.awssdk:sdk-core
 * Maven group:artifact IDs: software.amazon.awssdk:sts
 * Maven group:artifact IDs: software.amazon.awssdk:third-party-jackson-core
+* Maven group:artifact IDs: software.amazon.awssdk:url-connection-client
 * Maven group:artifact IDs: software.amazon.awssdk:utils
 * Maven group:artifact IDs: software.amazon.awssdk:utils-lite
 
