@@ -280,7 +280,7 @@ components:
       properties:
         name:
           type: string
-          description: The name of the directory. It is used in REST endpoint paths and becomes the name of the corresponding Iceberg table.
+          description: The name of the directory. It is used in REST endpoint paths and is used, followed by the `__inventory` suffix, as the name of the corresponding Iceberg table.
         base_location:
           type: string
           description: The external object store location to use as a root for scanning objects (e.g. s3://bucket/path/). This is where the scanned objects live, not the location of the Iceberg inventory table, which is assigned by Polaris.

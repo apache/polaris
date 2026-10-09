@@ -36,25 +36,32 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.DirectoryCatalog;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.table.DirectoryEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
+import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.spi.DirectoryScanService;
@@ -96,6 +103,16 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
               "metadata",
               Types.MapType.ofRequired(8, 9, Types.StringType.get(), Types.StringType.get()),
               "Additional key-value metadata from the object store"));
+
+  /**
+   * Suffix of the inventory table name. A directory and its inventory table cannot share a name:
+   * both are table-like entities, and names are unique among table-like entities of a namespace.
+   */
+  static final String INVENTORY_TABLE_SUFFIX = "__inventory";
+
+  static TableIdentifier inventoryTableIdentifier(TableIdentifier directory) {
+    return TableIdentifier.of(directory.namespace(), directory.name() + INVENTORY_TABLE_SUFFIX);
+  }
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final TypeReference<List<String>> LIST_OF_STRING = new TypeReference<>() {};
@@ -167,6 +184,24 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
 
   private DirectoryCatalog directoryCatalog;
   private Catalog icebergCatalog;
+  private TableIdentifier inventoryTable;
+
+  /**
+   * The underlying Iceberg catalog manipulates the inventory table, which is not the identifier
+   * targeted by the request: it must be added as a passthrough resolution path as well.
+   */
+  @Override
+  protected PolarisResolutionManifest newResolutionManifest() {
+    PolarisResolutionManifest manifest = super.newResolutionManifest();
+    if (inventoryTable != null) {
+      manifest.addPassthroughPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(inventoryTable),
+              PolarisEntityType.TABLE_LIKE,
+              true /* optional */));
+    }
+    return manifest;
+  }
 
   @Override
   protected void initializeCatalog() {
@@ -227,13 +262,23 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
       String filterExclude,
       String scanSchedule,
       Map<String, String> properties) {
+    this.inventoryTable = inventoryTableIdentifier(identifier);
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
-    // Check that the Iceberg table name does not collide with an existing entity
-    TableIdentifier tableId = TableIdentifier.of(identifier.namespace(), identifier.name());
+    PolarisResolvedPathWrapper resolvedParent =
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()));
+    if (resolvedParent == null) {
+      throw new NoSuchNamespaceException("Namespace does not exist: %s", identifier.namespace());
+    }
+    // The base location is read with vended credentials: it must be within the allowed locations
+    CatalogUtils.validateLocationsForTableLike(
+        realmConfig(), identifier, Set.of(baseLocation), resolvedParent);
+
+    // Check that the inventory table name does not collide with an existing entity
+    TableIdentifier tableId = inventoryTableIdentifier(identifier);
     if (this.icebergCatalog.tableExists(tableId)) {
-      throw new org.apache.iceberg.exceptions.AlreadyExistsException(
+      throw new AlreadyExistsException(
           "Cannot create directory %s: associated table %s already exists", identifier, tableId);
     }
 
@@ -245,14 +290,18 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
     try {
       this.icebergCatalog.createTable(tableId, DIRECTORY_TABLE_SCHEMA);
       LOGGER.debug("Created associated Iceberg table {} for directory {}", tableId, identifier);
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       // Roll back the directory entity if table creation fails
       LOGGER.warn(
           "Failed to create Iceberg table {} for directory {}, rolling back",
           tableId,
           identifier,
           e);
-      this.directoryCatalog.dropDirectory(identifier);
+      try {
+        this.directoryCatalog.dropDirectory(identifier);
+      } catch (RuntimeException rollbackFailure) {
+        e.addSuppressed(rollbackFailure);
+      }
       throw e;
     }
 
@@ -269,18 +318,20 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
   }
 
   public boolean dropDirectory(TableIdentifier identifier) {
+    this.inventoryTable = inventoryTableIdentifier(identifier);
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
     // Verify the directory exists before attempting to drop the associated table
     this.directoryCatalog.loadDirectory(identifier);
 
-    // The associated Iceberg table shares the same name as the directory.
-    // Drop the table first — if this fails the directory entity is still intact
+    // Drop the associated inventory table first — if this fails the directory entity is still
+    // intact
     // and the operation can be retried.
+    TableIdentifier tableId = inventoryTableIdentifier(identifier);
     try {
-      this.icebergCatalog.dropTable(identifier, false);
-      LOGGER.debug("Dropped associated Iceberg table for directory {}", identifier);
+      this.icebergCatalog.dropTable(tableId, false);
+      LOGGER.debug("Dropped associated Iceberg table {} for directory {}", tableId, identifier);
     } catch (Exception e) {
       LOGGER.error("Failed to drop associated Iceberg table for directory {}", identifier, e);
       throw e;
@@ -290,6 +341,7 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
   }
 
   public ScanDirectoryResponse scanDirectory(TableIdentifier identifier) {
+    this.inventoryTable = inventoryTableIdentifier(identifier);
     FeatureConfiguration.enforceFeatureEnabledOrThrow(
         realmConfig(), FeatureConfiguration.ENABLE_DIRECTORY_SCAN);
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_TABLE;
@@ -297,13 +349,16 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
         op, PolarisEntitySubType.DIRECTORY, identifier);
 
     DirectoryEntity directory = this.directoryCatalog.loadDirectory(identifier);
-    Table table = this.icebergCatalog.loadTable(identifier);
+    Table table = this.icebergCatalog.loadTable(inventoryTableIdentifier(identifier));
 
     // The base location is external to the catalog: list it with read-only credentials scoped to it
     CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
     PolarisResolvedPathWrapper resolvedPath =
         resolutionManifest.getResolvedPath(
-            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.DIRECTORY, true);
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.DIRECTORY);
+    // Defense against allowed-locations policy changes after the directory creation
+    CatalogUtils.validateLocationsForTableLike(
+        realmConfig(), identifier, Set.of(directory.getBaseLocation()), resolvedPath);
     StorageAccessConfig storageAccessConfig =
         storageAccessConfigProvider()
             .getStorageAccessConfig(

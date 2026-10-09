@@ -41,6 +41,7 @@ import org.apache.iceberg.io.FileInfo;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.SupportsPrefixOperations;
 import org.apache.iceberg.parquet.Parquet;
+import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +65,9 @@ final class DirectoryScanner {
       String baseLocation,
       List<String> include,
       List<String> exclude) {
-    if (!(sourceIO instanceof SupportsPrefixOperations prefixIO)) {
+    // The FileIO factory wraps the FileIO, and the wrapper does not expose the prefix operations
+    FileIO io = sourceIO instanceof ExceptionMappingFileIO w ? w.getInnerIo() : sourceIO;
+    if (!(io instanceof SupportsPrefixOperations prefixIO)) {
       throw new UnsupportedOperationException(
           "Scanning is not supported for location " + baseLocation);
     }

@@ -39,9 +39,9 @@ A directory has two main parts:
 1. **Directory configuration** — stored by the Polaris server. It describes _where_ the data lives,
    how to authenticate, which objects to include, and how often to re-scan. The configuration "lives" in a namespace.
 2. **Directory table** — an Iceberg table serving as the inventory of all objects contained in the directory, one row per object discovered during a scan.
-   The directory table uses the configuration name.
+   The directory table is named after the configuration, with the `__inventory` suffix (for example `product-images__inventory`), because a directory and a table cannot share a name in a namespace.
 
-The Polaris server itself does not perform scans. Instead, external services (e.g. directory table scanning service) read the directory configuration through the REST API,
+Polaris provides a simple synchronous scan endpoint but does not schedule scans. External services (e.g. directory table scanning service) can also read the directory configuration through the REST API,
 walk the object store, and write the results into the directory table.
 
 ## Configuration
@@ -50,7 +50,7 @@ A directory is described by the following fields:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | `string` | Yes | The name of the directory. It is used in REST endpoint paths and becomes the name of the corresponding Iceberg table. |
+| `name` | `string` | Yes | The name of the directory. It is used in REST endpoint paths and is used, followed by the `__inventory` suffix, as the name of the corresponding Iceberg table. |
 | `base_location` | `string` | Yes | The external object store location to use as a root for scanning objects; this is not the location of the Iceberg inventory table, which is assigned by Polaris (for example `s3://my-bucket/images/`, `gs://my-bucket/docs/`, or `file:///data/local/`). |
 | `filter` | `object` | No | Include and exclude patterns that control which objects are added to the directory table during a scan. See [Filter](#filter). |
 | `scan-schedule` | `object` | No | Object representing a scan schedule (trigger, cron, ...). |
@@ -58,6 +58,10 @@ A directory is described by the following fields:
 ### Storage access
 
 Directories use Polaris `StorageAccessConfig` to access the object store.
+
+The `base_location` is validated like a table location when the directory is created and again before each scan:
+it must be within the catalog's allowed locations. As for tables, it must also be within the namespace location
+unless the catalog sets `polaris.config.allow.unstructured.table.location` to `true`.
 
 ### Filter
 
@@ -153,7 +157,7 @@ It requires an object store whose `FileIO` supports listing a prefix.
 ## Directory table
 
 When a directory is created, Polaris creates an Iceberg table in the same namespace using the directory
-`name` as the table name. The table uses the following schema:
+`name` followed by `__inventory` as the table name. The table uses the following schema:
 
 | Field Id | Field Name | Type | Required | Description |
 |----------|------------|------|----------|-------------|
