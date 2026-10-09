@@ -23,6 +23,7 @@ hadoop = "3.5.0"
 iceberg = "1.12.0" # Ensure to update the iceberg version in regtests and getting-started to keep them up-to-date
 immutables = "2.12.2"
 jmh = "1.37"
+parquet = "1.17.1" # Keep in sync with the Parquet version used by Iceberg
 picocli = "4.7.7"
 quarkus = "3.40.1"
 ranger = "2.9.0"
@@ -100,6 +101,7 @@ mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version = "5
 msal4j = { module = "com.microsoft.azure:msal4j", version = "1.26.0" }
 openlineage-java = { module = "io.openlineage:openlineage-java", version = "1.53.0" }
 opentelemetry-instrumentation-bom-alpha = { module = "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha", version= "2.20.1-alpha" }
+parquet-hadoop = { module = "org.apache.parquet:parquet-hadoop", version.ref = "parquet" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 postgresql = { module = "org.postgresql:postgresql", version = "42.7.14" }

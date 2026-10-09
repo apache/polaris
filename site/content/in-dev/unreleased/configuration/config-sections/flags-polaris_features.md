@@ -300,6 +300,24 @@ Flag to enable or disable the API to reset principal credentials. Defaults to en
 
 ---
 
+##### `polaris.features."ENABLE_DIRECTORIES"`
+
+If true, the directories endpoints are enabled
+
+- **Type:** `Boolean`
+- **Default:** `true`
+
+---
+
+##### `polaris.features."ENABLE_DIRECTORY_SCAN"`
+
+If true, the directory scan endpoint is enabled. It lets Polaris list the objects of a directory base location and populate the directory table
+
+- **Type:** `Boolean`
+- **Default:** `true`
+
+---
+
 ##### `polaris.features."ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES"`
 
 When true, enables finer grained update table privileges which are passed to the authorizer for update table operations

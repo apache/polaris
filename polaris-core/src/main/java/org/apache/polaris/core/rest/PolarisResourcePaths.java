@@ -40,6 +40,14 @@ public class PolarisResourcePaths {
   public static final String V1_GENERIC_TABLE =
       "polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}";
 
+  // Directory endpoints
+  public static final String V1_DIRECTORIES =
+      "polaris/v1/{prefix}/namespaces/{namespace}/directories";
+  public static final String V1_DIRECTORY =
+      "polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}";
+  public static final String V1_DIRECTORY_SCAN =
+      "polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}/scan";
+
   // Policy Store endpoints
   public static final String V1_POLICIES = "/polaris/v1/{prefix}/namespaces/{namespace}/policies";
   public static final String V1_POLICY =
@@ -92,6 +100,27 @@ public class PolarisResourcePaths {
         "tables",
         RESTUtil.encodePathSegment(ident.name()),
         "credentials");
+  }
+
+  public String directories(Namespace ns) {
+    return SLASH.join(
+        "polaris",
+        "v1",
+        prefix,
+        "namespaces",
+        RESTUtil.encodeNamespaceAsPathSegment(ns, namespaceSeparatorEncoded),
+        "directories");
+  }
+
+  public String directory(TableIdentifier ident) {
+    return SLASH.join(
+        "polaris",
+        "v1",
+        prefix,
+        "namespaces",
+        RESTUtil.encodeNamespaceAsPathSegment(ident.namespace(), namespaceSeparatorEncoded),
+        "directories",
+        RESTUtil.encodePathSegment(ident.name()));
   }
 
   public String genericTable(TableIdentifier ident) {

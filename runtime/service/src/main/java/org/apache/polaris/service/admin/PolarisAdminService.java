@@ -111,6 +111,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.entity.table.DirectoryEntity;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.table.federated.FederatedEntities;
@@ -2016,7 +2017,10 @@ public class PolarisAdminService {
         authorizeGrantOnTableLikeOperationOrThrow(
             op,
             catalogName,
-            List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+            List.of(
+                PolarisEntitySubType.GENERIC_TABLE,
+                PolarisEntitySubType.ICEBERG_TABLE,
+                PolarisEntitySubType.DIRECTORY),
             identifier,
             catalogRoleName);
 
@@ -2025,7 +2029,10 @@ public class PolarisAdminService {
         catalogName,
         catalogRoleName,
         identifier,
-        List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+        List.of(
+            PolarisEntitySubType.GENERIC_TABLE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            PolarisEntitySubType.DIRECTORY),
         privilege);
   }
 
@@ -2041,7 +2048,10 @@ public class PolarisAdminService {
         authorizeGrantOnTableLikeOperationOrThrow(
             op,
             catalogName,
-            List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+            List.of(
+                PolarisEntitySubType.GENERIC_TABLE,
+                PolarisEntitySubType.ICEBERG_TABLE,
+                PolarisEntitySubType.DIRECTORY),
             identifier,
             catalogRoleName);
 
@@ -2050,7 +2060,10 @@ public class PolarisAdminService {
         catalogName,
         catalogRoleName,
         identifier,
-        List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+        List.of(
+            PolarisEntitySubType.GENERIC_TABLE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            PolarisEntitySubType.DIRECTORY),
         privilege);
   }
 
@@ -2235,11 +2248,16 @@ public class PolarisAdminService {
           case TABLE_LIKE:
             {
               if (baseEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
-                  || baseEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
-                TableIdentifier identifier =
-                    baseEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE
-                        ? GenericTableEntity.of(baseEntity).getTableIdentifier()
-                        : IcebergTableLikeEntity.of(baseEntity).getTableIdentifier();
+                  || baseEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE
+                  || baseEntity.getSubType() == PolarisEntitySubType.DIRECTORY) {
+                TableIdentifier identifier;
+                if (baseEntity.getSubType() == PolarisEntitySubType.DIRECTORY) {
+                  identifier = DirectoryEntity.of(baseEntity).getTableIdentifier();
+                } else if (baseEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
+                  identifier = GenericTableEntity.of(baseEntity).getTableIdentifier();
+                } else {
+                  identifier = IcebergTableLikeEntity.of(baseEntity).getTableIdentifier();
+                }
                 TableGrant grant =
                     new TableGrant(
                         List.of(identifier.namespace().levels()),

@@ -123,7 +123,10 @@ testing {
         implementation(libs.jakarta.ws.rs.api)
         compileOnly("com.google.errorprone:error_prone_annotations:${errorProneAnnotationsVersion}")
 
-        implementation(testFixtures(project(":polaris-runtime-service")))
+        implementation(testFixtures(project(":polaris-runtime-service"))) {
+          // The server's Parquet must not override the Parquet version provided by Spark.
+          exclude(group = "org.apache.parquet")
+        }
 
         implementation(platform(libs.awssdk.bom))
         implementation("software.amazon.awssdk:glue")

@@ -48,6 +48,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   does not provide is refused at create and update, and whenever a credential is vended for it,
   with "S3 credential vending mechanism `<id>` is not available in this server".
 
+- Polaris now supports Directories, which make objects stored on an object store (including unstructured
+  data) discoverable alongside Iceberg tables: a directory tracks the objects under a base location in an
+  Iceberg table. A simple scan endpoint (`POST .../directories/{directory}/scan`) populates that table; it
+  can be disabled with the `ENABLE_DIRECTORY_SCAN` feature flag, and the whole feature with
+  `ENABLE_DIRECTORIES`.
+
 ### Upgrade notes
 
 - `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists the explicit mechanisms a realm accepts; an empty
