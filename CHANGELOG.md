@@ -92,6 +92,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### New Features
 
 - Python CLI: added `register` support for both `tables` and `views` commands
+- Added the `ALLOW_CROSS_ACCOUNT_KMS_DECRYPTION` feature flag (default `false`). When enabled,
+  read-only S3 vended credentials for catalogs without explicit KMS keys are granted
+  `kms:Decrypt` and `kms:DescribeKey` on `arn:<partition>:kms:<region>:*:key/*`, allowing
+  decryption of objects encrypted with SSE-KMS keys owned by another AWS account.
 
 ### Changes
 
@@ -108,6 +112,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Deprecations
 
 ### Fixes
+
+- The wildcard KMS resource ARN in read-only S3 vended credentials now uses the partition of the
+  catalog's role ARN instead of always `aws`, fixing `aws-us-gov` and `aws-cn` deployments.
 
 - NoSQL maintenance: realm purging now honors its own state filter consistently. `purgeRealms`
   keeps only realms in `PURGING`/`PURGED` state (and logs the rest as "will therefore not be

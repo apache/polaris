@@ -1363,6 +1363,86 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     Mockito.verify(stsClient).assumeRole(Mockito.isA(AssumeRoleRequest.class));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"aws", "aws-us-gov", "aws-cn"})
+  public void testKmsWildcardUsesRoleArnPartition(String awsPartition) {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = String.format("arn:%s:iam::012345678901:role/jdoe", awsPartition);
+    String region = "us-gov-west-1";
+    String expectedArn = String.format("arn:%s:kms:%s:012345678901:key/*", awsPartition, region);
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      stmt ->
+                          assertThat(stmt.resources()).contains(IamResource.create(expectedArn)));
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path("bucket", "path/to/warehouse"))
+            .roleARN(roleARN)
+            .externalId("externalId")
+            .region(region)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
+        .getStorageAccessConfig(
+            toGrants(Set.of(s3Path("bucket", "path/to/warehouse/table")), Set.of(), Set.of()),
+            Optional.empty(),
+            CredentialVendingContext.empty());
+    Mockito.verify(stsClient).assumeRole(Mockito.isA(AssumeRoleRequest.class));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {AWS_PARTITION, "aws-cn", "aws-us-gov"})
+  public void testWildcardKmsArnUsesPartition(String awsPartition) {
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe".replaceFirst("aws", awsPartition);
+    String region = "us-east-2";
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path("bucket", "path/to/warehouse"))
+            .roleARN(roleARN)
+            .externalId("externalId")
+            .region(region)
+            .build();
+
+    assertWildcardKmsResource(
+        config,
+        EMPTY_REALM_CONFIG,
+        String.format("arn:%s:kms:%s:012345678901:key/*", awsPartition, region));
+    assertWildcardKmsResource(
+        config,
+        enabledFeatures(FeatureConfiguration.ALLOW_CROSS_ACCOUNT_KMS_DECRYPTION),
+        String.format("arn:%s:kms:%s:*:key/*", awsPartition, region));
+  }
+
+  private static void assertWildcardKmsResource(
+      AwsStorageConfigurationInfo config, RealmConfig realmConfig, String expectedArn) {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      stmt ->
+                          assertThat(stmt.resources()).contains(IamResource.create(expectedArn)));
+              return ASSUME_ROLE_RESPONSE;
+            });
+    String table = s3Path("bucket", "path/to/warehouse/table");
+    new AwsCredentialsStorageIntegration(stsClient, config, realmConfig)
+        .getStorageAccessConfig(
+            toGrants(Set.of(table), Set.of(table), Set.of()),
+            Optional.empty(),
+            CredentialVendingContext.empty());
+    Mockito.verify(stsClient).assumeRole(Mockito.isA(AssumeRoleRequest.class));
+  }
+
   @Test
   public void testGetSubscopedCredsLongPrincipalName() {
     StsClient stsClient = Mockito.mock(StsClient.class);

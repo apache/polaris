@@ -45,6 +45,15 @@ If set to true (the default), Polaris honors a `location` (and the `write.data.p
 
 ---
 
+##### `polaris.features."ALLOW_CROSS_ACCOUNT_KMS_DECRYPTION"`
+
+If set to true, the wildcard KMS ARN in read-only STS session policies uses a cross-account scope (`arn:<partition>:kms:<region>:*:key/*`) instead of restricting to the catalog's own AWS account. This allows decrypting S3 objects encrypted with SSE-KMS keys owned by a different AWS account. Only affects the wildcard fallback path when no explicit encryption or decryption keys are configured. Operators must configure the corresponding cross-account KMS key policies and IAM trust relationships independently.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG"`
 
 If enabled, allow dropping a passthrough-facade catalog even if it contains namespaces or tables. passthrough-facade catalogs may contain leftover entities when syncing with source catalog. In the short term these entities will be ignored, in the long term there will be method/background job to clean them up.

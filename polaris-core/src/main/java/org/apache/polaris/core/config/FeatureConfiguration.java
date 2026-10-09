@@ -286,7 +286,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("ALLOW_CROSS_ACCOUNT_KMS_DECRYPTION")
           .description(
               "If set to true, the wildcard KMS ARN in read-only STS session policies uses a\n"
-                  + "cross-account scope (arn:<partition>:kms:<region>:*:key/*) instead of restricting\n"
+                  + "cross-account scope (`arn:<partition>:kms:<region>:*:key/*`) instead of restricting\n"
                   + "to the catalog's own AWS account. This allows decrypting S3 objects encrypted with\n"
                   + "SSE-KMS keys owned by a different AWS account. Only affects the wildcard fallback\n"
                   + "path when no explicit encryption or decryption keys are configured. Operators must\n"
