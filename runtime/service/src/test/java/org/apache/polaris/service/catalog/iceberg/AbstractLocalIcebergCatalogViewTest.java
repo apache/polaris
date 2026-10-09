@@ -197,10 +197,10 @@ public abstract class AbstractLocalIcebergCatalogViewTest
                     .setDefaultBaseLocation("file://tmp")
                     .setStorageConfigurationInfo(
                         realmConfig,
-                        new FileStorageConfigInfo(
-                            StorageConfigInfo.StorageTypeEnum.FILE,
-                            List.of("file://tmp", "*"),
-                            null))
+                        FileStorageConfigInfo.builder()
+                            .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+                            .setAllowedLocations(List.of("file://tmp", "*"))
+                            .build())
                     .build()
                     .asCatalog(serviceIdentityProvider)));
 

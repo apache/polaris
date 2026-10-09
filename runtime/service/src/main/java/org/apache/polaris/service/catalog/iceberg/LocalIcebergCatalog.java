@@ -198,7 +198,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   private String ioImplClassName;
   private FileIO catalogFileIO;
   private CloseableGroup closeableGroup;
-  private Map<String, String> tableDefaultProperties;
 
   private final String catalogName;
   private final long catalogId;
@@ -330,9 +329,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     this.closeableGroup = new CloseableGroup();
     closeableGroup.addCloseable(metricsReporter());
     closeableGroup.setSuppressCloseFailure(true);
-
-    tableDefaultProperties =
-        PropertyUtil.propertiesWithPrefix(properties, CatalogProperties.TABLE_DEFAULT_PREFIX);
   }
 
   public void setMetaStoreManager(PolarisMetaStoreManager newMetaStoreManager) {
@@ -438,7 +434,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             identifier,
             Set.of(locationDir),
             resolvedParent,
-            new HashMap<>(tableDefaultProperties),
+            Map.of(),
             Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
     TableMetadata metadata = TableMetadataParser.read(fileIO, metadataFileLocation);
@@ -466,7 +462,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             identifier,
             Set.of(locationDir),
             resolvedPath,
-            new HashMap<>(tableDefaultProperties),
+            Map.of(),
             Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
     TableMetadata metadata = TableMetadataParser.read(fileIO, metadataFileLocation);
@@ -1139,7 +1135,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             identifier,
             Set.of(locationDir),
             resolvedParent,
-            new HashMap<>(tableDefaultProperties),
+            Map.of(),
             Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
     ViewMetadata metadata = ViewMetadataParser.read(fileIO, metadataFileLocation);
@@ -1845,7 +1841,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             fileIOFactory.loadFileIO(
                 StorageAccessConfig.builder().supportsCredentialVending(false).build(),
                 ioImplClassName,
-                tableDefaultProperties);
+                Map.of());
         closeableGroup.addCloseable(tableFileIO);
       }
       return tableFileIO;
@@ -1904,14 +1900,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               String latestLocationDir =
                   latestLocation.substring(0, latestLocation.lastIndexOf('/'));
               // TODO: Once we have the "current" table properties pulled into the resolvedEntity
-              // then we should use the actual current table properties for IO refresh here
-              // instead of the general tableDefaultProperties.
+              // then we should use the actual current table properties for IO refresh here.
               FileIO fileIO =
                   loadFileIOForTableLike(
                       tableIdentifier,
                       Set.of(latestLocationDir),
                       resolvedEntities,
-                      new HashMap<>(tableDefaultProperties),
+                      Map.of(),
                       Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
@@ -2021,15 +2016,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             tableIdentifier, metadata.location(), nextMetadataFileLocation(metadata));
       }
 
-      // Use catalog table-default.* / server context only — not metadata.properties(), which can
-      // carry caller-controlled FileIO client settings (for example s3.endpoint).
-      // DefaultFileIOFactory copies this map before mutating, so no defensive copy here.
+      // Server FileIO from AccessConfig only — not metadata.properties() (caller-controlled
+      // FileIO client settings such as s3.endpoint).
       tableFileIO =
           loadFileIOForTableLike(
               tableIdentifier,
               requestedLocations,
               resolvedStorageEntity,
-              tableDefaultProperties,
+              Map.of(),
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
@@ -2399,14 +2393,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   latestLocation.substring(0, latestLocation.lastIndexOf('/'));
 
               // TODO: Once we have the "current" table properties pulled into the resolvedEntity
-              // then we should use the actual current table properties for IO refresh here
-              // instead of the general tableDefaultProperties.
+              // then we should use the actual current table properties for IO refresh here.
               FileIO fileIO =
                   loadFileIOForTableLike(
                       identifier,
                       Set.of(latestLocationDir),
                       resolvedEntities,
-                      new HashMap<>(tableDefaultProperties),
+                      Map.of(),
                       Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
@@ -2476,14 +2469,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             resolvedStorageEntity.getRawLeafEntity());
       }
 
-      // Catalog table-default.* only — not metadata.properties() (caller-controlled FileIO keys).
-      // DefaultFileIOFactory copies this map before mutating, so no defensive copy here.
+      // Server FileIO from AccessConfig only — not metadata.properties() (caller-controlled
+      // FileIO keys).
       viewFileIO =
           loadFileIOForTableLike(
               identifier,
               StorageUtil.getLocationsUsedByTable(metadata),
               resolvedStorageEntity,
-              tableDefaultProperties,
+              Map.of(),
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));
 
       MetadataWriteResult writeResult = writeNewMetadataIfRequired(metadata);
@@ -2717,11 +2710,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
-   * Builds server-side FileIO for a table-like entity.
-   *
-   * @param fileIOContextProperties catalog-trusted FileIO context (for example {@code
-   *     table-default.*}). Must not be table {@code metadata.properties()}, which can include
-   *     caller-controlled FileIO client settings such as {@code s3.endpoint}.
+   * Builds server-side FileIO for a table-like entity from {@link StorageAccessConfig} (storage
+   * configuration typed fields and properties bag). {@code fileIOContextProperties} is normally
+   * empty. Must not be table {@code metadata.properties()}, which can include caller-controlled
+   * FileIO client settings such as {@code s3.endpoint}.
    */
   private FileIO loadFileIOForTableLike(
       TableIdentifier identifier,
@@ -3096,7 +3088,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           tableIdentifier,
           Set.of(locationDir),
           resolvedStorageEntity,
-          new HashMap<>(tableDefaultProperties),
+          Map.of(),
           Set.of(PolarisStorageActions.READ));
 
       LOGGER.debug(
@@ -3162,7 +3154,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               tableIdentifier,
               Set.of(locationDir),
               resolvedParent,
-              new HashMap<>(tableDefaultProperties),
+              Map.of(),
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,

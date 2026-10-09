@@ -24,10 +24,13 @@ import io.opentelemetry.api.trace.SpanContext;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -39,9 +42,11 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageConfigurationAccessProperties;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,29 +119,56 @@ public class StorageAccessConfigProvider {
         callContext
             .getRealmConfig()
             .getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
+
+    StorageAccessConfig accessConfig;
     if (skipCredentialSubscopingIndirection) {
-      return StorageAccessConfig.builder().supportsCredentialVending(false).build();
+      // Still surface storage-config FileIO settings (endpoint, path-style, properties bag)
+      // without STS. Ambient credentials remain for the FileIO client.
+      accessConfig =
+          StorageConfigurationAccessProperties.storageConfigOnly(
+              PolarisStorageConfigurationInfo.findStorageConfigFromHierarchy(resolvedEntityPath)
+                  .orElse(null));
+    } else {
+      PolarisStorageIntegration integration =
+          storageIntegrationProvider.getStorageIntegration(resolvedEntityPath);
+      if (integration == null) {
+        accessConfig = StorageAccessConfig.builder().supportsCredentialVending(false).build();
+      } else {
+        CredentialVendingContext credentialVendingContext =
+            buildCredentialVendingContext(resolvedEntityPath);
+
+        // Non-delegated loadTable still calls in here to fetch storage extra-properties
+        // (endpoint/region/path-style) and passes no actions; treat that as a READ grant so
+        // the integration emits a well-formed inline policy rather than calling STS empty-handed.
+        Set<PolarisStorageActions> effectiveActions =
+            storageActions.isEmpty() ? Set.of(PolarisStorageActions.READ) : storageActions;
+
+        accessConfig =
+            integration.getStorageAccessConfig(
+                List.of(new LocationGrant(locations, effectiveActions)),
+                refreshCredentialsEndpoint,
+                credentialVendingContext);
+      }
     }
 
-    PolarisStorageIntegration integration =
-        storageIntegrationProvider.getStorageIntegration(resolvedEntityPath);
-    if (integration == null) {
-      return StorageAccessConfig.builder().supportsCredentialVending(false).build();
+    if (callContext
+        .getRealmConfig()
+        .getConfig(
+            FeatureConfiguration.PROPAGATE_CATALOG_TABLE_DEFAULTS_TO_STORAGE_ACCESS_CONFIG)) {
+      accessConfig =
+          StorageConfigurationAccessProperties.mergeTableDefaults(
+              accessConfig, catalogTableDefaultProperties(resolvedEntityPath));
     }
+    return accessConfig;
+  }
 
-    CredentialVendingContext credentialVendingContext =
-        buildCredentialVendingContext(resolvedEntityPath);
-
-    // Non-delegated loadTable still calls in here to fetch storage extra-properties
-    // (endpoint/region/path-style) and passes no actions; treat that as a READ grant so
-    // the integration emits a well-formed inline policy rather than calling STS empty-handed.
-    Set<PolarisStorageActions> effectiveActions =
-        storageActions.isEmpty() ? Set.of(PolarisStorageActions.READ) : storageActions;
-
-    return integration.getStorageAccessConfig(
-        List.of(new LocationGrant(locations, effectiveActions)),
-        refreshCredentialsEndpoint,
-        credentialVendingContext);
+  private static Map<String, String> catalogTableDefaultProperties(
+      List<PolarisEntity> resolvedEntityPath) {
+    if (resolvedEntityPath.isEmpty()) {
+      return Map.of();
+    }
+    return PropertyUtil.propertiesWithPrefix(
+        resolvedEntityPath.get(0).getPropertiesAsMap(), CatalogProperties.TABLE_DEFAULT_PREFIX);
   }
 
   private CredentialVendingContext buildCredentialVendingContext(
