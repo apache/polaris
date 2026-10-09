@@ -26,8 +26,8 @@ import org.apache.polaris.containerspec.ContainerSpecHelper;
 public class S3Mock {
 
   private static final String DEFAULT_BUCKETS = "my-bucket,my-old-bucket";
-  private static final String DEFAULT_ACCESS_KEY = "ap1";
-  private static final String DEFAULT_SECRET_KEY = "s3cr3t";
+  public static final String DEFAULT_ACCESS_KEY = "ap1";
+  public static final String DEFAULT_SECRET_KEY = "s3cr3t";
 
   private final S3MockContainer s3Mock;
 
@@ -52,13 +52,29 @@ public class S3Mock {
     s3Mock.stop();
   }
 
-  public Map<String, String> getS3ConfigProperties() {
-    String endpoint = this.s3Mock.getHttpEndpoint();
+  public String getHttpEndpoint() {
+    return this.s3Mock.getHttpEndpoint();
+  }
+
+  /**
+   * Freeform storage-configuration properties bag entries for static S3Mock credentials. Prefer
+   * typed {@code endpoint} / {@code pathStyleAccess} on {@code AwsStorageConfigInfo} for those
+   * settings.
+   */
+  public Map<String, String> getStorageConfigProperties() {
     return Map.of(
-        "table-default.s3.endpoint", endpoint,
-        "table-default.s3.path-style-access", "true",
-        "table-default.s3.access-key-id", DEFAULT_ACCESS_KEY,
-        "table-default.s3.secret-access-key", DEFAULT_SECRET_KEY,
+        "s3.access-key-id", DEFAULT_ACCESS_KEY,
+        "s3.secret-access-key", DEFAULT_SECRET_KEY);
+  }
+
+  /**
+   * Client-facing catalog properties for engines that still read bare {@code s3.*} keys from
+   * catalog config. Server FileIO uses storage-configuration typed fields and the properties bag
+   * instead of {@code table-default.s3.*}.
+   */
+  public Map<String, String> getS3ConfigProperties() {
+    String endpoint = getHttpEndpoint();
+    return Map.of(
         "s3.endpoint", endpoint,
         "s3.path-style-access", "true",
         "s3.access-key-id", DEFAULT_ACCESS_KEY,

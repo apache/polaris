@@ -1112,6 +1112,14 @@ components:
         storageName:
           type: string
           description: An optional name referencing a server-side storage configuration
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+          description: >
+            Optional freeform FileIO / storage properties for deployment-specific customization
+            not covered by typed fields. Typed fields on the storage configuration take precedence
+            when both are set. Prefer this bag over catalog table-default.* for server FileIO.
       required:
         - storageType
       discriminator:

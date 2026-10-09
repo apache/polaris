@@ -155,6 +155,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setAllowedLocations(azureConfig.getAllowedLocations())
             .setStorageName(azureConfig.getStorageName())
             .setHierarchical(azureConfig.isHierarchical())
+            .setProperties(azureConfig.getProperties())
             .build();
       }
       if (configInfo instanceof GcpStorageConfigurationInfo gcpConfigModel) {
@@ -163,6 +164,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
             .setAllowedLocations(gcpConfigModel.getAllowedLocations())
             .setStorageName(gcpConfigModel.getStorageName())
+            .setProperties(gcpConfigModel.getProperties())
             .build();
       }
       if (configInfo instanceof FileStorageConfigurationInfo fileConfigModel) {
@@ -170,6 +172,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(fileConfigModel.getAllowedLocations())
             .setStorageName(fileConfigModel.getStorageName())
+            .setProperties(fileConfigModel.getProperties())
             .build();
       }
       return null;
@@ -200,6 +203,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         .setEndpointInternal(awsConfig.getEndpointInternal())
         .setKmsUnavailable(awsConfig.getKmsUnavailable())
         .setCredentialVendingMechanism(awsConfig.getCredentialVendingMechanism())
+        .setProperties(awsConfig.getProperties())
         .build();
   }
 
@@ -377,6 +381,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .multiTenantAppName(azureConfigModel.getMultiTenantAppName())
                     .consentUrl(azureConfigModel.getConsentUrl())
                     .hierarchical(azureConfigModel.getHierarchical())
+                    .properties(storageConfigModel.getProperties())
                     .build();
             break;
           case GCS:
@@ -386,6 +391,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .storageName(storageConfigModel.getStorageName())
                     .gcpServiceAccount(
                         ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount())
+                    .properties(storageConfigModel.getProperties())
                     .build();
             break;
           case FILE:
@@ -393,6 +399,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                 FileStorageConfigurationInfo.builder()
                     .allowedLocations(allowedLocations)
                     .storageName(storageConfigModel.getStorageName())
+                    .properties(storageConfigModel.getProperties())
                     .build();
             break;
           default:
@@ -434,6 +441,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
           .stsUnavailable(awsConfigModel.getStsUnavailable())
           .endpointInternal(awsConfigModel.getEndpointInternal())
           .kmsUnavailable(awsConfigModel.getKmsUnavailable())
+          .properties(awsConfigModel.getProperties())
           .build();
     }
 

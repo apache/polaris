@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -89,6 +90,23 @@ public abstract class PolarisStorageConfigurationInfo {
   public abstract String getStorageName();
 
   public abstract StorageType getStorageType();
+
+  /**
+   * Optional freeform FileIO / storage properties for deployment-specific customization that is not
+   * covered by typed fields on subclasses. Typed fields take precedence when both are set. Values
+   * intended only for the Polaris server should be folded into {@link
+   * StorageAccessConfig#internalProperties()} by storage integrations; other entries may be exposed
+   * to clients via load-table config.
+   */
+  @Nullable
+  public abstract Map<String, String> getProperties();
+
+  /** Returns {@link #getProperties()} or an empty map when unset. */
+  @JsonIgnore
+  public final Map<String, String> getPropertiesOrEmpty() {
+    Map<String, String> properties = getProperties();
+    return properties == null ? Map.of() : properties;
+  }
 
   private static final ObjectMapper DEFAULT_MAPPER;
 
