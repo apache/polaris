@@ -42,6 +42,11 @@ A generic table is an entity that defines the following fields:
   - The table base location is a location that includes all files for the table
   - A table with multiple disjoint locations (i.e. containing files that are outside the configured base location) is not compliant with the current generic table support in Polaris.
   - If no location is provided, clients or users are responsible for managing the location.
+  - When a non-empty location is provided for a local generic table, Polaris validates it against
+    the catalog's allowed locations. By default, it must also be within the parent namespace
+    location. The catalog property `polaris.config.allow.unstructured.table.location=true` removes
+    the namespace-location constraint, but not the allowed-locations constraint. A location is not
+    assigned automatically when this field is omitted.
 - **properties** (optional): Properties for the generic table passed on creation.
   - Currently, there is no reserved property key defined.
   - The property definition and interpretation is delegated to client or engine implementations.

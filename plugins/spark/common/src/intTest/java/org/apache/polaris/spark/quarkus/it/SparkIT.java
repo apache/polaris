@@ -25,11 +25,19 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
-import org.apache.polaris.service.it.env.IntegrationTestsHelper;
+import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 public class SparkIT extends SparkIntegrationBase {
+  @Override
+  protected StorageConfigInfo getStorageConfigInfo() {
+    return FileStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+        .setAllowedLocations(List.of(warehouseDir.toString()))
+        .build();
+  }
+
   @Test
   public void testNamespaces() {
     List<Object[]> namespaces = sql("SHOW NAMESPACES");
@@ -138,7 +146,7 @@ public class SparkIT extends SparkIntegrationBase {
   }
 
   @Test
-  public void testMixedTableAndViews(@TempDir Path tempDir) {
+  public void testMixedTableAndViews() {
     String namespace = generateName("ns");
     sql("CREATE NAMESPACE %s", namespace);
     sql("USE %s", namespace);
@@ -152,8 +160,7 @@ public class SparkIT extends SparkIntegrationBase {
     sql("CREATE VIEW %s AS SELECT col1 + 2 AS col1, col2 FROM %s", viewName, icebergTable);
 
     String deltaTable = "deltatb";
-    String deltaDir =
-        IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(namespace).getPath();
+    String deltaDir = Path.of(warehouseDir).resolve(namespace).toString();
     sql(
         "CREATE TABLE %s (col1 int, col2 int) using delta location '%s/%s'",
         deltaTable, deltaDir, deltaTable);
