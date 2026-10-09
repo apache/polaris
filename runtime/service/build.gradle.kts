@@ -261,7 +261,7 @@ tasks.withType(Test::class.java).configureEach {
 
     // JVM arguments provider does not interfere with Gradle's cache keys
     jvmArgumentProviders.add(
-      IntTestArgumentProvider(logsDir, quarkusProperties, quarkusTestArgLine)
+      IntTestArgumentProvider(logsDir, quarkusProperties, quarkusTestArgLine),
     )
 
     // delete files from previous runs

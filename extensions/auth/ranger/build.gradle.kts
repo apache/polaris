@@ -49,7 +49,7 @@ val generateAuthzItTestFixture =
       layout.projectDirectory.file("src/intTest/resources/authz_it_tests/dev_polaris_roles.json")
     val userStoreFile =
       layout.projectDirectory.file(
-        "src/intTest/resources/authz_it_tests/dev_polaris_userstore.json"
+        "src/intTest/resources/authz_it_tests/dev_polaris_userstore.json",
       )
     val outputDir = layout.buildDirectory.dir("generated/resources/intTest/authz_it_tests")
     inputs.file(polarisRangerServiceDefFile)
@@ -176,7 +176,7 @@ testing {
                 providers.environmentVariable("AWS_REGION").orElse("us-west-2"),
               )
               environment.putAll(
-                mapOf("POLARIS_BOOTSTRAP_CREDENTIALS" to "POLARIS,test-admin,test-secret")
+                mapOf("POLARIS_BOOTSTRAP_CREDENTIALS" to "POLARIS,test-admin,test-secret"),
               )
               systemProperties.putAll(
                 mapOf(
@@ -192,7 +192,7 @@ testing {
                   "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"" to "[\"FILE\"]",
                   "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"" to "true",
                   "polaris.readiness.ignore-severe-issues" to "true",
-                )
+                ),
               )
             }
           }

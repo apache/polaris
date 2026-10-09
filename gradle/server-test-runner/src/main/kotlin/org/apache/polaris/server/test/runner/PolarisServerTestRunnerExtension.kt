@@ -118,7 +118,7 @@ constructor(project: Project, internal val service: Provider<PolarisServerTestSe
 }
 
 internal fun PolarisServerTestRunnerExtension.conventionFrom(
-  other: PolarisServerTestRunnerExtension
+  other: PolarisServerTestRunnerExtension,
 ) {
   server.setFrom(other.server)
   startupActionClasspath.setFrom(other.startupActionClasspath)

@@ -105,7 +105,7 @@ class EffectiveAsfProject(
 
   fun codeRepoUrl(): Provider<String> =
     publishingHelperExtension.overrideScm.orElse(
-      githubRepoName().map { r -> "https://github.com/apache/$r" }.orElse(asfProject.repository)
+      githubRepoName().map { r -> "https://github.com/apache/$r" }.orElse(asfProject.repository),
     )
 
   fun fullName() = publishingHelperExtension.overrideName.orElse("Apache ${asfProject.name}")

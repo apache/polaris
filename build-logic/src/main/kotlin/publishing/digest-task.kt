@@ -71,7 +71,7 @@ abstract class GenerateDigest @Inject constructor(objectFactory: ObjectFactory) 
 
       digestFile.writeText(
         md.digest().joinToString(separator = "") { eachByte -> "%02x".format(eachByte) } +
-          "  ${input.name}"
+          "  ${input.name}",
       )
     }
   }

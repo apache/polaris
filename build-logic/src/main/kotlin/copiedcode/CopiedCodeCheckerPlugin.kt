@@ -162,7 +162,7 @@ abstract class CheckCopiedCodeMentionsExistTask : DefaultTask() {
       )
 
       throw GradleException(
-        "${nonExistingMentions.size} files mentioned in $licenseFileRelative do not exist, fix the $licenseFileRelative file."
+        "${nonExistingMentions.size} files mentioned in $licenseFileRelative do not exist, fix the $licenseFileRelative file.",
       )
     }
   }
@@ -284,7 +284,7 @@ abstract class CheckForCopiedCodeTask : DefaultTask() {
       )
 
       throw GradleException(
-        "${unmentionedFiles.size} files with the $magicWord marker need to be mentioned in $licenseFileRelative. See the messages above."
+        "${unmentionedFiles.size} files with the $magicWord marker need to be mentioned in $licenseFileRelative. See the messages above.",
       )
     }
   }

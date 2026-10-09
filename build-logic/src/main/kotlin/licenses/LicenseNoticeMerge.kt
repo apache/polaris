@@ -95,7 +95,7 @@ abstract class LicenseNoticeMerge @Inject constructor(objectFactory: ObjectFacto
               val header = iter.next()
               if (!iter.next().isBlank()) {
                 errors.add(
-                  "* Invalid line after license block header for '$header', expected an empty line"
+                  "* Invalid line after license block header for '$header', expected an empty line",
                 )
               }
               val dependencies = mutableListOf<String>()
@@ -119,7 +119,7 @@ abstract class LicenseNoticeMerge @Inject constructor(objectFactory: ObjectFacto
         .reduce { key, accumulator, element ->
           if (accumulator.suffix != element.suffix) {
             errors.add(
-              "* License information for '$key' differs across the imported LICENSE files:\n${accumulator.suffix}\n${element.suffix}\n"
+              "* License information for '$key' differs across the imported LICENSE files:\n${accumulator.suffix}\n${element.suffix}\n",
             )
           }
           LicenseBlock(
