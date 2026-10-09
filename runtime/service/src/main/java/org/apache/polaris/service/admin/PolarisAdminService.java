@@ -1435,7 +1435,7 @@ public class PolarisAdminService {
     // TODO: Handle return value in case of concurrent modification
     DropEntityResult dropEntityResult =
         metaStoreManager.dropEntityIfExists(
-            getCurrentPolarisContext(), null, entity, Map.of(), true); // cleanup grants
+            getCurrentPolarisContext(), null, entity, Map.of(), false);
 
     DropEntityFailureMapper.throwIfFailed(
         dropEntityResult,
@@ -1549,7 +1549,7 @@ public class PolarisAdminService {
             PolarisEntity.toCoreList(resolvedCatalogRoleEntity.getRawParentPath()),
             resolvedCatalogRoleEntity.getRawLeafEntity(),
             Map.of(),
-            true); // cleanup grants
+            false);
 
     DropEntityFailureMapper.throwIfFailed(
         dropEntityResult,
