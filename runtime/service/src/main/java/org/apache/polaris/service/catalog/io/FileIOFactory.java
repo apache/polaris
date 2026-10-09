@@ -37,15 +37,17 @@ public interface FileIOFactory {
    * <p>This method may obtain subscoped credentials to restrict the FileIO's permissions, ensuring
    * secure and limited access to the table's data and locations.
    *
-   * <p>{@code storageAccessConfig} is authoritative for credentials and storage-config extras.
-   * {@code properties} may carry catalog-trusted contextual settings (for example {@code
-   * table-default.*}). Callers must not pass table {@code metadata.properties()}, which can include
-   * caller-controlled FileIO client settings such as {@code s3.endpoint}.
+   * <p>{@code storageAccessConfig} is authoritative for credentials and storage-config settings
+   * (typed fields and the freeform properties bag). {@code properties} is reserved for residual
+   * catalog-trusted context and is normally empty for server FileIO. Callers must not pass table
+   * {@code metadata.properties()}, which can include caller-controlled FileIO client settings such
+   * as {@code s3.endpoint}.
    *
    * @param storageAccessConfig the storage access configuration containing credentials and other
    *     properties.
    * @param ioImplClassName the class name of the FileIO implementation to load.
-   * @param properties catalog-trusted contextual properties for the FileIO.
+   * @param properties residual catalog-trusted contextual properties for the FileIO (normally
+   *     empty).
    * @return a configured FileIO instance.
    */
   FileIO loadFileIO(

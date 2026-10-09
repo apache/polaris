@@ -78,7 +78,8 @@ public class CatalogSerializationTest {
                 + "\"decryptionKeys\":[],"
                 + "\"pathStyleAccess\":false,"
                 + "\"storageType\":\"S3\","
-                + "\"allowedLocations\":[]"
+                + "\"allowedLocations\":[],"
+                + "\"properties\":{}"
                 + "}}");
   }
 
@@ -109,7 +110,8 @@ public class CatalogSerializationTest {
                 + "\"decryptionKeys\":[\"arn:aws:kms:us-east-1:012345678901:key/decryption-key-1\"],"
                 + "\"pathStyleAccess\":false,"
                 + "\"storageType\":\"S3\","
-                + "\"allowedLocations\":[]"
+                + "\"allowedLocations\":[],"
+                + "\"properties\":{}"
                 + "}}");
   }
 

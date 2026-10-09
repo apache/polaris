@@ -31,10 +31,7 @@ import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 
-/**
- * Verifies AccessConfig overlays contextual properties, and documents the trusted-context contract
- * for server FileIO construction.
- */
+/** Verifies AccessConfig overlays residual contextual properties for server FileIO construction. */
 public class DefaultFileIOFactoryAccessConfigTest {
 
   @Test
@@ -51,7 +48,6 @@ public class DefaultFileIOFactoryAccessConfigTest {
             .supportsCredentialVending(true)
             .build();
 
-    // Simulates catalog table-default.* (trusted), not metadata.properties().
     Map<String, String> contextualProperties =
         Map.of(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), contextualEndpoint);
 
@@ -76,23 +72,17 @@ public class DefaultFileIOFactoryAccessConfigTest {
   }
 
   @Test
-  void catalogTrustedContextAppliesWhenAccessConfigHasNoEndpoint() {
-    // Matches Spark IT / SKIP_CREDENTIAL_SUBSCOPING: empty AccessConfig, MinIO settings come from
-    // catalog-trusted contextual properties (e.g. table-default.*).
-    StorageAccessConfig accessConfig =
-        StorageAccessConfig.builder().supportsCredentialVending(false).build();
-
+  void accessConfigAloneDrivesFileIOWhenContextEmpty() {
+    // Server FileIO is AccessConfig-only; residual context is normally empty.
     String endpoint = "http://127.0.0.1:9000";
-    Map<String, String> contextualProperties =
-        Map.of(
-            StorageAccessProperty.AWS_ENDPOINT.getPropertyName(),
-            endpoint,
-            StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(),
-            "true",
-            S3FileIOProperties.ACCESS_KEY_ID,
-            "polaris-access",
-            S3FileIOProperties.SECRET_ACCESS_KEY,
-            "polaris-secret");
+    StorageAccessConfig accessConfig =
+        StorageAccessConfig.builder()
+            .supportsCredentialVending(false)
+            .putExtraProperty(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
+            .putExtraProperty(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true")
+            .putCredential(S3FileIOProperties.ACCESS_KEY_ID, "polaris-access")
+            .putCredential(S3FileIOProperties.SECRET_ACCESS_KEY, "polaris-secret")
+            .build();
 
     AtomicReference<Map<String, String>> captured = new AtomicReference<>();
     DefaultFileIOFactory factory =
@@ -105,7 +95,7 @@ public class DefaultFileIOFactoryAccessConfigTest {
           }
         };
 
-    factory.loadFileIO(accessConfig, InMemoryFileIO.class.getName(), contextualProperties);
+    factory.loadFileIO(accessConfig, InMemoryFileIO.class.getName(), Map.of());
 
     assertThat(captured.get())
         .containsEntry(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)

@@ -35,10 +35,11 @@ import org.jspecify.annotations.NonNull;
  * A default FileIO factory implementation for creating Iceberg {@link FileIO} instances used by the
  * Polaris server.
  *
- * <p>Merge order: contextual properties, then {@link StorageAccessConfig} credentials /
+ * <p>Merge order: residual contextual properties, then {@link StorageAccessConfig} credentials /
  * extraProperties / internalProperties (AccessConfig wins), then {@code polaris.storage.*} HTTP
- * client settings from {@link S3AccessConfig}. Call sites must pass catalog-trusted context (for
- * example {@code table-default.*}), not table {@code metadata.properties()}.
+ * client settings from {@link S3AccessConfig}. Server FileIO should be driven by AccessConfig
+ * (storage-configuration typed fields and properties bag). Call sites must not pass table {@code
+ * metadata.properties()}.
  *
  * <p>Production CDI paths inject the live {@link S3AccessConfig}; tests/fixtures can pass {@link
  * S3AccessConfig#empty()}.
@@ -60,8 +61,8 @@ public class DefaultFileIOFactory implements FileIOFactory {
       @NonNull String ioImplClassName,
       @NonNull Map<String, String> tableProperties) {
 
-    // Contextual properties first (e.g. catalog table-default.*). AccessConfig always overlays so
-    // storage-config credentials/endpoint win. Call sites must not pass table metadata.properties()
+    // Residual contextual properties first; AccessConfig overlays so storage-config
+    // credentials/endpoint/bag win. Call sites must not pass table metadata.properties()
     // (caller-controlled FileIO client keys such as s3.endpoint).
     Map<String, String> properties = new HashMap<>(tableProperties);
     properties.putAll(storageAccessConfig.credentials());
