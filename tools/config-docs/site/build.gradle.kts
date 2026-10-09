@@ -41,6 +41,7 @@ val genProjectPaths = listOf(
   ":polaris-persistence-nosql-inmemory",
   ":polaris-persistence-nosql-mongodb",
   ":polaris-runtime-common",
+  ":polaris-tasks-api",
   ":polaris-runtime-service",
 )
 
