@@ -59,14 +59,14 @@ internal fun Test.configurePolarisServer(extension: PolarisServerTestRunnerExten
           startupAction = null
         }
       }
-    }
+    },
   )
 
   doFirst {
     val files = extension.server.files
     if (files.size != 1) {
       throw GradleException(
-        "Expected exactly one Polaris server artifact, but found ${files.size}: $files"
+        "Expected exactly one Polaris server artifact, but found ${files.size}: $files",
       )
     }
     val jar = files.single()
@@ -164,7 +164,7 @@ private class IsolatedPolarisServerStartupAction(
       try {
         withContextClassLoader(classLoader) {
           action.start(
-            DefaultPolarisServerStartupContext(parameters, systemProperties, environment)
+            DefaultPolarisServerStartupContext(parameters, systemProperties, environment),
           )
         }
       } catch (e: Throwable) {

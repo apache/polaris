@@ -120,7 +120,7 @@ class AsfProject(
       val project =
         projects[apacheId]
           ?: throw IllegalArgumentException(
-            "No project '$apacheId' found in https://whimsy.apache.org/public/public_ldap_projects.json"
+            "No project '$apacheId' found in https://whimsy.apache.org/public/public_ldap_projects.json",
           )
       return project
     }
@@ -132,7 +132,7 @@ class AsfProject(
       val podling =
         podlings[apacheId]
           ?: throw IllegalArgumentException(
-            "No podling '$apacheId' found in https://whimsy.apache.org/public/public_podlings.json"
+            "No podling '$apacheId' found in https://whimsy.apache.org/public/public_podlings.json",
           )
       return podling
     }

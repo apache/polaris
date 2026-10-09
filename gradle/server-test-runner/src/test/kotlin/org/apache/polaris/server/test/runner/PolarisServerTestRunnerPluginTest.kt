@@ -120,7 +120,7 @@ class PolarisServerTestRunnerPluginTest {
         }
       }
       """
-        .trimIndent()
+        .trimIndent(),
     )
     writeFakeServer()
     writePropertyTest()
@@ -155,7 +155,7 @@ class PolarisServerTestRunnerPluginTest {
         withPolarisServer(files())
       }
       """
-        .trimIndent()
+        .trimIndent(),
     )
     writePropertyTest()
 
@@ -201,7 +201,7 @@ class PolarisServerTestRunnerPluginTest {
         }
       }
       """
-        .trimIndent()
+        .trimIndent(),
     )
     writeFakeServer("Listening on: http://0.0.0.0")
     writePropertyTest()
@@ -223,7 +223,7 @@ class PolarisServerTestRunnerPluginTest {
 
   private fun writeFakeServer(
     listenLine: String =
-      "Listening on: http://0.0.0.0:12345. Management interface listening on http://0.0.0.0:12346."
+      "Listening on: http://0.0.0.0:12345. Management interface listening on http://0.0.0.0:12346.",
   ) {
     val sourceDir = projectDir.resolve("src/main/java/test").createDirectories()
     sourceDir
@@ -258,7 +258,7 @@ class PolarisServerTestRunnerPluginTest {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -282,7 +282,7 @@ class PolarisServerTestRunnerPluginTest {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 

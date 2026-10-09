@@ -180,7 +180,7 @@ tasks.register<JavaExec>("validateOpaSchema") {
         |
         |${logFile.get().asFile.readText()}
       """
-          .trimMargin()
+          .trimMargin(),
       )
     }
 
@@ -203,7 +203,7 @@ tasks.register<JavaExec>("validateOpaSchema") {
         |Committed file: ${committedSchemaFile.absolutePath}
         |Generated file: ${tempSchemaFile.absolutePath}
       """
-          .trimMargin()
+          .trimMargin(),
       )
     }
 
@@ -245,11 +245,11 @@ fun Test.configureOpaTestTask(
         "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"" to "[\"FILE\"]",
         "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"" to "true",
         "polaris.readiness.ignore-severe-issues" to "true",
-      )
+      ),
     )
     staticToken?.let {
       systemProperties.putAll(
-        mapOf("polaris.authorization.opa.auth.bearer.static-token.value" to it)
+        mapOf("polaris.authorization.opa.auth.bearer.static-token.value" to it),
       )
     }
     fileTokenPath?.orNull?.let {
@@ -257,7 +257,7 @@ fun Test.configureOpaTestTask(
         mapOf(
           "polaris.authorization.opa.auth.bearer.file-based.path" to it,
           opaBearerTokenRefreshIntervalProperty to "PT1S",
-        )
+        ),
       )
     }
   }

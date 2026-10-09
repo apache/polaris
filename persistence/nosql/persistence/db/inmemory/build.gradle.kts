@@ -43,7 +43,7 @@ val quarkusRuntimeElements =
   }
 
 (components["java"] as AdhocComponentWithVariants).addVariantsFromConfiguration(
-  quarkusRuntimeElements.get()
+  quarkusRuntimeElements.get(),
 ) {}
 
 dependencies {
