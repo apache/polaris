@@ -364,6 +364,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   policy, and namespace-privilege entries. This preserves namespace levels that contain dots during
   `setup apply`; apply remains compatible with existing dot-delimited configurations. Older CLI
   versions cannot apply the new export format.
+- Helm chart: when tracing is disabled (default), the `OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS` environment variable is now set to `io.opentelemetry.contrib.gcp.resource.GCPResourceProvider`, preventing the OpenTelemetry GCP resource detector from blocking Polaris startup for ~135s in environments where `metadata.google.internal` resolves to a silently-dropping address (local Kubernetes, Docker, etc.).
 - Python CLI `setup export` now writes each catalog's `policies` as a list of
   `{name, namespace, ...}` entries instead of the previous name-keyed mapping, preserving policies
   with the same name in different namespaces. The new export format cannot be applied by older CLI
