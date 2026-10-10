@@ -57,9 +57,8 @@ public class S3Mock {
   }
 
   /**
-   * Freeform storage-configuration properties bag entries for static S3Mock credentials. Prefer
-   * typed {@code endpoint} / {@code pathStyleAccess} on {@code AwsStorageConfigInfo} for those
-   * settings.
+   * Static S3Mock credentials for {@code AwsStorageConfigInfo#setFileIoProperties}. Prefer typed
+   * {@code endpoint} / {@code pathStyleAccess} on the storage config for those settings.
    */
   public Map<String, String> getStorageConfigProperties() {
     return Map.of(
@@ -69,8 +68,8 @@ public class S3Mock {
 
   /**
    * Client-facing catalog properties for engines that still read bare {@code s3.*} keys from
-   * catalog config. Server FileIO uses storage-configuration typed fields and the properties bag
-   * instead of {@code table-default.s3.*}.
+   * catalog config. Server FileIO uses storage-configuration typed fields and {@code
+   * fileIoProperties} instead of {@code table-default.s3.*}.
    */
   public Map<String, String> getS3ConfigProperties() {
     String endpoint = getHttpEndpoint();

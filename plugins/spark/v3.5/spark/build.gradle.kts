@@ -180,6 +180,11 @@ testing {
             environment.put("AWS_EC2_METADATA_DISABLED", "true")
             environment.put("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
             systemProperties.put("quarkus.profile", "it")
+            // Storage-config fileIoProperties / typed endpoint need the normal AccessConfig path.
+            systemProperties.put(
+              "polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"",
+              "false",
+            )
             systemProperties.put(
               "quarkus.log.file.path",
               logsDir.resolve("polaris.log").absolutePath,
