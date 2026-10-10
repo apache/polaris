@@ -300,6 +300,10 @@ public class GcpCredentialsStorageIntegration
   /** Mint a fresh {@link StorageAccessConfig} for the given GCP cache key. */
   static StorageAccessConfig compute(GcpStorageCredentialCacheKey key) {
     GcpStorageConfigurationInfo gcpStorageConfig = key.storageConfig();
+    // Static FileIO credentials on the storage config (emulator oauth token) — skip downscoping.
+    if (StorageConfigurationAccessProperties.hasStaticFileIoCredentials(gcpStorageConfig)) {
+      return StorageConfigurationAccessProperties.storageConfigOnly(gcpStorageConfig);
+    }
     GoogleCredentials sourceCredentials = key.sourceCredentials();
     HttpTransportFactory transportFactory = key.transportFactory();
     GcpCredentialOps credentialOps = key.credentialOps();

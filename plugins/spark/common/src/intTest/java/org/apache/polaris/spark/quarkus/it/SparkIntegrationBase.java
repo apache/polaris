@@ -121,7 +121,7 @@ public abstract class SparkIntegrationBase {
         .setEndpoint(s3Container.getHttpEndpoint())
         .setPathStyleAccess(true)
         .setStsUnavailable(true)
-        .setProperties(s3Container.getStorageConfigProperties())
+        .setFileIoProperties(s3Container.getStorageConfigProperties())
         .build();
   }
 

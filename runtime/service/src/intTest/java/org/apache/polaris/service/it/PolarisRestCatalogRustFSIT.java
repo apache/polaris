@@ -73,7 +73,12 @@ public class PolarisRestCatalogRustFSIT extends PolarisRestCatalogIntegrationBas
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setPathStyleAccess(true)
             .setEndpoint(rustfsAccess.s3endpoint())
-            .setAllowedLocations(List.of(rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX).toString()));
+            .setStsUnavailable(true)
+            .setAllowedLocations(List.of(rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX).toString()))
+            .setFileIoProperties(
+                Map.of(
+                    StorageAccessProperty.AWS_KEY_ID.getPropertyName(), ACCESS_KEY,
+                    StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), SECRET_KEY));
 
     return storageConfig.build();
   }

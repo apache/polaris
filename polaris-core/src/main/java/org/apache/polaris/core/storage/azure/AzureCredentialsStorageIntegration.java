@@ -160,6 +160,10 @@ public class AzureCredentialsStorageIntegration
   static StorageAccessConfig compute(AzureStorageCredentialCacheKey key) {
     RealmConfig realmConfig = key.realmConfig();
     AzureStorageConfigurationInfo azureStorageConfig = key.storageConfig();
+    // Static FileIO credentials on the storage config (emulator shared-key) — skip SAS vending.
+    if (StorageConfigurationAccessProperties.hasStaticFileIoCredentials(azureStorageConfig)) {
+      return StorageConfigurationAccessProperties.storageConfigOnly(azureStorageConfig);
+    }
     DefaultAzureCredential defaultAzureCredential = key.defaultAzureCredential();
     boolean allowList = key.allowedListAction();
     Set<String> locations = key.allowedReadLocations();
