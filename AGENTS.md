@@ -189,9 +189,10 @@ Use the PR template (`.github/pull_request_template.md`). At minimum:
 2. Link the issue: `Fixes #NNN` or `Related to #NNN`.
 3. State your understanding of the current behavior and what you expect to change.
 4. Complete every checklist item.
-5. If the change affects user-facing behavior, update `CHANGELOG.md` under
-   `## [Unreleased]` in the appropriate subsection — consult existing entries
-   for the right category.
+5. Update `CHANGELOG.md` only for changes worth calling out to users in release
+   notes, such as breaking changes, metastore schema changes, or changes requiring manual
+   steps during an upgrade. An entry is not required for every PR. Add entries
+   under `## [Unreleased]` in the appropriate subsection.
 6. If your change affects user-facing behavior or configuration, check whether
    `site/content/in-dev/unreleased/` needs updates.
 
