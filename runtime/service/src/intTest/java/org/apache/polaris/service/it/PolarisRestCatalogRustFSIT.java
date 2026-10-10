@@ -68,17 +68,14 @@ public class PolarisRestCatalogRustFSIT extends PolarisRestCatalogIntegrationBas
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
+    // Typed endpoint / path-style only. Credential vending tests need STS (rustfs); do not set
+    // stsUnavailable or static keys here — see RestCatalogRustFSSpecialIT for that shape.
     AwsStorageConfigInfo.Builder storageConfig =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setPathStyleAccess(true)
             .setEndpoint(rustfsAccess.s3endpoint())
-            .setStsUnavailable(true)
-            .setAllowedLocations(List.of(rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX).toString()))
-            .setFileIoProperties(
-                Map.of(
-                    StorageAccessProperty.AWS_KEY_ID.getPropertyName(), ACCESS_KEY,
-                    StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), SECRET_KEY));
+            .setAllowedLocations(List.of(rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX).toString()));
 
     return storageConfig.build();
   }
