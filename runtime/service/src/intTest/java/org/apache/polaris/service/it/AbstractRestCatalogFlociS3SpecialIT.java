@@ -19,7 +19,6 @@
 package org.apache.polaris.service.it;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX;
 import static org.apache.iceberg.aws.AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT;
 import static org.apache.iceberg.aws.s3.S3FileIOProperties.ENDPOINT;
 import static org.apache.iceberg.types.Types.NestedField.optional;
@@ -176,12 +175,14 @@ abstract class AbstractRestCatalogFlociS3SpecialIT {
     region.ifPresent(storageConfigBuilder::setRegion);
     roleArn.ifPresent(storageConfigBuilder::setRoleArn);
     kmsUnavailable.ifPresent(storageConfigBuilder::setKmsUnavailable);
+    if (!stsEnabled) {
+      storageConfigBuilder.setFileIoProperties(
+          Map.of(
+              AWS_KEY_ID.getPropertyName(), ACCESS_KEY,
+              AWS_SECRET_KEY.getPropertyName(), SECRET_KEY));
+    }
 
     var catalogProps = CatalogProperties.builder(storageBase.toASCIIString() + "/" + catalogName);
-    if (!stsEnabled) {
-      catalogProps.addProperty(TABLE_DEFAULT_PREFIX + AWS_KEY_ID.getPropertyName(), ACCESS_KEY);
-      catalogProps.addProperty(TABLE_DEFAULT_PREFIX + AWS_SECRET_KEY.getPropertyName(), SECRET_KEY);
-    }
     var catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)

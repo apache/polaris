@@ -495,6 +495,15 @@ Polaris task expiry timeout (milliseconds). Older unfinished tasks may not be pr
 
 ---
 
+##### `polaris.features."PROPAGATE_CATALOG_TABLE_DEFAULTS_TO_STORAGE_ACCESS_CONFIG"`
+
+When true, fold catalog table-default.* properties into StorageAccessConfig for server FileIO (and load-table config). Off by default. Use only as a rolling-upgrade bridge; prefer storage-configuration typed fields and fileIoProperties on PolarisStorageConfigurationInfo.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."PURGE_VIEW_METADATA_ON_DROP"`
 
 If set to true, Polaris will attempt to delete view metadata files when a view is dropped.

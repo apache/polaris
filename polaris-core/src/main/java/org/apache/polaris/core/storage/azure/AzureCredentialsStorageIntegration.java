@@ -64,6 +64,7 @@ import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.StorageConfigurationAccessProperties;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
@@ -159,6 +160,10 @@ public class AzureCredentialsStorageIntegration
   static StorageAccessConfig compute(AzureStorageCredentialCacheKey key) {
     RealmConfig realmConfig = key.realmConfig();
     AzureStorageConfigurationInfo azureStorageConfig = key.storageConfig();
+    // Static FileIO credentials on the storage config (emulator shared-key) — skip SAS vending.
+    if (StorageConfigurationAccessProperties.hasStaticFileIoCredentials(azureStorageConfig)) {
+      return StorageConfigurationAccessProperties.storageConfigOnly(azureStorageConfig);
+    }
     DefaultAzureCredential defaultAzureCredential = key.defaultAzureCredential();
     boolean allowList = key.allowedListAction();
     Set<String> locations = key.allowedReadLocations();
@@ -267,7 +272,17 @@ public class AzureCredentialsStorageIntegration
           String.format("Endpoint %s not supported", location.getEndpoint()));
     }
 
-    return toAccessConfig(sasToken, location, sanitizedEndTime.toInstant());
+    // Bag + typed fields (typed wins). Bag static keys are internals (server FileIO only);
+    // SAS credentials below are the only AccessConfig.credentials() entries.
+    StorageAccessConfig fromStorageConfig =
+        StorageConfigurationAccessProperties.storageConfigOnly(azureStorageConfig);
+    StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
+    fromStorageConfig.extraProperties().forEach(accessConfig::putExtraProperty);
+    fromStorageConfig.internalProperties().forEach(accessConfig::putInternalProperty);
+    Instant expiresAt = sanitizedEndTime.toInstant();
+    handleAzureCredential(accessConfig, sasToken, location, expiresAt);
+    accessConfig.expiresAt(expiresAt);
+    return accessConfig.build();
   }
 
   @VisibleForTesting

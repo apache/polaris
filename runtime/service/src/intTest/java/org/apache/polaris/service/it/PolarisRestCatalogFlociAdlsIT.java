@@ -19,7 +19,6 @@
 package org.apache.polaris.service.it;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX;
 import static org.apache.iceberg.types.Types.NestedField.optional;
 import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
@@ -29,6 +28,7 @@ import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.ResourceArg;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
+import io.quarkus.test.junit.TestProfile;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
@@ -53,6 +53,7 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.apache.polaris.test.commons.FlociEmulatorProfile;
 import org.apache.polaris.test.floci.az.FlociAzure;
 import org.apache.polaris.test.floci.az.FlociAzureAccess;
 import org.apache.polaris.test.floci.az.FlociAzureTestResource;
@@ -65,6 +66,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @QuarkusIntegrationTest
+@TestProfile(FlociEmulatorProfile.class)
 @QuarkusTestResource(
     value = FlociAzureTestResource.class,
     initArgs = {
@@ -157,9 +159,6 @@ public class PolarisRestCatalogFlociAdlsIT {
     var baseLocation = flociAzureAccess.location("polaris/" + catalogName);
     var catalogProps = CatalogProperties.builder(baseLocation);
     catalogProps.addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true");
-    flociAzureAccess
-        .icebergProperties()
-        .forEach((key, value) -> catalogProps.addProperty(TABLE_DEFAULT_PREFIX + key, value));
 
     return PolarisCatalog.builder()
         .setType(Catalog.TypeEnum.INTERNAL)
@@ -170,6 +169,7 @@ public class PolarisRestCatalogFlociAdlsIT {
                 .setTenantId(flociAzureAccess.account())
                 .setAllowedLocations(List.of(baseLocation))
                 .setHierarchical(true)
+                .setFileIoProperties(flociAzureAccess.icebergProperties())
                 .build())
         .setProperties(catalogProps.build())
         .build();
@@ -181,13 +181,6 @@ public class PolarisRestCatalogFlociAdlsIT {
   }
 
   private Map<String, String> restCatalogProperties() {
-    return ImmutableMap.<String, String>builder()
-        .putAll(flociAzureAccess.icebergProperties())
-        .putAll(
-            flociAzureAccess.icebergProperties().entrySet().stream()
-                .collect(
-                    ImmutableMap.toImmutableMap(
-                        entry -> TABLE_DEFAULT_PREFIX + entry.getKey(), Map.Entry::getValue)))
-        .buildKeepingLast();
+    return ImmutableMap.copyOf(flociAzureAccess.icebergProperties());
   }
 }

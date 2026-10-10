@@ -68,6 +68,8 @@ public class PolarisRestCatalogRustFSIT extends PolarisRestCatalogIntegrationBas
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
+    // Typed endpoint / path-style only. Credential vending tests need STS (rustfs); do not set
+    // stsUnavailable or static keys here — see RestCatalogRustFSSpecialIT for that shape.
     AwsStorageConfigInfo.Builder storageConfig =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)

@@ -56,6 +56,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.StorageConfigurationAccessProperties;
 import org.apache.polaris.core.storage.StorageUri;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
@@ -299,6 +300,10 @@ public class GcpCredentialsStorageIntegration
   /** Mint a fresh {@link StorageAccessConfig} for the given GCP cache key. */
   static StorageAccessConfig compute(GcpStorageCredentialCacheKey key) {
     GcpStorageConfigurationInfo gcpStorageConfig = key.storageConfig();
+    // Static FileIO credentials on the storage config (emulator oauth token) — skip downscoping.
+    if (StorageConfigurationAccessProperties.hasStaticFileIoCredentials(gcpStorageConfig)) {
+      return StorageConfigurationAccessProperties.storageConfigOnly(gcpStorageConfig);
+    }
     GoogleCredentials sourceCredentials = key.sourceCredentials();
     HttpTransportFactory transportFactory = key.transportFactory();
     GcpCredentialOps credentialOps = key.credentialOps();
@@ -337,9 +342,15 @@ public class GcpCredentialsStorageIntegration
       throw new RuntimeException("Unable to fetch access credentials " + e.getMessage());
     }
 
+    // Bag + typed fields (typed wins). Bag static keys are internals (server FileIO only);
+    // downscoped token below is the only AccessConfig.credentials() entry for GCS_ACCESS_TOKEN.
+    StorageAccessConfig fromStorageConfig =
+        StorageConfigurationAccessProperties.storageConfigOnly(gcpStorageConfig);
+    StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
+    fromStorageConfig.extraProperties().forEach(accessConfig::putExtraProperty);
+    fromStorageConfig.internalProperties().forEach(accessConfig::putInternalProperty);
     // If expires_in missing, use source credential's expire time, which require another api call to
     // get.
-    StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
     accessConfig.put(StorageAccessProperty.GCS_ACCESS_TOKEN, token.getTokenValue());
     accessConfig.put(
         StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT_MS,
