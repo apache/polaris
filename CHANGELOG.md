@@ -101,6 +101,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
   take the entity's resolved parent path, so implementations exclude the entity's own ancestors
   without re-reading the parent chain from the metastore.
+- The binary distribution now includes the `server/config/application.properties` and
+  `admin/config/application.properties` configuration files, with a selection of commonly changed
+  properties, all commented out. The default configuration of the server and of the admin tool is
+  unchanged.
 - Apache Iceberg has been upgraded to 1.12.0. The Java REST client now encodes spaces in namespace
   and table names as `%20` instead of `+` (apache/iceberg#15989). Polaris decodes path segments
   per RFC 3986 and has always treated `+` as a literal character, so the server behaves the same for
