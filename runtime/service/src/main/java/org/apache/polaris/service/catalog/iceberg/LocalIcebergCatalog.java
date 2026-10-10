@@ -433,7 +433,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             identifier,
             Set.of(locationDir),
             resolvedParent,
-            Map.of(),
             Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
     TableMetadata metadata = TableMetadataParser.read(fileIO, metadataFileLocation);
@@ -461,7 +460,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             identifier,
             Set.of(locationDir),
             resolvedPath,
-            Map.of(),
             Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
     TableMetadata metadata = TableMetadataParser.read(fileIO, metadataFileLocation);
@@ -1160,7 +1158,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             identifier,
             Set.of(locationDir),
             resolvedParent,
-            Map.of(),
             Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
     ViewMetadata metadata = ViewMetadataParser.read(fileIO, metadataFileLocation);
@@ -1931,7 +1928,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                       tableIdentifier,
                       Set.of(latestLocationDir),
                       resolvedEntities,
-                      Map.of(),
                       Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
               TableMetadata metadata = TableMetadataParser.read(fileIO, metadataLocation);
               validateLocationsMatchEntity(tableIdentifier, storedEntity, metadata);
@@ -2062,7 +2058,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               tableIdentifier,
               requestedLocations,
               resolvedStorageEntity,
-              Map.of(),
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
@@ -2462,7 +2457,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                       identifier,
                       Set.of(latestLocationDir),
                       resolvedEntities,
-                      Map.of(),
                       Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
@@ -2538,7 +2532,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               identifier,
               StorageUtil.getLocationsUsedByTable(metadata),
               resolvedStorageEntity,
-              Map.of(),
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));
 
       MetadataWriteResult writeResult = writeNewMetadataIfRequired(metadata);
@@ -2786,21 +2779,19 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
   /**
    * Builds server-side FileIO for a table-like entity from {@link StorageAccessConfig} (storage
-   * configuration typed fields and properties bag). {@code fileIOContextProperties} is normally
-   * empty. Must not be table {@code metadata.properties()}, which can include caller-controlled
-   * FileIO client settings such as {@code s3.endpoint}.
+   * configuration typed fields and fileIoProperties). Must not use table {@code
+   * metadata.properties()}, which can include caller-controlled FileIO client settings such as
+   * {@code s3.endpoint}.
    */
   private FileIO loadFileIOForTableLike(
       TableIdentifier identifier,
       Set<String> readLocations,
       PolarisResolvedPathWrapper resolvedStorageEntity,
-      Map<String, String> fileIOContextProperties,
       Set<PolarisStorageActions> storageActions) {
     StorageAccessConfig storageAccessConfig =
         storageAccessConfigProvider.getStorageAccessConfig(
             identifier, readLocations, storageActions, Optional.empty(), resolvedStorageEntity);
-    FileIO fileIO =
-        fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, fileIOContextProperties);
+    FileIO fileIO = fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, Map.of());
     // ensure the new fileIO is closed when the catalog is closed
     closeableGroup.addCloseable(fileIO);
     return fileIO;
@@ -3241,7 +3232,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           tableIdentifier,
           Set.of(locationDir),
           resolvedStorageEntity,
-          Map.of(),
           Set.of(PolarisStorageActions.READ));
 
       LOGGER.debug(
@@ -3307,7 +3297,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               tableIdentifier,
               Set.of(locationDir),
               resolvedParent,
-              Map.of(),
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,

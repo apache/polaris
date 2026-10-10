@@ -225,7 +225,7 @@ public class RestCatalogRustFSSpecialIT {
     roleArn.ifPresent(storageConfig::setRoleArn);
     kmsUnavailable.ifPresent(storageConfig::setKmsUnavailable);
     if (!stsEnabled) {
-      storageConfig.setProperties(
+      storageConfig.setFileIoProperties(
           Map.of(
               AWS_KEY_ID.getPropertyName(), ACCESS_KEY,
               AWS_SECRET_KEY.getPropertyName(), SECRET_KEY));
