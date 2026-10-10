@@ -46,7 +46,7 @@ public class ModelScanMetricsReportTest {
   private static final Integer TEST_SCHEMA_ID = 1;
   private static final String TEST_FILTER = "id > 100";
   private static final String TEST_PROJECTED_IDS = "1,2,3";
-  private static final String TEST_PROJECTED_NAMES = "id,name,value";
+  private static final String TEST_PROJECTED_NAMES = "[\"id\",\"name\",\"value\"]";
   private static final long TEST_RESULT_DATA_FILES = 10L;
   private static final long TEST_RESULT_DELETE_FILES = 2L;
   private static final long TEST_TOTAL_FILE_SIZE = 1024000L;
