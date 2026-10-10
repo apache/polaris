@@ -16,13 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.it;
 
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.inject.Inject;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.service.Profiles;
+import org.apache.polaris.service.auth.oidc.TestPolarisAuthorizer;
+import org.apache.polaris.service.it.test.PolarisRestCatalogFileIntegrationTest;
+import org.apache.polaris.service.task.TaskErrorHandler;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 
 @QuarkusTest
-@TestProfile(Profiles.ApplicationIntegrationProfile.class)
-public class ApplicationIntegrationTest extends RuntimeApplicationIntegrationTest {}
+@TestProfile(Profiles.RestCatalogFileIntegrationProfile.class)
+public class RestCatalogExtAuthorizerFileIntegrationTest
+    extends PolarisRestCatalogFileIntegrationTest {
+  @Inject
+  @Identifier("task-error-handler")
+  TaskErrorHandler taskErrorHandler;
+
+  @BeforeAll
+  static void installMocks() {
+    QuarkusMock.installMockForType(new TestPolarisAuthorizer(), PolarisAuthorizer.class);
+  }
+
+  @AfterEach
+  void checkTaskExceptions() {
+    taskErrorHandler.assertNoTaskExceptions();
+  }
+}

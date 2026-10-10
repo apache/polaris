@@ -18,13 +18,16 @@
  */
 package org.apache.polaris.service.auth.oidc;
 
-import java.util.Set;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.NonRBACResolutionSemantics;
+import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -39,24 +42,38 @@ public class TestPolarisAuthorizer implements PolarisAuthorizer {
 
   public static final String DENY_PREFIX = "denied";
 
+  private final Map<PolarisAuthorizableOperation, AuthorizationDecision> decisions =
+      new ConcurrentHashMap<>();
+
+  public void setDecision(PolarisAuthorizableOperation op, AuthorizationDecision decision) {
+    decisions.put(op, decision);
+  }
+
+  public void reset() {
+    decisions.clear();
+  }
+
   @Override
   public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    // nothing to resolve for this oidc authorizer, but the manifest must be in resolved state to
-    // avoid errors in the authorization decision phase.
-    authzState
-        .getResolutionManifest()
-        .resolveSelections(Set.of(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES));
+    NonRBACResolutionSemantics.resolveSelections(authzState, request);
+    authzState.resolve();
   }
 
   @Override
   @NonNull
   public AuthorizationDecision authorize(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    return isAllowed(request.principal())
-        ? AuthorizationDecision.allow()
-        : AuthorizationDecision.deny(
-            "Test authorizer denied principal " + request.principal().getName());
+    if (!isAllowed(request.principal())) {
+      return AuthorizationDecision.deny(
+          "Test authorizer denied principal " + request.principal().getName());
+    }
+
+    return request.intents().stream()
+        .map(intent -> decisions.get(intent.operation()))
+        .filter(Objects::nonNull)
+        .findFirst()
+        .orElse(AuthorizationDecision.ALLOW);
   }
 
   protected boolean isAllowed(PolarisPrincipal principal) {

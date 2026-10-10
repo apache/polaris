@@ -28,6 +28,7 @@ import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationIntentResolver;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.NonRBACResolutionSemantics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -35,6 +36,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
 import org.apache.ranger.authz.api.RangerAuthzException;
 import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
@@ -72,15 +74,17 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   /**
-   * Resolves authorization inputs using {@code resolveAll()} for backward compatibility.
+   * {@link AuthorizationState#resolve() Resolves} authorization inputs using the narrowest set of
+   * {@link Resolvable}s that is required for authorizing the given {code request}.
    *
-   * <p>This scope is intentionally broad for now and will be narrowed in a future refactoring to
-   * resolve only the selections required by Ranger authorization.
+   * @see AuthorizationState#resolve()
    */
   @Override
   public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    authzState.getResolutionManifest().resolveAll();
+    NonRBACResolutionSemantics.resolveSelections(authzState, request);
+    authzState.select(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES); // for the artificial root entity
+    authzState.resolve();
   }
 
   @Override

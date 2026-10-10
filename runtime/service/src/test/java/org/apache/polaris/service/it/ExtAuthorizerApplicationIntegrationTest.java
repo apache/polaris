@@ -16,13 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.it;
 
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.service.Profiles;
+import org.apache.polaris.service.auth.oidc.TestPolarisAuthorizer;
+import org.junit.jupiter.api.BeforeAll;
 
 @QuarkusTest
 @TestProfile(Profiles.ApplicationIntegrationProfile.class)
-public class ApplicationIntegrationTest extends RuntimeApplicationIntegrationTest {}
+public class ExtAuthorizerApplicationIntegrationTest extends RuntimeApplicationIntegrationTest {
+
+  @BeforeAll
+  static void installMocks() {
+    QuarkusMock.installMockForType(new TestPolarisAuthorizer(), PolarisAuthorizer.class);
+  }
+}

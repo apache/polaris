@@ -26,13 +26,15 @@ import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientPrincipal;
-import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
@@ -106,32 +108,43 @@ public class ExternalPrincipalKeycloakOpaIT extends PolarisRestCatalogFileIntegr
 
   @Keycloak KeycloakAccess keycloak;
 
-  @Override
-  protected ClientPrincipal createTestPrincipal(
-      PolarisClient client, String principalName, String principalRole) {
-    keycloak.createRole(principalRole);
-    keycloak.createUser(principalName, "s3cr3t");
-    keycloak.assignRoleToUser(principalRole, principalName);
-    ClientPrincipal principal = super.createTestPrincipal(client, principalName, principalRole);
-    keycloak.createServiceAccount(
-        principal.credentials().clientId(), principal.credentials().clientSecret());
-    return principal;
-  }
+  private final Collection<String> roles = new ArrayList<>();
+  private final Collection<String> users = new ArrayList<>();
+  private final Collection<String> svcAccounts = new ArrayList<>();
 
   @Override
   protected void cleanUp(PolarisClient client, String adminToken) {
-    ManagementApi managementApi = client.managementApi(adminToken);
-    managementApi.listPrincipals().stream()
-        .filter(p -> client.ownedName(p.getName()))
-        .forEach(
-            p -> {
-              keycloak.deleteUser(p.getName());
-              keycloak.deleteServiceAccount(p.getClientId());
-            });
-    managementApi.listPrincipalRoles().stream()
-        .filter(r -> client.ownedName(r.getName()))
-        .forEach(role -> keycloak.deleteRole(role.getName()));
+    roles.forEach(name -> keycloak.deleteRole(name));
+    roles.clear();
+
+    users.forEach(name -> keycloak.deleteUser(name));
+    users.clear();
+
+    svcAccounts.forEach(name -> keycloak.deleteServiceAccount(name));
+    svcAccounts.clear();
+
     super.cleanUp(client, adminToken);
+  }
+
+  @Override
+  protected void makeAdmin(String principalRoleName, Catalog catalog) {
+    // nop - OPA policy grants access base on principal name
+  }
+
+  @Override
+  protected String obtainToken(PolarisClient client, String principalName, String principalRole) {
+    keycloak.createRole(principalRole);
+    roles.add(principalRole);
+    keycloak.createUser(principalName, "s3cr3t");
+    users.add(principalName);
+    keycloak.assignRoleToUser(principalRole, principalName);
+
+    String clientId = "client_" + principalName;
+    String clientSecret = "client_" + principalName + "_s3cr3t";
+    keycloak.createServiceAccount(clientId, clientSecret);
+    svcAccounts.add(clientId);
+
+    return obtainToken(principalName, "s3cr3t", clientId, clientSecret);
   }
 
   @Override
