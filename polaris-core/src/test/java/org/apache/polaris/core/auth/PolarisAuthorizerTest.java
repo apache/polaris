@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import org.apache.polaris.core.collection.AttributeMap;
@@ -31,14 +32,15 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests the default batch {@link PolarisAuthorizer#authorize(AuthorizationState, List)} and {@link
- * PolarisAuthorizer#resolveAuthorizationInputs(AuthorizationState, List)} implementations on the
- * interface itself.
+ * Tests the default batch {@link PolarisAuthorizer#authorize(AuthorizationState,
+ * AuthorizationBatchRequest)} and {@link
+ * PolarisAuthorizer#resolveAuthorizationInputs(AuthorizationState, AuthorizationBatchRequest)}
+ * implementations on the interface itself.
  *
  * <p>This default is the production code path for every authorizer that does not override it, which
  * today is all of them ({@link PolarisAuthorizerImpl} and the Ranger extension). Callers such as
- * the Iceberg catalog handler's LIST filtering depend on its contract: one decision per request, in
- * order, with no short-circuiting across requests.
+ * the Iceberg catalog handler's LIST filtering depend on its contract: one decision per intent, in
+ * order, with no short-circuiting across intents.
  */
 public class PolarisAuthorizerTest {
 
@@ -82,29 +84,30 @@ public class PolarisAuthorizerTest {
   private static final PolarisPrincipal PRINCIPAL =
       PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role1"));
 
-  private static AuthorizationRequest requestForTable(String tableName) {
+  private static AuthorizationIntent intentForTable(String tableName) {
     PolarisSecurable target =
         PolarisSecurable.of(
             new PathSegment(PolarisEntityType.CATALOG, "myCatalog"),
             new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
             new PathSegment(PolarisEntityType.TABLE_LIKE, tableName));
-    return new AuthorizationRequest(
-        PRINCIPAL,
-        List.of(
-            new SingleTargetAuthorizationIntent(PolarisAuthorizableOperation.LIST_TABLES, target)));
+    return new SingleTargetAuthorizationIntent(PolarisAuthorizableOperation.LIST_TABLES, target);
+  }
+
+  private static AuthorizationBatchRequest batchForTables(String... tableNames) {
+    return new AuthorizationBatchRequest(
+        PRINCIPAL, Arrays.stream(tableNames).map(PolarisAuthorizerTest::intentForTable).toList());
   }
 
   @Test
-  void defaultBatchReturnsOneDecisionPerRequestInOrder() {
+  void defaultBatchReturnsOneDecisionPerIntentInOrder() {
     RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of("table2"));
     AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
-    List<AuthorizationRequest> requests =
-        List.of(requestForTable("table1"), requestForTable("table2"), requestForTable("table3"));
+    AuthorizationBatchRequest batch = batchForTables("table1", "table2", "table3");
 
-    List<AuthorizationDecision> decisions = authorizer.authorize(state, requests);
+    List<AuthorizationDecision> decisions = authorizer.authorize(state, batch);
 
     // Size and order must mirror the input exactly: callers index decisions against candidates.
-    assertThat(decisions).hasSameSizeAs(requests);
+    assertThat(decisions).hasSameSizeAs(batch.intents());
     assertThat(decisions.get(0).isAllowed()).isTrue();
     assertThat(decisions.get(1).isAllowed()).isFalse();
     assertThat(decisions.get(2).isAllowed()).isTrue();
@@ -114,15 +117,14 @@ public class PolarisAuthorizerTest {
   }
 
   @Test
-  void defaultBatchDoesNotShortCircuitWhenAnEarlierRequestIsDenied() {
-    // The first request is denied. The contract requires every later request to still be
-    // evaluated and to receive its own decision.
+  void defaultBatchDoesNotShortCircuitWhenAnEarlierIntentIsDenied() {
+    // The first intent is denied. The contract requires every later intent to still be evaluated
+    // and to receive its own decision.
     RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of("table1"));
     AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
-    List<AuthorizationRequest> requests =
-        List.of(requestForTable("table1"), requestForTable("table2"), requestForTable("table3"));
 
-    List<AuthorizationDecision> decisions = authorizer.authorize(state, requests);
+    List<AuthorizationDecision> decisions =
+        authorizer.authorize(state, batchForTables("table1", "table2", "table3"));
 
     assertThat(authorizer.seenRequests).hasSize(3);
     assertThat(decisions).hasSize(3);
@@ -132,37 +134,40 @@ public class PolarisAuthorizerTest {
   }
 
   @Test
-  void defaultBatchEvaluatesEveryRequestExactlyOnceAndInOrder() {
+  void defaultBatchEvaluatesEveryIntentExactlyOnceAndInOrder() {
     RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of());
     AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
-    List<AuthorizationRequest> requests =
-        List.of(requestForTable("table1"), requestForTable("table2"), requestForTable("table3"));
+    AuthorizationBatchRequest batch = batchForTables("table1", "table2", "table3");
 
-    authorizer.authorize(state, requests);
+    authorizer.authorize(state, batch);
 
-    assertThat(authorizer.seenRequests).containsExactlyElementsOf(requests);
+    // Each intent is delegated on its own, as a single-intent request for the batch's principal.
+    assertThat(authorizer.seenRequests)
+        .containsExactlyElementsOf(
+            batch.intents().stream()
+                .map(intent -> new AuthorizationRequest(PRINCIPAL, List.of(intent)))
+                .toList());
     // The shared state is threaded through to every delegation unchanged.
     assertThat(authorizer.seenStates).hasSize(3).allMatch(seen -> seen == state);
   }
 
   @Test
-  void defaultBatchDeniesEveryRequestWhenNoneAreAllowed() {
+  void defaultBatchDeniesEveryIntentWhenNoneAreAllowed() {
     RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of("table1", "table2"));
     AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
-    List<AuthorizationRequest> requests =
-        List.of(requestForTable("table1"), requestForTable("table2"));
 
-    List<AuthorizationDecision> decisions = authorizer.authorize(state, requests);
+    List<AuthorizationDecision> decisions =
+        authorizer.authorize(state, batchForTables("table1", "table2"));
 
     assertThat(decisions).hasSize(2).noneMatch(AuthorizationDecision::isAllowed);
   }
 
   @Test
-  void defaultBatchWithNoRequestsReturnsEmptyListWithoutDelegating() {
+  void defaultBatchWithNoIntentsReturnsEmptyListWithoutDelegating() {
     RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of());
     AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
 
-    List<AuthorizationDecision> decisions = authorizer.authorize(state, List.of());
+    List<AuthorizationDecision> decisions = authorizer.authorize(state, batchForTables());
 
     assertThat(decisions).isEmpty();
     assertThat(authorizer.seenRequests).isEmpty();
@@ -170,22 +175,22 @@ public class PolarisAuthorizerTest {
 
   @Test
   void defaultBatchAgreesWithSingleRequestAuthorize() {
-    List<AuthorizationRequest> requests =
-        List.of(requestForTable("table1"), requestForTable("table2"), requestForTable("table3"));
+    AuthorizationBatchRequest batch = batchForTables("table1", "table2", "table3");
 
     List<Boolean> individual =
-        requests.stream()
+        batch.intents().stream()
             .map(
-                request ->
+                intent ->
                     new RecordingAuthorizer(Set.of("table2"))
                         .authorize(
-                            new AuthorizationState(mock(PolarisResolutionManifest.class)), request)
+                            new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                            new AuthorizationRequest(PRINCIPAL, List.of(intent)))
                         .isAllowed())
             .toList();
 
     List<Boolean> batched =
         new RecordingAuthorizer(Set.of("table2"))
-                .authorize(new AuthorizationState(mock(PolarisResolutionManifest.class)), requests)
+                .authorize(new AuthorizationState(mock(PolarisResolutionManifest.class)), batch)
                 .stream()
                 .map(AuthorizationDecision::isAllowed)
                 .toList();
@@ -197,45 +202,36 @@ public class PolarisAuthorizerTest {
   void defaultBatchResolveDelegatesOnceWithEveryIntentInOrder() {
     RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of());
     AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
-    List<AuthorizationRequest> requests =
-        List.of(requestForTable("table1"), requestForTable("table2"), requestForTable("table3"));
+    AuthorizationBatchRequest batch = batchForTables("table1", "table2", "table3");
 
-    authorizer.resolveAuthorizationInputs(state, requests);
+    authorizer.resolveAuthorizationInputs(state, batch);
 
-    // One delegation, not one per request: the shared state must be resolved at most once.
+    // One delegation, not one per intent: the shared state must be resolved at most once.
     assertThat(authorizer.seenResolveRequests).hasSize(1);
-    AuthorizationRequest merged = authorizer.seenResolveRequests.get(0);
-    assertThat(merged.principal()).isEqualTo(PRINCIPAL);
-    assertThat(merged.intents())
-        .containsExactlyElementsOf(
-            requests.stream().flatMap(request -> request.intents().stream()).toList());
+    AuthorizationRequest delegated = authorizer.seenResolveRequests.get(0);
+    assertThat(delegated.principal()).isEqualTo(PRINCIPAL);
+    assertThat(delegated.intents()).containsExactlyElementsOf(batch.intents());
   }
 
   @Test
-  void defaultBatchResolveWithNoRequestsDoesNotDelegate() {
+  void defaultBatchResolveWithNoIntentsDoesNotDelegate() {
     RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of());
     AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
 
-    authorizer.resolveAuthorizationInputs(state, List.of());
+    authorizer.resolveAuthorizationInputs(state, batchForTables());
 
     assertThat(authorizer.seenResolveRequests).isEmpty();
   }
 
   @Test
-  void defaultBatchResolveRejectsMixedPrincipals() {
-    RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of());
-    AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
-    AuthorizationRequest otherPrincipal =
-        new AuthorizationRequest(
-            PolarisPrincipal.of("bob", AttributeMap.EMPTY, Set.of("role1")),
-            requestForTable("table2").intents());
+  void batchRequestCopiesIntentsDefensively() {
+    List<AuthorizationIntent> intents = new ArrayList<>(List.of(intentForTable("table1")));
+    AuthorizationBatchRequest batch = new AuthorizationBatchRequest(PRINCIPAL, intents);
 
-    assertThatThrownBy(
-            () ->
-                authorizer.resolveAuthorizationInputs(
-                    state, List.of(requestForTable("table1"), otherPrincipal)))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("one principal");
-    assertThat(authorizer.seenResolveRequests).isEmpty();
+    intents.add(intentForTable("table2"));
+
+    assertThat(batch.intents()).containsExactly(intentForTable("table1"));
+    assertThatThrownBy(() -> batch.intents().add(intentForTable("table3")))
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 }

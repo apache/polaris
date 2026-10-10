@@ -74,6 +74,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.auth.AuthorizationBatchRequest;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
@@ -2506,21 +2507,21 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
   /**
    * The real {@link PolarisAuthorizerImpl} with only its batch {@code authorize(AuthorizationState,
-   * List)} replaced: any entity whose leaf name satisfies {@code denyIfLeafName} is denied. All
-   * other authorization, including the parent-level container gate, goes through the real
-   * implementation.
+   * AuthorizationBatchRequest)} replaced: any entity whose leaf name satisfies {@code
+   * denyIfLeafName} is denied. All other authorization, including the parent-level container gate,
+   * goes through the real implementation.
    */
   private PolarisAuthorizer leafNameDenyingAuthorizer(Predicate<String> denyIfLeafName) {
     return new PolarisAuthorizerImpl(realmConfig) {
       @Override
       public List<AuthorizationDecision> authorize(
-          AuthorizationState authzState, List<AuthorizationRequest> requests) {
-        return requests.stream()
+          AuthorizationState authzState, AuthorizationBatchRequest batch) {
+        return batch.intents().stream()
             .map(
-                req -> {
-                  SingleTargetAuthorizationIntent intent =
-                      (SingleTargetAuthorizationIntent) req.intents().get(0);
-                  return denyIfLeafName.test(intent.target().getLeaf().name())
+                intent -> {
+                  String leafName =
+                      ((SingleTargetAuthorizationIntent) intent).target().getLeaf().name();
+                  return denyIfLeafName.test(leafName)
                       ? AuthorizationDecision.deny("filtered in test")
                       : AuthorizationDecision.allow();
                 })
@@ -2924,7 +2925,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         new PolarisAuthorizerImpl(realmConfig) {
           @Override
           public List<AuthorizationDecision> authorize(
-              AuthorizationState authzState, List<AuthorizationRequest> requests) {
+              AuthorizationState authzState, AuthorizationBatchRequest batch) {
             return List.of();
           }
         };

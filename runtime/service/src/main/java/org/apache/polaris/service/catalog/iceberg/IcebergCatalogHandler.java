@@ -95,7 +95,9 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.StructuredLogKeys;
+import org.apache.polaris.core.auth.AuthorizationBatchRequest;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PathSegment;
@@ -304,15 +306,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
-    boolean filterEnabled = isEntityLevelListFilteringEnabled();
-
     if (isFederated) {
       ListNamespacesResponse response =
           catalogHandlerUtils()
               .listNamespaces(
                   namespaceCatalog, parent, boundedPageToken(pageToken), boundedPageSize(pageSize));
       rejectIncompleteListing(pageToken, pageSize, response.nextPageToken());
-      if (!filterEnabled) {
+      if (!shouldFilterListResults()) {
         return response;
       }
       List<Namespace> visible = filterNamespaces(response.namespaces(), op);
@@ -326,7 +326,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       var results = ((LocalIcebergCatalog) baseCatalog).listNamespaces(parent, pageRequest);
       rejectIncompleteListing(pageToken, pageSize, results.encodedResponseToken());
       List<Namespace> items =
-          filterEnabled ? filterNamespaces(results.items(), op) : results.items();
+          shouldFilterListResults() ? filterNamespaces(results.items(), op) : results.items();
       return ListNamespacesResponse.builder()
           .addAll(items)
           .nextPageToken(results.encodedResponseToken())
@@ -419,15 +419,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    boolean filterEnabled = isEntityLevelListFilteringEnabled();
-
     if (isFederated) {
       ListTablesResponse response =
           catalogHandlerUtils()
               .listTables(
                   baseCatalog, namespace, boundedPageToken(pageToken), boundedPageSize(pageSize));
       rejectIncompleteListing(pageToken, pageSize, response.nextPageToken());
-      if (!filterEnabled) {
+      if (!shouldFilterListResults()) {
         return response;
       }
       List<TableIdentifier> visible = filterTableIdentifiers(response.identifiers(), op);
@@ -441,7 +439,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       var results = ((LocalIcebergCatalog) baseCatalog).listTables(namespace, pageRequest);
       rejectIncompleteListing(pageToken, pageSize, results.encodedResponseToken());
       List<TableIdentifier> items =
-          filterEnabled ? filterTableIdentifiers(results.items(), op) : results.items();
+          shouldFilterListResults() ? filterTableIdentifiers(results.items(), op) : results.items();
       return ListTablesResponse.builder()
           .addAll(items)
           .nextPageToken(results.encodedResponseToken())
@@ -1670,8 +1668,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    boolean filterEnabled = isEntityLevelListFilteringEnabled();
-
     if (isFederated) {
       if (baseCatalog instanceof ViewCatalog viewCatalog) {
         ListTablesResponse response =
@@ -1679,7 +1675,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                 .listViews(
                     viewCatalog, namespace, boundedPageToken(pageToken), boundedPageSize(pageSize));
         rejectIncompleteListing(pageToken, pageSize, response.nextPageToken());
-        if (!filterEnabled) {
+        if (!shouldFilterListResults()) {
           return response;
         }
         List<TableIdentifier> visible = filterTableIdentifiers(response.identifiers(), op);
@@ -1697,7 +1693,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       var results = ((LocalIcebergCatalog) baseCatalog).listViews(namespace, pageRequest);
       rejectIncompleteListing(pageToken, pageSize, results.encodedResponseToken());
       List<TableIdentifier> items =
-          filterEnabled ? filterTableIdentifiers(results.items(), op) : results.items();
+          shouldFilterListResults() ? filterTableIdentifiers(results.items(), op) : results.items();
       return ListTablesResponse.builder()
           .addAll(items)
           .nextPageToken(results.encodedResponseToken())
@@ -1961,7 +1957,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         .build();
   }
 
-  private boolean isEntityLevelListFilteringEnabled() {
+  private boolean shouldFilterListResults() {
     return realmConfig().getConfig(ENABLE_ENTITY_LEVEL_LIST_FILTERING, getResolvedCatalogEntity());
   }
 
@@ -1985,10 +1981,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     };
   }
 
-  /**
-   * One filtering candidate: the entity, the path it resolves under, and its visibility request.
-   */
-  private record Candidate<T>(T entity, ResolverPath path, AuthorizationRequest request) {}
+  /** One filtering candidate: the entity, the path it resolves under, and its visibility intent. */
+  private record Candidate<T>(T entity, ResolverPath path, AuthorizationIntent intent) {}
 
   private <T> List<T> filterEntities(
       List<T> entities,
@@ -2006,10 +2000,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           new Candidate<>(
               entity,
               toResolverPath.apply(entity),
-              new AuthorizationRequest(
-                  principal,
-                  List.of(
-                      new SingleTargetAuthorizationIntent(entityOp, toSecurable.apply(entity))))));
+              new SingleTargetAuthorizationIntent(entityOp, toSecurable.apply(entity))));
     }
 
     PolarisResolutionManifest filterManifest = newResolutionManifest();
@@ -2020,7 +2011,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // in the single-request path.
     authorizer()
         .resolveAuthorizationInputs(
-            authzState, candidates.stream().map(Candidate::request).toList());
+            authzState,
+            new AuthorizationBatchRequest(
+                principal, candidates.stream().map(Candidate::intent).toList()));
 
     // Look each path up under the same key addPath registered it with, so the lookup key cannot
     // drift from the registered one. Unresolvable candidates (e.g. deleted between list and
@@ -2034,7 +2027,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             .toList();
 
     List<AuthorizationDecision> decisions =
-        authorizer().authorize(authzState, resolvable.stream().map(Candidate::request).toList());
+        authorizer()
+            .authorize(
+                authzState,
+                new AuthorizationBatchRequest(
+                    principal, resolvable.stream().map(Candidate::intent).toList()));
     Preconditions.checkState(
         decisions.size() == resolvable.size(),
         "Authorizer returned %s decisions for %s requests",

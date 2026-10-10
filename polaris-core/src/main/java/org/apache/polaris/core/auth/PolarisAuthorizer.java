@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.auth;
 
-import com.google.common.base.Preconditions;
 import java.util.List;
 import org.jspecify.annotations.NonNull;
 
@@ -38,32 +37,25 @@ public interface PolarisAuthorizer {
 
   /**
    * Batch counterpart to {@link #resolveAuthorizationInputs(AuthorizationState,
-   * AuthorizationRequest)}, invoked once before {@link #authorize(AuthorizationState, List)} for
-   * requests that share one {@link AuthorizationState}.
+   * AuthorizationRequest)}, invoked once before {@link #authorize(AuthorizationState,
+   * AuthorizationBatchRequest)} for intents that share one {@link AuthorizationState}.
    *
-   * <p>All requests must carry the same principal. Implementations may narrow what they resolve,
-   * exactly as for the single-request method, and must resolve the shared state at most once.
-   * {@link #authorize(AuthorizationState, List)} may subsequently be called with a subset of {@code
-   * requests}.
+   * <p>Implementations may narrow what they resolve, exactly as for the single-request method, and
+   * must resolve the shared state at most once. {@link #authorize(AuthorizationState,
+   * AuthorizationBatchRequest)} may subsequently be called with a subset of {@code batch}'s
+   * intents.
    *
-   * <p>The default implementation merges the intents of every request, in order, into one {@link
-   * AuthorizationRequest} and delegates to the single-request method, so any narrowing done there
-   * applies to the batch as well. Overriding is optional and only needed for batch-specific
-   * preparation.
+   * <p>The default implementation delegates once to the single-request method with every intent of
+   * {@code batch}, in order, so any narrowing done there applies to the batch as well. Overriding
+   * is optional and only needed for batch-specific preparation.
    */
   default void resolveAuthorizationInputs(
-      @NonNull AuthorizationState authzState, @NonNull List<AuthorizationRequest> requests) {
-    if (requests.isEmpty()) {
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationBatchRequest batch) {
+    if (batch.intents().isEmpty()) {
       return;
     }
-    PolarisPrincipal principal = requests.get(0).principal();
-    Preconditions.checkArgument(
-        requests.stream().allMatch(request -> request.principal().equals(principal)),
-        "All requests in a batch must share one principal");
     resolveAuthorizationInputs(
-        authzState,
-        new AuthorizationRequest(
-            principal, requests.stream().flatMap(request -> request.intents().stream()).toList()));
+        authzState, new AuthorizationRequest(batch.principal(), batch.intents()));
   }
 
   /**
@@ -82,20 +74,23 @@ public interface PolarisAuthorizer {
   /**
    * Batch authorization entry point.
    *
-   * <p>The default implementation evaluates each request independently by delegating to {@link
-   * #authorize(AuthorizationState, AuthorizationRequest)}. Implementations may override this method
-   * for improved performance.
+   * <p>The default implementation evaluates each intent independently by delegating to {@link
+   * #authorize(AuthorizationState, AuthorizationRequest)} with a single-intent request.
+   * Implementations may override this method for improved performance.
    *
-   * <p>The returned list preserves the same size and order as {@code requests}. Each request is
-   * evaluated independently. Implementations must return a decision for every request and must not
-   * short-circuit across requests, even when an earlier request is denied.
+   * <p>The returned list preserves the same size and order as {@code batch.intents()}. Each intent
+   * is evaluated independently. Implementations must return a decision for every intent and must
+   * not short-circuit across intents, even when an earlier intent is denied.
    *
-   * <p>Note that this differs from the contract <em>within</em> a single {@link
-   * AuthorizationRequest}, where the intents are AND-combined and evaluation may short-circuit on
-   * the first deny.
+   * <p>Note that this differs from the contract of a single {@link AuthorizationRequest}, where the
+   * intents are AND-combined and evaluation may short-circuit on the first deny.
    */
   default @NonNull List<AuthorizationDecision> authorize(
-      @NonNull AuthorizationState authzState, @NonNull List<AuthorizationRequest> requests) {
-    return requests.stream().map(request -> authorize(authzState, request)).toList();
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationBatchRequest batch) {
+    return batch.intents().stream()
+        .map(
+            intent ->
+                authorize(authzState, new AuthorizationRequest(batch.principal(), List.of(intent))))
+        .toList();
   }
 }

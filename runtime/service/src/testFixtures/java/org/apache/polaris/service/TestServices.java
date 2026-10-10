@@ -19,7 +19,6 @@
 package org.apache.polaris.service;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 
 import com.google.auth.oauth2.AccessToken;
@@ -33,7 +32,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -43,6 +41,7 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationBatchRequest;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
@@ -272,12 +271,12 @@ public record TestServices(
                 return null;
               })
           .when(authorizer)
-          .resolveAuthorizationInputs(any(), anyList());
-      Mockito.when(authorizer.authorize(any(), anyList()))
+          .resolveAuthorizationInputs(any(), any(AuthorizationBatchRequest.class));
+      Mockito.when(authorizer.authorize(any(), any(AuthorizationBatchRequest.class)))
           .thenAnswer(
               invocation ->
-                  invocation.<List<AuthorizationRequest>>getArgument(1).stream()
-                      .map(request -> AuthorizationDecision.allow())
+                  invocation.<AuthorizationBatchRequest>getArgument(1).intents().stream()
+                      .map(intent -> AuthorizationDecision.allow())
                       .toList());
 
       // Application level
