@@ -220,7 +220,8 @@ public class ManagementServiceTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "file:///tmp/path/to/data/"),
-            fileStorage);
+            fileStorage,
+            null);
 
     // failure to update
     assertThatThrownBy(
@@ -243,7 +244,8 @@ public class ManagementServiceTest {
                 .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
                 .setEndpoint("http://example.com")
-                .build());
+                .build(),
+            null);
     assertThatThrownBy(
             () ->
                 services
@@ -583,7 +585,8 @@ public class ManagementServiceTest {
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::999999999999:role/other-role")
-                .build());
+                .build(),
+            null);
     assertThatThrownBy(
             () ->
                 services
@@ -639,7 +642,8 @@ public class ManagementServiceTest {
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::123456789012:role/other-role")
-                .build());
+                .build(),
+            null);
     try (Response response =
         services
             .catalogsApi()
@@ -693,7 +697,8 @@ public class ManagementServiceTest {
                 .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
                 .setExternalId("different-external-id")
-                .build());
+                .build(),
+            null);
     assertThatThrownBy(
             () ->
                 services
@@ -764,7 +769,8 @@ public class ManagementServiceTest {
                 .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::999999999999:role/other-role")
                 .setExternalId("different-external-id")
-                .build());
+                .build(),
+            null);
     try (Response response =
         flagEnabledServices
             .catalogsApi()
@@ -959,7 +965,8 @@ public class ManagementServiceTest {
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/empty-stay"),
-            secondMechanismConfig().build());
+            secondMechanismConfig().build(),
+            null);
     assertThatThrownBy(
             () ->
                 stsOnlyUnrestricted
@@ -999,7 +1006,8 @@ public class ManagementServiceTest {
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/stays-empty"),
-            namesDefault);
+            namesDefault,
+            null);
     assertThatThrownBy(
             () ->
                 svc.catalogsApi()
@@ -1029,7 +1037,8 @@ public class ManagementServiceTest {
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/empty-then-sts"),
-            explicitSts);
+            explicitSts,
+            null);
     try (Response response =
         svc.catalogsApi()
             .updateCatalog("empty-then-sts", toSts, svc.realmContext(), svc.securityContext())) {
@@ -1075,7 +1084,8 @@ public class ManagementServiceTest {
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/sts-then-empty"),
-            backToDefault);
+            backToDefault,
+            null);
     try (Response response =
         svc.catalogsApi()
             .updateCatalog("sts-then-empty", toEmpty, svc.realmContext(), svc.securityContext())) {
@@ -1134,7 +1144,8 @@ public class ManagementServiceTest {
                 .setCredentialVendingMechanism(TEST_MECHANISM)
                 .setAllowedLocations(List.of("s3://second-bucket/base/"))
                 .setEndpoint("https://s3.example.test")
-                .build());
+                .build(),
+            null);
     try (Response response =
         svc.catalogsApi()
             .updateCatalog(
@@ -1175,7 +1186,8 @@ public class ManagementServiceTest {
                 .setAllowedLocations(List.of("s3://second-bucket/base/"))
                 .setEndpoint("https://s3.other.example.com:1234")
                 .setPathStyleAccess(true)
-                .build());
+                .build(),
+            null);
     try (Response response =
         svc.catalogsApi()
             .updateCatalog(
@@ -1215,7 +1227,8 @@ public class ManagementServiceTest {
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setCredentialVendingMechanism("UNINSTALLED_MECHANISM")
                 .setAllowedLocations(List.of("s3://second-bucket/base/"))
-                .build());
+                .build(),
+            null);
     assertThatThrownBy(
             () ->
                 svc.catalogsApi()
@@ -1281,7 +1294,8 @@ public class ManagementServiceTest {
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/needs-endpoint"),
-            base.setEndpoint(null).build());
+            base.setEndpoint(null).build(),
+            null);
     assertThatThrownBy(
             () ->
                 svc.catalogsApi()

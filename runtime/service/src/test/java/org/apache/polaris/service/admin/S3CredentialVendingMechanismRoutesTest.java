@@ -351,7 +351,8 @@ class S3CredentialVendingMechanismRoutesTest {
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket/base/mechkill"),
-            fetched.getStorageConfigInfo());
+            fetched.getStorageConfigInfo(),
+            null);
     assertThatThrownBy(
             () ->
                 svc.catalogsApi()
