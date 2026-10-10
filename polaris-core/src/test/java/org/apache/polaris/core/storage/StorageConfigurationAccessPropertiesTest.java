@@ -35,7 +35,7 @@ class StorageConfigurationAccessPropertiesTest {
             .endpoint("https://typed.example")
             .pathStyleAccess(true)
             .region("us-west-2")
-            .properties(
+            .fileIoProperties(
                 Map.of(
                     StorageAccessProperty.AWS_ENDPOINT.getPropertyName(),
                     "https://bag.example",

@@ -73,8 +73,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Server-side Iceberg FileIO is built from `StorageAccessConfig` only. Catalog `table-default.*`
   properties are no longer passed into server FileIO construction. Put FileIO settings on the
-  storage configuration (typed fields such as S3 `endpoint` / `pathStyleAccess`, or the new
-  freeform `properties` bag). For rolling upgrades that still rely on catalog table defaults, set
+  storage configuration (typed fields such as S3 `endpoint` / `pathStyleAccess`, or
+  `fileIoProperties`). For rolling upgrades that still rely on catalog table defaults, set
   `polaris.features."PROPAGATE_CATALOG_TABLE_DEFAULTS_TO_STORAGE_ACCESS_CONFIG"=true` (off by
   default). Catalog `table-default.*` remains available as Iceberg client/table create defaults.
 - `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
@@ -97,9 +97,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
-- Storage configuration (`StorageConfigInfo` / `PolarisStorageConfigurationInfo`) accepts an
-  optional freeform `properties` map for FileIO customization not covered by typed fields. Typed
-  fields take precedence when both are set.
+- Storage configuration (`StorageConfigInfo` / `PolarisStorageConfigurationInfo`) accepts optional
+  `fileIoProperties` for Iceberg FileIO settings not covered by typed fields. Typed fields take
+  precedence when both are set. Polaris applies Java FileIO-relevant properties server-side; all
+  properties are also relayed to clients.
 - Python CLI: added `register` support for both `tables` and `views` commands
 - Python CLI: added `namespaces update` to set and remove namespace properties
 

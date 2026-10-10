@@ -176,7 +176,7 @@ abstract class AbstractRestCatalogFlociS3SpecialIT {
     roleArn.ifPresent(storageConfigBuilder::setRoleArn);
     kmsUnavailable.ifPresent(storageConfigBuilder::setKmsUnavailable);
     if (!stsEnabled) {
-      storageConfigBuilder.setProperties(
+      storageConfigBuilder.setFileIoProperties(
           Map.of(
               AWS_KEY_ID.getPropertyName(), ACCESS_KEY,
               AWS_SECRET_KEY.getPropertyName(), SECRET_KEY));

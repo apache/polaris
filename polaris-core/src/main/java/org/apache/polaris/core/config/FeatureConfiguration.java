@@ -82,7 +82,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
    * Rolling-upgrade bridge after server FileIO stopped reading catalog {@code table-default.*}
    * directly. When true, catalog table-default properties are folded into {@code
    * StorageAccessConfig} so older deployments keep working. Prefer storage-configuration typed
-   * fields and the freeform properties bag instead. Off by default.
+   * fields and {@code fileIoProperties} instead. Off by default.
    */
   public static final FeatureConfiguration<Boolean>
       PROPAGATE_CATALOG_TABLE_DEFAULTS_TO_STORAGE_ACCESS_CONFIG =
@@ -91,8 +91,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .description(
                   "When true, fold catalog table-default.* properties into StorageAccessConfig for\n"
                       + "   server FileIO (and load-table config). Off by default. Use only as a\n"
-                      + "   rolling-upgrade bridge; prefer storage-configuration typed fields and the\n"
-                      + "   freeform properties bag on PolarisStorageConfigurationInfo.")
+                      + "   rolling-upgrade bridge; prefer storage-configuration typed fields and\n"
+                      + "   fileIoProperties on PolarisStorageConfigurationInfo.")
               .defaultValue(false)
               .buildFeatureConfiguration();
 

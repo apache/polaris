@@ -99,7 +99,7 @@ public abstract class SparkIntegrationBase {
             .setEndpoint(s3Container.getHttpEndpoint())
             .setPathStyleAccess(true)
             .setStsUnavailable(true)
-            .setProperties(s3Container.getStorageConfigProperties())
+            .setFileIoProperties(s3Container.getStorageConfigProperties())
             .build();
     CatalogProperties props = new CatalogProperties("s3://my-bucket/path/to/data");
     props.putAll(s3Container.getS3ConfigProperties());

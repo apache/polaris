@@ -92,19 +92,18 @@ public abstract class PolarisStorageConfigurationInfo {
   public abstract StorageType getStorageType();
 
   /**
-   * Optional freeform FileIO / storage properties for deployment-specific customization that is not
-   * covered by typed fields on subclasses. Typed fields take precedence when both are set. Values
-   * intended only for the Polaris server should be folded into {@link
-   * StorageAccessConfig#internalProperties()} by storage integrations; other entries may be exposed
-   * to clients via load-table config.
+   * Optional Iceberg FileIO configuration properties not covered by typed fields on subclasses.
+   * Typed fields take precedence when both are set. Semantics follow Iceberg FileIO conventions.
+   * Credential-looking keys are folded into {@link StorageAccessConfig#internalProperties()}
+   * (server FileIO only); other entries may be exposed to clients via load-table config.
    */
   @Nullable
-  public abstract Map<String, String> getProperties();
+  public abstract Map<String, String> getFileIoProperties();
 
-  /** Returns {@link #getProperties()} or an empty map when unset. */
+  /** Returns {@link #getFileIoProperties()} or an empty map when unset. */
   @JsonIgnore
-  public final Map<String, String> getPropertiesOrEmpty() {
-    Map<String, String> properties = getProperties();
+  public final Map<String, String> getFileIoPropertiesOrEmpty() {
+    Map<String, String> properties = getFileIoProperties();
     return properties == null ? Map.of() : properties;
   }
 
