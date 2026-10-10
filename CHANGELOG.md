@@ -227,6 +227,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
   selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
   readiness monitoring without configuration changes.
+- The Ranger authorizer no longer fails with `NoClassDefFoundError: javax/ws/rs/core/Cookie` when
+  using `RangerAdminRESTClient` as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
+  API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
 
 ### Commits
 

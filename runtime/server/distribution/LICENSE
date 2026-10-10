@@ -2417,6 +2417,15 @@ License: CDDL 1.1 - https://glassfish.java.net/public/CDDL+GPL_1_1.html
 
 --------------------------------------------------------------------------------
 
+This product bundles JAX-RS API library.
+
+* Maven group:artifact IDs: javax.ws.rs:jsr311-api
+
+Home page: https://github.com/jax-rs
+License: CDDL 1.1 - https://glassfish.java.net/public/CDDL+GPL_1_1.html
+
+--------------------------------------------------------------------------------
+
 This product bundles GraalVM libraries.
 
 * Maven group:artifact IDs: org.graalvm.js:js-language
