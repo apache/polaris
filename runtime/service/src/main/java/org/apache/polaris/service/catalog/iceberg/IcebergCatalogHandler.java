@@ -940,7 +940,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       storageAccessConfig = StorageAccessConfig.builder().build();
     }
 
-    Map<String, String> credentialConfig = storageAccessConfig.credentials();
+    Map<String, String> credentialConfig = credentialConfigForVending(storageAccessConfig);
     ImmutableLoadCredentialsResponse.Builder responseBuilder =
         ImmutableLoadCredentialsResponse.builder();
 
@@ -1238,10 +1238,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   actions,
                   refreshCredentialsEndpoint,
                   resolvedStoragePath);
-      Map<String, String> credentialConfig = storageAccessConfig.credentials();
+      Map<String, String> credentialConfig = credentialConfigForVending(storageAccessConfig);
       if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))) {
         if (!credentialConfig.isEmpty()) {
-          responseBuilder.addAllConfig(credentialConfig);
+          // Keep credentials and storage configuration at the top level for compatibility with
+          // older clients, while also associating the complete client access configuration with
+          // the matching credential prefix.
+          responseBuilder.addAllConfig(storageAccessConfig.credentials());
           responseBuilder.addCredential(
               ImmutableCredential.builder()
                   .prefix(tableMetadata.location())
@@ -1260,6 +1263,23 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
 
     return responseBuilder;
+  }
+
+  private static Map<String, String> credentialConfigForVending(
+      StorageAccessConfig storageAccessConfig) {
+    Map<String, String> credentials = storageAccessConfig.credentials();
+    if (credentials.isEmpty()) {
+      return credentials;
+    }
+
+    Map<String, String> extraProperties = storageAccessConfig.extraProperties();
+    if (extraProperties.isEmpty()) {
+      return credentials;
+    }
+
+    Map<String, String> scopedCredentials = new HashMap<>(extraProperties);
+    scopedCredentials.putAll(credentials);
+    return scopedCredentials;
   }
 
   private void validateTableLocations(
