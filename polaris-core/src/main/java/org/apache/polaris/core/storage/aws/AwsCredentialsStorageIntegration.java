@@ -217,7 +217,8 @@ public class AwsCredentialsStorageIntegration
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     String region = awsStorageConfig.getRegion();
-    // Bag + typed fields (typed wins). STS credentials replace bag credentials when present.
+    // Bag + typed fields (typed wins). Bag static keys are internals (server FileIO only);
+    // STS session credentials below are the only AccessConfig.credentials() entries.
     StorageAccessConfig fromStorageConfig =
         StorageConfigurationAccessProperties.storageConfigOnly(awsStorageConfig);
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
@@ -269,8 +270,6 @@ public class AwsCredentialsStorageIntegration
                   accessConfig.put(
                       StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
                       String.valueOf(i.toEpochMilli())));
-    } else {
-      fromStorageConfig.credentials().forEach(accessConfig::putCredential);
     }
 
     if ("aws-us-gov".equals(awsStorageConfig.getAwsPartition()) && region == null) {

@@ -54,50 +54,56 @@ public final class StorageConfigurationAccessProperties {
     if (storageConfig == null) {
       return;
     }
-    Map<String, String> credentials = new HashMap<>();
     Map<String, String> extras = new HashMap<>();
     Map<String, String> internals = new HashMap<>();
-    partitionBag(storageConfig.getPropertiesOrEmpty(), credentials, extras);
+    // Credential-looking bag keys go to internalProperties so server FileIO can use them without
+    // treating them as vended AccessConfig.credentials() (matches former table-default behavior).
+    partitionBag(storageConfig.getPropertiesOrEmpty(), extras, internals);
     if (storageConfig instanceof AwsStorageConfigurationInfo aws) {
       applyAwsTypedFields(aws, extras, internals);
     }
-    credentials.forEach(builder::putCredential);
     extras.forEach(builder::putExtraProperty);
     internals.forEach(builder::putInternalProperty);
   }
 
   /**
    * Merges catalog {@code table-default.*} entries (already stripped of the prefix) into {@code
-   * accessConfig}. Existing AccessConfig credentials / extras / internals win.
+   * accessConfig}. Existing AccessConfig credentials / extras / internals win. Credential-looking
+   * table-default keys land in internalProperties (server FileIO only).
    */
   public static StorageAccessConfig mergeTableDefaults(
       StorageAccessConfig accessConfig, Map<String, String> tableDefaultProperties) {
     if (tableDefaultProperties.isEmpty()) {
       return accessConfig;
     }
-    Map<String, String> credentials = new HashMap<>();
     Map<String, String> extras = new HashMap<>();
-    partitionBag(tableDefaultProperties, credentials, extras);
-    credentials.putAll(accessConfig.credentials());
+    Map<String, String> internals = new HashMap<>();
+    partitionBag(tableDefaultProperties, extras, internals);
     extras.putAll(accessConfig.extraProperties());
+    internals.putAll(accessConfig.internalProperties());
     StorageAccessConfig.Builder builder =
         StorageAccessConfig.builder()
             .supportsCredentialVending(accessConfig.supportsCredentialVending());
-    credentials.forEach(builder::putCredential);
+    accessConfig.credentials().forEach(builder::putCredential);
     extras.forEach(builder::putExtraProperty);
-    accessConfig.internalProperties().forEach(builder::putInternalProperty);
+    internals.forEach(builder::putInternalProperty);
     accessConfig.expiresAt().ifPresent(builder::expiresAt);
     return builder.build();
   }
 
+  /**
+   * Splits a freeform bag into client-visible extras vs server-only internals. Keys that match
+   * known credential property names go to internals so they feed FileIO without becoming vended
+   * credentials.
+   */
   private static void partitionBag(
-      Map<String, String> bag, Map<String, String> credentials, Map<String, String> extras) {
+      Map<String, String> bag, Map<String, String> extras, Map<String, String> internals) {
     for (Map.Entry<String, String> entry : bag.entrySet()) {
       if (entry.getKey() == null || entry.getValue() == null) {
         continue;
       }
       if (isCredentialPropertyName(entry.getKey())) {
-        credentials.put(entry.getKey(), entry.getValue());
+        internals.put(entry.getKey(), entry.getValue());
       } else {
         extras.put(entry.getKey(), entry.getValue());
       }

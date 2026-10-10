@@ -56,7 +56,9 @@ class StorageConfigurationAccessPropertiesTest {
         .containsEntry(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true")
         .containsEntry(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-west-2")
         .containsEntry("s3.something-custom", "custom-value");
-    assertThat(accessConfig.credentials())
+    // Static keys stay server-only; they must not look like vended credentials.
+    assertThat(accessConfig.credentials()).isEmpty();
+    assertThat(accessConfig.internalProperties())
         .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "bag-key")
         .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "bag-secret");
     assertThat(accessConfig.supportsCredentialVending()).isFalse();
@@ -88,5 +90,7 @@ class StorageConfigurationAccessPropertiesTest {
         .containsEntry(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true");
     assertThat(merged.credentials())
         .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "access-key");
+    assertThat(merged.internalProperties())
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "default-key");
   }
 }
