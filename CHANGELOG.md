@@ -110,6 +110,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Maintenance policy content now rejects non-boolean values for the `enable` field again. The
+  strict boolean check (`StrictBooleanDeserializer`) stopped running when policy parsing moved to
+  Jackson 3, because it was wired through a Jackson 2 `@JsonDeserialize` annotation that the Jackson
+  3 mapper ignores. As a result values such as `"TRUE"`, `1` and `0` were leniently coerced instead
+  of rejected. The deserializer is ported to the Jackson 3 API and applied to the `enable` creator
+  parameter, so only JSON `true`/`false` (and the lowercase string forms) are accepted.
 - The H2 relational JDBC init script no longer overwrites the recorded schema version. It now seeds
   the `version` table only when absent, matching the `ON CONFLICT DO NOTHING` behavior of the
   PostgreSQL and CockroachDB scripts. Previously, running bootstrap against an older, unmigrated H2
