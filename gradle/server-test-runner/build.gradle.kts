@@ -17,6 +17,8 @@
  * under the License.
  */
 
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
   `kotlin-dsl`
   `java-gradle-plugin`
@@ -41,3 +43,8 @@ dependencies {
 }
 
 group = "org.apache.polaris.server-test-runner"
+
+// Keep in sync with the minimum Java version in the root settings.gradle.kts
+tasks.withType<JavaCompile>().configureEach { options.release = 21 }
+
+kotlin { compilerOptions { jvmTarget = JvmTarget.JVM_21 } }

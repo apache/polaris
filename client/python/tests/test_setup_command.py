@@ -261,7 +261,7 @@ class TestSetupCommand(CLITestBase):
         list_namespaces_mock.assert_called_once_with(prefix="catalog")
 
     @patch("apache_polaris.cli.command.setup.PolicyAPI")
-    def test_setup_apply_recovers_policy_lookup_failure(
+    def test_setup_apply_reports_policy_lookup_failure(
         self, mock_policy_api: MagicMock
     ) -> None:
         mock_client = self.build_mock_client()
@@ -286,12 +286,8 @@ class TestSetupCommand(CLITestBase):
             dry_run=False,
         )
 
-        self.assertEqual(command._failure_count, 0)
-        mock_policy_api.return_value.create_policy.assert_called_once()
-        request = mock_policy_api.return_value.create_policy.call_args.kwargs[
-            "create_policy_request"
-        ]
-        self.assertEqual(request.content, "{}")
+        self.assertEqual(command._failure_count, 1)
+        mock_policy_api.return_value.create_policy.assert_not_called()
 
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_apply_s3_optional_fields(self, mock_isfile: MagicMock) -> None:

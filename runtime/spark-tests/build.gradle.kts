@@ -47,6 +47,9 @@ dependencies {
 
   // must be enforced to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
     exclude(group = "org.antlr", module = "antlr4-runtime")
     exclude(group = "org.scala-lang", module = "scala-library")
     exclude(group = "org.scala-lang", module = "scala-reflect")
@@ -172,7 +175,7 @@ fun Test.configureSparkIntegrationTestTask(
         "polaris.features.\"ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG\"" to "true",
         "polaris.features.\"ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING\"" to "true",
         "polaris.features.\"ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING\"" to "true",
-      )
+      ),
     )
     storageAccessKey?.let { systemProperties.put("polaris.storage.aws.access-key", it) }
     storageSecretKey?.let { systemProperties.put("polaris.storage.aws.secret-key", it) }

@@ -212,15 +212,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
         .filter(mf -> TaskUtils.exists(mf.path(), fileIO))
         .map(
             mf -> {
-              // append a random uuid to the task name to avoid any potential conflict
-              // when
-              // storing the task entity. It's better to have duplicate tasks than to risk
-              // not storing the rest of the task entities. If a duplicate deletion task
-              // is
-              // queued, it will check for the manifest file's existence and simply exit
-              // if
-              // the task has already been handled.
-              String taskName = cleanupTask.getName() + "_" + mf.path() + "_" + UUID.randomUUID();
+              String taskName = childTaskName("manifest-file-cleanup", cleanupTask);
               LOGGER
                   .atDebug()
                   .addKeyValue(StructuredLogKeys.TASK_NAME, taskName)
@@ -263,12 +255,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
     return getMetadataFileBatches(tableMetadata, batchSize).stream()
         .map(
             metadataBatch -> {
-              String taskName =
-                  String.join(
-                      "_",
-                      cleanupTask.getName(),
-                      metadataBatch.toString(),
-                      UUID.randomUUID().toString());
+              String taskName = childTaskName("batch-file-cleanup", cleanupTask);
               LOGGER
                   .atDebug()
                   .addKeyValue(StructuredLogKeys.TASK_NAME, taskName)
@@ -307,5 +294,14 @@ public class TableCleanupTaskHandler implements TaskHandler {
       result.add(metadataFiles.subList(i, Math.min(i + batchSize, metadataFiles.size())));
     }
     return result;
+  }
+
+  /**
+   * Child cleanup names are indexed by NoSQL and must stay within {@code IndexKey}'s 500-byte
+   * limit. The files to delete are already in the task payload, so the name only needs to be
+   * unique.
+   */
+  private static String childTaskName(String kind, TaskEntity parent) {
+    return kind + "_" + parent.getId() + "_" + UUID.randomUUID();
   }
 }

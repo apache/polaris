@@ -107,7 +107,7 @@ tasks.named<RatTask>("rat").configure {
 
   // Binary files
   excludes.add(
-    "persistence/nosql/persistence/index/src/testFixtures/resources/org/apache/polaris/persistence/indexes/words.gz"
+    "persistence/nosql/persistence/index/src/testFixtures/resources/org/apache/polaris/persistence/indexes/words.gz",
   )
 
   // Polaris service startup banner
@@ -257,7 +257,7 @@ changelog {
       "Deprecations",
       "Fixes",
       "Commits",
-    )
+    ),
   )
   version.set(provider { project.version.toString() })
 }
@@ -267,7 +267,7 @@ tasks.register("showVersion") {
   description = "Show the Polaris version"
   actions.add {
     logger.lifecycle(
-      "Polaris version is ${project.file("version.txt").readText(Charsets.UTF_8).trim()}"
+      "Polaris version is ${project.file("version.txt").readText(Charsets.UTF_8).trim()}",
     )
   }
 }

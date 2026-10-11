@@ -245,6 +245,10 @@ service:
   # -- Annotations to add to the service.
   # @section -- Service
   annotations: {}
+  # @schema additionalProperties: {type: string}
+  # -- Labels to add to the service.
+  # @section -- Service
+  labels: {}
 
 # Management service settings. These settings are used to configure liveness and readiness probes,
 # and to configure the dedicated headless service that will expose health checks and metrics, e.g.
@@ -309,6 +313,10 @@ managementService:
   # -- Annotations to add to the service.
   # @section -- Management Service
   annotations: {}
+  # @schema additionalProperties: {type: string}
+  # -- Labels to add to the service.
+  # @section -- Management Service
+  labels: {}
 
 # Additional service definitions. All service definitions always select all Polaris pods. Use
 # this if you need to expose specific ports with different configurations, e.g. expose polaris-http
@@ -371,6 +379,10 @@ extraServices:
     # -- Annotations to add to the extra service.
     # @section -- Extra Services
     annotations: {}
+    # @schema additionalProperties: {type: string}
+    # -- Labels to add to the service.
+    # @section -- Extra Services
+    labels: {}
 
 # Polaris Ingress settings.
 # These settings generate an Ingress resource that routes external traffic to the Polaris service

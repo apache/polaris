@@ -28,6 +28,7 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -47,6 +48,7 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
@@ -68,6 +70,7 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.SemanticModelGrant;
 import org.apache.polaris.core.admin.model.SemanticModelPrivilege;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -93,6 +96,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
@@ -107,6 +111,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 import org.apache.polaris.core.exceptions.CommitConflictException;
@@ -136,9 +141,12 @@ import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
+import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -168,6 +176,7 @@ public class PolarisAdminService {
   private final UserSecretsManager userSecretsManager;
   private final ServiceIdentityProvider serviceIdentityProvider;
   private final ReservedProperties reservedProperties;
+  private final S3CredentialVendingMechanisms vendingMechanisms;
 
   @Inject
   public PolarisAdminService(
@@ -178,7 +187,8 @@ public class PolarisAdminService {
       @NonNull ServiceIdentityProvider serviceIdentityProvider,
       @NonNull PolarisPrincipal principal,
       @NonNull PolarisAuthorizer authorizer,
-      @NonNull ReservedProperties reservedProperties) {
+      @NonNull ReservedProperties reservedProperties,
+      @NonNull S3CredentialVendingMechanisms vendingMechanisms) {
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
@@ -188,6 +198,7 @@ public class PolarisAdminService {
     this.userSecretsManager = userSecretsManager;
     this.serviceIdentityProvider = serviceIdentityProvider;
     this.reservedProperties = reservedProperties;
+    this.vendingMechanisms = vendingMechanisms;
   }
 
   private PolarisCallContext getCurrentPolarisContext() {
@@ -795,24 +806,20 @@ public class PolarisAdminService {
     return secretReferences;
   }
 
-  private void deleteSecretReferencesAfterFailedCatalogCreate(
-      Map<String, SecretReference> secretReferences) {
-    secretReferences
-        .values()
-        .forEach(
-            secretReference -> {
-              try {
-                getUserSecretsManager().deleteSecret(secretReference);
-              } catch (RuntimeException e) {
-                LOGGER
-                    .atWarn()
-                    .setCause(e)
-                    .addKeyValue(StructuredLogKeys.SECRET_REFERENCE, secretReference.urn())
-                    .log(
-                        "Failed to clean up secret {} after catalog creation failure",
-                        secretReference.urn());
-              }
-            });
+  private void deleteSecretReferences(
+      Collection<SecretReference> secretReferences, String context) {
+    secretReferences.forEach(
+        secretReference -> {
+          try {
+            getUserSecretsManager().deleteSecret(secretReference);
+          } catch (RuntimeException e) {
+            LOGGER
+                .atWarn()
+                .setCause(e)
+                .addKeyValue(StructuredLogKeys.SECRET_REFERENCE, secretReference.urn())
+                .log("Failed to clean up secret {} while {}", secretReference.urn(), context);
+          }
+        });
   }
 
   /**
@@ -827,8 +834,15 @@ public class PolarisAdminService {
   public PolarisEntity createCatalog(CreateCatalogRequest catalogRequest) {
     authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.CREATE_CATALOG);
     Catalog catalog = catalogRequest.getCatalog();
+    S3CredentialVendingMechanism mechanism =
+        validateS3CredentialVendingMechanism(catalog.getStorageConfigInfo());
 
     CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, catalog);
+    if (mechanism != null) {
+      // Safe: CatalogEntity.Builder.processStorageConfigurationInfo always converts an
+      // AwsStorageConfigInfo request to an AwsStorageConfigurationInfo.
+      mechanism.validate(null, (AwsStorageConfigurationInfo) entity.getStorageConfigurationInfo());
+    }
 
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
 
@@ -920,7 +934,8 @@ public class PolarisAdminService {
       return PolarisEntity.of(catalogResult.getCatalog());
     } finally {
       if (!catalogCreated) {
-        deleteSecretReferencesAfterFailedCatalogCreate(processedSecretReferences);
+        deleteSecretReferences(
+            processedSecretReferences.values(), "cleaning up after a failed catalog creation");
       }
     }
   }
@@ -939,6 +954,22 @@ public class PolarisAdminService {
 
     DropEntityFailureMapper.throwIfFailed(
         dropEntityResult, () -> String.format("Catalog '%s'", entity.getName()), null);
+
+    // The catalog entity is gone; release the inline connection secrets that were written to the
+    // secrets manager when the catalog was created.
+    deleteSecretReferences(
+        connectionSecretReferences(entity.getConnectionConfigInfoDpo()),
+        String.format("deleting catalog '%s'", entity.getName()));
+  }
+
+  /** Returns the secret references held by a federated catalog's connection configuration. */
+  private static List<SecretReference> connectionSecretReferences(
+      @Nullable ConnectionConfigInfoDpo connectionConfigInfoDpo) {
+    if (connectionConfigInfoDpo == null
+        || connectionConfigInfoDpo.getAuthenticationParameters() == null) {
+      return List.of();
+    }
+    return connectionConfigInfoDpo.getAuthenticationParameters().getSecretReferences();
   }
 
   public @NonNull CatalogEntity getCatalog(String name) {
@@ -947,6 +978,24 @@ public class PolarisAdminService {
         authorizeBasicTopLevelEntityOperationOrThrow(op, name, PolarisEntityType.CATALOG);
 
     return getCatalogByName(resolutionManifest, name);
+  }
+
+  /**
+   * The mechanism checks that run after authorization, so an unauthorized caller learns nothing
+   * about the realm's configuration: the realm allowlist for an explicit value, then availability
+   * in this server. Returns the mechanism the catalog selects, or null for a storage config that is
+   * not S3.
+   */
+  private @Nullable S3CredentialVendingMechanism validateS3CredentialVendingMechanism(
+      @Nullable StorageConfigInfo storageConfigInfo) {
+    if (!(storageConfigInfo instanceof AwsStorageConfigInfo s3Config)) {
+      return null;
+    }
+    String requested = s3Config.getCredentialVendingMechanism();
+    String explicit = AwsStorageConfigurationInfo.credentialVendingMechanismOf(requested);
+    IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(realmConfig, explicit);
+    return vendingMechanisms.require(
+        explicit == null ? S3CredentialVendingMechanism.STS : explicit);
   }
 
   /**
@@ -1006,6 +1055,8 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_CATALOG;
     PolarisResolutionManifest resolutionManifest =
         authorizeBasicTopLevelEntityOperationOrThrow(op, name, PolarisEntityType.CATALOG);
+    S3CredentialVendingMechanism mechanism =
+        validateS3CredentialVendingMechanism(updateRequest.getStorageConfigInfo());
 
     CatalogEntity currentCatalogEntity = getCatalogByName(resolutionManifest, name);
 
@@ -1041,6 +1092,19 @@ public class PolarisAdminService {
     CatalogEntity updatedEntity = updateBuilder.build();
 
     validateUpdateCatalogDiffOrThrow(currentCatalogEntity, updatedEntity);
+
+    if (mechanism != null) {
+      PolarisStorageConfigurationInfo currentStorageConfig =
+          currentCatalogEntity.getStorageConfigurationInfo();
+      // Safe: CatalogEntity.Builder.processStorageConfigurationInfo always converts an
+      // AwsStorageConfigInfo request to an AwsStorageConfigurationInfo, and the storage-type
+      // freeze above has already refused a type change.
+      mechanism.validate(
+          currentStorageConfig instanceof AwsStorageConfigurationInfo currentAwsConfig
+              ? currentAwsConfig
+              : null,
+          (AwsStorageConfigurationInfo) updatedEntity.getStorageConfigurationInfo());
+    }
 
     if (catalogOverlapsWithExistingCatalog(updatedEntity)) {
       throw new ValidationException(
@@ -1371,7 +1435,7 @@ public class PolarisAdminService {
     // TODO: Handle return value in case of concurrent modification
     DropEntityResult dropEntityResult =
         metaStoreManager.dropEntityIfExists(
-            getCurrentPolarisContext(), null, entity, Map.of(), true); // cleanup grants
+            getCurrentPolarisContext(), null, entity, Map.of(), false);
 
     DropEntityFailureMapper.throwIfFailed(
         dropEntityResult,
@@ -1485,7 +1549,7 @@ public class PolarisAdminService {
             PolarisEntity.toCoreList(resolvedCatalogRoleEntity.getRawParentPath()),
             resolvedCatalogRoleEntity.getRawLeafEntity(),
             Map.of(),
-            true); // cleanup grants
+            false);
 
     DropEntityFailureMapper.throwIfFailed(
         dropEntityResult,
@@ -2173,7 +2237,9 @@ public class PolarisAdminService {
               if (baseEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
                   || baseEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
                 TableIdentifier identifier =
-                    IcebergTableLikeEntity.of(baseEntity).getTableIdentifier();
+                    baseEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE
+                        ? GenericTableEntity.of(baseEntity).getTableIdentifier()
+                        : IcebergTableLikeEntity.of(baseEntity).getTableIdentifier();
                 TableGrant grant =
                     new TableGrant(
                         List.of(identifier.namespace().levels()),

@@ -77,7 +77,7 @@ public class CdiTestingProviders {
   @Produces
   @ApplicationScoped
   PersistenceParams persistenceBaseConfig() {
-    return PersistenceParams.BuildablePersistenceParams.builder().build();
+    return new MutablePersistenceParams();
   }
 
   private ScheduledExecutorService executorService;

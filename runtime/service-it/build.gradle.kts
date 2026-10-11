@@ -29,13 +29,21 @@ plugins {
 
 dependencies {
   // The application under test: the full Polaris service plus the OPA authorizer extension.
-  implementation(enforcedPlatform(libs.quarkus.bom))
+  implementation(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+  }
   implementation(project(":polaris-runtime-service"))
   runtimeOnly(project(":polaris-extensions-auth-opa"))
 
   // Integration-test dependencies. The `intTest` source set inherits `testImplementation` (see the
   // polaris-runtime convention plugin).
-  testImplementation(enforcedPlatform(libs.quarkus.bom))
+  testImplementation(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+  }
   testImplementation(project(":polaris-core"))
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(project(":polaris-tests"))

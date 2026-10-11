@@ -101,7 +101,11 @@ dependencies {
   intTestBase(platform(libs.junit.bom))
   intTestBase("org.junit.jupiter:junit-jupiter")
   intTestBase("org.junit.platform:junit-platform-launcher")
-  intTestBase(enforcedPlatform(libs.quarkus.bom))
+  intTestBase(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+  }
   intTestBase("io.rest-assured:rest-assured")
   intTestBase(project(":polaris-tests"))
   intTestBase(project(":polaris-runtime-test-common"))
@@ -176,7 +180,7 @@ tasks.register<JavaExec>("validateOpaSchema") {
         |
         |${logFile.get().asFile.readText()}
       """
-          .trimMargin()
+          .trimMargin(),
       )
     }
 
@@ -199,7 +203,7 @@ tasks.register<JavaExec>("validateOpaSchema") {
         |Committed file: ${committedSchemaFile.absolutePath}
         |Generated file: ${tempSchemaFile.absolutePath}
       """
-          .trimMargin()
+          .trimMargin(),
       )
     }
 
@@ -241,11 +245,11 @@ fun Test.configureOpaTestTask(
         "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"" to "[\"FILE\"]",
         "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"" to "true",
         "polaris.readiness.ignore-severe-issues" to "true",
-      )
+      ),
     )
     staticToken?.let {
       systemProperties.putAll(
-        mapOf("polaris.authorization.opa.auth.bearer.static-token.value" to it)
+        mapOf("polaris.authorization.opa.auth.bearer.static-token.value" to it),
       )
     }
     fileTokenPath?.orNull?.let {
@@ -253,7 +257,7 @@ fun Test.configureOpaTestTask(
         mapOf(
           "polaris.authorization.opa.auth.bearer.file-based.path" to it,
           opaBearerTokenRefreshIntervalProperty to "PT1S",
-        )
+        ),
       )
     }
   }

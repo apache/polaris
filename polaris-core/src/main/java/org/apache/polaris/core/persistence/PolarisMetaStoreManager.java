@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthBootstrapUtil;
 import org.apache.polaris.core.auth.PolarisGrantManager;
@@ -150,6 +151,27 @@ public interface PolarisMetaStoreManager
       @Nullable List<PolarisEntityCore> catalogPath,
       @NonNull PolarisEntityType entityType,
       @NonNull PolarisEntitySubType entitySubType,
+      @NonNull PageToken pageToken);
+
+  /**
+   * Load full entities matching the given criteria with a store-level filter and pagination. The
+   * filter is applied before the page boundary, so each returned page contains up to {@code
+   * pageToken.pageSize()} entities that satisfy {@code entityFilter}.
+   *
+   * @param callCtx call context
+   * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
+   *     like catalogs
+   * @param entityType type of entities to list
+   * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
+   * @param entityFilter predicate applied at the store layer
+   * @return paged list of matching entities after filtering
+   */
+  @NonNull Page<PolarisBaseEntity> listFullEntities(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull Predicate<PolarisBaseEntity> entityFilter,
       @NonNull PageToken pageToken);
 
   /**

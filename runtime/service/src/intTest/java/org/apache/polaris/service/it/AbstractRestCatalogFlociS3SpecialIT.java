@@ -28,8 +28,8 @@ import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_KEY_ID;
 import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_SECRET_KEY;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
-import static org.apache.polaris.test.commons.MinioRustProfile.ACCESS_KEY;
-import static org.apache.polaris.test.commons.MinioRustProfile.SECRET_KEY;
+import static org.apache.polaris.test.commons.FlociAwsProfile.ACCESS_KEY;
+import static org.apache.polaris.test.commons.FlociAwsProfile.SECRET_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.ImmutableMap;

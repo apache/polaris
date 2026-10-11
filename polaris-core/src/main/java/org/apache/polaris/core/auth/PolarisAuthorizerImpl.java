@@ -105,6 +105,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_STRUCTURE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_METRICS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PROPERTIES;
@@ -142,7 +143,6 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.AuthorizationIntentResolver.ResolvedIntent;
 import org.apache.polaris.core.auth.RbacOperationSemantics.ResolvedPathRooting;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
@@ -465,6 +465,8 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         TABLE_READ_DATA, List.of(CATALOG_MANAGE_CONTENT, TABLE_READ_DATA, TABLE_WRITE_DATA));
     SUPER_PRIVILEGES.putAll(TABLE_WRITE_DATA, List.of(CATALOG_MANAGE_CONTENT, TABLE_WRITE_DATA));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_READ_METRICS, List.of(CATALOG_MANAGE_CONTENT, TABLE_READ_METRICS));
     SUPER_PRIVILEGES.putAll(
         NAMESPACE_FULL_METADATA,
         List.of(CATALOG_MANAGE_CONTENT, CATALOG_MANAGE_METADATA, NAMESPACE_FULL_METADATA));
@@ -795,12 +797,6 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         : EnumSet.of(privilege);
   }
 
-  private final RealmConfig realmConfig;
-
-  public PolarisAuthorizerImpl(RealmConfig realmConfig) {
-    this.realmConfig = realmConfig;
-  }
-
   @Override
   public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
@@ -872,8 +868,6 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       @NonNull Set<PolarisBaseEntity> activatedEntities,
       @NonNull PolarisAuthorizableOperation authzOp,
       @NonNull ResolvedIntent resolvedIntent) {
-    AuthorizationPreConditions.checkCredentialRotationRequired(
-        polarisPrincipal, authzOp, realmConfig);
     boolean isRoot = getRootPrincipalName().equals(polarisPrincipal.getName());
     if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
       if (!isRoot) {

@@ -65,7 +65,7 @@ abstract class GeneratePomProperties : DefaultTask() {
       artifactId=${artifactId.get()}
       version=${projectVersion.get()}
     """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 }

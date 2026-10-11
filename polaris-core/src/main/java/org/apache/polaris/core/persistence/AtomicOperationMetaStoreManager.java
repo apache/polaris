@@ -29,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.polaris.core.PolarisCallContext;
@@ -656,6 +657,19 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @NonNull PolarisEntityType entityType,
       @NonNull PolarisEntitySubType entitySubType,
       @NonNull PageToken pageToken) {
+    return listFullEntities(
+        callCtx, catalogPath, entityType, entitySubType, entity -> true, pageToken);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull Page<PolarisBaseEntity> listFullEntities(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull Predicate<PolarisBaseEntity> entityFilter,
+      @NonNull PageToken pageToken) {
     // get meta store we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -679,7 +693,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         parentId,
         entityType,
         entitySubType,
-        entity -> true,
+        entityFilter,
         Function.identity(),
         pageToken);
   }

@@ -20,6 +20,7 @@ package org.apache.polaris.persistence.nosql.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoSocketClosedException;
 import com.mongodb.MongoSocketReadException;
 import com.mongodb.MongoSocketWriteException;
@@ -27,11 +28,15 @@ import com.mongodb.MongoSocketWriteTimeoutException;
 import com.mongodb.MongoWriteConcernException;
 import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcernResult;
+import com.mongodb.bulk.BulkWriteError;
+import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.WriteConcernError;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.persistence.nosql.api.exceptions.UnknownOperationResultException;
 import org.bson.BsonDocument;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -58,6 +63,53 @@ class MongoDbBackendTest {
                 0, "WriteConcernFailed", "write concern failed", new BsonDocument()),
             WriteConcernResult.acknowledged(1, false, null),
             serverAddress,
-            List.of()));
+            List.of()),
+        bulkWriteConcernException());
+  }
+
+  @Test
+  void unhandledExceptionKeepsBulkDuplicateKey() {
+    var exception =
+        new MongoBulkWriteException(
+            BulkWriteResult.acknowledged(0, 0, 0, 0, List.of(), List.of()),
+            List.of(new BulkWriteError(11000, "duplicate key", new BsonDocument(), 0)),
+            null,
+            new ServerAddress(),
+            Set.of());
+
+    assertThat(MongoDbBackend.unhandledException(exception)).isSameAs(exception);
+  }
+
+  @Test
+  void bulkWriteConcernErrorIsAFailureEvenWithoutWriteErrors() {
+    assertThat(MongoDbBackend.isBulkWriteFailure(bulkWriteConcernException())).isTrue();
+  }
+
+  @Test
+  void bulkDuplicateKeyOnlyIsNotAFailure() {
+    var exception =
+        new MongoBulkWriteException(
+            BulkWriteResult.acknowledged(0, 0, 0, 0, List.of(), List.of()),
+            List.of(new BulkWriteError(11000, "duplicate key", new BsonDocument(), 0)),
+            null,
+            new ServerAddress(),
+            Set.of());
+
+    assertThat(MongoDbBackend.isBulkWriteFailure(exception)).isFalse();
+  }
+
+  /**
+   * A bulk write that failed only on write concern. {@code BulkWriteBatchCombiner} builds this
+   * shape with an empty write-error list, because its {@code hasErrors()} is {@code
+   * hasWriteErrors() || hasWriteConcernErrors()}.
+   */
+  private static MongoBulkWriteException bulkWriteConcernException() {
+    return new MongoBulkWriteException(
+        BulkWriteResult.acknowledged(0, 1, 0, 1, List.of(), List.of()),
+        List.of(),
+        new WriteConcernError(
+            64, "WriteConcernFailed", "waiting for replication timed out", new BsonDocument()),
+        new ServerAddress(),
+        Set.of());
   }
 }

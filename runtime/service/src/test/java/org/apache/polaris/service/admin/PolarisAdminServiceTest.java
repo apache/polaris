@@ -22,6 +22,7 @@ import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -37,8 +38,10 @@ import java.util.Set;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -50,6 +53,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
+import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -61,6 +65,10 @@ import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
+import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
+import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
+import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
@@ -80,6 +88,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
@@ -90,7 +99,9 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -111,6 +122,7 @@ public class PolarisAdminServiceTest {
   @Mock private PolarisResolutionManifest resolutionManifest;
   @Mock private PolarisResolvedPathWrapper resolvedPathWrapper;
   @Mock private RealmConfig realmConfig;
+  @Mock private S3CredentialVendingMechanism stsMechanism;
 
   private PolarisAdminService adminService;
 
@@ -147,6 +159,8 @@ public class PolarisAdminServiceTest {
 
     authenticatedPrincipal = PolarisPrincipal.of("test", AttributeMap.EMPTY, Set.of());
 
+    S3CredentialVendingMechanisms vendingMechanisms =
+        new S3CredentialVendingMechanisms(Map.of("STS", stsMechanism));
     adminService =
         new PolarisAdminService(
             callContext,
@@ -156,7 +170,8 @@ public class PolarisAdminServiceTest {
             identityProvider,
             authenticatedPrincipal,
             authorizer,
-            reservedProperties);
+            reservedProperties,
+            vendingMechanisms);
   }
 
   protected static void assertSuccess(BaseResult result) {
@@ -234,6 +249,174 @@ public class PolarisAdminServiceTest {
     adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog()));
 
     verify(userSecretsManager, never()).deleteSecret(any());
+  }
+
+  private static CreateCatalogRequest secondMechanismCatalogRequest() {
+    return mechanismCatalogRequest("SECOND_MECHANISM");
+  }
+
+  private static CreateCatalogRequest stsCatalogRequest() {
+    return mechanismCatalogRequest("STS");
+  }
+
+  private static CreateCatalogRequest mechanismCatalogRequest(String mechanism) {
+    AwsStorageConfigInfo storage =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setCredentialVendingMechanism(mechanism)
+            .setRoleArn("arn:aws:iam::123456789012:role/r")
+            .setAllowedLocations(List.of("s3://bucket/base/"))
+            .build();
+    return new CreateCatalogRequest(
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("second")
+            .setProperties(new CatalogProperties("s3://bucket/base/"))
+            .setStorageConfigInfo(storage)
+            .build());
+  }
+
+  /** A denied caller gets the 403 and the realm's allowlist is never consulted. */
+  @Test
+  void deniedCreateCatalogNeverConsultsTheAllowlist() {
+    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.deny("denied"));
+    assertThatThrownBy(() -> adminService.createCatalog(secondMechanismCatalogRequest()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("denied");
+    verify(realmConfig, never())
+        .getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS);
+    verify(metaStoreManager, never()).createCatalog(any(), any(), any());
+  }
+
+  /** The check still runs: an authorized caller with a disabled mechanism gets the 400. */
+  @Test
+  void authorizedCreateCatalogWithADisabledMechanismIsRefusedAfterAuthorization() {
+    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS))
+        .thenReturn(List.of("STS"));
+    assertThatThrownBy(() -> adminService.createCatalog(secondMechanismCatalogRequest()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(
+            "S3 credential vending mechanism SECOND_MECHANISM is not enabled in this realm");
+    verify(authorizer).authorize(any(), any());
+    verify(metaStoreManager, never()).createCatalog(any(), any(), any());
+  }
+
+  /** The registry this test's adminService holds carries only an STS mock. */
+  @Test
+  void authorizedCreateCatalogWithAnUninstalledMechanismIsRefusedAfterAuthorization() {
+    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS))
+        .thenReturn(List.of("STS", "SECOND_MECHANISM"));
+    assertThatThrownBy(() -> adminService.createCatalog(secondMechanismCatalogRequest()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "S3 credential vending mechanism SECOND_MECHANISM is not available in this server");
+  }
+
+  /**
+   * A denied caller gets the 403 before the mechanism the registry does hold, STS, is ever
+   * validated.
+   */
+  @Test
+  void deniedCreateCatalogNeverValidatesTheMechanism() {
+    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.deny("denied"));
+    assertThatThrownBy(() -> adminService.createCatalog(stsCatalogRequest()))
+        .isInstanceOf(ForbiddenException.class);
+    verify(stsMechanism, never()).validate(any(), any());
+  }
+
+  @Test
+  void testDeleteCatalogDeletesInlineOauthSecret() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogDelete(
+        new OAuthClientCredentialsParametersDpo(null, "client-id", secretReference, null));
+
+    adminService.deleteCatalog("external-catalog");
+
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testDeleteCatalogDeletesInlineBearerSecret() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:bearer", Map.of());
+    setupExternalCatalogDelete(new BearerAuthenticationParametersDpo(secretReference));
+
+    adminService.deleteCatalog("external-catalog");
+
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testDeleteCatalogSucceedsWhenSecretDeletionFails() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogDelete(
+        new OAuthClientCredentialsParametersDpo(null, "client-id", secretReference, null));
+    doThrow(new RuntimeException("cleanup failed")).when(userSecretsManager).deleteSecret(any());
+
+    adminService.deleteCatalog("external-catalog");
+
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testDeleteCatalogKeepsSecretsWhenDropFails() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogDelete(
+        new OAuthClientCredentialsParametersDpo(null, "client-id", secretReference, null));
+    when(metaStoreManager.dropEntityIfExists(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(
+            new DropEntityResult(BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, "not droppable"));
+
+    assertThatThrownBy(() -> adminService.deleteCatalog("external-catalog"))
+        .isInstanceOf(RuntimeException.class);
+
+    verify(userSecretsManager, never()).deleteSecret(any());
+  }
+
+  @Test
+  void testDeleteInternalCatalogDoesNotTouchSecrets() {
+    CatalogEntity catalogEntity =
+        new CatalogEntity.Builder().setName("internal-catalog").setId(200L).build();
+    mockCatalogResolution(catalogEntity);
+    when(metaStoreManager.dropEntityIfExists(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(new DropEntityResult());
+
+    adminService.deleteCatalog("internal-catalog");
+
+    verify(userSecretsManager, never()).deleteSecret(any());
+  }
+
+  private void setupExternalCatalogDelete(AuthenticationParametersDpo authenticationParameters) {
+    CatalogEntity catalogEntity =
+        new CatalogEntity.Builder()
+            .setName("external-catalog")
+            .setId(200L)
+            .setConnectionConfigInfoDpo(
+                new IcebergRestConnectionConfigInfoDpo(
+                    "https://example.com/polaris/api/catalog",
+                    authenticationParameters,
+                    null,
+                    "remote-catalog",
+                    null))
+            .build();
+    mockCatalogResolution(catalogEntity);
+  }
+
+  private void mockCatalogResolution(CatalogEntity catalogEntity) {
+    PolarisResolvedPathWrapper wrapper = mock(PolarisResolvedPathWrapper.class);
+    when(wrapper.getRawLeafEntity()).thenReturn(catalogEntity);
+    ResolvedPolarisEntity resolvedLeaf = mock(ResolvedPolarisEntity.class);
+    when(resolvedLeaf.getEntity()).thenReturn(catalogEntity);
+    when(wrapper.getResolvedLeafEntity()).thenReturn(resolvedLeaf);
+    when(resolutionManifest.getResolvedTopLevelEntity(
+            eq(catalogEntity.getName()), eq(PolarisEntityType.CATALOG)))
+        .thenReturn(wrapper);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(catalogEntity);
+    when(realmConfig.getConfig(FeatureConfiguration.CLEANUP_ON_CATALOG_DROP)).thenReturn(false);
+    when(metaStoreManager.dropEntityIfExists(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(new DropEntityResult());
   }
 
   @Test
@@ -893,6 +1076,10 @@ public class PolarisAdminServiceTest {
     when(realmConfig.getConfig(
             FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
         .thenReturn(List.of(authType.name()));
+    // The admin service now reads the realm's S3 credential vending mechanism allowlist on
+    // catalog create; the mock RealmConfig must answer it, even though these catalogs are not S3.
+    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS))
+        .thenReturn(List.of("STS"));
 
     GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
     when(idResult.getId()).thenReturn(2L);

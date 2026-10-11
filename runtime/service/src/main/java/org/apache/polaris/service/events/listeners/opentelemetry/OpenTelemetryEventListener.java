@@ -47,6 +47,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
 import org.apache.polaris.service.events.EventAttributes;
@@ -85,7 +86,7 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
   static final String REVOKE_GRANT_REQUEST_ATTRIBUTE_NAME = "polaris.grant.revoke_request";
   static final String CASCADE_ATTRIBUTE_NAME = "polaris.cascade";
   static final String WAREHOUSE_ATTRIBUTE_NAME = "polaris.warehouse";
-  static final String ACCESS_DELEGATION_MODE_ATTRIBUTE_NAME = "polaris.access_delegation_mode";
+  static final String ACCESS_DELEGATION_MODES_ATTRIBUTE_NAME = "polaris.access_delegation_modes";
   static final String IF_NONE_MATCH_ATTRIBUTE_NAME = "polaris.if_none_match";
   static final String SNAPSHOTS_ATTRIBUTE_NAME = "polaris.snapshots";
   static final String PURGE_REQUESTED_ATTRIBUTE_NAME = "polaris.purge_requested";
@@ -219,18 +220,29 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
     PARENT_NAMESPACE_FQN(
         string(PARENT_NAMESPACE_FQN_ATTRIBUTE_NAME, EventAttributes.PARENT_NAMESPACE_FQN)),
     TABLE_NAME(string(TABLE_NAME_ATTRIBUTE_NAME, EventAttributes.TABLE_NAME)),
-    TABLE_IDENTIFIER(string(TABLE_IDENTIFIER_ATTRIBUTE_NAME, EventAttributes.TABLE_IDENTIFIER)),
+    TABLE_IDENTIFIER(
+        string(
+            TABLE_IDENTIFIER_ATTRIBUTE_NAME,
+            EventAttributes.TABLE_IDENTIFIER,
+            TableIdentifier::toString)),
     VIEW_NAME(string(VIEW_NAME_ATTRIBUTE_NAME, EventAttributes.VIEW_NAME)),
-    VIEW_IDENTIFIER(string(VIEW_IDENTIFIER_ATTRIBUTE_NAME, EventAttributes.VIEW_IDENTIFIER)),
+    VIEW_IDENTIFIER(
+        string(
+            VIEW_IDENTIFIER_ATTRIBUTE_NAME,
+            EventAttributes.VIEW_IDENTIFIER,
+            TableIdentifier::toString)),
     PRINCIPAL_NAME(string(PRINCIPAL_NAME_ATTRIBUTE_NAME, EventAttributes.PRINCIPAL_NAME)),
     PRINCIPAL_ROLE_NAME(
         string(PRINCIPAL_ROLE_NAME_ATTRIBUTE_NAME, EventAttributes.PRINCIPAL_ROLE_NAME)),
     CATALOG_ROLE_NAME(string(CATALOG_ROLE_NAME_ATTRIBUTE_NAME, EventAttributes.CATALOG_ROLE_NAME)),
-    PRIVILEGE(string(PRIVILEGE_ATTRIBUTE_NAME, EventAttributes.PRIVILEGE, value -> value.name())),
+    PRIVILEGE(string(PRIVILEGE_ATTRIBUTE_NAME, EventAttributes.PRIVILEGE, Enum::name)),
     CASCADE(booleanAttribute(CASCADE_ATTRIBUTE_NAME, EventAttributes.CASCADE)),
     WAREHOUSE(string(WAREHOUSE_ATTRIBUTE_NAME, EventAttributes.WAREHOUSE)),
-    ACCESS_DELEGATION_MODE(
-        string(ACCESS_DELEGATION_MODE_ATTRIBUTE_NAME, EventAttributes.ACCESS_DELEGATION_MODE)),
+    ACCESS_DELEGATION_MODES(
+        string(
+            ACCESS_DELEGATION_MODES_ATTRIBUTE_NAME,
+            EventAttributes.ACCESS_DELEGATION_MODES,
+            modes -> String.join(",", modes))),
     IF_NONE_MATCH(string(IF_NONE_MATCH_ATTRIBUTE_NAME, EventAttributes.IF_NONE_MATCH_STRING)),
     SNAPSHOTS(string(SNAPSHOTS_ATTRIBUTE_NAME, EventAttributes.SNAPSHOTS)),
     PURGE_REQUESTED(
@@ -265,8 +277,8 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
       forwarder.forward(listener, attributes, event);
     }
 
-    private static <T> AttributeForwarder string(
-        String logAttributeName, AttributeKey<T> eventAttributeKey) {
+    private static AttributeForwarder string(
+        String logAttributeName, AttributeKey<String> eventAttributeKey) {
       return string(logAttributeName, eventAttributeKey, Object::toString);
     }
 

@@ -154,7 +154,11 @@ dependencies {
   testImplementation("software.amazon.awssdk:kms")
   testImplementation("software.amazon.awssdk:dynamodb")
 
-  testImplementation(enforcedPlatform(libs.quarkus.bom))
+  testImplementation(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+  }
   testImplementation("io.quarkus:quarkus-junit")
   testImplementation("io.quarkus:quarkus-junit-mockito")
   testImplementation("io.quarkus:quarkus-test-oidc-server")
@@ -248,19 +252,16 @@ tasks.withType(Test::class.java).configureEach {
   // - Hadoop's stats-cleaner (org.apache.hadoop.fs.FileSystem.Statistics.STATS_DATA_CLEANER)
   // - Guava's 'MoreExecutors' (via Iceberg `ThreadPools`)`
   // Forcing a new JVM after each test class works around this issue.
-  if ("test" == name) {
-    forkEvery = 1
-
-    // enlarge the max heap size to avoid out of memory error
-    maxHeapSize = "4g"
-  }
+  forkEvery = 1
+  // enlarge the max heap size to avoid out of memory error
+  maxHeapSize = "4g"
 
   if ("intTest" == name || "cloutTest" == name) {
     val logsDir = buildDir.map { b -> b.asFile.resolve("logs") }
 
     // JVM arguments provider does not interfere with Gradle's cache keys
     jvmArgumentProviders.add(
-      IntTestArgumentProvider(logsDir, quarkusProperties, quarkusTestArgLine)
+      IntTestArgumentProvider(logsDir, quarkusProperties, quarkusTestArgLine),
     )
 
     // delete files from previous runs

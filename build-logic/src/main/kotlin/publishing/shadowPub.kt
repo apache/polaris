@@ -86,7 +86,7 @@ internal fun configureShadowPublishing(
     }
   }
   component.addVariantsFromConfiguration(
-    project.configurations.getByName("shadowRuntimeElements")
+    project.configurations.getByName("shadowRuntimeElements"),
   ) {
     if (isPublishable(configurationVariant)) {
       mapToMavenScope("runtime")
