@@ -22,9 +22,9 @@ package org.apache.polaris.core.auth;
 public enum PolarisAuthorizableOperation {
   LIST_NAMESPACES,
   /**
-   * Per-entity visibility check used when filtering listNamespaces results. Distinct from
-   * LIST_NAMESPACES so that authorizers can require a stronger, entity-scoped permission than the
-   * container-level permission that gates the list call itself.
+   * Per-entity visibility check used when filtering listNamespaces results for a caller denied
+   * {@link #LIST_NAMESPACES} on the parent. Distinct from LIST_NAMESPACES so that authorizers can
+   * decide the visibility of an individual entity separately from the container-level permission.
    */
   LIST_NAMESPACES_ENTITY,
   CREATE_NAMESPACE,
@@ -34,9 +34,9 @@ public enum PolarisAuthorizableOperation {
   UPDATE_NAMESPACE_PROPERTIES,
   LIST_TABLES,
   /**
-   * Per-entity visibility check used when filtering listTables results. Distinct from LIST_TABLES
-   * so that authorizers can require a stronger, entity-scoped permission than the container-level
-   * permission that gates the list call itself.
+   * Per-entity visibility check used when filtering listTables results for a caller denied {@link
+   * #LIST_TABLES} on the parent. Distinct from LIST_TABLES so that authorizers can decide the
+   * visibility of an individual entity separately from the container-level permission.
    */
   LIST_TABLES_ENTITY,
   CREATE_TABLE_DIRECT,
@@ -61,9 +61,9 @@ public enum PolarisAuthorizableOperation {
   COMMIT_TRANSACTION,
   LIST_VIEWS,
   /**
-   * Per-entity visibility check used when filtering listViews results. Distinct from LIST_VIEWS so
-   * that authorizers can require a stronger, entity-scoped permission than the container-level
-   * permission that gates the list call itself.
+   * Per-entity visibility check used when filtering listViews results for a caller denied {@link
+   * #LIST_VIEWS} on the parent. Distinct from LIST_VIEWS so that authorizers can decide the
+   * visibility of an individual entity separately from the container-level permission.
    */
   LIST_VIEWS_ENTITY,
   CREATE_VIEW,

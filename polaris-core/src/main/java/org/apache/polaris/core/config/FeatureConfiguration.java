@@ -825,9 +825,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("ENABLE_ENTITY_LEVEL_LIST_FILTERING")
           .catalogConfig("polaris.config.enable-entity-level-list-filtering")
           .description(
-              "When true, LIST operations (listNamespaces, listTables, listViews) filter "
-                  + "results to only entities the caller is authorized to see. When false "
-                  + "(default), authorization is checked only at the parent level.")
+              "When true, a caller denied a LIST operation (listNamespaces, listTables, "
+                  + "listViews) on the parent receives only the children it may see "
+                  + "individually, instead of a 403. Under the built-in RBAC authorizer, a child "
+                  + "is visible with *_READ_PROPERTIES (or a privilege that implies it) on it or "
+                  + "an ancestor. Callers allowed the LIST operation on the parent are unaffected "
+                  + "and see every child. When false (default), callers denied the LIST "
+                  + "operation receive a 403.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 }

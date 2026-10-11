@@ -47,6 +47,7 @@ import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.inmemory.InMemoryCatalog;
 import org.apache.iceberg.io.FileIO;
@@ -2472,6 +2473,10 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   private static final TableIdentifier FEDERATED_ONLY_TABLE =
       TableIdentifier.of(NS1A, "federated_only_table");
 
+  /** Denies the second namespace, table and view, for asserting that nothing was filtered. */
+  private static final Predicate<String> DENY_SECOND_ENTITIES =
+      Set.of("ns2", "table2", "view2")::contains;
+
   /**
    * Enables {@code ENABLE_ENTITY_LEVEL_LIST_FILTERING} for the test catalog by writing the catalog
    * config property directly to the metastore via the root-privileged metaStoreManager, bypassing
@@ -2609,12 +2614,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .build();
   }
 
+  // The tests below grant no LIST privilege on the container, so the caller is denied the LIST
+  // operation and, with filtering enabled, falls through to the per-entity check.
+
   @Test
   public void testEntityLevelListFilteringFiltersUnauthorizedNamespaces() {
     enableEntityLevelListFiltering();
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.NAMESPACE_LIST));
 
     // A page size exercises the paginated branch. Root holds exactly ns1 and ns2.
     Assertions.assertThat(
@@ -2627,9 +2632,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @Test
   public void testEntityLevelListFilteringFiltersUnauthorizedTables() {
     enableEntityLevelListFiltering();
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_LIST));
 
     // A page size exercises the paginated branch. ns1a holds exactly table1 and table2.
     Assertions.assertThat(
@@ -2642,9 +2644,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @Test
   public void testEntityLevelListFilteringFiltersUnauthorizedViews() {
     enableEntityLevelListFiltering();
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.VIEW_LIST));
 
     // A page size exercises the paginated branch. ns1a holds exactly view1 and view2.
     Assertions.assertThat(
@@ -2657,41 +2656,29 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @Test
   public void testEntityLevelListFilteringDisabledReturnsAllEntities() {
     // Flag NOT enabled (default false)
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_LIST));
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.NAMESPACE_LIST));
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.VIEW_LIST));
+    grantListOnCatalog(CATALOG_NAME);
 
     // Even though the authorizer denies "table2"/"ns2"/"view2", the flag is off so all entities
     // are returned.
-    Assertions.assertThat(
-            newHandlerWithEntityLevelFiltering("table2"::equals)
-                .listTables(NS1A, null, null)
-                .identifiers())
-        .containsExactlyInAnyOrder(TABLE_NS1A_1, TABLE_NS1A_2);
-    Assertions.assertThat(
-            newHandlerWithEntityLevelFiltering("ns2"::equals)
-                .listNamespaces(Namespace.of(), null, null)
-                .namespaces())
-        .containsExactlyInAnyOrder(NS1, NS2);
-    Assertions.assertThat(
-            newHandlerWithEntityLevelFiltering("view2"::equals)
-                .listViews(NS1A, null, null)
-                .identifiers())
-        .containsExactlyInAnyOrder(VIEW_NS1A_1, VIEW_NS1A_2);
+    assertListsAreUnfiltered(newHandlerWithEntityLevelFiltering(DENY_SECOND_ENTITIES));
+  }
+
+  /**
+   * A caller allowed the LIST operation on the container sees every child even with filtering
+   * enabled: the per-entity check only runs for callers denied the LIST operation.
+   */
+  @Test
+  public void testEntityLevelListFilteringDoesNotFilterListHolders() {
+    enableEntityLevelListFiltering();
+    grantListOnCatalog(CATALOG_NAME);
+
+    // The authorizer would deny "table2"/"ns2"/"view2", but it is never asked.
+    assertListsAreUnfiltered(newHandlerWithEntityLevelFiltering(DENY_SECOND_ENTITIES));
   }
 
   @Test
   public void testEntityLevelListFilteringFiltersUnauthorizedFederatedTables() {
     enableEntityLevelListFiltering(FEDERATED_CATALOG_NAME);
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            FEDERATED_CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_LIST));
 
     // The remote catalog holds table1, table2 and the remote-only table; only table2 is denied.
     Assertions.assertThat(
@@ -2711,9 +2698,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @Test
   public void testEntityLevelListFilteringKeepsFederatedEntitiesWithoutPolarisEntity() {
     enableEntityLevelListFiltering(FEDERATED_CATALOG_NAME);
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            FEDERATED_CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_LIST));
 
     // Deny nothing: any absence from the result is a resolution drop, not an authorization denial.
     Assertions.assertThat(
@@ -2726,9 +2710,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @Test
   public void testEntityLevelListFilteringFiltersUnauthorizedFederatedViews() {
     enableEntityLevelListFiltering(FEDERATED_CATALOG_NAME);
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            FEDERATED_CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.VIEW_LIST));
 
     Assertions.assertThat(
             newFederatedHandlerWithEntityLevelFiltering("view2"::equals)
@@ -2740,15 +2721,32 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @Test
   public void testEntityLevelListFilteringFiltersUnauthorizedFederatedNamespaces() {
     enableEntityLevelListFiltering(FEDERATED_CATALOG_NAME);
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            FEDERATED_CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.NAMESPACE_LIST));
 
     Assertions.assertThat(
             newFederatedHandlerWithEntityLevelFiltering("ns2"::equals)
                 .listNamespaces(Namespace.of(), null, 10)
                 .namespaces())
         .containsExactly(NS1);
+  }
+
+  private void grantListOnCatalog(String catalogName) {
+    for (PolarisPrivilege privilege :
+        List.of(
+            PolarisPrivilege.NAMESPACE_LIST,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.VIEW_LIST)) {
+      assertSuccess(
+          adminService.grantPrivilegeOnCatalogToRole(catalogName, CATALOG_ROLE1, privilege));
+    }
+  }
+
+  private void assertListsAreUnfiltered(IcebergCatalogHandler handler) {
+    Assertions.assertThat(handler.listTables(NS1A, null, null).identifiers())
+        .containsExactlyInAnyOrder(TABLE_NS1A_1, TABLE_NS1A_2);
+    Assertions.assertThat(handler.listNamespaces(Namespace.of(), null, null).namespaces())
+        .containsExactlyInAnyOrder(NS1, NS2);
+    Assertions.assertThat(handler.listViews(NS1A, null, null).identifiers())
+        .containsExactlyInAnyOrder(VIEW_NS1A_1, VIEW_NS1A_2);
   }
 
   // ─── Entity-level filtering under the real RBAC authorizer ───────────────
@@ -2758,16 +2756,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   // never RBAC's own per-entity decision.
 
   /**
-   * The container gate and the per-entity check must use different privileges. TABLE_LIST on the
-   * namespace lets the caller list at all; seeing an individual table additionally requires
-   * TABLE_READ_PROPERTIES (or a privilege that subsumes it) on that table or an ancestor.
+   * A caller without TABLE_LIST on the namespace sees exactly the tables it holds
+   * TABLE_READ_PROPERTIES (or a privilege that subsumes it) on, directly or via an ancestor.
    */
   @Test
   public void testEntityLevelListFilteringRequiresReadPropertiesPerEntity() {
     enableEntityLevelListFiltering();
-    assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_LIST));
     assertSuccess(
         adminService.grantPrivilegeOnTableToRole(
             CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1A_1, PolarisPrivilege.TABLE_READ_PROPERTIES));
@@ -2777,36 +2771,83 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   /**
-   * TABLE_READ_PROPERTIES is subsumed by TABLE_FULL_METADATA (among others), so a namespace-level
-   * grant of a subsuming privilege keeps every table visible. Pins the privilege hierarchy.
+   * TABLE_READ_PROPERTIES is subsumed by TABLE_FULL_METADATA (among others), so a table-level grant
+   * of a subsuming privilege makes that table visible. Pins the privilege hierarchy.
+   *
+   * <p>The grant is placed on a table rather than the namespace: on the namespace,
+   * TABLE_FULL_METADATA would also imply TABLE_LIST and skip filtering altogether.
    */
   @Test
   public void testEntityLevelListFilteringHonoursSubsumingPrivileges() {
     enableEntityLevelListFiltering();
     assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_LIST));
+        adminService.grantPrivilegeOnTableToRole(
+            CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1A_2, PolarisPrivilege.TABLE_FULL_METADATA));
+
+    Assertions.assertThat(newHandler().listTables(NS1A, null, null).identifiers())
+        .containsExactly(TABLE_NS1A_2);
+  }
+
+  /**
+   * Backward compatibility: a principal holding only TABLE_LIST on the namespace keeps seeing every
+   * table once filtering is enabled, even without TABLE_READ_PROPERTIES on any of them.
+   */
+  @Test
+  public void testEntityLevelListFilteringListOnlyPrincipalSeesAllEntities() {
+    enableEntityLevelListFiltering();
     assertSuccess(
         adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_FULL_METADATA));
+            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_LIST));
 
     Assertions.assertThat(newHandler().listTables(NS1A, null, null).identifiers())
         .containsExactlyInAnyOrder(TABLE_NS1A_1, TABLE_NS1A_2);
   }
 
   /**
-   * The behavioural cliff, asserted deliberately: a principal holding only TABLE_LIST passes the
-   * container gate and then fails every per-entity check, so the list comes back empty rather than
-   * forbidden. Enabling the feature is a breaking change for LIST-only principals.
+   * A caller denied the LIST operation who may see nothing individually gets an empty list rather
+   * than a 403 once filtering is enabled.
    */
   @Test
-  public void testEntityLevelListFilteringReturnsEmptyForListOnlyPrincipal() {
+  public void testEntityLevelListFilteringReturnsEmptyForCallerWithoutGrants() {
     enableEntityLevelListFiltering();
-    assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_LIST));
 
     Assertions.assertThat(newHandler().listTables(NS1A, null, null).identifiers()).isEmpty();
+  }
+
+  /**
+   * A per-entity grant below the container cannot satisfy TABLE_LIST on the namespace. With
+   * filtering enabled, the caller gets the tables it may see instead of a 403.
+   */
+  @Test
+  public void testEntityLevelListFilteringReplacesContainerDenialWithFilteredList() {
+    enableEntityLevelListFiltering();
+    assertSuccess(
+        adminService.grantPrivilegeOnTableToRole(
+            CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1A_1, PolarisPrivilege.TABLE_READ_PROPERTIES));
+
+    Assertions.assertThat(newHandler().listTables(NS1A, null, null).identifiers())
+        .containsExactly(TABLE_NS1A_1);
+  }
+
+  /** With filtering disabled, the same caller as above is still forbidden. */
+  @Test
+  public void testEntityLevelListFilteringDisabledKeepsContainerDenial() {
+    assertSuccess(
+        adminService.grantPrivilegeOnTableToRole(
+            CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1A_1, PolarisPrivilege.TABLE_READ_PROPERTIES));
+
+    Assertions.assertThatThrownBy(() -> newHandler().listTables(NS1A, null, null))
+        .isInstanceOf(ForbiddenException.class);
+  }
+
+  /** Filtering never turns a missing container into an empty list. */
+  @Test
+  public void testEntityLevelListFilteringKeepsNotFoundForMissingNamespace() {
+    enableEntityLevelListFiltering();
+
+    Assertions.assertThatThrownBy(
+            () -> newHandler().listTables(Namespace.of("does_not_exist"), null, null))
+        .isInstanceOf(NoSuchNamespaceException.class);
   }
 
   // ─── Entity-level filtering prepares inputs through the authorizer ───────
@@ -2822,9 +2863,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @Test
   public void testEntityLevelListFilteringResolvesThroughTheAuthorizer() {
     enableEntityLevelListFiltering();
-    assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_LIST));
     assertSuccess(
         adminService.grantPrivilegeOnTableToRole(
             CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1A_1, PolarisPrivilege.TABLE_READ_PROPERTIES));
@@ -2866,9 +2904,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @Test
   public void testEntityLevelListFilteringHonoursAuthorizerResolutionNarrowing() {
     enableEntityLevelListFiltering();
-    assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_LIST));
 
     PolarisAuthorizer narrowingAuthorizer =
         new PolarisAuthorizerImpl(realmConfig) {
@@ -2890,36 +2925,13 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   /**
-   * Filtering must not swallow the container gate: a caller with no privilege on the namespace
-   * still gets a denial, not an empty list. "You may not list here" and "nothing here you may see"
-   * are different answers, and enabling the feature must not convert the first into the second.
-   *
-   * <p>The grant is deliberately placed on a table rather than the namespace: TABLE_READ_PROPERTIES
-   * is strong enough for the per-entity check, but it hangs below the gate's target, so it cannot
-   * satisfy TABLE_LIST on the namespace.
-   */
-  @Test
-  public void testEntityLevelListFilteringKeepsContainerGateDenial() {
-    enableEntityLevelListFiltering();
-    assertSuccess(
-        adminService.grantPrivilegeOnTableToRole(
-            CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1A_1, PolarisPrivilege.TABLE_READ_PROPERTIES));
-
-    Assertions.assertThatThrownBy(() -> newHandler().listTables(NS1A, null, null))
-        .isInstanceOf(ForbiddenException.class);
-  }
-
-  /**
-   * The batch authorize contract requires one decision per request, in order. Filtering pairs
+   * The batch authorize contract requires one decision per intent, in order. Filtering pairs
    * decisions with candidates positionally, so a short list must fail loudly rather than silently
    * mis-pair decisions with entities.
    */
   @Test
   public void testEntityLevelListFilteringRejectsDecisionCountMismatch() {
     enableEntityLevelListFiltering();
-    assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_LIST));
 
     PolarisAuthorizer tooFewDecisions =
         new PolarisAuthorizerImpl(realmConfig) {

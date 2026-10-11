@@ -304,7 +304,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   public ListNamespacesResponse listNamespaces(
       Namespace parent, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
-    authorizeBasicNamespaceOperationOrThrow(op, parent);
+    boolean filter = authorizeListOrRequireFiltering(op, parent);
 
     if (isFederated) {
       ListNamespacesResponse response =
@@ -312,7 +312,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               .listNamespaces(
                   namespaceCatalog, parent, boundedPageToken(pageToken), boundedPageSize(pageSize));
       rejectIncompleteListing(pageToken, pageSize, response.nextPageToken());
-      if (!shouldFilterListResults()) {
+      if (!filter) {
         return response;
       }
       List<Namespace> visible = filterNamespaces(response.namespaces(), op);
@@ -325,8 +325,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listNamespaces(parent, pageRequest);
       rejectIncompleteListing(pageToken, pageSize, results.encodedResponseToken());
-      List<Namespace> items =
-          shouldFilterListResults() ? filterNamespaces(results.items(), op) : results.items();
+      List<Namespace> items = filter ? filterNamespaces(results.items(), op) : results.items();
       return ListNamespacesResponse.builder()
           .addAll(items)
           .nextPageToken(results.encodedResponseToken())
@@ -417,7 +416,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public ListTablesResponse listTables(Namespace namespace, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
-    authorizeBasicNamespaceOperationOrThrow(op, namespace);
+    boolean filter = authorizeListOrRequireFiltering(op, namespace);
 
     if (isFederated) {
       ListTablesResponse response =
@@ -425,7 +424,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               .listTables(
                   baseCatalog, namespace, boundedPageToken(pageToken), boundedPageSize(pageSize));
       rejectIncompleteListing(pageToken, pageSize, response.nextPageToken());
-      if (!shouldFilterListResults()) {
+      if (!filter) {
         return response;
       }
       List<TableIdentifier> visible = filterTableIdentifiers(response.identifiers(), op);
@@ -439,7 +438,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       var results = ((LocalIcebergCatalog) baseCatalog).listTables(namespace, pageRequest);
       rejectIncompleteListing(pageToken, pageSize, results.encodedResponseToken());
       List<TableIdentifier> items =
-          shouldFilterListResults() ? filterTableIdentifiers(results.items(), op) : results.items();
+          filter ? filterTableIdentifiers(results.items(), op) : results.items();
       return ListTablesResponse.builder()
           .addAll(items)
           .nextPageToken(results.encodedResponseToken())
@@ -1666,7 +1665,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public ListTablesResponse listViews(Namespace namespace, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
-    authorizeBasicNamespaceOperationOrThrow(op, namespace);
+    boolean filter = authorizeListOrRequireFiltering(op, namespace);
 
     if (isFederated) {
       if (baseCatalog instanceof ViewCatalog viewCatalog) {
@@ -1675,7 +1674,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                 .listViews(
                     viewCatalog, namespace, boundedPageToken(pageToken), boundedPageSize(pageSize));
         rejectIncompleteListing(pageToken, pageSize, response.nextPageToken());
-        if (!shouldFilterListResults()) {
+        if (!filter) {
           return response;
         }
         List<TableIdentifier> visible = filterTableIdentifiers(response.identifiers(), op);
@@ -1693,7 +1692,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       var results = ((LocalIcebergCatalog) baseCatalog).listViews(namespace, pageRequest);
       rejectIncompleteListing(pageToken, pageSize, results.encodedResponseToken());
       List<TableIdentifier> items =
-          shouldFilterListResults() ? filterTableIdentifiers(results.items(), op) : results.items();
+          filter ? filterTableIdentifiers(results.items(), op) : results.items();
       return ListTablesResponse.builder()
           .addAll(items)
           .nextPageToken(results.encodedResponseToken())
@@ -1957,18 +1956,40 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         .build();
   }
 
-  private boolean shouldFilterListResults() {
-    return realmConfig().getConfig(ENABLE_ENTITY_LEVEL_LIST_FILTERING, getResolvedCatalogEntity());
+  /**
+   * Authorizes a LIST operation on its container and reports whether the results must be filtered
+   * per entity.
+   *
+   * <p>A caller allowed {@code listOperation} on the container sees every child, so no filtering is
+   * needed. A caller denied it is forbidden, unless {@code ENABLE_ENTITY_LEVEL_LIST_FILTERING} is
+   * enabled for the catalog, in which case the list is returned filtered to the children the caller
+   * may see individually (see {@link #entityVisibilityOperation}).
+   *
+   * @return {@code true} if the caller was denied on the container and the results must be filtered
+   */
+  private boolean authorizeListOrRequireFiltering(
+      PolarisAuthorizableOperation listOperation, Namespace container) {
+    AuthorizationDecision decision = authorizeBasicNamespaceOperation(listOperation, container);
+    boolean filter =
+        !decision.isAllowed()
+            && realmConfig()
+                .getConfig(ENABLE_ENTITY_LEVEL_LIST_FILTERING, getResolvedCatalogEntity());
+    if (!filter) {
+      decision.throwIfDenied();
+    }
+    initializeCatalog();
+    return filter;
   }
 
   /**
    * Maps a container-scoped LIST operation to the entity-scoped operation used to decide whether an
    * individual candidate is visible.
    *
-   * <p>The two are deliberately distinct. The container operation gates the list call itself (may I
-   * list here at all?), while the entity operation asks whether this one entity may be seen.
-   * Keeping them separate lets authorizers require a stronger permission per entity -- the built-in
-   * RBAC authorizer maps the entity operations to the {@code *_READ_PROPERTIES} privileges.
+   * <p>The two are deliberately distinct. The container operation decides whether the caller sees
+   * every child, while the entity operation, checked only when the container operation is denied,
+   * asks whether this one entity may be seen. Keeping them separate lets authorizers require a
+   * different permission per entity -- the built-in RBAC authorizer maps the entity operations to
+   * the {@code *_READ_PROPERTIES} privileges.
    */
   private static PolarisAuthorizableOperation entityVisibilityOperation(
       PolarisAuthorizableOperation listOperation) {
