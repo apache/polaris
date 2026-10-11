@@ -54,7 +54,7 @@ val dynamoDbStartupActionImplementation =
 dependencies {
   polarisServer(project(path = ":polaris-server", configuration = "quarkusRunner"))
   dynamoDbStartupActionCompileOnly(
-    "org.apache.polaris.server-test-runner:polaris-server-test-runner"
+    "org.apache.polaris.server-test-runner:polaris-server-test-runner",
   )
   dynamoDbStartupActionImplementation(project(":polaris-floci-aws-testcontainer"))
 
@@ -125,7 +125,7 @@ testing {
             withPolarisServer(configurations.polarisServer) {
               startupActionClasspath.from(dynamoDbStartupAction.runtimeClasspath)
               startupActionClass.set(
-                "org.apache.polaris.persistence.nosql.dynamodb.DynamoDbStartupAction"
+                "org.apache.polaris.persistence.nosql.dynamodb.DynamoDbStartupAction",
               )
               environment.put("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
               systemProperties.put(
