@@ -1795,6 +1795,15 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
    * ({@link CleanableFailure} and related definite-failure types). When the outcome is unknown —
    * connection loss after the metastore may already have applied the pointer update — the metadata
    * file must be retained so a published pointer cannot dangle.
+   *
+   * <p>The default is deliberately conservative: a failure that does not prove the write did not
+   * happen is retained rather than cleaned. A dropped connection is surfaced by JDBC as a definite
+   * {@link PersistenceWriteNotStartedException} (cleaned) or an ambiguous {@link
+   * PersistenceCommitStateUnknownException} (retained); any other failure whose commit outcome is
+   * not established — including a plain {@link RuntimeException} from a persistence backend with no
+   * such classification — is retained. The cost is a reclaimable orphaned metadata file after some
+   * deterministic failures; the alternative risk, deleting a file a published pointer references,
+   * is unrecoverable, so we err toward retention.
    */
   @VisibleForTesting
   static boolean shouldCleanupMetadataOnCommitFailure(Throwable failure) {

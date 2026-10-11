@@ -433,6 +433,21 @@ public class DatasourceOperationsTest {
   }
 
   @Test
+  void isAmbiguousCommitOutcome_ignoresConnectionMessageOnBuriedCause() {
+    // Fuzzy message matching is top-level only: a known failure (constraint violation) whose cause
+    // merely mentions a connection in its message must stay a known failure, not become ambiguous.
+    SQLException deterministicWithConnectionishCause =
+        new SQLException("unique violation", "23505", new SQLException("connection is closed"));
+    assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(deterministicWithConnectionishCause));
+
+    // A precise signal (connection-class SQLSTATE) on a cause is still honored.
+    SQLException deterministicWithConnectionStateCause =
+        new SQLException("wrapper", null, 0, new SQLException("dropped", "08006"));
+    assertTrue(
+        datasourceOperations.isAmbiguousCommitOutcome(deterministicWithConnectionStateCause));
+  }
+
+  @Test
   void executeUpdate_retriesWhenConnectionAcquisitionFails() throws Exception {
     when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
     when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(5000L));
@@ -559,5 +574,29 @@ public class DatasourceOperationsTest {
 
     assertTrue(datasourceOperations.isAmbiguousCommitOutcome(thrown));
     assertTrue(!datasourceOperations.isWriteNotStartedFailure(thrown));
+  }
+
+  @Test
+  void executeUpdate_rollbackFailureDoesNotMaskOriginalFailure() throws Exception {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(1));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("UPDATE users SET active = ?", List.of());
+    // The DML fails deterministically (unique violation, 23505) before commit, and the follow-up
+    // rollback also fails with a connection-class error (08006). The original deterministic failure
+    // must survive: if the rollback error replaced it, the failure would be misclassified as an
+    // ambiguous/not-started outcome and higher layers would make the wrong cleanup decision.
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeUpdate())
+        .thenThrow(new SQLException("unique violation", "23505"));
+    doThrow(new SQLException("connection reset", "08006")).when(mockConnection).rollback();
+
+    SQLException thrown =
+        assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
+
+    assertTrue(!datasourceOperations.isWriteNotStartedFailure(thrown));
+    assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(thrown));
   }
 }
