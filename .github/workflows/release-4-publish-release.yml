@@ -234,7 +234,7 @@ jobs:
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
             -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
-            -Dquarkus.container-image.tag="${final_release_tag}"
+            -Dquarkus.container-image.tag="${version_without_rc}"
 
       - name: Publish Polaris Admin Tool Docker image to Docker Hub
         run: |
@@ -244,7 +244,7 @@ jobs:
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
             -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
-            -Dquarkus.container-image.tag="${final_release_tag}"
+            -Dquarkus.container-image.tag="${version_without_rc}"
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Docker Images
@@ -297,8 +297,8 @@ jobs:
           All artifacts have been signed with GPG and include SHA-512 checksums for verification.
 
           ## Docker Images
-          - \`apache/polaris:${final_release_tag}\` - Polaris Server
-          - \`apache/polaris-admin:${final_release_tag}\` - Polaris Admin Tool"
+          - \`apache/polaris:${version_without_rc}\` - Polaris Server
+          - \`apache/polaris-admin:${version_without_rc}\` - Polaris Admin Tool"
           # ********************************************************************************
 
           # Collect all artifacts to attach from the artifacts directory
