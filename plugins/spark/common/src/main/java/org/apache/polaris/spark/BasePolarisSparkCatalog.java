@@ -359,7 +359,7 @@ public abstract class BasePolarisSparkCatalog
     try {
       provider = this.polarisSparkCatalog.getTableFormat(ident);
     } catch (NoSuchTableException e) {
-      return this.icebergsSparkCatalog.purgeTable(ident);
+      return false;
     }
 
     if (PolarisCatalogUtils.usePaimon(provider)) {
