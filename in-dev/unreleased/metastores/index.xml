@@ -33,4 +33,18 @@ please refer to the &lt;a href="https://quarkus.io/guides/config-reference"&gt;Q
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#c4a000"&gt;quarkus.mongodb.connection-string&lt;/span&gt;&lt;span style="color:#ce5c00;font-weight:bold"&gt;=&lt;/span&gt;&lt;span style="color:#4e9a06"&gt;mongodb://&amp;lt;username&amp;gt;:&amp;lt;password&amp;gt;@&amp;lt;host&amp;gt;:&amp;lt;port&amp;gt;&lt;/span&gt;
 &lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id="mongodb-atlas-configuration" id="mongodb-atlas-configuration"&gt;MongoDB Atlas Configuration&lt;a class="heading-anchor" href="#mongodb-atlas-configuration" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
-&lt;p&gt;For MongoDB Atlas deployments, use the &lt;code&gt;mongodb+srv://&lt;/code&gt; connection string format:&lt;/p&gt;</description></item></channel></rss>
+&lt;p&gt;For MongoDB Atlas deployments, use the &lt;code&gt;mongodb+srv://&lt;/code&gt; connection string format:&lt;/p&gt;</description></item><item><title>NoSQL DynamoDB</title><link>https://polaris.apache.org/in-dev/unreleased/metastores/nosql-dynamodb/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/metastores/nosql-dynamodb/</guid><description>&lt;div class="alert alert-info"&gt;&lt;p class="alert-heading"&gt;
+ 📝 Note&lt;/p&gt;
+ The DynamoDB backend is experimental.
+&lt;/div&gt;
+
+&lt;p&gt;The DynamoDB backend stores Polaris metadata in Amazon DynamoDB. In a Quarkus deployment, Polaris
+uses the client supplied by the Quarkus Amazon DynamoDB extension.&lt;/p&gt;
+&lt;h2 id="basic-configuration" id="basic-configuration"&gt;Basic configuration&lt;a class="heading-anchor" href="#basic-configuration" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;Select the NoSQL backend and configure the DynamoDB client region. Credential acquisition, endpoint
+overrides, retry behavior, and HTTP settings use the standard Quarkus DynamoDB configuration:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-properties" data-lang="properties"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#c4a000"&gt;polaris.persistence.type&lt;/span&gt;&lt;span style="color:#ce5c00;font-weight:bold"&gt;=&lt;/span&gt;&lt;span style="color:#4e9a06"&gt;nosql&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#c4a000"&gt;polaris.persistence.nosql.backend&lt;/span&gt;&lt;span style="color:#ce5c00;font-weight:bold"&gt;=&lt;/span&gt;&lt;span style="color:#4e9a06"&gt;DynamoDb&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#c4a000"&gt;quarkus.dynamodb.aws.region&lt;/span&gt;&lt;span style="color:#ce5c00;font-weight:bold"&gt;=&lt;/span&gt;&lt;span style="color:#4e9a06"&gt;us-east-1&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;For example, local development can configure static credentials and an endpoint override:&lt;/p&gt;</description></item></channel></rss>
