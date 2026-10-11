@@ -302,7 +302,7 @@ Flag to enable or disable the API to reset principal credentials. Defaults to en
 
 ##### `polaris.features."ENABLE_ENTITY_LEVEL_LIST_FILTERING"`
 
-When true, a caller denied a LIST operation (listNamespaces, listTables, listViews) on the parent receives only the children it may see individually, instead of a 403. Under the built-in RBAC authorizer, a child is visible with *_READ_PROPERTIES (or a privilege that implies it) on it or an ancestor. Callers allowed the LIST operation on the parent are unaffected and see every child. When false (default), callers denied the LIST operation receive a 403.
+When true, listNamespaces, listTables and listViews no longer return 403 to a caller who lacks the matching *_LIST privilege on the parent. Instead, the caller receives only the children it has access to. Under the built-in RBAC authorizer, a child is accessible if the caller holds *_READ_PROPERTIES (or a stronger privilege that implies it, such as TABLE_READ_DATA for tables) on the child or one of its parents. Callers holding *_LIST on the parent are unaffected and still see every child. When false (default), callers without *_LIST on the parent receive a 403.
 
 - **Type:** `Boolean`
 - **Default:** `false`

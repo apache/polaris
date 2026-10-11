@@ -22,9 +22,11 @@ package org.apache.polaris.core.auth;
 public enum PolarisAuthorizableOperation {
   LIST_NAMESPACES,
   /**
-   * Per-entity visibility check used when filtering listNamespaces results for a caller denied
-   * {@link #LIST_NAMESPACES} on the parent. Distinct from LIST_NAMESPACES so that authorizers can
-   * decide the visibility of an individual entity separately from the container-level permission.
+   * Checked for each namespace when listNamespaces filters its results for a caller who lacks
+   * {@link #LIST_NAMESPACES} on the parent namespace or catalog: a namespace is returned only if
+   * this check passes. Separate from LIST_NAMESPACES so that authorizers can decide access to each
+   * namespace independently of the parent-level permission. The built-in RBAC authorizer maps it to
+   * {@code NAMESPACE_READ_PROPERTIES}.
    */
   LIST_NAMESPACES_ENTITY,
   CREATE_NAMESPACE,
@@ -34,9 +36,10 @@ public enum PolarisAuthorizableOperation {
   UPDATE_NAMESPACE_PROPERTIES,
   LIST_TABLES,
   /**
-   * Per-entity visibility check used when filtering listTables results for a caller denied {@link
-   * #LIST_TABLES} on the parent. Distinct from LIST_TABLES so that authorizers can decide the
-   * visibility of an individual entity separately from the container-level permission.
+   * Checked for each table when listTables filters its results for a caller who lacks {@link
+   * #LIST_TABLES} on the parent namespace: a table is returned only if this check passes. Separate
+   * from LIST_TABLES so that authorizers can decide access to each table independently of the
+   * parent-level permission. The built-in RBAC authorizer maps it to {@code TABLE_READ_PROPERTIES}.
    */
   LIST_TABLES_ENTITY,
   CREATE_TABLE_DIRECT,
@@ -61,9 +64,10 @@ public enum PolarisAuthorizableOperation {
   COMMIT_TRANSACTION,
   LIST_VIEWS,
   /**
-   * Per-entity visibility check used when filtering listViews results for a caller denied {@link
-   * #LIST_VIEWS} on the parent. Distinct from LIST_VIEWS so that authorizers can decide the
-   * visibility of an individual entity separately from the container-level permission.
+   * Checked for each view when listViews filters its results for a caller who lacks {@link
+   * #LIST_VIEWS} on the parent namespace: a view is returned only if this check passes. Separate
+   * from LIST_VIEWS so that authorizers can decide access to each view independently of the
+   * parent-level permission. The built-in RBAC authorizer maps it to {@code VIEW_READ_PROPERTIES}.
    */
   LIST_VIEWS_ENTITY,
   CREATE_VIEW,
