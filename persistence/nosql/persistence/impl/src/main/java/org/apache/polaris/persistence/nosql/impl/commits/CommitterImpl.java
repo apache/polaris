@@ -493,10 +493,10 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
     }
 
     state.previousAttemptWrites.putAll(state.forAttempt);
-    // Keep the current head last, including when it was already in an unsuccessful write batch.
     state.previousAttemptWrites.remove(resultObjRef);
-    state.previousAttemptWrites.put(resultObjRef, resultObj);
-    var objs = state.previousAttemptWrites.values().toArray(new Obj[0]);
+    var pending = state.previousAttemptWrites.values();
+    var objs = pending.toArray(new Obj[pending.size() + 1]);
+    objs[objs.length - 1] = resultObj;
     state.forAttempt.clear();
     var persisted = persistence.writeMany(Obj.class, objs);
     // An ambiguous write failure must retain the batch for the next commit attempt.
