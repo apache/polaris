@@ -25,7 +25,6 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.lang.annotation.Annotation;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -34,7 +33,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
@@ -2379,7 +2377,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
    * goes through the real implementation.
    */
   private PolarisAuthorizer leafNameDenyingAuthorizer(Predicate<String> denyIfLeafName) {
-    return new PolarisAuthorizerImpl(realmConfig) {
+    return new PolarisAuthorizerImpl() {
       @Override
       public List<AuthorizationDecision> authorize(
           AuthorizationState authzState, AuthorizationBatchRequest batch) {
@@ -2731,7 +2729,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     List<AuthorizationRequest> entityResolveRequests = new ArrayList<>();
     PolarisAuthorizer recordingAuthorizer =
-        new PolarisAuthorizerImpl(realmConfig) {
+        new PolarisAuthorizerImpl() {
           @Override
           public void resolveAuthorizationInputs(
               AuthorizationState authzState, AuthorizationRequest request) {
@@ -2768,7 +2766,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     enableEntityLevelListFiltering();
 
     PolarisAuthorizer narrowingAuthorizer =
-        new PolarisAuthorizerImpl(realmConfig) {
+        new PolarisAuthorizerImpl() {
           @Override
           public void resolveAuthorizationInputs(
               AuthorizationState authzState, AuthorizationRequest request) {
@@ -2796,7 +2794,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     enableEntityLevelListFiltering();
 
     PolarisAuthorizer tooFewDecisions =
-        new PolarisAuthorizerImpl(realmConfig) {
+        new PolarisAuthorizerImpl() {
           @Override
           public List<AuthorizationDecision> authorize(
               AuthorizationState authzState, AuthorizationBatchRequest batch) {

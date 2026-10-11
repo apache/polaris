@@ -278,7 +278,8 @@ public class PolarisAdminServiceTest {
   /** A denied caller gets the 403 and the realm's allowlist is never consulted. */
   @Test
   void deniedCreateCatalogNeverConsultsTheAllowlist() {
-    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.deny("denied"));
+    when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
+        .thenReturn(AuthorizationDecision.deny("denied"));
     assertThatThrownBy(() -> adminService.createCatalog(secondMechanismCatalogRequest()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessage("denied");
@@ -296,7 +297,7 @@ public class PolarisAdminServiceTest {
         .isInstanceOf(ValidationException.class)
         .hasMessage(
             "S3 credential vending mechanism SECOND_MECHANISM is not enabled in this realm");
-    verify(authorizer).authorize(any(), any());
+    verify(authorizer).authorize(any(), any(AuthorizationRequest.class));
     verify(metaStoreManager, never()).createCatalog(any(), any(), any());
   }
 
@@ -317,7 +318,8 @@ public class PolarisAdminServiceTest {
    */
   @Test
   void deniedCreateCatalogNeverValidatesTheMechanism() {
-    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.deny("denied"));
+    when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
+        .thenReturn(AuthorizationDecision.deny("denied"));
     assertThatThrownBy(() -> adminService.createCatalog(stsCatalogRequest()))
         .isInstanceOf(ForbiddenException.class);
     verify(stsMechanism, never()).validate(any(), any());
