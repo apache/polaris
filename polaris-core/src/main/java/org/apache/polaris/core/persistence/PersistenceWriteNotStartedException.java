@@ -18,8 +18,7 @@
  */
 package org.apache.polaris.core.persistence;
 
-import jakarta.ws.rs.core.Response;
-import org.apache.polaris.core.exceptions.PolarisException;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 
 /**
  * Thrown when a persistence write never started because the backing store could not be reached (for
@@ -28,23 +27,25 @@ import org.apache.polaris.core.exceptions.PolarisException;
  * certainly did not happen, so callers may safely clean up anything they wrote in anticipation of
  * the commit (e.g. a newly written table metadata file) and the request is safe to retry.
  *
+ * <p>Extends {@link PolarisServiceUnavailableException} so it maps to the same transient, retryable
+ * HTTP 503 (with a {@code Retry-After} header) and is picked up by anything that special-cases that
+ * type.
+ *
  * <p>Note: the simple class name is surfaced to clients as the {@code type} field of the REST error
  * payload (see {@code PolarisExceptionMapper}). Renaming this class changes that wire value.
  */
-public class PersistenceWriteNotStartedException extends PolarisException {
+public class PersistenceWriteNotStartedException extends PolarisServiceUnavailableException {
+
+  // The write never reached the store, so the client can retry without delay.
+  private static final int RETRY_AFTER_SECONDS = 0;
 
   public PersistenceWriteNotStartedException(String message, Throwable cause) {
-    super(message, cause);
+    // "%s" keeps the pre-formatted message literal; it may contain '%' from a driver error.
+    super(RETRY_AFTER_SECONDS, "%s", message);
+    initCause(cause);
   }
 
   public PersistenceWriteNotStartedException(String message) {
-    super(message);
-  }
-
-  @Override
-  public int httpStatusCode() {
-    // The write definitely did not happen and the store was unreachable, so this is a transient,
-    // safely retryable failure rather than an unknown outcome.
-    return Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
+    super(RETRY_AFTER_SECONDS, "%s", message);
   }
 }

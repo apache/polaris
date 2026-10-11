@@ -145,14 +145,20 @@ public class ExceptionMapperTest {
 
   @Test
   public void testWriteNotStartedExceptionIsServiceUnavailable() {
+    RuntimeException cause = new RuntimeException("connection refused");
+    PersistenceWriteNotStartedException exception =
+        new PersistenceWriteNotStartedException("write did not start", cause);
+    // It is a PolarisServiceUnavailableException so anything special-casing the 503 type sees it,
+    // and the original cause is preserved for logging/classification.
+    assertThat(exception).isInstanceOf(PolarisServiceUnavailableException.class);
+    assertThat(exception.getCause()).isSameAs(cause);
+
     PolarisExceptionMapper mapper = new PolarisExceptionMapper();
-    Response response =
-        mapper.toResponse(
-            new PersistenceWriteNotStartedException(
-                "write did not start", new RuntimeException("connection refused")));
+    Response response = mapper.toResponse(exception);
     // A definite non-write is transient and safe to retry, so it maps to 503, not the 500 used
-    // for an unknown commit outcome.
+    // for an unknown commit outcome, and carries a Retry-After header like other 503s.
     assertThat(response.getStatus()).isEqualTo(503);
+    assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo("0");
   }
 
   @ParameterizedTest
