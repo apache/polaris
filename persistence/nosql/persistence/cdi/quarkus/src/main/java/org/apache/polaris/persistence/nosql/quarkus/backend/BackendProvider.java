@@ -22,6 +22,7 @@ import static java.lang.String.format;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import java.util.Optional;
@@ -101,5 +102,9 @@ class BackendProvider {
       }
       throw e;
     }
+  }
+
+  void disposeBackend(@Disposes @NotObserved Backend backend) throws Exception {
+    backend.close();
   }
 }
