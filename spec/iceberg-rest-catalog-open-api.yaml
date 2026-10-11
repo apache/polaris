@@ -6232,7 +6232,7 @@ components:
       summary: An empty list for a namespace with no functions
       value: {
         "identifiers": [ ]
-      }
+       }
 
     ListFunctionsNonEmptyExample:
       summary: A non-empty list of function identifiers
@@ -6241,7 +6241,7 @@ components:
           ["analytics", "add_one"],
           ["analytics", "to_celsius"]
         ]
-      }
+       }
 
     MultipartNamespaceAsPathVariable:
       summary: A multi-part namespace, as represented in a path parameter
@@ -6319,7 +6319,7 @@ components:
           "type": "NoSuchFunctionException",
           "code": 404
         }
-      }
+       }
 
     NoSuchNamespaceError:
       summary: The requested namespace does not exist
