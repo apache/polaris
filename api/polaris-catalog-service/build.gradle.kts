@@ -49,7 +49,26 @@ val policyManagementModels =
     "ListPoliciesResponse",
   )
 
-val models = (genericTableModels + policyManagementModels).joinToString(",")
+val tagManagementModels =
+  listOf(
+    "TargetType",
+    "Tag",
+    "TagIdentifier",
+    "CreateTagRequest",
+    "UpdateTagRequest",
+    "RenameTagRequest",
+    "RenameTagResponse",
+    "ListTagsResponse",
+    "TagAttachmentTarget",
+    "AssignTagRequest",
+    "UnassignTagRequest",
+    "ObjectTag",
+    "GetObjectTagsResponse",
+    "TaggedObject",
+    "ListObjectsByTagResponse",
+  )
+
+val models = (genericTableModels + policyManagementModels + tagManagementModels).joinToString(",")
 
 dependencies {
   implementation(project(":polaris-core"))
