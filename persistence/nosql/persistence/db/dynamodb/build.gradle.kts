@@ -107,6 +107,13 @@ testing {
         runtimeOnly("org.testcontainers:testcontainers")
         runtimeOnly(libs.docker.java.api)
       }
+
+      targets.configureEach {
+        testTask.configure {
+          environment("AWS_ACCESS_KEY_ID", "xxx")
+          environment("AWS_SECRET_ACCESS_KEY", "xxx")
+        }
+      }
     }
   }
 }
