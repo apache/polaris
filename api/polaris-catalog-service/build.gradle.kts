@@ -57,7 +57,6 @@ val tagManagementModels =
     "CreateTagRequest",
     "UpdateTagRequest",
     "RenameTagRequest",
-    "RenameTagResponse",
     "ListTagsResponse",
     "TagAttachmentTarget",
     "AssignTagRequest",
