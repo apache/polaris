@@ -44,7 +44,7 @@ paths:
           escaping does not count toward it, and it does not prescribe how the server represents the
           string internally. A longer value returns 400 BadRequest. Matching is exact and case-sensitive.
         - `target-types` (OPTIONAL): The target kinds this definition may classify, directly or through
-          inheritance. Omitting the field selects every v1 target kind, and the response returns the
+          inheritance. Omitting the field selects every target kind, and the response returns the
           explicit set stored for the definition either way. A supplied list is a set: an explicit null, an
           empty list, duplicates and unknown kinds each return 400 BadRequest. It cannot be changed after
           creation, whether supplied or defaulted, and target kinds added in a later version do not expand
