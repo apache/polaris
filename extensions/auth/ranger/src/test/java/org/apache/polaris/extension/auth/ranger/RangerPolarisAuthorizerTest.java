@@ -211,7 +211,7 @@ public class RangerPolarisAuthorizerTest {
   void authorizeUsesIntentResolvedTarget() throws Exception {
     RangerEmbeddedAuthorizer embeddedAuthorizer = mock(RangerEmbeddedAuthorizer.class);
     RangerPolarisAuthorizer authorizer =
-        new RangerPolarisAuthorizer(embeddedAuthorizer, "dev_polaris", createRealmConfig());
+        new RangerPolarisAuthorizer(embeddedAuthorizer, "dev_polaris");
     authorizer.setRealmContext(createRealmContext());
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     PolarisResolvedPathWrapper tablePath =
@@ -264,7 +264,7 @@ public class RangerPolarisAuthorizerTest {
   void authorizeReturnsDenyDecisionWhenRangerDenies() throws Exception {
     RangerEmbeddedAuthorizer embeddedAuthorizer = mock(RangerEmbeddedAuthorizer.class);
     RangerPolarisAuthorizer authorizer =
-        new RangerPolarisAuthorizer(embeddedAuthorizer, "dev_polaris", createRealmConfig());
+        new RangerPolarisAuthorizer(embeddedAuthorizer, "dev_polaris");
     authorizer.setRealmContext(createRealmContext());
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     PolarisResolvedPathWrapper catalogPath =

@@ -23,14 +23,12 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CRE
 import com.google.common.collect.ImmutableMap;
 import jakarta.inject.Inject;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
@@ -67,7 +65,6 @@ import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
-import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
@@ -80,8 +77,6 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.admin.PolarisAuthzTestsFactory;
@@ -170,141 +165,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testInsufficientPermissionsPriorToSecretRotation() {
-    String principalName = "all_the_powers";
-    CreatePrincipalResult newPrincipal =
-        metaStoreManager.createPrincipal(
-            callContext.getPolarisCallContext(),
-            new PrincipalEntity.Builder()
-                .setName(principalName)
-                .setCreateTimestamp(Instant.now().toEpochMilli())
-                .setCredentialRotationRequiredState()
-                .build());
-    newRootAdminService().assignPrincipalRole(principalName, PRINCIPAL_ROLE1);
-    newRootAdminService().assignPrincipalRole(principalName, PRINCIPAL_ROLE2);
-
-    PrincipalEntity principalEntity = newPrincipal.getPrincipal();
-    PolarisPrincipal authenticatedPrincipal =
-        PolarisPrincipal.of(
-            principalEntity.getName(),
-            ImmutableAttributeMap.builder()
-                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
-                .build(),
-            Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
-
-    Supplier<IcebergCatalogHandler> handler =
-        () ->
-            ImmutableIcebergCatalogHandler.builder()
-                .from(
-                    icebergCatalogHandlerFactory.createHandler(
-                        CATALOG_NAME, authenticatedPrincipal))
-                .build();
-
-    // a variety of actions are all disallowed because the principal's credentials must be rotated
-
-    Namespace ns3 = Namespace.of("ns3");
-    Stream<DynamicNode> beforeRotationTests =
-        Stream.of(
-                authzTestsBuilder("listNamespaces (before rotation)")
-                    .action(() -> handler.get().listNamespaces(Namespace.of(), null, null))
-                    .principalName(principalName)
-                    .shouldFailWithAnyPrivilege()
-                    .createTests(),
-                authzTestsBuilder("createNamespace (before rotation)")
-                    .action(
-                        () ->
-                            handler
-                                .get()
-                                .createNamespace(
-                                    CreateNamespaceRequest.builder().withNamespace(ns3).build()))
-                    .principalName(principalName)
-                    .shouldFailWithAnyPrivilege()
-                    .createTests(),
-                authzTestsBuilder("listTables (before rotation)")
-                    .action(() -> handler.get().listTables(NS1, null, null))
-                    .principalName(principalName)
-                    .shouldFailWithAnyPrivilege()
-                    .createTests())
-            .flatMap(s -> s);
-
-    // Rotate credentials and create refreshed wrapper
-    PrincipalWithCredentialsCredentials credentials =
-        new PrincipalWithCredentialsCredentials(
-            newPrincipal.getPrincipalSecrets().getPrincipalClientId(),
-            newPrincipal.getPrincipalSecrets().getMainSecret());
-    PrincipalEntity refreshPrincipal =
-        rotateAndRefreshPrincipal(
-            metaStoreManager, principalName, credentials, callContext.getPolarisCallContext());
-    PolarisPrincipal authenticatedPrincipal1 =
-        PolarisPrincipal.of(
-            refreshPrincipal.getName(),
-            ImmutableAttributeMap.builder()
-                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, refreshPrincipal)
-                .build(),
-            Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
-
-    Supplier<IcebergCatalogHandler> refreshedWrapper =
-        () ->
-            ImmutableIcebergCatalogHandler.builder()
-                .from(
-                    icebergCatalogHandlerFactory.createHandler(
-                        CATALOG_NAME, authenticatedPrincipal1))
-                .polarisPrincipal(authenticatedPrincipal1)
-                .build();
-
-    // Grant NAMESPACE_DROP to CATALOG_ROLE2 so cleanup can work
-    assertSuccess(
-        newRootAdminService()
-            .grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DROP));
-
-    // Tests after credential rotation - actions should succeed with proper privileges
-    Stream<DynamicNode> afterRotationTests =
-        Stream.of(
-                authzTestsBuilder("listNamespaces (after rotation)")
-                    .action(() -> refreshedWrapper.get().listNamespaces(Namespace.of(), null, null))
-                    .principalName(principalName)
-                    .shouldPassWith(PolarisPrivilege.NAMESPACE_LIST)
-                    .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
-                    .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
-                    .shouldPassWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
-                    .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
-                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
-                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
-                    .createTests(),
-                authzTestsBuilder("createNamespace (after rotation)")
-                    .action(
-                        () ->
-                            refreshedWrapper
-                                .get()
-                                .createNamespace(
-                                    CreateNamespaceRequest.builder().withNamespace(ns3).build()))
-                    .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropNamespace(ns3))
-                    .principalName(principalName)
-                    .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
-                    .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
-                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
-                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
-                    .createTests(),
-                authzTestsBuilder("listTables (after rotation)")
-                    .action(() -> refreshedWrapper.get().listTables(NS1, null, null))
-                    .principalName(principalName)
-                    .shouldPassWith(PolarisPrivilege.TABLE_LIST)
-                    .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
-                    .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
-                    .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
-                    .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
-                    .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
-                    .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
-                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
-                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
-                    .createTests())
-            .flatMap(s -> s);
-
-    return Stream.concat(beforeRotationTests, afterRotationTests);
   }
 
   @Test

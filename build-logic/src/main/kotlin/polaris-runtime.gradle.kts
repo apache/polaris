@@ -87,7 +87,7 @@ configurations.configureEach {
     if (group == "ch.qos.logback") {
       throw GradleException(
         "Logback dependencies are not allowed in Quarkus modules. " +
-          "Found $group:$name in ${project.name}."
+          "Found $group:$name in ${project.name}.",
       )
     }
   }

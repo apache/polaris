@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,7 +49,6 @@ import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
 import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
@@ -94,7 +92,7 @@ public class OpaPolarisAuthorizerFactoryTest {
               opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
       // Create authorizer
-      RealmConfig realmConfig = realmConfig(false);
+      RealmConfig realmConfig = mock(RealmConfig.class);
       OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
       assertThat(authorizer).isNotNull();
@@ -140,7 +138,7 @@ public class OpaPolarisAuthorizerFactoryTest {
               opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
       // Create authorizer
-      RealmConfig realmConfig = realmConfig(false);
+      RealmConfig realmConfig = mock(RealmConfig.class);
       OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
       assertThat(authorizer).isNotNull();
@@ -187,7 +185,7 @@ public class OpaPolarisAuthorizerFactoryTest {
               opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
       // Create authorizer
-      RealmConfig realmConfig = realmConfig(false);
+      RealmConfig realmConfig = mock(RealmConfig.class);
       OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
       assertThat(authorizer).isNotNull();
@@ -225,7 +223,8 @@ public class OpaPolarisAuthorizerFactoryTest {
                 opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
         factory.initialize();
-        OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig(false));
+        OpaPolarisAuthorizer authorizer =
+            (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
 
         PolarisPrincipal principal =
             PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
@@ -284,7 +283,8 @@ public class OpaPolarisAuthorizerFactoryTest {
                 opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
         factory.initialize();
-        OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig(false));
+        OpaPolarisAuthorizer authorizer =
+            (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
 
         PolarisPrincipal principal =
             PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
@@ -346,7 +346,7 @@ public class OpaPolarisAuthorizerFactoryTest {
                 realmContext);
         factory.initialize();
 
-        RealmConfig realmConfig = realmConfig(false);
+        RealmConfig realmConfig = mock(RealmConfig.class);
         OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
         PolarisPrincipal principal =
@@ -417,7 +417,7 @@ public class OpaPolarisAuthorizerFactoryTest {
 
         factory.initialize();
 
-        RealmConfig realmConfig = realmConfig(false);
+        RealmConfig realmConfig = mock(RealmConfig.class);
         PolarisPrincipal principal =
             PolarisPrincipal.of(
                 "eve",
@@ -516,14 +516,5 @@ public class OpaPolarisAuthorizerFactoryTest {
         });
     server.start();
     return server;
-  }
-
-  /** A {@link RealmConfig} answering the credential-rotation flag, as {@code polaris-core} does. */
-  private static RealmConfig realmConfig(boolean enforceCredentialRotation) {
-    RealmConfig realmConfig = mock(RealmConfig.class);
-    when(realmConfig.getConfig(
-            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING))
-        .thenReturn(enforceCredentialRotation);
-    return realmConfig;
   }
 }

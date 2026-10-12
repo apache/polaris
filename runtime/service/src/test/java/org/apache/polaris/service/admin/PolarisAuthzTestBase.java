@@ -223,7 +223,7 @@ public abstract class PolarisAuthzTestBase {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     polarisContext = callContext.getPolarisCallContext();
 
-    polarisAuthorizer = new PolarisAuthorizerImpl(realmConfig);
+    polarisAuthorizer = new PolarisAuthorizerImpl();
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();

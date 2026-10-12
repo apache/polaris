@@ -61,7 +61,7 @@ val generateLicenseReport =
         allowedLicenses,
         project.layout.projectDirectory.file("distribution/LICENSE"),
         project.layout.buildDirectory.file(
-          "quarkus-build/app/quarkus-app/quarkus-app-dependencies.txt"
+          "quarkus-build/app/quarkus-app/quarkus-app-dependencies.txt",
         ),
       )
       .withPathSensitivity(PathSensitivity.RELATIVE)

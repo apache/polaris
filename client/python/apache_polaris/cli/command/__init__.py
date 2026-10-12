@@ -188,6 +188,8 @@ class Command(ABC):
                 ),
                 location=options_get(Arguments.LOCATION),
                 properties=properties,
+                set_properties=set_properties,
+                remove_properties=remove_properties,
                 page_size=options_get(Arguments.PAGE_SIZE),
             )
         elif options.command == Commands.PROFILES:

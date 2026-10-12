@@ -20,9 +20,14 @@ package org.apache.polaris.persistence.nosql.metastore.mutation;
 
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 
-public record EntityUpdate(Operation operation, PolarisBaseEntity entity, boolean cleanup) {
+/**
+ * @param dropNonEmptyCatalog for {@link Operation#DELETE} of a catalog, whether the catalog may be
+ *     dropped even if it still contains namespaces or tables
+ */
+public record EntityUpdate(
+    Operation operation, PolarisBaseEntity entity, boolean cleanup, boolean dropNonEmptyCatalog) {
   public EntityUpdate(Operation operation, PolarisBaseEntity entity) {
-    this(operation, entity, false);
+    this(operation, entity, false, false);
   }
 
   public enum Operation {

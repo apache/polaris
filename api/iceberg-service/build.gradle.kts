@@ -112,6 +112,8 @@ openApiGenerate {
       "RegisterViewRequest" to "org.apache.iceberg.rest.requests.RegisterViewRequest",
       "IcebergErrorResponse" to "org.apache.iceberg.rest.responses.ErrorResponse",
       "OAuthError" to "org.apache.iceberg.rest.responses.ErrorResponse",
+      "RemoteSignRequest" to "org.apache.iceberg.rest.requests.RemoteSignRequest",
+      "RemoteSignResult" to "org.apache.iceberg.rest.responses.RemoteSignResponse",
 
       // Custom types defined below
       "CommitViewRequest" to "org.apache.polaris.service.types.CommitViewRequest",

@@ -30,7 +30,7 @@ checkstyle {
   configProperties =
     mapOf(
       "org.checkstyle.google.suppressionfilter.config" to
-        project.file("checkstyle_suppressions.xml").absolutePath
+        project.file("checkstyle_suppressions.xml").absolutePath,
     )
 }
 
@@ -57,7 +57,7 @@ dependencies {
   implementation(project(":polaris-core")) { isTransitive = false }
 
   implementation(
-    "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
+    "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}",
   )
 
   compileOnly("org.scala-lang:scala-library:${scalaLibraryVersion}")
@@ -82,7 +82,7 @@ dependencies {
   testImplementation(libs.mockito.core)
 
   testImplementation(
-    "org.apache.iceberg:iceberg-spark-runtime-3.5_${scalaVersion}:${icebergVersion}"
+    "org.apache.iceberg:iceberg-spark-runtime-3.5_${scalaVersion}:${icebergVersion}",
   )
   testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies
@@ -98,7 +98,7 @@ testing {
     register<JvmTestSuite>("intTest") {
       dependencies {
         implementation(
-          "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
+          "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}",
         )
 
         implementation(project(":polaris-api-management-model"))

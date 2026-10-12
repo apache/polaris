@@ -35,6 +35,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -174,7 +175,34 @@ record NoSqlMetaStoreManager(
       @NonNull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
-    return ms(callCtx).dropEntity(entityToDrop, cleanupProperties, cleanup);
+    // For passthrough facade catalogs, all catalog level entities, except catalog roles, are
+    // passthrough entities that are not source-of-truth, and may optionally be dropped with the
+    // catalog.
+    var passthroughFacadeCatalog = false;
+    var dropNonEmptyCatalog = false;
+    if (entityToDrop.getType() == PolarisEntityType.CATALOG) {
+      var catalogEntity = CatalogEntity.of(entityToDrop);
+      passthroughFacadeCatalog = catalogEntity.isPassthroughFacade();
+      dropNonEmptyCatalog =
+          passthroughFacadeCatalog
+              && callCtx
+                  .getRealmConfig()
+                  .getConfig(
+                      FeatureConfiguration.ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG,
+                      catalogEntity);
+    }
+    var result =
+        ms(callCtx).dropEntity(entityToDrop, cleanupProperties, cleanup, dropNonEmptyCatalog);
+    if (passthroughFacadeCatalog
+        && !dropNonEmptyCatalog
+        && result.getReturnStatus() == BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY) {
+      return new DropEntityResult(
+          BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY,
+          String.format(
+              "Set %s to true to drop non-empty passthrough facade catalogs",
+              FeatureConfiguration.ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG.key()));
+    }
+    return result;
   }
 
   @NonNull

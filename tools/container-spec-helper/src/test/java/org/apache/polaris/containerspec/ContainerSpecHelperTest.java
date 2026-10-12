@@ -35,11 +35,12 @@ class ContainerSpecHelperTest {
   private static final String EXPECTED_PARTIAL_CONFIG_MESSAGE =
       "Must specify both image name and tag via system properties or environment variables, or omit both to use the default "
           + DEFAULT_IMAGE
-          + " from Dockerfile-test-version";
+          + " from PolarisTestDF-test-version";
 
   private static ContainerSpecHelper testHelper(
       Map<String, String> systemProperties, Map<String, String> environmentVariables) {
     return containerSpecHelper(
+        "PolarisTestDF",
         CONTAINER_NAME,
         ContainerSpecHelperTest.class,
         systemProperties::get,

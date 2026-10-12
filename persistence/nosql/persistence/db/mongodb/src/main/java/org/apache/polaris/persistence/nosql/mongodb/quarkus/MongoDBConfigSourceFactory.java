@@ -43,7 +43,10 @@ public class MongoDBConfigSourceFactory implements ConfigSourceFactory {
     return List.of(
         new ConfigSource() {
           static final String ACTIVE_PROPERTY = "quarkus.mongodb.active";
-          static final Set<String> PROPERTY_NAMES = Set.of(ACTIVE_PROPERTY);
+          static final String HEALTH_ENABLED_PROPERTY =
+              "quarkus.smallrye-health.check.\"io.quarkus.mongodb.health.MongoHealthCheck\".enabled";
+          static final Set<String> PROPERTY_NAMES =
+              Set.of(ACTIVE_PROPERTY, HEALTH_ENABLED_PROPERTY);
 
           private String activeValue() {
             var persistenceType = context.getValue("polaris.persistence.type");
@@ -59,7 +62,8 @@ public class MongoDBConfigSourceFactory implements ConfigSourceFactory {
 
           @Override
           public Map<String, String> getProperties() {
-            return Map.of(ACTIVE_PROPERTY, activeValue());
+            String enabled = activeValue();
+            return Map.of(ACTIVE_PROPERTY, enabled, HEALTH_ENABLED_PROPERTY, enabled);
           }
 
           @Override
@@ -76,7 +80,7 @@ public class MongoDBConfigSourceFactory implements ConfigSourceFactory {
 
           @Override
           public String getValue(String propertyName) {
-            if (ACTIVE_PROPERTY.equals(propertyName)) {
+            if (PROPERTY_NAMES.contains(propertyName)) {
               return activeValue();
             }
             return null;

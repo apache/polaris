@@ -33,7 +33,7 @@ if (isCI) {
     gradle.serviceOf<BuildFeatures>().configurationCache.requested.getOrElse(false)
   if (configurationCacheRequested) {
     throw GradleException(
-      "Gradle configuration cache must not be enabled in CI because it can persist build configuration state to disk."
+      "Gradle configuration cache must not be enabled in CI because it can persist build configuration state to disk.",
     )
   }
 }
@@ -51,7 +51,7 @@ if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
         The Apache Polaris build requires Java 21.
         Detected Java version: ${JavaVersion.current()}
 
-        """
+        """,
   )
 }
 
