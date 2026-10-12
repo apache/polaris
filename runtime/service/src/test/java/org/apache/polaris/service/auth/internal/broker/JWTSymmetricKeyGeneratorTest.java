@@ -209,11 +209,29 @@ public class JWTSymmetricKeyGeneratorTest {
 
   @ParameterizedTest
   @CsvSource({
-    "2, 3600, true",
-    "60, 3600, false",
-    "-3600, -2, false",
+    "  0, true", // issued at the verification instant
+    "  4, true",
+    "  5, true", // max issued-at leeway
+    "  6, false",
+    " 10, false",
   })
-  public void testVerifyIssuedAtLeeway(
+  public void testVerifyIssuedAtLeeway(long issuedAtOffsetSeconds, boolean recognized) {
+    testVerifyToken(issuedAtOffsetSeconds, 3600, recognized);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    " -10, false",
+    "  -1, false",
+    "   0, false", // expired at the verification instant
+    "   1, true",
+    "  10, true",
+  })
+  public void testVerifyExpiresAtNoLeeway(long expiresAtOffsetSeconds, boolean recognized) {
+    testVerifyToken(-3600, expiresAtOffsetSeconds, recognized);
+  }
+
+  private void testVerifyToken(
       long issuedAtOffsetSeconds, long expiresAtOffsetSeconds, boolean recognized) {
     // Claims and verification are pinned to the same instant, so the outcome does not depend on
     // the test runner's wall clock.
