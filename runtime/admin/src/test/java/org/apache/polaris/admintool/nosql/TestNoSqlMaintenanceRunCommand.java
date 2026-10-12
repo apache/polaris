@@ -70,6 +70,35 @@ public class TestNoSqlMaintenanceRunCommand {
   }
 
   @Test
+  public void reportsMaintenanceErrorWhenRunDidNotSucceed() throws Exception {
+    var service = new RecordingMaintenanceService();
+    service.runInformation =
+        MaintenanceRunInformation.builder()
+            .started(Instant.parse("2026-05-11T10:15:30Z"))
+            .finished(Instant.parse("2026-05-11T10:15:31Z"))
+            .success(false)
+            .statusMessage("Maintenance run did not finish successfully.")
+            .build();
+
+    var command = new NoSqlMaintenanceRunCommand();
+    inject(command, "maintenanceService", service);
+    inject(command, "maintenanceConfig", MaintenanceConfig.builder().build());
+    inject(command, "backend", backend("MongoDb"));
+
+    var stdout = new StringWriter();
+    var stderr = new StringWriter();
+    var exitCode =
+        new CommandLine(command)
+            .setOut(new PrintWriter(stdout, true))
+            .setErr(new PrintWriter(stderr, true))
+            .execute();
+
+    assertThat(exitCode).isEqualTo(BaseCommand.EXIT_CODE_MAINTENANCE_ERROR);
+    assertThat(stdout.toString()).contains("Maintenance run did not finish successfully.");
+    assertThat(stderr.toString()).isEmpty();
+  }
+
+  @Test
   public void reportsLatestUnfinishedRunIdWhenMaintenanceIsBlocked() throws Exception {
     var service = new RecordingMaintenanceService();
     service.exception =

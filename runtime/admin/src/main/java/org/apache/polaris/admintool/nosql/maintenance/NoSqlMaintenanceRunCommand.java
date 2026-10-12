@@ -60,7 +60,7 @@ public class NoSqlMaintenanceRunCommand extends BaseNoSqlMaintenanceCommand {
 
       printRunInformation(runInformation, false);
 
-      return 0;
+      return runInformation.success() ? 0 : EXIT_CODE_MAINTENANCE_ERROR;
     } catch (MaintenanceRunInProgressException e) {
       var err = spec.commandLine().getErr();
       err.println();
