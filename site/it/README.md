@@ -42,7 +42,7 @@ current working directory set to the projects _workspace_ directory.
 
 ## Running the tests
 
-Requirements: Python 3.14
+Requirements: Python 3.11 or later
 
 To run tests for all guides in `site/content/guides`, run
 ```shell
