@@ -23,7 +23,7 @@ version = "0.0.0"
 description = "Apache Polaris - Internal Site Guide Testing"
 authors = [{ name = "Apache Software Foundation", email = "dev@polaris.apache.org" }]
 license = "Apache-2.0"
-requires-python = ">=3.14"
+requires-python = ">=3.11,<3.16"
 dependencies = [
 ]
 
