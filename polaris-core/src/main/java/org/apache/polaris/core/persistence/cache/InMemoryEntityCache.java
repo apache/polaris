@@ -212,8 +212,10 @@ public class InMemoryEntityCache implements EntityCache {
       return null;
     }
     ResolvedPolarisEntity entry = byId.getIfPresent(id);
-    // the index may be briefly stale: the entity may have been evicted or renamed
+    // The index may be stale, e.g. the byId value was garbage collected. Drop the stale mapping so
+    // repeated misses do not keep it alive, but only if it still points to the same id.
     if (entry == null || !new EntityCacheByNameKey(entry.getEntity()).equals(entityNameKey)) {
+      nameIndex.asMap().remove(entityNameKey, id);
       return null;
     }
     return entry;
