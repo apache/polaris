@@ -179,6 +179,11 @@ public class PolarisRestCatalogFlociGcpIT {
     return IcebergHelper.restCatalog(endpoints, catalogName, restCatalogProperties(), authToken);
   }
 
+  /**
+   * Client Iceberg FileIO against Floci; storage-config fileIoProperties cover server FileIO only.
+   * {@code gcs.oauth2.token} is an AccessConfig credential (internalProperties), so loadTable does
+   * not relay it to the client.
+   */
   private Map<String, String> restCatalogProperties() {
     return ImmutableMap.copyOf(flociGcpAccess.icebergProperties());
   }

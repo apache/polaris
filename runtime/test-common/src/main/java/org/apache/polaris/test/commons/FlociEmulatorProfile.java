@@ -23,9 +23,11 @@ import io.quarkus.test.junit.QuarkusTestProfile;
 import java.util.Map;
 
 /**
- * Turns off {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION} so Floci ADLS/GCP ITs exercise storage
- * {@code fileIoProperties} through the normal credential-integration path (static FileIO
- * credentials short-circuit vending), matching the S3 {@code stsUnavailable} migration example.
+ * Undoes {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION=true} from {@code application-it.properties}
+ * ({@code quarkus.profile=it}). The feature default is already {@code false}; intTests load the
+ * {@code it} profile which forces {@code true}. Floci ADLS/GCP need the normal AccessConfig path so
+ * storage {@code fileIoProperties} (static FileIO credentials) reach server FileIO, matching the S3
+ * {@code stsUnavailable} migration example.
  */
 public class FlociEmulatorProfile implements QuarkusTestProfile {
   @Override
