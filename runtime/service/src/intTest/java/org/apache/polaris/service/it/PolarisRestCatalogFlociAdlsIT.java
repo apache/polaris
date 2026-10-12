@@ -180,6 +180,9 @@ public class PolarisRestCatalogFlociAdlsIT {
     return IcebergHelper.restCatalog(endpoints, catalogName, restCatalogProperties(), authToken);
   }
 
+  /**
+   * Client Iceberg FileIO against Floci; storage-config fileIoProperties cover server FileIO only.
+   */
   private Map<String, String> restCatalogProperties() {
     return ImmutableMap.copyOf(flociAzureAccess.icebergProperties());
   }
