@@ -30,7 +30,7 @@ paths:
       summary: Create a tag definition in the catalog
       operationId: createTag
       description: |
-        Creates a tag definition within the catalog identified by {prefix}.
+        Creates a tag definition within the catalog.
 
         A tag definition gives a classification a name, a set of permitted values, and the target kinds it may
         classify. Tag assignments later select exactly one value from the definition's current values
