@@ -62,6 +62,13 @@ public class JWTBroker implements TokenBroker {
    */
   @VisibleForTesting static final String CLAIM_KEY_CREDENTIALS_VERSION = "polaris-cv";
 
+  /**
+   * Tolerance for an {@code iat} claim that is ahead of this node's clock. A token minted by one
+   * Polaris node and immediately presented to another node whose clock is slightly behind would
+   * otherwise be rejected, because {@code iat} has second granularity. Expiry is not relaxed.
+   */
+  @VisibleForTesting static final long ISSUED_AT_LEEWAY_SECONDS = 5;
+
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisCallContext polarisCallContext;
   private final int maxTokenGenerationInSeconds;
@@ -86,7 +93,11 @@ public class JWTBroker implements TokenBroker {
    * {@link TokenBrokerFactory} so the verifier can be reused across request-scoped brokers.
    */
   static JWTVerifier buildVerifier(Algorithm algorithm) {
-    return JWT.require(algorithm).withIssuer(ISSUER_KEY).withClaim(CLAIM_KEY_ACTIVE, true).build();
+    return JWT.require(algorithm)
+        .withIssuer(ISSUER_KEY)
+        .withClaim(CLAIM_KEY_ACTIVE, true)
+        .acceptIssuedAt(ISSUED_AT_LEEWAY_SECONDS)
+        .build();
   }
 
   @Override

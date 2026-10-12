@@ -24,6 +24,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import java.time.Instant;
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
@@ -34,6 +35,7 @@ import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.apache.polaris.service.types.TokenType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
@@ -201,6 +203,36 @@ public class JWTSymmetricKeyGeneratorTest {
 
     assertThat(token.getError()).isNull();
     assertThat(decodedScope(token.getAccessToken())).isEqualTo("PRINCIPAL_ROLE:TEST");
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "2, 3600, true",
+    "60, 3600, false",
+    "-3600, -2, false",
+  })
+  public void testVerifyIssuedAtLeeway(
+      long issuedAtOffsetSeconds, long expiresAtOffsetSeconds, boolean recognized) {
+    Instant now = Instant.now();
+    String token =
+        JWT.create()
+            .withIssuer("polaris")
+            .withSubject("principal")
+            .withIssuedAt(now.plusSeconds(issuedAtOffsetSeconds))
+            .withExpiresAt(now.plusSeconds(expiresAtOffsetSeconds))
+            .withClaim("active", true)
+            .withClaim("client_id", "test_client_id")
+            .withClaim("principalId", 123L)
+            .withClaim("scope", "PRINCIPAL_ROLE:TEST")
+            .sign(Algorithm.HMAC256("polaris"));
+
+    TokenVerificationResult result = tokenBroker().verify(token);
+
+    assertThat(result)
+        .isInstanceOf(
+            recognized
+                ? TokenVerificationResult.Recognized.class
+                : TokenVerificationResult.Invalid.class);
   }
 
   private TokenBroker tokenBroker() {
