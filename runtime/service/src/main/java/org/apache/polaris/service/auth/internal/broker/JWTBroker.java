@@ -23,6 +23,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import com.auth0.jwt.interfaces.Verification;
 import com.google.common.annotations.VisibleForTesting;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -93,11 +94,19 @@ public class JWTBroker implements TokenBroker {
    * {@link TokenBrokerFactory} so the verifier can be reused across request-scoped brokers.
    */
   static JWTVerifier buildVerifier(Algorithm algorithm) {
+    return verification(algorithm).build();
+  }
+
+  /**
+   * The claim expectations {@link #buildVerifier(Algorithm)} verifies against, before the verifier
+   * is built. Exposed so tests can build the same configuration against a fixed clock.
+   */
+  @VisibleForTesting
+  static Verification verification(Algorithm algorithm) {
     return JWT.require(algorithm)
         .withIssuer(ISSUER_KEY)
         .withClaim(CLAIM_KEY_ACTIVE, true)
-        .acceptIssuedAt(ISSUED_AT_LEEWAY_SECONDS)
-        .build();
+        .acceptIssuedAt(ISSUED_AT_LEEWAY_SECONDS);
   }
 
   @Override
