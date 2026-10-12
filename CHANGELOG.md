@@ -77,6 +77,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `fileIoProperties`). For rolling upgrades that still rely on catalog table defaults, set
   `polaris.features."PROPAGATE_CATALOG_TABLE_DEFAULTS_TO_STORAGE_ACCESS_CONFIG"=true` (off by
   default). Catalog `table-default.*` remains available as Iceberg client/table create defaults.
+- Management API `StorageConfigInfo` gains optional `fileIoProperties`. Catalog get/list JSON that
+  includes the new field may fail clients that deserialize with a strict old schema (for example
+  `FAIL_ON_UNKNOWN_PROPERTIES`). Polaris itself ignores unknown storage-config properties when
+  reading stored JSON.
 - `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
   invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
   size or supplying a page token. A request that supplies neither still returns all results, unless
@@ -117,6 +121,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   all clients.
 
 ### Deprecations
+
+- `PROPAGATE_CATALOG_TABLE_DEFAULTS_TO_STORAGE_ACCESS_CONFIG` is a temporary rolling-upgrade bridge
+  (off by default) after server FileIO stopped reading catalog `table-default.*` directly. Prefer
+  storage-configuration typed fields and `fileIoProperties`. Planned for removal in 1.10.0.
 
 ### Fixes
 
