@@ -81,10 +81,13 @@ class PersistingMetricsReporterTest {
 
   private ListAppender<ILoggingEvent> logAppender;
   private Logger reporterLogger;
+  private Level originalLevel;
 
   @BeforeEach
   void attachLogAppender() {
     reporterLogger = (Logger) LoggerFactory.getLogger(PersistingMetricsReporter.class);
+    originalLevel = reporterLogger.getLevel();
+    reporterLogger.setLevel(Level.DEBUG);
     logAppender = new ListAppender<>();
     logAppender.start();
     reporterLogger.addAppender(logAppender);
@@ -93,6 +96,7 @@ class PersistingMetricsReporterTest {
   @AfterEach
   void detachLogAppender() {
     reporterLogger.detachAppender(logAppender);
+    reporterLogger.setLevel(originalLevel);
     logAppender.stop();
   }
 
@@ -231,7 +235,7 @@ class PersistingMetricsReporterTest {
     assertThat(logAppender.list)
         .anySatisfy(
             event -> {
-              assertThat(event.getLevel()).isEqualTo(Level.WARN);
+              assertThat(event.getLevel()).isEqualTo(Level.DEBUG);
               assertThat(event.getFormattedMessage())
                   .contains("resolved leaf is missing or not TABLE_LIKE");
             });

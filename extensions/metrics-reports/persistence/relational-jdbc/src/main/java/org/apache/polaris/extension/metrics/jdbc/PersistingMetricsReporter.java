@@ -77,7 +77,7 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
   public void reportMetric(@NonNull MetricsReportEnvelope envelope) {
     PolarisEntity tableEntity = envelope.tableEntity();
     if (tableEntity == null || tableEntity.getType() != PolarisEntityType.TABLE_LIKE) {
-      LOGGER.warn(
+      LOGGER.debug(
           "Dropping {} metrics for {}.{}; resolved leaf is missing or not TABLE_LIKE",
           envelope.metricType(),
           envelope.catalogName(),

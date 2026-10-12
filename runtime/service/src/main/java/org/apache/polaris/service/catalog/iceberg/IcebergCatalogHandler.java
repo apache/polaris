@@ -827,34 +827,29 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
 
-    // Metrics reporting is best-effort telemetry: resolution/reporting failures must never break
-    // the client request. Authorization above still fails closed. The envelope may carry a null
-    // table entity (passthrough / unresolved leaf); reporters that need a TABLE_LIKE id drop
-    // themselves.
-    try {
-      CatalogEntity catalogEntity = getResolvedCatalogEntity();
-      PolarisResolvedPathWrapper resolvedTable =
-          resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier));
-      PolarisEntity tableEntity = resolvedTable == null ? null : resolvedTable.getRawLeafEntity();
-      if (tableEntity != null && tableEntity.getType() != PolarisEntityType.TABLE_LIKE) {
-        // Do not pass a namespace/catalog leaf through as if it were the table.
-        tableEntity = null;
-      }
-
-      metricsReporter()
-          .reportMetric(
-              new MetricsReportEnvelope(
-                  catalogName(),
-                  catalogEntity.getId(),
-                  identifier,
-                  tableEntity,
-                  metricType,
-                  request.report(),
-                  clock().instant()));
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to report {} metrics for {}; dropping the report", metricType, identifier, e);
+    // Authorization above fails closed. The envelope may carry a null table entity (passthrough /
+    // unresolved leaf); reporters that need a TABLE_LIKE id drop themselves. Persistence failures
+    // are swallowed in PersistingMetricsReporter so a broken metrics store does not 500 this
+    // endpoint; other reporter errors still propagate.
+    CatalogEntity catalogEntity = getResolvedCatalogEntity();
+    PolarisResolvedPathWrapper resolvedTable =
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier));
+    PolarisEntity tableEntity = resolvedTable == null ? null : resolvedTable.getRawLeafEntity();
+    if (tableEntity != null && tableEntity.getType() != PolarisEntityType.TABLE_LIKE) {
+      // Do not pass a namespace/catalog leaf through as if it were the table.
+      tableEntity = null;
     }
+
+    metricsReporter()
+        .reportMetric(
+            new MetricsReportEnvelope(
+                catalogName(),
+                catalogEntity.getId(),
+                identifier,
+                tableEntity,
+                metricType,
+                request.report(),
+                clock().instant()));
   }
 
   /**
