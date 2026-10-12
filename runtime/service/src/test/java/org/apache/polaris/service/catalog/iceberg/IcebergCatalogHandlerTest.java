@@ -707,12 +707,8 @@ class IcebergCatalogHandlerTest {
         .build();
   }
 
-  /**
-   * Metrics reporting is best-effort: a throwing {@link IcebergMetricsReporter} must not fail the
-   * client request after authorization has already succeeded.
-   */
   @Test
-  void reportMetricsReporterFailureDoesNotPropagate() {
+  void reportMetricsReporterFailurePropagates() {
     PolarisEntity leafEntity =
         new PolarisEntity(
             new PolarisBaseEntity.Builder()
@@ -729,22 +725,12 @@ class IcebergCatalogHandlerTest {
         .when(metricsReporter)
         .reportMetric(any());
 
-    ReportMetricsRequest request =
-        ReportMetricsRequest.of(
-            ImmutableScanReport.builder()
-                .tableName(TABLE2.name())
-                .snapshotId(123L)
-                .schemaId(456)
-                .projectedFieldIds(List.of(1, 2, 3))
-                .projectedFieldNames(List.of("f1", "f2", "f3"))
-                .filter(Expressions.alwaysTrue())
-                .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
-                .build());
-
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
 
-    assertThatCode(() -> handler.reportMetrics(TABLE2, request)).doesNotThrowAnyException();
+    assertThatThrownBy(() -> handler.reportMetrics(TABLE2, scanMetricsRequest()))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("simulated reporter failure");
     verify(metricsReporter).reportMetric(any());
   }
 
