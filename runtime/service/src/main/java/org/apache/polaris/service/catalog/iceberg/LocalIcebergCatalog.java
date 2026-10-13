@@ -512,6 +512,18 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
+  /**
+   * Checks for a stored table only. The inherited implementation calls {@link #loadTable}, which
+   * for a missing table named after a metadata table type (e.g. {@code ns.history}) goes on to look
+   * up the namespace as a base table, a path that is not part of the request's resolution manifest.
+   */
+  @Override
+  public boolean tableExists(TableIdentifier identifier) {
+    return resolvedEntityView.getPassthroughResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_TABLE)
+        != null;
+  }
+
   @Override
   public TableBuilder buildTable(TableIdentifier identifier, Schema schema) {
     return new PolarisIcebergCatalogTableBuilder(identifier, schema);
