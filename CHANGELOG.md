@@ -229,6 +229,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
   selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
   readiness monitoring without configuration changes.
+- Creating a table named after an Iceberg metadata table type, such as `history`, `snapshots` or
+  `entries`, no longer fails with an `IllegalStateException` (HTTP 500).
 
 ### Commits
 
