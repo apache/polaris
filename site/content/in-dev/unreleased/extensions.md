@@ -496,7 +496,7 @@ by the largest code, so do not use huge values.
 
 ```java
 SEMANTIC_MODEL(11, NAMESPACE, false, false),
-DATA_CONTRACT(12, NAMESPACE, false, false);
+DATA_CONTRACT(1000, NAMESPACE, false, false);
 ```
 
 **2. Add the entity class** (`org.apache.polaris.core.entity`), following `SemanticModelEntity`: a subclass of
