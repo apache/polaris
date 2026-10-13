@@ -22,6 +22,7 @@ import static com.google.common.base.Preconditions.checkState;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
 import java.util.stream.Stream;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.misc.types.memorysize.MemorySize;
@@ -61,10 +62,8 @@ public interface PersistenceParams {
   @WithDefault(DEFAULT_MAX_INDEX_STRIPE_SIZE_STRING)
   MemorySize maxIndexStripeSize();
 
-  @Value.Default
-  default RetryConfig retryConfig() {
-    return RetryConfig.DEFAULT_RETRY_CONFIG;
-  }
+  @WithName("retry")
+  RetryConfig retryConfig();
 
   String DEFAULT_BUCKETIZED_BULK_FETCH_SIZE_STRING = "16";
   int DEFAULT_BUCKETIZED_BULK_FETCH_SIZE =

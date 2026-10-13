@@ -93,6 +93,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Python CLI: added `register` support for both `tables` and `views` commands
 - Python CLI: added `namespaces update` to set and remove namespace properties
+- NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
 
 ### Changes
 
