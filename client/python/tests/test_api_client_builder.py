@@ -18,11 +18,13 @@
 #
 
 import json
+import os
 import unittest
 from argparse import Namespace
 from unittest.mock import MagicMock, patch
 
 from apache_polaris.cli.api_client_builder import ApiClientBuilder, BuilderConfig
+from apache_polaris.cli.constants import DEFAULT_HEADER, HEADER_ENV
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 
 
@@ -247,6 +249,31 @@ class TestBuilderConfigBaseUrl(unittest.TestCase):
     def test_base_url_is_preserved(self) -> None:
         cfg = BuilderConfig(self._options(base_url="https://localhost:443"))
         self.assertEqual(cfg.base_url, "https://localhost:443")
+
+
+class TestBuilderConfigHeader(unittest.TestCase):
+    def test_header_precedence(self) -> None:
+        cases = [
+            (None, None, None, DEFAULT_HEADER),
+            (None, None, "X-Profile", "X-Profile"),
+            (None, "X-Env", "X-Profile", "X-Env"),
+            ("X-Option", "X-Env", "X-Profile", "X-Option"),
+        ]
+        for option, env, profile, expected in cases:
+            with self.subTest(option=option, env=env, profile=profile):
+                opts = _builder_options()
+                opts.header = option
+                opts.profile = "prod"
+                with (
+                    patch.dict(
+                        os.environ, {HEADER_ENV: env} if env else {}, clear=True
+                    ),
+                    patch(
+                        "apache_polaris.cli.api_client_builder.load_profiles",
+                        return_value={"prod": {"header": profile}},
+                    ),
+                ):
+                    self.assertEqual(BuilderConfig(opts).header, expected)
 
 
 if __name__ == "__main__":

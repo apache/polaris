@@ -20,7 +20,7 @@ import argparse
 from typing import List, Optional, Dict, Any, Union
 
 from apache_polaris import __version__
-from apache_polaris.cli.constants import Arguments, DEFAULT_HEADER, Hints
+from apache_polaris.cli.constants import Arguments, Hints
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.options.option_tree import OptionTree, Option, Argument
 
@@ -78,7 +78,6 @@ class Parser(object):
             Arguments.HEADER,
             str,
             hint="Context header name (default: Polaris-Realm)",
-            default=DEFAULT_HEADER,
         ),
         Argument(Arguments.PROFILE, str, hint="Polaris profile name"),
         Argument(Arguments.PROXY, str, hint="Proxy URL"),

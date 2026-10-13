@@ -29,6 +29,7 @@ from apache_polaris.cli.constants import (
     REALM_ENV,
     HEADER_ENV,
     Arguments,
+    DEFAULT_HEADER,
     DEFAULT_HOSTNAME,
     DEFAULT_PORT,
     DEFAULT_SCHEME,
@@ -125,11 +126,12 @@ class BuilderConfig:
         return realms
 
     @cached_property
-    def header(self) -> Optional[str]:
+    def header(self) -> str:
         return (
             self.options.header
             or os.getenv(HEADER_ENV)
             or self.profile.get(Arguments.HEADER)
+            or DEFAULT_HEADER
         )
 
 
