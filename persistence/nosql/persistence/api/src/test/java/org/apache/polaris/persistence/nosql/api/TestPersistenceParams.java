@@ -24,7 +24,7 @@ import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfigBuilder;
 import java.time.Duration;
 import java.util.Map;
-import org.apache.polaris.persistence.nosql.api.commit.RetryConfig;
+import org.apache.polaris.persistence.nosql.api.commit.RetryConfig.BuildableRetryConfig;
 import org.junit.jupiter.api.Test;
 
 public class TestPersistenceParams {
@@ -40,8 +40,7 @@ public class TestPersistenceParams {
             .build()
             .getConfigMapping(PersistenceParams.class);
 
-    assertThat(params.retryConfig().timeout()).isEqualTo(Duration.ofSeconds(45));
-    assertThat(params.retryConfig().retries())
-        .isEqualTo(Integer.parseInt(RetryConfig.DEFAULT_RETRIES));
+    assertThat(BuildableRetryConfig.builder().from(params.retryConfig()).build())
+        .isEqualTo(BuildableRetryConfig.builder().timeout(Duration.ofSeconds(45)).build());
   }
 }
