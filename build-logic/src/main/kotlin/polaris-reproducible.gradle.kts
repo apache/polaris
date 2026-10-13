@@ -28,8 +28,11 @@ tasks.withType<AbstractArchiveTask>().configureEach {
 
   eachFile {
     permissions {
+      val path = file.toPath()
+      // File systems without POSIX attributes (Windows) have no executable bit to carry over
       val isExec =
-        Files.getPosixFilePermissions(file.toPath()).contains(PosixFilePermission.OWNER_EXECUTE)
+        path.fileSystem.supportedFileAttributeViews().contains("posix") &&
+          Files.getPosixFilePermissions(path).contains(PosixFilePermission.OWNER_EXECUTE)
       unix(if (isExec) "755" else "644")
     }
   }
