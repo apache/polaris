@@ -74,13 +74,34 @@ example, in Spark:
 INSERT INTO lake.sales.orders.branch_backfill SELECT ...;
 ```
 
-Validate the branch before promoting it, for example by querying
-`lake.sales.orders.branch_backfill`.
+### 3. Review the change
 
-### 3. Promote the branch
+Before promoting, check what will change on each table. You already have both ends of the change:
+the snapshot `main` points to (from step 1) and the head of `backfill`. Load each table and note
+the head of the branch; these are the snapshots you will promote in the next step.
 
-Load each table again and note the snapshot of `main` (unchanged since step 1, if nobody else wrote
-to it) and of `backfill`. Then move `main` of every table to its branch head in one commit:
+* Query the branch directly, for example `lake.sales.orders.branch_backfill`, to validate the data.
+* The summary of each snapshot between the two (in the table's `snapshots` metadata table) shows
+  how many records and files were added and removed.
+* For row-level changes, Iceberg's Spark procedure `create_changelog_view` lists the rows inserted
+  and deleted between two snapshots. The start snapshot is exclusive and the end snapshot inclusive:
+
+```sql
+CALL lake.system.create_changelog_view(
+  table => 'sales.orders',
+  options => map('start-snapshot-id', '1001', 'end-snapshot-id', '1005'),
+  changelog_view => 'orders_backfill_changes'
+);
+```
+
+A person or an automated check can approve the change at this point. Promote the branch heads you
+reviewed, not whatever the branch points to later: the commit in the next step names each snapshot
+explicitly, so writes to the branch after the review are not promoted.
+
+### 4. Promote the branch
+
+Move `main` of every table to the branch head you reviewed in step 3, in one commit. The
+requirement asserts that `main` is still at the snapshot it pointed to in step 1:
 
 ```json
 POST /api/catalog/v1/lake/transactions/commit
@@ -108,7 +129,7 @@ Only move `main` forward: the branch should have been created from the snapshot 
 points to, so the new snapshot of `main` contains everything that was in the old one. If `main`
 has moved since the branch was created, rebase or redo the work on the branch first.
 
-### 4. Remove the branch
+### 5. Remove the branch
 
 Optionally remove the branch from every table, again in one commit, with a
 `{"action": "remove-snapshot-ref", "ref-name": "backfill"}` update per table. Snapshot expiry then
