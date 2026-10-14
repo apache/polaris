@@ -23,6 +23,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import com.auth0.jwt.interfaces.Verification;
 import com.google.common.annotations.VisibleForTesting;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -62,6 +63,13 @@ public class JWTBroker implements TokenBroker {
    */
   @VisibleForTesting static final String CLAIM_KEY_CREDENTIALS_VERSION = "polaris-cv";
 
+  /**
+   * Tolerance for an {@code iat} claim that is ahead of this node's clock. A token minted by one
+   * Polaris node and immediately presented to another node whose clock is slightly behind would
+   * otherwise be rejected, because {@code iat} has second granularity. Expiry is not relaxed.
+   */
+  @VisibleForTesting static final long ISSUED_AT_LEEWAY_SECONDS = 5;
+
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisCallContext polarisCallContext;
   private final int maxTokenGenerationInSeconds;
@@ -86,7 +94,19 @@ public class JWTBroker implements TokenBroker {
    * {@link TokenBrokerFactory} so the verifier can be reused across request-scoped brokers.
    */
   static JWTVerifier buildVerifier(Algorithm algorithm) {
-    return JWT.require(algorithm).withIssuer(ISSUER_KEY).withClaim(CLAIM_KEY_ACTIVE, true).build();
+    return verification(algorithm).build();
+  }
+
+  /**
+   * The claim expectations {@link #buildVerifier(Algorithm)} verifies against, before the verifier
+   * is built. Exposed so tests can build the same configuration against a fixed clock.
+   */
+  @VisibleForTesting
+  static Verification verification(Algorithm algorithm) {
+    return JWT.require(algorithm)
+        .withIssuer(ISSUER_KEY)
+        .withClaim(CLAIM_KEY_ACTIVE, true)
+        .acceptIssuedAt(ISSUED_AT_LEEWAY_SECONDS);
   }
 
   @Override

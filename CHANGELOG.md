@@ -130,6 +130,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `OPTIMIZED_SIBLING_CHECK` is enabled. Such a location is a prefix of every sibling created later
   under the namespace, which blocked all subsequent sibling creates and over-scoped credentials
   vended for that entity to the whole namespace.
+- Internal token verification now tolerates up to 5 seconds of clock skew on the `iat` claim. With
+  multiple Polaris nodes, a token minted on one node and immediately used on another node whose
+  clock was a few milliseconds behind could be rejected with HTTP 401 when the token was minted
+  right after a second boundary. Token expiry is still enforced without leeway.
 - NoSQL maintenance: spilled `IndexStripeObj` segments are retained when identify walks an index via
   `indexForRead` (`RetainedCollectorImpl.buildReadIndex`), and `PrincipalsObj.byClientId` is retained
   explicitly. Previously only a subset of indexes got `indexRetain`, so after a spill past
