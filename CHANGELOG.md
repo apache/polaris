@@ -233,6 +233,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
   selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
   readiness monitoring without configuration changes.
+- Registering a table with `overwrite=true` keeps the table's live idempotency key window when
+  the registration preserves the Iceberg table identity (same table UUID). Previously the
+  overwrite replaced the entity's internal properties wholesale, dropping the window: a retry of
+  an already-committed keyed update re-applied the mutation and could undo a newer committed
+  property update, and a retry of an already-committed keyed create failed with a false
+  `AlreadyExists` conflict. Registering a different Iceberg table UUID remains a table
+  replacement and does not inherit the replaced identity's keys.
 
 ### Commits
 
