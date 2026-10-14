@@ -21,6 +21,7 @@ package org.apache.polaris.service.admin;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
@@ -37,6 +38,7 @@ import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class BigLakeCatalogValidatorTest {
@@ -272,6 +274,85 @@ class BigLakeCatalogValidatorTest {
         .hasMessageContaining("a quota project is required");
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"HEADER.X-GOOG-USER-PROJECT", "header.X-Goog-User-Project"})
+  void rejectsNonCanonicalConnectionQuotaProjectKey(String propertyName) {
+    assertThatThrownBy(
+            () ->
+                validator.validate(
+                    realmConfig,
+                    bigLakeCatalogWithProperties(
+                        Map.of(propertyName, "connection-project"), Map.of())))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("header.x-goog-user-project");
+  }
+
+  @Test
+  void rejectsNonCanonicalCatalogQuotaProjectKey() {
+    assertThatThrownBy(
+            () ->
+                validator.validate(
+                    realmConfig,
+                    bigLakeCatalogWithProperties(
+                        Map.of(), Map.of("HEADER.X-GOOG-USER-PROJECT", "catalog-project"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("header.x-goog-user-project");
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" ", "\t"})
+  void rejectsBlankConnectionQuotaProjectOverride(String quotaProject) {
+    Map<String, String> connectionProperties = new HashMap<>();
+    connectionProperties.put("header.x-goog-user-project", quotaProject);
+
+    assertThatThrownBy(
+            () ->
+                validator.validate(
+                    realmConfig,
+                    bigLakeCatalogWithProperties(
+                        connectionProperties,
+                        Map.of("header.x-goog-user-project", "catalog-project"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("header.x-goog-user-project");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"HEADER.X-GOOG-USER-PROJECT", "header.X-Goog-User-Project"})
+  void ignoresNonCanonicalConnectionQuotaProjectOverride(String propertyName) {
+    assertThatCode(
+            () ->
+                validator.validate(
+                    realmConfig,
+                    bigLakeCatalogWithProperties(
+                        Map.of(propertyName, " "),
+                        Map.of("header.x-goog-user-project", "catalog-project"))))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void acceptsConnectionQuotaProjectOverBlankCatalogQuotaProject() {
+    assertThatCode(
+            () ->
+                validator.validate(
+                    realmConfig,
+                    bigLakeCatalogWithProperties(
+                        Map.of("header.x-goog-user-project", "connection-project"),
+                        Map.of("header.x-goog-user-project", " "))))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void acceptsCatalogQuotaProjectWithoutConnectionProperties() {
+    assertThatCode(
+            () ->
+                validator.validate(
+                    realmConfig,
+                    bigLakeCatalogWithProperties(
+                        null, Map.of("header.x-goog-user-project", "catalog-project"))))
+        .doesNotThrowAnyException();
+  }
+
   @Test
   void acceptsOtherHeaderProperties() {
     assertThatCode(
@@ -408,6 +489,20 @@ class BigLakeCatalogValidatorTest {
                         "gs://bucket/path/to/data",
                         storageConfigInfo)))
         .doesNotThrowAnyException();
+  }
+
+  private Catalog bigLakeCatalogWithProperties(
+      Map<String, String> connectionProperties, Map<String, String> catalogProperties) {
+    Catalog catalog =
+        bigLakeCatalog(
+            "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+            "my-remote-catalog",
+            connectionProperties,
+            false,
+            "gs://bucket/path/to/data",
+            null);
+    catalogProperties.forEach(catalog.getProperties()::put);
+    return catalog;
   }
 
   private Catalog bigLakeCatalog(

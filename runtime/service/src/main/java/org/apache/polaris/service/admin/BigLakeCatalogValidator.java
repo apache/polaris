@@ -76,9 +76,10 @@ public class BigLakeCatalogValidator implements CatalogConfigValidator {
 
   private static void validateBigLakeHeaders(
       Map<String, String> connectionProperties, Map<String, String> catalogProperties) {
-    String quotaProject = findIgnoreCase(connectionProperties, QUOTA_PROJECT_HEADER);
-    if (Strings.isNullOrEmpty(quotaProject)) {
-      quotaProject = findIgnoreCase(catalogProperties, QUOTA_PROJECT_HEADER);
+    String quotaProject = catalogProperties.get(QUOTA_PROJECT_HEADER);
+    // Match the factory merge: a present connection property overrides the catalog value.
+    if (connectionProperties != null && connectionProperties.containsKey(QUOTA_PROJECT_HEADER)) {
+      quotaProject = connectionProperties.get(QUOTA_PROJECT_HEADER);
     }
     if (Strings.isNullOrEmpty(quotaProject) || quotaProject.trim().isEmpty()) {
       throw new IllegalArgumentException(
@@ -144,16 +145,5 @@ public class BigLakeCatalogValidator implements CatalogConfigValidator {
     } catch (IllegalArgumentException e) {
       return false;
     }
-  }
-
-  private static String findIgnoreCase(Map<String, String> properties, String name) {
-    if (properties == null) {
-      return null;
-    }
-    return properties.entrySet().stream()
-        .filter(entry -> name.equalsIgnoreCase(entry.getKey()))
-        .map(Map.Entry::getValue)
-        .findFirst()
-        .orElse(null);
   }
 }

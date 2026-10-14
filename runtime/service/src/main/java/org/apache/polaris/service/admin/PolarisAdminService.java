@@ -191,6 +191,7 @@ public class PolarisAdminService {
       @NonNull PolarisPrincipal principal,
       @NonNull PolarisAuthorizer authorizer,
       @NonNull ReservedProperties reservedProperties,
+      @NonNull S3CredentialVendingMechanisms vendingMechanisms,
       @Any Instance<CatalogConfigValidator> catalogConfigValidators) {
     this(
         callContext,
@@ -201,6 +202,7 @@ public class PolarisAdminService {
         principal,
         authorizer,
         reservedProperties,
+        vendingMechanisms,
         (Iterable<CatalogConfigValidator>) catalogConfigValidators);
   }
 
@@ -248,7 +250,7 @@ public class PolarisAdminService {
     this.serviceIdentityProvider = serviceIdentityProvider;
     this.reservedProperties = reservedProperties;
     this.catalogConfigValidators = catalogConfigValidators;
-    this.vendingMechanisms = vendingMechanisms;
+    this.vendingMechanisms = vendingMechanism;
   }
 
   private void validateCatalogConfiguration(Catalog catalog) {

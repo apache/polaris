@@ -65,7 +65,7 @@ public final class PolarisAdminServiceTestSupport {
         serviceIdentityProvider,
         principal,
         authorizer,
-        reservedProperties,
-        vendingMechanisms);
+        vendingMechanisms,
+        reservedProperties);
   }
 }
