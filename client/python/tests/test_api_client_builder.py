@@ -18,12 +18,16 @@
 #
 
 import json
+import os
 import unittest
 from argparse import Namespace
 from unittest.mock import MagicMock, patch
 
 from apache_polaris.cli.api_client_builder import ApiClientBuilder, BuilderConfig
+from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.constants import DEFAULT_HEADER, HEADER_ENV
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
+from apache_polaris.sdk.management import PolarisDefaultApi
 
 
 def _builder_options() -> Namespace:
@@ -34,6 +38,8 @@ def _builder_options() -> Namespace:
         port=None,
         scheme=None,
         proxy=None,
+        ssl_ca_cert=None,
+        insecure=False,
         access_token=None,
         client_id="test-id",
         client_secret="test-secret",
@@ -119,6 +125,8 @@ class TestBuilderConfigCatalogUrl(unittest.TestCase):
             port=None,
             scheme=None,
             proxy=None,
+            ssl_ca_cert=None,
+            insecure=False,
             access_token=None,
             client_id=None,
             client_secret=None,
@@ -186,6 +194,8 @@ class TestBuilderConfigBaseUrl(unittest.TestCase):
             port=port,
             scheme=scheme,
             proxy=None,
+            ssl_ca_cert=None,
+            insecure=False,
             access_token=None,
             client_id=None,
             client_secret=None,
@@ -247,6 +257,68 @@ class TestBuilderConfigBaseUrl(unittest.TestCase):
     def test_base_url_is_preserved(self) -> None:
         cfg = BuilderConfig(self._options(base_url="https://localhost:443"))
         self.assertEqual(cfg.base_url, "https://localhost:443")
+
+
+class TestBuilderConfigHeader(unittest.TestCase):
+    def test_header_precedence(self) -> None:
+        cases = [
+            (None, None, None, DEFAULT_HEADER),
+            (None, None, "X-Profile", "X-Profile"),
+            (None, "X-Env", "X-Profile", "X-Env"),
+            ("X-Option", "X-Env", "X-Profile", "X-Option"),
+        ]
+        for option, env, profile, expected in cases:
+            with self.subTest(option=option, env=env, profile=profile):
+                opts = _builder_options()
+                opts.header = option
+                opts.profile = "prod"
+                with (
+                    patch.dict(
+                        os.environ, {HEADER_ENV: env} if env else {}, clear=True
+                    ),
+                    patch(
+                        "apache_polaris.cli.api_client_builder.load_profiles",
+                        return_value={"prod": {"header": profile}},
+                    ),
+                ):
+                    self.assertEqual(BuilderConfig(opts).header, expected)
+
+
+class TestBuilderTls(unittest.TestCase):
+    def test_tls_options_applied_to_management_and_catalog_clients(self) -> None:
+        cases = [
+            (None, False, None, True),
+            ("/certs/ca.pem", False, "/certs/ca.pem", True),
+            (None, True, None, False),
+        ]
+        for ssl_ca_cert, insecure, expected_ca_cert, expected_verify in cases:
+            with self.subTest(ssl_ca_cert=ssl_ca_cert, insecure=insecure):
+                opts = _builder_options()
+                opts.client_id = None
+                opts.client_secret = None
+                opts.access_token = "token"
+                opts.ssl_ca_cert = ssl_ca_cert
+                opts.insecure = insecure
+                api_client = ApiClientBuilder(opts).get_api_client()
+                catalog_client = get_catalog_api_client(PolarisDefaultApi(api_client))
+                for config in (api_client.configuration, catalog_client.configuration):
+                    self.assertEqual(config.ssl_ca_cert, expected_ca_cert)
+                    self.assertEqual(config.verify_ssl, expected_verify)
+
+    def test_tls_options_applied_to_token_request(self) -> None:
+        opts = _builder_options()
+        opts.ssl_ca_cert = "/certs/ca.pem"
+        opts.insecure = True
+        with patch(
+            "apache_polaris.cli.api_client_builder.ApiClient"
+        ) as mock_api_client:
+            mock_api_client.return_value.call_api.return_value.response.data = (
+                json.dumps({"access_token": "abc123"})
+            )
+            ApiClientBuilder(opts)._get_token()
+        config = mock_api_client.call_args.args[0]
+        self.assertEqual(config.ssl_ca_cert, "/certs/ca.pem")
+        self.assertFalse(config.verify_ssl)
 
 
 if __name__ == "__main__":
