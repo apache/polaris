@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.aws.s3.S3FileIOProperties;
 import org.apache.polaris.core.connection.ImplicitAuthenticationParametersDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
@@ -37,16 +38,23 @@ class HiveConnectionConfigInfoDpoTest {
     HiveConnectionConfigInfoDpo dpo =
         createDpo(
             Map.of(
-                CatalogProperties.CLIENT_POOL_SIZE, "5",
-                S3FileIOProperties.ENDPOINT, "http://minio:9000",
-                S3FileIOProperties.PATH_STYLE_ACCESS, "true"));
-
+                CatalogProperties.CLIENT_POOL_SIZE,
+                "5",
+                "list-all-tables",
+                "true",
+                S3FileIOProperties.ENDPOINT,
+                "http://minio:9000",
+                S3FileIOProperties.PATH_STYLE_ACCESS,
+                "true",
+                AwsClientProperties.CLIENT_REGION,
+                "us-east-1"));
     Map<String, String> properties = dpo.asIcebergCatalogProperties(mockCredentialManager(dpo));
-
     assertThat(properties)
         .containsEntry(CatalogProperties.CLIENT_POOL_SIZE, "5")
+        .containsEntry("list-all-tables", "true")
         .containsEntry(S3FileIOProperties.ENDPOINT, "http://minio:9000")
-        .containsEntry(S3FileIOProperties.PATH_STYLE_ACCESS, "true");
+        .containsEntry(S3FileIOProperties.PATH_STYLE_ACCESS, "true")
+        .containsEntry(AwsClientProperties.CLIENT_REGION, "us-east-1");
   }
 
   @Test
