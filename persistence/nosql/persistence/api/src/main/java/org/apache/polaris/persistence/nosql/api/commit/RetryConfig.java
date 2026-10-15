@@ -24,8 +24,6 @@ import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
 public interface RetryConfig {
-  RetryConfig DEFAULT_RETRY_CONFIG = BuildableRetryConfig.builder().build();
-
   /**
    * Maximum allowed time until a retry-loop and {@linkplain Committer#commit(CommitRetryable)
    * commits} fails with a {@link RetryTimeoutException}, defaults to {@value #DEFAULT_TIMEOUT}.
