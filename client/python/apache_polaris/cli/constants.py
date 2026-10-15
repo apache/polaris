@@ -205,6 +205,8 @@ class Arguments:
     REGION = "region"
     PROFILE = "profile"
     PROXY = "proxy"
+    SSL_CA_CERT = "ssl_ca_cert"
+    INSECURE = "insecure"
     DEBUG = "debug"
     HADOOP_WAREHOUSE = "hadoop_warehouse"
     HIVE_WAREHOUSE = "hive_warehouse"

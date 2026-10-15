@@ -55,6 +55,8 @@ Global Options:
   --header HEADER                Context header name (default: Polaris-Realm)
   --profile PROFILE              Polaris profile name
   --proxy PROXY                  Proxy URL
+  --ssl-ca-cert SSL_CA_CERT      Path to a PEM file of CA certificates used to verify the server
+  --insecure                     Disable TLS certificate verification (not recommended)
   --debug                        Enable debug mode
   --page-size PAGE_SIZE          Upper bound on the number of entries returned per API request where pagination is supported. Requires the server-side LIST_PAGINATION_ENABLED feature flag. If not set, fetches all results in a single API request.
 ```
