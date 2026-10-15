@@ -29,7 +29,7 @@ on:
 jobs:
   build-checks:
     name: Gradle Build Checks
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -89,7 +89,7 @@ jobs:
 
   runtime-service-tests:
     name: Runtime Service Tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -118,7 +118,7 @@ jobs:
 
   runtime-service-int-tests:
     name: Runtime Service Integration Tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -145,7 +145,7 @@ jobs:
 
   admin-tool-tests:
     name: Admin Tool Tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -172,7 +172,7 @@ jobs:
 
   integration-tests:
     name: Other Integration Tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -205,7 +205,7 @@ jobs:
 
   docker-image-build:
     name: Polaris Docker Image Build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -247,7 +247,7 @@ jobs:
   docker-image-scan:
     name: Polaris Docker Image Scan
     if: github.repository == 'apache/polaris'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs:
       - docker-image-build
     timeout-minutes: 20
@@ -306,7 +306,7 @@ jobs:
 
   helm-tests:
     name: Helm Tests (Helm ${{ matrix.helm-version }} - K8s ${{ matrix.kubernetes-version }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs:
       - docker-image-build
     timeout-minutes: 60
@@ -402,7 +402,7 @@ jobs:
 
   python-client:
     name: Polaris Python Client Tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     needs:
@@ -438,7 +438,7 @@ jobs:
 
   regtest:
     name: Regression Tests (${{ matrix.s3-backend }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     needs:
@@ -494,7 +494,7 @@ jobs:
   markdown-link-check:
     name: "Markdown Link Check"
     if: github.repository == 'apache/polaris'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -514,7 +514,7 @@ jobs:
 
   site:
     name: "Site Generation"
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -545,7 +545,7 @@ jobs:
         run: site/bin/create-static-site.sh
 
   test-site-guides:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
