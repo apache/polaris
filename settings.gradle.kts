@@ -84,7 +84,18 @@ loadProperties(file("gradle/projects.main.properties")).forEach { name, director
   polarisProject(name as String, file(directory as String))
 }
 
-val ideaActive = providers.systemProperty("idea.active").getOrElse("false").toBoolean()
+// IDE import tools that enforce the Gradle "one project per directory" rule
+// (IntelliJ, and Buildship-based importers like jdt.ls) cannot handle two
+// subprojects sharing one directory. The first scala variant is enough for
+// editor-driven work; full variants keep building on the CLI.
+// Skip switch, honored from any importer:
+//   -Ppolaris.skipDuplicateScalaVariants=true   (Gradle property)
+//   -Dpolaris.skipDuplicateScalaVariants=true   (system property)
+//   idea.active=true retains its existing IntelliJ meaning.
+val skipDuplicateScalaVariants =
+    providers.systemProperty("idea.active").getOrElse("false").toBoolean() ||
+        providers.systemProperty("polaris.skipDuplicateScalaVariants").getOrElse("false").toBoolean() ||
+        providers.gradleProperty("polaris.skipDuplicateScalaVariants").getOrElse("false").toBoolean()
 
 // load the polaris spark plugin projects
 val polarisSparkDir = "plugins/spark"
@@ -104,10 +115,10 @@ for (sparkVersion in sparkVersions) {
     if (first) {
       first = false
     }
-    // Skip all duplicated spark client projects while using IntelliJ IDE.
-    // This is to avoid problems during dependency analysis and sync when
-    // using IntelliJ, like "Multiple projects in this build have project directory".
-    if (ideaActive) {
+    // Skip all duplicated spark client projects in IDE imports.
+    // This is to avoid problems during dependency analysis and sync, like
+    // "Multiple projects in this build are located in the same directory".
+    if (skipDuplicateScalaVariants) {
       break
     }
   }
