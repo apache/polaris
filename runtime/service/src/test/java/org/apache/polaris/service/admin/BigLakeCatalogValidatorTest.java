@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -38,7 +39,8 @@ import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class BigLakeCatalogValidatorTest {
@@ -287,22 +289,34 @@ class BigLakeCatalogValidatorTest {
         .hasMessageContaining("header.x-goog-user-project");
   }
 
-  @Test
-  void rejectsNonCanonicalCatalogQuotaProjectKey() {
+  @ParameterizedTest
+  @ValueSource(strings = {"HEADER.X-GOOG-USER-PROJECT", "Header.x-goog-user-project"})
+  void rejectsNonCanonicalCatalogQuotaProjectPrefix(String propertyName) {
     assertThatThrownBy(
             () ->
                 validator.validate(
                     realmConfig,
                     bigLakeCatalogWithProperties(
-                        Map.of(), Map.of("HEADER.X-GOOG-USER-PROJECT", "catalog-project"))))
+                        Map.of(), Map.of(propertyName, "catalog-project"))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("header.x-goog-user-project");
   }
 
   @ParameterizedTest
-  @NullAndEmptySource
-  @ValueSource(strings = {" ", "\t"})
-  void rejectsBlankConnectionQuotaProjectOverride(String quotaProject) {
+  @ValueSource(strings = {"header.X-Goog-User-Project", "header.X-GOOG-USER-PROJECT"})
+  void acceptsCatalogQuotaProjectWithCaseInsensitiveHeaderName(String propertyName) {
+    assertThatCode(
+            () ->
+                validator.validate(
+                    realmConfig,
+                    bigLakeCatalogWithProperties(
+                        Map.of(), Map.of(propertyName, "catalog-project"))))
+        .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @MethodSource("blankConnectionQuotaProjectOverrides")
+  void rejectsBlankConnectionQuotaProjectOverride(String quotaProject, String catalogPropertyName) {
     Map<String, String> connectionProperties = new HashMap<>();
     connectionProperties.put("header.x-goog-user-project", quotaProject);
 
@@ -311,8 +325,7 @@ class BigLakeCatalogValidatorTest {
                 validator.validate(
                     realmConfig,
                     bigLakeCatalogWithProperties(
-                        connectionProperties,
-                        Map.of("header.x-goog-user-project", "catalog-project"))))
+                        connectionProperties, Map.of(catalogPropertyName, "catalog-project"))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("header.x-goog-user-project");
   }
@@ -330,15 +343,16 @@ class BigLakeCatalogValidatorTest {
         .doesNotThrowAnyException();
   }
 
-  @Test
-  void acceptsConnectionQuotaProjectOverBlankCatalogQuotaProject() {
+  @ParameterizedTest
+  @ValueSource(strings = {"header.x-goog-user-project", "header.X-Goog-User-Project"})
+  void acceptsConnectionQuotaProjectOverBlankCatalogQuotaProject(String catalogPropertyName) {
     assertThatCode(
             () ->
                 validator.validate(
                     realmConfig,
                     bigLakeCatalogWithProperties(
                         Map.of("header.x-goog-user-project", "connection-project"),
-                        Map.of("header.x-goog-user-project", " "))))
+                        Map.of(catalogPropertyName, " "))))
         .doesNotThrowAnyException();
   }
 
@@ -489,6 +503,14 @@ class BigLakeCatalogValidatorTest {
                         "gs://bucket/path/to/data",
                         storageConfigInfo)))
         .doesNotThrowAnyException();
+  }
+
+  private static Stream<Arguments> blankConnectionQuotaProjectOverrides() {
+    return Stream.of(null, "", " ", "\t")
+        .flatMap(
+            quotaProject ->
+                Stream.of("header.x-goog-user-project", "header.X-Goog-User-Project")
+                    .map(propertyName -> Arguments.of(quotaProject, propertyName)));
   }
 
   private Catalog bigLakeCatalogWithProperties(
