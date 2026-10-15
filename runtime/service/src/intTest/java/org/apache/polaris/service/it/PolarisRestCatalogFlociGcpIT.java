@@ -28,7 +28,6 @@ import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.ResourceArg;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.TestProfile;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
@@ -53,7 +52,6 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
-import org.apache.polaris.test.commons.FlociEmulatorProfile;
 import org.apache.polaris.test.floci.gcp.FlociGcp;
 import org.apache.polaris.test.floci.gcp.FlociGcpAccess;
 import org.apache.polaris.test.floci.gcp.FlociGcpTestResource;
@@ -66,7 +64,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @QuarkusIntegrationTest
-@TestProfile(FlociEmulatorProfile.class)
 @QuarkusTestResource(
     value = FlociGcpTestResource.class,
     initArgs = {
