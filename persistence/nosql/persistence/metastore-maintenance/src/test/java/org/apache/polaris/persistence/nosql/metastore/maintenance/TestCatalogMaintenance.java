@@ -20,6 +20,7 @@ package org.apache.polaris.persistence.nosql.metastore.maintenance;
 
 import static java.lang.String.format;
 import static java.util.function.Function.identity;
+import static org.apache.polaris.core.entity.PolarisEntitySubType.ANY_SUBTYPE;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG_ROLE;
 import static org.apache.polaris.core.entity.PolarisEntityType.NAMESPACE;
@@ -69,6 +70,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -569,6 +571,108 @@ public class TestCatalogMaintenance {
     assertThat(cleanedGrants.isSuccess()).isTrue();
     assertThat(cleanedGrants.getGrantRecords()).isEmpty();
     assertThat(cleanedGrants.getEntities()).isEmpty();
+  }
+
+  @Test
+  public void loadResolvedEntitySkipsStaleGrantIntoPurgedContainer() {
+    // Regression test for #5787: dropping a catalog leaves the catalog's admin role and its
+    // grant to service_admin behind. The first maintenance pass runs the stale-grant cleanup
+    // before it purges the dropped catalog's references - the roles container still exists at
+    // that point, so the grant survives - and then purges the roles container reference.
+    // Resolving service_admin afterwards must skip the stale grant record, which points into
+    // a purged container, instead of failing with a ReferenceNotFoundException.
+    var testSetup = bootstrapRealm();
+    var manager = testSetup.manager();
+    var callCtx = testSetup.callCtx();
+    var persistence = testSetup.persistence();
+
+    // Creating a catalog with no principal roles granted grants the catalog's admin role to
+    // service_admin - the grant record that survives the drop and the first maintenance pass.
+    var catalog = createCatalog(manager, callCtx, persistence);
+    mandatoryCatalogObjsForTestImpl(persistence, catalog.getId());
+
+    var catalogAdminRole =
+        manager
+            .readEntityByName(
+                callCtx,
+                List.of(catalog),
+                CATALOG_ROLE,
+                ANY_SUBTYPE,
+                PolarisEntityConstants.getNameOfCatalogAdminRole())
+            .getEntity();
+    var serviceAdmin =
+        manager
+            .readEntityByName(
+                callCtx,
+                List.of(),
+                PRINCIPAL_ROLE,
+                ANY_SUBTYPE,
+                PolarisEntityConstants.getNameOfPrincipalServiceAdminRole())
+            .getEntity();
+
+    var staleAclNames = List.of(grantAclName(catalogAdminRole));
+    assertThat(countGrantAclHeads(persistence, staleAclNames)).isEqualTo(1L);
+
+    // Drop the catalog; the grant of its admin role to service_admin remains.
+    assertThat(manager.dropEntityIfExists(callCtx, List.of(), catalog, null, false))
+        .extracting(BaseResult::isSuccess)
+        .isEqualTo(true);
+
+    assertThat(countGrantAclHeads(persistence, staleAclNames)).isEqualTo(1L);
+
+    // Age the realm beyond the maintenance grace time, like a production realm that has
+    // been idle since the drop, so the dropped catalog's references are eligible for the
+    // purge and not merely retained as "too new".
+    mutableMonotonicClock.advanceBoth(GRACE_TIME);
+
+    // First maintenance pass: the stale-grant cleanup runs before the reference purge, it
+    // still finds the roles container with the admin role inside and keeps the grant, then
+    // the purge removes the dropped catalog's references.
+    var firstRun = runMaintenance();
+    assertThat(firstRun.success()).isTrue();
+    assertThat(firstRun.referenceStats().orElseThrow().purged().orElseThrow())
+        .isGreaterThanOrEqualTo(2L);
+
+    purgeBackendCache("");
+    assertThat(countGrantAclHeads(persistence, staleAclNames)).isEqualTo(1L);
+
+    // A fresh session resolves service_admin over a completely cold store. The stale grant
+    // record points into the purged roles container and must be skipped, not fail the read.
+    var session = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    var freshCallCtx = new PolarisCallContext(realmContext, session, configurationSource);
+
+    var resolved =
+        manager.loadResolvedEntityById(
+            freshCallCtx, serviceAdmin.getCatalogId(), serviceAdmin.getId(), PRINCIPAL_ROLE);
+
+    assertThat(resolved.isSuccess()).isTrue();
+    assertThat(resolved.getEntity()).isEqualTo(serviceAdmin);
+    assertThat(
+            resolved.getEntityGrantRecords().stream()
+                .noneMatch(grant -> grant.getSecurableId() == catalogAdminRole.getId()))
+        .isTrue();
+
+    // Second maintenance pass: the roles container is gone now, so the stale-grant cleanup
+    // treats the grant as stale and removes it. Resolving service_admin keeps working.
+    var secondRun = runMaintenance();
+    assertThat(secondRun.success()).isTrue();
+
+    purgeBackendCache("");
+    assertThat(countGrantAclHeads(persistence, staleAclNames)).isZero();
+
+    var session2 = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    var freshCallCtx2 = new PolarisCallContext(realmContext, session2, configurationSource);
+
+    var resolved2 =
+        manager.loadResolvedEntityById(
+            freshCallCtx2, serviceAdmin.getCatalogId(), serviceAdmin.getId(), PRINCIPAL_ROLE);
+
+    assertThat(resolved2.isSuccess()).isTrue();
+    assertThat(resolved2.getEntity()).isEqualTo(serviceAdmin);
+    assertThat(
+            resolved2.getEntityGrantRecords().stream()
+                .noneMatch(grant -> grant.getSecurableId() == catalogAdminRole.getId()))
+        .isTrue();
   }
 
   @Test

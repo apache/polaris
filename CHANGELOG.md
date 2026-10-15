@@ -111,6 +111,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Resolving grants no longer fails after NoSQL maintenance purges a dropped catalog's
+  references. A stale grant record that points into a purged container is now skipped
+  like a missing grant entry, and the next maintenance pass removes it.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - The H2 relational JDBC init script no longer overwrites the recorded schema version. It now seeds
