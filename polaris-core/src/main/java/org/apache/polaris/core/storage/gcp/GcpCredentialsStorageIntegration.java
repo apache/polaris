@@ -486,9 +486,11 @@ public class GcpCredentialsStorageIntegration
           StorageUri uri = StorageUri.parse(location);
           String bucket = uri.authority();
           String path = ensureTrailingSlash(trimLeadingSlash(uri.rawPath()));
-          writeConditionsByBucket
-              .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
-              .add(resourceNameStartsWithExpression(bucket, path));
+          LinkedHashSet<String> conditions =
+              writeConditionsByBucket.computeIfAbsent(bucket, key -> new LinkedHashSet<>());
+          conditions.add(resourceNameStartsWithExpression(bucket, path));
+          // HNS buckets authorize storage.folders.* (from legacyBucketWriter) on folders/<path>.
+          conditions.add(folderNameStartsWithExpression(bucket, path));
         });
 
     CredentialAccessBoundary.Builder accessBoundaryBuilder = CredentialAccessBoundary.newBuilder();
@@ -532,6 +534,13 @@ public class GcpCredentialsStorageIntegration
   static String resourceNameStartsWithExpression(String bucket, String path) {
     return String.format(
         "resource.name.startsWith('projects/_/buckets/%s/objects/%s')",
+        escapeCelLiteral(bucket), escapeCelLiteral(path));
+  }
+
+  @VisibleForTesting
+  static String folderNameStartsWithExpression(String bucket, String path) {
+    return String.format(
+        "resource.name.startsWith('projects/_/buckets/%s/folders/%s')",
         escapeCelLiteral(bucket), escapeCelLiteral(path));
   }
 

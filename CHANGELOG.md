@@ -112,6 +112,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- GCS vended credentials now work on Hierarchical Namespace (HNS) buckets. The write access boundary
+  also matches `folders/<path>`, so the `storage.folders.*` permissions already in
+  `roles/storage.legacyBucketWriter` apply to the granted write locations and writers can create
+  folders such as `data/year=2024/`. No new role, configuration flag, or bucket lookup is required.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - The H2 relational JDBC init script no longer overwrites the recorded schema version. It now seeds
