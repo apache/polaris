@@ -30,3 +30,5 @@ All catalog operations in Polaris for Google Cloud Storage (GCS)—including lis
 Polaris requires both IAM roles and [Hierarchical Namespace (HNS)](https://docs.cloud.google.com/storage/docs/hns-overview) ACLs (if HNS is enabled) to be properly configured. Even with the correct IAM role (e.g., `roles/storage.objectAdmin`), access to paths such as `gs://<bucket>/idsp_ns/sample_table4/` may fail with 403 errors if HNS ACLs are missing for scoped tokens. The original access token may work, but scoped (vended) tokens require HNS ACLs on the base path or relevant subpath.
 
 **Note:** HNS is not mandatory when using GCS for a catalog in Polaris. If HNS is not enabled on the bucket, only IAM roles are required for access. Always verify HNS ACLs in addition to IAM roles when troubleshooting GCS access issues with credential vending and HNS enabled.
+
+For HNS buckets, Polaris scopes the write rule of vended credentials to both `objects/<path>` and `folders/<path>` for each write location. Writers can then create and delete folders inside table locations using the `storage.folders.*` permissions of `roles/storage.legacyBucketWriter`, with no extra configuration.
