@@ -150,6 +150,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   now use it.
 - Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
   the packaged chart, so `helm test` ran no tests.
+- GCS vended credentials now work on Hierarchical Namespace (HNS) buckets. The write access boundary
+  also matches the `folders/<path>/` prefix and each parent `folders/<parent>/` exactly, so the
+  `storage.folders.*` permissions already in `roles/storage.legacyBucketWriter` let writers create
+  table and partition folders and the missing parent folders that HNS creates on the first write.
+  Parents are matched exactly, so sibling locations stay out of scope. No new role, configuration
+  flag, or bucket lookup is required.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - Maintenance policy content now rejects non-boolean values for the `enable` field again. The
