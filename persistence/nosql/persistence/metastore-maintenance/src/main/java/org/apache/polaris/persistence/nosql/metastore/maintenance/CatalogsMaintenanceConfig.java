@@ -23,6 +23,7 @@ import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
 import jakarta.validation.constraints.Min;
 import java.time.Duration;
+import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 import tools.jackson.databind.annotation.JsonDeserialize;
@@ -79,6 +80,38 @@ public interface CatalogsMaintenanceConfig {
 
   @WithName("retention.catalog-state")
   RetentionConfig catalogStateRetention();
+
+  /** Legacy CEL-based retention property, retained only to provide a migration error. */
+  @Deprecated(forRemoval = true)
+  Optional<String> principalsRetain();
+
+  /** Legacy CEL-based retention property, retained only to provide a migration error. */
+  @Deprecated(forRemoval = true)
+  Optional<String> principalRolesRetain();
+
+  /** Legacy CEL-based retention property, retained only to provide a migration error. */
+  @Deprecated(forRemoval = true)
+  Optional<String> grantsRetain();
+
+  /** Legacy CEL-based retention property, retained only to provide a migration error. */
+  @Deprecated(forRemoval = true)
+  Optional<String> immediateTasksRetain();
+
+  /** Legacy CEL-based retention property, retained only to provide a migration error. */
+  @Deprecated(forRemoval = true)
+  Optional<String> catalogsHistoryRetain();
+
+  /** Legacy CEL-based retention property, retained only to provide a migration error. */
+  @Deprecated(forRemoval = true)
+  Optional<String> catalogRolesRetain();
+
+  /** Legacy CEL-based retention property, retained only to provide a migration error. */
+  @Deprecated(forRemoval = true)
+  Optional<String> catalogPoliciesRetain();
+
+  /** Legacy CEL-based retention property, retained only to provide a migration error. */
+  @Deprecated(forRemoval = true)
+  Optional<String> catalogStateRetain();
 
   /** Retention settings shared by every kind of history. */
   interface RetentionConfig {

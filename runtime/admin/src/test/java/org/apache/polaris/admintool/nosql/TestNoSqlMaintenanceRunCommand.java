@@ -35,6 +35,8 @@ import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInProg
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInformation;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunSpec;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceService;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigValue;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import picocli.CommandLine;
@@ -54,6 +56,7 @@ public class TestNoSqlMaintenanceRunCommand {
     inject(command, "maintenanceService", service);
     inject(command, "maintenanceConfig", MaintenanceConfig.builder().build());
     inject(command, "backend", backend("MongoDb"));
+    inject(command, "config", emptyConfig());
 
     var stdout = new StringWriter();
     var stderr = new StringWriter();
@@ -112,6 +115,7 @@ public class TestNoSqlMaintenanceRunCommand {
     inject(command, "maintenanceService", service);
     inject(command, "maintenanceConfig", MaintenanceConfig.builder().build());
     inject(command, "backend", backend("MongoDb"));
+    inject(command, "config", emptyConfig());
 
     var stdout = new StringWriter();
     var stderr = new StringWriter();
@@ -139,6 +143,30 @@ public class TestNoSqlMaintenanceRunCommand {
                 case "close" -> null;
                 default -> throw new UnsupportedOperationException(method.getName());
               };
+            });
+  }
+
+  private static Config emptyConfig() {
+    var configValue =
+        (ConfigValue)
+            Proxy.newProxyInstance(
+                ConfigValue.class.getClassLoader(),
+                new Class<?>[] {ConfigValue.class},
+                (proxy, method, args) -> {
+                  if (method.getName().equals("getRawValue")) {
+                    return null;
+                  }
+                  throw new UnsupportedOperationException(method.getName());
+                });
+    return (Config)
+        Proxy.newProxyInstance(
+            Config.class.getClassLoader(),
+            new Class<?>[] {Config.class},
+            (proxy, method, args) -> {
+              if (method.getName().equals("getConfigValue")) {
+                return configValue;
+              }
+              throw new UnsupportedOperationException(method.getName());
             });
   }
 

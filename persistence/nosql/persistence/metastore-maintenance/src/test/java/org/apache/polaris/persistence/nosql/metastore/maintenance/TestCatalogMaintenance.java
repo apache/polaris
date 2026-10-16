@@ -337,7 +337,7 @@ public class TestCatalogMaintenance {
   }
 
   @Test
-  public void minimumRetentionAppliesToNonPaginatedHistory() {
+  public void minimumRetentionStartsAfterPointerUpdate() {
     var minimumRetention = GRACE_TIME.plusMinutes(5);
     var persistence = bootstrapRealm().persistence();
 
@@ -355,6 +355,10 @@ public class TestCatalogMaintenance {
                 .tail(oldPolicyMappings.id())
                 .build(),
             PolicyMappingsObj.class);
+
+    // Simulate a commit pausing after object persistence but before the pointer update. The old
+    // snapshot has not been superseded during this delay, even though the new object is aging.
+    mutableMonotonicClock.advanceBoth(minimumRetention.plus(GRACE_TIME));
     assertThat(
             persistence.updateReferencePointer(
                 persistence.fetchReference(POLICY_MAPPINGS_REF_NAME),
@@ -366,14 +370,13 @@ public class TestCatalogMaintenance {
             .minRetentionDuration(minimumRetention)
             .build());
 
-    mutableMonotonicClock.advanceBoth(GRACE_TIME);
     assertThat(runMaintenance().success()).isTrue();
     purgeBackendCache("within minimum retention");
 
     assertThat(persistence.fetch(objRef(oldPolicyMappings), PolicyMappingsObj.class))
         .isEqualTo(oldPolicyMappings);
 
-    mutableMonotonicClock.advanceBoth(minimumRetention.minus(GRACE_TIME));
+    mutableMonotonicClock.advanceBoth(minimumRetention);
     assertThat(runMaintenance().success()).isTrue();
     purgeBackendCache("after minimum retention");
 

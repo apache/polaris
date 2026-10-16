@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -83,6 +84,7 @@ import org.slf4j.LoggerFactory;
 class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CatalogRetainedIdentifier.class);
+  private static final String RETENTION_CLOCK_REF_PREFIX = "maintenance/catalog-retention/";
 
   /**
    * Local batch size for stale cross-reference cleanup commits. The generic maintenance SPI does
@@ -714,12 +716,28 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
   private <O extends BaseCommitObj> Predicate<O> historyContinuePredicate(
       RetentionConfig retention, Persistence persistence) {
+    var globalMinimumRetention = catalogsMaintenanceConfig.minRetentionDuration();
+    var retainByDuration =
+        retention.duration().compareTo(Duration.ZERO) > 0
+            || globalMinimumRetention.compareTo(Duration.ZERO) > 0;
     return historyContinuePredicate(
         retention.numCommits(),
         retention.duration(),
         retention.all(),
-        catalogsMaintenanceConfig.minRetentionDuration(),
-        persistence::objAge);
+        globalMinimumRetention,
+        retainByDuration
+            ? current -> supersessionAge(persistence, current)
+            : ignored -> Duration.ZERO);
+  }
+
+  private Duration supersessionAge(Persistence persistence, BaseCommitObj succeedingCommit) {
+    var retentionClock =
+        persistence.fetchOrCreateReference(
+            RETENTION_CLOCK_REF_PREFIX + Long.toUnsignedString(succeedingCommit.id()),
+            Optional::empty);
+    return Duration.ofNanos(
+        TimeUnit.MICROSECONDS.toNanos(
+            Math.max(persistence.currentTimeMicros() - retentionClock.createdAtMicros(), 0L)));
   }
 
   /**
@@ -727,7 +745,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
    * the configured count, retention duration, or retain-all policy.
    *
    * <p>{@link RetainedCollector} invokes this predicate after retaining the current commit. The
-   * current commit's age represents how long the next, older commit has been superseded.
+   * supplied age must represent how long the next, older commit has been superseded.
    */
   static <O> Predicate<O> historyContinuePredicate(
       int commitsToRetain,
