@@ -56,3 +56,11 @@ The per-history retention settings provide independent controls for each kind of
 | `polaris.persistence.nosql.maintenance.catalog.retention.catalog-state.num-commits` | `1` | `int` | Minimum number of latest commits to retain.  |
 | `polaris.persistence.nosql.maintenance.catalog.retention.catalog-state.duration` | `PT0S` | `duration` | Minimum duration to retain commits after they are superseded.  |
 | `polaris.persistence.nosql.maintenance.catalog.retention.catalog-state.all` | `false` | `boolean` | Whether to retain all commits.  |
+| `polaris.persistence.nosql.maintenance.catalog.principals-retain` |  | `string` | Legacy CEL-based retention property, retained only to provide a migration error. <br><br>_Deprecated_  |
+| `polaris.persistence.nosql.maintenance.catalog.principal-roles-retain` |  | `string` | Legacy CEL-based retention property, retained only to provide a migration error. <br><br>_Deprecated_  |
+| `polaris.persistence.nosql.maintenance.catalog.grants-retain` |  | `string` | Legacy CEL-based retention property, retained only to provide a migration error. <br><br>_Deprecated_  |
+| `polaris.persistence.nosql.maintenance.catalog.immediate-tasks-retain` |  | `string` | Legacy CEL-based retention property, retained only to provide a migration error. <br><br>_Deprecated_  |
+| `polaris.persistence.nosql.maintenance.catalog.catalogs-history-retain` |  | `string` | Legacy CEL-based retention property, retained only to provide a migration error. <br><br>_Deprecated_  |
+| `polaris.persistence.nosql.maintenance.catalog.catalog-roles-retain` |  | `string` | Legacy CEL-based retention property, retained only to provide a migration error. <br><br>_Deprecated_  |
+| `polaris.persistence.nosql.maintenance.catalog.catalog-policies-retain` |  | `string` | Legacy CEL-based retention property, retained only to provide a migration error. <br><br>_Deprecated_  |
+| `polaris.persistence.nosql.maintenance.catalog.catalog-state-retain` |  | `string` | Legacy CEL-based retention property, retained only to provide a migration error. <br><br>_Deprecated_  |
