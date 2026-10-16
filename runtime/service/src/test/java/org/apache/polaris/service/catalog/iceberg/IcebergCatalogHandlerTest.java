@@ -361,6 +361,68 @@ class IcebergCatalogHandlerTest {
   }
 
   @Test
+  void registerTableScopesClientAccessPropertiesWithoutCredentials() {
+    mockRegisterTableCatalog(false);
+    when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+    StorageAccessConfig storageAccessConfig =
+        StorageAccessConfig.builder()
+            .putExtraProperty(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-west-1")
+            .putInternalProperty("internal.endpoint", "https://internal.example.com")
+            .supportsCredentialVending(false)
+            .build();
+    when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
+        .thenReturn(storageAccessConfig);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    LoadTableResponse response =
+        handler.registerTable(
+            NS1, registerTableRequest(false), EnumSet.of(VENDED_CREDENTIALS), Optional.empty());
+
+    assertThat(response.config())
+        .containsEntry(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-west-1")
+        .doesNotContainKey("internal.endpoint");
+    assertThat(response.credentials())
+        .singleElement()
+        .satisfies(
+            credential ->
+                assertThat(credential.config())
+                    .containsExactly(
+                        Map.entry(
+                            StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-west-1")));
+  }
+
+  @Test
+  void registerTableStillRejectsMissingVendedCredentialsWhenSupported() {
+    mockRegisterTableCatalog(false);
+    when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+    StorageAccessConfig storageAccessConfig =
+        StorageAccessConfig.builder()
+            .putExtraProperty(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-west-1")
+            .build();
+    when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
+        .thenReturn(storageAccessConfig);
+    when(realmConfig.getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION))
+        .thenReturn(false);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatThrownBy(
+            () ->
+                handler.registerTable(
+                    NS1,
+                    registerTableRequest(false),
+                    EnumSet.of(VENDED_CREDENTIALS),
+                    Optional.empty()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("no credentials are available");
+  }
+
+  @Test
   void registerTableWithVendedCredentialsVendsReadActionsWhenWriteDelegationFallsBackToRead() {
     Catalog catalog = mockRegisterTableCatalog(false);
     when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
@@ -632,6 +694,48 @@ class IcebergCatalogHandlerTest {
                   .containsAllEntriesOf(fakeCredentials)
                   .containsEntry(
                       StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-east-2");
+            });
+  }
+
+  @Test
+  void loadCredentialsReturnsClientAccessPropertiesWithoutCredentials() {
+    String tableLocation = "s3://fake-bucket/tables/table2";
+    PolarisEntity leafEntity =
+        new PolarisEntity(
+            new PolarisBaseEntity.Builder()
+                .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+                .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
+                .name(TABLE2.name())
+                .internalPropertiesAsMap(Map.of(IcebergTableLikeEntity.LOCATION, tableLocation))
+                .build());
+    when(resolvedPath.getRawLeafEntity()).thenReturn(leafEntity);
+
+    LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+
+    StorageAccessConfig storageAccessConfig =
+        StorageAccessConfig.builder()
+            .putExtraProperty(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-east-2")
+            .putInternalProperty("internal.endpoint", "https://internal.example.com")
+            .supportsCredentialVending(false)
+            .build();
+    when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
+        .thenReturn(storageAccessConfig);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    ImmutableLoadCredentialsResponse response = handler.loadCredentials(TABLE2, Optional.empty());
+
+    assertThat(response.credentials())
+        .singleElement()
+        .satisfies(
+            credential -> {
+              assertThat(credential.prefix()).isEqualTo(tableLocation);
+              assertThat(credential.config())
+                  .containsExactly(
+                      Map.entry(
+                          StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-east-2"));
             });
   }
 
