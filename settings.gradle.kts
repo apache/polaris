@@ -93,9 +93,9 @@ loadProperties(file("gradle/projects.main.properties")).forEach { name, director
 //   -Dpolaris.skipDuplicateScalaVariants=true   (system property)
 //   idea.active=true retains its existing IntelliJ meaning.
 val skipDuplicateScalaVariants =
-    providers.systemProperty("idea.active").getOrElse("false").toBoolean() ||
-        providers.systemProperty("polaris.skipDuplicateScalaVariants").getOrElse("false").toBoolean() ||
-        providers.gradleProperty("polaris.skipDuplicateScalaVariants").getOrElse("false").toBoolean()
+  providers.systemProperty("idea.active").getOrElse("false").toBoolean() ||
+    providers.systemProperty("polaris.skipDuplicateScalaVariants").getOrElse("false").toBoolean() ||
+    providers.gradleProperty("polaris.skipDuplicateScalaVariants").getOrElse("false").toBoolean()
 
 // load the polaris spark plugin projects
 val polarisSparkDir = "plugins/spark"
