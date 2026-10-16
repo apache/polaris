@@ -87,6 +87,7 @@ public class TestNoSqlMaintenanceRunCommand {
     inject(command, "maintenanceService", service);
     inject(command, "maintenanceConfig", MaintenanceConfig.builder().build());
     inject(command, "backend", backend("MongoDb"));
+    inject(command, "config", emptyConfig());
 
     var stdout = new StringWriter();
     var stderr = new StringWriter();
