@@ -113,20 +113,13 @@ dependencies {
     api(project(":polaris-hms-testcontainer"))
 
     api(project(":polaris-spark-3.5_2.12"))
-    // Keep in sync with the same switch in settings.gradle.kts: IDE imports that
-    // enforce "one project per directory" (IntelliJ, jdt.ls/Buildship) skip the
-    // duplicate scala variants, so the BOM must not reference them there.
-    val skipDuplicateScalaVariants =
+    // Keep in sync with settings.gradle.kts: IDE imports that enforce "one
+    // project per directory" skip the duplicate scala variants, so the BOM
+    // must not reference them during IDE imports.
+    val ideImportActive =
       providers.systemProperty("idea.active").getOrElse("false").toBoolean() ||
-        providers
-          .systemProperty("polaris.skipDuplicateScalaVariants")
-          .getOrElse("false")
-          .toBoolean() ||
-        providers
-          .gradleProperty("polaris.skipDuplicateScalaVariants")
-          .getOrElse("false")
-          .toBoolean()
-    if (!skipDuplicateScalaVariants) {
+        providers.systemProperty("buildship.active").getOrElse("false").toBoolean()
+    if (!ideImportActive) {
       api(project(":polaris-spark-3.5_2.13"))
       api(project(":polaris-spark-4.0_2.13"))
     }
