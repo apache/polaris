@@ -84,10 +84,6 @@ loadProperties(file("gradle/projects.main.properties")).forEach { name, director
   polarisProject(name as String, file(directory as String))
 }
 
-// IDE-based importers (IntelliJ with idea.active, and Buildship-based editors
-// like jdt.ls with buildship.active) cannot import two subprojects sharing one
-// directory. The first Scala variant is enough for editor-driven work; full
-// variants keep building on the command line.
 val ideImportActive =
   providers.systemProperty("idea.active").getOrElse("false").toBoolean() ||
     providers.systemProperty("buildship.active").getOrElse("false").toBoolean()
