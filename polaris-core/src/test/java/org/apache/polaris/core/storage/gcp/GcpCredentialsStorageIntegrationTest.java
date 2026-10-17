@@ -332,7 +332,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 + "/')");
     assertThat(expressionAt(parsedRules, 1))
         .isEqualTo(
-            "resource.name.startsWith('projects/_/buckets/bucket1/objects/a\\'b\\\"c\\\\d/')");
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/a\\'b\\\"c\\\\d/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/a\\'b\\\"c\\\\d/')");
   }
 
   @ParameterizedTest
@@ -559,7 +560,28 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 + " || api.getAttribute('storage.googleapis.com/objectListPrefix', '')"
                 + ".startsWith('data/')");
     assertThat(expressionAt(parsedRules, 1))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/data/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/data/')");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryWriteRuleCoversHnsFolders() {
+    // HNS buckets check storage.folders.* against folders/<path>, not objects/<path>.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of("gs://bucket1/data"), Set.of(), Set.of("gs://bucket1/data"));
+
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(expressionAt(parsedRules, 0))
+        .doesNotContain("/folders/")
         .isEqualTo("resource.name.startsWith('projects/_/buckets/bucket1/objects/data/')");
+    assertThat(expressionAt(parsedRules, 1))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/data/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/data/')");
   }
 
   private static String expressionAt(JsonNode parsedRules, int ruleIndex) {
