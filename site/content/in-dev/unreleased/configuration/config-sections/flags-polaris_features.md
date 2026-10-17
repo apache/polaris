@@ -300,6 +300,16 @@ Flag to enable or disable the API to reset principal credentials. Defaults to en
 
 ---
 
+##### `polaris.features."ENABLE_ENTITY_LEVEL_LIST_FILTERING"`
+
+When true, listNamespaces, listTables and listViews no longer return 403 to a caller who lacks the matching *_LIST privilege on the parent. Instead, the caller receives only the children it has access to. Under the built-in RBAC authorizer, a child is accessible if the caller holds *_READ_PROPERTIES (or a stronger privilege that implies it, such as TABLE_READ_DATA for tables) on the child or one of its parents. Callers holding *_LIST on the parent are unaffected and still see every child. When false (default), callers without *_LIST on the parent receive a 403.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+- **Catalog Config:** `polaris.config.enable-entity-level-list-filtering`
+
+---
+
 ##### `polaris.features."ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES"`
 
 When true, enables finer grained update table privileges which are passed to the authorizer for update table operations
