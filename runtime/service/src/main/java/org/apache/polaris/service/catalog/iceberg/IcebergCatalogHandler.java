@@ -658,26 +658,24 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     properties.putAll(reservedProperties().removeReservedProperties(request.properties()));
 
     String location;
-    if (request.location() != null) {
-      // Even if the request provides a location, run it through the catalog's TableBuilder
-      // to inherit any override behaviors if applicable.
-      if (isFederated) {
-        location = request.location();
-      } else {
-        location =
-            ((LocalIcebergCatalog) baseCatalog)
-                .transformTableLikeLocation(ident, request.location());
-      }
-    } else {
+    if (isFederated) {
       location =
-          baseCatalog
-              .buildTable(ident, request.schema())
-              .withPartitionSpec(request.spec())
-              .withSortOrder(request.writeOrder())
-              .withProperties(properties)
-              .createTransaction()
-              .table()
-              .location();
+          request.location() != null
+              ? request.location()
+              : baseCatalog
+                  .buildTable(ident, request.schema())
+                  .withPartitionSpec(request.spec())
+                  .withSortOrder(request.writeOrder())
+                  .withProperties(properties)
+                  .createTransaction()
+                  .table()
+                  .location();
+    } else {
+      LocalIcebergCatalog localCatalog = (LocalIcebergCatalog) baseCatalog;
+      location =
+          request.location() != null
+              ? localCatalog.transformTableLikeLocation(ident, request.location())
+              : localCatalog.defaultWarehouseLocation(ident);
     }
 
     TableMetadata metadata =
