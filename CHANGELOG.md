@@ -235,6 +235,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
   selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
   readiness monitoring without configuration changes.
+- Staged table creates now honor the catalog's `table-default.*` and `table-override.*` properties
+  in the returned table metadata, matching the precedence applied to direct creates.
 
 ### Commits
 
