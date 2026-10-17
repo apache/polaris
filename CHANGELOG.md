@@ -235,6 +235,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
   selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
   readiness monitoring without configuration changes.
+- Notification UPDATE requests for external tables now retry on concurrent entity modifications instead of failing immediately. The retry re-reads the latest entity from the metastore, re-validates the notification timestamp, and retries the update up to 3 times before giving up.
 
 ### Commits
 
