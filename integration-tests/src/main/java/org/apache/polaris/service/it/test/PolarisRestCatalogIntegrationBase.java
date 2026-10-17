@@ -161,6 +161,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   private static PolarisClient client;
 
   private String principalToken;
+  private String principalRoleName;
   private String adminToken;
 
   private ManagementApi managementApi;
@@ -284,7 +285,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     managementApi = client.managementApi(adminToken);
 
     String principalName = client.newEntityName("snowman-rest");
-    String principalRoleName = client.newEntityName("rest-admin");
+    principalRoleName = client.newEntityName("rest-admin");
     ClientPrincipal testPrincipal = createTestPrincipal(client, principalName, principalRoleName);
     principalToken = obtainToken(client, testPrincipal);
 
@@ -1050,6 +1051,73 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
       }
+    }
+  }
+
+  /**
+   * Verify that a table with commit history can be handed off from a retired catalog to a new
+   * catalog sharing the same storage configuration and base location, preserving table UUID,
+   * snapshots, history, and schemas, and allowing subsequent commits whose parent is the source
+   * table's last snapshot.
+   */
+  @Test
+  public void testRegisterTableHandoffToNewCatalog() throws IOException {
+    Namespace ns = Namespace.of("ns_handoff");
+    restCatalog.createNamespace(ns);
+
+    TableIdentifier ident = TableIdentifier.of(ns, "handoff_table");
+    Table source = restCatalog.createTable(ident, SCHEMA);
+    source.newFastAppend().appendFile(FILE_A).commit();
+    source.newFastAppend().appendFile(FILE_B).commit();
+
+    String metadataFileLocation =
+        ((BaseTable) source).operations().current().metadataFileLocation();
+    UUID sourceUuid = source.uuid();
+    var sourceCurrentSnapshot = source.currentSnapshot();
+    var sourceSnapshots = source.snapshots();
+    var sourceHistory = source.history();
+    var sourceSchemas = source.schemas();
+
+    Catalog sourceCatalog = managementApi.getCatalog(currentCatalogName);
+    String newCatalogName = client.newEntityName("handoff_target");
+    Catalog targetCatalog =
+        PolarisCatalog.builder()
+            .setType(sourceCatalog.getType())
+            .setName(newCatalogName)
+            .setProperties(sourceCatalog.getProperties())
+            .setStorageConfigInfo(sourceCatalog.getStorageConfigInfo())
+            .build();
+
+    // While the source catalog is still live, creating an overlapping catalog is rejected (400)
+    try (Response overlapResponse =
+        managementApi.request("v1/catalogs").post(Entity.json(targetCatalog))) {
+      assertThat(overlapResponse.getStatus())
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+    }
+
+    // Retire the source catalog: drop table without purge, drop namespace, drop catalog
+    assertThat(restCatalog.dropTable(ident, false)).isTrue();
+    assertThat(restCatalog.dropNamespace(ns)).isTrue();
+    managementApi.dropCatalog(currentCatalogName);
+
+    // Create the new catalog with the source catalog's storage config and register the table
+    createPolarisCatalog(targetCatalog);
+    managementApi.makeAdmin(principalRoleName, targetCatalog);
+
+    try (RESTCatalog targetRestCatalog =
+        IcebergHelper.restCatalog(endpoints, newCatalogName, restCatalogConfig, principalToken)) {
+      targetRestCatalog.createNamespace(ns);
+      Table registered = targetRestCatalog.registerTable(ident, metadataFileLocation);
+
+      assertThat(registered.uuid()).isEqualTo(sourceUuid);
+      assertThat(registered.currentSnapshot()).isEqualTo(sourceCurrentSnapshot);
+      assertThat(registered.snapshots()).containsExactlyElementsOf(sourceSnapshots);
+      assertThat(registered.history()).isEqualTo(sourceHistory);
+      assertThat(registered.schemas()).isEqualTo(sourceSchemas);
+
+      registered.newFastAppend().appendFile(FILE_C).commit();
+      assertThat(registered.currentSnapshot().parentId())
+          .isEqualTo(sourceCurrentSnapshot.snapshotId());
     }
   }
 
