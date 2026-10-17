@@ -309,6 +309,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
+- Catalog federation: `connectionConfigInfo.properties` is now applied when Polaris initializes
+  the Iceberg client for `HADOOP` and `HIVE` catalogs. As for `ICEBERG_REST`, only an explicit
+  allow-list is forwarded: `suppress-permission-error` (Hadoop), `clients` and `list-all-tables`
+  (Hive), plus the non-secret FileIO settings `s3.endpoint`,
+  `s3.path-style-access` and `client.region` for both. Other keys are stored but ignored.
 - A metastore failure during authentication now returns a fixed `Service unavailable` message
   instead of naming the lookup that failed; the principal lookup previously returned `Unable to
   fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which

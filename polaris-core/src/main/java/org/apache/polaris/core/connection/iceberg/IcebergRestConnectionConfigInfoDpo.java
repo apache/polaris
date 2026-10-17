@@ -86,11 +86,7 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
     // Add authentication-specific metadata (non-credential properties)
     properties.putAll(getAuthenticationParameters().asIcebergCatalogProperties(credentialManager));
 
-    for (String headerKey : ALLOWED_PROPERTIES) {
-      if (getProperties().containsKey(headerKey)) {
-        properties.put(headerKey, getProperties().get(headerKey));
-      }
-    }
+    copyAllowedProperties(properties, ALLOWED_PROPERTIES);
 
     // Add connection credentials from Polaris credential manager
     ConnectionCredentials connectionCredentials = credentialManager.getConnectionCredentials(this);
