@@ -136,7 +136,8 @@ abstract class AbstractSemanticModelCatalogHandlerTest {
             1,
             FileStorageConfigInfo.builder()
                 .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-                .build());
+                .build(),
+            null);
     try (Response response =
         services
             .catalogsApi()

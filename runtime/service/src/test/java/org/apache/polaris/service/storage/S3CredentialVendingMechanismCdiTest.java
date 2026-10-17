@@ -544,7 +544,8 @@ class S3CredentialVendingMechanismCdiTest {
             .setCredentialVendingMechanism(UNINSTALLED_MECHANISM)
             .setRoleArn("arn:aws:iam::123456789012:role/r")
             .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"))
-            .build());
+            .build(),
+        null);
   }
 
   private static void createTable(CatalogApi catalogApi, String catalog, String ns, String table) {
