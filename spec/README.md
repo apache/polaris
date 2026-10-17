@@ -24,6 +24,10 @@ Apache Polaris provides the following OpenAPI specifications:
 - [polaris-management-service.yml](polaris-management-service.yml) - Defines the management APIs for creating and managing 
   principals, principal roles, catalogs and catalog roles.
 
+- [polaris-shares-api.yaml](polaris-shares-api.yaml) - Defines the management APIs for shares, external
+  consumers and listings, served under the management root (beta; served only when the shares feature is
+  enabled).
+
 - [polaris-catalog-service.yaml](polaris-catalog-service.yaml) - Defines the specification for the Apache Polaris
   Catalog API, which encompasses both the Apache Iceberg REST Catalog API and Apache 
   Polaris-native APIs:
