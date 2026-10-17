@@ -139,7 +139,8 @@ public class PolarisPrivilegeTest {
         Arguments.of(108, PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA),
         Arguments.of(109, PolarisPrivilege.SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE),
         Arguments.of(110, PolarisPrivilege.TABLE_READ_METRICS),
-        Arguments.of(111, null));
+        Arguments.of(111, PolarisPrivilege.CATALOG_READ_CONFIG),
+        Arguments.of(112, null));
   }
 
   @ParameterizedTest
