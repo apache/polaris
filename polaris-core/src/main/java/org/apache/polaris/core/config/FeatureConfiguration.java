@@ -78,6 +78,26 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  /**
+   * Rolling-upgrade bridge after server FileIO stopped reading catalog {@code table-default.*}
+   * directly. When true, catalog table-default properties are folded into {@code
+   * StorageAccessConfig} so older deployments keep working. Prefer storage-configuration typed
+   * fields and {@code fileIoProperties} instead. Off by default. Temporary; planned for removal in
+   * 1.10.0.
+   */
+  public static final FeatureConfiguration<Boolean>
+      PROPAGATE_CATALOG_TABLE_DEFAULTS_TO_STORAGE_ACCESS_CONFIG =
+          PolarisConfiguration.<Boolean>builder()
+              .key("PROPAGATE_CATALOG_TABLE_DEFAULTS_TO_STORAGE_ACCESS_CONFIG")
+              .description(
+                  "When true, fold catalog table-default.* properties into StorageAccessConfig for\n"
+                      + "   server FileIO (and load-table config). Off by default. Use only as a\n"
+                      + "   rolling-upgrade bridge; prefer storage-configuration typed fields and\n"
+                      + "   fileIoProperties on PolarisStorageConfigurationInfo. Temporary; planned\n"
+                      + "   for removal in 1.10.0.")
+              .defaultValue(false)
+              .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL =
       PolarisConfiguration.<Boolean>builder()
           .key("INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL")

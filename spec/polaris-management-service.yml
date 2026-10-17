@@ -1112,6 +1112,16 @@ components:
         storageName:
           type: string
           description: An optional name referencing a server-side storage configuration
+        fileIoProperties:
+          type: object
+          additionalProperties:
+            type: string
+          description: >
+            Optional Iceberg FileIO configuration properties not covered by typed fields on the
+            storage configuration. Typed fields take precedence when both are set. Semantics follow
+            Iceberg FileIO conventions for the storage type. Polaris applies properties relevant to
+            its Java FileIO implementations when building server-side FileIO; all properties are
+            also relayed to clients (including non-Java clients such as PyIceberg).
       required:
         - storageType
       discriminator:

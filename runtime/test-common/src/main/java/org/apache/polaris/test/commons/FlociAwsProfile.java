@@ -32,7 +32,6 @@ public class FlociAwsProfile implements QuarkusTestProfile {
     return ImmutableMap.<String, String>builder()
         .put("polaris.storage.aws.access-key", ACCESS_KEY)
         .put("polaris.storage.aws.secret-key", SECRET_KEY)
-        .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "false")
         .build();
   }
 }

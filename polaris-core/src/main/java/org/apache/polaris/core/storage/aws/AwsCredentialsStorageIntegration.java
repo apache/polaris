@@ -24,7 +24,6 @@ import static org.apache.polaris.core.storage.aws.AwsSessionNameBuilder.buildSes
 import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
 
 import com.google.common.annotations.VisibleForTesting;
-import java.net.URI;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -44,6 +43,7 @@ import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.StorageConfigurationAccessProperties;
 import org.apache.polaris.core.storage.StorageUri;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
@@ -217,7 +217,13 @@ public class AwsCredentialsStorageIntegration
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     String region = awsStorageConfig.getRegion();
+    // Bag + typed fields (typed wins). Bag static keys are internals (server FileIO only);
+    // STS session credentials below are the only AccessConfig.credentials() entries.
+    StorageAccessConfig fromStorageConfig =
+        StorageConfigurationAccessProperties.storageConfigOnly(awsStorageConfig);
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
+    fromStorageConfig.extraProperties().forEach(accessConfig::putExtraProperty);
+    fromStorageConfig.internalProperties().forEach(accessConfig::putInternalProperty);
     String roleSessionName = key.roleSessionName();
 
     if (shouldUseSts(awsStorageConfig)) {
@@ -264,24 +270,6 @@ public class AwsCredentialsStorageIntegration
                   accessConfig.put(
                       StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
                       String.valueOf(i.toEpochMilli())));
-    }
-
-    if (region != null) {
-      accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
-    }
-
-    URI endpointUri = awsStorageConfig.getEndpointUri();
-    if (endpointUri != null) {
-      accessConfig.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
-    }
-    URI internalEndpointUri = awsStorageConfig.getInternalEndpointUri();
-    if (internalEndpointUri != null) {
-      accessConfig.putInternalProperty(
-          StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), internalEndpointUri.toString());
-    }
-
-    if (Boolean.TRUE.equals(awsStorageConfig.getPathStyleAccess())) {
-      accessConfig.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
     }
 
     if ("aws-us-gov".equals(awsStorageConfig.getAwsPartition()) && region == null) {

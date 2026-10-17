@@ -195,7 +195,9 @@ testing {
         testTask.configure {
           configureSparkIntegrationTestTask(
             suiteName = "sparkIntTest",
-            skipCredentialSubscoping = true,
+            // FileIO settings come from storage-config typed fields + fileIoProperties; keep
+            // SKIP off so AccessConfig is built via the normal credential-integration path.
+            skipCredentialSubscoping = false,
           )
         }
       }

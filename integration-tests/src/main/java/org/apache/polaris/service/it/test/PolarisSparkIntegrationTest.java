@@ -38,7 +38,7 @@ import org.junit.jupiter.api.Test;
  *     <ul>
  *       <li>{@link
  *           org.apache.polaris.core.config.FeatureConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
- *           {@code true}
+ *           {@code false}
  *       <li>{@link
  *           org.apache.polaris.core.config.FeatureConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
  *           {@code true}
