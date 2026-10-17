@@ -71,6 +71,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Breaking changes
 
+- Creating a local Generic Table with an explicit, non-empty `base-location` now validates that
+  location against the catalog's allowed locations and, unless `ALLOW_UNSTRUCTURED_TABLE_LOCATION`
+  is enabled, the parent namespace location. Requests that previously stored disallowed locations
+  are now rejected. Omitting the location or sending an empty string retains its previous behavior.
 - `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
   invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
   size or supplying a page token. A request that supplies neither still returns all results, unless
