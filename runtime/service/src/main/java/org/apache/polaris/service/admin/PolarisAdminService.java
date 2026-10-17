@@ -25,6 +25,8 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundE
 
 import com.google.common.base.Strings;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -177,6 +179,7 @@ public class PolarisAdminService {
   private final ServiceIdentityProvider serviceIdentityProvider;
   private final ReservedProperties reservedProperties;
   private final S3CredentialVendingMechanisms vendingMechanisms;
+  private final Iterable<CatalogConfigValidator> catalogConfigValidators;
 
   @Inject
   public PolarisAdminService(
@@ -188,7 +191,55 @@ public class PolarisAdminService {
       @NonNull PolarisPrincipal principal,
       @NonNull PolarisAuthorizer authorizer,
       @NonNull ReservedProperties reservedProperties,
-      @NonNull S3CredentialVendingMechanisms vendingMechanisms) {
+      @NonNull S3CredentialVendingMechanisms vendingMechanisms,
+      @Any Instance<CatalogConfigValidator> catalogConfigValidators) {
+    this(
+        callContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        serviceIdentityProvider,
+        principal,
+        authorizer,
+        reservedProperties,
+        vendingMechanisms,
+        (Iterable<CatalogConfigValidator>) catalogConfigValidators);
+  }
+
+  public PolarisAdminService(
+      @NonNull CallContext callContext,
+      @NonNull ResolutionManifestFactory resolutionManifestFactory,
+      @NonNull PolarisMetaStoreManager metaStoreManager,
+      @NonNull UserSecretsManager userSecretsManager,
+      @NonNull ServiceIdentityProvider serviceIdentityProvider,
+      @NonNull PolarisPrincipal principal,
+      @NonNull PolarisAuthorizer authorizer,
+      @NonNull S3CredentialVendingMechanisms vendingMechanisms,
+      @NonNull ReservedProperties reservedProperties) {
+    this(
+        callContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        serviceIdentityProvider,
+        principal,
+        authorizer,
+        reservedProperties,
+        vendingMechanisms,
+        List.of());
+  }
+
+  public PolarisAdminService(
+      @NonNull CallContext callContext,
+      @NonNull ResolutionManifestFactory resolutionManifestFactory,
+      @NonNull PolarisMetaStoreManager metaStoreManager,
+      @NonNull UserSecretsManager userSecretsManager,
+      @NonNull ServiceIdentityProvider serviceIdentityProvider,
+      @NonNull PolarisPrincipal principal,
+      @NonNull PolarisAuthorizer authorizer,
+      @NonNull ReservedProperties reservedProperties,
+      @NonNull S3CredentialVendingMechanisms vendingMechanism,
+      Iterable<CatalogConfigValidator> catalogConfigValidators) {
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
@@ -198,7 +249,14 @@ public class PolarisAdminService {
     this.userSecretsManager = userSecretsManager;
     this.serviceIdentityProvider = serviceIdentityProvider;
     this.reservedProperties = reservedProperties;
-    this.vendingMechanisms = vendingMechanisms;
+    this.catalogConfigValidators = catalogConfigValidators;
+    this.vendingMechanisms = vendingMechanism;
+  }
+
+  private void validateCatalogConfiguration(Catalog catalog) {
+    for (CatalogConfigValidator validator : catalogConfigValidators) {
+      validator.validate(realmConfig, catalog);
+    }
   }
 
   private PolarisCallContext getCurrentPolarisContext() {
@@ -838,6 +896,7 @@ public class PolarisAdminService {
         validateS3CredentialVendingMechanism(catalog.getStorageConfigInfo());
 
     CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, catalog);
+    validateCatalogConfiguration(catalog);
     if (mechanism != null) {
       // Safe: CatalogEntity.Builder.processStorageConfigurationInfo always converts an
       // AwsStorageConfigInfo request to an AwsStorageConfigurationInfo.
@@ -1091,6 +1150,7 @@ public class PolarisAdminService {
     }
     CatalogEntity updatedEntity = updateBuilder.build();
 
+    validateCatalogConfiguration(updatedEntity.asCatalog(getServiceIdentityProvider()));
     validateUpdateCatalogDiffOrThrow(currentCatalogEntity, updatedEntity);
 
     if (mechanism != null) {

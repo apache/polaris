@@ -168,8 +168,8 @@ public class PolarisAdminServiceTest {
             identityProvider,
             authenticatedPrincipal,
             authorizer,
-            reservedProperties,
-            vendingMechanisms);
+            vendingMechanisms,
+            reservedProperties);
   }
 
   protected static void assertSuccess(BaseResult result) {
