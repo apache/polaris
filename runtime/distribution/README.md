@@ -33,10 +33,14 @@ polaris-distribution-@version@/
 ├── NOTICE
 ├── README.md
 ├── admin/           # Admin tool files
+│   └── config/
+│       └── application.properties
 ├── bin/             # Executable scripts
 │   ├── admin
 │   └── server
 └── server/          # Server files
+    └── config/
+        └── application.properties
 ```
 
 ## Usage
@@ -61,7 +65,15 @@ For full usage instructions and configuration details, see the official Polaris 
 
 ### Configuration
 
-Both components can be configured using environment variables or system properties. For example:
+Each component reads its own configuration file:
+
+- `server/config/application.properties` for the server
+- `admin/config/application.properties` for the admin tool
+
+Both files are shipped with all properties commented out. Uncomment and edit the properties you want to change.
+
+Both components can also be configured using environment variables or system properties, which take
+precedence over the configuration files. For example:
 
 ```bash
 # Configure server port
