@@ -121,6 +121,18 @@ catalogs:
     namespaces:
       - name: [dev_namespace, sub_namespace]
 
+    # --- Tables and Views ---
+    # Register existing Apache Iceberg tables and views by their metadata locations.
+    ## commented out as reference metadata_location is invalid
+    # tables:
+    #   - name: dev_table
+    #     namespace: [dev_namespace]
+    #     metadata_location: s3://bucket/dev_namespace/dev_table/metadata/00001-abcd.metadata.json
+    # views:
+    #   - name: dev_view
+    #     namespace: [dev_namespace]
+    #     metadata_location: s3://bucket/dev_namespace/dev_view/metadata/00001-abcd.metadata.json
+
     # --- Policies ---
     # Defines policies that can be attached to entities in this catalog.
     policies:
