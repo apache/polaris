@@ -138,6 +138,10 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("**/.pytest_cache/**")
   excludes.add("client/python/.openapi-generator/**")
 
+  // Google Docs capture bytes and JSON manifests must remain unchanged for hash verification.
+  // Provenance is documented in proposals/tag-management/README.md.
+  excludes.add("proposals/*/snapshots/**")
+
   // Jupyter
   excludes.add("**/*.ipynb")
 
