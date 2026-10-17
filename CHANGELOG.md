@@ -85,11 +85,17 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   compatibility fallbacks and the `SCHEMA_VERSION_FALL_BACK_ON_DNE` configuration key have been
   removed. Operators must ensure their database is at the right schema version before upgrading to 
   this version.
+- The event attribute `EventAttributes.ACCESS_DELEGATION_MODE` (`String`) has been replaced with
+  `EventAttributes.ACCESS_DELEGATION_MODES` (`List<String>`). Accordingly, the OpenTelemetry event
+  listener now emits `polaris.access_delegation_modes` instead of `polaris.access_delegation_mode`.
 
 ### New Features
 
 - Python CLI: added `register` support for both `tables` and `views` commands
 - Python CLI: `setup export` and `setup apply` now support both Iceberg tables and views as register entries.
+- Python CLI: added `namespaces update` to set and remove namespace properties
+- NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
+- Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
 
 ### Changes
 
@@ -98,11 +104,39 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
   take the entity's resolved parent path, so implementations exclude the entity's own ancestors
   without re-reading the parent chain from the metastore.
+- Apache Iceberg has been upgraded to 1.12.0. The Java REST client now encodes spaces in namespace
+  and table names as `%20` instead of `+` (apache/iceberg#15989). Polaris decodes path segments
+  per RFC 3986 and has always treated `+` as a literal character, so the server behaves the same for
+  all clients.
 
 ### Deprecations
 
 ### Fixes
 
+- NoSQL commits resend unresolved object writes on retry, preventing successful commits from
+  referencing objects left unwritten by a previous attempt.
+- The H2 relational JDBC init script no longer overwrites the recorded schema version. It now seeds
+  the `version` table only when absent, matching the `ON CONFLICT DO NOTHING` behavior of the
+  PostgreSQL and CockroachDB scripts. Previously, running bootstrap against an older, unmigrated H2
+  database silently stamped it with the current version, which defeated the schema-compatibility
+  check and let the server run against an unmigrated schema.
+- NoSQL maintenance: realm purging now honors its own state filter consistently. `purgeRealms`
+  keeps only realms in `PURGING`/`PURGED` state (and logs the rest as "will therefore not be
+  purged"), but the direct `backend.deleteRealms(...)` call and the subsequent realm-status update
+  used the unfiltered run-spec list, so a realm the filter had excluded (for example an `ACTIVE`
+  realm whose ID was listed in a stale spec) could still be wiped while the log claimed it was
+  skipped, and the attempt to mark it `PURGED` failed the whole run on an invalid state transition.
+  The direct deletion, the purged-realm count, and the status update now use the same filtered set
+  as the scan-based deletion.
+- Creating a table or view at exactly its namespace's own location is now rejected under the
+  default (non-optimized) sibling-overlap check, matching the behavior already enforced when
+  `OPTIMIZED_SIBLING_CHECK` is enabled. Such a location is a prefix of every sibling created later
+  under the namespace, which blocked all subsequent sibling creates and over-scoped credentials
+  vended for that entity to the whole namespace.
+- Internal token verification now tolerates up to 5 seconds of clock skew on the `iat` claim. With
+  multiple Polaris nodes, a token minted on one node and immediately used on another node whose
+  clock was a few milliseconds behind could be rejected with HTTP 401 when the token was minted
+  right after a second boundary. Token expiry is still enforced without leeway.
 - NoSQL maintenance: spilled `IndexStripeObj` segments are retained when identify walks an index via
   `indexForRead` (`RetainedCollectorImpl.buildReadIndex`), and `PrincipalsObj.byClientId` is retained
   explicitly. Previously only a subset of indexes got `indexRetain`, so after a spill past
@@ -131,10 +165,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `deserializeKey`. Previously it counted two units per escaped `0x01`/`0x02` byte against the
   same 500 limit, so a key that had been written successfully (for example 251 bytes of `0x01`)
   could make index deserialization throw and leave the index container unreadable.
-- The OPA authorizer now enforces the credential-rotation pre-condition. With
-  `ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING` enabled, a principal whose credentials
-  were reset but never rotated was refused by the internal and Ranger authorizers but not by OPA.
-  The rotation state is not part of the OPA input document, so a policy could not compensate.
+- The credential-rotation pre-condition is now enforced by a JAX-RS filter instead of by each
+  authorizer. With `ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING` enabled, a principal
+  whose credentials were reset but never rotated can only call the rotate-credentials endpoint,
+  whichever authorizer is configured. Previously the internal and Ranger authorizers enforced it
+  but OPA did not, and the rotation state is not part of the OPA input document, so a policy could
+  not compensate.
 - Re-creating an existing namespace now returns `409 Conflict` instead of `403 Forbidden` when
   `OPTIMIZED_SIBLING_CHECK` is on. Namespace creation checks for an existing namespace before
   validating locations, as table and view creation already do, so the existing namespace's own
@@ -193,6 +229,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The NoSQL metastore now honors `ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG`: dropping a
   non-empty passthrough-facade (federated) catalog previously always failed with NoSQL persistence,
   even when the flag was enabled.
+- The refresh-credentials endpoint advertised by `loadTable` and `loadCredentials`, and the
+  generic-table paths used by the Spark plugin, now encode spaces in namespace and table names as
+  `%20` instead of `+`. Previously, credential refresh failed for tables whose namespace or name
+  contained a space.
+- The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
+  selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
+  readiness monitoring without configuration changes.
 
 ### Commits
 
@@ -254,6 +297,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Semantic models now support dedicated privileges for listing, creating, reading, updating,
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
+- Added the `TABLE_READ_METRICS` privilege, granting read-only access to a table's scan and
+  commit metrics reports without granting access to the table's data. Not implied by
+  `TABLE_FULL_METADATA`; implied by `CATALOG_MANAGE_CONTENT`, consistent with that privilege
+  already implying `TABLE_READ_DATA`. Can be granted on any table, but metrics reports are
+  currently only produced for Iceberg tables.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.

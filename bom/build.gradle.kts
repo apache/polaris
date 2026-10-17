@@ -137,10 +137,10 @@ tasks.register<VerifyBomDependenciesTask>("verifyBomDependencies") {
   description = "Checks if the BOM dependencies are complete"
 
   bomDependencyCoordinates.set(
-    configurations.api.map { it.dependencyConstraints.map { "${it.group}:${it.name}" } }
+    configurations.api.map { it.dependencyConstraints.map { "${it.group}:${it.name}" } },
   )
   projectCoordinatesByPath.set(
-    provider { rootProject.allprojects.associate { it.path to "${it.group}:${it.name}" } }
+    provider { rootProject.allprojects.associate { it.path to "${it.group}:${it.name}" } },
   )
   excludedProjectPaths.set(
     setOf(
@@ -148,7 +148,7 @@ tasks.register<VerifyBomDependenciesTask>("verifyBomDependencies") {
       ":aggregated-license-report",
       ":polaris-config-docs-site",
       ":polaris-distribution",
-    )
+    ),
   )
 }
 

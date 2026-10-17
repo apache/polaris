@@ -1625,6 +1625,35 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         });
 
     StorageLocation targetLocation = StorageLocation.of(location);
+
+    // A parent namespace naturally contains the entity's location when locations follow the
+    // namespace tree, as default locations do. That nesting is allowed, but the entity may not sit
+    // at exactly a containing namespace's location: such a location is a prefix of every sibling
+    // created later under that namespace (blocking all of them) and over-scopes any credentials
+    // vended for the entity to the whole namespace subtree. The optimized sibling check already
+    // rejects this; mirror the exact-location case here so the default list-based path has the same
+    // coverage. Only the equality case is rejected (and only against namespaces, not the catalog):
+    // an entity may legitimately sit at the catalog's own base location, and strict containment in
+    // either direction is handled by normal nesting and the sibling checks below.
+    for (PolarisEntity ancestor : parentPath) {
+      if (ancestor.getType() != PolarisEntityType.NAMESPACE) {
+        continue;
+      }
+      PolarisEntityUtils.asLocationBasedEntity(ancestor)
+          .map(LocationBasedEntity::getBaseLocation)
+          .filter(loc -> loc != null && !loc.isBlank())
+          .map(StorageLocation::of)
+          .ifPresent(
+              ancestorLocation -> {
+                if (targetLocation.isSameLocation(ancestorLocation)) {
+                  throw new ForbiddenException(
+                      "Unable to create entity at location '%s' because it conflicts with existing table or namespace at "
+                          + "location '%s'",
+                      targetLocation, ancestorLocation);
+                }
+              });
+    }
+
     for (PolarisEntity entityToCheck :
         resolveOptionalPaths(pathsToResolve, parentPath.getFirst().getName())) {
       PolarisEntityUtils.asLocationBasedEntity(entityToCheck)

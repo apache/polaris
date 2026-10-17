@@ -37,7 +37,7 @@ on:
 jobs:
   cancel-release-candidate:
     name: Release - X - Cancel Release Candidate After Vote Failure
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
 

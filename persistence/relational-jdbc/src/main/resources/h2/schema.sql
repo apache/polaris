@@ -22,9 +22,13 @@ CREATE TABLE IF NOT EXISTS version (
     version_value INTEGER NOT NULL
 );
 
-MERGE INTO version (version_key, version_value)
-    KEY (version_key)
-    VALUES ('version', 6);
+-- Seed the schema version only when it is absent. Unlike MERGE ... KEY, this never overwrites an
+-- existing value, matching the ON CONFLICT DO NOTHING semantics used by the PostgreSQL and
+-- CockroachDB scripts. Overwriting would let bootstrap stamp an older, unmigrated database as the
+-- current version and defeat the schema-compatibility check.
+INSERT INTO version (version_key, version_value)
+    SELECT 'version', 6
+    WHERE NOT EXISTS (SELECT 1 FROM version WHERE version_key = 'version');
 
 -- H2 supports COMMENT, but some modes may ignore it
 COMMENT ON TABLE version IS 'JDBC schema version; updated manually as part of upgrade procedures.';

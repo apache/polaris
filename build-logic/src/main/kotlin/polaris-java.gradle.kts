@@ -90,7 +90,7 @@ tasks.withType<Checkstyle>().configureEach {
 
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(
-    listOf("-Xlint:unchecked", "-Xlint:deprecation", "-XDaddTypeAnnotationsToSymbol=true")
+    listOf("-Xlint:unchecked", "-Xlint:deprecation", "-XDaddTypeAnnotationsToSymbol=true"),
   )
   options.errorprone.disableAllWarnings = true
   options.errorprone.disableWarningsInGeneratedCode = true
@@ -108,7 +108,7 @@ tasks.withType(JavaCompile::class.java).configureEach {
           parameters.configFile = errorproneRules
         }
       service.get().errorproneConfig
-    }
+    },
   )
 }
 
@@ -316,10 +316,10 @@ fun bannedDependencies(): BannedDependencies {
       BannedDependenciesService::class.java,
     ) {
       parameters.globallyBannedFile.set(
-        layout.settingsDirectory.file("gradle/banned-dependencies.txt")
+        layout.settingsDirectory.file("gradle/banned-dependencies.txt"),
       )
       parameters.quarkusProdBannedFile.set(
-        layout.settingsDirectory.file("gradle/banned-quarkus-prod-dependencies.txt")
+        layout.settingsDirectory.file("gradle/banned-quarkus-prod-dependencies.txt"),
       )
     }
   return service.get().bannedDependencies

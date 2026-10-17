@@ -136,6 +136,19 @@ public class StorageLocation {
     }
   }
 
+  /**
+   * Returns true if this StorageLocation and {@code other} represent the same physical location,
+   * tolerating the same differences {@link #isChildOf} does, such as a trailing slash.
+   *
+   * <p>Unlike {@link #equals(Object)}, which compares the raw location strings, this relies on
+   * {@link #isChildOf} in both directions, so provider-specific containment rules and
+   * trailing-slash normalization apply. Two locations contain each other only when they are the
+   * same location.
+   */
+  public boolean isSameLocation(StorageLocation other) {
+    return this.isChildOf(other) && other.isChildOf(this);
+  }
+
   /** Returns a string representation of the location but without a scheme */
   public String withoutScheme() {
     if (location == null) {

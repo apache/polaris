@@ -143,7 +143,7 @@ class S3CredentialVendingMechanismRoutesTest {
       String catalog,
       String ns,
       String table,
-      String accessDelegationMode,
+      List<String> accessDelegationModes,
       Class<? extends RuntimeException> exceptionType,
       String expectedMessage) {
     assertThatThrownBy(
@@ -153,7 +153,7 @@ class S3CredentialVendingMechanismRoutesTest {
                         catalog,
                         ns,
                         table,
-                        accessDelegationMode,
+                        accessDelegationModes,
                         null,
                         "ALL",
                         null,
@@ -164,14 +164,18 @@ class S3CredentialVendingMechanismRoutesTest {
   }
 
   private static void assertLoadTableSucceeds(
-      TestServices svc, String catalog, String ns, String table, String accessDelegationMode) {
+      TestServices svc,
+      String catalog,
+      String ns,
+      String table,
+      List<String> accessDelegationModes) {
     try (Response r =
         svc.restApi()
             .loadTable(
                 catalog,
                 ns,
                 table,
-                accessDelegationMode,
+                accessDelegationModes,
                 null,
                 "ALL",
                 null,
@@ -183,7 +187,7 @@ class S3CredentialVendingMechanismRoutesTest {
 
   private static void assertLoadTableSucceeds(
       TestServices svc, String catalog, String ns, String table) {
-    assertLoadTableSucceeds(svc, catalog, ns, table, null);
+    assertLoadTableSucceeds(svc, catalog, ns, table, List.of());
   }
 
   private static Catalog testMechanismCatalog(String name) {
@@ -250,20 +254,20 @@ class S3CredentialVendingMechanismRoutesTest {
     if (skipSubscoping) {
       // The skip-subscoping early return in StorageAccessConfigProvider never reaches the
       // registry, so vending succeeds even though the mechanism is gone.
-      assertLoadTableSucceeds(svc, "mechcat", "ns", "t", "vended-credentials");
+      assertLoadTableSucceeds(svc, "mechcat", "ns", "t", List.of("vended-credentials"));
     } else {
       assertLoadTableRefused(
           svc,
           "mechcat",
           "ns",
           "t",
-          "vended-credentials",
+          List.of("vended-credentials"),
           IllegalArgumentException.class,
           NOT_AVAILABLE);
       // buildLoadTableResponseWithDelegationCredentials calls StorageAccessConfigProvider on
       // every load, delegation requested or not, so a plain load reaches the same registry gate.
       assertLoadTableRefused(
-          svc, "mechcat", "ns", "t", null, IllegalArgumentException.class, NOT_AVAILABLE);
+          svc, "mechcat", "ns", "t", List.of(), IllegalArgumentException.class, NOT_AVAILABLE);
     }
 
     // Management reads are unaffected, and the catalog with an empty mechanism in the same realm
@@ -322,12 +326,18 @@ class S3CredentialVendingMechanismRoutesTest {
     }
 
     if (skipSubscoping) {
-      assertLoadTableSucceeds(svc, "mechkill", "ns", "t", "vended-credentials");
+      assertLoadTableSucceeds(svc, "mechkill", "ns", "t", List.of("vended-credentials"));
     } else {
       assertLoadTableRefused(
-          svc, "mechkill", "ns", "t", "vended-credentials", ValidationException.class, NOT_ENABLED);
+          svc,
+          "mechkill",
+          "ns",
+          "t",
+          List.of("vended-credentials"),
+          ValidationException.class,
+          NOT_ENABLED);
       assertLoadTableRefused(
-          svc, "mechkill", "ns", "t", null, ValidationException.class, NOT_ENABLED);
+          svc, "mechkill", "ns", "t", List.of(), ValidationException.class, NOT_ENABLED);
     }
 
     // Management reads still work; an update carrying a storage config is refused at site 1.
