@@ -42,6 +42,8 @@ Apache Polaris provides the following OpenAPI specifications:
 
         - [policy-apis.yaml](polaris-catalog-apis/policy-apis.yaml) - Contains the specification for the Policy APIs.
 
+        - [tag-apis.yaml](polaris-catalog-apis/tag-apis.yaml) - Contains the specification for the Tag APIs.
+
         - [oauth-tokens-api.yaml](polaris-catalog-apis/oauth-tokens-api.yaml) - Contains the specification for the
           internal OAuth Token endpoint, extracted from the Apache Iceberg REST Catalog API.
 
