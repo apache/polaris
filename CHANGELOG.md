@@ -235,6 +235,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
   selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
   readiness monitoring without configuration changes.
+- Semantic-model `dataset.source` resolution now tries every namespace / table-name split of a dotted
+  identifier and requires exactly one matching table or view. Table names may contain `.`, so the
+  previous last-segment-only parse could not address those tables and could bind a different entity
+  when both partitions existed (for example `a.b.c` as `ns=[a], table=b.c` vs `ns=[a, b], table=c`).
+  Dotted namespace levels (for example `ns=["a.b"], table=c`) are still out of scope. Ambiguous
+  sources now return `400 Bad Request`.
 
 ### Commits
 
