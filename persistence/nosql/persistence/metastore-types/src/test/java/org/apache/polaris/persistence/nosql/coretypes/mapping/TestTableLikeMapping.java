@@ -19,6 +19,10 @@
 
 package org.apache.polaris.persistence.nosql.coretypes.mapping;
 
+import static org.apache.polaris.core.entity.table.DirectoryEntity.BASE_LOCATION_KEY;
+import static org.apache.polaris.core.entity.table.DirectoryEntity.FILTER_EXCLUDE_KEY;
+import static org.apache.polaris.core.entity.table.DirectoryEntity.FILTER_INCLUDE_KEY;
+import static org.apache.polaris.core.entity.table.DirectoryEntity.SCAN_SCHEDULE_KEY;
 import static org.apache.polaris.core.entity.table.GenericTableEntity.DOC_KEY;
 import static org.apache.polaris.core.entity.table.GenericTableEntity.FORMAT_KEY;
 import static org.apache.polaris.core.entity.table.IcebergTableLikeEntity.METADATA_LOCATION_KEY;
@@ -34,6 +38,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
+import org.apache.polaris.persistence.nosql.coretypes.content.DirectoryObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.GenericTableObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.IcebergTableObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.IcebergViewObj;
@@ -154,6 +159,53 @@ public class TestTableLikeMapping extends BaseTestMapping {
                                         "doc",
                                         FORMAT_KEY,
                                         "format")))));
+          }
+        },
+        new TableLikeParameter(PolarisEntitySubType.DIRECTORY, DirectoryObj.TYPE) {
+          @Override
+          public DirectoryObj.Builder objBuilder() {
+            return DirectoryObj.builder();
+          }
+
+          @Override
+          public Stream<MappingSample> typeVariations(MappingSample base) {
+            return storageVariations(this::objBuilder, base)
+                .flatMap(
+                    b ->
+                        Stream.of(
+                            b,
+                            //
+                            new MappingSample(
+                                objBuilder().from(b.obj()).baseLocation("s3://bucket/path").build(),
+                                entityWithInternalProperty(
+                                    b.entity(), BASE_LOCATION_KEY, "s3://bucket/path")),
+                            new MappingSample(
+                                objBuilder()
+                                    .from(b.obj())
+                                    .scanSchedule("{\"cron\":\"0 * * * *\"}")
+                                    .build(),
+                                entityWithInternalProperty(
+                                    b.entity(), SCAN_SCHEDULE_KEY, "{\"cron\":\"0 * * * *\"}")),
+                            //
+                            new MappingSample(
+                                objBuilder()
+                                    .from(b.obj())
+                                    .baseLocation("s3://bucket/path")
+                                    .filterInclude("[\".*\\\\.jpg$\"]")
+                                    .filterExclude("[\".*thumbs/.*\"]")
+                                    .scanSchedule("{\"cron\":\"0 * * * *\"}")
+                                    .build(),
+                                entityWithInternalProperties(
+                                    b.entity(),
+                                    Map.of(
+                                        BASE_LOCATION_KEY,
+                                        "s3://bucket/path",
+                                        FILTER_INCLUDE_KEY,
+                                        "[\".*\\\\.jpg$\"]",
+                                        FILTER_EXCLUDE_KEY,
+                                        "[\".*thumbs/.*\"]",
+                                        SCAN_SCHEDULE_KEY,
+                                        "{\"cron\":\"0 * * * *\"}")))));
           }
         });
   }
