@@ -93,6 +93,16 @@ public class StorageUtil {
         if (!potentialParent.equals(potentialChild)) {
           StorageLocation potentialChildLocation = StorageLocation.of(potentialChild);
           if (potentialChildLocation.isChildOf(potentialParentLocation)) {
+            // When two raw strings denote the same physical location (for example they differ
+            // only in scheme like abfss:// vs abfs://, or only in a trailing slash), each is a
+            // child of the other. Removing both would wrongly leave the set empty, breaking
+            // credential vending. Keep a single deterministic representative instead of dropping
+            // both; which one survives does not matter because credential integrations strip the
+            // scheme before building their IAM/SAS scope.
+            if (potentialParentLocation.isSameLocation(potentialChildLocation)
+                && potentialParent.compareTo(potentialChild) < 0) {
+              continue;
+            }
             result.remove(potentialChild);
           }
         }
