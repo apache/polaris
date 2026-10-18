@@ -452,7 +452,7 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("foo", "bar"),
-            null /* storageConfigIno */,
+            null /* storageConfigInfo */,
             null);
 
     // Successfully update
