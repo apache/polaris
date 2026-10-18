@@ -23,7 +23,7 @@ from unittest.mock import patch
 
 import pytest
 
-from site_checks.spark import ensure_spark
+from site_checks.spark import SPARK_TGZ_FALLBACK_URL, SPARK_TGZ_URL, ensure_spark
 
 
 class FakeStdout:
@@ -75,7 +75,9 @@ def test_ensure_spark_downloads_and_extracts() -> None:
     ):
         ensure_spark(spark_sql_bin, Path("/fake/spark"), "http://example")
 
-    popen_mock.assert_any_call(["curl", "--location", "http://example"], stdout=subprocess.PIPE)
+    popen_mock.assert_any_call(
+        ["curl", "--location", "--fail", "--retry", "3", "http://example"], stdout=subprocess.PIPE
+    )
     popen_mock.assert_any_call(
         [
             "tar",
@@ -106,3 +108,29 @@ def test_ensure_spark_raises_when_download_fails() -> None:
             ensure_spark(spark_sql_bin, Path("/fake/spark"), "http://example")
 
     assert excinfo.value.returncode == 2
+
+
+def test_ensure_spark_falls_back_when_default_url_returns_invalid_tarball() -> None:
+    spark_sql_bin = Path("/fake/spark/bin/spark-sql")
+    procs = [FakeProc(0, stdout=FakeStdout()), FakeProc(2), FakeProc(0, stdout=FakeStdout()), FakeProc(0)]
+
+    with (
+        patch("site_checks.spark.Path.exists", return_value=False),
+        patch("site_checks.spark.subprocess.Popen", side_effect=procs) as popen_mock,
+    ):
+        ensure_spark(spark_sql_bin, Path("/fake/spark"), SPARK_TGZ_URL)
+
+    curl_urls = [c.args[0][-1] for c in popen_mock.call_args_list if c.args[0][0] == "curl"]
+    assert curl_urls == [SPARK_TGZ_URL, SPARK_TGZ_FALLBACK_URL]
+
+
+def test_ensure_spark_does_not_fall_back_for_custom_url() -> None:
+    spark_sql_bin = Path("/fake/spark/bin/spark-sql")
+    procs = [FakeProc(0, stdout=FakeStdout()), FakeProc(2)]
+
+    with (
+        patch("site_checks.spark.Path.exists", return_value=False),
+        patch("site_checks.spark.subprocess.Popen", side_effect=procs),
+    ):
+        with pytest.raises(subprocess.CalledProcessError):
+            ensure_spark(spark_sql_bin, Path("/fake/spark"), "http://example")

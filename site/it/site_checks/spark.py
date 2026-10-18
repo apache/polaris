@@ -21,6 +21,8 @@ import subprocess
 from pathlib import Path
 
 SPARK_TGZ_URL = "https://www.apache.org/dyn/closer.lua/spark/spark-3.5.8/spark-3.5.8-bin-hadoop3.tgz?action=download"
+# Used when the mirror-selected download fails, e.g. when the CDN returns an error page instead of the tarball.
+SPARK_TGZ_FALLBACK_URL = "https://archive.apache.org/dist/spark/spark-3.5.8/spark-3.5.8-bin-hadoop3.tgz"
 
 
 def ensure_spark(
@@ -43,7 +45,22 @@ def ensure_spark(
         f"Spark binary {spark_sql_bin} is not present or download has been explicitly requested, "
         f"downloading from {spark_tarball_url}..."
     )
-    curl_cmd = ["curl", "--location", spark_tarball_url]
+    urls = [spark_tarball_url]
+    if spark_tarball_url == SPARK_TGZ_URL:
+        urls.append(SPARK_TGZ_FALLBACK_URL)
+    for index, url in enumerate(urls):
+        try:
+            _download_and_extract(url, spark_dir)
+            break
+        except subprocess.CalledProcessError as e:
+            if index == len(urls) - 1:
+                raise
+            print(f"Downloading Spark from {url} failed ({e}), trying {urls[index + 1]}...")
+    print("::endgroup::")
+
+
+def _download_and_extract(url: str, spark_dir: Path) -> None:
+    curl_cmd = ["curl", "--location", "--fail", "--retry", "3", url]
     tar_cmd = [
         "tar",
         "--extract",
@@ -62,4 +79,3 @@ def ensure_spark(
             raise subprocess.CalledProcessError(curl_rc, curl_cmd)
         if tar_rc != 0:
             raise subprocess.CalledProcessError(tar_rc, tar_cmd)
-    print("::endgroup::")
