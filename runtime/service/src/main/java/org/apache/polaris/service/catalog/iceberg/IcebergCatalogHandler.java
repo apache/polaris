@@ -827,14 +827,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
 
-    // Authorization above fails closed. The envelope may carry a null table entity (passthrough /
-    // unresolved leaf); reporters that need a TABLE_LIKE id drop themselves. Persistence failures
-    // are swallowed in PersistingMetricsReporter so a broken metrics store does not 500 this
-    // endpoint; other reporter errors still propagate.
+    // Authorization above fails closed. A missing resolved path after AuthZ is an error. The
+    // envelope may still carry a null table entity when the leaf is not TABLE_LIKE
+    // (passthrough/external); reporters that need a table id drop themselves. Persistence
+    // failures are swallowed in PersistingMetricsReporter so a broken metrics store does not
+    // 500 this endpoint; other reporter errors still propagate.
     CatalogEntity catalogEntity = getResolvedCatalogEntity();
     PolarisResolvedPathWrapper resolvedTable =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier));
-    PolarisEntity tableEntity = resolvedTable == null ? null : resolvedTable.getRawLeafEntity();
+    PolarisEntity tableEntity = resolvedTable.getRawLeafEntity();
     if (tableEntity != null && tableEntity.getType() != PolarisEntityType.TABLE_LIKE) {
       // Do not pass a namespace/catalog leaf through as if it were the table.
       tableEntity = null;
