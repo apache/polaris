@@ -31,17 +31,16 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Bundles catalog context and an optional resolved table entity with the raw Iceberg {@link
  * MetricsReport} and an explicit {@link MetricType} discriminator, plus the timestamp when the
- * metrics were received. {@link #tableEntity()} may be {@code null} when the leaf could not be
- * resolved as a local {@code TABLE_LIKE} (for example passthrough-facade tables); reporters that
- * need a table id must handle that themselves. Passing an envelope keeps the {@link
- * IcebergMetricsReporter} SPI signature stable as new context fields are added, and lets
- * implementations branch on {@link #metricType()} without inspecting the concrete Iceberg report
- * type.
+ * metrics were received. {@link #tableEntity()} may be {@code null} when AuthZ succeeded but the
+ * leaf is not local {@code TABLE_LIKE} (passthrough-facade / external); reporters that need a table
+ * id must handle that themselves. Passing an envelope keeps the {@link IcebergMetricsReporter} SPI
+ * signature stable as new context fields are added, and lets implementations branch on {@link
+ * #metricType()} without inspecting the concrete Iceberg report type.
  *
  * @param catalogName the name of the catalog containing the table
  * @param catalogId the internal Polaris ID of the catalog
  * @param table the identifier of the table the metrics are for
- * @param tableEntity the resolved table leaf entity, or {@code null} if unresolved / not {@code
+ * @param tableEntity the resolved table leaf, or {@code null} if that leaf is not {@code
  *     TABLE_LIKE}
  * @param metricType the kind of metrics report ({@link MetricType#SCAN} or {@link
  *     MetricType#COMMIT})
