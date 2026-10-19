@@ -117,7 +117,7 @@ allow if {
 ```
 
 The roles sent to OPA for a fully external principal are whatever the `resource_access.client1.roles` claim of the
-token contains, after going through the [Role Mapping]({{% relref "../../managing-security/external-idp#role-mapping" %}})
+token contains, after going through the [Role Mapping]({{% relref "../../managing-security/external-idp#role-mapping-1" %}})
 configuration. This example does not customize the role mapper, so the claim's values (e.g. `service_admin`) are
 passed through to OPA unprefixed and unchanged.
 

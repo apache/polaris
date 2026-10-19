@@ -161,6 +161,12 @@ polaris.oidc.oidc-tenant1.principal-mapper.name-claim-path=polaris/principal_nam
 The default implementation of PrincipalMapper can only work with JWT tokens. If your IDP issues opaque tokens instead, you will need to provide a custom implementation.
 {{< /alert >}}
 
+`polaris.oidc.principal-mapper.id-claim-path` is optional. There is no way to know, ahead of time,
+the principal ID that Polaris will assign to a newly-created principal, so most external IdP setups
+leave it unset and match principals by name only. Only set it if your IdP token carries the exact
+Polaris-assigned principal ID in a claim (for example, `polaris/principal_id` in Example 1 below) —
+an IdP-native identifier like `sub` is not a Polaris principal ID and should not be used here.
+
 ### Role Mapping 
 
 Similarly, Polaris requires additional configuration to map roles provided by Quarkus to roles defined in Polaris. The process happens in two phases: first, Quarkus maps the JWT claims to security roles, using the `quarkus.oidc.roles.*` properties; then, Polaris-specific properties are used to map the Quarkus-provided security roles to Polaris roles: 
@@ -270,7 +276,7 @@ requirements, both enforced at startup (the service refuses to boot otherwise):
 
   ```json
   { 
-    "sub": "1", 
+    "sub": "0551bcb5-1190-483c-b64b-c01555b06273", 
     "scope": "service_admin catalog_admin profile email", 
     "preferred_username": "root" 
   } 
@@ -280,12 +286,14 @@ requirements, both enforced at startup (the service refuses to boot otherwise):
 
   ```properties
   quarkus.oidc.roles.role-claim-path=scope 
-  polaris.oidc.principal-mapper.id-claim-path=sub 
   polaris.oidc.principal-mapper.name-claim-path=preferred_username 
   polaris.oidc.principal-roles-mapper.filter=^(?!profile$|email$).* 
   polaris.oidc.principal-roles-mapper.mappings[0].regex=^.*$ 
   polaris.oidc.principal-roles-mapper.mappings[0].replacement=PRINCIPAL_ROLE:$0
   ```
+
+  `id-claim-path` is intentionally left unset here: `sub` is an IdP-native identifier, not a
+  Polaris principal ID, so this principal is matched by name only.
 
 - Result 
 

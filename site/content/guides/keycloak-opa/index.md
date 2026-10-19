@@ -82,10 +82,10 @@ For more information about how to configure Polaris with external authentication
 [IDP integration documentation](/releases/latest/managing-security/external-idp/). The table below compares
 this example with the [Keycloak IDP example](/guides/keycloak/):
 
-| Example                                                                              | Authentication Type | Credential Mode      | Principal Pre-sync Required? | Comments                                                                                                     |
-|--------------------------------------------------------------------------------------|---------------------|----------------------|------------------------------|--------------------------------------------------------------------------------------------------------------|
+| Example                                                                   | Authentication Type | Credential Mode      | Principal Pre-sync Required? | Comments                                                                                                     |
+|---------------------------------------------------------------------------|---------------------|----------------------|------------------------------|--------------------------------------------------------------------------------------------------------------|
 | [Keycloak + Internal Principals + Built-in Authorizer](/guides/keycloak/) | `mixed`             | `internal` (default) | Yes                          | The principal must already exist in Polaris, matched by name, with the roles it needs granted ahead of time. |
-| Keycloak + External Principals + OPA (this guide)                                    | `external`          | `external`           | No                           | The principal is authenticated and authorized entirely from the token; it never needs to exist in Polaris.   |
+| Keycloak + External Principals + OPA (this guide)                         | `external`          | `external`           | No                           | The principal is authenticated and authorized entirely from the token; it never needs to exist in Polaris.   |
 
 ## Authorization with OPA
 
@@ -129,7 +129,7 @@ allow if {
 ```
 
 The roles sent to OPA for a fully external principal are whatever the `resource_access.client1.roles` claim of the
-token contains, after going through the [Role Mapping](/releases/latest/managing-security/external-idp/#role-mapping)
+token contains, after going through the [Role Mapping](/releases/latest/managing-security/external-idp/#role-mapping-1)
 configuration. This example does not customize the role mapper, so the claim's values (e.g. `service_admin`) are
 passed through to OPA unprefixed and unchanged.
 
