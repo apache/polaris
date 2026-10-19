@@ -27,10 +27,15 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonLocation;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.ForbiddenException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import java.io.IOException;
@@ -141,6 +146,49 @@ public class ExceptionMapperTest {
             new PolarisServiceUnavailableException(retryAfterSeconds, "transient conflict"));
     assertThat(response.getStatus()).isEqualTo(503);
     assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo(expectedHeader);
+  }
+
+  @Test
+  public void testMismatchedInputUsesIcebergErrorEnvelopeWithDetail() {
+    IcebergMismatchedInputExceptionMapper mapper = new IcebergMismatchedInputExceptionMapper();
+    MismatchedInputException exception =
+        MismatchedInputException.from(
+            (JsonParser) null, Integer.class, "Missing required creator property 'version'");
+
+    Response response = mapper.toResponse(exception);
+
+    assertThat(response.getStatus()).isEqualTo(400);
+    assertThat(response.getMediaType()).isEqualTo(MediaType.APPLICATION_JSON_TYPE);
+    ErrorResponse parsed = (ErrorResponse) response.getEntity();
+    assertThat(parsed.code()).isEqualTo(400);
+    assertThat(parsed.type()).isEqualTo(MismatchedInputException.class.getSimpleName());
+    assertThat(parsed.message())
+        .isEqualTo("Invalid value: Missing required creator property 'version'");
+  }
+
+  @Test
+  public void testWebApplicationExceptionWrappingJsonParseFailureReportsDetail() {
+    IcebergExceptionMapper mapper = new IcebergExceptionMapper();
+    JsonParseException cause = new JsonParseException((JsonParser) null, "Unexpected end-of-input");
+
+    Response response =
+        mapper.toResponse(new WebApplicationException(cause, Response.Status.BAD_REQUEST));
+
+    assertThat(response.getStatus()).isEqualTo(400);
+    ErrorResponse parsed = (ErrorResponse) response.getEntity();
+    assertThat(parsed.type()).isEqualTo(JsonParseException.class.getSimpleName());
+    assertThat(parsed.message()).isEqualTo("Invalid JSON: Unexpected end-of-input");
+  }
+
+  @Test
+  public void testWebApplicationExceptionWithoutJsonCauseIsMappedAsBefore() {
+    IcebergExceptionMapper mapper = new IcebergExceptionMapper();
+
+    Response response = mapper.toResponse(new WebApplicationException(Response.Status.CONFLICT));
+
+    assertThat(response.getStatus()).isEqualTo(409);
+    assertThat(((ErrorResponse) response.getEntity()).type())
+        .isEqualTo(WebApplicationException.class.getSimpleName());
   }
 
   @Test
