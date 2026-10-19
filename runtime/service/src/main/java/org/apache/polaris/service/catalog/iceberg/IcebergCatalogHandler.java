@@ -1577,9 +1577,31 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           if (!currentMetadata.changes().isEmpty()) {
             tableOps.commit(baseMetadata, currentMetadata);
             tableFileIOs.put(tableIdentifier, tableOps.io());
-          }
+            tableMetadataObjs.add(currentMetadata);
+          } else {
+            // For tables without updates (e.g. assertion/dependency-only tables in a multi-table
+            // transaction), re-evaluate requirements against refreshed metadata at commit time to
+            // catch any concurrent modifications that occurred since the table was staged.
+            TableMetadata refreshedMetadata = tableOps.refresh();
+            for (UpdateTableRequest change : changes) {
+              change.requirements().forEach(requirement -> requirement.validate(refreshedMetadata));
+            }
 
-          tableMetadataObjs.add(currentMetadata);
+            // Enroll the entity in pendingUpdates so updateEntitiesPropertiesIfNotChanged
+            // atomically verifies the entity version has not changed concurrently.
+            PolarisResolvedPathWrapper target =
+                resolutionManifest.getPassthroughResolvedPath(
+                    ResolvedPathKey.ofTableLike(tableIdentifier));
+            if (target != null && target.getRawLeafEntity() != null) {
+              transactionMetaStoreManager.updateEntityPropertiesIfNotChanged(
+                  callContext().getPolarisCallContext(),
+                  PolarisEntity.toCoreList(target.getRawParentPath()),
+                  target.getRawLeafEntity());
+            } else {
+              throw new CommitFailedException("Table not found: %s", tableIdentifier);
+            }
+            tableMetadataObjs.add(refreshedMetadata);
+          }
         });
 
     List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
