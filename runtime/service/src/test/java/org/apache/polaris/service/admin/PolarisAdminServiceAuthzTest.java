@@ -73,8 +73,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         serviceIdentityProvider,
         authenticatedPrincipal,
         polarisAuthorizer,
-        vendingMechanisms,
-        reservedProperties);
+        reservedProperties,
+        vendingMechanisms);
   }
 
   private PolarisAdminService newExternalTestAdminService(String principalName) {
@@ -93,8 +93,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         serviceIdentityProvider,
         externalPrincipal,
         polarisAuthorizer,
-        vendingMechanisms,
-        reservedProperties);
+        reservedProperties,
+        vendingMechanisms);
   }
 
   private PolarisAdminService newTestAdminService(Set<String> activatedPrincipalRoles) {

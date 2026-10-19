@@ -214,8 +214,8 @@ public class PolarisAdminService {
       @NonNull ServiceIdentityProvider serviceIdentityProvider,
       @NonNull PolarisPrincipal principal,
       @NonNull PolarisAuthorizer authorizer,
-      @NonNull S3CredentialVendingMechanisms vendingMechanisms,
-      @NonNull ReservedProperties reservedProperties) {
+      @NonNull ReservedProperties reservedProperties,
+      @NonNull S3CredentialVendingMechanisms vendingMechanisms) {
     this(
         callContext,
         resolutionManifestFactory,

@@ -50,6 +50,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- BigLake Iceberg REST catalogs using GCP authentication are now validated on creation and update,
+  including catalogs created before this release. Updates require `connectionConfigInfo.remoteCatalogName`
+  and a non-empty `header.x-goog-user-project` property in the connection or catalog properties. When
+  Polaris-managed credential vending is enabled, GCS storage configuration, `default-base-location`,
+  and `storageConfigInfo.gcsServiceAccount` are also required. Updates to existing catalogs that do not
+  meet these requirements are rejected until the configuration is corrected.
 - `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists the explicit mechanisms a realm accepts; an empty
   `credentialVendingMechanism` is always allowed. Startup reports a listed mechanism with no
   installed bean as a non-severe readiness warning. Startup fails (a severe readiness issue) when no
