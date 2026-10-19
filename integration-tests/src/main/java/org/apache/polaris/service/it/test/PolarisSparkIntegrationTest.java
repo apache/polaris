@@ -37,9 +37,6 @@ import org.junit.jupiter.api.Test;
  * @implSpec This test expects the server to be configured with the following features enabled:
  *     <ul>
  *       <li>{@link
- *           org.apache.polaris.core.config.FeatureConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
- *           {@code false}
- *       <li>{@link
  *           org.apache.polaris.core.config.FeatureConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
  *           {@code true}
  *     </ul>
