@@ -20,6 +20,7 @@ package org.apache.polaris.service.exception;
 
 import com.azure.core.exception.AzureException;
 import com.azure.core.exception.HttpResponseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.cloud.BaseServiceException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.annotations.VisibleForTesting;
@@ -81,6 +82,8 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
           IcebergExceptionMapper.UNKNOWN_CLOUD_HTTP_CODE);
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergExceptionMapper.class);
+  private final IcebergJsonProcessingExceptionMapper jsonProcessingExceptionMapper =
+      new IcebergJsonProcessingExceptionMapper();
 
   // Case-insensitive parts of exception messages that a request to a cloud provider was denied due
   // to lack of permissions
@@ -91,6 +94,13 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
 
   @Override
   public Response toResponse(RuntimeException runtimeException) {
+    // The Quarkus Jackson body reader wraps a JSON parse failure in a bare WebApplicationException,
+    // which would otherwise be answered with "HTTP 400 Bad Request" and no detail. Unwrap it so the
+    // response names the problem, as it does when the JSON mapper is reached directly.
+    if (runtimeException instanceof WebApplicationException
+        && runtimeException.getCause() instanceof JsonProcessingException jsonException) {
+      return jsonProcessingExceptionMapper.toResponse(jsonException);
+    }
     LOGGER.info("Handling runtimeException {}", runtimeException.getMessage());
 
     int responseCode = mapExceptionToResponseCode(runtimeException);

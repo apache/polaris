@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.MediaType;
@@ -80,6 +81,7 @@ public class IcebergJsonProcessingExceptionMapper
         switch (exception) {
           case JsonParseException e -> "Invalid JSON: ";
           case ValueInstantiationException ve -> "Invalid value: ";
+          case MismatchedInputException me -> "Invalid value: ";
           default -> "";
         };
     final String message = messagePrefix + exception.getOriginalMessage();
