@@ -33,6 +33,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.time.Duration;
@@ -82,6 +83,7 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.assertj.core.api.SoftAssertions;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -465,6 +467,72 @@ public class PolarisManagementServiceIntegrationTest {
           .isEqualTo(Map.of("default-base-location", "s3://bucket/path/to/data", "foo", "bar"));
       assertThat(updatedCatalog.getEntityVersion()).isGreaterThan(0);
     }
+  }
+
+  @Test
+  public void testRequestBodyErrorsReturnErrorDetails() {
+    String principalName = client.newEntityName("body-error-principal");
+    managementApi.createPrincipal(principalName);
+    String catalogName = client.newEntityName("body-error-catalog");
+    managementApi.createCatalog(
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder()
+                    .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+                    .build())
+            .build());
+    String principalPath = "v1/principals/" + principalName;
+
+    // {path, request body, expected fragment of the error message}
+    List<String[]> managementCases =
+        List.of(
+            new String[] {principalPath, "{\"properties\": {}}", "currentEntityVersion"},
+            new String[] {
+              principalPath,
+              "{\"currentEntityVersion\": \"abc\", \"properties\": {}}",
+              "Invalid value"
+            },
+            new String[] {principalPath, "{\"currentEntityVersion\": 1, ", "Invalid JSON"});
+    SoftAssertions.assertSoftly(
+        softly -> {
+          for (String[] c : managementCases) {
+            try (Response response =
+                managementApi.request(c[0]).put(Entity.entity(c[1], MediaType.APPLICATION_JSON))) {
+              String body = response.readEntity(String.class);
+              softly
+                  .assertThat(response.getStatus())
+                  .as("%s with body %s: %s", c[0], c[1], body)
+                  .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+              softly
+                  .assertThat(response.getMediaType())
+                  .as("%s with body %s", c[0], c[1])
+                  .matches(
+                      type -> type != null && type.isCompatible(MediaType.APPLICATION_JSON_TYPE));
+              softly.assertThat(body).as("%s with body %s", c[0], c[1]).contains(c[2]);
+            }
+          }
+          try (Response response =
+              catalogApi
+                  .request("v1/{cat}/namespaces", Map.of("cat", catalogName))
+                  .post(Entity.entity("{\"namespace\": [\"ns\"], ", MediaType.APPLICATION_JSON))) {
+            String body = response.readEntity(String.class);
+            softly
+                .assertThat(response.getStatus())
+                .as("malformed Iceberg request: %s", body)
+                .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+            softly
+                .assertThat(response.getMediaType())
+                .as("malformed Iceberg request")
+                .matches(
+                    type -> type != null && type.isCompatible(MediaType.APPLICATION_JSON_TYPE));
+            softly.assertThat(body).as("malformed Iceberg request").contains("Invalid JSON");
+          }
+        });
   }
 
   @Test
