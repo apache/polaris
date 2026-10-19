@@ -84,6 +84,8 @@ jobs:
           node-version: '24'
       - name: Renovate Configuration Validation
         run: npx --yes --package renovate renovate-config-validator --strict --no-global .github/renovate.json5
+      - name: Verify bundled OpenAPI spec is up to date
+        run: make spec-bundle-verify
       # Intentionally unpinned to always use the latest allowlist from the ASF.
       - uses: apache/infrastructure-actions/allowlist-check@main # zizmor: ignore[unpinned-uses]
 

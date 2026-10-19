@@ -57,7 +57,7 @@ requires-dist = [
 dev = [
     { name = "flake8", specifier = ">=4.0.0" },
     { name = "mypy", specifier = "<=2.4.0,>=2.4" },
-    { name = "openapi-generator-cli", specifier = "==7.12.0" },
+    { name = "openapi-generator-cli", specifier = "==7.26.0" },
     { name = "pip-licenses-cli", specifier = "==4.1.0" },
     { name = "pre-commit", specifier = "==4.7.0" },
     { name = "pyiceberg", specifier = "==0.12.0" },
@@ -770,11 +770,11 @@ wheels = [
 
 [[package]]
 name = "openapi-generator-cli"
-version = "7.12.0"
+version = "7.26.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1b/7d/8f5bb83112179efd887b60390e3b5fdbb38bd993965ef4ce88740d8a6f29/openapi_generator_cli-7.12.0.tar.gz", hash = "sha256:11dc4fd67fc7d839572ae8e29fb1dee5892195a7ac88b98e41a2cd8105e3250f", size = 27094673, upload-time = "2025-03-27T12:51:54.247Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b3/be/1832670f038b324ef0cbbbe96b2bbf79b753fe07e0e00b48256784d71dc5/openapi_generator_cli-7.26.0.tar.gz", hash = "sha256:98e18e9a9e32f1f357595858526954542128bdace6a24c8cc7c8ebff8ca16e74", size = 30287266, upload-time = "2026-10-07T04:45:11.963Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/a8/23b4e7fca4e7015f461c2c520bc49b9b57a6635fd404dd77b0b6f917493e/openapi_generator_cli-7.12.0-py3-none-any.whl", hash = "sha256:cf97e0e40bacc66ca70963845e52b0c003aaab85da7f1d10cc25abf2f1c8bb6e", size = 27108048, upload-time = "2025-03-27T12:51:51.086Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/fd/36deca16b2312ef5e3d5ee77ed1b1e3550c98dee60fffc76e16e25697149/openapi_generator_cli-7.26.0-py3-none-any.whl", hash = "sha256:e6305fbbf91aa41b3b7fcd8bf2124880ab0bb9e32efad95b3dfe71f9313d856c", size = 30301947, upload-time = "2026-10-07T04:45:07.017Z" },
 ]
 
 [[package]]
