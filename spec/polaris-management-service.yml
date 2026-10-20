@@ -879,9 +879,8 @@ components:
           description: The version of the catalog object used to determine if the catalog metadata has changed
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
-        storageConfigInfos:
-          type: object
-          nullable: true
+        storageConfigurations:
+          type: [ object, "null" ]
           description: Optional additional named storage configurations held by the catalog, alongside its default storageConfigInfo, keyed by configuration name. Each key must match ^[a-zA-Z0-9_-]{1,128}$ and is case-sensitive. The default storageConfigInfo is not part of this map and has no configuration name. The storageName of an entry keeps its meaning of selecting a server-side storage configuration and is independent of the key, so entries may share a storageName or leave it unset. Unlike the default storageConfigInfo, each entry must list at least one allowedLocations entry.
           additionalProperties:
             $ref: "#/components/schemas/StorageConfigInfo"
@@ -1309,10 +1308,9 @@ components:
             type: string
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
-        storageConfigInfos:
-          type: object
-          nullable: true
-          description: Optional replacement set of named storage configurations, keyed by configuration name. When present, replaces the catalog's entire set of named storage configurations (an empty object removes them all); when absent, the existing set is left unaltered. Keys and entries follow the same rules as Catalog.storageConfigInfos.
+        storageConfigurations:
+          type: [ object, "null" ]
+          description: Optional replacement set of named storage configurations, keyed by configuration name. When present, replaces the catalog's entire set of named storage configurations (an empty object removes them all); when absent, the existing set is left unaltered. Keys and entries follow the same rules as Catalog.storageConfigurations.
           additionalProperties:
             $ref: "#/components/schemas/StorageConfigInfo"
 
