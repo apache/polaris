@@ -18,11 +18,17 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
+import static org.assertj.core.api.Assertions.assertThatCode;
+
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.service.Profiles;
+import org.junit.jupiter.api.Test;
 
 /**
  * Overlap test that runs with the optimized sibling check disabled, so location-overlap enforcement
@@ -51,5 +57,25 @@ public class LocalIcebergCatalogDefaultListOverlapTest
       overrides.put("polaris.features.\"OPTIMIZED_SIBLING_CHECK\"", "false");
       return overrides;
     }
+  }
+
+  @Test
+  public void testUpdatedTableIsNotAnOverlapWithItself() {
+    // The list-based check skips the entity itself among its siblings, so a table may move under
+    // its own current location. The optimized check has no such exclusion and rejects this.
+    Namespace ns = Namespace.of("overlap-self-update");
+    catalog().createNamespace(ns);
+    TableIdentifier table = TableIdentifier.of(ns, "t");
+    catalog().buildTable(table, SCHEMA).create();
+
+    String tableLocation = catalog().loadTable(table).location();
+    assertThatCode(
+            () ->
+                catalog()
+                    .loadTable(table)
+                    .updateLocation()
+                    .setLocation(tableLocation + "/moved")
+                    .commit())
+        .doesNotThrowAnyException();
   }
 }

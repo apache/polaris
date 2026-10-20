@@ -1611,15 +1611,18 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             .toList();
     List<ResolvedPathKey> pathsToResolve =
         new ArrayList<>(siblingTables.size() + siblingNamespaces.size());
+    // Skip the entity itself, which is listed among its siblings when it is being updated. A table
+    // and a namespace may share a name, so only skip a sibling of the same type as the entity.
+    boolean isNamespace = entity.getType() == PolarisEntityType.NAMESPACE;
     siblingTables.forEach(
         tbl -> {
-          if (!tbl.name().equals(name)) {
+          if (isNamespace || !tbl.name().equals(name)) {
             pathsToResolve.add(ResolvedPathKey.ofTableLike(tbl));
           }
         });
     siblingNamespaces.forEach(
         ns -> {
-          if (!ns.level(ns.length() - 1).equals(name)) {
+          if (!isNamespace || !ns.level(ns.length() - 1).equals(name)) {
             pathsToResolve.add(ResolvedPathKey.ofNamespace(ns));
           }
         });
