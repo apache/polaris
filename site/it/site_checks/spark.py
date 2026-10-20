@@ -17,12 +17,15 @@
 # under the License.
 #
 
+import random
 import subprocess
+import time
 from pathlib import Path
 
 SPARK_TGZ_URL = "https://www.apache.org/dyn/closer.lua/spark/spark-3.5.8/spark-3.5.8-bin-hadoop3.tgz?action=download"
-# Used when the mirror-selected download fails, e.g. when the CDN returns an error page instead of the tarball.
-SPARK_TGZ_FALLBACK_URL = "https://archive.apache.org/dist/spark/spark-3.5.8/spark-3.5.8-bin-hadoop3.tgz"
+
+DOWNLOAD_ATTEMPTS = 5
+DOWNLOAD_BASE_DELAY_SECONDS = 2.0
 
 
 def ensure_spark(
@@ -45,22 +48,25 @@ def ensure_spark(
         f"Spark binary {spark_sql_bin} is not present or download has been explicitly requested, "
         f"downloading from {spark_tarball_url}..."
     )
-    urls = [spark_tarball_url]
-    if spark_tarball_url == SPARK_TGZ_URL:
-        urls.append(SPARK_TGZ_FALLBACK_URL)
-    for index, url in enumerate(urls):
+    for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
         try:
-            _download_and_extract(url, spark_dir)
+            _download_and_extract(spark_tarball_url, spark_dir)
             break
         except subprocess.CalledProcessError as e:
-            if index == len(urls) - 1:
+            if attempt == DOWNLOAD_ATTEMPTS:
                 raise
-            print(f"Downloading Spark from {url} failed ({e}), trying {urls[index + 1]}...")
+            # Exponential backoff with jitter, so that concurrent CI jobs do not retry in lockstep.
+            delay = DOWNLOAD_BASE_DELAY_SECONDS * 2 ** (attempt - 1)
+            delay = random.uniform(delay / 2, delay)
+            print(
+                f"Downloading Spark failed ({e}), retrying in {delay:.1f}s (attempt {attempt}/{DOWNLOAD_ATTEMPTS})..."
+            )
+            time.sleep(delay)
     print("::endgroup::")
 
 
 def _download_and_extract(url: str, spark_dir: Path) -> None:
-    curl_cmd = ["curl", "--location", "--fail", "--retry", "3", url]
+    curl_cmd = ["curl", "--location", "--fail", url]
     tar_cmd = [
         "tar",
         "--extract",
