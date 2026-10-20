@@ -58,8 +58,7 @@ dev = [
     "mypy>=2.4, <=2.4.0",
     "pyiceberg==0.12.0",
     "pre-commit==4.7.0",
-    # 7.12.0 is the latest version to use due to OpenAPI spec version we are using
-    "openapi-generator-cli==7.12.0",
+    "openapi-generator-cli==7.26.0",
     "pip-licenses-cli==4.1.0",
 ]
 
@@ -85,8 +84,7 @@ exclude = ["**/.keep"]
 path = "hatch_build.py"
 
 [build-system]
-# 7.12.0 is the latest version to use due to OpenAPI spec version we are using
-requires = ["hatchling", "openapi-generator-cli==7.12.0"]
+requires = ["hatchling", "openapi-generator-cli==7.26.0"]
 build-backend = "hatchling.build"
 
 [tool.uv]
