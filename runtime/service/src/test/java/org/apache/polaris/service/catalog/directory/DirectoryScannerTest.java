@@ -27,17 +27,23 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.FileScanTask;
+import org.apache.iceberg.HasTableOperations;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.data.parquet.GenericParquetReaders;
+import org.apache.iceberg.exceptions.CommitStateUnknownException;
 import org.apache.iceberg.inmemory.InMemoryCatalog;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.FileInfo;
+import org.apache.iceberg.io.LocationProvider;
 import org.apache.iceberg.io.SupportsPrefixOperations;
 import org.apache.iceberg.parquet.Parquet;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
@@ -150,6 +156,20 @@ class DirectoryScannerTest {
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
+  @Test
+  void scanKeepsTheNewFileWhenTheCommitStateIsUnknown() throws IOException {
+    TableOperations ops = ((HasTableOperations) table).operations();
+    Table commitStateUnknownTable =
+        new BaseTable(new CommitStateUnknownTableOperations(ops), table.name());
+
+    assertThatThrownBy(
+            () -> DirectoryScanner.scan(commitStateUnknownTable, sourceIO, BASE, null, null))
+        .isInstanceOf(CommitStateUnknownException.class);
+
+    // The commit landed: the file referenced by the new snapshot must still be readable
+    assertThat(readUris()).hasSize(4);
+  }
+
   private List<String> readUris() throws IOException {
     return readRecords().stream().map(r -> (String) r.getField("file_uri")).toList();
   }
@@ -196,6 +216,46 @@ class DirectoryScannerTest {
     @Override
     public void deletePrefix(String prefix) {
       listPrefix(prefix).forEach(f -> deleteFile(f.location()));
+    }
+  }
+
+  /** Commits the table metadata, then fails as if the commit response had been lost. */
+  private static class CommitStateUnknownTableOperations implements TableOperations {
+    private final TableOperations delegate;
+
+    CommitStateUnknownTableOperations(TableOperations delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public TableMetadata current() {
+      return delegate.current();
+    }
+
+    @Override
+    public TableMetadata refresh() {
+      return delegate.refresh();
+    }
+
+    @Override
+    public void commit(TableMetadata base, TableMetadata metadata) {
+      delegate.commit(base, metadata);
+      throw new CommitStateUnknownException(new RuntimeException("Lost commit response"));
+    }
+
+    @Override
+    public FileIO io() {
+      return delegate.io();
+    }
+
+    @Override
+    public String metadataFileLocation(String fileName) {
+      return delegate.metadataFileLocation(fileName);
+    }
+
+    @Override
+    public LocationProvider locationProvider() {
+      return delegate.locationProvider();
     }
   }
 }

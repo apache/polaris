@@ -34,6 +34,7 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.data.parquet.GenericParquetWriter;
+import org.apache.iceberg.exceptions.CommitStateUnknownException;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.DataWriter;
 import org.apache.iceberg.io.FileIO;
@@ -97,6 +98,9 @@ final class DirectoryScanner {
         overwrite.addFile(write(table, dataFileLocation, records));
       }
       overwrite.commit();
+    } catch (CommitStateUnknownException e) {
+      // The commit may have landed: deleting the file could leave the table pointing to nothing
+      throw e;
     } catch (RuntimeException e) {
       if (dataFileLocation != null) {
         deleteQuietly(table, dataFileLocation);
