@@ -182,9 +182,21 @@ ORDER BY last_modified DESC;
 
 ### Credential vending
 
-The directory table might contain additional fields for credential vending.
-For instance, a token might be present (provided by a Polaris service/API) stored in the directory table (for each object)
-along with additional fields to verify the token.
+The directory table lists the objects, it does not give access to them. Reading the directory table returns the
+object URIs and metadata, but a user or engine needs its own access to the object store to read the objects
+themselves.
+
+More precisely:
+
+- When an engine loads the directory table with [credential vending]({{% ref "vended-credentials" %}}), Polaris
+  vends credentials scoped to the directory table location (its data and metadata files), as for any Iceberg
+  table. These credentials are not scoped to the directory `base_location`.
+- Privileges on the directory or on the directory table (for example `TABLE_READ_DATA`) don't grant access to the
+  objects under the `base_location`.
+- The [scan](#scan-a-directory) lists the `base_location` with credentials that stay in the Polaris server: they
+  are never returned to the caller.
+
+Vending credentials for the objects referenced in the directory table is not supported yet.
 
 ### Customizing the scan
 
