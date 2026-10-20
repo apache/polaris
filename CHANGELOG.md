@@ -98,6 +98,25 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The event attribute `EventAttributes.ACCESS_DELEGATION_MODE` (`String`) has been replaced with
   `EventAttributes.ACCESS_DELEGATION_MODES` (`List<String>`). Accordingly, the OpenTelemetry event
   listener now emits `polaris.access_delegation_modes` instead of `polaris.access_delegation_mode`.
+- Renaming a table or view into another namespace now validates its locations as if it were
+  created in that namespace. A rename keeps the table's location, so with the default
+  `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false` a table can generally no longer be renamed into
+  another namespace; such renames fail with 403 Forbidden. Catalogs that need cross-namespace renames
+  must enable `ALLOW_UNSTRUCTURED_TABLE_LOCATION`, and the locations must still fall within the
+  catalog's allowed locations and not overlap other entities in the destination namespace.
+- With `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false`, the locations of existing tables are now validated
+  against their namespace's location, not only against the table's own location, when committing
+  to the table and when vending credentials for it. Tables that sit outside their namespace's
+  location, for example because they were renamed from another namespace or created while
+  `ALLOW_UNSTRUCTURED_TABLE_LOCATION` was enabled, or because their namespace's location was changed
+  with `ALLOW_NAMESPACE_CUSTOM_LOCATION` enabled, are refused with 403 Forbidden. Before
+  upgrading, list the tables that sit outside their namespace's location and, if possible, move
+  them back or recreate them. Enabling `ALLOW_UNSTRUCTURED_TABLE_LOCATION` restores access to such
+  tables, but it also disables this validation altogether, and with the default sibling overlap
+  check, tables in different namespaces may then end up at overlapping locations. Use it only as a
+  temporary measure, keep `ALLOW_TABLE_LOCATION_OVERLAP` disabled, and where the realm's index and
+  backfill state allow it (see `ALLOW_OPTIMIZED_SIBLING_CHECK`), enable `OPTIMIZED_SIBLING_CHECK`,
+  which rejects overlapping locations across the whole catalog.
 
 ### New Features
 

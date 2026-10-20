@@ -1429,6 +1429,22 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       List<PolarisEntity> resolvedNamespace,
       String location,
       PolarisEntity entity) {
+    validateNoLocationOverlap(
+        catalog,
+        identifier,
+        resolvedNamespace,
+        location,
+        entity,
+        realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK));
+  }
+
+  private void validateNoLocationOverlap(
+      CatalogEntity catalog,
+      TableIdentifier identifier,
+      List<PolarisEntity> resolvedNamespace,
+      String location,
+      PolarisEntity entity,
+      boolean useOptimizedSiblingCheck) {
     boolean validateViewOverlap =
         realmConfig.getConfig(BehaviorChangeConfiguration.VALIDATE_VIEW_LOCATION_OVERLAP);
 
@@ -1459,7 +1475,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
                   .build());
 
-      validateNoLocationOverlap(virtualEntity, resolvedNamespace);
+      validateNoLocationOverlap(virtualEntity, resolvedNamespace, useOptimizedSiblingCheck);
     }
   }
 
@@ -1536,13 +1552,17 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
    */
   private <T extends PolarisEntity & LocationBasedEntity> void validateNoLocationOverlap(
       T entity, List<PolarisEntity> parentPath) {
+    validateNoLocationOverlap(
+        entity, parentPath, realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK));
+  }
+
+  private <T extends PolarisEntity & LocationBasedEntity> void validateNoLocationOverlap(
+      T entity, List<PolarisEntity> parentPath, boolean useOptimizedSiblingCheck) {
 
     String location = entity.getBaseLocation();
     String name = entity.getName();
 
     // Attempt to directly query for siblings
-    boolean useOptimizedSiblingCheck =
-        realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
     if (useOptimizedSiblingCheck) {
       Optional<Optional<String>> directSiblingCheckResult =
           getMetaStoreManager()
@@ -2794,6 +2814,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       }
       newCatalogPath = resolvedNewParentEntities.getRawFullPath();
 
+      validateLocationsForRenamedTableLike(
+          to, IcebergTableLikeEntity.of(leafEntity), resolvedNewParentEntities);
+
       // the "to" table has a new parent and a new name / namespace path
       toEntity =
           new IcebergTableLikeEntity.Builder(IcebergTableLikeEntity.of(leafEntity))
@@ -2885,6 +2908,33 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                 PolarisEntity.toCoreList(newCatalogPath),
                 new IcebergTableLikeEntity.Builder(returnedEntity).setTableIdentifier(to).build());
       }
+    }
+  }
+
+  /**
+   * A table-like moved to another namespace keeps its locations, so they must satisfy the location
+   * rules that creating it in the new namespace would enforce.
+   */
+  private void validateLocationsForRenamedTableLike(
+      TableIdentifier to,
+      IcebergTableLikeEntity entity,
+      PolarisResolvedPathWrapper resolvedNewParent) {
+    Set<String> tableLocations =
+        StorageUtil.getLocationsUsedByTable(
+            entity.getBaseLocation(), entity.getInternalPropertiesAsMap());
+    Set<String> locationsToValidate = new HashSet<>(tableLocations);
+    if (entity.getMetadataLocation() != null) {
+      locationsToValidate.add(entity.getMetadataLocation());
+    }
+    validateLocationsForTableLike(to, locationsToValidate, resolvedNewParent);
+
+    // List the new siblings rather than using the optimized sibling check: that check searches the
+    // whole catalog by location and would report the entity itself, which is still at its location.
+    // TODO We could optimize this by passing the entity to the optimized location overlap check, so
+    // it can ignore that entity.
+    for (String location : tableLocations) {
+      validateNoLocationOverlap(
+          catalogEntity, to, resolvedNewParent.getRawFullPath(), location, entity, false);
     }
   }
 
