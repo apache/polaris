@@ -51,8 +51,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Polaris now supports Directories, which make objects stored on an object store (including unstructured
   data) discoverable alongside Iceberg tables: a directory tracks the objects under a base location in an
   Iceberg table. A simple scan endpoint (`POST .../directories/{directory}/scan`) populates that table; it
-  can be disabled with the `ENABLE_DIRECTORY_SCAN` feature flag, and the whole feature with
-  `ENABLE_DIRECTORIES`.
+  is disabled by default and can be enabled with the `ENABLE_DIRECTORY_SCAN` feature flag. The whole
+  feature can be disabled with `ENABLE_DIRECTORIES`.
 
 ### Upgrade notes
 

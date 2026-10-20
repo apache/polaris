@@ -314,7 +314,7 @@ If true, the directories endpoints are enabled
 If true, the directory scan endpoint is enabled. It lets Polaris list the objects of a directory base location and populate the directory table
 
 - **Type:** `Boolean`
-- **Default:** `true`
+- **Default:** `false`
 
 ---
 

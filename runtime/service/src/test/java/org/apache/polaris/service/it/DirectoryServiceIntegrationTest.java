@@ -24,5 +24,5 @@ import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.it.test.PolarisDirectoryServiceIntegrationTest;
 
 @QuarkusTest
-@TestProfile(Profiles.DefaultProfile.class)
+@TestProfile(Profiles.DirectoryIntegrationProfile.class)
 public class DirectoryServiceIntegrationTest extends PolarisDirectoryServiceIntegrationTest {}

@@ -148,8 +148,8 @@ Polaris lists the `base_location` with read-only credentials scoped to that loca
 `scan-schedule`: it is up to the caller (or an [external service](#external-services-scanning-services))
 to trigger it periodically. If the scan fails, the directory table remains unchanged.
 
-The scan service can be disabled with the `ENABLE_DIRECTORY_SCAN` feature flag (see
-[Configuration]({{% ref "configuration/configuration-reference" %}})), in which case the endpoint is rejected and no longer
+The scan service is disabled by default: it is enabled with the `ENABLE_DIRECTORY_SCAN` feature flag (see
+[Configuration]({{% ref "configuration/configuration-reference" %}})). When it is disabled, the endpoint is rejected and not
 advertised in the catalog configuration. The scan populates `file_uri`, `content_type` (guessed from the
 file name), `size` and `last_modified` (as reported by the object store); the other columns are left empty.
 It requires an object store whose `FileIO` supports listing a prefix.

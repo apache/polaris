@@ -540,7 +540,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "If true, the directory scan endpoint is enabled. It lets Polaris list the objects"
                   + " of a directory base location and populate the directory table")
-          .defaultValue(true)
+          .defaultValue(false)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Long> ENTITY_CACHE_WEIGHER_TARGET =
