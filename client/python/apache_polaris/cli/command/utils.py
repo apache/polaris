@@ -81,7 +81,9 @@ def get_catalog_api_client(api: PolarisDefaultApi) -> ApiClient:
         username=mgmt_config.username,
         password=mgmt_config.password,
         access_token=mgmt_config.access_token,
+        ssl_ca_cert=mgmt_config.ssl_ca_cert,
     )
+    configuration.verify_ssl = mgmt_config.verify_ssl
 
     if hasattr(mgmt_config, "proxy"):
         configuration.proxy = mgmt_config.proxy

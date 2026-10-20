@@ -17,7 +17,7 @@
 # under the License.
 #
 
-openapi: 3.0.3
+openapi: 3.1.1
 info:
   title: Apache Polaris and Apache Iceberg REST Catalog API
   license:
@@ -2509,8 +2509,9 @@ components:
         Servers that support pagination must return all results in a single response with the value of `next-page-token` set to `null` if the query parameter `pageToken` is not set in the request.
         Servers that do not support pagination should ignore the `pageToken` parameter and return all results in a single response. The `next-page-token` must be omitted from the response.
         Clients must interpret either `null` or missing response value of `next-page-token` as the end of the listing results.
-      type: string
-      nullable: true
+      type:
+        - string
+        - 'null'
     Namespace:
       description: Reference to one or more levels of a namespace
       type: array
@@ -2568,7 +2569,9 @@ components:
         namespace:
           $ref: '#/components/schemas/Namespace'
         properties:
-          type: object
+          type:
+            - object
+            - 'null'
           description: Properties stored on the namespace, if supported by the server. If the server does not support namespace properties, it should return null for this field. If namespace properties are supported, but none are set, it should return an empty object.
           additionalProperties:
             type: string
@@ -2576,7 +2579,6 @@ components:
             owner: Ralph
             transient_lastDdlTime: '1452120468'
           default: {}
-          nullable: true
     UpdateNamespacePropertiesRequest:
       type: object
       properties:
@@ -2612,11 +2614,12 @@ components:
           items:
             type: string
         missing:
-          type: array
+          type:
+            - array
+            - 'null'
           items:
             type: string
           description: List of properties requested for removal that were not found in the namespace's properties. Represents a partial success response. Server's do not need to implement this.
-          nullable: true
     TableIdentifier:
       type: object
       required:
@@ -2627,7 +2630,6 @@ components:
           $ref: '#/components/schemas/Namespace'
         name:
           type: string
-          nullable: false
     ListTablesResponse:
       type: object
       properties:
@@ -3850,9 +3852,10 @@ components:
         - metadata
       properties:
         metadata-location:
-          type: string
+          type:
+            - string
+            - 'null'
           description: May be null if the table is staged as part of a transaction
-          nullable: true
         metadata:
           $ref: '#/components/schemas/TableMetadata'
         config:
@@ -3943,9 +3946,10 @@ components:
         ref:
           type: string
         snapshot-id:
-          type: integer
+          type:
+            - integer
+            - 'null'
           format: int64
-          nullable: true
     AssertLastAssignedFieldId:
       description: The table's last assigned column id must match the requirement's `last-assigned-field-id`
       allOf:
@@ -4985,8 +4989,9 @@ components:
             $ref: '#/components/schemas/StorageAccessConfig'
     PolicyType:
       description: The type of a policy
-      type: string
-      nullable: true
+      type:
+        - string
+        - 'null'
       example: system.data-compaction
     PolicyIdentifier:
       type: object
@@ -4998,7 +5003,6 @@ components:
           $ref: '#/components/schemas/Namespace'
         name:
           type: string
-          nullable: false
     ListPoliciesResponse:
       type: object
       properties:

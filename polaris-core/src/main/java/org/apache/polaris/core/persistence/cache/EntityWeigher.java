@@ -21,31 +21,29 @@ package org.apache.polaris.core.persistence.cache;
 import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.checkerframework.checker.index.qual.NonNegative;
+import org.jspecify.annotations.NonNull;
 
 /**
  * A {@link Weigher} implementation that weighs {@link ResolvedPolarisEntity} objects by the
- * approximate size of the entity object.
+ * approximate size of the entity object and of its grant records.
  */
-public class EntityWeigher implements Weigher<Long, ResolvedPolarisEntity> {
+public final class EntityWeigher implements Weigher<Long, ResolvedPolarisEntity> {
 
-  /** The amount of weight that is expected to roughly equate to 1MB of memory usage */
-  public static final long WEIGHT_PER_MB = 1024 * 1024;
+  public static final EntityWeigher INSTANCE = new EntityWeigher();
 
   /* Represents the approximate size of an entity beyond the properties */
-  private static final int APPROXIMATE_ENTITY_OVERHEAD = 1000;
+  private static final long APPROXIMATE_ENTITY_OVERHEAD = 1000;
 
   /* Represents the amount of bytes that a character is expected to take up */
-  private static final int APPROXIMATE_BYTES_PER_CHAR = 3;
+  private static final long APPROXIMATE_BYTES_PER_CHAR = 3;
 
-  /** Singleton instance */
-  private static final EntityWeigher instance = new EntityWeigher();
+  /*
+   * Represents the approximate size of a grant record: 12-byte object header, four longs and an int
+   * (36 bytes), plus the reference to it held by the list.
+   */
+  private static final long APPROXIMATE_GRANT_RECORD_SIZE = 64;
 
   private EntityWeigher() {}
-
-  /** Gets the singleton {@link EntityWeigher} */
-  public static EntityWeigher getInstance() {
-    return instance;
-  }
 
   /**
    * Computes the weight of a given entity. The unit here is not exactly bytes, but it's close.
@@ -55,15 +53,16 @@ public class EntityWeigher implements Weigher<Long, ResolvedPolarisEntity> {
    * @return The weight of the entity
    */
   @Override
-  public @NonNegative int weigh(Long key, ResolvedPolarisEntity value) {
-    return APPROXIMATE_ENTITY_OVERHEAD
-        + (value.getEntity().getName().length() * APPROXIMATE_BYTES_PER_CHAR)
-        + (value.getEntity().getProperties().length() * APPROXIMATE_BYTES_PER_CHAR)
-        + (value.getEntity().getInternalProperties().length() * APPROXIMATE_BYTES_PER_CHAR);
-  }
-
-  /** Factory method to provide a typed Weigher */
-  public static Weigher<Long, ResolvedPolarisEntity> asWeigher() {
-    return getInstance();
+  public @NonNegative int weigh(@NonNull Long key, ResolvedPolarisEntity value) {
+    long weight =
+        APPROXIMATE_ENTITY_OVERHEAD
+            + ((long) value.getEntity().getName().length() * APPROXIMATE_BYTES_PER_CHAR)
+            + ((long) value.getEntity().getProperties().length() * APPROXIMATE_BYTES_PER_CHAR)
+            + ((long) value.getEntity().getInternalProperties().length()
+                * APPROXIMATE_BYTES_PER_CHAR)
+            + ((long) value.getGrantRecordsAsGrantee().size() * APPROXIMATE_GRANT_RECORD_SIZE)
+            + ((long) value.getGrantRecordsAsSecurable().size() * APPROXIMATE_GRANT_RECORD_SIZE);
+    // Caffeine weights are ints; a huge grant list must not overflow into a negative weight
+    return (int) Math.min(weight, Integer.MAX_VALUE);
   }
 }

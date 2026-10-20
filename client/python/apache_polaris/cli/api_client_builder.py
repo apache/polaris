@@ -29,6 +29,7 @@ from apache_polaris.cli.constants import (
     REALM_ENV,
     HEADER_ENV,
     Arguments,
+    DEFAULT_HEADER,
     DEFAULT_HOSTNAME,
     DEFAULT_PORT,
     DEFAULT_SCHEME,
@@ -43,6 +44,8 @@ class BuilderConfig:
     def __init__(self, options: Namespace):
         self.options = options
         self.proxy = options.proxy
+        self.ssl_ca_cert = options.ssl_ca_cert
+        self.insecure = options.insecure
         self.access_token = options.access_token
 
     @cached_property
@@ -125,11 +128,12 @@ class BuilderConfig:
         return realms
 
     @cached_property
-    def header(self) -> Optional[str]:
+    def header(self) -> str:
         return (
             self.options.header
             or os.getenv(HEADER_ENV)
             or self.profile.get(Arguments.HEADER)
+            or DEFAULT_HEADER
         )
 
 
@@ -138,13 +142,20 @@ class ApiClientBuilder:
         self.conf = BuilderConfig(options)
         self.direct_auth_enabled = direct_authentication
 
+    def _new_configuration(self) -> Configuration:
+        config = Configuration(
+            host=self.conf.management_url, ssl_ca_cert=self.conf.ssl_ca_cert
+        )
+        config.proxy = self.conf.proxy
+        config.verify_ssl = not self.conf.insecure
+        return config
+
     def _get_token(self) -> str:
         header_params = {"Content-Type": "application/x-www-form-urlencoded"}
         if self.conf.header and self.conf.realm:
             header_params[self.conf.header] = self.conf.realm
 
-        conf = Configuration(host=self.conf.management_url)
-        conf.proxy = self.conf.proxy
+        conf = self._new_configuration()
         api_client = ApiClient(conf)
         response = api_client.call_api(
             "POST",
@@ -194,8 +205,7 @@ class ApiClientBuilder:
                 f" {CLIENT_SECRET_ENV}."
             )
 
-        config = Configuration(host=self.conf.management_url)
-        config.proxy = self.conf.proxy
+        config = self._new_configuration()
         if has_access_token:
             config.access_token = self.conf.access_token
         elif has_client_secret:

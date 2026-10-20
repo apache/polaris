@@ -57,9 +57,9 @@ requires-dist = [
 dev = [
     { name = "flake8", specifier = ">=4.0.0" },
     { name = "mypy", specifier = "<=2.4.0,>=2.4" },
-    { name = "openapi-generator-cli", specifier = "==7.12.0" },
+    { name = "openapi-generator-cli", specifier = "==7.26.0" },
     { name = "pip-licenses-cli", specifier = "==4.1.0" },
-    { name = "pre-commit", specifier = "==4.6.2" },
+    { name = "pre-commit", specifier = "==4.7.0" },
     { name = "pyiceberg", specifier = "==0.12.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-cov", specifier = ">=2.8.1" },
@@ -770,11 +770,11 @@ wheels = [
 
 [[package]]
 name = "openapi-generator-cli"
-version = "7.12.0"
+version = "7.26.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1b/7d/8f5bb83112179efd887b60390e3b5fdbb38bd993965ef4ce88740d8a6f29/openapi_generator_cli-7.12.0.tar.gz", hash = "sha256:11dc4fd67fc7d839572ae8e29fb1dee5892195a7ac88b98e41a2cd8105e3250f", size = 27094673, upload-time = "2025-03-27T12:51:54.247Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b3/be/1832670f038b324ef0cbbbe96b2bbf79b753fe07e0e00b48256784d71dc5/openapi_generator_cli-7.26.0.tar.gz", hash = "sha256:98e18e9a9e32f1f357595858526954542128bdace6a24c8cc7c8ebff8ca16e74", size = 30287266, upload-time = "2026-10-07T04:45:11.963Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/a8/23b4e7fca4e7015f461c2c520bc49b9b57a6635fd404dd77b0b6f917493e/openapi_generator_cli-7.12.0-py3-none-any.whl", hash = "sha256:cf97e0e40bacc66ca70963845e52b0c003aaab85da7f1d10cc25abf2f1c8bb6e", size = 27108048, upload-time = "2025-03-27T12:51:51.086Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/fd/36deca16b2312ef5e3d5ee77ed1b1e3550c98dee60fffc76e16e25697149/openapi_generator_cli-7.26.0-py3-none-any.whl", hash = "sha256:e6305fbbf91aa41b3b7fcd8bf2124880ab0bb9e32efad95b3dfe71f9313d856c", size = 30301947, upload-time = "2026-10-07T04:45:07.017Z" },
 ]
 
 [[package]]
@@ -837,7 +837,7 @@ wheels = [
 
 [[package]]
 name = "pre-commit"
-version = "4.6.2"
+version = "4.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cfgv" },
@@ -846,9 +846,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "virtualenv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/74/89/1f3e8e1fc3e97de0fa963495832f581f025f29471602a309e48808244292/pre_commit-4.6.2.tar.gz", hash = "sha256:8f5d7bfb021ecdbcd9d49d89847082dd24172ccde534390081a679ad046e2441", size = 198670, upload-time = "2026-08-10T22:07:18.421Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/c3/6965c2690ddce885ec75121572d065a5b94c5a5d8d3e657927ecda9fd715/pre_commit-4.7.0.tar.gz", hash = "sha256:1f3deee12b914c8fa184bd2b5953391c2e4f36763e403d4a23dc9983fa7c6e86", size = 198120, upload-time = "2026-10-12T20:45:40.32Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/45/e2/bbb7129c9e7999a6b8ee9cca3b66486c25c423ab5a75f34071798b74ce94/pre_commit-4.6.2-py2.py3-none-any.whl", hash = "sha256:e2dde9a75d3bce11bd3831c26d134df00a2803c1d818be6a0383c3dcda25dc4e", size = 226202, upload-time = "2026-08-10T22:07:16.942Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/83/ce0a196e4f7b20b11ce3aa1fc72fb973f64b7628d51c1b8aebad37fb7f81/pre_commit-4.7.0-py2.py3-none-any.whl", hash = "sha256:2e229038ad3656081b70c27913157e4b636ef306f643f024a8a8e3f0f7b2f877", size = 226261, upload-time = "2026-10-12T20:45:38.858Z" },
 ]
 
 [[package]]
