@@ -85,7 +85,7 @@ services:
       - "-c"
       - >-
         apk add --no-cache jq &&
-        keycloak_token=$$(curl http://keycloak:8080/realms/iceberg/protocol/openid-connect/token --user client1:s3cr3t -d 'grant_type=password' -d 'username=keycloak-admin' -d 'password=s3cr3t' | jq -r .access_token) &&
+        keycloak_token=$$(curl --fail-with-body -s http://keycloak:8080/realms/iceberg/protocol/openid-connect/token --user client1:s3cr3t -d 'grant_type=password' -d 'username=keycloak-admin' -d 'password=s3cr3t' | jq -er .access_token) &&
         /polaris/create-catalog.sh POLARIS $$keycloak_token &&
         touch /tmp/polaris-setup-done &&
         tail -f /dev/null

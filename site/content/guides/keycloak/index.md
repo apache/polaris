@@ -105,12 +105,12 @@ Note: the commands below require `jq` to be installed on your machine.
    `keycloak-admin` user:
 
     ```shell
-    keycloak_token=$(curl -s http://keycloak:8080/realms/iceberg/protocol/openid-connect/token \
+    keycloak_token=$(curl --fail-with-body -s http://keycloak:8080/realms/iceberg/protocol/openid-connect/token \
       --resolve keycloak:8080:127.0.0.1 \
       --user client1:s3cr3t \
       -d 'grant_type=password' \
       -d 'username=keycloak-admin' \
-      -d 'password=s3cr3t' | jq -r .access_token)
+      -d 'password=s3cr3t' | jq -er .access_token)
     ```
 
 Note the `--resolve` option: it is used to send the request with the `Host` header set to `keycloak`. This is necessary
