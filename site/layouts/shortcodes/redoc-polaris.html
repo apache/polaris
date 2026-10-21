@@ -1,7 +1,7 @@
 {{/*
 
 Apache Polaris custom redoc shortcode that takes just the file of the OpenAPI spec YAML and loads
-either the in-development version from the `main` branch or a released version from the corresponding
+either the in-development version from the local checkout or a released version from the corresponding
 Git tag.
 
 This is a copy of the Docsy redoc shortcode (v0.14.3), except the URL resolution block is replaced
@@ -16,17 +16,24 @@ https://github.com/google/docsy/blob/v0.14.3/layouts/_shortcodes/redoc.html
 {{- $otheroptions := .Get 1 -}}
 {{- $url := partial "rawGithubPolarisUrl.html" (dict "page" . "path" (printf "spec/%s" $spec)) -}}
 {{- /*
-Fetch the spec at build time and publish it with the site, since the ASF CSP blocks fetching
-it from raw.githubusercontent.com in the browser. Fail the build if it cannot be fetched.
+Publish the spec with the site, since the ASF CSP blocks fetching it from raw.githubusercontent.com
+in the browser. In-dev pages use the spec from the local checkout (`assets/polaris-spec` is a
+symlink to `spec/`), so the result always matches the commit being built. Released
+pages fetch the spec from the release tag. The build fails if the spec cannot be found.
 Spec URLs follow the pattern: https://polaris.apache.org/api-specs/{gitRef}/{spec}, e.g.
 https://polaris.apache.org/api-specs/apache-polaris-1.9.0/polaris-management-service.yml
 */ -}}
 {{- $gitRef := partial "polarisGitRef.html" . -}}
-{{- $remoteSpec := resources.GetRemote $url -}}
-{{- if not $remoteSpec -}}
-  {{- errorf "Cannot fetch API spec %s" $url -}}
+{{- $specResource := "" -}}
+{{- if $gitRef.isReleased -}}
+  {{- $specResource = resources.GetRemote $url -}}
+{{- else -}}
+  {{- $specResource = resources.Get (printf "polaris-spec/%s" $spec) -}}
 {{- end -}}
-{{- $specUrl := (resources.FromString (printf "api-specs/%s/%s" $gitRef.ref (path.Base $spec)) $remoteSpec.Content).RelPermalink -}}
+{{- if not $specResource -}}
+  {{- errorf "Cannot find API spec %s" $url -}}
+{{- end -}}
+{{- $specUrl := (resources.FromString (printf "api-specs/%s/%s" $gitRef.ref (path.Base $spec)) $specResource.Content).RelPermalink -}}
 
 <!-- CSS style overrides for Redoc API docs -->
 <style>
@@ -104,9 +111,11 @@ Redoc element with link to your OpenAPI definition
 Redoc JavaScript pinned and served locally to comply with ASF CSP policy
 -->
 {{- $redocUrl := "https://cdn.jsdelivr.net/npm/redoc@2.5.4/bundles/redoc.standalone.js" -}}
-{{ with resources.GetRemote $redocUrl }}
+{{- $redoc := resources.GetRemote $redocUrl -}}
+{{- if not $redoc -}}
+  {{- errorf "Cannot fetch Redoc bundle %s" $redocUrl -}}
+{{- end }}
 <script
-  src="{{ .RelPermalink }}"
+  src="{{ $redoc.RelPermalink }}"
   integrity="sha512-Z00aADcPGQvnFhTYEiE/mxUqXe5/jsomUy0kmoASPCt5JBIA1Ik1tpFk1V7sX1LZY5YGZ1EhpZyLU0ijUaooYg=="
   crossorigin="anonymous"></script>
-{{ end -}}
