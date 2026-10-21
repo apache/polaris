@@ -82,7 +82,7 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   @Override
   public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    NonRBACResolutionSemantics.resolveSelections(authzState, request);
+    NonRBACResolutionSemantics.applySelectors(authzState, request);
     authzState.select(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES); // for the artificial root entity
     authzState.resolve();
   }

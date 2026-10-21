@@ -56,7 +56,7 @@ public class TestPolarisAuthorizer implements PolarisAuthorizer {
   @Override
   public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    NonRBACResolutionSemantics.resolveSelections(authzState, request);
+    NonRBACResolutionSemantics.applySelectors(authzState, request);
     authzState.resolve();
   }
 

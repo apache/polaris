@@ -85,7 +85,7 @@ public class NonRBACResolutionSemanticsTest {
     AuthorizationState authzState = new AuthorizationState(manifest);
     AuthorizationRequest request = new AuthorizationRequest(PRINCIPAL, List.of(intents));
 
-    NonRBACResolutionSemantics.resolveSelections(authzState, request);
+    NonRBACResolutionSemantics.applySelectors(authzState, request);
     authzState.resolve();
 
     verify(manifest).resolveSelections(expected);
