@@ -118,8 +118,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   says what is wrong, on both the management and the Iceberg REST API. A body missing a required
   property or carrying a value of the wrong type previously returned `400` with an empty body, and
   malformed JSON returned the generic message `HTTP 400 Bad Request`; they now return messages such
-  as `Invalid value: Missing required creator property 'currentEntityVersion'` and
-  `Invalid JSON: Unexpected end-of-input ...`.
+  as `Invalid value: missing required property 'currentEntityVersion'`,
+  `Invalid value: unknown type id 'NOPE' for property 'storageConfigInfo'` and
+  `Invalid JSON: Unexpected end-of-input ...`. The messages name the property and the problem
+  without exposing internal type names.
 - The H2 relational JDBC init script no longer overwrites the recorded schema version. It now seeds
   the `version` table only when absent, matching the `ON CONFLICT DO NOTHING` behavior of the
   PostgreSQL and CockroachDB scripts. Previously, running bootstrap against an older, unmigrated H2
