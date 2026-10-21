@@ -28,10 +28,12 @@ import jakarta.ws.rs.ext.Provider;
  * example a missing required property or a value of the wrong type) through {@link
  * IcebergJsonProcessingExceptionMapper}.
  *
- * <p>Quarkus ships its own mapper for exactly this exception type, which takes precedence over the
- * Polaris mapper registered for the {@code JsonProcessingException} supertype and answers {@code
- * 400} without a body outside dev and test mode. Registering a mapper for the same type restores
- * the Iceberg error envelope with a message naming the offending property.
+ * <p>Quarkus ships its own mapper for exactly this exception type ({@code
+ * BuiltinMismatchedInputExceptionMapper} in {@code quarkus-rest-jackson}, checked at 3.40.1), which
+ * takes precedence over the Polaris mapper registered for the {@code JsonProcessingException}
+ * supertype and answers {@code 400} without a body unless the application runs in dev or test mode.
+ * Registering a mapper for the same type restores the Iceberg error envelope with a message naming
+ * the offending property.
  */
 @Provider
 public class IcebergMismatchedInputExceptionMapper
