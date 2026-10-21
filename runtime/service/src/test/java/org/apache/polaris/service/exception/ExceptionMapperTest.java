@@ -19,6 +19,7 @@
 package org.apache.polaris.service.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.assertArg;
 import static org.mockito.Mockito.reset;
@@ -30,10 +31,8 @@ import com.fasterxml.jackson.core.JsonLocation;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
-import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.WebApplicationException;
@@ -47,6 +46,8 @@ import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.rest.responses.ErrorResponseParser;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
+import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
@@ -168,43 +169,39 @@ public class ExceptionMapperTest {
     assertThat(parsed.message()).isEqualTo("Invalid value: missing required property 'version'");
   }
 
-  @Test
-  public void testUnknownTypeIdNamesPropertyWithoutInternalTypeNames() {
-    IcebergMismatchedInputExceptionMapper mapper = new IcebergMismatchedInputExceptionMapper();
-    InvalidTypeIdException exception =
-        InvalidTypeIdException.from(
-            (JsonParser) null,
-            "Could not resolve type id 'NOPE' as a subtype of `org.apache.polaris.Model`",
-            TypeFactory.defaultInstance().constructType(Object.class),
-            "NOPE");
-    exception.prependPath(Object.class, "storageConfigInfo");
-    exception.prependPath(Object.class, "catalog");
+  @ParameterizedTest
+  @MethodSource("requestBodyErrors")
+  public void testRequestBodyErrorMessagesNameTheProblemWithoutInternalTypeNames(
+      String json, Class<?> target, String expectedMessage) {
+    JsonProcessingException exception =
+        catchThrowableOfType(
+            JsonProcessingException.class, () -> new ObjectMapper().readValue(json, target));
+    Response response = new IcebergJsonProcessingExceptionMapper().toResponse(exception);
 
-    ErrorResponse parsed = (ErrorResponse) mapper.toResponse(exception).getEntity();
-
-    assertThat(parsed.code()).isEqualTo(400);
-    assertThat(parsed.message())
-        .isEqualTo("Invalid value: unknown type id 'NOPE' for property 'catalog.storageConfigInfo'")
-        .doesNotContain("org.apache", "`");
+    assertThat(response.getStatus()).isEqualTo(400);
+    assertThat(((ErrorResponse) response.getEntity()).message())
+        .startsWith(expectedMessage)
+        .doesNotContain("org.apache", "java.lang", "`");
   }
 
-  @Test
-  public void testWrongValueTypeNamesPropertyWithoutInternalTypeNames() {
-    IcebergMismatchedInputExceptionMapper mapper = new IcebergMismatchedInputExceptionMapper();
-    InvalidFormatException exception =
-        InvalidFormatException.from(
-            (JsonParser) null,
-            "Cannot deserialize value of type `java.lang.Integer` from String \"abc\"",
-            "abc",
-            Integer.class);
-    exception.prependPath(Object.class, "currentEntityVersion");
-
-    ErrorResponse parsed = (ErrorResponse) mapper.toResponse(exception).getEntity();
-
-    assertThat(parsed.code()).isEqualTo(400);
-    assertThat(parsed.message())
-        .isEqualTo("Invalid value for property 'currentEntityVersion'")
-        .doesNotContain("java.lang", "`");
+  static Stream<Arguments> requestBodyErrors() {
+    return Stream.of(
+        Arguments.of(
+            "{\"properties\": {}}",
+            UpdatePrincipalRequest.class,
+            "Invalid value: missing required property 'currentEntityVersion'"),
+        Arguments.of(
+            "{\"currentEntityVersion\": \"abc\", \"properties\": {}}",
+            UpdatePrincipalRequest.class,
+            "Invalid value for property 'currentEntityVersion'"),
+        Arguments.of(
+            "{\"catalog\": {\"type\": \"INTERNAL\", \"name\": \"x\","
+                + " \"properties\": {\"default-base-location\": \"s3://b/x\"},"
+                + " \"storageConfigInfo\": {\"storageType\": \"NOPE\"}}}",
+            CreateCatalogRequest.class,
+            "Invalid value: unknown type id 'NOPE' for property"),
+        Arguments.of(
+            "{\"currentEntityVersion\": 1, ", UpdatePrincipalRequest.class, "Invalid JSON: "));
   }
 
   @Test

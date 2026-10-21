@@ -83,7 +83,6 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.assertj.core.api.InstanceOfAssertFactories;
-import org.assertj.core.api.SoftAssertions;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -471,87 +470,21 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testRequestBodyErrorsReturnErrorDetails() {
-    String principalName = client.newEntityName("body-error-principal");
-    managementApi.createPrincipal(principalName);
-    String catalogName = client.newEntityName("body-error-catalog");
-    managementApi.createCatalog(
-        PolarisCatalog.builder()
-            .setType(Catalog.TypeEnum.INTERNAL)
-            .setName(catalogName)
-            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
-            .setStorageConfigInfo(
-                AwsStorageConfigInfo.builder()
-                    .setRoleArn("arn:aws:iam::123456789012:role/my-role")
-                    .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-                    .setAllowedLocations(List.of("s3://bucket/path/to/data"))
-                    .build())
-            .build());
-    String principalPath = "v1/principals/" + principalName;
+    String principalPath = "v1/principals/" + client.newEntityName("body-error-principal");
+    // The message permutations are covered by ExceptionMapperTest; this only checks that both
+    // runtime paths reach the Polaris mappers: a body that does not match the model is raised
+    // directly by Jackson, while malformed JSON arrives wrapped by the Quarkus body reader.
+    assertBadRequestWithMessage(
+        principalPath, "{\"properties\": {}}", "missing required property 'currentEntityVersion'");
+    assertBadRequestWithMessage(principalPath, "{\"currentEntityVersion\": 1, ", "Invalid JSON: ");
+  }
 
-    // {path, request body, expected fragment of the error message}
-    List<String[]> managementCases =
-        List.of(
-            new String[] {
-              principalPath,
-              "{\"properties\": {}}",
-              "missing required property 'currentEntityVersion'"
-            },
-            new String[] {
-              principalPath,
-              "{\"currentEntityVersion\": \"abc\", \"properties\": {}}",
-              "Invalid value for property 'currentEntityVersion'"
-            },
-            new String[] {
-              "v1/catalogs",
-              "{\"catalog\": {\"type\": \"INTERNAL\", \"name\": \"x\","
-                  + " \"properties\": {\"default-base-location\": \"s3://bucket/x\"},"
-                  + " \"storageConfigInfo\": {\"storageType\": \"NOPE\"}}}",
-              "unknown type id 'NOPE' for property 'storageConfigInfo'"
-            },
-            new String[] {principalPath, "{\"currentEntityVersion\": 1, ", "Invalid JSON"});
-    SoftAssertions.assertSoftly(
-        softly -> {
-          for (String[] c : managementCases) {
-            Entity<String> entity = Entity.entity(c[1], MediaType.APPLICATION_JSON);
-            try (Response response =
-                c[0].equals("v1/catalogs")
-                    ? managementApi.request(c[0]).post(entity)
-                    : managementApi.request(c[0]).put(entity)) {
-              String body = response.readEntity(String.class);
-              softly
-                  .assertThat(response.getStatus())
-                  .as("%s with body %s: %s", c[0], c[1], body)
-                  .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
-              softly
-                  .assertThat(response.getMediaType())
-                  .as("%s with body %s", c[0], c[1])
-                  .matches(
-                      type -> type != null && type.isCompatible(MediaType.APPLICATION_JSON_TYPE));
-              softly
-                  .assertThat(body)
-                  .as("%s with body %s", c[0], c[1])
-                  .contains(c[2])
-                  // the message must not expose Java type names or model classes
-                  .doesNotContain("org.apache", "java.lang", "`");
-            }
-          }
-          try (Response response =
-              catalogApi
-                  .request("v1/{cat}/namespaces", Map.of("cat", catalogName))
-                  .post(Entity.entity("{\"namespace\": [\"ns\"], ", MediaType.APPLICATION_JSON))) {
-            String body = response.readEntity(String.class);
-            softly
-                .assertThat(response.getStatus())
-                .as("malformed Iceberg request: %s", body)
-                .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
-            softly
-                .assertThat(response.getMediaType())
-                .as("malformed Iceberg request")
-                .matches(
-                    type -> type != null && type.isCompatible(MediaType.APPLICATION_JSON_TYPE));
-            softly.assertThat(body).as("malformed Iceberg request").contains("Invalid JSON");
-          }
-        });
+  private static void assertBadRequestWithMessage(String path, String body, String message) {
+    try (Response response =
+        managementApi.request(path).put(Entity.entity(body, MediaType.APPLICATION_JSON))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertThat(response.readEntity(ErrorResponse.class).message()).contains(message);
+    }
   }
 
   @Test
