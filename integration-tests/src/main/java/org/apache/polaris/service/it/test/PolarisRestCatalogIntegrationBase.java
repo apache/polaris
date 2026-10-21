@@ -285,7 +285,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
     String principalName = client.newEntityName("snowman-rest");
     String principalRoleName = client.newEntityName("rest-admin");
-    principalToken = obtainToken(client, principalName, principalRoleName);
+    ClientPrincipal testPrincipal = createTestPrincipal(client, principalName, principalRoleName);
+    principalToken = obtainToken(client, testPrincipal);
 
     catalogApi = client.catalogApi(principalToken);
     genericTableApi = client.genericTableApi(principalToken);
@@ -374,12 +375,6 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         new ClientCredentials(
             principalWithCredentials.getCredentials().getClientId(),
             principalWithCredentials.getCredentials().getClientSecret()));
-  }
-
-  protected String obtainToken(
-      PolarisClient client, String principalName, String principalRoleName) {
-    ClientPrincipal principal = createTestPrincipal(client, principalName, principalRoleName);
-    return obtainToken(client, principal);
   }
 
   /**

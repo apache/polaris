@@ -34,6 +34,7 @@ import java.util.Optional;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.service.it.env.CatalogApi;
+import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
@@ -132,7 +133,8 @@ public class ExternalPrincipalKeycloakOpaIT extends PolarisRestCatalogFileIntegr
   }
 
   @Override
-  protected String obtainToken(PolarisClient client, String principalName, String principalRole) {
+  protected ClientPrincipal createTestPrincipal(
+      PolarisClient client, String principalName, String principalRole) {
     keycloak.createRole(principalRole);
     roles.add(principalRole);
     keycloak.createUser(principalName, "s3cr3t");
@@ -144,7 +146,7 @@ public class ExternalPrincipalKeycloakOpaIT extends PolarisRestCatalogFileIntegr
     keycloak.createServiceAccount(clientId, clientSecret);
     svcAccounts.add(clientId);
 
-    return obtainToken(principalName, "s3cr3t", clientId, clientSecret);
+    return new ClientPrincipal(principalName, new ClientCredentials(clientId, clientSecret));
   }
 
   @Override
