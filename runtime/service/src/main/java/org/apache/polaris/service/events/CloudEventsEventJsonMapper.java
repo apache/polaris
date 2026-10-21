@@ -99,34 +99,39 @@ public final class CloudEventsEventJsonMapper {
     event
         .attributes()
         .getOptional(EventAttributes.TABLE_NAME)
-        .ifPresent(name -> data.put("table_name", name));
+        .ifPresent(name -> data.put(EventAttributes.TABLE_NAME.key(), name));
     event
         .attributes()
         .getOptional(EventAttributes.NAMESPACE)
         .map(Namespace::levels)
-        .ifPresent(namespace -> data.set("namespace", MAPPER.valueToTree(namespace)));
+        .ifPresent(
+            namespace -> data.set(EventAttributes.NAMESPACE.key(), MAPPER.valueToTree(namespace)));
     event
         .attributes()
         .getOptional(EventAttributes.TABLE_IDENTIFIER)
         .map(this::tableIdToList)
-        .ifPresent(idAsList -> data.set("table_identifier", MAPPER.valueToTree(idAsList)));
+        .ifPresent(
+            idAsList ->
+                data.set(EventAttributes.TABLE_IDENTIFIER.key(), MAPPER.valueToTree(idAsList)));
     event
         .attributes()
         .getOptional(EventAttributes.VIEW_IDENTIFIER)
         .map(this::tableIdToList)
-        .ifPresent(idAsList -> data.set("view_identifier", MAPPER.valueToTree(idAsList)));
+        .ifPresent(
+            idAsList ->
+                data.set(EventAttributes.VIEW_IDENTIFIER.key(), MAPPER.valueToTree(idAsList)));
     event
         .attributes()
         .getOptional(EventAttributes.VIEW_NAME)
-        .ifPresent(name -> data.put("view_name", name));
+        .ifPresent(name -> data.put(EventAttributes.VIEW_NAME.key(), name));
     event
         .attributes()
         .getOptional(EventAttributes.NAMESPACE_NAME)
-        .ifPresent(id -> data.put("namespace_name", id));
+        .ifPresent(id -> data.put(EventAttributes.NAMESPACE_NAME.key(), id));
     event
         .attributes()
         .getOptional(EventAttributes.CATALOG_NAME)
-        .ifPresent(id -> data.put("catalog_name", id));
+        .ifPresent(id -> data.put(EventAttributes.CATALOG_NAME.key(), id));
     data.put("realm_id", event.metadata().realmId());
     event
         .metadata()
