@@ -98,11 +98,15 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
     if (getWarehouse() != null) {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getWarehouse());
     }
-    copyAllowedProperties(properties, ALLOWED_PROPERTIES);
     if (getAuthenticationParameters() != null) {
       // Add authentication-specific metadata (non-credential properties)
       properties.putAll(
           getAuthenticationParameters().asIcebergCatalogProperties(polarisCredentialManager));
+    }
+    // Same order as the other connection types: allow-listed properties after the authentication
+    // metadata, and credentials last.
+    copyAllowedProperties(properties, ALLOWED_PROPERTIES);
+    if (getAuthenticationParameters() != null) {
       // Add connection credentials from Polaris credential manager
       ConnectionCredentials connectionCredentials =
           polarisCredentialManager.getConnectionCredentials(this);
