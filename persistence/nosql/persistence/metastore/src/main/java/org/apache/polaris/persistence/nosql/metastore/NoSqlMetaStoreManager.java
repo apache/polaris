@@ -655,9 +655,12 @@ record NoSqlMetaStoreManager(
           (principal, updatedPrincipalBuilder) -> {
             var principalSecrets = principalObjToPolarisPrincipalSecrets(principal);
 
-            // rotate the secrets
+            // rotate the secrets, dropping the previous secret when the principal is required to
+            // rotate its credentials, so the secret issued before does not remain usable as the
+            // secondary secret
+            var doReset = reset || principal.credentialRotationRequired();
             principalSecrets.rotateSecrets(oldSecretHash);
-            if (reset) {
+            if (doReset) {
               principalSecrets.rotateSecrets(principalSecrets.getMainSecretHash());
             }
 

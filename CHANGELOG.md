@@ -252,6 +252,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   generic-table paths used by the Spark plugin, now encode spaces in namespace and table names as
   `%20` instead of `+`. Previously, credential refresh failed for tables whose namespace or name
   contained a space.
+- NoSQL: a required credential rotation now invalidates the previous secret. The stored
+  credential-rotation state was not considered when deciding whether to drop the previous secret,
+  so the secret issued before the rotation stayed usable as the principal's secondary secret,
+  unlike on the relational-JDBC and transactional backends.
 - The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
   selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
   readiness monitoring without configuration changes.
