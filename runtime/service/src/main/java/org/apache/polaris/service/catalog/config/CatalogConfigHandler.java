@@ -132,9 +132,9 @@ public class CatalogConfigHandler {
     // pre-authorization path so upgrades do not empty defaults or 403 bootstrap. When true:
     // GET_CATALOG_CONFIG (CATALOG_READ_CONFIG) denies the whole response if unauthorized;
     // GET_CATALOG_CONFIG_PROPERTIES (CATALOG_READ_PROPERTIES) soft-hides defaults.
-    boolean enforce =
+    boolean enforceAccessChecks =
         realmConfig.getConfig(FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION);
-    if (enforce) {
+    if (enforceAccessChecks) {
       authorizer.authorize(authorizationState, configAuthzRequest).throwIfDenied();
     }
 
@@ -149,7 +149,7 @@ public class CatalogConfigHandler {
                     RESTCatalogProperties.NAMESPACE_SEPARATOR,
                     NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED))
             .withEndpoints(ImmutableList.copyOf(supportedEndpoints()));
-    if (enforce) {
+    if (enforceAccessChecks) {
       if (authorizer.authorize(authorizationState, propertiesAuthzRequest).isAllowed()) {
         builder.withDefaults(PolarisEntity.of(catalogEntity).getPropertiesAsMap());
       } else {
