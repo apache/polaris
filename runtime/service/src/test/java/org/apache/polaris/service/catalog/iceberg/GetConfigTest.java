@@ -96,7 +96,7 @@ public class GetConfigTest {
               AuthorizationRequest request = invocation.getArgument(1);
               for (var intent : request.intents()) {
                 for (PolarisAuthorizableOperation denied : deniedOps) {
-                  if (intent.getOperation() == denied) {
+                  if (intent.operation() == denied) {
                     return AuthorizationDecision.deny("test: operation " + denied + " denied");
                   }
                 }
@@ -210,7 +210,7 @@ public class GetConfigTest {
         ArgumentCaptor.forClass(AuthorizationRequest.class);
     verify(authorizer).resolveAuthorizationInputs(any(), resolutionRequest.capture());
     assertThat(resolutionRequest.getValue().intents())
-        .extracting(intent -> intent.getOperation())
+        .extracting(intent -> intent.operation())
         .containsExactly(
             PolarisAuthorizableOperation.GET_CATALOG_CONFIG,
             PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES);
