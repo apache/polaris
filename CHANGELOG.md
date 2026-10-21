@@ -71,7 +71,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Breaking changes
 
-- Creating a local Generic Table with an explicit, non-empty `base-location` now validates that
+- Creating a Generic Table with an explicit, non-empty `base-location` now validates that
   location against the catalog's allowed locations and, unless `ALLOW_UNSTRUCTURED_TABLE_LOCATION`
   is enabled, the parent namespace location. Requests that previously stored disallowed locations
   are now rejected. Omitting the location or sending an empty string retains its previous behavior.
