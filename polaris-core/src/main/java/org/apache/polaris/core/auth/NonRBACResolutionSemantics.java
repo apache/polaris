@@ -39,8 +39,7 @@ public class NonRBACResolutionSemantics {
    * AuthorizationState#select(Resolvable) selectors} to the {@link AuthorizationState}, which would
    * be required for the {@link PolarisResolutionManifest} to be able to find related entities.
    */
-  public static void applySelectors(
-      AuthorizationState authzState, AuthorizationRequest request) {
+  public static void applySelectors(AuthorizationState authzState, AuthorizationRequest request) {
     mergeSelections(authzState, request);
   }
 
