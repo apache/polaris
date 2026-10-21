@@ -27,4 +27,10 @@ dependencies {
 
   implementation(platform(libs.awssdk.bom))
   implementation("software.amazon.awssdk:dynamodb")
+
+  testImplementation(project(":polaris-floci-aws-testcontainer"))
+  testImplementation(platform(libs.testcontainers.bom))
+  testImplementation("org.testcontainers:testcontainers")
+  testImplementation(platform(libs.awssdk.bom))
+  testImplementation("software.amazon.awssdk:apache-client")
 }
