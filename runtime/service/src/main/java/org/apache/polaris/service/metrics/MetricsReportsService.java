@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -42,12 +43,13 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.metrics.api.model.ListMetricsResponse;
-import org.apache.polaris.core.metrics.api.model.MetricsActor;
 import org.apache.polaris.core.metrics.api.model.MetricsReport;
 import org.apache.polaris.core.metrics.api.model.MetricsRequest;
 import org.apache.polaris.core.metrics.api.model.QueryMetricsRequest;
@@ -64,7 +66,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.extension.metrics.spi.MetricsQuerySpi;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
-import org.apache.polaris.service.metrics.api.PolarisMetricsApiService;
+import org.apache.polaris.service.metrics.api.PolarisCatalogMetricsReportsApiService;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -78,13 +80,14 @@ import org.jspecify.annotations.NonNull;
  */
 @Beta
 @RequestScoped
-public class MetricsReportsService implements PolarisMetricsApiService {
+public class MetricsReportsService implements PolarisCatalogMetricsReportsApiService {
 
   private final PolarisAuthorizer authorizer;
   private final PolarisPrincipal polarisPrincipal;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final Instance<MetricsQuerySpi> queryProvider;
   private final CatalogPrefixParser prefixParser;
+  private final RealmConfig realmConfig;
 
   @Inject
   public MetricsReportsService(
@@ -92,12 +95,14 @@ public class MetricsReportsService implements PolarisMetricsApiService {
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull ResolutionManifestFactory resolutionManifestFactory,
       @Any Instance<MetricsQuerySpi> queryProvider,
-      @NonNull CatalogPrefixParser prefixParser) {
+      @NonNull CatalogPrefixParser prefixParser,
+      @NonNull RealmConfig realmConfig) {
     this.authorizer = authorizer;
     this.polarisPrincipal = polarisPrincipal;
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.prefixParser = prefixParser;
     this.queryProvider = queryProvider;
+    this.realmConfig = realmConfig;
   }
 
   @Override
@@ -126,36 +131,46 @@ public class MetricsReportsService implements PolarisMetricsApiService {
                         Namespace.of(ref.getNamespace().toArray(new String[0])), ref.getName()))
             .toList();
 
-    PolarisResolutionManifest manifest = resolveAndAuthorizeTableMetrics(catalogName, identifiers);
+    ResolvedTables resolved = resolveAndAuthorizeTableMetrics(catalogName, identifiers);
+    CatalogEntity catalogEntity = resolved.catalogEntity();
+    Map<Long, TableIdentifier> tableIdToIdentifier = resolved.tableIdToIdentifier();
 
-    CatalogEntity catalogEntity = manifest.getResolvedCatalogEntity();
-    Preconditions.checkNotNull(catalogEntity, "No catalog available");
-    long catalogId = catalogEntity.getId();
-
-    List<Long> tableIds = new ArrayList<>(identifiers.size());
-    Map<Long, TableIdentifier> tableIdToIdentifier = new LinkedHashMap<>();
-    for (TableIdentifier identifier : identifiers) {
-      PolarisResolvedPathWrapper tableWrapper =
-          manifest.getResolvedPath(
-              ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_TABLE, true);
-      long tableId = tableWrapper.getRawLeafEntity().getId();
-      tableIds.add(tableId);
-      tableIdToIdentifier.put(tableId, identifier);
-    }
-
-    MetricsQuerySpi.MetricType type = parseMetricType(request.getMetricType().toString());
-    PageToken pt = PageToken.build(request.getPageToken(), request.getPageSize(), -1, () -> true);
+    MetricsQuerySpi.MetricType type =
+        switch (request.getMetricType()) {
+          case SCAN -> MetricsQuerySpi.MetricType.SCAN;
+          case COMMIT -> MetricsQuerySpi.MetricType.COMMIT;
+        };
+    int maxPageSize =
+        realmConfig.getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity);
+    PageToken pt =
+        PageToken.build(
+            request.getPageToken(),
+            request.getPageSize(),
+            maxPageSize,
+            () ->
+                realmConfig.getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED, catalogEntity));
     MetricsQuerySpi provider = queryProvider.get();
 
     MetricsQuerySpi.QueryResult result =
         provider.listReports(
             type,
-            catalogId,
-            tableIds,
+            catalogEntity.getId(),
+            new ArrayList<>(tableIdToIdentifier.keySet()),
             request.getSnapshotId(),
             request.getTimestampFrom(),
             request.getTimestampTo(),
             pt);
+
+    String nextPageToken =
+        switch (result) {
+          case MetricsQuerySpi.ScanResult scan -> scan.reports().encodedResponseToken();
+          case MetricsQuerySpi.CommitResult commit -> commit.reports().encodedResponseToken();
+        };
+    if (request.getPageToken() == null && request.getPageSize() == null && nextPageToken != null) {
+      throw new BadRequestException(
+          "Metrics do not fit the maximum page size of %s; supply a pageToken to paginate",
+          maxPageSize);
+    }
 
     Preconditions.checkState(
         result.metricType() == type, "Provider returned %s for %s", result.metricType(), type);
@@ -180,18 +195,10 @@ public class MetricsReportsService implements PolarisMetricsApiService {
     return Response.ok(new ListMetricsResponse(nextPageToken, reports)).build();
   }
 
-  private static MetricsQuerySpi.MetricType parseMetricType(String metricType) {
-    if ("scan".equalsIgnoreCase(metricType)) {
-      return MetricsQuerySpi.MetricType.SCAN;
-    }
-    if ("commit".equalsIgnoreCase(metricType)) {
-      return MetricsQuerySpi.MetricType.COMMIT;
-    }
-    throw new IllegalArgumentException(
-        "metricType must be one of [scan, commit], got: " + metricType);
-  }
+  private record ResolvedTables(
+      CatalogEntity catalogEntity, Map<Long, TableIdentifier> tableIdToIdentifier) {}
 
-  private PolarisResolutionManifest resolveAndAuthorizeTableMetrics(
+  private ResolvedTables resolveAndAuthorizeTableMetrics(
       String catalogName, List<TableIdentifier> identifiers) {
     PolarisResolutionManifest manifest =
         resolutionManifestFactory.createResolutionManifest(polarisPrincipal, catalogName);
@@ -228,6 +235,7 @@ public class MetricsReportsService implements PolarisMetricsApiService {
     AuthorizationState authorizationState = new AuthorizationState(manifest);
     authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
 
+    Map<Long, TableIdentifier> tableIdToIdentifier = new LinkedHashMap<>();
     for (TableIdentifier identifier : identifiers) {
       PolarisResolvedPathWrapper tableWrapper =
           manifest.getResolvedPath(
@@ -236,11 +244,14 @@ public class MetricsReportsService implements PolarisMetricsApiService {
       if (tableWrapper == null) {
         throw new NotFoundException("Table not found: %s", identifier);
       }
+      tableIdToIdentifier.put(tableWrapper.getRawLeafEntity().getId(), identifier);
     }
 
     authorizer.authorize(authorizationState, authorizationRequest).throwIfDenied();
 
-    return manifest;
+    CatalogEntity catalogEntity = manifest.getResolvedCatalogEntity();
+    Preconditions.checkNotNull(catalogEntity, "No catalog available");
+    return new ResolvedTables(catalogEntity, tableIdToIdentifier);
   }
 
   private static MetricsReport toScanReport(ScanMetricsRecord r, TableIdentifier identifier) {
@@ -276,7 +287,6 @@ public class MetricsReportsService implements PolarisMetricsApiService {
         identifier,
         r.timestamp().toEpochMilli(),
         r.snapshotId().orElse(null),
-        r.principalName(),
         r.requestId(),
         r.otelTraceId(),
         r.otelSpanId(),
@@ -316,7 +326,6 @@ public class MetricsReportsService implements PolarisMetricsApiService {
         identifier,
         r.timestamp().toEpochMilli(),
         r.snapshotId(),
-        r.principalName(),
         r.requestId(),
         r.otelTraceId(),
         r.otelSpanId(),
@@ -328,18 +337,16 @@ public class MetricsReportsService implements PolarisMetricsApiService {
       TableIdentifier identifier,
       long timestampMs,
       Long snapshotId,
-      String principalName,
       String requestId,
       String otelTraceId,
       String otelSpanId,
       Map<String, Object> payload) {
-    MetricsActor actor = principalName != null ? new MetricsActor(principalName) : null;
     MetricsRequest request =
         (requestId != null || otelTraceId != null || otelSpanId != null)
             ? new MetricsRequest(requestId, otelTraceId, otelSpanId)
             : null;
     return new MetricsReport(
-        metricType, toTableRef(identifier), timestampMs, snapshotId, actor, request, payload);
+        metricType, toTableRef(identifier), timestampMs, snapshotId, request, payload);
   }
 
   private static TableRef toTableRef(TableIdentifier identifier) {
