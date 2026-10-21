@@ -96,7 +96,7 @@ services:
       test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.7.4
+    image: quay.io/keycloak/keycloak:26.8.1
     ports:
       - "8080:8080"
     environment:
@@ -116,7 +116,7 @@ services:
       retries: 15
 
   opa:
-    image: openpolicyagent/opa:1.21.1
+    image: openpolicyagent/opa:1.21.3
     ports:
       # Optional, lets you query OPA's REST API directly to inspect decisions
       - "8183:8181"
