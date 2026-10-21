@@ -326,7 +326,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
   @ParameterizedTest
   @NullSource
-  @ValueSource(strings = {""})
+  @ValueSource(strings = {"", "s3://my-bucket/path/to/data/ns/t1"})
   public void testGenericTableRoundTrip(String baseLocation) {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);

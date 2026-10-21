@@ -49,7 +49,8 @@ public class GenericTableAllowedLocationTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
-  void testNamespaceLocationRule(boolean allowUnstructuredLocation, @TempDir Path tempDir) {
+  void testNamespaceLocationRule(
+      boolean allowUnstructuredLocation, @TempDir Path tempDir, @TempDir Path outsideDir) {
     TestServices services =
         TestServices.builder()
             .config(
@@ -167,5 +168,26 @@ public class GenericTableAllowedLocationTest {
           .isInstanceOf(ForbiddenException.class)
           .hasMessageContaining("Invalid locations");
     }
+
+    CreateGenericTableRequest outsideAllowedLocations =
+        CreateGenericTableRequest.builder()
+            .setName("outside-allowed-locations")
+            .setFormat("delta")
+            .setBaseLocation(outsideDir.resolve("table").toUri().toString())
+            .setProperties(Map.of())
+            .build();
+    assertThatThrownBy(
+            () ->
+                services
+                    .genericTableApi()
+                    .createGenericTable(
+                        CATALOG,
+                        NAMESPACE,
+                        outsideAllowedLocations,
+                        null,
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
   }
 }
