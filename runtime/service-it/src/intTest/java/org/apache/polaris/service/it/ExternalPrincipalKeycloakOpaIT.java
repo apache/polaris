@@ -115,7 +115,7 @@ public class ExternalPrincipalKeycloakOpaIT extends PolarisRestCatalogFileIntegr
 
   @Override
   protected void makeAdmin(String principalRoleName, Catalog catalog) {
-    // nop - OPA policy grants access base on principal name
+    // nop - OPA policy grants access based on principal name
   }
 
   @Override
