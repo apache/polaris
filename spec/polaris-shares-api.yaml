@@ -627,14 +627,14 @@ components:
             User-defined properties. Keys with the reserved "share." prefix belong to the service. They
             are never returned here and are rejected (400) when set
         createTimestamp:
-          type: integer
-          format: int64
-          description: Epoch milliseconds of the creation time. Set by the service
+          type: string
+          format: date-time
+          description: The creation time, in ISO 8601 (RFC 3339) format. Set by the service
           readOnly: true
         lastUpdateTimestamp:
-          type: integer
-          format: int64
-          description: Epoch milliseconds of the last update time. Set by the service
+          type: string
+          format: date-time
+          description: The last update time, in ISO 8601 (RFC 3339) format. Set by the service
           readOnly: true
         entityVersion:
           type: integer
@@ -801,14 +801,14 @@ components:
             User-defined properties. Keys with the reserved "share." prefix belong to the service. They
             are never returned here and are rejected (400) when set
         createTimestamp:
-          type: integer
-          format: int64
-          description: Epoch milliseconds of the creation time. Set by the service
+          type: string
+          format: date-time
+          description: The creation time, in ISO 8601 (RFC 3339) format. Set by the service
           readOnly: true
         lastUpdateTimestamp:
-          type: integer
-          format: int64
-          description: Epoch milliseconds of the last update time. Set by the service
+          type: string
+          format: date-time
+          description: The last update time, in ISO 8601 (RFC 3339) format. Set by the service
           readOnly: true
         entityVersion:
           type: integer
@@ -861,9 +861,9 @@ components:
             User-defined properties. Keys with the reserved "share." prefix belong to the service. They
             are never returned here and are rejected (400) when set
         createTimestamp:
-          type: integer
-          format: int64
-          description: Epoch milliseconds of the creation time. Set by the service
+          type: string
+          format: date-time
+          description: The creation time, in ISO 8601 (RFC 3339) format. Set by the service
           readOnly: true
         entityVersion:
           type: integer
