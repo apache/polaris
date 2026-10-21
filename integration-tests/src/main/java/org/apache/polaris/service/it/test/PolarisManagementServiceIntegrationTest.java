@@ -491,18 +491,32 @@ public class PolarisManagementServiceIntegrationTest {
     // {path, request body, expected fragment of the error message}
     List<String[]> managementCases =
         List.of(
-            new String[] {principalPath, "{\"properties\": {}}", "currentEntityVersion"},
+            new String[] {
+              principalPath,
+              "{\"properties\": {}}",
+              "missing required property 'currentEntityVersion'"
+            },
             new String[] {
               principalPath,
               "{\"currentEntityVersion\": \"abc\", \"properties\": {}}",
-              "Invalid value"
+              "Invalid value for property 'currentEntityVersion'"
+            },
+            new String[] {
+              "v1/catalogs",
+              "{\"catalog\": {\"type\": \"INTERNAL\", \"name\": \"x\","
+                  + " \"properties\": {\"default-base-location\": \"s3://bucket/x\"},"
+                  + " \"storageConfigInfo\": {\"storageType\": \"NOPE\"}}}",
+              "unknown type id 'NOPE' for property 'storageConfigInfo'"
             },
             new String[] {principalPath, "{\"currentEntityVersion\": 1, ", "Invalid JSON"});
     SoftAssertions.assertSoftly(
         softly -> {
           for (String[] c : managementCases) {
+            Entity<String> entity = Entity.entity(c[1], MediaType.APPLICATION_JSON);
             try (Response response =
-                managementApi.request(c[0]).put(Entity.entity(c[1], MediaType.APPLICATION_JSON))) {
+                c[0].equals("v1/catalogs")
+                    ? managementApi.request(c[0]).post(entity)
+                    : managementApi.request(c[0]).put(entity)) {
               String body = response.readEntity(String.class);
               softly
                   .assertThat(response.getStatus())
@@ -513,7 +527,12 @@ public class PolarisManagementServiceIntegrationTest {
                   .as("%s with body %s", c[0], c[1])
                   .matches(
                       type -> type != null && type.isCompatible(MediaType.APPLICATION_JSON_TYPE));
-              softly.assertThat(body).as("%s with body %s", c[0], c[1]).contains(c[2]);
+              softly
+                  .assertThat(body)
+                  .as("%s with body %s", c[0], c[1])
+                  .contains(c[2])
+                  // the message must not expose Java type names or model classes
+                  .doesNotContain("org.apache", "java.lang", "`");
             }
           }
           try (Response response =

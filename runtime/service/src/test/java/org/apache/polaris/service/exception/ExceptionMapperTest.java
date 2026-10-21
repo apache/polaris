@@ -30,7 +30,10 @@ import com.fasterxml.jackson.core.JsonLocation;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.WebApplicationException;
@@ -162,8 +165,61 @@ public class ExceptionMapperTest {
     ErrorResponse parsed = (ErrorResponse) response.getEntity();
     assertThat(parsed.code()).isEqualTo(400);
     assertThat(parsed.type()).isEqualTo(MismatchedInputException.class.getSimpleName());
+    assertThat(parsed.message()).isEqualTo("Invalid value: missing required property 'version'");
+  }
+
+  @Test
+  public void testUnknownTypeIdNamesPropertyWithoutInternalTypeNames() {
+    IcebergMismatchedInputExceptionMapper mapper = new IcebergMismatchedInputExceptionMapper();
+    InvalidTypeIdException exception =
+        InvalidTypeIdException.from(
+            (JsonParser) null,
+            "Could not resolve type id 'NOPE' as a subtype of `org.apache.polaris.Model`",
+            TypeFactory.defaultInstance().constructType(Object.class),
+            "NOPE");
+    exception.prependPath(Object.class, "storageConfigInfo");
+    exception.prependPath(Object.class, "catalog");
+
+    ErrorResponse parsed = (ErrorResponse) mapper.toResponse(exception).getEntity();
+
+    assertThat(parsed.code()).isEqualTo(400);
     assertThat(parsed.message())
-        .isEqualTo("Invalid value: Missing required creator property 'version'");
+        .isEqualTo("Invalid value: unknown type id 'NOPE' for property 'catalog.storageConfigInfo'")
+        .doesNotContain("org.apache", "`");
+  }
+
+  @Test
+  public void testWrongValueTypeNamesPropertyWithoutInternalTypeNames() {
+    IcebergMismatchedInputExceptionMapper mapper = new IcebergMismatchedInputExceptionMapper();
+    InvalidFormatException exception =
+        InvalidFormatException.from(
+            (JsonParser) null,
+            "Cannot deserialize value of type `java.lang.Integer` from String \"abc\"",
+            "abc",
+            Integer.class);
+    exception.prependPath(Object.class, "currentEntityVersion");
+
+    ErrorResponse parsed = (ErrorResponse) mapper.toResponse(exception).getEntity();
+
+    assertThat(parsed.code()).isEqualTo(400);
+    assertThat(parsed.message())
+        .isEqualTo("Invalid value for property 'currentEntityVersion'")
+        .doesNotContain("java.lang", "`");
+  }
+
+  @Test
+  public void testWebApplicationExceptionWithJsonCauseButOtherStatusIsNotUnwrapped() {
+    IcebergExceptionMapper mapper = new IcebergExceptionMapper();
+    JsonParseException cause = new JsonParseException((JsonParser) null, "Unexpected end-of-input");
+
+    Response response =
+        mapper.toResponse(
+            new WebApplicationException(cause, Response.Status.INTERNAL_SERVER_ERROR));
+
+    assertThat(response.getStatus()).isEqualTo(500);
+    ErrorResponse parsed = (ErrorResponse) response.getEntity();
+    assertThat(parsed.type()).isEqualTo(WebApplicationException.class.getSimpleName());
+    assertThat(parsed.message()).doesNotContain("Unexpected end-of-input");
   }
 
   @Test
