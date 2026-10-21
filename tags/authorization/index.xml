@@ -1,14 +1,23 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Authorization on Apache Polaris</title><link>https://polaris.apache.org/tags/authorization/</link><description>Recent content in Authorization on Apache Polaris</description><generator>Hugo</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/"&gt;Copyright © 2026 The Apache Software Foundation&lt;/a&gt;.&lt;br&gt;Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0"&gt;Apache License, Version 2.0&lt;/a&gt;.</copyright><atom:link href="https://polaris.apache.org/tags/authorization/index.xml" rel="self" type="application/rss+xml"/><item><title>Getting Started with Apache Polaris, External Authentication and Keycloak</title><link>https://polaris.apache.org/guides/keycloak/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/keycloak/</guid><description>&lt;h2 id="overview" id="overview"&gt;Overview&lt;a class="heading-anchor" href="#overview" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
-&lt;p&gt;This example uses Keycloak as an &lt;strong&gt;external&lt;/strong&gt; identity provider for Polaris. The &amp;ldquo;iceberg&amp;rdquo; realm is automatically
-created and configured from the &lt;code&gt;iceberg-realm.json&lt;/code&gt; file.&lt;/p&gt;
-&lt;p&gt;This Keycloak realm contains 1 client definition: &lt;code&gt;client1:s3cr3t&lt;/code&gt;. It is configured to return tokens with the following
-fixed claims:&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;principal_id&lt;/code&gt;: the principal ID of the user. It is always set to zero (0) in this example.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;principal_name&lt;/code&gt;: the principal name of the user. It is always set to &amp;ldquo;root&amp;rdquo; in this example.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;principal_roles&lt;/code&gt;: the principal roles of the user. It is always set to &lt;code&gt;[&amp;quot;server_admin&amp;quot;]&lt;/code&gt; in this example.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;This is obviously not a realistic configuration. In a real-world scenario, you would configure Keycloak to return the
-actual principal ID, name and roles of the user. Note that principals and principal roles must have been created in
-Polaris beforehand, and the principal ID, name and roles must match the ones returned by Keycloak.&lt;/p&gt;</description></item></channel></rss>
+&lt;p&gt;This example uses Keycloak as an &lt;strong&gt;external&lt;/strong&gt; identity provider for Polaris, while keeping Polaris&amp;rsquo;s &lt;strong&gt;built-in&lt;/strong&gt;
+(internal) authorizer, which authorizes requests using grants recorded in the Polaris metastore. The &amp;ldquo;iceberg&amp;rdquo; realm
+is automatically created and configured from the &lt;code&gt;iceberg-realm.json&lt;/code&gt; file.&lt;/p&gt;
+&lt;p&gt;This Keycloak realm contains 1 client definition, &lt;code&gt;client1:s3cr3t&lt;/code&gt;, and 1 real user, &lt;code&gt;keycloak-admin:s3cr3t&lt;/code&gt;, who is
+granted the &lt;code&gt;service_admin&lt;/code&gt; role on &lt;code&gt;client1&lt;/code&gt;. Unlike the claims used in some other Polaris examples, nothing here is
+hardcoded: the token&amp;rsquo;s claims come naturally from this real user and the role granted to it in Keycloak.&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris, Fully External Principals, Keycloak and OPA</title><link>https://polaris.apache.org/guides/keycloak-opa/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/keycloak-opa/</guid><description>&lt;h2 id="overview" id="overview"&gt;Overview&lt;a class="heading-anchor" href="#overview" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;This example uses Keycloak as an &lt;strong&gt;external&lt;/strong&gt; identity provider for Polaris. Unlike the &lt;a href="https://polaris.apache.org/guides/keycloak/"&gt;Keycloak
+IDP example&lt;/a&gt;, it demonstrates &lt;strong&gt;fully external principals&lt;/strong&gt;: a
+principal authenticated by Keycloak that never needs to exist in the Polaris metastore at all.&lt;/p&gt;
+&lt;p&gt;Enabling fully external principals is done by setting the option
+&lt;code&gt;polaris.authentication.credential-mode=external&lt;/code&gt;; it has two hard requirements, both enforced by
+Polaris at startup:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;The authentication type must not be the default (&lt;code&gt;internal&lt;/code&gt;) one.&lt;/li&gt;
+&lt;li&gt;The authorizer must not be the default (&lt;code&gt;internal&lt;/code&gt;) one, since it authorizes requests using metastore-backed
+grants, which external principals don&amp;rsquo;t have.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;This example satisfies both requirements: the default (and only) realm delegates authentication to Keycloak
+exclusively (&lt;code&gt;polaris.authentication.type=external&lt;/code&gt;), and the whole deployment is authorized by
+&lt;a href="https://www.openpolicyagent.org/"&gt;Open Policy Agent (OPA)&lt;/a&gt; instead of Polaris&amp;rsquo;s built-in authorizer.&lt;/p&gt;</description></item></channel></rss>
