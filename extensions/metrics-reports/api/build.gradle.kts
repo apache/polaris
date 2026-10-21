@@ -25,8 +25,24 @@ plugins {
   id("org.kordamp.gradle.jandex")
 }
 
+val metricsModels =
+  listOf(
+      "QueryMetricsRequest",
+      "ListMetricsResponse",
+      "MetricsReport",
+      "MetricsRequest",
+      "TableRef",
+    )
+    .joinToString(",")
+
 dependencies {
   implementation(project(":polaris-core"))
+
+  // The generated API uses Iceberg's ErrorResponse and TableIdentifier-related types (mirrors the
+  // set used by the polaris-api-catalog-service generated code).
+  implementation(platform(libs.iceberg.bom))
+  implementation("org.apache.iceberg:iceberg-api")
+  implementation("org.apache.iceberg:iceberg-core")
 
   compileOnly(platform(libs.jackson.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
@@ -53,7 +69,7 @@ val generatedDir = project.layout.buildDirectory.dir("generated-openapi")
 val generatedOpenApiSrcDir = project.layout.buildDirectory.dir("generated-openapi/src/main/java")
 
 openApiGenerate {
-  inputSpec = provider { specsDir.file("metrics-reports-service.yml").asFile.absolutePath }
+  inputSpec = provider { specsDir.file("polaris-catalog-service.yaml").asFile.absolutePath }
   generatorName = "jaxrs-resteasy"
   outputDir = provider { generatedDir.get().asFile.absolutePath }
   apiPackage = "org.apache.polaris.service.metrics.api"
@@ -61,25 +77,28 @@ openApiGenerate {
   ignoreFileOverride.set(provider { rootDir.file(".openapi-generator-ignore").asFile.absolutePath })
   removeOperationIdPrefix.set(true)
   templateDir.set(provider { templatesDir.asFile.absolutePath })
-  globalProperties.put("apis", "")
-  globalProperties.put("models", "")
+  globalProperties.put("apis", "MetricsReportsApi")
+  globalProperties.put("models", metricsModels)
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
   configOptions.put("openApiNullable", "false")
   configOptions.put("useBeanValidation", "true")
-  // Without this, the operation's generated API class name is derived from the first path
-  // segment, which is now the "{prefix}" path variable (per Iceberg REST Catalog API
-  // convention) rather than a fixed literal segment to name the class after.
+  configOptions.put("resourceName", "catalog")
   configOptions.put("useTags", "true")
   configOptions.put("sourceFolder", "src/main/java")
   configOptions.put("useJakartaEe", "true")
   configOptions.put("generateBuilders", "true")
   configOptions.put("generateConstructorWithAllArgs", "true")
   configOptions.put("hideGenerationTimestamp", "true")
-  additionalProperties.put("apiNamePrefix", "Polaris")
-  additionalProperties.put("apiNameSuffix", "Api")
+  additionalProperties.put("apiNamePrefix", "PolarisCatalog")
+  additionalProperties.put("apiNameSuffix", "")
   additionalProperties.put("metricsPrefix", "polaris")
-  serverVariables.put("basePath", "api/metrics-reports/v1")
+  serverVariables.put("basePath", "api/catalog")
+  importMappings =
+    mapOf(
+      "ErrorModel" to "org.apache.iceberg.rest.responses.ErrorResponse",
+      "IcebergErrorResponse" to "org.apache.iceberg.rest.responses.ErrorResponse",
+    )
 }
 
 listOf("sourcesJar", "compileJava", "processResources").forEach { task ->

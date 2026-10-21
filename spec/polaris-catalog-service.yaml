@@ -192,6 +192,14 @@ paths:
     $ref: './polaris-catalog-apis/catalog-discovery-api.yaml#/paths/~1polaris~1discovery~1v1~1catalogs'
 
 
+  ###############################
+  # Polaris Metrics Reports API #
+  ###############################
+
+  /polaris/v1/{prefix}/metrics/query:
+    $ref: './polaris-catalog-apis/metrics-reports-api.yaml#/paths/~1polaris~1v1~1{prefix}~1metrics~1query'
+
+
 components:
   securitySchemes:
 

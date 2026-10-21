@@ -33,11 +33,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -79,6 +82,7 @@ class MetricsReportsServiceTest {
   private PolarisResolutionManifest manifest;
   private PolarisPrincipal principal;
   private ResolutionManifestFactory factory;
+  private RealmConfig realmConfig;
   private MetricsReportsService service;
   private RealmContext realmContext;
   private SecurityContext securityContext;
@@ -100,6 +104,13 @@ class MetricsReportsServiceTest {
 
     CatalogEntity catalogEntity = mock(CatalogEntity.class);
     when(catalogEntity.getId()).thenReturn(7L);
+    realmConfig = mock(RealmConfig.class);
+    when(realmConfig.getConfig(
+            eq(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE), any(CatalogEntity.class)))
+        .thenReturn(-1);
+    when(realmConfig.getConfig(
+            eq(FeatureConfiguration.LIST_PAGINATION_ENABLED), any(CatalogEntity.class)))
+        .thenReturn(true);
 
     when(manifest.resolveAll()).thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
     when(manifest.getResolvedCatalogEntity()).thenReturn(catalogEntity);
@@ -139,7 +150,12 @@ class MetricsReportsServiceTest {
 
     service =
         new MetricsReportsService(
-            authorizer, principal, factory, queryProvider, new DefaultCatalogPrefixParser());
+            authorizer,
+            principal,
+            factory,
+            queryProvider,
+            new DefaultCatalogPrefixParser(),
+            realmConfig);
     realmContext = mock(RealmContext.class);
     securityContext = mock(SecurityContext.class);
   }
@@ -312,7 +328,6 @@ class MetricsReportsServiceTest {
     assertThat(report.getTable()).isEqualTo(new TableRef(NAMESPACE, TABLE));
     assertThat(report.getTimestampMs()).isEqualTo(1_000L);
     assertThat(report.getSnapshotId()).isEqualTo(99L);
-    assertThat(report.getActor().getPrincipalName()).isEqualTo("alice");
     assertThat(report.getRequest().getRequestId()).isEqualTo("req-1");
     assertThat(report.getPayload())
         .containsEntry("type", "iceberg.metrics.scan")
@@ -383,7 +398,6 @@ class MetricsReportsServiceTest {
     assertThat(report.getMetricType()).isEqualTo(MetricsReport.MetricTypeEnum.COMMIT);
     assertThat(report.getTimestampMs()).isEqualTo(2_000L);
     assertThat(report.getSnapshotId()).isEqualTo(100L);
-    assertThat(report.getActor()).isNull();
     assertThat(report.getRequest()).isNull();
     assertThat(report.getPayload()).containsEntry("type", "iceberg.metrics.commit");
     @SuppressWarnings("unchecked")
@@ -394,6 +408,34 @@ class MetricsReportsServiceTest {
         .containsEntry("added-records", 300L)
         .containsEntry("total-duration-ms", 25L)
         .containsEntry("attempts", 1);
+  }
+
+  @Test
+  void unpaginatedRequestExceedingMaxPageSizeIsRejected() {
+    when(realmConfig.getConfig(
+            eq(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE), any(CatalogEntity.class)))
+        .thenReturn(1);
+    @SuppressWarnings("unchecked")
+    Page<ScanMetricsRecord> overflowing = mock(Page.class);
+    when(overflowing.items()).thenReturn(List.of());
+    when(overflowing.encodedResponseToken()).thenReturn("next");
+    MetricsQuerySpi provider = queryProvider.get();
+    when(provider.listReports(
+            eq(MetricsQuerySpi.MetricType.SCAN),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(PageToken.class)))
+        .thenReturn(new MetricsQuerySpi.ScanResult(overflowing));
+
+    assertThatThrownBy(
+            () ->
+                service.queryTableMetrics(
+                    CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("maximum page size");
   }
 
   @Test
