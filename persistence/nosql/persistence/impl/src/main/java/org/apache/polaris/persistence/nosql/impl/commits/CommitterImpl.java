@@ -168,6 +168,7 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
     final Persistence persistence;
     private Persistence delegate;
     final Map<ObjRef, Obj> forAttempt = new LinkedHashMap<>();
+    final Map<ObjRef, Obj> previousAttemptWrites = new LinkedHashMap<>();
     final Set<ObjRef> allPersistedIds = new HashSet<>();
     final Set<ObjRef> idsUsed = new HashSet<>();
     final Set<ObjRef> mustNotDelete = new HashSet<>();
@@ -491,10 +492,15 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
               + referenceType.getName());
     }
 
-    state.forAttempt.put(resultObjRef, resultObj);
-    var objs = state.forAttempt.values().toArray(new Obj[0]);
+    state.previousAttemptWrites.putAll(state.forAttempt);
+    state.previousAttemptWrites.remove(resultObjRef);
+    var pending = state.previousAttemptWrites.values();
+    var objs = pending.toArray(new Obj[pending.size() + 1]);
+    objs[objs.length - 1] = resultObj;
     state.forAttempt.clear();
     var persisted = persistence.writeMany(Obj.class, objs);
+    // An ambiguous write failure must retain the batch for the next commit attempt.
+    state.previousAttemptWrites.clear();
     // exclude the resultObj's ID here, handled below
     for (int i = 0; i < persisted.length - 1; i++) {
       var persistedId = objRef(persisted[i]);

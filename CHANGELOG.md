@@ -96,6 +96,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### New Features
 
 - Python CLI: added `register` support for both `tables` and `views` commands
+- Python CLI: added `namespaces update` to set and remove namespace properties
+- NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
+- Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
 
 ### Changes
 
@@ -108,11 +111,17 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   and table names as `%20` instead of `+` (apache/iceberg#15989). Polaris decodes path segments
   per RFC 3986 and has always treated `+` as a literal character, so the server behaves the same for
   all clients.
+- The entity cache now also weighs the grant records of cached entities, so `ENTITY_CACHE_WEIGHER_TARGET`
+  accounts for them. Entities with many grants weigh more, which can lead to more evictions than before
+  with the same configured value. The description of `ENTITY_CACHE_WEIGHER_TARGET` now documents that
+  its weights approximate bytes.
 
 ### Deprecations
 
 ### Fixes
 
+- NoSQL commits resend unresolved object writes on retry, preventing successful commits from
+  referencing objects left unwritten by a previous attempt.
 - The H2 relational JDBC init script no longer overwrites the recorded schema version. It now seeds
   the `version` table only when absent, matching the `ON CONFLICT DO NOTHING` behavior of the
   PostgreSQL and CockroachDB scripts. Previously, running bootstrap against an older, unmigrated H2
@@ -131,6 +140,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `OPTIMIZED_SIBLING_CHECK` is enabled. Such a location is a prefix of every sibling created later
   under the namespace, which blocked all subsequent sibling creates and over-scoped credentials
   vended for that entity to the whole namespace.
+- Internal token verification now tolerates up to 5 seconds of clock skew on the `iat` claim. With
+  multiple Polaris nodes, a token minted on one node and immediately used on another node whose
+  clock was a few milliseconds behind could be rejected with HTTP 401 when the token was minted
+  right after a second boundary. Token expiry is still enforced without leeway.
 - NoSQL maintenance: spilled `IndexStripeObj` segments are retained when identify walks an index via
   `indexForRead` (`RetainedCollectorImpl.buildReadIndex`), and `PrincipalsObj.byClientId` is retained
   explicitly. Previously only a subset of indexes got `indexRetain`, so after a spill past
@@ -230,6 +243,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
   selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
   readiness monitoring without configuration changes.
+- Fixed an unbounded memory growth in the in-memory entity cache that could lead to out-of-memory
+  errors: lookups by name no longer hold entities outside the cache's weight and expiry limits.
 
 ### Commits
 
@@ -339,6 +354,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Iceberg REST federation: `header.*` properties are now sent on every request to the remote
+  catalog. Previously only the initial `/config` request carried them.
 - GCS credential vending no longer fails with HTTP 500 when a table's location or `write.data.path`
   / `write.metadata.path` points at a bucket root without a trailing slash (e.g. `gs://bucket`).
   Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`

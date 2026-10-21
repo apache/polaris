@@ -52,12 +52,12 @@ abstract class VerifyBomDependenciesTask : DefaultTask() {
 
     if (missingProjectPaths.isNotEmpty()) {
       logger.error(
-        "The dependencies declared in the BOM might be incomplete, the following declarations might be missing:"
+        "The dependencies declared in the BOM might be incomplete, the following declarations might be missing:",
       )
       missingProjectPaths.forEach { logger.error("  api(project(\"$it\"))") }
 
       throw GradleException(
-        "The dependencies declared in the BOM might be incomplete, see logged errors above."
+        "The dependencies declared in the BOM might be incomplete, see logged errors above.",
       )
     }
   }

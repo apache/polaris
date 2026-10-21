@@ -113,8 +113,10 @@ dependencies {
     api(project(":polaris-hms-testcontainer"))
 
     api(project(":polaris-spark-3.5_2.12"))
-    val ideaActive = providers.systemProperty("idea.active").getOrElse("false").toBoolean()
-    if (!ideaActive) {
+    val ideImportActive =
+      providers.systemProperty("idea.active").getOrElse("false").toBoolean() ||
+        providers.systemProperty("buildship.active").getOrElse("false").toBoolean()
+    if (!ideImportActive) {
       api(project(":polaris-spark-3.5_2.13"))
       api(project(":polaris-spark-4.0_2.13"))
     }
@@ -137,10 +139,10 @@ tasks.register<VerifyBomDependenciesTask>("verifyBomDependencies") {
   description = "Checks if the BOM dependencies are complete"
 
   bomDependencyCoordinates.set(
-    configurations.api.map { it.dependencyConstraints.map { "${it.group}:${it.name}" } }
+    configurations.api.map { it.dependencyConstraints.map { "${it.group}:${it.name}" } },
   )
   projectCoordinatesByPath.set(
-    provider { rootProject.allprojects.associate { it.path to "${it.group}:${it.name}" } }
+    provider { rootProject.allprojects.associate { it.path to "${it.group}:${it.name}" } },
   )
   excludedProjectPaths.set(
     setOf(
@@ -148,7 +150,7 @@ tasks.register<VerifyBomDependenciesTask>("verifyBomDependencies") {
       ":aggregated-license-report",
       ":polaris-config-docs-site",
       ":polaris-distribution",
-    )
+    ),
   )
 }
 

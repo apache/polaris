@@ -37,12 +37,14 @@ internal fun Test.configurePolarisServer(extension: PolarisServerTestRunnerExten
   jvmArgumentProviders.add(dynamicArguments)
   inputs.files(extension.server).withPathSensitivity(PathSensitivity.RELATIVE)
   inputs.files(extension.startupActionClasspath).withPathSensitivity(PathSensitivity.RELATIVE)
-  inputs.property("polarisServerStartupActionClass", extension.startupActionClass.orNull ?: "")
-  inputs.properties(extension.startupActionParameters.get())
-  inputs.properties(extension.systemProperties.get())
-  inputs.properties(extension.environment.get())
-  inputs.property("polarisServerJvmArguments", extension.jvmArguments.get())
-  inputs.property("polarisServerArguments", extension.arguments.get())
+  inputs.property("polarisServerStartupActionClass", extension.startupActionClass).optional(true)
+  inputs
+    .property("polarisServerStartupActionParameters", extension.startupActionParameters)
+    .optional(true)
+  inputs.property("polarisServerSystemProperties", extension.systemProperties).optional(true)
+  inputs.property("polarisServerEnvironment", extension.environment).optional(true)
+  inputs.property("polarisServerJvmArguments", extension.jvmArguments).optional(true)
+  inputs.property("polarisServerArguments", extension.arguments).optional(true)
   usesService(extension.service)
   addTestListener(
     object : TestListener {
@@ -59,14 +61,14 @@ internal fun Test.configurePolarisServer(extension: PolarisServerTestRunnerExten
           startupAction = null
         }
       }
-    }
+    },
   )
 
   doFirst {
     val files = extension.server.files
     if (files.size != 1) {
       throw GradleException(
-        "Expected exactly one Polaris server artifact, but found ${files.size}: $files"
+        "Expected exactly one Polaris server artifact, but found ${files.size}: $files",
       )
     }
     val jar = files.single()
@@ -164,7 +166,7 @@ private class IsolatedPolarisServerStartupAction(
       try {
         withContextClassLoader(classLoader) {
           action.start(
-            DefaultPolarisServerStartupContext(parameters, systemProperties, environment)
+            DefaultPolarisServerStartupContext(parameters, systemProperties, environment),
           )
         }
       } catch (e: Throwable) {

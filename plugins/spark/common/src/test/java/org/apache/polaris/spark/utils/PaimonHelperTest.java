@@ -20,97 +20,102 @@ package org.apache.polaris.spark.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
 
 import com.google.common.collect.ImmutableMap;
+import java.util.Map;
 import org.apache.polaris.spark.NoopPaimonCatalog;
-import org.apache.polaris.spark.PolarisSparkCatalog;
-import org.apache.spark.sql.connector.catalog.DelegatingCatalogExtension;
+import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
+import org.apache.spark.sql.connector.catalog.SupportsNamespaces;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.junit.jupiter.api.Test;
 
 public class PaimonHelperTest {
+  private static final String CATALOG_NAME = "test_catalog";
+  private static final String WAREHOUSE = "/tmp/test-paimon-warehouse";
 
-  @Test
-  public void testLoadPaimonCatalogWithNoopPaimonCatalog() {
-    CaseInsensitiveStringMap options =
-        new CaseInsensitiveStringMap(
-            ImmutableMap.of(
-                PaimonHelper.PAIMON_CATALOG_IMPL_KEY,
-                "org.apache.polaris.spark.NoopPaimonCatalog"));
-    PaimonHelper helper = new PaimonHelper(options);
-    PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
+  public static class ConcurrentNamespaceCreationCatalog extends NoopPaimonCatalog {
+    private boolean initialCheck = true;
 
-    TableCatalog paimonCatalog = helper.loadPaimonCatalog(polarisSparkCatalog);
+    @Override
+    public boolean namespaceExists(String[] namespace) {
+      if (initialCheck) {
+        initialCheck = false;
+        return false;
+      }
+      return true;
+    }
 
-    assertThat(paimonCatalog).isNotNull();
-    assertThat(paimonCatalog).isInstanceOf(NoopPaimonCatalog.class);
-    assertThat(paimonCatalog).isInstanceOf(DelegatingCatalogExtension.class);
+    @Override
+    public void createNamespace(String[] namespace, Map<String, String> metadata)
+        throws NamespaceAlreadyExistsException {
+      throw new NamespaceAlreadyExistsException(namespace);
+    }
+  }
+
+  public static class FailingNamespaceCreationCatalog extends NoopPaimonCatalog {
+    @Override
+    public boolean namespaceExists(String[] namespace) {
+      return false;
+    }
+
+    @Override
+    public void createNamespace(String[] namespace, Map<String, String> metadata) {
+      throw new UnsupportedOperationException("namespace creation failed");
+    }
   }
 
   @Test
-  public void testLoadPaimonCatalogCachesInstance() {
-    CaseInsensitiveStringMap options =
-        new CaseInsensitiveStringMap(
-            ImmutableMap.of(
-                PaimonHelper.PAIMON_CATALOG_IMPL_KEY,
-                "org.apache.polaris.spark.NoopPaimonCatalog"));
-    PaimonHelper helper = new PaimonHelper(options);
-    PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
+  public void testLoadStandaloneCatalogAndCacheInstance() {
+    PaimonHelper helper = helperFor(NoopPaimonCatalog.class);
 
-    TableCatalog paimonCatalog1 = helper.loadPaimonCatalog(polarisSparkCatalog);
-    TableCatalog paimonCatalog2 = helper.loadPaimonCatalog(polarisSparkCatalog);
+    TableCatalog first = helper.loadPaimonCatalog();
+    TableCatalog second = helper.loadPaimonCatalog();
 
-    // Should return the same cached instance
-    assertThat(paimonCatalog1).isSameAs(paimonCatalog2);
+    assertThat(first).isInstanceOf(NoopPaimonCatalog.class);
+    assertThat(first).isInstanceOf(SupportsNamespaces.class);
+    assertThat(second).isSameAs(first);
   }
 
   @Test
-  public void testLoadPaimonCatalogWithNonExistentClass() {
+  public void testLoadPaimonCatalogWithoutWarehouseFails() {
     CaseInsensitiveStringMap options =
         new CaseInsensitiveStringMap(
             ImmutableMap.of(
-                PaimonHelper.PAIMON_CATALOG_IMPL_KEY, "com.example.NonExistentPaimonCatalog"));
-    PaimonHelper helper = new PaimonHelper(options);
-    PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
+                PaimonHelper.PAIMON_CATALOG_IMPL_KEY, NoopPaimonCatalog.class.getName()));
+    PaimonHelper helper = new PaimonHelper(CATALOG_NAME, options);
 
-    assertThatThrownBy(() -> helper.loadPaimonCatalog(polarisSparkCatalog))
+    assertThatThrownBy(helper::loadPaimonCatalog)
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Cannot initialize Paimon Catalog")
-        .hasMessageContaining("com.example.NonExistentPaimonCatalog");
+        .hasMessageContaining("paimon-warehouse");
   }
 
   @Test
-  public void testLoadPaimonCatalogWithCaseInsensitiveOptions() {
-    // Test that options are case-insensitive
-    CaseInsensitiveStringMap options =
-        new CaseInsensitiveStringMap(
-            ImmutableMap.of("PAIMON-CATALOG-IMPL", "org.apache.polaris.spark.NoopPaimonCatalog"));
-    PaimonHelper helper = new PaimonHelper(options);
-    PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
+  public void testEnsureNamespaceExistsIgnoresConfirmedConcurrentCreation() {
+    PaimonHelper helper = helperFor(ConcurrentNamespaceCreationCatalog.class);
+    helper.loadPaimonCatalog();
 
-    TableCatalog paimonCatalog = helper.loadPaimonCatalog(polarisSparkCatalog);
-
-    assertThat(paimonCatalog).isNotNull();
-    assertThat(paimonCatalog).isInstanceOf(NoopPaimonCatalog.class);
+    helper.ensureNamespaceExists(new String[] {"concurrent_db"});
   }
 
   @Test
-  public void testLoadPaimonCatalogSetsDelegateCatalog() {
+  public void testEnsureNamespaceExistsPropagatesCreationFailure() {
+    PaimonHelper helper = helperFor(FailingNamespaceCreationCatalog.class);
+    helper.loadPaimonCatalog();
+
+    assertThatThrownBy(() -> helper.ensureNamespaceExists(new String[] {"failing_db"}))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("namespace creation failed");
+  }
+
+  private static PaimonHelper helperFor(Class<? extends TableCatalog> implementation) {
     CaseInsensitiveStringMap options =
         new CaseInsensitiveStringMap(
             ImmutableMap.of(
                 PaimonHelper.PAIMON_CATALOG_IMPL_KEY,
-                "org.apache.polaris.spark.NoopPaimonCatalog"));
-    PaimonHelper helper = new PaimonHelper(options);
-    PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
-
-    TableCatalog paimonCatalog = helper.loadPaimonCatalog(polarisSparkCatalog);
-
-    // Verify that the delegate catalog is set
-    assertThat(paimonCatalog).isInstanceOf(DelegatingCatalogExtension.class);
-    // The delegate should be the polarisSparkCatalog we passed in
-    // This is verified by the fact that loadPaimonCatalog calls setDelegateCatalog
+                implementation.getName(),
+                PaimonHelper.PAIMON_WAREHOUSE_KEY,
+                WAREHOUSE));
+    return new PaimonHelper(CATALOG_NAME, options);
   }
 }

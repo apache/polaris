@@ -175,7 +175,7 @@ fun Test.configureSparkIntegrationTestTask(
         "polaris.features.\"ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG\"" to "true",
         "polaris.features.\"ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING\"" to "true",
         "polaris.features.\"ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING\"" to "true",
-      )
+      ),
     )
     storageAccessKey?.let { systemProperties.put("polaris.storage.aws.access-key", it) }
     storageSecretKey?.let { systemProperties.put("polaris.storage.aws.secret-key", it) }

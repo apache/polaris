@@ -58,7 +58,8 @@ final class BatchWrite implements AutoCloseable {
   }
 
   private void flush() {
-    backend.client.batchWriteItem(b -> b.requestItems(singletonMap(tableName, requestItems)));
+    // Copy before clear: retry may need the same items if DynamoDB returns UnprocessedItems.
+    backend.batchWriteItemWithRetry(singletonMap(tableName, List.copyOf(requestItems)));
     requestItems.clear();
   }
 }

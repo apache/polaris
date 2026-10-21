@@ -51,6 +51,11 @@ dependencies {
       requireCapability("org.apache.polaris:polaris-persistence-nosql-mongodb-quarkus")
     }
   }
+  runtimeOnly(project(":polaris-persistence-nosql-dynamodb")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-dynamodb-quarkus")
+    }
+  }
   runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
   runtimeOnly(project(":polaris-persistence-nosql-metastore-maintenance"))
 
@@ -104,7 +109,7 @@ quarkus {
         .attributes
         .map { e -> "quarkus.package.jar.manifest.attributes.\"${e.key}\"" to e.value.toString() }
         .toMap()
-    }
+    },
   )
   buildForkOptions {
     maxHeapSize = "2G"

@@ -56,6 +56,7 @@ public class IcebergRESTFederatedCatalogFactory implements FederatedCatalogFacto
             (config) ->
                 HTTPClient.builder(config)
                     .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
+                    .withHeaders(RESTUtil.configHeaders(config))
                     .build());
 
     // Merge properties with precedence: connection config properties override catalog properties

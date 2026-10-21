@@ -55,6 +55,8 @@ Global Options:
   --header HEADER                Context header name (default: Polaris-Realm)
   --profile PROFILE              Polaris profile name
   --proxy PROXY                  Proxy URL
+  --ssl-ca-cert SSL_CA_CERT      Path to a PEM file of CA certificates used to verify the server
+  --insecure                     Disable TLS certificate verification (not recommended)
   --debug                        Enable debug mode
   --page-size PAGE_SIZE          Upper bound on the number of entries returned per API request where pagination is supported. Requires the server-side LIST_PAGINATION_ENABLED feature flag. If not set, fetches all results in a single API request.
 ```
@@ -1020,6 +1022,7 @@ The `namespaces` command is used to manage namespaces within Polaris.
 3. get
 4. list
 5. summarize
+6. update
 
 #### create
 
@@ -1146,6 +1149,33 @@ Command Options:
 
 ```
 polaris namespaces summarize --catalog my_catalog a.b
+```
+
+#### update
+
+The `update` subcommand is used to set or remove properties on a namespace.
+
+```
+usage: polaris namespaces update [-h] [options] NAMESPACE
+
+positional arguments:
+  NAMESPACE                          namespace
+
+options:
+  -h, --help                         show this help message and exit
+
+Command Options:
+  --catalog CATALOG                  The name of a catalog
+  --set-property SET_PROPERTY        A key/value pair such as: tag=value. Merges the specified key/value into an existing properties map by updating the value if the key already exists or creating a new entry if not. Multiple can be provided by specifying this option more than once
+  --remove-property REMOVE_PROPERTY  A key to remove from a properties map. If the key already does not exist then no action is taken for the specified key. Multiple can be provided by specifying this option more than once
+```
+
+##### Examples
+
+```
+polaris namespaces update --catalog my_catalog --set-property owner=data_team a.b
+
+polaris namespaces update --catalog my_catalog --set-property k1=v1 --remove-property k2 a.b
 ```
 
 ### Privileges
