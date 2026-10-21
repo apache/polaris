@@ -31,6 +31,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
@@ -141,6 +142,32 @@ public abstract class CatalogHandler {
       List<Namespace> extraPassthroughNamespaces,
       List<TableIdentifier> extraPassthroughTableLikes,
       List<PolicyIdentifier> extraPassThroughPolicies) {
+    authorizeBasicNamespaceOperation(
+            op,
+            namespace,
+            extraPassthroughNamespaces,
+            extraPassthroughTableLikes,
+            extraPassThroughPolicies)
+        .throwIfDenied();
+    initializeCatalog();
+  }
+
+  /**
+   * Resolves {@code namespace} and returns the authorization decision for {@code op} on it, without
+   * throwing on denial and without initializing the catalog. Throws if the namespace does not
+   * exist.
+   */
+  protected AuthorizationDecision authorizeBasicNamespaceOperation(
+      PolarisAuthorizableOperation op, Namespace namespace) {
+    return authorizeBasicNamespaceOperation(op, namespace, null, null, null);
+  }
+
+  private AuthorizationDecision authorizeBasicNamespaceOperation(
+      PolarisAuthorizableOperation op,
+      Namespace namespace,
+      List<Namespace> extraPassthroughNamespaces,
+      List<TableIdentifier> extraPassthroughTableLikes,
+      List<PolicyIdentifier> extraPassThroughPolicies) {
     resolutionManifest = newResolutionManifest();
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE));
@@ -188,9 +215,7 @@ public abstract class CatalogHandler {
     if (target == null) {
       throw noSuchNamespaceException(namespace);
     }
-    authorizer().authorize(authorizationState, authorizationRequest).throwIfDenied();
-
-    initializeCatalog();
+    return authorizer().authorize(authorizationState, authorizationRequest);
   }
 
   protected void authorizeCreateNamespaceUnderNamespaceOperationOrThrow(

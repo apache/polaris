@@ -838,4 +838,20 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "configured, but existing values cannot be changed to different ones.")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_ENTITY_LEVEL_LIST_FILTERING =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_ENTITY_LEVEL_LIST_FILTERING")
+          .catalogConfig("polaris.config.enable-entity-level-list-filtering")
+          .description(
+              "When true, listNamespaces, listTables and listViews no longer return 403 to a "
+                  + "caller who lacks the matching *_LIST privilege on the parent. Instead, the "
+                  + "caller receives only the children it has access to. Under the built-in RBAC "
+                  + "authorizer, a child is accessible if the caller holds *_READ_PROPERTIES (or a "
+                  + "stronger privilege that implies it, such as TABLE_READ_DATA for tables) on "
+                  + "the child or one of its parents. Callers holding *_LIST on the parent are "
+                  + "unaffected and still see every child. When false (default), callers without "
+                  + "*_LIST on the parent receive a 403.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }
