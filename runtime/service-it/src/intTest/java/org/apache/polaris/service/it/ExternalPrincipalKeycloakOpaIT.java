@@ -114,20 +114,6 @@ public class ExternalPrincipalKeycloakOpaIT extends PolarisRestCatalogFileIntegr
   private final Collection<String> svcAccounts = new ArrayList<>();
 
   @Override
-  protected void cleanUp(PolarisClient client, String adminToken) {
-    roles.forEach(name -> keycloak.deleteRole(name));
-    roles.clear();
-
-    users.forEach(name -> keycloak.deleteUser(name));
-    users.clear();
-
-    svcAccounts.forEach(name -> keycloak.deleteServiceAccount(name));
-    svcAccounts.clear();
-
-    super.cleanUp(client, adminToken);
-  }
-
-  @Override
   protected void makeAdmin(String principalRoleName, Catalog catalog) {
     // nop - OPA policy grants access base on principal name
   }
@@ -147,6 +133,20 @@ public class ExternalPrincipalKeycloakOpaIT extends PolarisRestCatalogFileIntegr
     svcAccounts.add(clientId);
 
     return new ClientPrincipal(principalName, new ClientCredentials(clientId, clientSecret));
+  }
+
+  @Override
+  protected void cleanUp(PolarisClient client, String adminToken) {
+    roles.forEach(name -> keycloak.deleteRole(name));
+    roles.clear();
+
+    users.forEach(name -> keycloak.deleteUser(name));
+    users.clear();
+
+    svcAccounts.forEach(name -> keycloak.deleteServiceAccount(name));
+    svcAccounts.clear();
+
+    super.cleanUp(client, adminToken);
   }
 
   @Override
