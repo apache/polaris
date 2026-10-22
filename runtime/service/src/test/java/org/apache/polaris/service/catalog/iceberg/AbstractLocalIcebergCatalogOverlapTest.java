@@ -389,4 +389,27 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }
+
+  @Test
+  public void testTableAndNamespaceWithSameNameAreOverlaps() {
+    // A table and a namespace may share a name, and both default to the same location under their
+    // parent namespace. Neither may be created once the other exists.
+    Namespace parent = Namespace.of("overlap-same-name-parent");
+    catalog().createNamespace(parent);
+
+    // Namespace first, then a table with the same name.
+    catalog().createNamespace(Namespace.of("overlap-same-name-parent", "ns-first"));
+    assertThatThrownBy(
+            () -> catalog().buildTable(TableIdentifier.of(parent, "ns-first"), SCHEMA).create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+
+    // Table first, then a namespace with the same name.
+    catalog().buildTable(TableIdentifier.of(parent, "table-first"), SCHEMA).create();
+    assertThatThrownBy(
+            () ->
+                catalog().createNamespace(Namespace.of("overlap-same-name-parent", "table-first")))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+  }
 }
