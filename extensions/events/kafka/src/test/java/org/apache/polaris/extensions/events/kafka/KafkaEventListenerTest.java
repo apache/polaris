@@ -68,7 +68,6 @@ class KafkaEventListenerTest {
   // apache/kafka-native images built with GraalVM < 25 segfault in getpwuid() on about 2% of
   // starts (KAFKA-20314). Testcontainers only notices once the 60 second log wait times out, so
   // allow more attempts; each starts a new container. Remove once the image is 4.4.0 or later.
-  // See https://github.com/apache/polaris/issues/5845.
   @Container
   private static final KafkaContainer KAFKA_CONTAINER =
       new KafkaContainer(
