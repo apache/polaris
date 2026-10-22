@@ -48,25 +48,40 @@ def ensure_spark(
         f"Spark binary {spark_sql_bin} is not present or download has been explicitly requested, "
         f"downloading from {spark_tarball_url}..."
     )
-    for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
-        try:
-            _download_and_extract(spark_tarball_url, spark_dir)
-            break
-        except subprocess.CalledProcessError as e:
-            if attempt == DOWNLOAD_ATTEMPTS:
-                raise
-            # Exponential backoff with jitter, so that concurrent CI jobs do not retry in lockstep.
-            delay = DOWNLOAD_BASE_DELAY_SECONDS * 2 ** (attempt - 1)
-            delay = random.uniform(delay / 2, delay)
-            print(
-                f"Downloading Spark failed ({e}), retrying in {delay:.1f}s (attempt {attempt}/{DOWNLOAD_ATTEMPTS})..."
-            )
-            time.sleep(delay)
-    print("::endgroup::")
+    try:
+        for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+            try:
+                _download_and_extract(spark_tarball_url, spark_dir)
+                break
+            except subprocess.CalledProcessError as e:
+                if attempt == DOWNLOAD_ATTEMPTS:
+                    raise
+                # Exponential backoff with jitter, so that concurrent CI jobs do not retry in lockstep.
+                delay = DOWNLOAD_BASE_DELAY_SECONDS * 2 ** (attempt - 1)
+                delay = random.uniform(delay / 2, delay)
+                print(
+                    f"Downloading Spark failed ({e}), retrying in {delay:.1f}s "
+                    f"(attempt {attempt}/{DOWNLOAD_ATTEMPTS})..."
+                )
+                time.sleep(delay)
+    finally:
+        print("::endgroup::")
 
 
 def _download_and_extract(url: str, spark_dir: Path) -> None:
-    curl_cmd = ["curl", "--location", "--fail", url]
+    # Fail fast on HTTP errors and on stalled connections, so that the download gets retried.
+    curl_cmd = [
+        "curl",
+        "--location",
+        "--fail",
+        "--connect-timeout",
+        "30",
+        "--speed-limit",
+        "1024",
+        "--speed-time",
+        "60",
+        url,
+    ]
     tar_cmd = [
         "tar",
         "--extract",

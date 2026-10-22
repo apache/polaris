@@ -75,7 +75,21 @@ def test_ensure_spark_downloads_and_extracts() -> None:
     ):
         ensure_spark(spark_sql_bin, Path("/fake/spark"), "http://example")
 
-    popen_mock.assert_any_call(["curl", "--location", "--fail", "http://example"], stdout=subprocess.PIPE)
+    popen_mock.assert_any_call(
+        [
+            "curl",
+            "--location",
+            "--fail",
+            "--connect-timeout",
+            "30",
+            "--speed-limit",
+            "1024",
+            "--speed-time",
+            "60",
+            "http://example",
+        ],
+        stdout=subprocess.PIPE,
+    )
     popen_mock.assert_any_call(
         [
             "tar",
@@ -131,3 +145,38 @@ def test_ensure_spark_retries_with_exponential_backoff_until_success() -> None:
     assert len(delays) == 2
     assert 1.0 <= delays[0] <= 2.0
     assert 2.0 <= delays[1] <= 4.0
+
+
+def test_ensure_spark_retries_when_curl_fails() -> None:
+    spark_sql_bin = Path("/fake/spark/bin/spark-sql")
+    procs = [
+        FakeProc(22, stdout=FakeStdout()),
+        FakeProc(0),
+        FakeProc(0, stdout=FakeStdout()),
+        FakeProc(0),
+    ]
+
+    with (
+        patch("site_checks.spark.Path.exists", return_value=False),
+        patch("site_checks.spark.subprocess.Popen", side_effect=procs) as popen_mock,
+        patch("site_checks.spark.time.sleep") as sleep_mock,
+    ):
+        ensure_spark(spark_sql_bin, Path("/fake/spark"), "http://example")
+
+    assert popen_mock.call_count == 4
+    assert sleep_mock.call_count == 1
+
+
+def test_ensure_spark_closes_log_group_when_all_attempts_fail(capsys: pytest.CaptureFixture[str]) -> None:
+    spark_sql_bin = Path("/fake/spark/bin/spark-sql")
+    procs = [p for _ in range(DOWNLOAD_ATTEMPTS) for p in (FakeProc(0, stdout=FakeStdout()), FakeProc(2))]
+
+    with (
+        patch("site_checks.spark.Path.exists", return_value=False),
+        patch("site_checks.spark.subprocess.Popen", side_effect=procs),
+        patch("site_checks.spark.time.sleep"),
+    ):
+        with pytest.raises(subprocess.CalledProcessError):
+            ensure_spark(spark_sql_bin, Path("/fake/spark"), "http://example")
+
+    assert capsys.readouterr().out.rstrip().endswith("::endgroup::")
