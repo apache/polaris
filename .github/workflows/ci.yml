@@ -43,18 +43,28 @@ jobs:
         # Needed for git-based diffing below; the default GitHub-API-based mode of
         # dorny/paths-filter computes changed files against the PR's merge-base, which
         # misses changes already on the base branch that the PR's test merge commit
-        # actually incorporates. Diffing explicitly against the base branch's current
-        # tip (github.event.pull_request.base.sha) avoids that.
+        # actually incorporates.
         #
         # No 'ref:' override: the default checkout for a pull_request event checks out
         # the same merge-commit ref every other job in this workflow builds and tests,
         # so the file list below reflects the same tree those jobs actually run against.
-        # No 'fetch-depth' override either: paths-filter fetches whatever single commits
-        # it needs (the base SHA here) on demand, so a full-history clone isn't necessary.
+        # fetch-depth: 2 (not the default 1, and not 0/full-history) is just enough to
+        # also have that merge commit's first parent available locally (see below).
         if: github.event_name == 'pull_request'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 2
           persist-credentials: false
+      - name: Resolve base commit
+        # github.event.pull_request.base.sha is NOT reliably the base branch's current
+        # tip: it only updates on certain PR webhook events and can be far behind by the
+        # time this job actually runs (observed 87 commits stale on a real run), which
+        # made the filter below see every intervening, unrelated commit to main as
+        # "changed" by this PR. The merge commit's first parent is, by construction,
+        # exactly the base tip GitHub used to build it - always fresh, never stale.
+        id: base-commit
+        if: github.event_name == 'pull_request'
+        run: echo "sha=$(git rev-parse HEAD^1)" >> "$GITHUB_OUTPUT"
       - name: Filter changed paths
         id: filter
         if: github.event_name == 'pull_request'
@@ -66,7 +76,7 @@ jobs:
           token: ''
           # A commit SHA (rather than a branch name) makes paths-filter diff directly
           # against this commit instead of computing a merge-base with it.
-          base: ${{ github.event.pull_request.base.sha }}
+          base: ${{ steps.base-commit.outputs.sha }}
           # 'some-with-excludes' makes the '!'-prefixed patterns below true exclusions.
           # With the default 'some', a lone '**' already matches every file and the
           # exclusions are evaluated as independent (and so mostly moot) match patterns,
