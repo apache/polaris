@@ -23,45 +23,39 @@ import com.google.auth.oauth2.GoogleCredentials;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Date;
-import java.util.function.Supplier;
 
 /**
  * {@link GoogleCredentials} backed by a statically configured access token (the {@code
  * polaris.storage.gcp.token} option).
  *
  * <p>Unlike {@link GoogleCredentials#create(AccessToken)}, which produces a credential that cannot
- * refresh, this type re-reads the configured token and re-stamps its expiry on every {@link
- * #refreshAccessToken() refresh}. Without it the credential is memoized once with a single expiry
- * stamped at first use, so a long-running server stops being able to access GCS once the configured
- * lifespan elapses and only recovers on restart (see issue #2253). This mirrors the self-refreshing
- * behavior of the application-default credentials path.
+ * refresh, this type re-stamps the expiry of the configured token on every {@link
+ * #refreshAccessToken() refresh}. The token value itself does not change at runtime. Without this,
+ * the credential is memoized once with a single expiry stamped at first use, so a long-running
+ * server stops being able to access GCS once the configured lifespan elapses and only recovers on
+ * restart (see issue #2253).
  */
 final class ConfiguredGcpAccessTokenCredentials extends GoogleCredentials {
 
   private static final long serialVersionUID = 1L;
 
-  private final transient Supplier<String> tokenSupplier;
+  private final String token;
   private final transient Duration lifespan;
   private final transient Clock clock;
 
-  ConfiguredGcpAccessTokenCredentials(
-      Supplier<String> tokenSupplier, Duration lifespan, Clock clock) {
-    super(
-        GoogleCredentials.newBuilder()
-            .setAccessToken(newAccessToken(tokenSupplier, lifespan, clock)));
-    this.tokenSupplier = tokenSupplier;
+  ConfiguredGcpAccessTokenCredentials(String token, Duration lifespan, Clock clock) {
+    super(GoogleCredentials.newBuilder().setAccessToken(newAccessToken(token, lifespan, clock)));
+    this.token = token;
     this.lifespan = lifespan;
     this.clock = clock;
   }
 
   @Override
   public AccessToken refreshAccessToken() {
-    return newAccessToken(tokenSupplier, lifespan, clock);
+    return newAccessToken(token, lifespan, clock);
   }
 
-  private static AccessToken newAccessToken(
-      Supplier<String> tokenSupplier, Duration lifespan, Clock clock) {
-    return new AccessToken(
-        tokenSupplier.get(), new Date(clock.instant().plus(lifespan).toEpochMilli()));
+  private static AccessToken newAccessToken(String token, Duration lifespan, Clock clock) {
+    return new AccessToken(token, new Date(clock.instant().plus(lifespan).toEpochMilli()));
   }
 }

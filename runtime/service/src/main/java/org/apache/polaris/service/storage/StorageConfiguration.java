@@ -157,12 +157,12 @@ public interface StorageConfiguration extends S3AccessConfig {
             }
           } else {
             // A statically configured token has no token endpoint to call. Wrap it in a credential
-            // that re-reads the configured value and re-stamps the expiry on every refresh, so a
-            // long-running server does not get stuck with the one-time expiry stamped at first use.
-            // GoogleCredentials.create(..) cannot refresh, which makes server FileIO against GCS
-            // fail once the lifespan elapses, until the server is restarted (#2253).
+            // that re-stamps the expiry on every refresh, so a long-running server does not get
+            // stuck with the one-time expiry stamped at first use. GoogleCredentials.create(..)
+            // cannot refresh, which makes server FileIO against GCS fail once the lifespan elapses,
+            // until the server is restarted (#2253).
             return new ConfiguredGcpAccessTokenCredentials(
-                () -> gcpAccessToken().orElseThrow(),
+                gcpAccessToken().orElseThrow(),
                 gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN),
                 clock);
           }
