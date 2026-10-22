@@ -247,6 +247,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   readiness monitoring without configuration changes.
 - Fixed an unbounded memory growth in the in-memory entity cache that could lead to out-of-memory
   errors: lookups by name no longer hold entities outside the cache's weight and expiry limits.
+- Setting a namespace's `location` property no longer fails with an internal error when its parent
+  is itself a nested namespace that has no stored location.
 
 ### Commits
 

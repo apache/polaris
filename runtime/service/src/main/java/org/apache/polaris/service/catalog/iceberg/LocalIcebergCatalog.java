@@ -1501,8 +1501,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           "Validating namespace {} given parent namespace {}",
           namespace.getName(),
           parentEntity.getName());
-      String parentLocation =
-          resolveNamespaceLocation(parentEntity.asNamespace(), parentEntity.getPropertiesAsMap());
+      String parentLocation = resolveLocationForPath(diagnostics, resolvedParent.getRawFullPath());
       StorageLocation defaultLocation =
           StorageLocation.of(
               StorageLocation.ensureTrailingSlash(
