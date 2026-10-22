@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 class StorageConfigurationAccessPropertiesTest {
 
   @Test
-  void typedAwsFieldsWinOverBag() {
+  void fileIoPropertiesAllGoToExtras() {
     AwsStorageConfigurationInfo config =
         AwsStorageConfigurationInfo.builder()
             .allowedLocations(List.of("s3://bucket/prefix"))
@@ -51,16 +51,12 @@ class StorageConfigurationAccessPropertiesTest {
         StorageConfigurationAccessProperties.storageConfigOnly(config);
 
     assertThat(accessConfig.extraProperties())
-        .containsEntry(
-            StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), "https://typed.example")
-        .containsEntry(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true")
-        .containsEntry(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-west-2")
-        .containsEntry("s3.something-custom", "custom-value");
-    // Static keys stay server-only; they must not look like vended credentials.
-    assertThat(accessConfig.credentials()).isEmpty();
-    assertThat(accessConfig.internalProperties())
+        .containsEntry(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), "https://bag.example")
         .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "bag-key")
-        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "bag-secret");
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "bag-secret")
+        .containsEntry("s3.something-custom", "custom-value");
+    assertThat(accessConfig.credentials()).isEmpty();
+    assertThat(accessConfig.internalProperties()).isEmpty();
     assertThat(accessConfig.supportsCredentialVending()).isFalse();
   }
 

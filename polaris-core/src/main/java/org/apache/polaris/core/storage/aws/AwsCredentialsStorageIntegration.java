@@ -24,6 +24,7 @@ import static org.apache.polaris.core.storage.aws.AwsSessionNameBuilder.buildSes
 import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
 
 import com.google.common.annotations.VisibleForTesting;
+import java.net.URI;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -217,13 +218,13 @@ public class AwsCredentialsStorageIntegration
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     String region = awsStorageConfig.getRegion();
-    // Bag + typed fields (typed wins). Bag static keys are internals (server FileIO only);
-    // STS session credentials below are the only AccessConfig.credentials() entries.
+    // Bag extras first, then typed S3 fields (typed wins). STS session credentials below are the
+    // only AccessConfig.credentials() entries.
     StorageAccessConfig fromStorageConfig =
         StorageConfigurationAccessProperties.storageConfigOnly(awsStorageConfig);
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
     fromStorageConfig.extraProperties().forEach(accessConfig::putExtraProperty);
-    fromStorageConfig.internalProperties().forEach(accessConfig::putInternalProperty);
+    applyTypedAwsFields(awsStorageConfig, accessConfig);
     String roleSessionName = key.roleSessionName();
 
     if (shouldUseSts(awsStorageConfig)) {
@@ -284,6 +285,28 @@ public class AwsCredentialsStorageIntegration
 
   private static boolean shouldUseSts(AwsStorageConfigurationInfo storageConfig) {
     return !Boolean.TRUE.equals(storageConfig.getStsUnavailable());
+  }
+
+  private static void applyTypedAwsFields(
+      AwsStorageConfigurationInfo aws, StorageAccessConfig.Builder accessConfig) {
+    URI endpointUri = aws.getEndpointUri();
+    if (endpointUri != null) {
+      accessConfig.putExtraProperty(
+          StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpointUri.toString());
+    }
+    URI internalEndpointUri = aws.getInternalEndpointUri();
+    if (internalEndpointUri != null) {
+      accessConfig.putInternalProperty(
+          StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), internalEndpointUri.toString());
+    }
+    if (Boolean.TRUE.equals(aws.getPathStyleAccess())) {
+      accessConfig.putExtraProperty(
+          StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), Boolean.TRUE.toString());
+    }
+    if (aws.getRegion() != null) {
+      accessConfig.putExtraProperty(
+          StorageAccessProperty.CLIENT_REGION.getPropertyName(), aws.getRegion());
+    }
   }
 
   private static boolean shouldUseKms(AwsStorageConfigurationInfo storageConfig) {

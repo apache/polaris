@@ -1121,7 +1121,8 @@ components:
             storage configuration. Typed fields take precedence when both are set. Semantics follow
             Iceberg FileIO conventions for the storage type. Polaris applies properties relevant to
             its Java FileIO implementations when building server-side FileIO; all properties are
-            also relayed to clients (including non-Java clients such as PyIceberg).
+            also relayed to clients (including non-Java clients such as PyIceberg). Do not put
+            secrets or credentials in these properties.
       required:
         - storageType
       discriminator:

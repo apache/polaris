@@ -18,16 +18,14 @@
  */
 package org.apache.polaris.core.storage;
 
-import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 
 /**
- * Folds {@link PolarisStorageConfigurationInfo} typed fields and {@code fileIoProperties} into a
- * {@link StorageAccessConfig}. Typed fields win over bag entries when both are set.
+ * Folds {@code fileIoProperties} into a {@link StorageAccessConfig} as extra properties. Typed
+ * storage-configuration fields are applied by the cloud-specific {@code PolarisStorageIntegration}
+ * implementations. Typed fields win over bag entries when both are set.
  */
 @NullMarked
 public final class StorageConfigurationAccessProperties {
@@ -35,52 +33,29 @@ public final class StorageConfigurationAccessProperties {
   private StorageConfigurationAccessProperties() {}
 
   /**
-   * Builds an AccessConfig that carries storage-configuration FileIO settings without vending
-   * credentials. Used when static FileIO credentials are already present on the storage config (for
-   * example emulator shared-key / oauth token) so server FileIO still sees endpoint and bag entries
-   * without calling the cloud credential APIs.
+   * Builds an AccessConfig that carries {@code fileIoProperties} without vending credentials. Used
+   * when cloud vending is skipped (S3 {@code stsUnavailable}, or Floci static FileIO credentials).
    */
   public static StorageAccessConfig storageConfigOnly(
-      @Nullable PolarisStorageConfigurationInfo storageConfig) {
+      PolarisStorageConfigurationInfo storageConfig) {
     StorageAccessConfig.Builder builder =
         StorageAccessConfig.builder().supportsCredentialVending(false);
     apply(storageConfig, builder);
     return builder.build();
   }
 
-  /** Applies bag then typed storage-configuration fields onto {@code builder}. */
+  /** Forwards all {@code fileIoProperties} onto {@code builder} extra properties. */
   public static void apply(
-      @Nullable PolarisStorageConfigurationInfo storageConfig,
-      StorageAccessConfig.Builder builder) {
-    if (storageConfig == null) {
-      return;
-    }
-    Map<String, String> extras = new HashMap<>();
-    Map<String, String> internals = new HashMap<>();
-    // Credential-looking bag keys go to internalProperties so server FileIO can use them without
-    // treating them as vended AccessConfig.credentials() (matches former table-default behavior).
-    partitionBag(storageConfig.getFileIoPropertiesOrEmpty(), extras, internals);
-    if (storageConfig instanceof AwsStorageConfigurationInfo aws) {
-      applyAwsTypedFields(aws, extras, internals);
-    }
-    extras.forEach(builder::putExtraProperty);
-    internals.forEach(builder::putInternalProperty);
+      PolarisStorageConfigurationInfo storageConfig, StorageAccessConfig.Builder builder) {
+    storageConfig.getFileIoPropertiesOrEmpty().forEach(builder::putExtraProperty);
   }
 
   /**
-   * True when {@code fileIoProperties} already carries static FileIO credentials (shared-key, oauth
-   * token, etc.) so cloud credential vending can be skipped — parallel to S3 {@code
-   * stsUnavailable}.
+   * True when {@code fileIoProperties} already carries static FileIO credentials used by Floci
+   * ADLS/GCP emulators so SAS/STS vending can be skipped — parallel to S3 {@code stsUnavailable}.
    */
-  public static boolean hasStaticFileIoCredentials(
-      @Nullable PolarisStorageConfigurationInfo storageConfig) {
-    if (storageConfig == null) {
-      return false;
-    }
+  public static boolean hasStaticFileIoCredentials(PolarisStorageConfigurationInfo storageConfig) {
     for (Map.Entry<String, String> entry : storageConfig.getFileIoPropertiesOrEmpty().entrySet()) {
-      if (entry.getKey() == null || entry.getValue() == null) {
-        continue;
-      }
       if (isCredentialPropertyName(entry.getKey())
           || entry.getKey().startsWith("adls.auth.shared-key")
           || entry.getKey().startsWith("adls.connection-string.")) {
@@ -128,9 +103,6 @@ public final class StorageConfigurationAccessProperties {
   private static void partitionBag(
       Map<String, String> bag, Map<String, String> extras, Map<String, String> internals) {
     for (Map.Entry<String, String> entry : bag.entrySet()) {
-      if (entry.getKey() == null || entry.getValue() == null) {
-        continue;
-      }
       if (isCredentialPropertyName(entry.getKey())) {
         internals.put(entry.getKey(), entry.getValue());
       } else {
@@ -146,25 +118,5 @@ public final class StorageConfigurationAccessProperties {
       }
     }
     return false;
-  }
-
-  private static void applyAwsTypedFields(
-      AwsStorageConfigurationInfo aws, Map<String, String> extras, Map<String, String> internals) {
-    URI endpointUri = aws.getEndpointUri();
-    if (endpointUri != null) {
-      extras.put(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpointUri.toString());
-    }
-    URI internalEndpointUri = aws.getInternalEndpointUri();
-    if (internalEndpointUri != null) {
-      internals.put(
-          StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), internalEndpointUri.toString());
-    }
-    if (Boolean.TRUE.equals(aws.getPathStyleAccess())) {
-      extras.put(
-          StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), Boolean.TRUE.toString());
-    }
-    if (aws.getRegion() != null) {
-      extras.put(StorageAccessProperty.CLIENT_REGION.getPropertyName(), aws.getRegion());
-    }
   }
 }
