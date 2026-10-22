@@ -1,0 +1,94 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+---
+paths:
+  /polaris/v1/catalogs:
+    get:
+      tags:
+        - Catalog Discovery API
+      summary: List the catalogs the caller can access
+      operationId: listAccessibleCatalogs
+      description: |
+        **Beta:** The catalog discovery API is under active development and may change in a
+        backward-incompatible way.
+
+        Lists the catalogs the caller can access, so that a client can find out what to configure.
+        Each entry's name is the value a client passes as `warehouse` to the configuration endpoint
+        (`/v1/config`).
+
+        Which catalogs are listed is decided by the service's authorization. The list is the batch
+        form of the configuration endpoint: it includes only catalogs the caller could configure one
+        at a time, and an entry never carries more than that endpoint returns for the same catalog.
+        In this version an entry is the catalog's name only. Storage configuration and other
+        administrative details are never included. Administrators use the management API's
+        `listCatalogs` for the full model.
+      parameters:
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
+      responses:
+        200:
+          $ref: '#/components/responses/ListAccessibleCatalogsResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+components:
+  schemas:
+    AccessibleCatalog:
+      type: object
+      description: A catalog the caller can access
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: The catalog's name, as passed to the configuration endpoint's `warehouse` parameter
+
+    ListAccessibleCatalogsResponse:
+      type: object
+      required:
+        - catalogs
+      properties:
+        next-page-token:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+        catalogs:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/AccessibleCatalog'
+
+  responses:
+    ListAccessibleCatalogsResponse:
+      description: A page of the catalogs the caller can access
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListAccessibleCatalogsResponse'
+          example:
+            catalogs:
+              - name: sales
+              - name: marketing
