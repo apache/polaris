@@ -215,30 +215,7 @@ public class PolarisAdminService {
       @NonNull PolarisPrincipal principal,
       @NonNull PolarisAuthorizer authorizer,
       @NonNull ReservedProperties reservedProperties,
-      @NonNull S3CredentialVendingMechanisms vendingMechanisms) {
-    this(
-        callContext,
-        resolutionManifestFactory,
-        metaStoreManager,
-        userSecretsManager,
-        serviceIdentityProvider,
-        principal,
-        authorizer,
-        reservedProperties,
-        vendingMechanisms,
-        List.of());
-  }
-
-  public PolarisAdminService(
-      @NonNull CallContext callContext,
-      @NonNull ResolutionManifestFactory resolutionManifestFactory,
-      @NonNull PolarisMetaStoreManager metaStoreManager,
-      @NonNull UserSecretsManager userSecretsManager,
-      @NonNull ServiceIdentityProvider serviceIdentityProvider,
-      @NonNull PolarisPrincipal principal,
-      @NonNull PolarisAuthorizer authorizer,
-      @NonNull ReservedProperties reservedProperties,
-      @NonNull S3CredentialVendingMechanisms vendingMechanism,
+      @NonNull S3CredentialVendingMechanisms vendingMechanisms,
       Iterable<CatalogConfigValidator> catalogConfigValidators) {
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
@@ -250,7 +227,7 @@ public class PolarisAdminService {
     this.serviceIdentityProvider = serviceIdentityProvider;
     this.reservedProperties = reservedProperties;
     this.catalogConfigValidators = catalogConfigValidators;
-    this.vendingMechanisms = vendingMechanism;
+    this.vendingMechanisms = vendingMechanisms;
   }
 
   private void validateCatalogConfiguration(Catalog catalog) {

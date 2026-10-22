@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -74,7 +75,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         authenticatedPrincipal,
         polarisAuthorizer,
         reservedProperties,
-        vendingMechanisms);
+        vendingMechanisms,
+        List.of());
   }
 
   private PolarisAdminService newExternalTestAdminService(String principalName) {
@@ -94,7 +96,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         externalPrincipal,
         polarisAuthorizer,
         reservedProperties,
-        vendingMechanisms);
+        vendingMechanisms,
+        List.of());
   }
 
   private PolarisAdminService newTestAdminService(Set<String> activatedPrincipalRoles) {

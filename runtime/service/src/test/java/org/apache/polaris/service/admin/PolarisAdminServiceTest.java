@@ -169,7 +169,8 @@ public class PolarisAdminServiceTest {
             authenticatedPrincipal,
             authorizer,
             reservedProperties,
-            vendingMechanisms);
+            vendingMechanisms,
+            List.of());
   }
 
   protected static void assertSuccess(BaseResult result) {
