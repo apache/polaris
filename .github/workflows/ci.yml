@@ -29,7 +29,7 @@ on:
 jobs:
   changes:
     name: Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     outputs:
@@ -108,7 +108,7 @@ jobs:
 
   license-check:
     name: License Header Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -161,6 +161,7 @@ jobs:
           ./gradlew check sourceTarball distTar distZip publishToMavenLocal \
             -x :polaris-runtime-service:test \
             -x :polaris-admin:test \
+            -x rat \
             -PnoIntegrationTests \
             --continue
       - name: Verify configuration reference is up to date
@@ -566,7 +567,12 @@ jobs:
     needs:
       - changes
       - docker-image-build
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.regtests == 'true'
+    # The regtest image also bundles client/python (regtests/Dockerfile) and runs its
+    # test suite by default (regtests/run.sh), so a python_client-only change needs this too.
+    if: |
+      needs.changes.outputs.backend == 'true' ||
+      needs.changes.outputs.regtests == 'true' ||
+      needs.changes.outputs.python_client == 'true'
     strategy:
       fail-fast: false
       matrix:
