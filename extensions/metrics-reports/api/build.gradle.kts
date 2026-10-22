@@ -62,21 +62,26 @@ dependencies {
   implementation(libs.slf4j.api)
 }
 
-val rootDir = rootProject.layout.projectDirectory
+val rootDir = layout.settingsDirectory
 val specsDir = rootDir.dir("spec")
 val templatesDir = rootDir.dir("server-templates")
+// Use a different directory than 'generated/', because OpenAPI generator's `GenerateTask` adds the
+// whole directory to its task output, but 'generated/' is not exclusive to that task and in turn
+// breaks Gradle's caching.
 val generatedDir = project.layout.buildDirectory.dir("generated-openapi")
 val generatedOpenApiSrcDir = project.layout.buildDirectory.dir("generated-openapi/src/main/java")
 
 openApiGenerate {
-  inputSpec = provider { specsDir.file("polaris-catalog-service.yaml").asFile.absolutePath }
+  // The OpenAPI generator does NOT resolve relative paths correctly against the Gradle project
+  // directory
+  inputSpec = specsDir.file("generated/bundled-polaris-catalog-service.yaml")
   generatorName = "jaxrs-resteasy"
-  outputDir = provider { generatedDir.get().asFile.absolutePath }
+  outputDir = generatedDir
   apiPackage = "org.apache.polaris.service.metrics.api"
   modelPackage = "org.apache.polaris.core.metrics.api.model"
-  ignoreFileOverride.set(provider { rootDir.file(".openapi-generator-ignore").asFile.absolutePath })
+  ignoreFileOverride = rootDir.file(".openapi-generator-ignore")
   removeOperationIdPrefix.set(true)
-  templateDir.set(provider { templatesDir.asFile.absolutePath })
+  templateDir = templatesDir
   globalProperties.put("apis", "MetricsReportsApi")
   globalProperties.put("models", metricsModels)
   globalProperties.put("apiDocs", "false")
@@ -110,7 +115,7 @@ sourceSets { main { java { srcDir(generatedOpenApiSrcDir) } } }
 tasks.named<GenerateTask>("openApiGenerate") {
   inputs.dir(templatesDir)
   inputs.dir(specsDir)
-  actions.addFirst { delete { delete(generatedDir) } }
+  cleanupOutput = true
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
