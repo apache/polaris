@@ -263,6 +263,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   errors: lookups by name no longer hold entities outside the cache's weight and expiry limits.
 - Setting a namespace's `location` property no longer fails with an internal error when its parent
   is itself a nested namespace that has no stored location.
+- Removing a namespace's `location` property is now rejected with `400 Bad Request` when it would
+  move the namespace. A namespace stored at a custom location fell back to its name-derived
+  location and moved unchecked, including when `ALLOW_NAMESPACE_CUSTOM_LOCATION` is off and the
+  stored location predates it. To move a namespace to its name-derived location, set `location` to
+  that value first; removing the property from a namespace already there is unchanged.
 - The Ranger authorizer no longer fails with `NoClassDefFoundError: javax/ws/rs/core/Cookie` when
   using `RangerAdminRESTClient` as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
