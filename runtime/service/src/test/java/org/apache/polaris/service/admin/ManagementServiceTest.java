@@ -221,6 +221,7 @@ public class ManagementServiceTest {
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "file:///tmp/path/to/data/"),
             fileStorage,
+            null,
             null);
 
     // failure to update
@@ -245,6 +246,7 @@ public class ManagementServiceTest {
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
                 .setEndpoint("http://example.com")
                 .build(),
+            null,
             null);
     assertThatThrownBy(
             () ->
@@ -586,6 +588,7 @@ public class ManagementServiceTest {
                 .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::999999999999:role/other-role")
                 .build(),
+            null,
             null);
     assertThatThrownBy(
             () ->
@@ -643,6 +646,7 @@ public class ManagementServiceTest {
                 .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::123456789012:role/other-role")
                 .build(),
+            null,
             null);
     try (Response response =
         services
@@ -698,6 +702,7 @@ public class ManagementServiceTest {
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
                 .setExternalId("different-external-id")
                 .build(),
+            null,
             null);
     assertThatThrownBy(
             () ->
@@ -770,6 +775,7 @@ public class ManagementServiceTest {
                 .setRoleArn("arn:aws:iam::999999999999:role/other-role")
                 .setExternalId("different-external-id")
                 .build(),
+            null,
             null);
     try (Response response =
         flagEnabledServices
@@ -966,6 +972,7 @@ public class ManagementServiceTest {
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/empty-stay"),
             secondMechanismConfig().build(),
+            null,
             null);
     assertThatThrownBy(
             () ->
@@ -1007,6 +1014,7 @@ public class ManagementServiceTest {
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/stays-empty"),
             namesDefault,
+            null,
             null);
     assertThatThrownBy(
             () ->
@@ -1038,6 +1046,7 @@ public class ManagementServiceTest {
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/empty-then-sts"),
             explicitSts,
+            null,
             null);
     try (Response response =
         svc.catalogsApi()
@@ -1085,6 +1094,7 @@ public class ManagementServiceTest {
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/sts-then-empty"),
             backToDefault,
+            null,
             null);
     try (Response response =
         svc.catalogsApi()
@@ -1145,6 +1155,7 @@ public class ManagementServiceTest {
                 .setAllowedLocations(List.of("s3://second-bucket/base/"))
                 .setEndpoint("https://s3.example.test")
                 .build(),
+            null,
             null);
     try (Response response =
         svc.catalogsApi()
@@ -1187,6 +1198,7 @@ public class ManagementServiceTest {
                 .setEndpoint("https://s3.other.example.com:1234")
                 .setPathStyleAccess(true)
                 .build(),
+            null,
             null);
     try (Response response =
         svc.catalogsApi()
@@ -1228,6 +1240,7 @@ public class ManagementServiceTest {
                 .setCredentialVendingMechanism("UNINSTALLED_MECHANISM")
                 .setAllowedLocations(List.of("s3://second-bucket/base/"))
                 .build(),
+            null,
             null);
     assertThatThrownBy(
             () ->
@@ -1295,6 +1308,7 @@ public class ManagementServiceTest {
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/needs-endpoint"),
             base.setEndpoint(null).build(),
+            null,
             null);
     assertThatThrownBy(
             () ->

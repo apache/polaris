@@ -352,6 +352,7 @@ class S3CredentialVendingMechanismRoutesTest {
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket/base/mechkill"),
             fetched.getStorageConfigInfo(),
+            null,
             null);
     assertThatThrownBy(
             () ->

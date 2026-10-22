@@ -1116,7 +1116,14 @@ components:
           example: "For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/]"
         storageName:
           type: string
-          description: An optional name referencing a server-side storage configuration. This is independent of the configuration name under which a StorageConfigInfo is held in Catalog.storageConfigurations, so several entries may share a storageName or leave it unset.
+          description: |
+            An optional name for associating StorageConfigInfo objects with deployment-specific configuration.
+            The interpretation of this name depends on the runtime components included in a server to support
+            interacting with storage systems. Standard Apache Polaris servers use this name for finding base
+            S3 and STS credentials.
+
+            Note: this name is optional and unrelated to the configuration name under which a StorageConfigInfo
+            is stored in Catalog.storageConfigurations.
       required:
         - storageType
       discriminator:

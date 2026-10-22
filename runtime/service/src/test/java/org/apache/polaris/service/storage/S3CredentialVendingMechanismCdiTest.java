@@ -545,6 +545,7 @@ class S3CredentialVendingMechanismCdiTest {
             .setRoleArn("arn:aws:iam::123456789012:role/r")
             .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"))
             .build(),
+        null,
         null);
   }
 

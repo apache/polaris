@@ -189,6 +189,7 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
                           "s3://bucket/base/" + catalog + "/",
                           "s3://bucket/base/" + catalog + "-extra/"))
                   .build(),
+              null,
               null);
       try (Response r =
           managementApi
