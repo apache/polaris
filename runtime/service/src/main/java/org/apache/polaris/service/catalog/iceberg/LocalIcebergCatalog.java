@@ -1611,21 +1611,24 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             .toList();
     List<ResolvedPathKey> pathsToResolve =
         new ArrayList<>(siblingTables.size() + siblingNamespaces.size());
+
     // Skip the entity itself, which is listed among its siblings when it is being updated. A table
     // and a namespace may share a name, so only skip a sibling of the same type as the entity.
-    boolean isNamespace = entity.getType() == PolarisEntityType.NAMESPACE;
-    siblingTables.forEach(
-        tbl -> {
-          if (isNamespace || !tbl.name().equals(name)) {
-            pathsToResolve.add(ResolvedPathKey.ofTableLike(tbl));
-          }
-        });
-    siblingNamespaces.forEach(
-        ns -> {
-          if (!isNamespace || !ns.level(ns.length() - 1).equals(name)) {
-            pathsToResolve.add(ResolvedPathKey.ofNamespace(ns));
-          }
-        });
+    boolean skipSelfTable = entity.getType() == PolarisEntityType.TABLE_LIKE;
+    for (TableIdentifier tbl : siblingTables) {
+      if (skipSelfTable && tbl.name().equals(name)) {
+        continue;
+      }
+      pathsToResolve.add(ResolvedPathKey.ofTableLike(tbl));
+    }
+
+    boolean skipSelfNamespace = entity.getType() == PolarisEntityType.NAMESPACE;
+    for (Namespace ns : siblingNamespaces) {
+      if (skipSelfNamespace && ns.level(ns.length() - 1).equals(name)) {
+        continue;
+      }
+      pathsToResolve.add(ResolvedPathKey.ofNamespace(ns));
+    }
 
     StorageLocation targetLocation = StorageLocation.of(location);
 

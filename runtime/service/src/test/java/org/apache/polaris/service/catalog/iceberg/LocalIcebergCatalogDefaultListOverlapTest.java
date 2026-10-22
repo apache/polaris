@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.util.LocationUtil;
 import org.apache.polaris.service.Profiles;
 import org.junit.jupiter.api.Test;
 
@@ -62,7 +63,10 @@ public class LocalIcebergCatalogDefaultListOverlapTest
   @Test
   public void testUpdatedTableIsNotAnOverlapWithItself() {
     // The list-based check skips the entity itself among its siblings, so a table may move under
-    // its own current location. The optimized check has no such exclusion and rejects this.
+    // its own current location. The optimized check has no such exclusion and rejects this,
+    // which is why this test is declared here.
+    // TODO if the optimized sibling check evolves to accept this case, this test can be moved to
+    // the base class and run for all check types.
     Namespace ns = Namespace.of("overlap-self-update");
     catalog().createNamespace(ns);
     TableIdentifier table = TableIdentifier.of(ns, "t");
@@ -74,7 +78,7 @@ public class LocalIcebergCatalogDefaultListOverlapTest
                 catalog()
                     .loadTable(table)
                     .updateLocation()
-                    .setLocation(tableLocation + "/moved")
+                    .setLocation(LocationUtil.stripTrailingSlash(tableLocation) + "/moved")
                     .commit())
         .doesNotThrowAnyException();
   }
