@@ -119,7 +119,7 @@ testing {
         // Paimon 1.4.1 does not publish a Spark 3.5 runtime for Scala 2.13.
         if (scalaVersion == "2.12") {
           implementation("org.apache.paimon:paimon-spark-3.5_${scalaVersion}:1.4.1") {
-            exclude("org.apache.spark", "*")
+            exclude(group = "org.apache.spark")
             exclude("org.scala-lang", "scala-compiler")
           }
         }
