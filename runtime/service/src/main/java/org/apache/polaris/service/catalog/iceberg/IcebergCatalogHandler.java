@@ -1754,10 +1754,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
       // suppressHistoricalSnapshots() preserves metadataLocation() while dropping unreferenced
       // snapshots, matching org.apache.iceberg.rest.CatalogHandlers#loadTable's REFS case.
+      // Dropping a snapshot also drops its statistics and partition statistics, which the builder
+      // records as RemoveStatistics/RemovePartitionStatistics changes; build() rejects any change
+      // alongside a metadata location. The response is a view of the already-committed metadata
+      // file, not a new commit, so the change log is discarded.
       TableMetadata filteredMetadata =
           TableMetadata.buildFrom(metadata)
               .withMetadataLocation(metadata.metadataFileLocation())
               .suppressHistoricalSnapshots()
+              .discardChanges()
               .build();
 
       return LoadTableResponse.builder()
