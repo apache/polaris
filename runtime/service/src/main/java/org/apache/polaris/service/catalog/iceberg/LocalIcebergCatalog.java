@@ -498,6 +498,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
    * Checks for a stored table only. The inherited implementation calls {@link #loadTable}, which
    * for a missing table named after a metadata table type (e.g. {@code ns.history}) goes on to look
    * up the namespace as a base table, a path that is not part of the request's resolution manifest.
+   * Unlike the inherited implementation, this returns {@code false} for a metadata table identifier
+   * such as {@code ns.tbl.snapshots}, as callers only ask whether a table is stored at that name.
    */
   @Override
   public boolean tableExists(TableIdentifier identifier) {
