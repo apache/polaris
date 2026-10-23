@@ -48,7 +48,6 @@ import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
-import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.MetadataTableType;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
@@ -1615,8 +1614,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // this transaction (if the table has write.metadata.delete-after-commit.enabled).
     // Because we reach here, the DB pointers have been updated to the new metadata.
     for (MetadataFileCleanup cleanup : pendingCleanups) {
-      CatalogUtil.deleteRemovedMetadataFiles(
-          cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
+      cleanup.deleteRemovedMetadataFiles();
     }
 
     eventAttributeMap().put(EventAttributes.TABLE_METADATAS, tableMetadataObjs);

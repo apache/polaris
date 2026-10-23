@@ -25,5 +25,18 @@ public class PolarisTaskConstants {
   public static final String ATTEMPT_COUNT = "attemptCount";
   public static final String TASK_DATA = "data";
   public static final String TASK_TYPE = "taskType";
-  public static final String STORAGE_LOCATION = "storageLocation";
+
+  /**
+   * A single location a purge task may delete files from. No longer written; only read for tasks
+   * created by older versions.
+   *
+   * @deprecated use {@link #STORAGE_LOCATIONS}
+   */
+  @Deprecated public static final String STORAGE_LOCATION = "storageLocation";
+
+  /**
+   * JSON array of all the locations a purge task may delete files from. Takes precedence over
+   * {@link #STORAGE_LOCATION} when present.
+   */
+  public static final String STORAGE_LOCATIONS = "storageLocations";
 }

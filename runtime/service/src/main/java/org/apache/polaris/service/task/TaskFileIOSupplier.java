@@ -28,7 +28,6 @@ import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -53,8 +52,7 @@ public class TaskFileIOSupplier {
     Map<String, String> internalProperties = task.getInternalPropertiesAsMap();
     Map<String, String> properties = new HashMap<>(internalProperties);
 
-    String location = properties.get(PolarisTaskConstants.STORAGE_LOCATION);
-    Set<String> locations = Set.of(location);
+    Set<String> locations = TaskUtils.storageLocations(properties);
     Set<PolarisStorageActions> storageActions = Set.of(PolarisStorageActions.ALL);
     ResolvedPolarisEntity resolvedTaskEntity =
         new ResolvedPolarisEntity(task, List.of(), List.of());

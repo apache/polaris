@@ -19,6 +19,7 @@
 package org.apache.polaris.service.task;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.polaris.service.task.TaskTestUtils.TASK_LOCATION;
 import static org.apache.polaris.service.task.TaskTestUtils.addTaskLocation;
 import static org.assertj.core.api.Assertions.assertThatPredicate;
 
@@ -85,7 +86,11 @@ class ManifestFileCleanupTaskHandlerTest {
     ManifestFileCleanupTaskHandler handler = newManifestFileCleanupTaskHandler(fileIO);
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
-            fileIO, "manifest1.avro", 1L, "dataFile1.parquet", "dataFile2.parquet");
+            fileIO,
+            TASK_LOCATION + "manifest1.avro",
+            1L,
+            TASK_LOCATION + "dataFile1.parquet",
+            TASK_LOCATION + "dataFile2.parquet");
     fileIO.deleteFile(manifestFile.path());
     TaskEntity task =
         new TaskEntity.Builder()
@@ -107,7 +112,11 @@ class ManifestFileCleanupTaskHandlerTest {
     ManifestFileCleanupTaskHandler handler = newManifestFileCleanupTaskHandler(fileIO);
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
-            fileIO, "manifest1.avro", 100L, "dataFile1.parquet", "dataFile2.parquet");
+            fileIO,
+            TASK_LOCATION + "manifest1.avro",
+            100L,
+            TASK_LOCATION + "dataFile1.parquet",
+            TASK_LOCATION + "dataFile2.parquet");
     TaskEntity task =
         new TaskEntity.Builder()
             .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
@@ -132,18 +141,19 @@ class ManifestFileCleanupTaskHandlerTest {
         };
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     ManifestFileCleanupTaskHandler handler = newManifestFileCleanupTaskHandler(fileIO);
-    String dataFile1Path = "dataFile1.parquet";
+    String dataFile1Path = TASK_LOCATION + "dataFile1.parquet";
     OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
     PositionOutputStream out1 = dataFile1.createOrOverwrite();
     out1.write("the data".getBytes(UTF_8));
     out1.close();
-    String dataFile2Path = "dataFile2.parquet";
+    String dataFile2Path = TASK_LOCATION + "dataFile2.parquet";
     OutputFile dataFile2 = fileIO.newOutputFile(dataFile2Path);
     PositionOutputStream out2 = dataFile2.createOrOverwrite();
     out2.write("the data".getBytes(UTF_8));
     out2.close();
     ManifestFile manifestFile =
-        TaskTestUtils.manifestFile(fileIO, "manifest1.avro", 100L, dataFile1Path, dataFile2Path);
+        TaskTestUtils.manifestFile(
+            fileIO, TASK_LOCATION + "manifest1.avro", 100L, dataFile1Path, dataFile2Path);
     TaskEntity task =
         new TaskEntity.Builder()
             .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
@@ -170,19 +180,19 @@ class ManifestFileCleanupTaskHandlerTest {
         };
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     ManifestFileCleanupTaskHandler handler = newManifestFileCleanupTaskHandler(fileIO);
-    String deleteFile1Path = "deleteFile1.parquet";
+    String deleteFile1Path = TASK_LOCATION + "deleteFile1.parquet";
     OutputFile deleteFile1 = fileIO.newOutputFile(deleteFile1Path);
     PositionOutputStream out1 = deleteFile1.createOrOverwrite();
     out1.write("position deletes".getBytes(UTF_8));
     out1.close();
-    String deleteFile2Path = "deleteFile2.parquet";
+    String deleteFile2Path = TASK_LOCATION + "deleteFile2.parquet";
     OutputFile deleteFile2 = fileIO.newOutputFile(deleteFile2Path);
     PositionOutputStream out2 = deleteFile2.createOrOverwrite();
     out2.write("position deletes".getBytes(UTF_8));
     out2.close();
     ManifestFile manifestFile =
         TaskTestUtils.deleteManifestFile(
-            fileIO, "deleteManifest1.avro", 100L, deleteFile1Path, deleteFile2Path);
+            fileIO, TASK_LOCATION + "deleteManifest1.avro", 100L, deleteFile1Path, deleteFile2Path);
     TaskEntity task =
         new TaskEntity.Builder()
             .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
@@ -224,18 +234,19 @@ class ManifestFileCleanupTaskHandlerTest {
 
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     ManifestFileCleanupTaskHandler handler = newManifestFileCleanupTaskHandler(fileIO);
-    String dataFile1Path = "dataFile1.parquet";
+    String dataFile1Path = TASK_LOCATION + "dataFile1.parquet";
     OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
     PositionOutputStream out1 = dataFile1.createOrOverwrite();
     out1.write("the data".getBytes(UTF_8));
     out1.close();
-    String dataFile2Path = "dataFile2.parquet";
+    String dataFile2Path = TASK_LOCATION + "dataFile2.parquet";
     OutputFile dataFile2 = fileIO.newOutputFile(dataFile2Path);
     PositionOutputStream out2 = dataFile2.createOrOverwrite();
     out2.write("the data".getBytes(UTF_8));
     out2.close();
     ManifestFile manifestFile =
-        TaskTestUtils.manifestFile(fileIO, "manifest1.avro", 100L, dataFile1Path, dataFile2Path);
+        TaskTestUtils.manifestFile(
+            fileIO, TASK_LOCATION + "manifest1.avro", 100L, dataFile1Path, dataFile2Path);
     TaskEntity task =
         new TaskEntity.Builder()
             .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
@@ -249,5 +260,39 @@ class ManifestFileCleanupTaskHandlerTest {
     handler.handleTask(task, polarisCallContext);
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
+  }
+
+  @Test
+  public void testDataFileOutsideTableLocationIsNotDeleted() throws IOException {
+    InMemoryFileIO fileIO =
+        new InMemoryFileIO() {
+          @Override
+          public void close() {
+            // no-op
+          }
+        };
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
+    ManifestFileCleanupTaskHandler handler = newManifestFileCleanupTaskHandler(fileIO);
+    String insideFile = TASK_LOCATION + "data/dataFile1.parquet";
+    String outsideFile = "file:///other-table/data/dataFile2.parquet";
+    fileIO.addFile(insideFile, "the data".getBytes(UTF_8));
+    fileIO.addFile(outsideFile, "the data".getBytes(UTF_8));
+    ManifestFile manifestFile =
+        TaskTestUtils.manifestFile(
+            fileIO, TASK_LOCATION + "metadata/manifest1.avro", 100L, insideFile, outsideFile);
+    TaskEntity task =
+        addTaskLocation(
+            new TaskEntity.Builder()
+                .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
+                .withData(
+                    ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                        tableIdentifier, manifestFile))
+                .setName(UUID.randomUUID().toString())
+                .build());
+
+    handler.handleTask(task, polarisCallContext);
+
+    assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(insideFile);
+    assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).accepts(outsideFile);
   }
 }

@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DataFiles;
@@ -226,9 +227,14 @@ public class TaskTestUtils {
         .build();
   }
 
+  /** The table location set by {@link #addTaskLocation}; files to delete must be under it. */
+  public static final String TASK_LOCATION = "file:///tmp/";
+
   public static TaskEntity addTaskLocation(TaskEntity task) {
     Map<String, String> internalPropertiesAsMap = new HashMap<>(task.getInternalPropertiesAsMap());
-    internalPropertiesAsMap.put(PolarisTaskConstants.STORAGE_LOCATION, "file:///tmp/");
+    internalPropertiesAsMap.put(
+        PolarisTaskConstants.STORAGE_LOCATIONS,
+        TaskUtils.encodeStorageLocations(Set.of(TASK_LOCATION)));
     return TaskEntity.of(
         new PolarisBaseEntity.Builder(task)
             .internalPropertiesAsMap(internalPropertiesAsMap)
