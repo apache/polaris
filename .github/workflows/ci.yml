@@ -27,8 +27,97 @@ on:
         required: false
 
 jobs:
-  build-checks:
-    name: Gradle Build Checks
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      backend: ${{ github.event_name != 'pull_request' || steps.filter.outputs.backend == 'true' || steps.filter.outputs.config_docs == 'true' }}
+      helm: ${{ github.event_name != 'pull_request' || steps.filter.outputs.helm == 'true' || steps.filter.outputs.helm_docs == 'true' }}
+      regtests: ${{ github.event_name != 'pull_request' || steps.filter.outputs.regtests == 'true' }}
+      python_client: ${{ github.event_name != 'pull_request' || steps.filter.outputs.python_client == 'true' }}
+      docs: ${{ github.event_name != 'pull_request' || steps.filter.outputs.docs == 'true' }}
+    steps:
+      - name: Checkout
+        # Needed for git-based diffing below; the default GitHub-API-based mode of
+        # dorny/paths-filter computes changed files against the PR's merge-base, which
+        # misses changes already on the base branch that the PR's test merge commit
+        # actually incorporates.
+        #
+        # No 'ref:' override: the default checkout for a pull_request event checks out
+        # the same merge-commit ref every other job in this workflow builds and tests,
+        # so the file list below reflects the same tree those jobs actually run against.
+        # fetch-depth: 2 (not the default 1, and not 0/full-history) is just enough to
+        # also have that merge commit's first parent available locally (see below).
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Resolve base commit
+        # github.event.pull_request.base.sha is NOT reliably the base branch's current
+        # tip: it only updates on certain PR webhook events and can be far behind by the
+        # time this job actually runs (observed 87 commits stale on a real run), which
+        # made the filter below see every intervening, unrelated commit to main as
+        # "changed" by this PR. The merge commit's first parent is, by construction,
+        # exactly the base tip GitHub used to build it - always fresh, never stale.
+        id: base-commit
+        if: github.event_name == 'pull_request'
+        run: echo "sha=$(git rev-parse HEAD^1)" >> "$GITHUB_OUTPUT"
+      - name: Filter changed paths
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          # Empty token forces git-based diffing (see Checkout step above) instead of
+          # the GitHub-API-based mode, which is otherwise used unconditionally for
+          # pull_request-triggered workflows and ignores the 'base' input below.
+          token: ''
+          # A commit SHA (rather than a branch name) makes paths-filter diff directly
+          # against this commit instead of computing a merge-base with it.
+          base: ${{ steps.base-commit.outputs.sha }}
+          # 'some-with-excludes' makes the '!'-prefixed patterns below true exclusions.
+          # With the default 'some', a lone '**' already matches every file and the
+          # exclusions are evaluated as independent (and so mostly moot) match patterns,
+          # meaning every PR would select the backend suite regardless of what changed.
+          predicate-quantifier: 'some-with-excludes'
+          filters: |
+            backend:
+              - '**'
+              - '!helm/**'
+              - '!regtests/**'
+              - '!plugins/*/regtests/**'
+              - '!client/python/**'
+              - '!site/**'
+              # Only root-level doc files (README.md, CONTRIBUTING.md, ...) are excluded
+              # here, not '**/*.md': a markdown file inside a module (e.g. a test
+              # resource/fixture consumed by an actual Java test) is still backend input.
+              - '!*.md'
+            helm:
+              - 'helm/**'
+            regtests:
+              - 'regtests/**'
+              - 'plugins/*/regtests/**'
+            python_client:
+              - 'client/python/**'
+            docs:
+              - '**/*.md'
+              - 'site/**'
+            # 'some-with-excludes' makes exclusions final, so these generated-doc paths
+            # can't be re-included within the 'backend'/'helm' filters above; they're
+            # OR-ed into the job outputs instead (see `outputs:` above).
+            config_docs:
+              # Generated from code by `make config-doc-verify`; a hand-edit of this
+              # generated file (without the code change) should still fail build-checks
+              # instead of silently skipping it.
+              - 'site/content/in-dev/unreleased/configuration/config-sections/**'
+            helm_docs:
+              # Generated by `make helm-doc-verify`; same reasoning as config_docs above.
+              - 'site/content/in-dev/unreleased/helm-chart/reference.md'
+
+  license-check:
+    name: License Header Check
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -46,17 +135,43 @@ jobs:
         uses: ./.github/actions/setup-test-env
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
-      - name: Run Checks
+      - name: Run RAT license check
         env: &gradle_env_vars
           GRADLE_TOS_ACCEPTED: ${{ vars.GRADLE_TOS_ACCEPTED }}
           DEVELOCITY_SERVER: ${{ vars.DEVELOCITY_SERVER }}
           DEVELOCITY_PROJECT_ID: ${{ vars.DEVELOCITY_PROJECT_ID }}
           DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }} # zizmor: ignore[secrets-outside-env]
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
+        run: ./gradlew rat
+      - name: Save partial Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-save
+
+  build-checks:
+    name: Gradle Build Checks
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up JDK 21
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with: *setup-java-vars
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Run Checks
+        env: *gradle_env_vars
         run: |
           ./gradlew check sourceTarball distTar distZip publishToMavenLocal \
             -x :polaris-runtime-service:test \
             -x :polaris-admin:test \
+            -x rat \
             -PnoIntegrationTests \
             --continue
       - name: Verify configuration reference is up to date
@@ -91,6 +206,8 @@ jobs:
 
   runtime-service-tests:
     name: Runtime Service Tests
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -120,6 +237,8 @@ jobs:
 
   runtime-service-int-tests:
     name: Runtime Service Integration Tests
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -147,6 +266,8 @@ jobs:
 
   admin-tool-tests:
     name: Admin Tool Tests
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -174,6 +295,8 @@ jobs:
 
   integration-tests:
     name: Other Integration Tests
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -207,6 +330,12 @@ jobs:
 
   docker-image-build:
     name: Polaris Docker Image Build
+    needs: changes
+    if: |
+      needs.changes.outputs.backend == 'true' ||
+      needs.changes.outputs.helm == 'true' ||
+      needs.changes.outputs.regtests == 'true' ||
+      needs.changes.outputs.python_client == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -310,7 +439,9 @@ jobs:
     name: Helm Tests (Helm ${{ matrix.helm-version }} - K8s ${{ matrix.kubernetes-version }})
     runs-on: ubuntu-24.04
     needs:
+      - changes
       - docker-image-build
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.helm == 'true'
     timeout-minutes: 60
     permissions:
       contents: read
@@ -408,7 +539,9 @@ jobs:
     permissions:
       contents: read
     needs:
+      - changes
       - docker-image-build
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.python_client == 'true'
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
@@ -444,7 +577,14 @@ jobs:
     permissions:
       contents: read
     needs:
+      - changes
       - docker-image-build
+    # The regtest image also bundles client/python (regtests/Dockerfile) and runs its
+    # test suite by default (regtests/run.sh), so a python_client-only change needs this too.
+    if: |
+      needs.changes.outputs.backend == 'true' ||
+      needs.changes.outputs.regtests == 'true' ||
+      needs.changes.outputs.python_client == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -495,7 +635,10 @@ jobs:
 
   markdown-link-check:
     name: "Markdown Link Check"
-    if: github.repository == 'apache/polaris'
+    needs: changes
+    if: |
+      github.repository == 'apache/polaris' &&
+      (needs.changes.outputs.backend == 'true' || needs.changes.outputs.docs == 'true')
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -516,6 +659,8 @@ jobs:
 
   site:
     name: "Site Generation"
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.docs == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -547,6 +692,8 @@ jobs:
         run: site/bin/create-static-site.sh
 
   test-site-guides:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.docs == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -623,6 +770,8 @@ jobs:
     # Do not rename this job, this is referenced in .asf.yaml!
     name: "Required Checks"
     needs:
+      - changes
+      - license-check
       - build-checks
       - runtime-service-tests
       - runtime-service-int-tests
