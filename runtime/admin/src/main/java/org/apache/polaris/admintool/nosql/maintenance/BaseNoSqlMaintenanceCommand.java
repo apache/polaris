@@ -30,6 +30,8 @@ import static org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceCo
 import jakarta.inject.Inject;
 import java.io.PrintWriter;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import org.apache.polaris.admintool.nosql.BaseNoSqlCommand;
 import org.apache.polaris.persistence.nosql.api.obj.ObjTypes;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceConfig;
@@ -37,11 +39,57 @@ import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInform
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInformation.MaintenanceStats;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunSpec;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceService;
+import org.eclipse.microprofile.config.Config;
 
 @SuppressWarnings("CdiInjectionPointsInspection")
 public abstract class BaseNoSqlMaintenanceCommand extends BaseNoSqlCommand {
+  private static final String CATALOG_MAINTENANCE_PREFIX =
+      "polaris.persistence.nosql.maintenance.catalog.";
+
+  private static final List<Map.Entry<String, String>> LEGACY_RETENTION_PROPERTIES =
+      List.of(
+          Map.entry("principals-retain", "retention.principals"),
+          Map.entry("principal-roles-retain", "retention.principal-roles"),
+          Map.entry("grants-retain", "retention.grants"),
+          Map.entry("immediate-tasks-retain", "retention.immediate-tasks"),
+          Map.entry("catalogs-history-retain", "retention.catalogs-history"),
+          Map.entry("catalog-roles-retain", "retention.catalog-roles"),
+          Map.entry("catalog-policies-retain", "retention.catalog-policies"),
+          Map.entry("catalog-state-retain", "retention.catalog-state"));
+
   @Inject protected MaintenanceService maintenanceService;
   @Inject protected MaintenanceConfig maintenanceConfig;
+  @Inject Config config;
+
+  protected boolean rejectLegacyRetentionProperties() {
+    var configuredLegacyProperties =
+        LEGACY_RETENTION_PROPERTIES.stream()
+            .filter(
+                property ->
+                    config
+                            .getConfigValue(CATALOG_MAINTENANCE_PREFIX + property.getKey())
+                            .getRawValue()
+                        != null)
+            .toList();
+    if (configuredLegacyProperties.isEmpty()) {
+      return false;
+    }
+
+    var err = spec.commandLine().getErr();
+    err.println();
+    err.println(
+        "Cannot run NoSQL persistence maintenance because obsolete configuration properties are set.");
+    err.println("Replace them with the corresponding new properties:");
+    for (var property : configuredLegacyProperties) {
+      var oldProperty = CATALOG_MAINTENANCE_PREFIX + property.getKey();
+      var newProperty = CATALOG_MAINTENANCE_PREFIX + property.getValue();
+      err.printf(
+          "  %s -> %s.num-commits, %s.duration, and/or %s.all%n",
+          oldProperty, newProperty, newProperty, newProperty);
+    }
+    err.println();
+    return true;
+  }
 
   protected MaintenanceRunSpec printRealmStates() {
     var out = spec.commandLine().getOut();
