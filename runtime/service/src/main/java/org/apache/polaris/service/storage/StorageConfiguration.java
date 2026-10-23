@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.storage;
 
-import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Suppliers;
 import io.smallrye.config.ConfigMapping;
@@ -27,7 +26,6 @@ import io.smallrye.config.WithParentName;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
-import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -158,15 +156,15 @@ public interface StorageConfiguration extends S3AccessConfig {
               throw new RuntimeException("Failed to get GCP credentials", e);
             }
           } else {
-            AccessToken accessToken =
-                new AccessToken(
-                    gcpAccessToken().get(),
-                    new Date(
-                        clock
-                            .instant()
-                            .plus(gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN))
-                            .toEpochMilli()));
-            return GoogleCredentials.create(accessToken);
+            // A statically configured token has no token endpoint to call. Wrap it in a credential
+            // that re-stamps the expiry on every refresh, so a long-running server does not get
+            // stuck with the one-time expiry stamped at first use. GoogleCredentials.create(..)
+            // cannot refresh, which makes server FileIO against GCS fail once the lifespan elapses,
+            // until the server is restarted (#2253).
+            return new ConfiguredGcpAccessTokenCredentials(
+                gcpAccessToken().orElseThrow(),
+                gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN),
+                clock);
           }
         });
   }
