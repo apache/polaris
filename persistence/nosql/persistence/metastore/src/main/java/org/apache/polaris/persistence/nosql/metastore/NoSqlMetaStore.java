@@ -97,7 +97,6 @@ import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.ObjTypes;
-import org.apache.polaris.persistence.nosql.api.exceptions.ReferenceNotFoundException;
 import org.apache.polaris.persistence.nosql.authz.api.Privilege;
 import org.apache.polaris.persistence.nosql.authz.api.PrivilegeSet;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
@@ -1330,16 +1329,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
   private boolean entityExists(long catalogId, long id, int typeCode) {
     var indexedAccess = memoizedIndexedAccess.indexedAccess(catalogId, typeCode);
-    try {
-      return indexedAccess.nameKeyById(id).isPresent();
-    } catch (ReferenceNotFoundException e) {
-      // Maintenance purges the container reference after the stale-grant cleanup pass ran,
-      // so a stale grant record can point into a container that no longer exists. Report
-      // the entity as absent, like the maintenance-side EntityLookupCache.stableIdIndex(),
-      // so the stale grant record is skipped instead of failing the whole read.
-      LOGGER.debug("Container reference purged for entity existence check: {}", e.getMessage());
-      return false;
-    }
+    return indexedAccess.nameKeyById(id).isPresent();
   }
 
   private void collectGrantRecords(
@@ -1415,18 +1405,12 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
           accesses.computeIfAbsent(
               new GrantTargetType(target.catalogId(), target.typeCode()),
               key -> memoizedIndexedAccess.indexedAccess(key.catalogId(), key.typeCode()));
-      try {
-        var objRef = access.objRefById(target.id());
-        if (objRef.isPresent()) {
-          refOccurrences.computeIfAbsent(objRef.get(), key -> new ArrayList<>()).add(i);
-        } else {
-          // The root container is the only access that cannot yield a reference without fetching.
-          targetObjs[i] = access.byId(target.id()).orElse(null);
-        }
-      } catch (ReferenceNotFoundException e) {
-        // A grant target whose container reference was purged by maintenance cannot be
-        // resolved; leave the slot empty, a missing target is already tolerated below.
-        LOGGER.debug("Skipping grant target with a purged container reference: {}", e.getMessage());
+      var objRef = access.objRefById(target.id());
+      if (objRef.isPresent()) {
+        refOccurrences.computeIfAbsent(objRef.get(), key -> new ArrayList<>()).add(i);
+      } else {
+        // The root container is the only access that cannot yield a reference without fetching.
+        targetObjs[i] = access.byId(target.id()).orElse(null);
       }
     }
 

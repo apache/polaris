@@ -64,13 +64,13 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -673,6 +673,66 @@ public class TestCatalogMaintenance {
             resolved2.getEntityGrantRecords().stream()
                 .noneMatch(grant -> grant.getSecurableId() == catalogAdminRole.getId()))
         .isTrue();
+  }
+
+  @Test
+  public void readEntityPathsToleratePurgedContainer() {
+    // Companion regression for #5787: the same purged-roles-container state must not
+    // break the plain entity-read paths. Both lookupEntity and lookupEntityByName
+    // resolve through IndexedContainerAccess, which must treat the purged
+    // container reference as an absent container instead of throwing.
+    var testSetup = bootstrapRealm();
+    var manager = testSetup.manager();
+    var callCtx = testSetup.callCtx();
+    var persistence = testSetup.persistence();
+
+    var catalog = createCatalog(manager, callCtx, persistence);
+    mandatoryCatalogObjsForTestImpl(persistence, catalog.getId());
+
+    var catalogAdminRole =
+        manager
+            .readEntityByName(
+                callCtx,
+                List.of(catalog),
+                CATALOG_ROLE,
+                ANY_SUBTYPE,
+                PolarisEntityConstants.getNameOfCatalogAdminRole())
+            .getEntity();
+    assertThat(catalogAdminRole).isNotNull();
+
+    assertThat(manager.dropEntityIfExists(callCtx, List.of(), catalog, null, false))
+        .extracting(BaseResult::isSuccess)
+        .isEqualTo(true);
+
+    mutableMonotonicClock.advanceBoth(GRACE_TIME);
+
+    var firstRun = runMaintenance();
+    assertThat(firstRun.success()).isTrue();
+    assertThat(firstRun.referenceStats().orElseThrow().purged().orElseThrow())
+        .isGreaterThanOrEqualTo(2L);
+
+    purgeBackendCache("");
+
+    var session = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    var freshCallCtx = new PolarisCallContext(realmContext, session, configurationSource);
+
+    // Resolving an entity inside the dropped catalog by id goes through lookupEntity.
+    var byId =
+        manager.loadResolvedEntityById(
+            freshCallCtx, catalog.getId(), catalogAdminRole.getId(), CATALOG_ROLE);
+    assertThat(byId.isSuccess()).isFalse();
+    assertThat(byId.getEntity()).isNull();
+
+    // Resolving the same entity by name goes through lookupEntityByName.
+    var byName =
+        manager.readEntityByName(
+            freshCallCtx,
+            List.of(catalog),
+            CATALOG_ROLE,
+            ANY_SUBTYPE,
+            PolarisEntityConstants.getNameOfCatalogAdminRole());
+    assertThat(byName.isSuccess()).isFalse();
+    assertThat(byName.getEntity()).isNull();
   }
 
   @Test
