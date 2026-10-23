@@ -28,6 +28,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ## [Unreleased]
 
 ### Highlights
+- Table and view commits no longer delete newly written metadata when the metastore write outcome
+  is unknown (e.g. a dropped connection); they still clean up on known failures. JDBC reports an
+  unknown outcome as `PersistenceCommitStateUnknownException` (HTTP 500), and a definite non-write
+  where the connection could not be acquired as `PersistenceWriteNotStartedException` (HTTP 503),
+  which is safe to retry and lets the orphaned metadata be cleaned up.
 
 - Polaris now fully supports "external" principals, that is, principals that are not backed by an 
   entity in Polaris metastore. By enabling external principals, either globally or per-realm,
