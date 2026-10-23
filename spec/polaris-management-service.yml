@@ -1204,6 +1204,16 @@ components:
               type: boolean
               description: >-
                 if set to `true`, instructs Polaris Servers to avoid adding KMS key policies.
+            noInlinePolicy:
+              type: boolean
+              description: >-
+                if set to `true`, instructs Polaris Servers to omit the inline session policy from
+                STS AssumeRole requests. This is intended for S3-compatible storage
+                implementations whose STS endpoint rejects inline session policies (e.g. VAST
+                Data). When enabled, the vended temporary credentials inherit the full permissions
+                of the assumed role instead of being restricted to the catalog's per-request
+                locations and actions; ensure the assumed role carries the appropriate
+                permissions.
             credentialVendingMechanism:
               type: string
               example: "STS"
