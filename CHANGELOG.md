@@ -71,6 +71,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Breaking changes
 
+- Creating a Generic Table with an explicit, non-empty `base-location` now validates that
+  location against the catalog's allowed locations and, unless `ALLOW_UNSTRUCTURED_TABLE_LOCATION`
+  is enabled, the parent namespace location. Requests that previously stored disallowed locations
+  are now rejected. Omitting the location or sending an empty string retains its previous behavior.
 - `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
   invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
   size or supplying a page token. A request that supplies neither still returns all results, unless
@@ -124,6 +128,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
+- Maintenance policy content now rejects non-boolean values for the `enable` field again. The
+  strict boolean check (`StrictBooleanDeserializer`) stopped running when policy parsing moved to
+  Jackson 3, because it was wired through a Jackson 2 `@JsonDeserialize` annotation that the Jackson
+  3 mapper ignores. As a result values such as `"TRUE"`, `1` and `0` were leniently coerced instead
+  of rejected. The deserializer is ported to the Jackson 3 API and applied to the `enable` creator
+  parameter, so only JSON `true`/`false` (and the lowercase string forms) are accepted.
 - The H2 relational JDBC init script no longer overwrites the recorded schema version. It now seeds
   the `version` table only when absent, matching the `ON CONFLICT DO NOTHING` behavior of the
   PostgreSQL and CockroachDB scripts. Previously, running bootstrap against an older, unmigrated H2
@@ -249,6 +259,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   errors: lookups by name no longer hold entities outside the cache's weight and expiry limits.
 - Setting a namespace's `location` property no longer fails with an internal error when its parent
   is itself a nested namespace that has no stored location.
+- The Ranger authorizer no longer fails with `NoClassDefFoundError: javax/ws/rs/core/Cookie` when
+  using `RangerAdminRESTClient` as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
+  API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
 
 ### Commits
 
