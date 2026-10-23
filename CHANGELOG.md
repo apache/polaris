@@ -200,6 +200,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Ranger authorizer: a table or policy under a nested namespace is no longer mapped to the wrong
   Ranger resource. Namespace levels now occupy a single namespace resource instead of one each,
   so a policy written for the nested namespace matches.
+- Updating a policy without `current-policy-version` now returns `400 Bad Request` naming the
+  missing field, instead of `500 Internal Server Error`. The field is used for the policy's
+  optimistic version check, so a request without it is rejected and the policy is unchanged.
 - Ranger authorizer: `table-data-write` now confers `table-properties-write`, as the built-in
   authorizer already does. Without it, a Ranger policy granting only `table-data-write` was
   refused operations the same grant allows under the built-in authorizer. Existing deployments
