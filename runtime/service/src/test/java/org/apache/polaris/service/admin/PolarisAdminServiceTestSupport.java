@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.admin;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -66,6 +67,7 @@ public final class PolarisAdminServiceTestSupport {
         principal,
         authorizer,
         reservedProperties,
-        vendingMechanisms);
+        vendingMechanisms,
+        List.of());
   }
 }
