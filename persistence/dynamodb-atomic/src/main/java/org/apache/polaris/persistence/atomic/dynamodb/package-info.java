@@ -20,16 +20,11 @@
 /**
  * Optional Amazon DynamoDB persistence backend for Polaris.
  *
- * <p>This module provides a {@code BasePersistence} adapter backed by DynamoDB, selected at startup
- * via {@code polaris.persistence.type=dynamodb}. It reuses the existing {@code
- * AtomicOperationMetaStoreManager} (per-entity compare-and-set), mirroring the layering of the
- * {@code relational-jdbc} backend, so the metastore manager, catalog API, and entity model are
+ * <p>Provides a {@code BasePersistence} adapter backed by DynamoDB, selected at startup via {@code
+ * polaris.persistence.type=dynamodb-atomic}. It uses the {@code AtomicOperationMetaStoreManager}
+ * (per-entity compare-and-set), so the metastore manager, catalog API, and entity model are
  * unchanged.
  *
- * <p>The backend is fully optional and opt-in: deployments that do not select it are unaffected,
- * and no new dependency is imposed on users or downstream projects that do not enable it.
- *
- * <p>The implementation lands incrementally across a series of pull requests; this initial module
- * provides the skeleton and build wiring only.
+ * <p>The backend is opt-in: deployments that do not select it are unaffected.
  */
 package org.apache.polaris.persistence.atomic.dynamodb;
