@@ -115,6 +115,18 @@ public class IcebergMetadataTableNameTest {
     assertThat(createTable(request)).isEqualTo(Response.Status.OK.getStatusCode());
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"history", "snapshots", "entries"})
+  void stageCreateExistingTableNamedAfterMetadataTable(String name) {
+    CreateTableRequest create =
+        CreateTableRequest.builder().withName(name).withSchema(SCHEMA).build();
+    CreateTableRequest stageCreate =
+        CreateTableRequest.builder().withName(name).withSchema(SCHEMA).stageCreate().build();
+
+    assertThat(createTable(create)).isEqualTo(Response.Status.OK.getStatusCode());
+    assertThatThrownBy(() -> createTable(stageCreate)).isInstanceOf(AlreadyExistsException.class);
+  }
+
   private int createTable(CreateTableRequest request) {
     try (Response response =
         services
