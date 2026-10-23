@@ -26,16 +26,16 @@ import org.junit.jupiter.api.Test;
 class EventBusConfigurerTest {
 
   @Test
-  void testConfigureEventBusAfterUnregisterCodec() {
+  void testRegisterEventCodecAfterUnregisterEventCodec() {
     Vertx vertx = Vertx.vertx();
     try {
       EventBusConfigurer configurer = new EventBusConfigurer();
       configurer.eventBus = vertx.eventBus();
 
-      configurer.configureEventBus(null);
-      configurer.unregisterCodec();
+      configurer.registerEventCodec(null);
+      configurer.unregisterEventCodec();
 
-      assertThatCode(() -> configurer.configureEventBus(null)).doesNotThrowAnyException();
+      assertThatCode(() -> configurer.registerEventCodec(null)).doesNotThrowAnyException();
     } finally {
       vertx.close();
     }

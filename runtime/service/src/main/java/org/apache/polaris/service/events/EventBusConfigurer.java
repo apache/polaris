@@ -33,12 +33,12 @@ public class EventBusConfigurer {
 
   @Inject EventBus eventBus;
 
-  void configureEventBus(@Observes StartupEvent ev) {
+  void registerEventCodec(@Observes StartupEvent ev) {
     eventBus.registerDefaultCodec(PolarisEvent.class, new LocalEventBusCodec<>(LOCAL_CODEC_NAME));
   }
 
   @PreDestroy
-  void unregisterCodec() {
+  void unregisterEventCodec() {
     eventBus.unregisterDefaultCodec(PolarisEvent.class);
   }
 }
