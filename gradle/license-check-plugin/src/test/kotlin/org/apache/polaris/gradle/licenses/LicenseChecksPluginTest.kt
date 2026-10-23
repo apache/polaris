@@ -173,6 +173,13 @@ class LicenseChecksPluginTest {
             val publishTasks = tasks.withType<AbstractPublishToMaven>().toList()
             check(publishTasks.size == 2)
             publishTasks.forEach { check(it.taskDependencies.getDependencies(it).contains(gate)) }
+            val publication = publishing.publications.getByName("fixture") as MavenPublication
+            check(publication.artifacts.isNotEmpty())
+            publication.artifacts.forEach {
+              check(it.buildDependencies.getDependencies(null).contains(gate)) {
+                "Missing artifact license gate: " + it.file
+              }
+            }
             check(gate.taskDependencies.getDependencies(gate).contains(tasks.named("verifyLicenseAttribution").get()))
           }
         }

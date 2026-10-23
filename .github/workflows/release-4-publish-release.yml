@@ -316,6 +316,7 @@ jobs:
               -name "*.tgz" -o \
               -name "*.zip" -o \
               -name "polaris-build-environment-*.json" -o \
+              -name "*.cdx.json" -o \
               -name "*.asc" -o \
               -name "*.sha512" -o \
               -name "*.prov" \
