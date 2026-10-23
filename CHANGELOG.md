@@ -260,6 +260,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The Ranger authorizer no longer fails with `NoClassDefFoundError: javax/ws/rs/core/Cookie` when
   using `RangerAdminRESTClient` as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
+- Creating a table named after an Iceberg metadata table type, such as `history`, `snapshots` or
+  `entries`, no longer fails with an `IllegalStateException` (HTTP 500).
 
 ### Commits
 
