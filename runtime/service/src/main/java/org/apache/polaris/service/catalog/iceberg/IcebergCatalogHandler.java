@@ -817,34 +817,37 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   public void reportMetrics(TableIdentifier identifier, ReportMetricsRequest request) {
-
+    MetricType metricType =
+        request.report() instanceof ScanReport ? MetricType.SCAN : MetricType.COMMIT;
     PolarisAuthorizableOperation op =
-        request.report() instanceof ScanReport
+        metricType == MetricType.SCAN
             ? PolarisAuthorizableOperation.REPORT_READ_METRICS
             : PolarisAuthorizableOperation.REPORT_WRITE_METRICS;
 
     resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
 
-    // Get catalog and table IDs from resolved entities (already resolved during authorization)
+    // Authorization above fails closed. A missing resolved path after AuthZ is an error. The
+    // envelope may still carry a null table entity when the leaf is not TABLE_LIKE
+    // (passthrough/external); reporters that need a table id drop themselves. Persistence
+    // failures are swallowed in PersistingMetricsReporter so a broken metrics store does not
+    // 500 this endpoint; other reporter errors still propagate.
     CatalogEntity catalogEntity = getResolvedCatalogEntity();
-    long catalogId = catalogEntity.getId();
-
-    // Get the table ID from the resolved path
     PolarisResolvedPathWrapper resolvedTable =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier));
     PolarisEntity tableEntity = resolvedTable.getRawLeafEntity();
-    long tableId = tableEntity.getId();
+    if (tableEntity != null && tableEntity.getType() != PolarisEntityType.TABLE_LIKE) {
+      // Do not pass a namespace/catalog leaf through as if it were the table.
+      tableEntity = null;
+    }
 
-    MetricType metricType =
-        request.report() instanceof ScanReport ? MetricType.SCAN : MetricType.COMMIT;
     metricsReporter()
         .reportMetric(
             new MetricsReportEnvelope(
                 catalogName(),
-                catalogId,
+                catalogEntity.getId(),
                 identifier,
-                tableId,
+                tableEntity,
                 metricType,
                 request.report(),
                 clock().instant()));

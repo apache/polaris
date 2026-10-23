@@ -22,21 +22,26 @@ import com.google.common.annotations.Beta;
 import java.time.Instant;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Stable, self-describing carrier for an Iceberg metrics report received by Polaris.
  *
- * <p>Bundles the resolved table context (catalog name/id and table name/id) with the raw Iceberg
- * {@link MetricsReport} and an explicit {@link MetricType} discriminator, plus the timestamp when
- * the metrics were received. Passing an envelope keeps the {@link IcebergMetricsReporter} SPI
+ * <p>Bundles catalog context and an optional resolved table entity with the raw Iceberg {@link
+ * MetricsReport} and an explicit {@link MetricType} discriminator, plus the timestamp when the
+ * metrics were received. {@link #tableEntity()} may be {@code null} when AuthZ succeeded but the
+ * leaf is not local {@code TABLE_LIKE} (passthrough-facade / external); reporters that need a table
+ * id must handle that themselves. Passing an envelope keeps the {@link IcebergMetricsReporter} SPI
  * signature stable as new context fields are added, and lets implementations branch on {@link
  * #metricType()} without inspecting the concrete Iceberg report type.
  *
  * @param catalogName the name of the catalog containing the table
  * @param catalogId the internal Polaris ID of the catalog
  * @param table the identifier of the table the metrics are for
- * @param tableId the internal Polaris ID of the table entity
+ * @param tableEntity the resolved table leaf, or {@code null} if that leaf is not {@code
+ *     TABLE_LIKE}
  * @param metricType the kind of metrics report ({@link MetricType#SCAN} or {@link
  *     MetricType#COMMIT})
  * @param report the Iceberg metrics report ({@link org.apache.iceberg.metrics.ScanReport} or {@link
@@ -48,7 +53,7 @@ public record MetricsReportEnvelope(
     @NonNull String catalogName,
     long catalogId,
     @NonNull TableIdentifier table,
-    long tableId,
+    @Nullable PolarisEntity tableEntity,
     @NonNull MetricType metricType,
     @NonNull MetricsReport report,
     @NonNull Instant receivedTimestamp) {}
