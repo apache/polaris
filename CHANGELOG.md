@@ -126,6 +126,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Management requests such as listing catalogs or principal roles no longer fail with
+  an HTTP 500 `ReferenceNotFoundException` after NoSQL maintenance purged a dropped
+  catalog's references: entity reads and grant resolution that resolve into a purged
+  container now treat it as absent, and the next maintenance pass removes stale grant
+  records.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - Maintenance policy content now rejects non-boolean values for the `enable` field again. The

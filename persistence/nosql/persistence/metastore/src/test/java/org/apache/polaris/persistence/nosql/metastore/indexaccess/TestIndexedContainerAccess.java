@@ -183,6 +183,48 @@ public class TestIndexedContainerAccess {
 
   @ParameterizedTest
   @MethodSource("catalogScopedEntityTypes")
+  public void indexedAccessTreatsMissingReferenceAsAbsent(
+      PolarisEntityType entityType, PolarisEntitySubType subType) {
+
+    var catalogId = persistence.generateId();
+    var catalogEntity =
+        new PolarisBaseEntity(
+            getNullId(), catalogId, CATALOG, NULL_SUBTYPE, getRootEntityId(), "my-catalog");
+    metaStoreManager.createCatalog(callContext, catalogEntity, List.of());
+
+    // A missing container reference is what maintenance leaves behind after it purged
+    // the containers of a dropped catalog. Reads through such a reference must
+    // behave like an absent container, not throw a ReferenceNotFoundException.
+    var purgedCatalogId = persistence.generateId();
+    var ia = indexedAccessForEntityType(entityType.getCode(), persistence, purgedCatalogId);
+    soft.assertThat(ia).isInstanceOf(IndexedContainerAccessImpl.class);
+    soft.assertThat(ia.refObj()).isEmpty();
+    // an access that already reflects the absent container is not stale
+    soft.assertThat(ia.isStale()).isFalse();
+    soft.assertThat(ia.nameIndex()).isEmpty();
+    soft.assertThat(ia.stableIdIndex()).isEmpty();
+    soft.assertThat(ia.nameKeyById(42L)).isEmpty();
+    soft.assertThat(ia.objRefById(42L)).isEmpty();
+    soft.assertThat(ia.byId(42L)).isEmpty();
+    soft.assertThat(ia.byNameOnRoot("foo")).isEmpty();
+    soft.assertThat(ia.byParentIdAndName(0L, "foo")).isEmpty();
+    soft.assertThat(ia.byParentIdAndName(42L, "foo")).isEmpty();
+
+    // Sanity: the existing catalog still reads through its present reference. The
+    // catalog-scoped containers materialize when the first entity of the type is
+    // written, so create one before reading through the live reference.
+    var sanityEntityId = persistence.generateId();
+    var sanityEntity =
+        new PolarisBaseEntity(
+            catalogId, sanityEntityId, entityType, subType, getRootEntityId(), "purged-sanity");
+    metaStoreManager.createEntityIfNotExists(callContext, List.of(catalogEntity), sanityEntity);
+
+    var live = indexedAccessForEntityType(entityType.getCode(), persistence, catalogId);
+    soft.assertThat(live.refObj()).isNotEmpty();
+  }
+
+  @ParameterizedTest
+  @MethodSource("catalogScopedEntityTypes")
   public void indexedAccessForCatalogScopedTypes(
       PolarisEntityType entityType, PolarisEntitySubType subType) {
 

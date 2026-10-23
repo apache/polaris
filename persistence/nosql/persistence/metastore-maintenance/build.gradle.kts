@@ -75,6 +75,7 @@ dependencies {
   testImplementation(project(":polaris-idgen-mocks"))
   testImplementation(testFixtures(project(":polaris-persistence-nosql-maintenance-impl")))
   testImplementation(project(":polaris-persistence-nosql-impl"))
+  testImplementation(project(":polaris-persistence-nosql-metastore"))
 
   testImplementation(testFixtures(project(":polaris-persistence-nosql-cdi-weld")))
   testRuntimeOnly(testFixtures(project(":polaris-persistence-nosql-cdi-weld")))
