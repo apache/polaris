@@ -1015,6 +1015,24 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
+        .shouldPassWith(PolarisPrivilege.TABLE_ASSIGN_UUID)
+        .shouldPassWith(PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION)
+        .shouldPassWith(PolarisPrivilege.TABLE_ADD_SCHEMA)
+        .shouldPassWith(PolarisPrivilege.TABLE_SET_CURRENT_SCHEMA)
+        .shouldPassWith(PolarisPrivilege.TABLE_ADD_PARTITION_SPEC)
+        .shouldPassWith(PolarisPrivilege.TABLE_ADD_SORT_ORDER)
+        .shouldPassWith(PolarisPrivilege.TABLE_SET_DEFAULT_SORT_ORDER)
+        .shouldPassWith(PolarisPrivilege.TABLE_ADD_SNAPSHOT)
+        .shouldPassWith(PolarisPrivilege.TABLE_SET_SNAPSHOT_REF)
+        .shouldPassWith(PolarisPrivilege.TABLE_REMOVE_SNAPSHOTS)
+        .shouldPassWith(PolarisPrivilege.TABLE_REMOVE_SNAPSHOT_REF)
+        .shouldPassWith(PolarisPrivilege.TABLE_SET_LOCATION)
+        .shouldPassWith(PolarisPrivilege.TABLE_SET_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_REMOVE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_SET_STATISTICS)
+        .shouldPassWith(PolarisPrivilege.TABLE_REMOVE_STATISTICS)
+        .shouldPassWith(PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS)
         .createTests();
   }
 
@@ -1037,6 +1055,24 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
+        .shouldPassWith(PolarisPrivilege.TABLE_ASSIGN_UUID)
+        .shouldPassWith(PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION)
+        .shouldPassWith(PolarisPrivilege.TABLE_ADD_SCHEMA)
+        .shouldPassWith(PolarisPrivilege.TABLE_SET_CURRENT_SCHEMA)
+        .shouldPassWith(PolarisPrivilege.TABLE_ADD_PARTITION_SPEC)
+        .shouldPassWith(PolarisPrivilege.TABLE_ADD_SORT_ORDER)
+        .shouldPassWith(PolarisPrivilege.TABLE_SET_DEFAULT_SORT_ORDER)
+        .shouldPassWith(PolarisPrivilege.TABLE_ADD_SNAPSHOT)
+        .shouldPassWith(PolarisPrivilege.TABLE_SET_SNAPSHOT_REF)
+        .shouldPassWith(PolarisPrivilege.TABLE_REMOVE_SNAPSHOTS)
+        .shouldPassWith(PolarisPrivilege.TABLE_REMOVE_SNAPSHOT_REF)
+        .shouldPassWith(PolarisPrivilege.TABLE_SET_LOCATION)
+        .shouldPassWith(PolarisPrivilege.TABLE_SET_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_REMOVE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_SET_STATISTICS)
+        .shouldPassWith(PolarisPrivilege.TABLE_REMOVE_STATISTICS)
+        .shouldPassWith(PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS)
         .createTests();
   }
 
@@ -2265,31 +2301,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
-        .createTests();
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testLoadTableWith_TableManageStructureInsufficient() {
-    // Test that TABLE_MANAGE_STRUCTURE is insufficient for operations that require
-    // different privilege categories (like read operations)
-    return authzTestsBuilder("loadTable (TABLE_MANAGE_STRUCTURE insufficient)")
-        .action(
-            () ->
-                newHandler()
-                    .loadTable(
-                        TABLE_NS1A_2,
-                        "all",
-                        null,
-                        EnumSet.noneOf(AccessDelegationMode.class),
-                        Optional.empty()))
-        .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
-        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
-        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
-        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
-        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
-        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
-        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
-        .shouldFailWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
         .createTests();
   }
 

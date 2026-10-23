@@ -135,6 +135,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   accounts for them. Entities with many grants weigh more, which can lead to more evictions than before
   with the same configured value. The description of `ENTITY_CACHE_WEIGHER_TARGET` now documents that
   its weights approximate bytes.
+- `TABLE_MANAGE_STRUCTURE` and the fine-grained table update privileges (such as
+  `TABLE_ASSIGN_UUID`, `TABLE_ADD_SCHEMA` or `TABLE_SET_PROPERTIES`) now subsume
+  `TABLE_READ_PROPERTIES`, consistent with `TABLE_WRITE_PROPERTIES`, because a table update returns
+  the full table metadata. Roles holding only one of these privileges can now also load the table.
+  In the Ranger service definition, the corresponding access types (`table-structure-manage`,
+  `table-uuid-assign`, etc.) now imply `table-properties-read`; the service definition must be
+  re-imported into Ranger for this to take effect.
 
 ### Deprecations
 

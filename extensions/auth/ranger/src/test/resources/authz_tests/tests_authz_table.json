@@ -151,6 +151,14 @@
     {
       "request": { "authzOp": "COMMIT_TRANSACTION", "principal": { "name": "datawriter1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
       "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "LOAD_TABLE", "principal": { "name": "uuidassigner1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "LOAD_TABLE", "principal": { "name": "structuremanager1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
     }
   ]
 }
