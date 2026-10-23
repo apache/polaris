@@ -41,6 +41,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class BigLakeCatalogValidatorTest {
@@ -311,6 +312,66 @@ class BigLakeCatalogValidatorTest {
                     realmConfig,
                     bigLakeCatalogWithProperties(
                         Map.of(), Map.of(propertyName, "catalog-project"))))
+        .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" ", "\t", "other-project"})
+  void acceptsCanonicalCatalogQuotaProjectOverCaseVariant(String caseVariantValue) {
+    Map<String, String> catalogProperties = new HashMap<>();
+    catalogProperties.put("header.x-goog-user-project", "canonical-project");
+    catalogProperties.put("header.X-Goog-User-Project", caseVariantValue);
+
+    assertThatCode(
+            () ->
+                validator.validate(
+                    realmConfig, bigLakeCatalogWithProperties(Map.of(), catalogProperties)))
+        .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" ", "\t"})
+  void rejectsBlankCanonicalCatalogQuotaProjectDespiteCaseVariant(String canonicalValue) {
+    Map<String, String> catalogProperties = new HashMap<>();
+    catalogProperties.put("header.x-goog-user-project", canonicalValue);
+    catalogProperties.put("header.X-Goog-User-Project", "other-project");
+
+    assertThatThrownBy(
+            () ->
+                validator.validate(
+                    realmConfig, bigLakeCatalogWithProperties(Map.of(), catalogProperties)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("header.x-goog-user-project");
+  }
+
+  @Test
+  void rejectsBlankConnectionQuotaProjectOverBothCatalogCaseVariants() {
+    assertThatThrownBy(
+            () ->
+                validator.validate(
+                    realmConfig,
+                    bigLakeCatalogWithProperties(
+                        Map.of("header.x-goog-user-project", ""),
+                        Map.of(
+                            "header.x-goog-user-project", "canonical-project",
+                            "header.X-Goog-User-Project", "other-project"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("header.x-goog-user-project");
+  }
+
+  @Test
+  void acceptsConnectionQuotaProjectOverBothCatalogCaseVariants() {
+    assertThatCode(
+            () ->
+                validator.validate(
+                    realmConfig,
+                    bigLakeCatalogWithProperties(
+                        Map.of("header.x-goog-user-project", "connection-project"),
+                        Map.of(
+                            "header.x-goog-user-project", "",
+                            "header.X-Goog-User-Project", "other-project"))))
         .doesNotThrowAnyException();
   }
 
