@@ -37,6 +37,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import com.azure.core.exception.HttpResponseException;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
@@ -60,6 +61,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -106,6 +108,7 @@ import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.CharSequenceSet;
+import org.apache.iceberg.util.JsonUtil;
 import org.apache.iceberg.util.LocationUtil;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
@@ -127,6 +130,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -3324,6 +3328,110 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
       catalog.setMetaStoreManager(metaStoreManager);
       catalog.dropTable(TABLE, false);
     }
+  }
+
+  @Test
+  public void testRefreshRejectsMetadataWithLocationDifferentFromEntity() throws IOException {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    rewriteCurrentMetadata(table, json -> json.put("location", "s3://other-bucket"));
+
+    assertThatThrownBy(() -> catalog.loadTable(TABLE))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("does not match its stored location");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {TableProperties.WRITE_DATA_LOCATION, TableProperties.WRITE_METADATA_LOCATION})
+  public void testRefreshRejectsMetadataWithWritePathDifferentFromEntity(String property)
+      throws IOException {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    rewriteCurrentMetadata(
+        table, json -> ((ObjectNode) json.get("properties")).put(property, "s3://other-bucket"));
+
+    assertThatThrownBy(() -> catalog.loadTable(TABLE))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining(property);
+  }
+
+  @Test
+  public void testFirstCommitValidatesLocationsOfEntityWithoutRecordedLocations()
+      throws IOException {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    removeRecordedLocations(TABLE);
+    rewriteCurrentMetadata(
+        table,
+        json ->
+            ((ObjectNode) json.get("properties"))
+                .put(TableProperties.WRITE_DATA_LOCATION, "s3://other-bucket/data"));
+
+    Table loaded = catalog.loadTable(TABLE);
+    assertThatThrownBy(() -> loaded.updateProperties().set("some-key", "some-value").commit())
+        .isInstanceOf(ForbiddenException.class);
+  }
+
+  @Test
+  public void testFirstCommitRecordsLocationsOfEntityWithoutRecordedLocations() {
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+    removeRecordedLocations(TABLE);
+
+    catalog.loadTable(TABLE).updateProperties().set("some-key", "some-value").commit();
+
+    assertThat(readTableEntity(TABLE).getInternalPropertiesAsMap())
+        .containsKey(IcebergTableLikeEntity.LOCATION);
+  }
+
+  /** Overwrites the table's current metadata file in place with the given changes. */
+  private void rewriteCurrentMetadata(Table table, Consumer<ObjectNode> changes)
+      throws IOException {
+    TableMetadata current = ((BaseTable) table).operations().current();
+    ObjectNode json = (ObjectNode) JsonUtil.mapper().readTree(TableMetadataParser.toJson(current));
+    changes.accept(json);
+    fileIO.addFile(current.metadataFileLocation(), JsonUtil.mapper().writeValueAsBytes(json));
+  }
+
+  private List<PolarisEntityCore> catalogPath(Namespace namespace) {
+    EntityResult namespaceResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            namespace.toString());
+    return List.of(catalogEntity, namespaceResult.getEntity());
+  }
+
+  private IcebergTableLikeEntity readTableEntity(TableIdentifier identifier) {
+    return IcebergTableLikeEntity.of(
+        metaStoreManager
+            .readEntityByName(
+                polarisContext,
+                catalogPath(identifier.namespace()),
+                PolarisEntityType.TABLE_LIKE,
+                PolarisEntitySubType.ICEBERG_TABLE,
+                identifier.name())
+            .getEntity());
+  }
+
+  /** Removes the locations recorded on the table entity, as for entities written before 1.3.0. */
+  private void removeRecordedLocations(TableIdentifier identifier) {
+    IcebergTableLikeEntity entity = readTableEntity(identifier);
+    Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
+    internalProperties.remove(IcebergTableLikeEntity.LOCATION);
+    internalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY);
+    internalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
+    EntityResult result =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            polarisContext,
+            catalogPath(identifier.namespace()),
+            new IcebergTableLikeEntity.Builder(entity)
+                .setInternalProperties(internalProperties)
+                .build());
+    assertThat(result.isSuccess()).isTrue();
   }
 
   @Test

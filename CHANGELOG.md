@@ -66,6 +66,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   v6 is now **required** before starting this version of Polaris. The first request to any realm
   whose recorded schema version does not match what the binary expects will fail fast with a clear
   error message. See the [Relational JDBC metastore documentation] for the full upgrade path.
+- Tables last committed by a Polaris version older than 1.3.0 have all their locations validated on
+  their next commit. That commit fails if the locations do not satisfy the current location rules,
+  for example the catalog's allowed locations.
 
 [Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 

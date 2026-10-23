@@ -1929,6 +1929,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                       .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)
                       .build()));
         }
+        IcebergTableLikeEntity storedEntity = entity;
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1946,7 +1947,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                       resolvedEntities,
                       new HashMap<>(tableDefaultProperties),
                       Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
-              return TableMetadataParser.read(fileIO, metadataLocation);
+              TableMetadata metadata = TableMetadataParser.read(fileIO, metadataLocation);
+              validateLocationsMatchEntity(tableIdentifier, storedEntity, metadata);
+              return metadata;
             });
         if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_REFRESH_TABLE)) {
           polarisEventDispatcher.dispatch(
@@ -1957,6 +1960,38 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                       .put(EventAttributes.CATALOG_NAME, catalogName)
                       .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)
                       .build()));
+        }
+      }
+    }
+
+    /**
+     * Rejects table metadata whose locations differ from the ones recorded on the entity by the
+     * last commit, so that the locations used for the table are always the validated ones.
+     */
+    private static void validateLocationsMatchEntity(
+        TableIdentifier identifier, IcebergTableLikeEntity entity, TableMetadata metadata) {
+      String storedLocation = entity.getBaseLocation();
+      if (storedLocation != null
+          && !StorageLocation.of(storedLocation)
+              .isSameLocation(StorageLocation.of(metadata.location()))) {
+        throw new ForbiddenException(
+            "Location %s in the metadata of table %s does not match its stored location %s",
+            metadata.location(), identifier, storedLocation);
+      }
+      // Entities written before the write paths were recorded (Polaris < 1.3.0) have no LOCATION
+      // internal property; for them, an absent write path property means "unknown" rather than
+      // "unset": do not reject the metadata in such cases.
+      Map<String, String> internalProperties = entity.getInternalPropertiesAsMap();
+      if (internalProperties.containsKey(IcebergTableLikeEntity.LOCATION)) {
+        for (String key :
+            List.of(
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)) {
+          if (!Objects.equal(internalProperties.get(key), metadata.properties().get(key))) {
+            throw new ForbiddenException(
+                "Property %s in the metadata of table %s does not match its stored value",
+                key, identifier);
+          }
         }
       }
     }
@@ -2028,8 +2063,16 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               : resolvedTableEntities;
 
       Set<String> requestedLocations = StorageUtil.getLocationsUsedByTable(metadata);
+      // Entities written before Polaris 1.3.0 do not record the write paths that refreshes check,
+      // so all table locations are validated on their first commit.
+      boolean entityRecordsLocations =
+          resolvedTableEntities != null
+              && resolvedTableEntities
+                  .getRawLeafEntity()
+                  .getInternalPropertiesAsMap()
+                  .containsKey(IcebergTableLikeEntity.LOCATION);
       boolean tableLocationsChanged =
-          base == null || requestedTableLocationsChanged(base, metadata);
+          base == null || !entityRecordsLocations || requestedTableLocationsChanged(base, metadata);
       Set<String> locationsToValidate =
           tableLocationsChanged
               ? getLocationsUsedByTableAndDirectMetadataReferences(metadata)
@@ -3271,6 +3314,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       // finally, validate that the metadata file is within the table directory
       validateMetadataFileInTableDir(tableIdentifier, tableMetadata);
 
+      // record the validated locations, because refreshes will check the metadata file against them
+      entity = withLocationsOf(entity, tableMetadata);
+
       // TODO: These might fail due to concurrent update; we need to do a retry in those cases.
       if (null == existingLocation) {
         LOGGER.debug(
@@ -3288,6 +3334,28 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
     return true;
+  }
+
+  /** Returns {@code entity} with the locations of {@code metadata} recorded, as a commit does. */
+  private static IcebergTableLikeEntity withLocationsOf(
+      IcebergTableLikeEntity entity, TableMetadata metadata) {
+    Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
+    internalProperties.put(IcebergTableLikeEntity.LOCATION, metadata.location());
+    for (String key :
+        List.of(
+            IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+            IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)) {
+      String value = metadata.properties().get(key);
+      if (value == null) {
+        internalProperties.remove(key);
+      } else {
+        internalProperties.put(key, value);
+      }
+    }
+    return new IcebergTableLikeEntity.Builder(entity)
+        .setBaseLocation(metadata.location())
+        .setInternalProperties(internalProperties)
+        .build();
   }
 
   /**
