@@ -590,7 +590,8 @@ public class PolarisPolicyServiceIntegrationTest {
                 Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy", NS1_P1.name()))
             .put(Entity.json(request))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
-      Assertions.assertThat(res.readEntity(String.class)).contains("current-policy-version");
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains("current-policy-version is required to update a policy");
     }
 
     Policy policy = policyApi.loadPolicy(currentCatalogName, NS1_P1);
