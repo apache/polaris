@@ -147,6 +147,17 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             metaStoreManager.hasOverlappingSiblings(
                 callContext, List.of(PolarisEntity.toCore(catalog)), nonOverlappingNamespace))
         .contains(Optional.empty());
+
+    // The persisted entity itself, e.g. when renamed, does not conflict with its own location.
+    TestLocationBasedEntity renamedNamespace =
+        new TestLocationBasedEntity(
+            buildLocationBasedNamespace(
+                catalog, existingNamespace.getId(), "renamed", "s3://bucket/warehouse/existing/"));
+
+    Assertions.assertThat(
+            metaStoreManager.hasOverlappingSiblings(
+                callContext, List.of(PolarisEntity.toCore(catalog)), renamedNamespace))
+        .contains(Optional.empty());
   }
 
   @Test
