@@ -169,6 +169,8 @@ jobs:
         env: *gradle_env_vars
         run: |
           ./gradlew check sourceTarball distTar distZip publishToMavenLocal \
+            :polaris-distribution:assembleDistributionSboms \
+            stageSparkSboms \
             -x :polaris-runtime-service:test \
             -x :polaris-admin:test \
             -x rat \
@@ -203,6 +205,35 @@ jobs:
         run: make spec-bundle-verify
       # Intentionally unpinned to always use the latest allowlist from the ASF.
       - uses: apache/infrastructure-actions/allowlist-check@main # zizmor: ignore[unpinned-uses]
+
+  build-logic-tests:
+    name: Build Logic Tests
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up JDK 21
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with: *setup-java-vars
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Run build logic checks
+        env: *gradle_env_vars
+        run: ./gradlew :polaris-build-logic:check :polaris-license-check-plugin:check --continue
+      - name: Save partial Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-save
+      - name: Archive test results
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: upload-${{ github.job }}-artifacts
+          path: *test-archive-path
 
   runtime-service-tests:
     name: Runtime Service Tests
@@ -749,6 +780,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       - build-checks
+      - build-logic-tests
       - runtime-service-tests
       - runtime-service-int-tests
       - admin-tool-tests
@@ -773,6 +805,7 @@ jobs:
       - changes
       - license-check
       - build-checks
+      - build-logic-tests
       - runtime-service-tests
       - runtime-service-int-tests
       - admin-tool-tests
