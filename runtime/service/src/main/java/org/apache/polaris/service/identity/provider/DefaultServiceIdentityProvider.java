@@ -24,9 +24,11 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
+import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
@@ -83,14 +85,24 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
 
     // Map authentication type to service identity type and check if configured
     return switch (authType) {
-      case SIGV4 ->
-          config.awsIamServiceIdentity().isPresent()
-              ? Optional.of(
-                  new AwsIamServiceIdentityInfoDpo(
-                      buildIdentityInfoReference(realm, ServiceIdentityType.AWS_IAM)))
-              : Optional.empty();
+      case SIGV4 -> allocateSigV4ServiceIdentity(connectionConfig.getAuthenticationParameters());
       default -> Optional.empty();
     };
+  }
+
+  private Optional<ServiceIdentityInfoDpo> allocateSigV4ServiceIdentity(
+      AuthenticationParameters authenticationParameters) {
+    // Static credentials sign directly; no AWS IAM service identity is used or returned.
+    if (authenticationParameters instanceof SigV4AuthenticationParameters sigV4
+        && StringUtils.isNotEmpty(sigV4.getAccessKeyId())
+        && StringUtils.isNotEmpty(sigV4.getSecretAccessKey())) {
+      return Optional.empty();
+    }
+    return config.awsIamServiceIdentity().isPresent()
+        ? Optional.of(
+            new AwsIamServiceIdentityInfoDpo(
+                buildIdentityInfoReference(realm, ServiceIdentityType.AWS_IAM)))
+        : Optional.empty();
   }
 
   @Override

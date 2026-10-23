@@ -65,6 +65,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
 import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
+import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -332,6 +333,30 @@ public class PolarisAdminServiceTest {
     adminService.deleteCatalog("external-catalog");
 
     verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testDeleteCatalogDeletesInlineSigV4SecretAccessKey() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:sigv4", Map.of());
+    setupExternalCatalogDelete(
+        new SigV4AuthenticationParametersDpo(
+            null, null, null, "us-east-1", null, null, "AKIAEXAMPLE", secretReference));
+
+    adminService.deleteCatalog("external-catalog");
+
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testDeleteCatalogWithSigV4RoleAssumptionReleasesNoSecret() {
+    setupExternalCatalogDelete(
+        new SigV4AuthenticationParametersDpo(
+            "arn:aws:iam::123456789012:role/r", null, null, "us-east-1", null, null));
+
+    adminService.deleteCatalog("external-catalog");
+
+    verify(userSecretsManager, never()).deleteSecret(any());
   }
 
   @Test

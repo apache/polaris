@@ -1055,8 +1055,24 @@ components:
       properties:
         roleArn:
           type: string
-          description: The aws IAM role arn assumed by polaris userArn when signing requests
+          description: >-
+            The aws IAM role arn assumed by polaris userArn when signing requests. Required unless
+            accessKeyId and secretAccessKey are provided; the two forms are mutually exclusive.
           example: "arn:aws:iam::123456789001:role/role-that-has-remote-catalog-access"
+        accessKeyId:
+          type: string
+          description: >-
+            Static access key id used to sign requests. Intended for SigV4-compatible catalogs that
+            are not AWS and therefore have no IAM role to assume and no AWS STS endpoint to reach.
+            Must be provided together with secretAccessKey, and is mutually exclusive with roleArn.
+          example: "my-access-key-id"
+        secretAccessKey:
+          type: string
+          format: password
+          description: >-
+            Secret access key paired with accessKeyId. Write-only: it is offloaded to the configured
+            secrets manager on write and never returned by the API.
+          writeOnly: true
         roleSessionName:
           type: string
           description: The role session name to be used by the SigV4 protocol for signing requests
@@ -1082,7 +1098,6 @@ components:
             credentials inherit the full permissions of the assumed role.
           example: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["glue:*","s3:GetObject","s3:ListBucket"],"Resource":"*"}]}'
       required:
-        - roleArn
         - signingRegion
 
     ImplicitAuthenticationParameters:
