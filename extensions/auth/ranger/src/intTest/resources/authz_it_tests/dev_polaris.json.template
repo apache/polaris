@@ -137,6 +137,7 @@
             { "type": "table-properties-remove" },
             { "type": "table-data-read" },
             { "type": "table-data-write" },
+            { "type": "table-metrics-read" },
             { "type": "table-metadata-full" },
             { "type": "table-policy-attach" },
             { "type": "table-policy-detach" },
@@ -157,7 +158,13 @@
             { "type": "table-statistics-remove" },
             { "type": "table-structure-manage" }
           ],
-          "users": [ "admin1" ] }
+          "users": [ "admin1" ] },
+        {
+          "accesses": [
+            { "type": "table-data-read" },
+            { "type": "table-data-write" }
+          ],
+          "users": [ "dataonly1" ] }
       ]
     },
     {

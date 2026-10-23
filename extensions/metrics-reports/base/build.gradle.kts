@@ -25,6 +25,7 @@ plugins {
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-runtime-service"))
+  implementation(project(":polaris-extensions-metrics-reports-spi"))
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
@@ -35,6 +36,8 @@ dependencies {
   implementation(libs.slf4j.api)
 
   compileOnly(libs.jspecify)
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus.arc:arc")
 
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
