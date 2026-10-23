@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,6 +38,9 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.rest.RESTClient;
+import org.apache.iceberg.rest.auth.AuthProperties;
+import org.apache.iceberg.rest.auth.AuthSession;
+import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.rest.GenericTableEndpoints;
@@ -50,14 +54,11 @@ import org.mockito.ArgumentCaptor;
 public class PolarisRESTCatalogTest {
 
   private RESTClient mockClient;
-  private OAuth2Util.AuthSession mockAuthSession;
   private PolarisRESTCatalog catalog;
 
   @BeforeEach
   public void setup() {
     mockClient = mock(RESTClient.class);
-    mockAuthSession = mock(OAuth2Util.AuthSession.class);
-    when(mockAuthSession.headers()).thenReturn(ImmutableMap.of("Authorization", "Bearer token"));
     when(mockClient.withAuthSession(any())).thenReturn(mockClient);
 
     catalog = new PolarisRESTCatalog(config -> mockClient);
@@ -77,7 +78,7 @@ public class PolarisRESTCatalogTest {
     Map<String, String> properties =
         ImmutableMap.of(CatalogProperties.URI, "http://localhost:8181");
 
-    catalog.initialize(properties, mockAuthSession);
+    catalog.initialize("test", properties);
 
     verify(mockClient).get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any());
   }
@@ -100,7 +101,7 @@ public class PolarisRESTCatalogTest {
     Map<String, String> properties =
         ImmutableMap.of(CatalogProperties.URI, "http://localhost:8181");
 
-    catalog.initialize(properties, mockAuthSession);
+    catalog.initialize("test", properties);
 
     verify(mockClient).get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any());
   }
@@ -123,7 +124,7 @@ public class PolarisRESTCatalogTest {
             PolarisRESTCatalog.REST_PAGE_SIZE,
             "10");
 
-    catalog.initialize(properties, mockAuthSession);
+    catalog.initialize("test", properties);
 
     verify(mockClient).get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any());
   }
@@ -146,14 +147,53 @@ public class PolarisRESTCatalogTest {
             PolarisRESTCatalog.REST_PAGE_SIZE,
             "-1");
 
-    assertThatThrownBy(() -> catalog.initialize(properties, mockAuthSession))
+    assertThatThrownBy(() -> catalog.initialize("test", properties))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("must be a positive integer");
   }
 
   @Test
+  public void testInitializeWithoutCredentialsUsesNoAuth() {
+    initializeCatalog();
+    catalog.dropGenericTable(TableIdentifier.of("test_ns", "test_table"));
+
+    ArgumentCaptor<AuthSession> sessions = ArgumentCaptor.forClass(AuthSession.class);
+    verify(mockClient, atLeastOnce()).withAuthSession(sessions.capture());
+    assertThat(sessions.getAllValues()).containsOnly(AuthSession.EMPTY);
+  }
+
+  @Test
+  public void testInitializeWithTokenUsesOAuth2Session() {
+    when(mockClient.get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any()))
+        .thenReturn(
+            ConfigResponse.builder()
+                .withDefaults(ImmutableMap.of())
+                .withOverrides(ImmutableMap.of())
+                .build());
+
+    catalog.initialize(
+        "test",
+        ImmutableMap.of(
+            CatalogProperties.URI,
+            "http://localhost:8181",
+            AuthProperties.AUTH_TYPE,
+            AuthProperties.AUTH_TYPE_OAUTH2,
+            OAuth2Properties.TOKEN,
+            "token"));
+    catalog.dropGenericTable(TableIdentifier.of("test_ns", "test_table"));
+
+    ArgumentCaptor<AuthSession> sessions = ArgumentCaptor.forClass(AuthSession.class);
+    verify(mockClient, atLeastOnce()).withAuthSession(sessions.capture());
+    assertThat(sessions.getValue())
+        .isInstanceOfSatisfying(
+            OAuth2Util.AuthSession.class,
+            session ->
+                assertThat(session.headers()).containsEntry("Authorization", "Bearer token"));
+  }
+
+  @Test
   public void testInitializeWithNullConfig() {
-    assertThatThrownBy(() -> catalog.initialize(null, mockAuthSession))
+    assertThatThrownBy(() -> catalog.initialize("test", null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid configuration: null");
   }
@@ -193,7 +233,7 @@ public class PolarisRESTCatalogTest {
         ImmutableMap.of(
             CatalogProperties.URI, "http://localhost:8181", PolarisRESTCatalog.REST_PAGE_SIZE, "2");
 
-    catalog.initialize(properties, mockAuthSession);
+    catalog.initialize("test", properties);
 
     Namespace namespace = Namespace.of("test_ns");
     TableIdentifier table1 = TableIdentifier.of(namespace, "table1");
@@ -290,7 +330,6 @@ public class PolarisRESTCatalogTest {
   @Test
   public void testFetchConfigWithWarehouseLocation() {
     RESTClient client = mock(RESTClient.class);
-    Map<String, String> headers = ImmutableMap.of("Authorization", "Bearer token");
     Map<String, String> properties =
         ImmutableMap.of(
             CatalogProperties.URI,
@@ -307,7 +346,7 @@ public class PolarisRESTCatalogTest {
     when(client.get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any()))
         .thenReturn(expectedResponse);
 
-    ConfigResponse response = PolarisRESTCatalog.fetchConfig(client, headers, properties);
+    ConfigResponse response = PolarisRESTCatalog.fetchConfig(client, properties);
 
     assertThat(response).isNotNull();
 
@@ -340,6 +379,6 @@ public class PolarisRESTCatalogTest {
     Map<String, String> properties =
         ImmutableMap.of(CatalogProperties.URI, "http://localhost:8181");
 
-    catalog.initialize(properties, mockAuthSession);
+    catalog.initialize("test", properties);
   }
 }
