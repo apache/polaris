@@ -116,7 +116,7 @@ services:
       retries: 15
 
   opa:
-    image: openpolicyagent/opa:1.21.3
+    image: openpolicyagent/opa:1.21.4
     ports:
       # Optional, lets you query OPA's REST API directly to inspect decisions
       - "8183:8181"
