@@ -98,6 +98,7 @@ import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInform
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunSpec;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceService;
 import org.apache.polaris.persistence.nosql.maintenance.impl.MutableMaintenanceConfig;
+import org.apache.polaris.persistence.nosql.metastore.indexaccess.IndexedContainerAccess;
 import org.apache.polaris.persistence.nosql.weld.MutablePersistenceParams;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
@@ -733,6 +734,48 @@ public class TestCatalogMaintenance {
             PolarisEntityConstants.getNameOfCatalogAdminRole());
     assertThat(byName.isSuccess()).isFalse();
     assertThat(byName.getEntity()).isNull();
+  }
+
+  @Test
+  public void accessLoadedBeforeThePurgeIsStaleAfterwards() {
+    // Companion to indexedAccessTreatsMissingReferenceAsAbsent in TestIndexedContainerAccess:
+    // it pins the fresh access over a purged reference; this one pins the other side of the
+    // isStale contract - an access that fetched the container before maintenance purged the
+    // reference must report itself as stale, so callers know to refresh it.
+    var testSetup = bootstrapRealm();
+    var manager = testSetup.manager();
+    var callCtx = testSetup.callCtx();
+    var persistence = testSetup.persistence();
+
+    var catalog = createCatalog(manager, callCtx, persistence);
+    mandatoryCatalogObjsForTestImpl(persistence, catalog.getId());
+
+    var access =
+        IndexedContainerAccess.indexedAccessForEntityType(
+            CATALOG_ROLE.getCode(), persistence, catalog.getId());
+    assertThat(access.refObj()).isNotEmpty();
+
+    assertThat(manager.dropEntityIfExists(callCtx, List.of(), catalog, null, false))
+        .extracting(BaseResult::isSuccess)
+        .isEqualTo(true);
+    mutableMonotonicClock.advanceBoth(GRACE_TIME);
+
+    var run = runMaintenance();
+    assertThat(run.success()).isTrue();
+    assertThat(run.referenceStats().orElseThrow().purged().orElseThrow())
+        .isGreaterThanOrEqualTo(2L);
+
+    purgeBackendCache("");
+
+    // The access still reflects the container it fetched before the purge.
+    assertThat(access.isStale()).isTrue();
+
+    // A fresh access over the purged reference sees the absent container and is not stale.
+    var fresh =
+        IndexedContainerAccess.indexedAccessForEntityType(
+            CATALOG_ROLE.getCode(), persistence, catalog.getId());
+    assertThat(fresh.refObj()).isEmpty();
+    assertThat(fresh.isStale()).isFalse();
   }
 
   @Test

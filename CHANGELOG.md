@@ -111,9 +111,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
-- Reads no longer fail after NoSQL maintenance purges a dropped catalog's references.
-  Entity reads and grant resolution that resolve into a purged container now treat it
-  as absent, and the next maintenance pass removes stale grant records.
+- Management requests such as listing catalogs or principal roles no longer fail with
+  an HTTP 500 `ReferenceNotFoundException` after NoSQL maintenance purged a dropped
+  catalog's references: entity reads and grant resolution that resolve into a purged
+  container now treat it as absent, and the next maintenance pass removes stale grant
+  records.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - The H2 relational JDBC init script no longer overwrites the recorded schema version. It now seeds
