@@ -175,6 +175,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Catalog federation: `connectionConfigInfo.properties` is now persisted and returned for `HADOOP`
   and `HIVE` connection configurations. It was previously accepted by the management API but
   silently dropped, so `GET /catalogs/{name}` never showed it.
+- Catalog federation: `connectionConfigInfo.properties` is now applied when Polaris initializes
+  the Iceberg client for `HADOOP` and `HIVE` catalogs. As for `ICEBERG_REST`, only an explicit
+  allow-list is forwarded: `suppress-permission-error` (Hadoop), `clients` and `list-all-tables`
+  (Hive), plus the non-secret FileIO settings `s3.endpoint`,
+  `s3.path-style-access` and `client.region` for both. Other keys are stored but ignored.
 - Semantic models: a `datasets` field that is not a JSON array now returns `400 Bad Request`
   instead of being silently skipped, which bypassed every `dataset.source` check.
 - Conditional `loadTable` (`If-None-Match` → HTTP 304) no longer attaches a null
