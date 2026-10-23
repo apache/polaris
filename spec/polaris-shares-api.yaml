@@ -1,0 +1,462 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+openapi: 3.0.3
+info:
+  title: Polaris Shares API
+  version: 0.0.1
+  description:
+    Defines the management APIs for sharing catalog content as read-only shares, which
+    define what is shared. A share is a named set of objects from one catalog. Consumers
+    read shared tables with any Iceberg REST client. Who may read a share is decided by the
+    service's authorization, and how a consumer authenticates is up to the service, as for
+    the Iceberg REST API. A service that manages its consumers as first-class objects can
+    serve the optional Polaris Shares Consumer Management API
+    (polaris-shares-consumer-management-api.yaml), which covers external consumers, the
+    listings that bind them to shares, and their endpoint configuration and credentials.
+    Shares are realm-level objects addressed by name, and each share is bound to one
+    catalog. This API is in beta and may change in a backward-incompatible way, and it is
+    served only when the shares feature flag is enabled (off by default).
+servers:
+  - url: "{scheme}://{host}/api/shares-management/v1"
+    description: Server URL when the port can be inferred from the scheme
+    variables:
+      scheme:
+        description: The scheme of the URI, either http or https.
+        default: https
+      host:
+        description: The host address for the specified server
+        default: localhost
+security:
+  - OAuth2: []
+
+paths:
+  /shares:
+    get:
+      operationId: listShares
+      summary: List shares
+      parameters:
+        - name: pageToken
+          in: query
+          required: false
+          description: The continuation token returned with the previous page. Absent for the first page
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          required: false
+          description:
+            Maximum number of items to return, at least 1. If absent, or larger than the service's
+            maximum, the service's maximum is used
+          schema:
+            type: integer
+            minimum: 1
+      description:
+        "List all shares in this Polaris service."
+      responses:
+        200:
+          description: A page of shares
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shares"
+        403:
+          description: "The caller does not have permission to list shares"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
+    post:
+      operationId: createShare
+      summary: Create a share
+      description:
+        "Create a share bound to the catalog named in the request. A new share has no members until
+        members are added, and no one can read it until access to it is granted. Not idempotent: a retry
+        after a lost response returns 409 because the share exists. Fetch it by name."
+      requestBody:
+        description: The share to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateShareRequest"
+      responses:
+        201:
+          description: "Successful response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Share"
+        400:
+          description: "The share name is invalid, or the request is malformed"
+        403:
+          description: "The caller does not have permission to create a share, or to create a catalog role in the bound catalog"
+        404:
+          description: "The bound catalog does not exist"
+        409:
+          description: "A share with the specified name already exists"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
+
+  /shares/{shareName}:
+    parameters:
+      - name: shareName
+        in: path
+        description: The name of the share
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getShare
+      summary: Get a share
+      description:
+        "Get a share by name."
+      responses:
+        200:
+          description: The share
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Share"
+        403:
+          description: "The caller does not have permission to read this share"
+        404:
+          description: "The share does not exist"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
+    put:
+      operationId: updateShare
+      summary: Update a share
+      description:
+        "Update a share's description or properties: an
+        absent field changes nothing, an empty description clears it, properties are
+        merged by key, and removeProperties lists the keys to drop. Share membership is
+        updated through the members resource, not through this operation."
+      requestBody:
+        description: The update to apply
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateShareRequest"
+      responses:
+        200:
+          description: The updated share
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Share"
+        400:
+          description: "A property key is both set and removed, or a reserved key is set or removed"
+        403:
+          description: "The caller does not have permission to update this share"
+        404:
+          description: "The share does not exist"
+        409:
+          description: "The share was concurrently modified. Fetch and retry"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
+    delete:
+      operationId: deleteShare
+      summary: Delete a share
+      description:
+        "Delete a share. Every consumer's access to it ends immediately."
+      responses:
+        204:
+          description: "Success, no content"
+        403:
+          description: "The caller does not have permission to delete this share"
+        404:
+          description: "The share does not exist"
+        409:
+          description: "The share was concurrently modified. Fetch and retry"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
+
+  /shares/{shareName}/members:
+    parameters:
+      - name: shareName
+        in: path
+        description: The name of the share
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listShareMembers
+      summary: List share members
+      parameters:
+        - name: pageToken
+          in: query
+          required: false
+          description: The continuation token returned with the previous page. Absent for the first page
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          required: false
+          description:
+            Maximum number of items to return, at least 1. If absent, or larger than the service's
+            maximum, the service's maximum is used
+          schema:
+            type: integer
+            minimum: 1
+      description:
+        "List the members of a share."
+      responses:
+        200:
+          description: A page of the share's members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShareMembers"
+        403:
+          description: "The caller does not have permission to read this share"
+        404:
+          description: "The share does not exist"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
+    post:
+      operationId: updateShareMembers
+      summary: Update share members
+      description:
+        "Atomically apply a list of member additions and removals: either every update is applied or
+        none is. A member may appear at most once in a batch. The batch is applied against one version of the share
+        (currentEntityVersion if given, otherwise the version the service reads). Any
+        concurrent change to the share, including another member update, returns 409. Fetch
+        the share and retry. A stale currentEntityVersion returns 409 before any update is
+        applied. Adding a member that is already present returns 400, and removing one that
+        is absent returns 404. Every member must belong to the share's catalog. A removed
+        member disappears from every consumer's view immediately. Read grants follow the
+        membership record once the update commits. If granting fails partway, the service
+        documents its behavior."
+      requestBody:
+        description: The membership updates to apply
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateShareMembersRequest"
+      responses:
+        200:
+          description:
+            The updated share, with its new entityVersion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Share"
+        400:
+          description: "An update in the list is invalid, a member appears more than once, or a member is outside the share's bound catalog"
+        403:
+          description: "The caller does not have permission to update this share's members"
+        404:
+          description: "The share, or a referenced member object, does not exist"
+        409:
+          description: "The share was concurrently modified. Fetch and retry"
+        501:
+          description: "This realm's persistence does not support share records. Shares are unavailable until it is upgraded"
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description:
+        OAuth2 client credentials for provider administrators, as in the Polaris Management API.
+        Consumers do not use this scheme. The token URL below is illustrative.
+      flows:
+        clientCredentials:
+          tokenUrl: "https://auth.example.invalid/oauth/tokens"
+          scopes: {}
+
+  schemas:
+    Share:
+      description:
+        A named, realm-level container that lists shared objects. A share is bound to one catalog,
+        and its members are objects in that catalog. Share names are unique across the
+        service.
+      type: object
+      properties:
+        name:
+          type: string
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          maxLength: 256
+          description: The share's name, unique across the realm's shares. Letters, digits, underscore and hyphen, starting with a letter or digit, at most 256 characters
+        catalogName:
+          type: string
+          description:
+            The catalog this share is bound to, whose objects it can contain. Required at creation,
+            immutable afterwards. Exactly one catalog is bound
+        description:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+          description:
+            User-defined properties. Keys with the reserved "share." prefix belong to the service. They
+            are never returned here and are rejected (400) when set
+        createTimestamp:
+          type: string
+          format: date-time
+          description: The creation time, in ISO 8601 (RFC 3339) format. Set by the service
+          readOnly: true
+        lastUpdateTimestamp:
+          type: string
+          format: date-time
+          description: The last update time, in ISO 8601 (RFC 3339) format. Set by the service
+          readOnly: true
+        entityVersion:
+          type: integer
+          description:
+            The share's version, incremented on every change. Send it as currentEntityVersion with an
+            update to detect concurrent modification
+      required:
+        - name
+        - catalogName
+
+    Shares:
+      type: object
+      properties:
+        nextPageToken:
+          type: string
+          description:
+            Present when more results exist. Absent on the last page
+        shares:
+          type: array
+          items:
+            $ref: "#/components/schemas/Share"
+
+    CreateShareRequest:
+      type: object
+      properties:
+        share:
+          $ref: "#/components/schemas/Share"
+      required:
+        - share
+
+    UpdateShareRequest:
+      description:
+        Updates to apply to a share's description or properties. Every field is
+        optional and an absent field changes nothing. The fields present are applied
+        together, under the version check when currentEntityVersion is given
+      type: object
+      properties:
+        currentEntityVersion:
+          type: integer
+          description:
+            The version of the object onto which this update is applied. If the object
+            changed, the update will fail and the caller should retry after fetching the
+            latest version
+        description:
+          type: string
+          description:
+            The new description. An empty string clears the description. An absent
+            field leaves it unchanged
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+          description:
+            Properties to set, merged into the share's properties by key. Other keys are kept. An absent
+            or empty map sets nothing. Keys with the reserved "share." prefix are rejected
+            (400)
+        removeProperties:
+          type: array
+          items:
+            type: string
+          description:
+            Keys to remove from the share's properties. A key that is not set is ignored. A key both set
+            in properties and listed here is rejected (400), as is a key with the reserved
+            "share." prefix
+
+    ShareMember:
+      description:
+        A member of a share. Consumers see the member under its canonical identity in the share's
+        catalog. A member is pinned to the object's stable ID when it is added, so a renamed
+        object stays a member under its new name, and a new object that reuses an old name is
+        not a member. Aliasing (exposing a member under another identity) is not supported in
+        this version.
+      type: object
+      properties:
+        type:
+          type: string
+          description:
+            The member type. TABLE is the only type defined. The set is open, and a service rejects
+            types it does not support
+        canonical:
+          $ref: "#/components/schemas/MemberIdentity"
+      required:
+        - type
+        - canonical
+
+    MemberIdentity:
+      description:
+        The identity of a member object, as a namespace and a name inside the share's
+        bound catalog. The catalog is the share's and is not repeated here. It is the
+        identifier a consumer's Iceberg REST client uses for the member
+      type: object
+      properties:
+        namespace:
+          type: array
+          items:
+            type: string
+        name:
+          type: string
+      required:
+        - namespace
+        - name
+
+    ShareMembers:
+      type: object
+      properties:
+        nextPageToken:
+          type: string
+          description:
+            Present when more results exist. Absent on the last page
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShareMember"
+
+    UpdateShareMembersRequest:
+      description: A list of membership updates, applied atomically. Each member may appear at most once
+      type: object
+      properties:
+        currentEntityVersion:
+          type: integer
+          description:
+            The share version this batch applies to. If the share has changed, the request returns 409.
+            Fetch the latest version and retry. Optional. Without it, the service applies the
+            batch against the version it reads, and a concurrent change still returns 409
+        updates:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShareMemberUpdate"
+      required:
+        - updates
+
+    ShareMemberUpdate:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+            - ADD
+            - REMOVE
+        member:
+          $ref: "#/components/schemas/ShareMember"
+      required:
+        - action
+        - member
