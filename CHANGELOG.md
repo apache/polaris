@@ -169,6 +169,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Dropped-table purge on NoSQL no longer fails when a manifest or metadata path is longer than
   the 500-byte index-key limit. Child cleanup task names are a short kind, the parent task id,
   and a UUID. The full paths stay in the task payload.
+- Semantic-model `dataset.source` resolution now tries every namespace / table-name split of a dotted
+  identifier and requires exactly one matching table or view. Table names may contain `.`, so the
+  previous last-segment-only parse could not address those tables and could bind a different entity
+  when both partitions existed (for example `a.b.c` as `ns=[a], table=b.c` vs `ns=[a, b], table=c`).
+  Dotted namespace levels (for example `ns=["a.b"], table=c`) are still out of scope. Ambiguous
+  sources now return `400 Bad Request`.
 - Deleting an external catalog now also deletes the inline connection secrets (OAuth client secret
   or bearer token) that were written to the `UserSecretsManager` when the catalog was created.
   Previously they stayed in the secrets store with no entity referencing them.
