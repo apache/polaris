@@ -75,6 +75,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   the values recorded in Polaris now fails with a `ForbiddenException`, without any commit being
   attempted. Tables last committed before 1.3.0 have no recorded values and are not affected until
   their next commit.
+- Purging a table, and deleting metadata files after a commit
+  (`write.metadata.delete-after-commit.enabled`), no longer delete files located outside the
+  table's location. Such files are left in place and a warning is logged.
 
 [Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 

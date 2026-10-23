@@ -58,7 +58,10 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
   public void handleTask(TaskEntity task, CallContext callContext) {
     BatchFileCleanupTask cleanupTask = task.readData(BatchFileCleanupTask.class);
     TableIdentifier tableId = cleanupTask.tableId();
-    List<String> batchFiles = cleanupTask.batchFiles();
+    List<String> batchFiles =
+        cleanupTask.batchFiles().stream()
+            .filter(file -> isUnderTableLocation(task, tableId, file))
+            .toList();
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task, tableId)) {
       Map<Boolean, List<String>> partitionedFiles =
           batchFiles.stream()

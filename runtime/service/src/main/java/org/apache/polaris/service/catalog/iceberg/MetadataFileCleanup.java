@@ -18,11 +18,54 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.storage.StorageLocation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tuple capturing the state needed to delete metadata files that were removed by a table commit.
  * Used to defer cleanup until a multi-table transaction has been atomically committed.
+ *
+ * @param tableLocations the table locations recorded on the table entity before the commit
  */
-record MetadataFileCleanup(FileIO io, TableMetadata baseMetadata, TableMetadata newMetadata) {}
+record MetadataFileCleanup(
+    FileIO io, TableMetadata baseMetadata, TableMetadata newMetadata, Set<String> tableLocations) {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MetadataFileCleanup.class);
+
+  /**
+   * Same as {@link CatalogUtil#deleteRemovedMetadataFiles}, except that only files under {@link
+   * #tableLocations()} are deleted.
+   */
+  void deleteRemovedMetadataFiles() {
+    if (baseMetadata == null
+        || !newMetadata.propertyAsBoolean(
+            TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED,
+            TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED_DEFAULT)) {
+      return;
+    }
+    List<StorageLocation> locations = tableLocations.stream().map(StorageLocation::of).toList();
+    Set<TableMetadata.MetadataLogEntry> removed = new HashSet<>(baseMetadata.previousFiles());
+    removed.removeAll(newMetadata.previousFiles());
+    Set<String> files = new HashSet<>();
+    for (TableMetadata.MetadataLogEntry entry : removed) {
+      StorageLocation file = StorageLocation.of(entry.file());
+      if (locations.stream().anyMatch(file::isChildOf)) {
+        files.add(entry.file());
+      } else {
+        LOGGER.warn(
+            "Not deleting metadata file {} outside of the table locations {}",
+            entry.file(),
+            tableLocations);
+      }
+    }
+    CatalogUtil.deleteFiles(io, files, "metadata");
+  }
+}

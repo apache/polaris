@@ -66,14 +66,17 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
   public void handleTask(TaskEntity task, CallContext callContext) {
     ManifestCleanupTask cleanupTask = task.readData(ManifestCleanupTask.class);
     TableIdentifier tableId = cleanupTask.tableId();
+    ManifestFile manifestFile = TaskUtils.decodeManifestFileData(cleanupTask.manifestFileData());
+    if (!isUnderTableLocation(task, tableId, manifestFile.path())) {
+      return;
+    }
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task, tableId)) {
-      ManifestFile manifestFile = TaskUtils.decodeManifestFileData(cleanupTask.manifestFileData());
-      cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);
+      cleanUpManifestFile(task, manifestFile, authorizedFileIO, tableId);
     }
   }
 
   private void cleanUpManifestFile(
-      ManifestFile manifestFile, FileIO fileIO, TableIdentifier tableId) {
+      TaskEntity task, ManifestFile manifestFile, FileIO fileIO, TableIdentifier tableId) {
     // if the file doesn't exist, we assume that another task execution was successful, but
     // failed to drop the task entity. Log a warning and return success
     if (!TaskUtils.exists(manifestFile.path(), fileIO)) {
@@ -91,8 +94,9 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
           StreamSupport.stream(
                   Spliterators.spliteratorUnknownSize(reader.iterator(), Spliterator.IMMUTABLE),
                   false)
-              .map(
-                  file -> tryDelete(tableId, fileIO, manifestFile.path(), file.location(), null, 1))
+              .map(ContentFile::location)
+              .filter(location -> isUnderTableLocation(task, tableId, location))
+              .map(location -> tryDelete(tableId, fileIO, manifestFile.path(), location, null, 1))
               .toList();
       LOGGER.debug(
           "Scheduled {} content files to be deleted from manifest {} (content={})",
