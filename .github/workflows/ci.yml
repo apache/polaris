@@ -39,7 +39,6 @@ jobs:
       python_client: ${{ github.event_name != 'pull_request' || steps.filter.outputs.python_client == 'true' }}
       docs: ${{ github.event_name != 'pull_request' || steps.filter.outputs.docs == 'true' }}
       changelog: ${{ github.event_name != 'pull_request' || steps.filter.outputs.changelog == 'true' }}
-      build_logic: ${{ github.event_name != 'pull_request' || steps.filter.outputs.build_logic == 'true' }}
     steps:
       - name: Checkout
         # Needed for git-based diffing below; the default GitHub-API-based mode of
@@ -110,10 +109,6 @@ jobs:
               - 'site/**'
             changelog:
               - 'changelog.d/**'
-            build_logic:
-              - 'build-logic/**'
-              # build-logic imports this catalog, which has the dependencies of its tests
-              - 'gradle/baselibs.versions.toml'
             # 'some-with-excludes' makes exclusions final, so these generated-doc paths
             # can't be re-included within the 'backend'/'helm' filters above; they're
             # OR-ed into the job outputs instead (see `outputs:` above).
@@ -180,7 +175,7 @@ jobs:
   build-logic-tests:
     name: Build Logic Tests
     needs: changes
-    if: needs.changes.outputs.build_logic == 'true'
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-26.04
     permissions:
       contents: read
@@ -196,7 +191,17 @@ jobs:
         uses: $/.github/actions/ci-incr-build-cache-prepare
       - name: Run build logic tests
         env: *gradle_env_vars
-        run: ./gradlew :polaris-build-logic:test :polaris-build-logic:integrationTest
+        run: ./gradlew :polaris-build-logic:check :polaris-build-logic:integrationTest :polaris-license-check-plugin:check --continue
+      - name: Save partial Gradle build cache
+        uses: $/.github/actions/ci-incr-build-cache-save
+      - name: Archive test results
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: upload-${{ github.job }}-artifacts
+          path: &test-archive-path |
+            **/build/test-results/**
+            **/build/reports/tests/**
 
   build-checks:
     name: Gradle Build Checks
@@ -221,6 +226,8 @@ jobs:
         env: *gradle_env_vars
         run: |
           ./gradlew check sourceTarball distTar distZip publishToMavenLocal \
+            :polaris-distribution:assembleDistributionSboms \
+            stageSparkSboms \
             -x :polaris-runtime-service:test \
             -x :polaris-admin:test \
             -x rat \
@@ -235,9 +242,7 @@ jobs:
         if: failure()
         with:
           name: upload-${{ github.job }}-artifacts
-          path: &test-archive-path |
-            **/build/test-results/**
-            **/build/reports/tests/**
+          path: *test-archive-path
       #
       # The following are not strictly "Gradle build checks", but run quite fast.
       #
@@ -819,6 +824,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       - build-checks
+      - build-logic-tests
       - runtime-service-tests
       - runtime-service-int-tests
       - admin-tool-tests

@@ -35,3 +35,12 @@ apply<LicenseChecksPlugin>()
 extensions.configure<LicenseChecksExtension>("licenseChecks") {
   policyFrom(layout.settingsDirectory.file("gradle/license-policy.json"))
 }
+
+// Producer document consumed by the binary-archive adapter through a normal outgoing variant.
+configurations.create("nativeSbomElements") {
+  isCanBeConsumed = true
+  isCanBeResolved = false
+  outgoing.artifact(layout.buildDirectory.file("quarkus-run-cyclonedx.json")) {
+    builtBy("quarkusBuild")
+  }
+}
