@@ -27,6 +27,7 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundE
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
@@ -45,6 +46,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,6 +101,10 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
             ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ANY_SUBTYPE);
     PolarisEntity entity = resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity();
     if (null == entity) {
+      if (baseLocation != null && !baseLocation.isEmpty()) {
+        CatalogUtils.validateLocationsForTableLike(
+            callContext.getRealmConfig(), tableIdentifier, Set.of(baseLocation), resolvedParent);
+      }
       entity =
           new GenericTableEntity.Builder(tableIdentifier, format)
               .setCatalogId(this.catalogId)

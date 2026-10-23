@@ -52,7 +52,6 @@ dependencies {
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   implementation(libs.swagger.annotations)
-  implementation(libs.swagger.jaxrs)
   implementation(libs.jakarta.inject.api)
   implementation(libs.jakarta.validation.api)
   implementation(libs.jakarta.ws.rs.api)

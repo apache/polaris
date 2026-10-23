@@ -120,6 +120,9 @@ dependencies {
   compileOnly(libs.smallrye.config.core)
   compileOnly(project(":polaris-immutables"))
 
+  // Ranger 2.9 no longer bundles the JAX-RS 1.x API classes (javax.ws.rs.*), but still needs them
+  // at runtime to talk to Ranger Admin via RangerAdminRESTClient.
+  runtimeOnly(libs.javax.ws.rs.jsr311.api)
   runtimeOnly(libs.graalvm.js.js.scriptengine)
   runtimeOnly(libs.graalvm.polyglot.js)
   runtimeOnly(libs.graalvm.polyglot.polyglot)
