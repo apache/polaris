@@ -195,8 +195,10 @@ public class PolarisPolicyServiceIntegrationTest {
             .setProperties(catalogPropsBuilder.build())
             .setStorageConfigInfo(
                 s3BucketBase.getScheme().equals("file")
-                    ? new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of(catalogBaseLocation), null)
+                    ? FileStorageConfigInfo.builder()
+                        .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+                        .setAllowedLocations(List.of(catalogBaseLocation))
+                        .build()
                     : awsConfigModel)
             .build();
 

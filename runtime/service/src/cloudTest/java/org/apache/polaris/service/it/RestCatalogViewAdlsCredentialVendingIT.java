@@ -19,12 +19,10 @@
 package org.apache.polaris.service.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.TestProfile;
 import org.apache.polaris.service.it.test.PolarisRestCatalogViewAdlsIntegrationTestBase;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @QuarkusIntegrationTest
-@TestProfile(CredentialVendingProfile.class)
 @EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_AZURE_PATH", matches = ".+")
 public class RestCatalogViewAdlsCredentialVendingIT
     extends PolarisRestCatalogViewAdlsIntegrationTestBase {}
