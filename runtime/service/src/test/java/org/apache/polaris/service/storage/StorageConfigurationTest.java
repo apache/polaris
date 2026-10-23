@@ -357,7 +357,7 @@ public class StorageConfigurationTest {
     assertThat(firstExpiry).isEqualTo(start.plus(TEST_TOKEN_LIFESPAN));
 
     // A plain GoogleCredentials.create(token) would throw here because it cannot refresh; the
-    // configured-token credential must re-read the token and re-stamp the expiry instead (#2253).
+    // configured-token credential re-stamps the expiry instead (#2253).
     credentials.refresh();
 
     AccessToken refreshed = credentials.getAccessToken();

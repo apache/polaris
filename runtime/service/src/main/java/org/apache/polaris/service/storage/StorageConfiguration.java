@@ -101,8 +101,10 @@ public interface StorageConfiguration extends S3AccessConfig {
   Optional<String> gcpAccessToken();
 
   /**
-   * The lifespan of the GCP access token. If not present, the {@linkplain #DEFAULT_TOKEN_LIFESPAN
-   * default token lifespan} will be used.
+   * How far in the future the configured GCP access token's expiry is stamped, and re-stamped on
+   * every refresh. If not present, the {@linkplain #DEFAULT_TOKEN_LIFESPAN default token lifespan}
+   * is used. This does not extend the token's real validity on the provider side; it only controls
+   * the expiry Polaris reports for the configured token.
    */
   @WithName("gcp.lifespan")
   Optional<Duration> gcpAccessTokenLifespan();

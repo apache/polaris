@@ -34,14 +34,20 @@ import java.util.Date;
  * the credential is memoized once with a single expiry stamped at first use, so a long-running
  * server stops being able to access GCS once the configured lifespan elapses and only recovers on
  * restart (see issue #2253).
+ *
+ * <p>This only helps configured tokens that do not actually expire on the provider side, such as
+ * emulator or test credentials or otherwise long-lived tokens. It does not renew a genuinely
+ * short-lived token: re-stamping the expiry just stops the local refresh from failing, and the next
+ * GCS call would then fail at the provider instead. Rotating a real configured token still requires
+ * a restart.
  */
 final class ConfiguredGcpAccessTokenCredentials extends GoogleCredentials {
 
   private static final long serialVersionUID = 1L;
 
   private final String token;
-  private final transient Duration lifespan;
-  private final transient Clock clock;
+  private final Duration lifespan;
+  private final Clock clock;
 
   ConfiguredGcpAccessTokenCredentials(String token, Duration lifespan, Clock clock) {
     super(GoogleCredentials.newBuilder().setAccessToken(newAccessToken(token, lifespan, clock)));
