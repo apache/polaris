@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Getting Started with Apache Polaris
+title: 'Getting Started'
 linkTitle: Getting Started
 type: docs
 weight: 101
