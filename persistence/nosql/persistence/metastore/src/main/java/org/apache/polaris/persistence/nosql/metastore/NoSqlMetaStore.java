@@ -643,11 +643,11 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
     var ancestorIds = parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
 
-    return hasOverlappingSiblings(catalogId, checkLocation, ancestorIds);
+    return hasOverlappingSiblings(catalogId, checkLocation, ancestorIds, entity.getId());
   }
 
   Optional<String> hasOverlappingSiblings(
-      long catalogId, String checkLocation, Set<Long> ancestorIds) {
+      long catalogId, String checkLocation, Set<Long> ancestorIds, long entityId) {
     return memoizedIndexedAccess
         .catalogContent(catalogId)
         .refObj()
@@ -680,6 +680,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
                 var conflicting =
                     elem.value().entityIds().stream()
+                        .filter(id -> id != entityId)
                         .map(IndexKey::key)
                         .map(byId::get)
                         .filter(Objects::nonNull)
@@ -715,6 +716,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                   var strictPrefix = i < locationIdentifier.length();
                   var conflicting =
                       entry.entityIds().stream()
+                          .filter(id -> id != entityId)
                           .filter(id -> !strictPrefix || !ancestorIds.contains(id))
                           .map(IndexKey::key)
                           .map(byId::get)

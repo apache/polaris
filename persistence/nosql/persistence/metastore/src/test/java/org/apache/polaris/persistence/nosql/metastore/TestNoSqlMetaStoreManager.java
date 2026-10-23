@@ -271,6 +271,29 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
         .isPresent()
         .contains(Optional.of("s3://bucket/foo/"));
 
+    // The same location is a conflict, unless the entity is the persisted one (e.g. a rename).
+    var renamedFoo =
+        new NamespaceEntity.Builder(Namespace.of("renamed"))
+            .setCatalogId(catalog.getId())
+            .setBaseLocation("s3://bucket/foo/")
+            .build();
+    soft.assertThat(
+            metaStore.hasOverlappingSiblings(
+                callContext, List.of(PolarisEntity.toCore(catalog)), renamedFoo))
+        .isPresent()
+        .contains(Optional.of("s3://bucket/foo/"));
+    var persistedFoo =
+        new NamespaceEntity.Builder(Namespace.of("renamed"))
+            .setId(nsFoo.getEntity().getId())
+            .setCatalogId(catalog.getId())
+            .setBaseLocation("s3://bucket/foo/")
+            .build();
+    soft.assertThat(
+            metaStore.hasOverlappingSiblings(
+                callContext, List.of(PolarisEntity.toCore(catalog)), persistedFoo))
+        .isPresent()
+        .contains(Optional.empty());
+
     var nsBar =
         createEntity(
             List.of(catalog),

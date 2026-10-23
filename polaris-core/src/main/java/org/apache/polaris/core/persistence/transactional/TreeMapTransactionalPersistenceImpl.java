@@ -688,6 +688,9 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
         parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
 
     for (PolarisBaseEntity siblingEntity : allEntities) {
+      if (siblingEntity.getId() == entity.getId()) {
+        continue;
+      }
       Optional<StorageLocation> maybeSiblingLocationWithoutScheme =
           getEntityLocationWithoutScheme(siblingEntity).map(StorageLocation::of);
       if (maybeSiblingLocationWithoutScheme.isPresent()) {
