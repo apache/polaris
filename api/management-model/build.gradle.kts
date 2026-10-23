@@ -67,6 +67,11 @@ openApiGenerate {
   configOptions.put("generateBuilders", "true")
   configOptions.put("generateConstructorWithAllArgs", "true")
   configOptions.put("hideGenerationTimestamp", "true")
+  // Disable the JsonNullable wrapper for nullable properties: we only use a nullable type
+  // (on Catalog/UpdateCatalogRequest#storageConfigurations) to make the Java codegen keep an
+  // omitted map `null` instead of its usual `new HashMap<>()`, and want the plain
+  // `Map<String, StorageConfigInfo>` type it would otherwise generate, not `JsonNullable<...>`.
+  configOptions.put("openApiNullable", "false")
   additionalProperties.put("apiNamePrefix", "Polaris")
   additionalProperties.put("apiNameSuffix", "Api")
   additionalProperties.put("metricsPrefix", "polaris")

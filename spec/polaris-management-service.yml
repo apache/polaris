@@ -879,6 +879,11 @@ components:
           description: The version of the catalog object used to determine if the catalog metadata has changed
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
+        storageConfigurations:
+          type: [ object, "null" ]
+          description: Optional additional named storage configurations held by the catalog, alongside its default storageConfigInfo. This is a map whose keys are configuration names and whose values are StorageConfigInfo objects. Configuration names are case sensitive and must match ^[a-zA-Z0-9_-]{1,128}$. The default storageConfigInfo is not included in this map and has no configuration name. Unlike the default storageConfigInfo, each entry must list at least one allowedLocations entry.
+          additionalProperties:
+            $ref: "#/components/schemas/StorageConfigInfo"
       required:
         - name
         - type
@@ -1111,7 +1116,14 @@ components:
           example: "For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/]"
         storageName:
           type: string
-          description: An optional name referencing a server-side storage configuration
+          description: |
+            An optional name for associating StorageConfigInfo objects with deployment-specific configuration.
+            The interpretation of this name depends on the runtime components included in a server to support
+            interacting with storage systems. Standard Apache Polaris servers use this name for finding base
+            S3 and STS credentials.
+
+            Note: this name is optional and unrelated to the configuration name under which a StorageConfigInfo
+            is stored in Catalog.storageConfigurations.
       required:
         - storageType
       discriminator:
@@ -1303,6 +1315,16 @@ components:
             type: string
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
+        setStorageConfigurations:
+          type: object
+          description: Optional named storage configurations to add or replace, keyed by configuration name. Entries not listed here are left unaltered. Names and entries follow the same rules as Catalog.storageConfigurations. Omitting this field, or sending an empty object, changes nothing.
+          additionalProperties:
+            $ref: "#/components/schemas/StorageConfigInfo"
+        removeStorageConfigurations:
+          type: array
+          description: Optional names of named storage configurations to remove. Names that do not exist are ignored. A name must not appear both here and in setStorageConfigurations. Omitting this field, or sending an empty array, changes nothing.
+          items:
+            type: string
 
     Principals:
       description: A list of Principals
