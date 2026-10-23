@@ -116,6 +116,13 @@ testing {
 
         implementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
         implementation("org.apache.hudi:hudi-spark3.5-bundle_${scalaVersion}:1.1.1")
+        // Paimon 1.4.1 does not publish a Spark 3.5 runtime for Scala 2.13.
+        if (scalaVersion == "2.12") {
+          implementation("org.apache.paimon:paimon-spark-3.5_${scalaVersion}:1.4.1") {
+            exclude(group = "org.apache.spark")
+            exclude("org.scala-lang", "scala-compiler")
+          }
+        }
 
         // The hudi-spark-bundle includes most Hive libraries but excludes hive-exec to keep size
         // manageable
@@ -197,7 +204,13 @@ sourceSets {
   main { java { srcDir("../../common/src/main/java") } }
   test { java { srcDir("../../common/src/test/java") } }
   named("intTest") {
-    java { srcDir("../../common/src/intTest/java") }
+    java {
+      srcDir("../../common/src/intTest/java")
+      // SparkPaimonIT requires the Paimon runtime added above.
+      if (scalaVersion == "2.13") {
+        exclude("**/SparkPaimonIT.java")
+      }
+    }
     resources { srcDir("../../common/src/intTest/resources") }
   }
 }
@@ -207,6 +220,11 @@ listOf("intTestCompileClasspath", "intTestRuntimeClasspath").forEach {
   // compatibility.
   configurations.named(it).configure {
     attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, intTestJvmVersion)
+    if (scalaVersion == "2.12") {
+      resolutionStrategy.capabilitiesResolution.withCapability("org.lz4:lz4-java") {
+        select("org.lz4:lz4-java:1.8.0")
+      }
+    }
   }
 }
 
