@@ -126,6 +126,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- NoSQL index stripe staging keys are injective: `IndexKey.toSafeString` now escapes `x` (the
+  hex-escape prefix), so keys such as `"a b"` and `"ax20b"` no longer share a persist name.
+  Previously two stripes in one commit could replace each other and the committed index would
+  reference a stripe that was never written.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - Maintenance policy content now rejects non-boolean values for the `enable` field again. The
