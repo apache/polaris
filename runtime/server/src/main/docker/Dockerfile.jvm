@@ -31,7 +31,11 @@ ENV LANGUAGE='en_US:en' \
 
 USER root
 
-RUN groupadd --gid 10001 polaris && \
+# The trust store decides which TLS peers Polaris accepts, and Red Hat ships CA distrust errata
+# before it rebuilds the base image, so ca-certificates is taken from the repository at build time.
+RUN microdnf -y --setopt=tsflags=nodocs update ca-certificates && \
+    microdnf clean all && \
+    groupadd --gid 10001 polaris && \
     useradd --uid 10000 --gid polaris polaris && \
     chown -R polaris:polaris /opt/jboss/container && \
     chown -R polaris:polaris /deployments

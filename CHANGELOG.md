@@ -50,6 +50,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- The server and admin tool images take their trust store from the current RHEL `ca-certificates`
+  package rather than the base image's. Besides the eMudhra roots, this retires the roots Mozilla has
+  removed since, among them `DigiCert Global Root CA`, `DigiCert High Assurance EV Root CA`, the
+  Entrust and AffirmTrust roots and `GTS Root R2`. A storage endpoint or identity provider whose
+  certificate still chains to one of them needs a current chain or a custom trust store.
 - `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists the explicit mechanisms a realm accepts; an empty
   `credentialVendingMechanism` is always allowed. Startup reports a listed mechanism with no
   installed bean as a non-severe readiness warning. Startup fails (a severe readiness issue) when no
@@ -126,6 +131,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- The server and admin tool images update `ca-certificates` from the UBI repository at build time,
+  so they no longer trust the eMudhra roots distrusted for CVE-2026-114406 (`emSign ECC Root CA - G3`,
+  `emSign ECC Root CA - C3`, `emSign Root CA - C1`), which the `ubi9/openjdk-21-runtime` base
+  image still ships.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - Maintenance policy content now rejects non-boolean values for the `enable` field again. The
