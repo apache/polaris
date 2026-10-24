@@ -285,11 +285,18 @@ public final class IndexKey implements Comparable<IndexKey> {
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
   };
 
+  /**
+   * Printable staging key for persisting an index stripe. Non-printable bytes (and {@code 'x'}) are
+   * encoded as {@code x} plus two hex digits so the mapping is injective. {@code 'x'} is escaped
+   * because it is the escape prefix: otherwise {@code "a b"} and {@code "ax20b"} both become {@code
+   * ax20b} and two stripes in one commit can replace each other.
+   */
   public String toSafeString(String prefix) {
     var sb = new StringBuilder(prefix.length() + key.length);
     sb.append(prefix);
     for (byte b : key) {
-      if (b > 32 && b < 127) {
+      // 'x' is the escape marker; leaving it unescaped is not injective.
+      if (b > 32 && b < 127 && b != 'x') {
         sb.append((char) b);
       } else {
         sb.append('x');
