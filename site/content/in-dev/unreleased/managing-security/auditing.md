@@ -22,11 +22,12 @@ type: docs
 weight: 400
 ---
 
-Polaris emits structured events for catalog and management operations. Operators
-can forward these events to an external system to build an audit trail. This page
-describes what Polaris records today, how events are delivered, and the known
-limits of that delivery. It documents current behavior and does not prescribe a
-compliance architecture.
+Operators who use Polaris events as an audit trail need to know which actions are
+attributable, which are not recorded at all, and where records can be lost. This
+page describes that for current Polaris: what events record, the gaps in
+coverage, the limits of event delivery, and how to correlate events with other
+logs. It documents current behavior and does not prescribe a compliance
+architecture.
 
 {{< alert warning >}}
 Polaris is not a security information and event management (SIEM) system. Retention,
@@ -57,13 +58,17 @@ available, it also carries the authenticated principal, the request ID, and the
 OpenTelemetry trace context. The principal is absent for events dispatched
 before authentication completes.
 
-Events pass through `DefaultEventSanitizer` before reaching listeners. By default,
-it removes full catalog and principal objects, principal update requests, and
+Events pass through an `EventSanitizer` before reaching listeners, unless the
+listener implements `RawEventAccess`, which opts it out of sanitization. No
+built-in listener does so. The default
+implementation, `DefaultEventSanitizer`, removes full catalog and principal objects, principal update requests, and
 notification requests. When it removes a catalog object, it keeps the catalog
 name. Additional attributes can be removed with
 `polaris.event-listener.denylisted-attributes`. Each listener then writes only
 selected fields. Custom listeners are responsible for not forwarding sensitive
-attributes.
+attributes. A custom build of Polaris can replace the default sanitizer by
+providing its own `EventSanitizer` bean, so check which sanitizer your
+deployment uses.
 
 ### What is not recorded
 
@@ -95,18 +100,8 @@ listener receives all events.
 | Kafka | `kafka` | A Kafka topic |
 | OpenTelemetry | `opentelemetry` | OpenTelemetry log records |
 
-For example, to send all events to Kafka and to an OpenTelemetry collector:
-
-```properties
-polaris.event-listener.types=kafka,opentelemetry
-polaris.event-listener.kafka.properties.bootstrap.servers=kafka:9092
-polaris.event-listener.kafka.topic=polaris-catalog-events
-quarkus.otel.sdk.disabled=false
-quarkus.otel.logs.enabled=true
-quarkus.otel.exporter.otlp.endpoint=http://otlp-collector:4317
-```
-
-See the [configuration reference]({{% ref "../configuration/configuration-reference#events" %}})
+Event types excluded by these filters, such as credential vending or grant
+changes, are not delivered to that listener. See the [configuration reference]({{% ref "../configuration/configuration-reference#events" %}})
 for all listener settings.
 
 ### The `events` table
@@ -165,10 +160,14 @@ storage credentials, the cloud provider's access logs record the data access.
 See the [feature flags reference]({{% ref "../configuration/configuration-reference#polarisfeatures" %}})
 for the options and requirements of each flag.
 
-## Investigating a denied request
+## Correlating with request IDs
 
-Polaris returns the request ID in the `X-Request-ID` response header. A client
-can also set the header on the request. To investigate a denial:
+Polaris returns the request ID in a response header, `X-Request-ID` by default.
+The header name is configured with `polaris.log.request-id-header-name`. A client
+can also set the header on the request. The request ID appears in the server log
+and in event metadata, so it links a client call to both.
+
+For example, to investigate a denied request:
 
 1. Get the request ID from the client's response or logs.
 2. Search the Polaris server log for that request ID. With the built-in
@@ -176,8 +175,9 @@ can also set the header on the request. To investigate a denial:
    and the missing privileges. With an external authorizer, check that system's
    decision logs.
 3. In the event sink, find events with the same request ID. A denied operation
-   shows a `BEFORE_*` event without a matching `AFTER_*` event.
+   shows a `BEFORE_*` event without a matching `AFTER_*` event. Any failed
+   request shows the same pattern, for example a missing table or a commit
+   conflict, so the server log line from step 2 is what confirms a denial.
 
-The name of the request ID header is configured with
-`polaris.log.request-id-header-name`. See [Telemetry]({{% ref "../telemetry#mdc-logging" %}})
+See [Telemetry]({{% ref "../telemetry#mdc-logging" %}})
 for the log format and MDC keys.
