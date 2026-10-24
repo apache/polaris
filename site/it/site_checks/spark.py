@@ -17,10 +17,15 @@
 # under the License.
 #
 
+import random
 import subprocess
+import time
 from pathlib import Path
 
 SPARK_TGZ_URL = "https://www.apache.org/dyn/closer.lua/spark/spark-3.5.8/spark-3.5.8-bin-hadoop3.tgz?action=download"
+
+DOWNLOAD_ATTEMPTS = 5
+DOWNLOAD_BASE_DELAY_SECONDS = 2.0
 
 
 def ensure_spark(
@@ -43,7 +48,40 @@ def ensure_spark(
         f"Spark binary {spark_sql_bin} is not present or download has been explicitly requested, "
         f"downloading from {spark_tarball_url}..."
     )
-    curl_cmd = ["curl", "--location", spark_tarball_url]
+    try:
+        for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+            try:
+                _download_and_extract(spark_tarball_url, spark_dir)
+                break
+            except subprocess.CalledProcessError as e:
+                if attempt == DOWNLOAD_ATTEMPTS:
+                    raise
+                # Exponential backoff with jitter, so that concurrent CI jobs do not retry in lockstep.
+                delay = DOWNLOAD_BASE_DELAY_SECONDS * 2 ** (attempt - 1)
+                delay = random.uniform(delay / 2, delay)
+                print(
+                    f"Downloading Spark failed ({e}), retrying in {delay:.1f}s "
+                    f"(attempt {attempt}/{DOWNLOAD_ATTEMPTS})..."
+                )
+                time.sleep(delay)
+    finally:
+        print("::endgroup::")
+
+
+def _download_and_extract(url: str, spark_dir: Path) -> None:
+    # Fail fast on HTTP errors and on stalled connections, so that the download gets retried.
+    curl_cmd = [
+        "curl",
+        "--location",
+        "--fail",
+        "--connect-timeout",
+        "30",
+        "--speed-limit",
+        "1024",
+        "--speed-time",
+        "60",
+        url,
+    ]
     tar_cmd = [
         "tar",
         "--extract",
@@ -62,4 +100,3 @@ def ensure_spark(
             raise subprocess.CalledProcessError(curl_rc, curl_cmd)
         if tar_rc != 0:
             raise subprocess.CalledProcessError(tar_rc, tar_cmd)
-    print("::endgroup::")
