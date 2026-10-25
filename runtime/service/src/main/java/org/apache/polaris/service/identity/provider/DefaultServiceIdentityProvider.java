@@ -45,7 +45,8 @@ import org.jspecify.annotations.NonNull;
  *
  * <p>This implementation loads service identity configurations at startup and uses them to provide
  * identity information and credentials on demand. All resolution is done lazily - credentials are
- * only created when actually needed for authentication.
+ * only created when actually needed for authentication, and are then reused across requests via
+ * {@link ServiceIdentityCredentialCache}.
  */
 @RequestScoped
 public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
@@ -56,19 +57,24 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
 
   private final String realm;
   private final RealmServiceIdentityConfiguration config;
+  private final ServiceIdentityCredentialCache credentialCache;
 
   public DefaultServiceIdentityProvider() {
     this.realm = DEFAULT_REALM_KEY;
     this.config = null;
+    this.credentialCache = null;
   }
 
   @Inject
   public DefaultServiceIdentityProvider(
-      RealmContext realmContext, ServiceIdentityConfiguration serviceIdentityConfiguration) {
+      RealmContext realmContext,
+      ServiceIdentityConfiguration serviceIdentityConfiguration,
+      ServiceIdentityCredentialCache credentialCache) {
     ServiceIdentityConfiguration.RealmConfigEntry entry =
         serviceIdentityConfiguration.forRealm(realmContext);
     this.realm = entry.realm();
     this.config = entry.config();
+    this.credentialCache = credentialCache;
   }
 
   @Override
@@ -118,7 +124,8 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
       return Optional.empty();
     }
 
-    // Find the configuration matching the reference and resolve credential lazily
+    // Find the configuration matching the reference and resolve credential lazily, once per
+    // identity, so that it is shared across requests
     SecretReference ref = serviceIdentityInfo.getIdentityInfoReference();
 
     return config.serviceIdentityConfigurations().stream()
@@ -126,7 +133,12 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
             identityConfig ->
                 buildIdentityInfoReference(realm, identityConfig.getType()).equals(ref))
         .findFirst()
-        .flatMap(identityConfig -> identityConfig.asServiceIdentityCredential(ref));
+        .flatMap(
+            identityConfig ->
+                credentialCache.getOrResolve(
+                    realm,
+                    identityConfig.getType(),
+                    () -> identityConfig.asServiceIdentityCredential(ref)));
   }
 
   @VisibleForTesting
