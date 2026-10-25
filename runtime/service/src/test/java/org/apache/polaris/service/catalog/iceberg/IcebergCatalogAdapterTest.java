@@ -306,10 +306,7 @@ public class IcebergCatalogAdapterTest {
   @ParameterizedTest(name = "create namespace {0} -> 400")
   @ValueSource(strings = {"{}", "{\"namespace\":null}", "{\"properties\":{\"owner\":\"alice\"}}"})
   void testCreateNamespaceRejectsMissingNamespace(String json) throws IOException {
-    // Deserialized like the server does; the builder rejects a null namespace.
-    ObjectMapper mapper = new ObjectMapper();
-    new PolarisIcebergObjectMapperCustomizer("1M").customize(mapper);
-    CreateNamespaceRequest request = mapper.readValue(json, CreateNamespaceRequest.class);
+    CreateNamespaceRequest request = createNamespaceRequest(json);
     Assertions.assertThat(request.namespace()).isNull();
     Assertions.assertThatThrownBy(
             () ->
@@ -321,6 +318,16 @@ public class IcebergCatalogAdapterTest {
                     testServices.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("namespace");
+  }
+
+  /**
+   * Deserializes a create-namespace request the same way the server does. This is the only way to
+   * obtain a request whose {@code namespace} is null, since the builder rejects a null namespace.
+   */
+  private static CreateNamespaceRequest createNamespaceRequest(String json) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    new PolarisIcebergObjectMapperCustomizer("1M").customize(mapper);
+    return mapper.readValue(json, CreateNamespaceRequest.class);
   }
 
   /**
