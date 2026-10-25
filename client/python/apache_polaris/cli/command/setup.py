@@ -76,6 +76,7 @@ class SetupCommand(Command):
     setup_subcommand: str
     setup_config: Optional[str] = None
     dry_run: bool = False
+    include_tables_and_views: bool = False
     page_size: Optional[int] = None
     _config_cache: Optional[Dict[str, Any]] = None
     _existing_principal_roles: Optional[Set[str]] = None
@@ -407,19 +408,20 @@ class SetupCommand(Command):
                 catalog_info["namespaces"] = self._export_namespaces_for_catalog(
                     api, c.name, namespaces
                 )
-                if c.type.lower() == CatalogType.INTERNAL.value:
-                    catalog_info["tables"] = self._export_tables_for_catalog(
-                        api, c.name, namespaces
-                    )
-                    catalog_info["views"] = self._export_views_for_catalog(
-                        api, c.name, namespaces
-                    )
-                else:
-                    catalog_info["tables"] = []
-                    catalog_info["views"] = []
-                    logger.info(
-                        f"Skipping tables/views export for external catalog {c.name}."
-                    )
+                catalog_info["tables"] = []
+                catalog_info["views"] = []
+                if self.include_tables_and_views:
+                    if c.type.lower() == CatalogType.INTERNAL.value:
+                        catalog_info["tables"] = self._export_tables_for_catalog(
+                            api, c.name, namespaces
+                        )
+                        catalog_info["views"] = self._export_views_for_catalog(
+                            api, c.name, namespaces
+                        )
+                    else:
+                        logger.info(
+                            f"Skipping tables/views export for external catalog {c.name}."
+                        )
                 catalog_info["policies"] = self._export_policies_for_catalog(
                     api, c.name, namespaces
                 )
@@ -567,6 +569,7 @@ class SetupCommand(Command):
                                 prefix=catalog_name,
                                 namespace=namespace_str,
                                 table=identifier.name,
+                                snapshots="refs",
                             )
                         except Exception:
                             self._record_failure(
@@ -1553,7 +1556,7 @@ class SetupCommand(Command):
             namespace_str = UNIT_SEPARATOR.join(namespace_parts)
             table_exists = False
             try:
-                catalog_api.load_table(
+                catalog_api.table_exists(
                     prefix=catalog_name, namespace=namespace_str, table=table_name
                 )
                 table_exists = True
@@ -1639,7 +1642,7 @@ class SetupCommand(Command):
             namespace_str = UNIT_SEPARATOR.join(namespace_parts)
             view_exists = False
             try:
-                catalog_api.load_view(
+                catalog_api.view_exists(
                     prefix=catalog_name, namespace=namespace_str, view=view_name
                 )
                 view_exists = True

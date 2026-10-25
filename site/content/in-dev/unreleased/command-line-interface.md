@@ -1698,7 +1698,7 @@ The `setup` command is used to automate the creation of various entities in Pola
 
 #### apply
 
-The `apply` subcommand reads a configuration file and creates the specified entities in Polaris. The configuration file must be in YAML format and define the entities to be created.
+The `apply` subcommand reads a configuration file and creates the specified entities in Polaris. The configuration file must be in YAML format and define the entities to be created. Tables and views are registered only if they do not already exist. An existing table or view is left unchanged even if the current `metadata_location` differs from the one in the configuraiton file.
 
 ```
 usage: polaris setup apply [-h] [options] SETUP_CONFIG_FILE
@@ -1725,19 +1725,24 @@ The `export` subcommand retrieves the current Polaris configuration and outputs 
 
 Exported policies are represented as a list with explicit `name` and `namespace` fields so policies with the same name in different namespaces are preserved. The `apply` subcommand also accepts the legacy policy mapping keyed by name, but that format cannot represent duplicate policy names because YAML mapping keys must be unique.
 
-Tables and views are exported as lists of `{name, namespace, metadata_location}`, sorted by namespace and name. Staged tables within a transaction are skipped.
+Tables and views are exported only when `--include-tables-and-views` is set. They are exported as lists of `{name, namespace, metadata_location}`, sorted by namespace and name. Staged tables within a transaction are skipped. Because each table and view is loaded individually, this can significantly increase export time for catalogs with many tables.
 
 ```
 usage: polaris setup export [-h] [options]
 
 options:
-  -h, --help  show this help message and exit
+  -h, --help                  show this help message and exit
+
+Command Options:
+  --include-tables-and-views  Also export tables and views of internal catalogs
 ```
 
 ##### Examples
 
 ```
 polaris setup export
+
+polaris setup export --include-tables-and-views
 ```
 
 ### Find

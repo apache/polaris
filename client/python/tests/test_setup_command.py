@@ -393,6 +393,55 @@ class TestSetupCommand(CLITestBase):
         mock_client.list_catalog_roles.assert_called_with("my_catalog")
         mock_client.get_catalog.assert_called_with("my_catalog")
 
+    @patch("apache_polaris.cli.command.setup.PolicyAPI")
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_export_includes_tables_and_views_only_when_requested(
+        self,
+        mock_catalog_api_class: MagicMock,
+        mock_policy_api_class: MagicMock,
+    ) -> None:
+        catalog_api = mock_catalog_api_class.return_value
+        catalog_api.list_namespaces.side_effect = lambda prefix, parent=None: (
+            SimpleNamespace(namespaces=[["ns1"]] if parent is None else [])
+        )
+        catalog_api.load_namespace_metadata.return_value = GetNamespaceResponse(
+            namespace=["ns1"], properties={}
+        )
+        catalog_api.list_tables.return_value = SimpleNamespace(identifiers=[])
+        catalog_api.list_views.return_value = SimpleNamespace(identifiers=[])
+        mock_policy_api_class.return_value.list_policies.return_value = SimpleNamespace(
+            identifiers=[]
+        )
+        mock_client = self.build_mock_client()
+        mock_catalog = MagicMock()
+        mock_catalog.name = "my_catalog"
+        mock_client.list_catalogs.return_value.catalogs = [mock_catalog]
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="my_catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="file:///path",
+                additional_properties={},
+            ),
+            storage_config_info=FileStorageConfigInfo(
+                storage_type="FILE",
+                allowed_locations=["file:///path"],
+            ),
+        )
+        mock_client.list_catalog_roles.return_value = SimpleNamespace(roles=[])
+
+        for args, expect_exported in [
+            (["setup", "export"], False),
+            (["setup", "export", "--include-tables-and-views"], True),
+        ]:
+            with self.subTest(args=args):
+                catalog_api.list_tables.reset_mock()
+                catalog_api.list_views.reset_mock()
+                self.mock_execute(mock_client, args)
+                self.assertEqual(catalog_api.list_tables.called, expect_exported)
+                self.assertEqual(catalog_api.list_views.called, expect_exported)
+
     def test_setup_export_preserves_external_catalog_connection_locations(self) -> None:
         cases = [
             (
@@ -1134,7 +1183,10 @@ class TestSetupCommand(CLITestBase):
                 )
             return SimpleNamespace(identifiers=[])
 
-        def load_table(prefix: str, namespace: str, table: str) -> SimpleNamespace:
+        def load_table(
+            prefix: str, namespace: str, table: str, snapshots: str
+        ) -> SimpleNamespace:
+            self.assertEqual(snapshots, "refs")
             return SimpleNamespace(
                 metadata_location=(
                     f"s3://bucket/{namespace}/{table}/metadata/00001-abcd.metadata.json"
@@ -1297,6 +1349,7 @@ class TestSetupCommand(CLITestBase):
 
         command = SetupCommand(
             setup_subcommand=Subcommands.EXPORT,
+            include_tables_and_views=True,
             _catalog_api=MagicMock(),
         )
         exported = {
@@ -1366,8 +1419,8 @@ class TestSetupCommand(CLITestBase):
         self, mock_catalog_api_class: MagicMock
     ) -> None:
         catalog_api = mock_catalog_api_class.return_value
-        catalog_api.load_table.side_effect = NotFoundException()
-        catalog_api.load_view.side_effect = NotFoundException()
+        catalog_api.table_exists.side_effect = NotFoundException()
+        catalog_api.view_exists.side_effect = NotFoundException()
 
         command = SetupCommand(
             setup_subcommand=Subcommands.APPLY,
@@ -1423,8 +1476,8 @@ class TestSetupCommand(CLITestBase):
         self, mock_catalog_api_class: MagicMock
     ) -> None:
         catalog_api = mock_catalog_api_class.return_value
-        catalog_api.load_table.return_value = SimpleNamespace()
-        catalog_api.load_view.return_value = SimpleNamespace()
+        catalog_api.table_exists.return_value = None
+        catalog_api.view_exists.return_value = None
 
         command = SetupCommand(
             setup_subcommand=Subcommands.APPLY,
@@ -1471,8 +1524,8 @@ class TestSetupCommand(CLITestBase):
         self, mock_catalog_api_class: MagicMock
     ) -> None:
         catalog_api = mock_catalog_api_class.return_value
-        catalog_api.load_table.side_effect = NotFoundException()
-        catalog_api.load_view.side_effect = NotFoundException()
+        catalog_api.table_exists.side_effect = NotFoundException()
+        catalog_api.view_exists.side_effect = NotFoundException()
 
         command = SetupCommand(
             setup_subcommand=Subcommands.APPLY,
@@ -1521,8 +1574,8 @@ class TestSetupCommand(CLITestBase):
         self, mock_catalog_api_class: MagicMock
     ) -> None:
         catalog_api = mock_catalog_api_class.return_value
-        catalog_api.load_table.side_effect = RuntimeError("Unknown error")
-        catalog_api.load_view.side_effect = RuntimeError("Unknown error")
+        catalog_api.table_exists.side_effect = RuntimeError("Unknown error")
+        catalog_api.view_exists.side_effect = RuntimeError("Unknown error")
 
         command = SetupCommand(
             setup_subcommand=Subcommands.APPLY,
@@ -1578,6 +1631,6 @@ class TestSetupCommand(CLITestBase):
                 }
             ],
         )
-        catalog_api.load_table.assert_not_called()
+        catalog_api.table_exists.assert_not_called()
         catalog_api.register_table.assert_not_called()
         self.assertEqual(command._failure_count, 1)

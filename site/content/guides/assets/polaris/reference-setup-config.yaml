@@ -123,7 +123,7 @@ catalogs:
 
     # --- Tables and Views ---
     # Register existing Apache Iceberg tables and views by their metadata locations.
-    ## commented out as reference metadata_location is invalid
+    ## commented out as these are example paths only; replace with valid path for metadata_location
     # tables:
     #   - name: dev_table
     #     namespace: [dev_namespace]
