@@ -23,7 +23,6 @@ import java.util.Optional;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.persistence.cache.EntityWeigher;
 import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 
 /**
@@ -532,10 +531,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Long>builder()
           .key("ENTITY_CACHE_WEIGHER_TARGET")
           .description(
-              "The maximum weight for the entity cache. This is a heuristic value without any particular"
-                  + " unit of measurement. It roughly correlates with the total heap size of cached values. Fine-tuning"
-                  + " requires experimentation in the specific deployment environment")
-          .defaultValue(100 * EntityWeigher.WEIGHT_PER_MB)
+              "The maximum weight for the entity cache. Weights approximate the size in bytes of the"
+                  + " cached entities and of their grant records, so the default corresponds to roughly"
+                  + " 100 MiB of entity data. This is a heuristic: actual heap usage is higher than the"
+                  + " configured weight, and fine-tuning requires experimentation in the specific"
+                  + " deployment environment.")
+          .defaultValue(100L * 1024 * 1024)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> ENABLE_CATALOG_FEDERATION =

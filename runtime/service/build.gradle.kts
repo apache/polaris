@@ -92,7 +92,6 @@ dependencies {
   implementation(libs.auth0.jwt)
 
   implementation(libs.smallrye.common.annotation)
-  implementation(libs.swagger.jaxrs)
   implementation(libs.microprofile.fault.tolerance.api)
 
   compileOnly(libs.jspecify)

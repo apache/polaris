@@ -367,7 +367,7 @@ If set to true, require that principals must rotate their credentials before bei
 
 ##### `polaris.features."ENTITY_CACHE_WEIGHER_TARGET"`
 
-The maximum weight for the entity cache. This is a heuristic value without any particular unit of measurement. It roughly correlates with the total heap size of cached values. Fine-tuning requires experimentation in the specific deployment environment
+The maximum weight for the entity cache. Weights approximate the size in bytes of the cached entities and of their grant records, so the default corresponds to roughly 100 MiB of entity data. This is a heuristic: actual heap usage is higher than the configured weight, and fine-tuning requires experimentation in the specific deployment environment.
 
 - **Type:** `Long`
 - **Default:** `104857600`

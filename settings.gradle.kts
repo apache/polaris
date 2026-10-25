@@ -78,13 +78,13 @@ fun polarisProject(name: String, directory: File) {
   prj.projectDir = file(directory)
 }
 
-val projects = Properties()
-
 loadProperties(file("gradle/projects.main.properties")).forEach { name, directory ->
   polarisProject(name as String, file(directory as String))
 }
 
-val ideaActive = providers.systemProperty("idea.active").getOrElse("false").toBoolean()
+val ideImportActive =
+  providers.systemProperty("idea.active").getOrElse("false").toBoolean() ||
+    providers.systemProperty("buildship.active").getOrElse("false").toBoolean()
 
 // load the polaris spark plugin projects
 val polarisSparkDir = "plugins/spark"
@@ -95,19 +95,15 @@ for (sparkVersion in sparkVersions) {
   val scalaVersionsKey = "scalaVersions.${sparkVersion}"
   val scalaVersionsStr = sparkScalaVersions[scalaVersionsKey].toString()
   val scalaVersions = scalaVersionsStr.split(",").map { it.trim() }
-  var first = true
   for (scalaVersion in scalaVersions) {
     polarisProject(
       "polaris-spark-${sparkVersion}_${scalaVersion}",
       file("${polarisSparkDir}/v${sparkVersion}/spark"),
     )
-    if (first) {
-      first = false
-    }
-    // Skip all duplicated spark client projects while using IntelliJ IDE.
-    // This is to avoid problems during dependency analysis and sync when
-    // using IntelliJ, like "Multiple projects in this build have project directory".
-    if (ideaActive) {
+    // Skip all duplicated spark client projects in IDE imports.
+    // This is to avoid problems during dependency analysis and sync, like
+    // "Multiple projects in this build are located in the same directory".
+    if (ideImportActive) {
       break
     }
   }
@@ -124,7 +120,7 @@ plugins {
   // When updating the develocity plugin version, verify that the version that
   // https://develocity.apache.org/ runs is compatible with the plugin version
   // as on https://docs.gradle.com/develocity/current/miscellaneous/compatibility/
-  id("com.gradle.develocity") version "4.6.0"
+  id("com.gradle.develocity") version "4.6.1"
   id("com.gradle.common-custom-user-data-gradle-plugin") version "2.8.0"
 }
 
