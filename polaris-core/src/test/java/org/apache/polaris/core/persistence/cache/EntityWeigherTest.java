@@ -28,6 +28,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.assertj.core.api.Assertions;
@@ -62,68 +63,72 @@ public class EntityWeigherTest {
 
   @Test
   public void testBasicWeight() {
-    int weight = EntityWeigher.getInstance().weigh(1L, getEntity("t", "", "", Optional.empty()));
+    int weight = EntityWeigher.INSTANCE.weigh(1L, getEntity("t", "", "", Optional.empty()));
     Assertions.assertThat(weight).isGreaterThan(0);
   }
 
   @Test
   public void testNonZeroWeight() {
-    int weight = EntityWeigher.getInstance().weigh(1L, getEntity("t", "", "", Optional.of("")));
+    int weight = EntityWeigher.INSTANCE.weigh(1L, getEntity("t", "", "", Optional.of("")));
     Assertions.assertThat(weight).isGreaterThan(0);
   }
 
   @Test
   public void testWeightIncreasesWithNameLength() {
-    int smallWeight =
-        EntityWeigher.getInstance().weigh(1L, getEntity("t", "", "", Optional.empty()));
+    int smallWeight = EntityWeigher.INSTANCE.weigh(1L, getEntity("t", "", "", Optional.empty()));
     int largeWeight =
-        EntityWeigher.getInstance()
-            .weigh(1L, getEntity("{\"v\":\"looong properties\"}", "", "", Optional.empty()));
+        EntityWeigher.INSTANCE.weigh(
+            1L, getEntity("{\"v\":\"looong properties\"}", "", "", Optional.empty()));
     Assertions.assertThat(smallWeight).isLessThan(largeWeight);
   }
 
   @Test
   public void testWeightIncreasesWithMetadataLocationLength() {
-    int smallWeight =
-        EntityWeigher.getInstance().weigh(1L, getEntity("t", "", "", Optional.empty()));
+    int smallWeight = EntityWeigher.INSTANCE.weigh(1L, getEntity("t", "", "", Optional.empty()));
     int largeWeight =
-        EntityWeigher.getInstance()
-            .weigh(1L, getEntity("t", "looong location", "", Optional.empty()));
+        EntityWeigher.INSTANCE.weigh(1L, getEntity("t", "looong location", "", Optional.empty()));
     Assertions.assertThat(smallWeight).isLessThan(largeWeight);
   }
 
   @Test
   public void testWeightIncreasesWithPropertiesLength() {
-    int smallWeight =
-        EntityWeigher.getInstance().weigh(1L, getEntity("t", "", "", Optional.empty()));
+    int smallWeight = EntityWeigher.INSTANCE.weigh(1L, getEntity("t", "", "", Optional.empty()));
     int largeWeight =
-        EntityWeigher.getInstance()
-            .weigh(1L, getEntity("t", "", "{\"v\":\"looong properties\"}", Optional.empty()));
+        EntityWeigher.INSTANCE.weigh(
+            1L, getEntity("t", "", "{\"v\":\"looong properties\"}", Optional.empty()));
     Assertions.assertThat(smallWeight).isLessThan(largeWeight);
   }
 
   @Test
   public void testWeightIncreasesWithInternalPropertiesLength() {
-    int smallWeight =
-        EntityWeigher.getInstance().weigh(1L, getEntity("t", "", "", Optional.of("")));
+    int smallWeight = EntityWeigher.INSTANCE.weigh(1L, getEntity("t", "", "", Optional.of("")));
     int largeWeight =
-        EntityWeigher.getInstance()
-            .weigh(1L, getEntity("t", "", "", Optional.of("{\"v\":\"looong iproperties\"}")));
+        EntityWeigher.INSTANCE.weigh(
+            1L, getEntity("t", "", "", Optional.of("{\"v\":\"looong iproperties\"}")));
     Assertions.assertThat(smallWeight).isLessThan(largeWeight);
   }
 
   @Test
   public void testExactWeightCalculation() {
     int preciseWeight =
-        EntityWeigher.getInstance()
-            .weigh(
-                1L,
-                getEntity(
-                    "name",
-                    "location",
-                    "{\"a\": \"b\"}",
-                    Optional.of("{\"c\": \"d\", \"e\": \"f\"}")));
+        EntityWeigher.INSTANCE.weigh(
+            1L,
+            getEntity(
+                "name", "location", "{\"a\": \"b\"}", Optional.of("{\"c\": \"d\", \"e\": \"f\"}")));
     Assertions.assertThat(preciseWeight).isEqualTo(1183); // :( this is hard-coded
+  }
+
+  @Test
+  public void testWeightIncreasesWithGrantRecords() {
+    var base = getEntity("t", "", "", Optional.empty());
+    var grant = new PolarisGrantRecord(1, 2, 3, 4, 5);
+    var asGrantee = new ResolvedPolarisEntity(base.getEntity(), List.of(grant, grant), List.of());
+    var asSecurable = new ResolvedPolarisEntity(base.getEntity(), List.of(), List.of(grant, grant));
+
+    int baseWeight = EntityWeigher.INSTANCE.weigh(1L, base);
+    Assertions.assertThat(EntityWeigher.INSTANCE.weigh(1L, asGrantee)).isGreaterThan(baseWeight);
+    Assertions.assertThat(EntityWeigher.INSTANCE.weigh(1L, asSecurable))
+        .isEqualTo(EntityWeigher.INSTANCE.weigh(1L, asGrantee));
   }
 
   private static Map<String, String> getPropertiesMap(String properties) {

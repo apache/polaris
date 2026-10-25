@@ -37,12 +37,14 @@ internal fun Test.configurePolarisServer(extension: PolarisServerTestRunnerExten
   jvmArgumentProviders.add(dynamicArguments)
   inputs.files(extension.server).withPathSensitivity(PathSensitivity.RELATIVE)
   inputs.files(extension.startupActionClasspath).withPathSensitivity(PathSensitivity.RELATIVE)
-  inputs.property("polarisServerStartupActionClass", extension.startupActionClass.orNull ?: "")
-  inputs.properties(extension.startupActionParameters.get())
-  inputs.properties(extension.systemProperties.get())
-  inputs.properties(extension.environment.get())
-  inputs.property("polarisServerJvmArguments", extension.jvmArguments.get())
-  inputs.property("polarisServerArguments", extension.arguments.get())
+  inputs.property("polarisServerStartupActionClass", extension.startupActionClass).optional(true)
+  inputs
+    .property("polarisServerStartupActionParameters", extension.startupActionParameters)
+    .optional(true)
+  inputs.property("polarisServerSystemProperties", extension.systemProperties).optional(true)
+  inputs.property("polarisServerEnvironment", extension.environment).optional(true)
+  inputs.property("polarisServerJvmArguments", extension.jvmArguments).optional(true)
+  inputs.property("polarisServerArguments", extension.arguments).optional(true)
   usesService(extension.service)
   addTestListener(
     object : TestListener {

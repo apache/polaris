@@ -61,6 +61,7 @@ dependencies {
   testImplementation("tools.jackson.dataformat:jackson-dataformat-smile")
 
   testImplementation(libs.junit.pioneer)
+  testImplementation(libs.smallrye.config.core)
 
   testFixturesImplementation(platform(libs.jackson3.bom))
   testFixturesImplementation("tools.jackson.core:jackson-databind")

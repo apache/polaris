@@ -194,7 +194,7 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
     doAnswer(
             invocation -> {
               AuthorizationState state = invocation.getArgument(0);
-              state.getResolutionManifest().resolveAll();
+              state.resolve();
               return null;
             })
         .when(authorizer)
