@@ -368,6 +368,43 @@ public class DefaultAuthenticatorTest {
   }
 
   @Test
+  void testPrincipalRoleAllTakesPrecedenceOverNamedRoleInCredentials() {
+    // Given: credentials contain both PRINCIPAL_ROLE:ALL and a specific role name
+    PolarisCredential credentials =
+        PolarisCredential.of(
+            null,
+            PRINCIPAL_NAME,
+            Set.of(
+                DefaultAuthenticator.PRINCIPAL_ROLE_ALL,
+                DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE1));
+
+    // When: authenticating the principal
+    PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
+
+    // Then: ALL wins over the named role and every granted role is activated
+    assertInternalPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+    assertThat(
+            result.getAttributes().get(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY))
+        .isTrue();
+  }
+
+  @Test
+  void testOnlyUnprefixedRolesInCredentialsYieldsNoActiveRoles() {
+    // Given: credentials whose scopes lack the PRINCIPAL_ROLE: prefix (invalid for activation)
+    PolarisCredential credentials =
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of("unprefixed-role", "other-role"));
+
+    // When: authenticating the principal
+    PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
+
+    // Then: no roles are activated even though the principal has grants in the metastore
+    assertInternalPrincipal(result, principalEntity);
+    assertThat(
+            result.getAttributes().get(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY))
+        .isFalse();
+  }
+
+  @Test
   void testEmptyRolesRequestedReturnsEmptyRoles() {
     // Given: credentials with empty roles set
     PolarisCredential credentials =
