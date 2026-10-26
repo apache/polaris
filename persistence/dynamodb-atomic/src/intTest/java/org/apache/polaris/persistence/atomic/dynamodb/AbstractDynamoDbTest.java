@@ -19,41 +19,43 @@
 package org.apache.polaris.persistence.atomic.dynamodb;
 
 import java.util.UUID;
-import org.apache.polaris.test.floci.aws.FlociAwsContainer;
+import org.apache.polaris.test.floci.aws.FlociAws;
+import org.apache.polaris.test.floci.aws.FlociAwsAccess;
+import org.apache.polaris.test.floci.aws.FlociAwsExtension;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
 /**
- * Base for tests that exercise the backend against a real DynamoDB API served by a {@link
- * FlociAwsContainer}. The container and client are shared across the test class; each test uses its
- * own uniquely named table so tests stay isolated without restarting the container.
+ * Base for tests that exercise the backend against a real DynamoDB API served by a Floci container.
+ * The container is injected and shared JVM-wide by {@link FlociAwsExtension} (which starts it once,
+ * with startup retries, through the JUnit root store); each test uses its own uniquely named table
+ * so tests stay isolated without restarting the container.
  */
+@ExtendWith(FlociAwsExtension.class)
 abstract class AbstractDynamoDbTest {
 
-  private static FlociAwsContainer container;
+  @FlociAws(region = "us-east-1")
+  protected static FlociAwsAccess flociAws;
+
   protected static DynamoDbClient client;
 
   @BeforeAll
-  static void startDynamoDb() {
-    container = new FlociAwsContainer();
-    container.start();
+  static void buildClient() {
     client =
         DynamoDbClient.builder()
-            .endpointOverride(container.endpoint())
-            .credentialsProvider(container.credentialsProvider())
-            .region(Region.of(container.region().orElse("us-east-1")))
+            .endpointOverride(flociAws.endpoint())
+            .credentialsProvider(flociAws.credentialsProvider())
+            .region(Region.of(flociAws.region().orElse("us-east-1")))
             .build();
   }
 
   @AfterAll
-  static void stopDynamoDb() {
+  static void closeClient() {
     if (client != null) {
       client.close();
-    }
-    if (container != null) {
-      container.stop();
     }
   }
 

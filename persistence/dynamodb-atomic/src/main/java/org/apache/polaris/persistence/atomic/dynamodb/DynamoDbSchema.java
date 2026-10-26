@@ -46,8 +46,9 @@ public final class DynamoDbSchema {
 
   /**
    * Creates the table and its by-name GSI if they do not already exist, then blocks until the table
-   * is active. Safe to call repeatedly: an existing table is validated against the expected key
-   * schema and otherwise left untouched.
+   * is active. Safe to call repeatedly: whether this call created the table, found it already
+   * present, or lost a create race to another caller, the table that ends up active is validated
+   * against the expected layout and otherwise left untouched.
    */
   public static void createIfAbsent(DynamoDbClient client, String tableName) {
     if (!tableExists(client, tableName)) {
@@ -66,10 +67,14 @@ public final class DynamoDbSchema {
                         key(DynamoDbLayout.PK, KeyType.HASH), key(DynamoDbLayout.SK, KeyType.RANGE))
                     .globalSecondaryIndexes(byNameIndex()));
       } catch (ResourceInUseException concurrentCreate) {
-        // Another caller created the table between the existence check and here; that is fine.
+        // Another caller created the table between the existence check and here; that is fine. Its
+        // layout is validated after the waiter below, so a racing miscreation is still surfaced.
       }
     }
     client.waiter().waitUntilTableExists(builder -> builder.tableName(tableName));
+    // Validate after the waiter so every path -- we created it, it already existed, or we lost the
+    // create race -- checks the table that actually ended up active against the expected layout.
+    verifyLayout(client.describeTable(builder -> builder.tableName(tableName)).table());
   }
 
   /** Deletes the table if it exists, blocking until it is gone. Intended for test teardown. */
@@ -84,7 +89,7 @@ public final class DynamoDbSchema {
 
   private static boolean tableExists(DynamoDbClient client, String tableName) {
     try {
-      verifyKeySchema(client.describeTable(builder -> builder.tableName(tableName)).table());
+      client.describeTable(builder -> builder.tableName(tableName));
       return true;
     } catch (ResourceNotFoundException notFound) {
       return false;
@@ -92,10 +97,11 @@ public final class DynamoDbSchema {
   }
 
   /**
-   * Fails if an already-present table does not match the layout this backend expects, surfacing a
-   * misconfigured table instead of letting reads and writes misbehave against it.
+   * Fails if the active table does not match the layout this backend expects -- key schema and the
+   * by-name GSI's key schema and {@code ALL} projection -- surfacing a misconfigured table instead
+   * of letting reads and writes misbehave against it.
    */
-  private static void verifyKeySchema(TableDescription table) {
+  private static void verifyLayout(TableDescription table) {
     if (!keySchemaMatches(table.keySchema(), DynamoDbLayout.PK, DynamoDbLayout.SK)) {
       throw new IllegalStateException(
           String.format(
@@ -120,6 +126,14 @@ public final class DynamoDbSchema {
               table.tableName(),
               DynamoDbLayout.GSI1_PK,
               DynamoDbLayout.GSI1_SK));
+    }
+    ProjectionType projectionType =
+        gsi.projection() == null ? null : gsi.projection().projectionType();
+    if (projectionType != ProjectionType.ALL) {
+      throw new IllegalStateException(
+          String.format(
+              "Index %s on table %s has projection %s; expected %s so listing returns full entities.",
+              DynamoDbLayout.GSI1, table.tableName(), projectionType, ProjectionType.ALL));
     }
   }
 
