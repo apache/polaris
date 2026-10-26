@@ -129,6 +129,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
@@ -2013,6 +2014,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
+    Assertions.assertThat(taskEntity.getInternalPropertiesAsMap())
+        .containsEntry(PolarisTaskConstants.CATALOG_NAME, CATALOG_NAME);
     var integration = storageIntegrationProvider.getStorageIntegration(List.of(taskEntity));
     Map<String, String> credentials =
         integration
@@ -2061,6 +2064,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
                 .getEntities()
                 .getFirst());
     Map<String, String> properties = taskEntity.getInternalPropertiesAsMap();
+    Assertions.assertThat(properties)
+        .containsEntry(PolarisTaskConstants.CATALOG_NAME, CATALOG_NAME);
     properties.put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO");
     taskEntity =
         TaskEntity.of(

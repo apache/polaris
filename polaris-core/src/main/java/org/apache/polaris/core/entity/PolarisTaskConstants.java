@@ -26,4 +26,5 @@ public class PolarisTaskConstants {
   public static final String TASK_DATA = "data";
   public static final String TASK_TYPE = "taskType";
   public static final String STORAGE_LOCATION = "storageLocation";
+  public static final String CATALOG_NAME = "catalogName";
 }
