@@ -25,13 +25,9 @@ info:
     define what is shared. A share is a named set of objects from one catalog. Consumers
     read shared tables with any Iceberg REST client. Who may read a share is decided by the
     service's authorization, and how a consumer authenticates is up to the service, as for
-    the Iceberg REST API. A service that manages its consumers as first-class objects can
-    serve the optional Polaris Shares Consumer Management API
-    (polaris-shares-consumer-management-api.yaml), which covers external consumers, the
-    listings that bind them to shares, and their endpoint configuration and credentials.
-    Shares are realm-level objects addressed by name, and each share is bound to one
-    catalog. This API is in beta and may change in a backward-incompatible way, and it is
-    served only when the shares feature flag is enabled (off by default).
+    the Iceberg REST API. Shares are realm-level objects addressed by name, and each share
+    is bound to one catalog. This API is in beta and may change in a backward-incompatible
+    way, and it is served only when the shares feature flag is enabled (off by default).
 servers:
   - url: "{scheme}://{host}/api/shares-management/v1"
     description: Server URL when the port can be inferred from the scheme
