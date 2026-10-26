@@ -39,4 +39,10 @@ public class PolarisTaskConstants {
    * {@link #STORAGE_LOCATION} when present.
    */
   public static final String STORAGE_LOCATIONS = "storageLocations";
+
+  /**
+   * Name of the catalog the dropped table or view belonged to, used for the credential vending
+   * context (e.g. STS session tags) of purge tasks.
+   */
+  public static final String CATALOG_NAME = "catalogName";
 }
