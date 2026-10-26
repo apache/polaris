@@ -178,7 +178,11 @@ advancedConfig:
   quarkus.mongodb.server-selection-timeout: "30S"
   quarkus.mongodb.write-concern.safe: "true"
   quarkus.mongodb.read-preference: "primaryPreferred"
+  polaris.persistence.retry.timeout: "PT60S"
 ```
+
+Set `polaris.persistence.retry.timeout` longer than `read-timeout` and `server-selection-timeout`, so
+that a commit can still be retried after a MongoDB operation timed out.
 
 See the [Quarkus MongoDB configuration reference](https://quarkus.io/guides/mongodb#configuration-reference) for all available options.
 
