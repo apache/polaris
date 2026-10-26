@@ -30,6 +30,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.enterprise.inject.Instance;
 import java.time.Instant;
 import java.util.List;
@@ -101,7 +102,13 @@ class PersistingMetricsReporterTest {
   }
 
   private static PersistingMetricsReporter newReporter(MetricsPersistence persistence) {
-    return new PersistingMetricsReporter(persistence, unsatisfiedInstance(), unsatisfiedInstance());
+    return newReporter(persistence, new SimpleMeterRegistry());
+  }
+
+  private static PersistingMetricsReporter newReporter(
+      MetricsPersistence persistence, SimpleMeterRegistry meterRegistry) {
+    return new PersistingMetricsReporter(
+        persistence, unsatisfiedInstance(), unsatisfiedInstance(), meterRegistry);
   }
 
   @SuppressWarnings("unchecked")
@@ -167,7 +174,9 @@ class PersistingMetricsReporterTest {
 
   @Test
   void scanReportPersistenceFailureDoesNotPropagate() {
-    assertThatCode(() -> newReporter(FAILING_PERSISTENCE).reportMetric(scanEnvelope()))
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    assertThatCode(
+            () -> newReporter(FAILING_PERSISTENCE, meterRegistry).reportMetric(scanEnvelope()))
         .doesNotThrowAnyException();
 
     assertThat(logAppender.list)
@@ -178,6 +187,16 @@ class PersistingMetricsReporterTest {
                   .contains("Failed to persist scan metrics for catalog.ns.t");
               assertThat(event.getThrowableProxy()).isNotNull();
             });
+    assertThat(
+            meterRegistry
+                .counter(
+                    PersistingMetricsReporter.DROPPED_REPORTS_METRIC,
+                    "reporter",
+                    "persisting",
+                    "reason",
+                    "persistence_failure")
+                .count())
+        .isEqualTo(1.0);
   }
 
   @Test
@@ -239,5 +258,33 @@ class PersistingMetricsReporterTest {
               assertThat(event.getFormattedMessage())
                   .contains("resolved leaf is missing or not TABLE_LIKE");
             });
+  }
+
+  @Test
+  void dropsWhenTableEntityMissingIncrementsCounter() {
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    MetricsPersistence persistence = mock(MetricsPersistence.class);
+    MetricsReportEnvelope envelope =
+        new MetricsReportEnvelope(
+            "catalog",
+            1L,
+            TableIdentifier.of("ns", "t"),
+            null,
+            MetricType.SCAN,
+            scanReport(),
+            Instant.now());
+
+    newReporter(persistence, meterRegistry).reportMetric(envelope);
+
+    assertThat(
+            meterRegistry
+                .counter(
+                    PersistingMetricsReporter.DROPPED_REPORTS_METRIC,
+                    "reporter",
+                    "persisting",
+                    "reason",
+                    "unresolved_leaf")
+                .count())
+        .isEqualTo(1.0);
   }
 }

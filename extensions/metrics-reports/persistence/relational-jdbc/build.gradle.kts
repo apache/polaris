@@ -39,6 +39,8 @@ dependencies {
   implementation(libs.jakarta.inject.api)
   implementation(libs.smallrye.common.annotation)
   implementation(libs.slf4j.api)
+  implementation(platform(libs.micrometer.bom))
+  implementation("io.micrometer:micrometer-core")
 
   compileOnly(platform(libs.opentelemetry.instrumentation.bom.alpha))
   compileOnly("io.opentelemetry:opentelemetry-api")

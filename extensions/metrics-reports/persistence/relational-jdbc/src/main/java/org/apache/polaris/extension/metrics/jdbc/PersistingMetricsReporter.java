@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.extension.metrics.jdbc;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 import io.smallrye.common.annotation.Identifier;
@@ -59,18 +60,23 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PersistingMetricsReporter.class);
 
+  static final String DROPPED_REPORTS_METRIC = "polaris.metrics.reports.dropped";
+
   private final MetricsPersistence metricsPersistence;
   private final Instance<PolarisPrincipal> polarisPrincipal;
   private final Instance<RequestIdSupplier> requestIdSupplier;
+  private final MeterRegistry meterRegistry;
 
   @Inject
   public PersistingMetricsReporter(
       MetricsPersistence metricsPersistence,
       Instance<PolarisPrincipal> polarisPrincipal,
-      Instance<RequestIdSupplier> requestIdSupplier) {
+      Instance<RequestIdSupplier> requestIdSupplier,
+      MeterRegistry meterRegistry) {
     this.metricsPersistence = metricsPersistence;
     this.polarisPrincipal = polarisPrincipal;
     this.requestIdSupplier = requestIdSupplier;
+    this.meterRegistry = meterRegistry;
   }
 
   @Override
@@ -82,6 +88,7 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
           envelope.metricType(),
           envelope.catalogName(),
           envelope.table());
+      recordDropped("unresolved_leaf");
       return;
     }
     long tableId = tableEntity.getId();
@@ -124,6 +131,7 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
               envelope.catalogName(),
               envelope.table(),
               e);
+          recordDropped("persistence_failure");
         }
       }
       case COMMIT -> {
@@ -152,9 +160,16 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
               envelope.catalogName(),
               envelope.table(),
               e);
+          recordDropped("persistence_failure");
         }
       }
     }
+  }
+
+  private void recordDropped(String reason) {
+    meterRegistry
+        .counter(DROPPED_REPORTS_METRIC, "reporter", "persisting", "reason", reason)
+        .increment();
   }
 
   private String resolvePrincipalName() {

@@ -458,7 +458,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI `setup apply --dry-run` now reports already-existing namespaces as skipped instead of proposed creations.
 - Iceberg metrics reporting no longer fails the client request when persistence fails. A failed
   write is logged and the report dropped (previously this could surface as HTTP 500 on
-  `POST .../metrics`). `MetricsReportEnvelope` now carries a nullable table entity so log-only /
+  `POST .../metrics`). Dropped reports increment `polaris.metrics.reports.dropped` (tags
+  `reporter`, `reason`). `MetricsReportEnvelope` now carries a nullable table entity so log-only /
   no-op reporters still receive passthrough reports; the persisting reporter drops at DEBUG when
   the leaf is missing or not `TABLE_LIKE`, so a bogus `table_id` is never written.
 - Fixed policy detach on the relational JDBC backend silently doing nothing when the mapping's `parameters` changed in between. The delete's `WHERE` clause included the non-key `parameters` column, so a re-attach landing between the detach's lookup and its delete made the delete match zero rows while detach still reported success, leaving the policy attached. The delete is now keyed on the mapping's identity columns, matching the table's primary key and the transactional backend's behavior.
