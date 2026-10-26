@@ -1429,22 +1429,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       List<PolarisEntity> resolvedNamespace,
       String location,
       PolarisEntity entity) {
-    validateNoLocationOverlap(
-        catalog,
-        identifier,
-        resolvedNamespace,
-        location,
-        entity,
-        realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK));
-  }
-
-  private void validateNoLocationOverlap(
-      CatalogEntity catalog,
-      TableIdentifier identifier,
-      List<PolarisEntity> resolvedNamespace,
-      String location,
-      PolarisEntity entity,
-      boolean useOptimizedSiblingCheck) {
     boolean validateViewOverlap =
         realmConfig.getConfig(BehaviorChangeConfiguration.VALIDATE_VIEW_LOCATION_OVERLAP);
 
@@ -1475,7 +1459,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
                   .build());
 
-      validateNoLocationOverlap(virtualEntity, resolvedNamespace, useOptimizedSiblingCheck);
+      validateNoLocationOverlap(virtualEntity, resolvedNamespace);
     }
   }
 
@@ -1552,17 +1536,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
    */
   private <T extends PolarisEntity & LocationBasedEntity> void validateNoLocationOverlap(
       T entity, List<PolarisEntity> parentPath) {
-    validateNoLocationOverlap(
-        entity, parentPath, realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK));
-  }
-
-  private <T extends PolarisEntity & LocationBasedEntity> void validateNoLocationOverlap(
-      T entity, List<PolarisEntity> parentPath, boolean useOptimizedSiblingCheck) {
 
     String location = entity.getBaseLocation();
     String name = entity.getName();
 
     // Attempt to directly query for siblings
+    boolean useOptimizedSiblingCheck =
+        realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
     if (useOptimizedSiblingCheck) {
       Optional<Optional<String>> directSiblingCheckResult =
           getMetaStoreManager()
@@ -2928,13 +2908,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     validateLocationsForTableLike(to, locationsToValidate, resolvedNewParent);
 
-    // List the new siblings rather than using the optimized sibling check: that check searches the
-    // whole catalog by location and would report the entity itself, which is still at its location.
-    // TODO We could optimize this by passing the entity to the optimized location overlap check, so
-    // it can ignore that entity.
     for (String location : tableLocations) {
       validateNoLocationOverlap(
-          catalogEntity, to, resolvedNewParent.getRawFullPath(), location, entity, false);
+          catalogEntity, to, resolvedNewParent.getRawFullPath(), location, entity);
     }
   }
 
