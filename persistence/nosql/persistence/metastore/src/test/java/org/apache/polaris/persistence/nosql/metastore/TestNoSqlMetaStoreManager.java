@@ -45,10 +45,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -88,6 +91,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @SuppressWarnings("CdiInjectionPointsInspection")
 @EnableWeld
@@ -258,12 +263,36 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
+                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://bucket/foo/newchild/")
                     .build()))
         .isPresent()
         .contains(Optional.of("s3://bucket/foo/"));
+
+    // The same location is a conflict, unless the entity is the persisted one (e.g. a rename).
+    var renamedFoo =
+        new NamespaceEntity.Builder(Namespace.of("renamed"))
+            .setCatalogId(catalog.getId())
+            .setBaseLocation("s3://bucket/foo/")
+            .build();
+    soft.assertThat(
+            metaStore.hasOverlappingSiblings(
+                callContext, List.of(PolarisEntity.toCore(catalog)), renamedFoo))
+        .isPresent()
+        .contains(Optional.of("s3://bucket/foo/"));
+    var persistedFoo =
+        new NamespaceEntity.Builder(Namespace.of("renamed"))
+            .setId(nsFoo.getEntity().getId())
+            .setCatalogId(catalog.getId())
+            .setBaseLocation("s3://bucket/foo/")
+            .build();
+    soft.assertThat(
+            metaStore.hasOverlappingSiblings(
+                callContext, List.of(PolarisEntity.toCore(catalog)), persistedFoo))
+        .isPresent()
+        .contains(Optional.empty());
 
     var nsBar =
         createEntity(
@@ -294,6 +323,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
+                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://bucket/foo/")
@@ -310,6 +340,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
       soft.assertThat(
               metaStore.hasOverlappingSiblings(
                   callContext,
+                  List.of(PolarisEntity.toCore(catalog)),
                   new NamespaceEntity.Builder(Namespace.of("x"))
                       .setCatalogId(catalog.getId())
                       .setBaseLocation(check)
@@ -321,6 +352,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
+                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://other/data/stuff/")
@@ -334,6 +366,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
+                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://bucket/foo/bar")
@@ -351,6 +384,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
+                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://bucket/foo/bar")
@@ -510,6 +544,79 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   }
 
   @SuppressWarnings("SameParameterValue")
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void dropNonEmptyPassthroughFacadeCatalog(boolean allowDropping) {
+    RealmConfigurationSource config =
+        (rc, name) ->
+            FeatureConfiguration.ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG
+                    .key()
+                    .equals(name)
+                ? allowDropping
+                : configurationSource.getConfigValue(rc, name);
+    var ctx = new PolarisCallContext(realmContext, callContext.getMetaStore(), config);
+
+    var catalog =
+        new PolarisBaseEntity.Builder(
+                new PolarisBaseEntity(
+                    PolarisEntityConstants.getNullId(),
+                    metaStore.generateNewEntityId(ctx).getId(),
+                    PolarisEntityType.CATALOG,
+                    PolarisEntitySubType.NULL_SUBTYPE,
+                    PolarisEntityConstants.getRootEntityId(),
+                    "passthroughFacade" + allowDropping))
+            .internalPropertiesAsMap(
+                Map.of(PolarisEntityConstants.getConnectionConfigInfoPropertyName(), "{}"))
+            .build();
+    catalog = metaStore.createCatalog(ctx, catalog, List.of()).getCatalog();
+    assertThat(CatalogEntity.of(catalog).isPassthroughFacade()).isTrue();
+
+    var ns =
+        createEntity(
+            List.of(catalog),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            "ns",
+            Map.of());
+    assertThat(ns).extracting(EntityResult::isSuccess, BOOLEAN).isTrue();
+
+    var dropResult = metaStore.dropEntityIfExists(ctx, null, catalog, Map.of(), false);
+    if (allowDropping) {
+      assertThat(dropResult.isSuccess()).isTrue();
+      assertThat(
+              metaStore.readEntityByName(
+                  ctx, null, CATALOG, NULL_SUBTYPE, "passthroughFacade" + allowDropping))
+          .extracting(EntityResult::isSuccess, BOOLEAN)
+          .isFalse();
+
+      // The content of the dropped catalog must not leak into a new catalog with the same name.
+      var newCatalog =
+          new PolarisBaseEntity(
+              PolarisEntityConstants.getNullId(),
+              metaStore.generateNewEntityId(ctx).getId(),
+              PolarisEntityType.CATALOG,
+              PolarisEntitySubType.NULL_SUBTYPE,
+              PolarisEntityConstants.getRootEntityId(),
+              "passthroughFacade" + allowDropping);
+      newCatalog = metaStore.createCatalog(ctx, newCatalog, List.of()).getCatalog();
+      assertThat(
+              metaStore
+                  .listFullEntities(
+                      ctx,
+                      List.<PolarisEntityCore>of(newCatalog),
+                      PolarisEntityType.NAMESPACE,
+                      PolarisEntitySubType.ANY_SUBTYPE,
+                      PageToken.readEverything())
+                  .items())
+          .isEmpty();
+    } else {
+      assertThat(dropResult.getReturnStatus())
+          .isEqualTo(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY);
+      assertThat(dropResult.getExtraInformation())
+          .contains(FeatureConfiguration.ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG.key());
+    }
+  }
+
   EntityResult createEntity(
       List<PolarisBaseEntity> catalogPath,
       PolarisEntityType entityType,

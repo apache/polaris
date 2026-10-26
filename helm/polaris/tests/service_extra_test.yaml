@@ -29,7 +29,6 @@ templates:
   - service-extra.yaml
 
 tests:
-
   - it: should not create extra service by default
     asserts:
       - containsDocument:
@@ -104,6 +103,17 @@ tests:
             app.kubernetes.io/version: 4.5.6
             app.kubernetes.io/managed-by: Helm
             helm.sh/chart: polaris-1.2.3
+  - it: should set service custom labels
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          labels:
+            foo: bar
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            foo: bar
 
   # metadata.annotations
   - it: should not set service annotations by default
@@ -332,10 +342,10 @@ tests:
       - equal:
           path: metadata.annotations
           value:
-              foo: bar
+            foo: bar
         documentIndex: 0
       - equal:
           path: metadata.annotations
           value:
-              bar: baz
+            bar: baz
         documentIndex: 1

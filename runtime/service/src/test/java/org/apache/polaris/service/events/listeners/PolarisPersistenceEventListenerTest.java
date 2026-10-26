@@ -43,6 +43,7 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.entity.EventEntity;
@@ -208,7 +209,7 @@ class PolarisPersistenceEventListenerTest {
   void shouldPersistRequestUserAndTimestampMetadataFields() {
     CapturingPersistenceListener listener = new CapturingPersistenceListener();
     Instant timestamp = Instant.parse("2024-01-02T03:04:05Z");
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role1"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role1"));
     PolarisEventMetadata metadata =
         PolarisEventMetadata.builder()
             .realmId(REALM_ID)
@@ -267,6 +268,29 @@ class PolarisPersistenceEventListenerTest {
         .containsKey("table_current_snapshot_id")
         .containsKey("table_schema")
         .containsKey("table_last_updated_ms")
+        .doesNotContainKey(EventAttributes.LOAD_TABLE_RESPONSE.key());
+  }
+
+  @Test
+  void shouldSkipNullLoadTableResponseWithoutNpe() {
+    CapturingPersistenceListener listener = new CapturingPersistenceListener();
+
+    // Conditional GET after-event can omit a body; a null attribute must not crash pruning.
+    listener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.AFTER_LOAD_TABLE,
+            metadata(),
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(EventAttributes.NAMESPACE, NAMESPACE)
+                .put(EventAttributes.TABLE_NAME, TABLE_NAME)
+                .put(EventAttributes.LOAD_TABLE_RESPONSE, null)
+                .build()));
+
+    EventEntity persisted = listener.persistedEvent(PolarisEventType.AFTER_LOAD_TABLE);
+    assertThat(persisted).isNotNull();
+    assertThat(additionalProperties(persisted))
+        .containsEntry(EventAttributes.CATALOG_NAME.key(), CATALOG_NAME)
         .doesNotContainKey(EventAttributes.LOAD_TABLE_RESPONSE.key());
   }
 

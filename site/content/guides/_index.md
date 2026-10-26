@@ -52,8 +52,7 @@ run in CI and locally.
 
 ### Running guides CI tests locally
 
-Requirements: Python 3.14 installed locally. Other Python 3 versions should work as well, but
-have not been validated.
+Requirements: Python 3.11 or later.
 
 To run tests for all guides in `site/content/guides`, run
 ```shell

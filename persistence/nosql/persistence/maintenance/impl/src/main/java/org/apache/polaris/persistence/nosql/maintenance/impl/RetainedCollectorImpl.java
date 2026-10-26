@@ -312,6 +312,11 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
   public <V> Index<V> buildReadIndex(
       @Nullable IndexContainer<V> indexContainer,
       @NonNull IndexValueSerializer<V> indexValueSerializer) {
+    // indexForRead goes through here; stripe segments are separate objs and must be retained
+    // explicitly (same idea as fetch() calling retainObject).
+    if (indexContainer != null) {
+      indexRetain(indexContainer);
+    }
     return persistence.buildReadIndex(indexContainer, indexValueSerializer);
   }
 

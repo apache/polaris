@@ -23,6 +23,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import com.auth0.jwt.interfaces.Verification;
 import com.google.common.annotations.VisibleForTesting;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -37,7 +38,6 @@ import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.auth.DefaultAuthenticator;
-import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.apache.polaris.service.types.TokenType;
 import org.jspecify.annotations.Nullable;
@@ -63,6 +63,13 @@ public class JWTBroker implements TokenBroker {
    */
   @VisibleForTesting static final String CLAIM_KEY_CREDENTIALS_VERSION = "polaris-cv";
 
+  /**
+   * Tolerance for an {@code iat} claim that is ahead of this node's clock. A token minted by one
+   * Polaris node and immediately presented to another node whose clock is slightly behind would
+   * otherwise be rejected, because {@code iat} has second granularity. Expiry is not relaxed.
+   */
+  @VisibleForTesting static final long ISSUED_AT_LEEWAY_SECONDS = 5;
+
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisCallContext polarisCallContext;
   private final int maxTokenGenerationInSeconds;
@@ -87,24 +94,41 @@ public class JWTBroker implements TokenBroker {
    * {@link TokenBrokerFactory} so the verifier can be reused across request-scoped brokers.
    */
   static JWTVerifier buildVerifier(Algorithm algorithm) {
-    return JWT.require(algorithm).withIssuer(ISSUER_KEY).withClaim(CLAIM_KEY_ACTIVE, true).build();
+    return verification(algorithm).build();
+  }
+
+  /**
+   * The claim expectations {@link #buildVerifier(Algorithm)} verifies against, before the verifier
+   * is built. Exposed so tests can build the same configuration against a fixed clock.
+   */
+  @VisibleForTesting
+  static Verification verification(Algorithm algorithm) {
+    return JWT.require(algorithm)
+        .withIssuer(ISSUER_KEY)
+        .withClaim(CLAIM_KEY_ACTIVE, true)
+        .acceptIssuedAt(ISSUED_AT_LEEWAY_SECONDS);
   }
 
   @Override
-  public PolarisCredential verify(String token) {
+  public TokenVerificationResult verify(String token) {
     // Cheap pre-check without cryptographic verification: tokens not issued by Polaris are not
-    // ours to verify; return null so the caller can delegate to other mechanisms (mixed mode).
-    // Undecodable tokens cannot be Polaris-issued, so they count as foreign.
+    // ours to verify; report them as not recognized so the caller can delegate to other mechanisms
+    // (mixed mode). Undecodable tokens cannot be Polaris-issued, so they count as foreign too.
     final DecodedJWT decodedJWT;
     try {
       decodedJWT = JWT.decode(token);
     } catch (JWTDecodeException e) {
-      return null;
+      return new TokenVerificationResult.NotRecognized();
     }
     if (!ISSUER_KEY.equals(decodedJWT.getIssuer())) {
-      return null;
+      return new TokenVerificationResult.NotRecognized();
     }
-    return verifyInternal(decodedJWT).token();
+    try {
+      return new TokenVerificationResult.Recognized(verifyInternal(decodedJWT).token());
+    } catch (NotAuthorizedException e) {
+      // Recognized as Polaris-issued but failed signature/claims verification.
+      return new TokenVerificationResult.Invalid(e.getMessage(), e.getCause());
+    }
   }
 
   private VerifiedToken verifyInternal(String token) {

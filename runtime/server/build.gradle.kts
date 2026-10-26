@@ -35,6 +35,12 @@ val quarkusRunner =
 dependencies {
   implementation(project(":polaris-runtime-service"))
 
+  runtimeOnly(project(":polaris-persistence-nosql-dynamodb")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-dynamodb-quarkus")
+    }
+  }
+
   runtimeOnly("org.postgresql:postgresql")
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
@@ -42,6 +48,7 @@ dependencies {
   runtimeOnly(project(":polaris-extensions-auth-opa"))
   runtimeOnly(project(":polaris-extensions-auth-ranger"))
   runtimeOnly(project(":polaris-extensions-events-kafka"))
+  runtimeOnly(project(":polaris-extensions-lineage"))
   runtimeOnly(project(":polaris-extensions-semantic-models"))
   runtimeOnly(project(":polaris-extensions-openlineage"))
   runtimeOnly(project(":polaris-extensions-metrics-reports"))
@@ -57,6 +64,9 @@ dependencies {
 
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
     exclude(group = "com.google.protobuf", module = "protobuf-java")
     exclude(group = "com.google.protobuf", module = "protobuf-java-util")
   }
@@ -76,7 +86,7 @@ quarkus {
         .attributes
         .map { e -> "quarkus.package.jar.manifest.attributes.\"${e.key}\"" to e.value.toString() }
         .toMap()
-    }
+    },
   )
   buildForkOptions {
     maxHeapSize = "2G"

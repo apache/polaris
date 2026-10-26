@@ -75,6 +75,7 @@ import org.apache.polaris.service.types.ApplicablePolicy;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
+import org.apache.polaris.service.types.ListPoliciesResponse;
 import org.apache.polaris.service.types.Policy;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -450,6 +451,35 @@ public class PolarisPolicyServiceIntegrationTest {
   }
 
   @Test
+  public void testDetachPolicyWithoutMapping() {
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
+    // The policy and the target both exist, but the policy was never attached to the target.
+    var namespaceTarget =
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(NS1.levels()));
+
+    DetachPolicyRequest request = DetachPolicyRequest.builder().setTarget(namespaceTarget).build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy-name}/mappings",
+                Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy-name", NS1_P1.name()))
+            .post(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains("NoSuchMappingException")
+          .contains("The given mapping between policy");
+    }
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
   public void testDropPolicy() {
     restCatalog.createNamespace(NS1);
     policyApi.createPolicy(
@@ -566,6 +596,65 @@ public class PolarisPolicyServiceIntegrationTest {
 
     policyApi.dropPolicy(currentCatalogName, NS1_P1);
     policyApi.dropPolicy(currentCatalogName, NS1_P2);
+  }
+
+  @Test
+  public void testPaginatedListPolicy() {
+    String prefix = "testPaginatedListPolicy";
+    Namespace namespace = Namespace.of(prefix);
+    restCatalog.createNamespace(namespace);
+    for (int i = 0; i < 30; i++) {
+      policyApi.createPolicy(
+          currentCatalogName,
+          new PolicyIdentifier(namespace, prefix + "data" + i),
+          PredefinedPolicyTypes.DATA_COMPACTION,
+          EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+          "test policy");
+      policyApi.createPolicy(
+          currentCatalogName,
+          new PolicyIdentifier(namespace, prefix + "metadata" + i),
+          PredefinedPolicyTypes.METADATA_COMPACTION,
+          EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+          "test policy");
+    }
+
+    try {
+      assertThat(policyApi.listPolicies(currentCatalogName, namespace)).hasSize(60);
+      for (var pageSize : List.of(1, 2, 3, 9, 10, 11, 19, 20, 21, 25, 2000)) {
+        int total = 0;
+        String pageToken = null;
+        do {
+          ListPoliciesResponse response =
+              policyApi.listPolicies(
+                  currentCatalogName, namespace, pageToken, String.valueOf(pageSize));
+          assertThat(response.getIdentifiers().size()).isLessThanOrEqualTo(pageSize);
+          total += response.getIdentifiers().size();
+          pageToken = response.getNextPageToken();
+        } while (pageToken != null);
+        assertThat(total).as("Total paginated results for pageSize = " + pageSize).isEqualTo(60);
+      }
+      for (var pageSize : List.of(5, 10, 2000)) {
+        int total = 0;
+        String pageToken = null;
+        do {
+          ListPoliciesResponse response =
+              policyApi.listPolicies(
+                  currentCatalogName,
+                  namespace,
+                  PredefinedPolicyTypes.METADATA_COMPACTION,
+                  pageToken,
+                  String.valueOf(pageSize));
+          assertThat(response.getIdentifiers().size()).isLessThanOrEqualTo(pageSize);
+          total += response.getIdentifiers().size();
+          pageToken = response.getNextPageToken();
+        } while (pageToken != null);
+        assertThat(total)
+            .as("Total filtered paginated results for pageSize = " + pageSize)
+            .isEqualTo(30);
+      }
+    } finally {
+      policyApi.purge(currentCatalogName, namespace);
+    }
   }
 
   @Test

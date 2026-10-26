@@ -21,11 +21,12 @@ package org.apache.polaris.service.catalog.policy;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.service.Profiles;
@@ -39,6 +40,13 @@ import org.apache.polaris.service.types.UpdatePolicyRequest;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
+/**
+ * Privilege-matrix coverage for {@link PolicyCatalogHandler}. {@code initializeCatalog()} carries
+ * no S3 credential vending mechanism check: that mechanism is checked only where a catalog is
+ * stored (create and update) and where it vends a credential, covered end-to-end, through the real
+ * REST API and a stored catalog whose mechanism is removed from a live registry, by {@link
+ * org.apache.polaris.service.storage.S3CredentialVendingMechanismCdiTest#anUninstalledMechanismIsRefusedAtCreateAndUpdateAndAStoredOneWhenItVends}.
+ */
 @QuarkusTest
 @TestProfile(Profiles.PolarisAuthzBaseProfile.class)
 public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
@@ -47,11 +55,10 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     return newHandler(
         PolarisPrincipal.of(
             principalEntity.getName(),
-            Map.of(
-                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-                principalEntity,
-                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
-                true),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
             Set.of()));
   }
 
@@ -59,7 +66,9 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     return newHandler(
         PolarisPrincipal.of(
             principalEntity.getName(),
-            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+                .build(),
             activatedPrincipalRoles));
   }
 
@@ -77,7 +86,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testListPoliciesPrivileges() {
     return authzTestsBuilder("listPolicies")
-        .action(() -> newHandler().listPolicies(NS1, null))
+        .action(() -> newHandler().listPolicies(NS1, null, null, null))
         .shouldPassWith(PolarisPrivilege.POLICY_LIST)
         .shouldPassWith(PolarisPrivilege.POLICY_CREATE)
         .shouldPassWith(PolarisPrivilege.POLICY_WRITE)

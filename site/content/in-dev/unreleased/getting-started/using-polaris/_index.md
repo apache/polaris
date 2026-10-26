@@ -148,7 +148,7 @@ _Note: the credentials provided here are those for our principal, not the root c
 
 ```shell
 bin/spark-sql \
---packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.0,org.apache.iceberg:iceberg-aws-bundle:1.10.0 \
+--packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.12.0,org.apache.iceberg:iceberg-aws-bundle:1.12.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
 --conf spark.sql.catalog.polaris.warehouse=quickstart_catalog \
 --conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials \
@@ -346,6 +346,7 @@ curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "
 
 ## Next Steps
 * Visit [Using Keycloak as the external identity provider]({{% relref "keycloak-idp" %}}).
+* Visit [Using Keycloak and OPA for fully external principals]({{% relref "keycloak-opa-idp" %}}).
 * Visit [Using Polaris with telemetry tools]({{% relref "telemetry-tools" %}}).
 * Visit [Configuring Polaris for Production]({{% relref "../../configuration/configuring-polaris-for-production" %}}).
 * A Getting Started experience for using Spark with Jupyter Notebooks is documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).

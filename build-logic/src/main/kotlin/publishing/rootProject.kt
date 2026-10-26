@@ -106,9 +106,9 @@ internal fun configureOnRootProject(project: Project) = project.run {
 
       val stagingRepositoryUrlRegistryRegistration =
         gradle.sharedServices.registrations.named<
-          BuildServiceRegistration<StagingRepositoryDescriptorRegistryBuildService, *>
+          BuildServiceRegistration<StagingRepositoryDescriptorRegistryBuildService, *>,
         >(
-          "stagingRepositoryUrlRegistry"
+          "stagingRepositoryUrlRegistry",
         )
       val stagingRepoUrl =
         if (stagingRepositoryUrlRegistryRegistration.isPresent) {
@@ -199,7 +199,7 @@ internal fun configureOnRootProject(project: Project) = project.run {
               $emailBody
 
               """
-          .trimIndent()
+          .trimIndent(),
       )
       bodyFile.writeText(emailBody.trimIndent())
     }

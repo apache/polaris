@@ -19,7 +19,6 @@
 package org.apache.polaris.service.auth.internal.broker;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
@@ -94,7 +93,7 @@ public class RSAKeyPairJWTBrokerTest {
   }
 
   @Test
-  public void testVerifyReturnsNullForForeignIssuer() throws Exception {
+  public void testVerifyReturnsNotRecognizedForForeignIssuer() throws Exception {
     var keyPair = PemUtils.generateKeyPair();
 
     PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
@@ -121,11 +120,12 @@ public class RSAKeyPairJWTBrokerTest {
                     (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey()));
 
     // Foreign tokens are not ours to verify; the caller delegates to other mechanisms.
-    assertThat(tokenBroker.verify(tokenWithWrongIssuer)).isNull();
+    assertThat(tokenBroker.verify(tokenWithWrongIssuer))
+        .isInstanceOf(TokenVerificationResult.NotRecognized.class);
   }
 
   @Test
-  public void testVerifyReturnsNullForMissingIssuer() throws Exception {
+  public void testVerifyReturnsNotRecognizedForMissingIssuer() throws Exception {
     var keyPair = PemUtils.generateKeyPair();
 
     PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
@@ -150,7 +150,8 @@ public class RSAKeyPairJWTBrokerTest {
                 Algorithm.RSA256(
                     (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey()));
 
-    assertThat(tokenBroker.verify(tokenWithoutIssuer)).isNull();
+    assertThat(tokenBroker.verify(tokenWithoutIssuer))
+        .isInstanceOf(TokenVerificationResult.NotRecognized.class);
   }
 
   @Test
@@ -183,8 +184,9 @@ public class RSAKeyPairJWTBrokerTest {
                     (RSAPublicKey) otherKeyPair.getPublic(),
                     (RSAPrivateKey) otherKeyPair.getPrivate()));
 
-    assertThatThrownBy(() -> tokenBroker.verify(tokenWithBadSignature))
-        .isInstanceOf(org.apache.iceberg.exceptions.NotAuthorizedException.class)
-        .hasMessageContaining("Failed to verify the token");
+    TokenVerificationResult result = tokenBroker.verify(tokenWithBadSignature);
+    assertThat(result).isInstanceOf(TokenVerificationResult.Invalid.class);
+    assertThat(((TokenVerificationResult.Invalid) result).message())
+        .contains("Failed to verify the token");
   }
 }

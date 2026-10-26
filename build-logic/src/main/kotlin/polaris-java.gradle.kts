@@ -90,7 +90,7 @@ tasks.withType<Checkstyle>().configureEach {
 
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(
-    listOf("-Xlint:unchecked", "-Xlint:deprecation", "-XDaddTypeAnnotationsToSymbol=true")
+    listOf("-Xlint:unchecked", "-Xlint:deprecation", "-XDaddTypeAnnotationsToSymbol=true"),
   )
   options.errorprone.disableAllWarnings = true
   options.errorprone.disableWarningsInGeneratedCode = true
@@ -108,7 +108,7 @@ tasks.withType(JavaCompile::class.java).configureEach {
           parameters.configFile = errorproneRules
         }
       service.get().errorproneConfig
-    }
+    },
   )
 }
 
@@ -222,16 +222,12 @@ tasks.withType<Jar>().configureEach {
 
   if (!project.file("src/main/no-license-notice-marker").exists()) {
     if (!project.file("src/main/resources/META-INF/LICENSE").exists()) {
-      from(rootProject.rootDir) {
-        include("gradle/jar-licenses/LICENSE").eachFile { path = "META-INF/$sourceName" }
-      }
+      from(rootProject.file("gradle/jar-licenses/LICENSE")) { into("META-INF") }
     } else if (name == "javadocJar") {
       from("src/main/resources") { include("META-INF/LICENSE") }
     }
     if (!project.file("src/main/resources/META-INF/NOTICE").exists()) {
-      from(rootProject.rootDir) {
-        include("gradle/jar-licenses/NOTICE").eachFile { path = "META-INF/$sourceName" }
-      }
+      from(rootProject.file("gradle/jar-licenses/NOTICE")) { into("META-INF") }
     } else if (name == "javadocJar") {
       from("src/main/resources") { include("META-INF/NOTICE") }
     }
@@ -316,10 +312,10 @@ fun bannedDependencies(): BannedDependencies {
       BannedDependenciesService::class.java,
     ) {
       parameters.globallyBannedFile.set(
-        layout.settingsDirectory.file("gradle/banned-dependencies.txt")
+        layout.settingsDirectory.file("gradle/banned-dependencies.txt"),
       )
       parameters.quarkusProdBannedFile.set(
-        layout.settingsDirectory.file("gradle/banned-quarkus-prod-dependencies.txt")
+        layout.settingsDirectory.file("gradle/banned-quarkus-prod-dependencies.txt"),
       )
     }
   return service.get().bannedDependencies

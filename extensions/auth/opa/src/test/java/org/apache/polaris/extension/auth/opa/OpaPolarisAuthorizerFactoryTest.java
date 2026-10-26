@@ -39,7 +39,6 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -47,6 +46,9 @@ import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
+import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
@@ -224,7 +226,8 @@ public class OpaPolarisAuthorizerFactoryTest {
         OpaPolarisAuthorizer authorizer =
             (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
 
-        PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
+        PolarisPrincipal principal =
+            PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
         assertThatNoException()
             .isThrownBy(
                 () ->
@@ -283,7 +286,8 @@ public class OpaPolarisAuthorizerFactoryTest {
         OpaPolarisAuthorizer authorizer =
             (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
 
-        PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
+        PolarisPrincipal principal =
+            PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
         assertThatNoException()
             .isThrownBy(
                 () ->
@@ -346,7 +350,12 @@ public class OpaPolarisAuthorizerFactoryTest {
         OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
         PolarisPrincipal principal =
-            PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+            PolarisPrincipal.of(
+                "eve",
+                ImmutableAttributeMap.builder()
+                    .put(new AttributeKey<>("department"), "finance")
+                    .build(),
+                Set.of("auditor"));
         assertThatNoException()
             .isThrownBy(
                 () ->
@@ -410,7 +419,12 @@ public class OpaPolarisAuthorizerFactoryTest {
 
         RealmConfig realmConfig = mock(RealmConfig.class);
         PolarisPrincipal principal =
-            PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+            PolarisPrincipal.of(
+                "eve",
+                ImmutableAttributeMap.builder()
+                    .put(new AttributeKey<>("department"), "finance")
+                    .build(),
+                Set.of("auditor"));
         // First "request": factory.create() is called fresh, as it would be for each incoming
         // HTTP request via the @RequestScoped PolarisAuthorizer producer.
         OpaPolarisAuthorizer firstAuthorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);

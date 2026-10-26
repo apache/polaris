@@ -317,7 +317,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String prefix,
       String namespace,
       CreateTableRequest createTableRequest,
-      String accessDelegationMode,
+      List<String> accessDelegationModes,
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
@@ -333,7 +333,7 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.CREATE_TABLE_REQUEST, createTableRequest)
-                  .put(EventAttributes.ACCESS_DELEGATION_MODE, accessDelegationMode)
+                  .put(EventAttributes.ACCESS_DELEGATION_MODES, accessDelegationModes)
                   .build()));
     }
     Response resp =
@@ -341,7 +341,7 @@ public class IcebergRestCatalogEventServiceDelegator
             prefix,
             namespace,
             createTableRequest,
-            accessDelegationMode,
+            accessDelegationModes,
             idempotencyKey,
             realmContext,
             securityContext);
@@ -402,7 +402,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String prefix,
       String namespace,
       String table,
-      String accessDelegationMode,
+      List<String> accessDelegationModes,
       String ifNoneMatchString,
       String snapshots,
       String referencedBy,
@@ -420,7 +420,7 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, table)
-                  .put(EventAttributes.ACCESS_DELEGATION_MODE, accessDelegationMode)
+                  .put(EventAttributes.ACCESS_DELEGATION_MODES, accessDelegationModes)
                   .put(EventAttributes.IF_NONE_MATCH_STRING, ifNoneMatchString)
                   .put(EventAttributes.SNAPSHOTS, snapshots)
                   .build()));
@@ -430,23 +430,28 @@ public class IcebergRestCatalogEventServiceDelegator
             prefix,
             namespace,
             table,
-            accessDelegationMode,
+            accessDelegationModes,
             ifNoneMatchString,
             snapshots,
             referencedBy,
             realmContext,
             securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_LOAD_TABLE)) {
+      // Conditional GET (If-None-Match match) returns 304 notModified() with no entity. Do not
+      // cast/store a null LOAD_TABLE_RESPONSE on the after-event.
+      ImmutableAttributeMap.Builder afterAttributes =
+          ImmutableAttributeMap.builder()
+              .put(EventAttributes.CATALOG_NAME, catalogName)
+              .put(EventAttributes.NAMESPACE, namespaceObj)
+              .put(EventAttributes.TABLE_NAME, table);
+      if (resp.getEntity() instanceof LoadTableResponse loadTableResponse) {
+        afterAttributes.put(EventAttributes.LOAD_TABLE_RESPONSE, loadTableResponse);
+      }
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
               PolarisEventType.AFTER_LOAD_TABLE,
               eventMetadataFactory.create(),
-              ImmutableAttributeMap.builder()
-                  .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.TABLE_NAME, table)
-                  .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())
-                  .build()));
+              afterAttributes.build()));
     }
     return resp;
   }
@@ -541,7 +546,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String prefix,
       String namespace,
       RegisterTableRequest registerTableRequest,
-      String accessDelegationMode,
+      List<String> accessDelegationModes,
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
@@ -564,7 +569,7 @@ public class IcebergRestCatalogEventServiceDelegator
             prefix,
             namespace,
             registerTableRequest,
-            accessDelegationMode,
+            accessDelegationModes,
             idempotencyKey,
             realmContext,
             securityContext);

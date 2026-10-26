@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -38,55 +37,41 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
-import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
-import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 /**
  * Provider that returns a {@link PolarisStorageIntegration} for a resolved entity path. A fresh
  * integration is constructed per call; the per-config state inside each integration is a thin
- * wrapper over shared, application-scoped resources (STS client provider, GCP credentials supplier,
- * Google HTTP transport factory, request-scope realm config).
+ * wrapper over shared, application-scoped resources (the credential vending mechanism registry, GCP
+ * credentials supplier, Google HTTP transport factory, request-scope realm config).
  */
 @ApplicationScoped
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
-  private final Function<AwsStorageConfigurationInfo, AwsCredentialsStorageIntegration> awsFactory;
+  private final S3CredentialVendingMechanisms mechanisms;
   private final Function<GcpStorageConfigurationInfo, GcpCredentialsStorageIntegration> gcpFactory;
   private final Function<AzureStorageConfigurationInfo, AzureCredentialsStorageIntegration>
       azureFactory;
+  private final RealmConfig realmConfig;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
   public PolarisStorageIntegrationProviderImpl(
       StorageConfiguration storageConfiguration,
-      StsClientProvider stsClientProvider,
+      S3CredentialVendingMechanisms mechanisms,
       RealmConfig realmConfig,
       Clock clock,
       StorageCredentialCache cache) {
-    this.awsFactory =
-        storageConfig ->
-            new AwsCredentialsStorageIntegration(
-                stsClientProvider,
-                config -> {
-                  if (realmConfig.getConfig(
-                      FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
-                    return Optional.of(
-                        storageConfiguration.stsCredentials(config.getStorageName()));
-                  }
-                  return Optional.of(storageConfiguration.stsCredentials());
-                },
-                cache,
-                storageConfig,
-                realmConfig);
+    this.realmConfig = realmConfig;
+    this.mechanisms = mechanisms;
     Supplier<GoogleCredentials> gcpCredsProvider =
         storageConfiguration.gcpCredentialsSupplier(clock);
     HttpTransportFactory gcpTransportFactory =
@@ -100,15 +85,12 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   }
 
   public PolarisStorageIntegrationProviderImpl(
-      StsClientProvider stsClientProvider,
-      Optional<AwsCredentialsProvider> stsCredentials,
+      S3CredentialVendingMechanisms mechanisms,
       Supplier<GoogleCredentials> gcpCredsProvider,
       StorageCredentialCache cache,
       RealmConfig realmConfig) {
-    this.awsFactory =
-        storageConfig ->
-            new AwsCredentialsStorageIntegration(
-                stsClientProvider, config -> stsCredentials, cache, storageConfig, realmConfig);
+    this.realmConfig = realmConfig;
+    this.mechanisms = mechanisms;
     HttpTransportFactory gcpTransportFactory =
         ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new);
     this.gcpFactory =
@@ -130,7 +112,16 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private PolarisStorageIntegration createIntegration(
       PolarisStorageConfigurationInfo storageConfig) {
     return switch (storageConfig.getStorageType()) {
-      case S3 -> awsFactory.apply((AwsStorageConfigurationInfo) storageConfig);
+      case S3 -> {
+        AwsStorageConfigurationInfo awsConfig = (AwsStorageConfigurationInfo) storageConfig;
+        // The only check at vending time: the realm allowlist on the explicit value, then the
+        // registry. Catalog create and update ran the same two checks before the config was stored.
+        IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
+            realmConfig, awsConfig.getCredentialVendingMechanism());
+        yield mechanisms
+            .require(awsConfig.resolvedCredentialVendingMechanism())
+            .integrationFor(awsConfig);
+      }
       case GCS -> gcpFactory.apply((GcpStorageConfigurationInfo) storageConfig);
       case AZURE -> azureFactory.apply((AzureStorageConfigurationInfo) storageConfig);
       case FILE -> FILE_INTEGRATION;

@@ -30,6 +30,8 @@ import java.util.stream.Stream;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
@@ -51,11 +53,10 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(
             principalEntity.getName(),
-            Map.of(
-                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-                principalEntity,
-                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
-                true),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
             Set.of());
     IcebergCatalogHandler handler =
         icebergCatalogHandlerFactory.createHandler(CATALOG_NAME, authenticatedPrincipal);

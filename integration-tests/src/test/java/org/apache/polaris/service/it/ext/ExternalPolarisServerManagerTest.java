@@ -21,6 +21,7 @@ package org.apache.polaris.service.it.ext;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.net.URI;
 import org.apache.polaris.service.it.env.Server;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,18 +30,22 @@ import org.junit.jupiter.api.Test;
 class ExternalPolarisServerManagerTest {
 
   private String originalHost;
-  private String originalPort;
+  private String originalHttpPort;
+  private String originalManagementPort;
 
   @BeforeEach
   void captureProperties() {
     originalHost = System.getProperty(ExternalPolarisServerManager.HOST_PROPERTY);
-    originalPort = System.getProperty(ExternalPolarisServerManager.HTTP_PORT_PROPERTY);
+    originalHttpPort = System.getProperty(ExternalPolarisServerManager.HTTP_PORT_PROPERTY);
+    originalManagementPort =
+        System.getProperty(ExternalPolarisServerManager.MANAGEMENT_PORT_PROPERTY);
   }
 
   @AfterEach
   void restoreProperties() {
     restore(ExternalPolarisServerManager.HOST_PROPERTY, originalHost);
-    restore(ExternalPolarisServerManager.HTTP_PORT_PROPERTY, originalPort);
+    restore(ExternalPolarisServerManager.HTTP_PORT_PROPERTY, originalHttpPort);
+    restore(ExternalPolarisServerManager.MANAGEMENT_PORT_PROPERTY, originalManagementPort);
   }
 
   @Test
@@ -90,6 +95,44 @@ class ExternalPolarisServerManagerTest {
     assertThatThrownBy(() -> new ExternalPolarisServerManager().serverForContext(null))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining(ExternalPolarisServerManager.HTTP_PORT_PROPERTY);
+  }
+
+  @Test
+  void serverForContextUsesConfiguredManagementPort() {
+    System.setProperty(ExternalPolarisServerManager.HTTP_PORT_PROPERTY, "12345");
+    System.setProperty(ExternalPolarisServerManager.MANAGEMENT_PORT_PROPERTY, "12346");
+
+    Server server = new ExternalPolarisServerManager().serverForContext(null);
+    assertThat(server.managementUri()).contains(URI.create("http://localhost:12346/q"));
+  }
+
+  @Test
+  void serverForContextAcceptsMissingManagementPort() {
+    System.setProperty(ExternalPolarisServerManager.HTTP_PORT_PROPERTY, "12345");
+    System.clearProperty(ExternalPolarisServerManager.MANAGEMENT_PORT_PROPERTY);
+
+    Server server = new ExternalPolarisServerManager().serverForContext(null);
+    assertThat(server.managementUri()).isEmpty();
+  }
+
+  @Test
+  void serverForContextRejectsInvalidManagementPort() {
+    System.setProperty(ExternalPolarisServerManager.HTTP_PORT_PROPERTY, "12345");
+    System.setProperty(ExternalPolarisServerManager.MANAGEMENT_PORT_PROPERTY, "not-a-port");
+
+    assertThatThrownBy(() -> new ExternalPolarisServerManager().serverForContext(null))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(ExternalPolarisServerManager.MANAGEMENT_PORT_PROPERTY);
+  }
+
+  @Test
+  void serverForContextRejectsOutOfRangeManagementPort() {
+    System.setProperty(ExternalPolarisServerManager.HTTP_PORT_PROPERTY, "12345");
+    System.setProperty(ExternalPolarisServerManager.MANAGEMENT_PORT_PROPERTY, "65536");
+
+    assertThatThrownBy(() -> new ExternalPolarisServerManager().serverForContext(null))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(ExternalPolarisServerManager.MANAGEMENT_PORT_PROPERTY);
   }
 
   private static void restore(String propertyName, String value) {

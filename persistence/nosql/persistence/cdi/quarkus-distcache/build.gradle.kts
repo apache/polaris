@@ -57,5 +57,9 @@ dependencies {
 
   // Must stick with the Quarkus platform versions of Vert.X
   // (signature of io.vertx.core.Vertx.createHttpClient() changed from 4.5 to 5.0)
-  testImplementation(enforcedPlatform(libs.quarkus.bom))
+  testImplementation(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+  }
 }

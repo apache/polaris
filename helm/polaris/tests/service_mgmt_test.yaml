@@ -29,7 +29,6 @@ templates:
   - service-mgmt.yaml
 
 tests:
-
   # metadata.name
   - it: should set service name
     asserts:
@@ -69,6 +68,15 @@ tests:
             app.kubernetes.io/version: 4.5.6
             app.kubernetes.io/managed-by: Helm
             helm.sh/chart: polaris-1.2.3
+  - it: should set service custom labels
+    set:
+      service.labels:
+        foo: bar
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            foo: bar
 
   # metadata.annotations
   - it: should not set service annotations by default
@@ -185,7 +193,6 @@ tests:
       - equal:
           path: spec.clusterIP
           value: 1.2.3.4
-
 
   # spec.externalTrafficPolicy
   - it: should not set service external traffic policy by default

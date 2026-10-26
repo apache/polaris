@@ -56,6 +56,8 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -86,6 +88,8 @@ import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
+import org.apache.polaris.service.storage.StsCredentialVendingMechanism;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.assertj.core.api.Assertions;
@@ -188,10 +192,15 @@ public abstract class PolarisAuthzTestBase {
   @BeforeAll
   public static void setUpMocks() {
     StsClient stsClient = Mockito.mock(StsClient.class);
+    S3CredentialVendingMechanisms mechanisms =
+        new S3CredentialVendingMechanisms(
+            Map.of(
+                "STS",
+                new StsCredentialVendingMechanism(
+                    destination -> stsClient, Optional.empty(), null, null)));
     PolarisStorageIntegrationProviderImpl mock =
         new PolarisStorageIntegrationProviderImpl(
-            destination -> stsClient,
-            Optional.empty(),
+            mechanisms,
             () -> GoogleCredentials.create(new AccessToken("abc", new Date())),
             null,
             null);
@@ -214,18 +223,17 @@ public abstract class PolarisAuthzTestBase {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     polarisContext = callContext.getPolarisCallContext();
 
-    polarisAuthorizer = new PolarisAuthorizerImpl(realmConfig);
+    polarisAuthorizer = new PolarisAuthorizerImpl();
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     this.authenticatedRoot =
         PolarisPrincipal.of(
             rootPrincipal.getName(),
-            Map.of(
-                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-                rootPrincipal,
-                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
-                true),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, rootPrincipal)
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
             Set.of());
     QuarkusMock.installMockForType(authenticatedRoot, PolarisPrincipal.class);
 
@@ -374,7 +382,11 @@ public abstract class PolarisAuthzTestBase {
     baseCatalog.buildTable(TABLE_NS2_1, SCHEMA).create();
 
     genericTableCatalog.createGenericTable(
-        TABLE_NS1_1_GENERIC, "format", "file:///tmp/test_table", "doc", Map.of());
+        TABLE_NS1_1_GENERIC,
+        "format",
+        "file:///tmp/authz/ns1/layer1_table_generic",
+        "doc",
+        Map.of());
 
     policyCatalog.createPolicy(
         POLICY_NS1_1,

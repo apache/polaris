@@ -32,6 +32,7 @@ from apache_polaris.sdk.catalog.exceptions import NotFoundException
 from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
+    ConnectionConfigInfo,
     FileStorageConfigInfo,
     AzureStorageConfigInfo,
     AwsStorageConfigInfo,
@@ -260,7 +261,7 @@ class TestSetupCommand(CLITestBase):
         list_namespaces_mock.assert_called_once_with(prefix="catalog")
 
     @patch("apache_polaris.cli.command.setup.PolicyAPI")
-    def test_setup_apply_recovers_policy_lookup_failure(
+    def test_setup_apply_reports_policy_lookup_failure(
         self, mock_policy_api: MagicMock
     ) -> None:
         mock_client = self.build_mock_client()
@@ -285,12 +286,8 @@ class TestSetupCommand(CLITestBase):
             dry_run=False,
         )
 
-        self.assertEqual(command._failure_count, 0)
-        mock_policy_api.return_value.create_policy.assert_called_once()
-        request = mock_policy_api.return_value.create_policy.call_args.kwargs[
-            "create_policy_request"
-        ]
-        self.assertEqual(request.content, "{}")
+        self.assertEqual(command._failure_count, 1)
+        mock_policy_api.return_value.create_policy.assert_not_called()
 
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_apply_s3_optional_fields(self, mock_isfile: MagicMock) -> None:
@@ -394,6 +391,57 @@ class TestSetupCommand(CLITestBase):
         mock_client.list_catalogs.assert_called()
         mock_client.list_catalog_roles.assert_called_with("my_catalog")
         mock_client.get_catalog.assert_called_with("my_catalog")
+
+    def test_setup_export_preserves_external_catalog_connection_locations(self) -> None:
+        cases = [
+            (
+                {
+                    "connectionType": "ICEBERG_REST",
+                    "uri": "https://example.invalid",
+                    "remoteCatalogName": "prod",
+                },
+                {
+                    "type": "iceberg-rest",
+                    "uri": "https://example.invalid",
+                    "remote_catalog_name": "prod",
+                },
+            ),
+            (
+                {
+                    "connectionType": "HADOOP",
+                    "uri": "file:///warehouse",
+                    "warehouse": "/warehouse",
+                },
+                {
+                    "type": "hadoop",
+                    "uri": "file:///warehouse",
+                    "warehouse": "/warehouse",
+                },
+            ),
+            (
+                {
+                    "connectionType": "HIVE",
+                    "uri": "thrift://example.invalid:9083",
+                    "warehouse": "/warehouse",
+                },
+                {
+                    "type": "hive",
+                    "uri": "thrift://example.invalid:9083",
+                    "warehouse": "/warehouse",
+                },
+            ),
+        ]
+        command = SetupCommand(setup_subcommand=Subcommands.EXPORT)
+
+        self.assertEqual(
+            [
+                command._serialize_connection_info(
+                    ConnectionConfigInfo.from_dict(payload)
+                )
+                for payload, _ in cases
+            ],
+            [{"connection": expected} for _, expected in cases],
+        )
 
     def test_setup_exported_entity_properties_round_trip_through_apply(self) -> None:
         principal_properties = {"owner": "data-platform"}

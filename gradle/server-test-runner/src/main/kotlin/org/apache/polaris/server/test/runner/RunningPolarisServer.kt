@@ -61,7 +61,7 @@ internal class RunningPolarisServer(
   companion object {
     private val listenPattern =
       Regex(
-        "^.*Listening on: (https?://\\S+?)(?:[.] Management interface listening on (https?://\\S+?)[.])?\\s*$"
+        "^.*Listening on: (https?://\\S+?)(?:[.] Management interface listening on (https?://\\S+?)[.])?\\s*$",
       )
 
     fun start(
@@ -141,7 +141,7 @@ internal class RunningPolarisServer(
       if (!ready.await(startupTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
         process.destroyForcibly()
         throw GradleException(
-          "Polaris server did not emit a listen URL within $startupTimeout. Captured output:\n${capturedOutput(capturedOutput)}"
+          "Polaris server did not emit a listen URL within $startupTimeout. Captured output:\n${capturedOutput(capturedOutput)}",
         )
       }
 
@@ -152,7 +152,7 @@ internal class RunningPolarisServer(
           if (process.isAlive) "still running" else "exited with code ${process.exitValue()}"
         process.destroyForcibly()
         throw GradleException(
-          "Polaris server $exit before emitting a listen URL. Captured output:\n${capturedOutput(capturedOutput)}"
+          "Polaris server $exit before emitting a listen URL. Captured output:\n${capturedOutput(capturedOutput)}",
         )
       }
 

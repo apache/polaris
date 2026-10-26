@@ -34,6 +34,7 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
@@ -44,6 +45,8 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -160,15 +163,14 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     authenticatedRoot =
         PolarisPrincipal.of(
             rootPrincipal.getName(),
-            Map.of(
-                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-                rootPrincipal,
-                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
-                true),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, rootPrincipal)
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
             Set.of());
     polarisPrincipalHolder.set(authenticatedRoot);
 
-    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
+    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl();
     ReservedProperties reservedProperties = ReservedProperties.NONE;
 
     adminService =
@@ -291,6 +293,16 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
         .hasMessageContaining("already exists");
 
     Assertions.assertThatCode(
+            () ->
+                genericTableCatalog.createGenericTable(
+                    TableIdentifier.of("ns", "t1"),
+                    "format2",
+                    "s3://other-bucket/ns/t1",
+                    "doc",
+                    Map.of()))
+        .hasMessageContaining("already exists");
+
+    Assertions.assertThatCode(
             () -> icebergCatalog.createTable(TableIdentifier.of("ns", "t1"), SCHEMA))
         .hasMessageContaining("already exists");
   }
@@ -314,7 +326,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
   @ParameterizedTest
   @NullSource
-  @ValueSource(strings = {"", "file://path/to/my/table"})
+  @ValueSource(strings = {"", "s3://my-bucket/path/to/data/ns/t1"})
   public void testGenericTableRoundTrip(String baseLocation) {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
@@ -334,6 +346,35 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThat(resultEntity.getPropertiesAsMap()).isEqualTo(properties);
     Assertions.assertThat(resultEntity.getName()).isEqualTo(tableName);
     Assertions.assertThat(resultEntity.getBaseLocation()).isEqualTo(baseLocation);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"s3://my-bucket/path/to/data/ns/t1", "s3://externally-owned-bucket/ns/t1"})
+  public void testCreateGenericTableWithAllowedLocation(String baseLocation) {
+    icebergCatalog.createNamespace(Namespace.of("ns"));
+    TableIdentifier identifier = TableIdentifier.of("ns", "t1");
+
+    genericTableCatalog.createGenericTable(identifier, "delta", baseLocation, "doc", Map.of());
+
+    Assertions.assertThat(genericTableCatalog.loadGenericTable(identifier).getBaseLocation())
+        .isEqualTo(baseLocation);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"s3://other-bucket/ns/t1", "file://path/to/my/table"})
+  public void testCreateGenericTableWithDisallowedLocationDoesNotPersist(String baseLocation) {
+    icebergCatalog.createNamespace(Namespace.of("ns"));
+    TableIdentifier identifier = TableIdentifier.of("ns", "t1");
+
+    Assertions.assertThatThrownBy(
+            () ->
+                genericTableCatalog.createGenericTable(
+                    identifier, "delta", baseLocation, "doc", Map.of()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+    Assertions.assertThatThrownBy(() -> genericTableCatalog.loadGenericTable(identifier))
+        .isInstanceOf(NoSuchTableException.class);
   }
 
   @Test

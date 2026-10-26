@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.polaris.core.PolarisCallContext;
@@ -656,7 +657,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   /**
    * See {@link PolarisMetaStoreManager#listFullEntities(PolarisCallContext, List,
-   * PolarisEntityType, PolarisEntitySubType, PageToken)}
+   * PolarisEntityType, PolarisEntitySubType, Predicate, PageToken)}
    */
   private @NonNull Page<PolarisBaseEntity> listFullEntities(
       @NonNull PolarisCallContext callCtx,
@@ -664,6 +665,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nullable List<PolarisEntityCore> catalogPath,
       @NonNull PolarisEntityType entityType,
       @NonNull PolarisEntitySubType entitySubType,
+      @NonNull Predicate<PolarisBaseEntity> entityFilter,
       @NonNull PageToken pageToken) {
     // first resolve again the catalogPath to that entity
     PolarisEntityResolver resolver =
@@ -681,7 +683,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         resolver.getParentId(),
         entityType,
         entitySubType,
-        entity -> true,
+        entityFilter,
         Function.identity(),
         pageToken);
   }
@@ -694,13 +696,28 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @NonNull PolarisEntityType entityType,
       @NonNull PolarisEntitySubType entitySubType,
       @NonNull PageToken pageToken) {
+    return listFullEntities(
+        callCtx, catalogPath, entityType, entitySubType, entity -> true, pageToken);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull Page<PolarisBaseEntity> listFullEntities(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull Predicate<PolarisBaseEntity> entityFilter,
+      @NonNull PageToken pageToken) {
     // get meta store we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
 
     // run operation in a read transaction
     return ms.runInReadTransaction(
         callCtx,
-        () -> listFullEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageToken));
+        () ->
+            listFullEntities(
+                callCtx, ms, catalogPath, entityType, entitySubType, entityFilter, pageToken));
   }
 
   /** {@link #createPrincipal(PolarisCallContext, PrincipalEntity)} */
@@ -2354,12 +2371,14 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> parentPath,
+          T entity) {
     TransactionalPersistence ms = ((TransactionalPersistence) callContext.getMetaStore());
     return ms.runInTransaction(
         callContext,
         () -> {
-          return callContext.getMetaStore().hasOverlappingSiblings(callContext, entity);
+          return callContext.getMetaStore().hasOverlappingSiblings(callContext, parentPath, entity);
         });
   }
 

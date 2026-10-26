@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.policy;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_NOT_FOUND;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_MAPPING_NOT_FOUND;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
@@ -53,11 +54,13 @@ import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.policy.exceptions.NoSuchMappingException;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
@@ -157,6 +160,11 @@ public class PolicyCatalog {
   }
 
   public List<PolicyIdentifier> listPolicies(Namespace namespace, @Nullable PolicyType policyType) {
+    return listPolicies(namespace, policyType, PageToken.readEverything()).items();
+  }
+
+  public Page<PolicyIdentifier> listPolicies(
+      Namespace namespace, @Nullable PolicyType policyType, PageToken pageToken) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(namespace));
     if (resolvedEntities == null) {
@@ -174,30 +182,29 @@ public class PolicyCatalog {
               catalogPath,
               PolarisEntityType.POLICY,
               PolarisEntitySubType.NULL_SUBTYPE,
-              PageToken.readEverything());
+              pageToken);
       if (!listEntitiesResult.isSuccess()) {
         throw new IllegalStateException("Failed to list policies in namespace: " + namespace);
       }
-      return listEntitiesResult.getEntities().stream()
+      return listEntitiesResult
+          .getPage()
           .map(
               entity ->
-                  PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build())
-          .toList();
+                  PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build());
     }
-    // with a policyType filter we need to load the full PolicyEntity to apply the filter
+    // with a policyType filter we push the predicate to the store so pagination happens over
+    // matching policies
     return metaStoreManager
-        .listFullEntitiesAll(
+        .listFullEntities(
             callContext.getPolarisCallContext(),
             catalogPath,
             PolarisEntityType.POLICY,
-            PolarisEntitySubType.NULL_SUBTYPE)
-        .stream()
-        .map(PolicyEntity::of)
-        .filter(policyEntity -> policyEntity.getPolicyType() == policyType)
+            PolarisEntitySubType.NULL_SUBTYPE,
+            entity -> PolicyEntity.of(entity).getPolicyType() == policyType,
+            pageToken)
         .map(
             entity ->
-                PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build())
-        .toList();
+                PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build());
   }
 
   public Policy loadPolicy(PolicyIdentifier policyIdentifier) {
@@ -346,13 +353,17 @@ public class PolicyCatalog {
             policyEntity);
 
     if (!result.isSuccess()) {
+      var targetId = getIdentifier(target);
+      if (result.getReturnStatus() == POLICY_MAPPING_NOT_FOUND) {
+        throw new NoSuchMappingException(
+            "The given mapping between policy %s and %s does not exist",
+            policyIdentifier, targetId);
+      }
+
       throw new IllegalStateException(
           String.format(
               "Failed to detach policy %s from %s error status: %s with extraInfo: %s",
-              policyIdentifier,
-              getIdentifier(target),
-              result.getReturnStatus(),
-              result.getExtraInformation()));
+              policyIdentifier, targetId, result.getReturnStatus(), result.getExtraInformation()));
     }
 
     return true;

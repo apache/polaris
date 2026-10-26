@@ -151,15 +151,20 @@ public class PolarisEntityCore implements Identifiable {
   }
 
   /**
-   * @return true if this entity cannot be dropped or renamed. Applies to the admin catalog role and
-   *     the polaris service admin principal role.
+   * @return true if this entity cannot be dropped or renamed. Applies to the admin catalog role,
+   *     the polaris service admin principal role, and the root principal. The root principal is
+   *     protected because realm bootstrap identifies a bootstrapped realm by the presence of a
+   *     principal named {@code root}: dropping or renaming it makes every freshly started process
+   *     treat the realm as not bootstrapped, and re-running bootstrap cannot cleanly repair it.
    */
   @JsonIgnore
   public boolean cannotBeDroppedOrRenamed() {
     return (this.typeCode == PolarisEntityType.CATALOG_ROLE.getCode()
             && this.name.equals(PolarisEntityConstants.getNameOfCatalogAdminRole()))
         || (this.typeCode == PolarisEntityType.PRINCIPAL_ROLE.getCode()
-            && this.name.equals(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole()));
+            && this.name.equals(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole()))
+        || (this.typeCode == PolarisEntityType.PRINCIPAL.getCode()
+            && this.name.equals(PolarisEntityConstants.getRootPrincipalName()));
   }
 
   /**

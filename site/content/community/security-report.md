@@ -17,12 +17,12 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: Security Report
+linkTitle: Security
 type: docs
 weight: 500
 ---
 
-# Security Report
+# Security
 
 Adhering to the specifications of The ASF, the Apache Polaris community maintains a highly proactive and open attitude towards addressing security issues.
 
@@ -45,4 +45,5 @@ The general process for handling security vulnerabilities as follows:
   * [CVE-2026-42810](../security-advisories/cve-2026-42810/)
   * [CVE-2026-42811](../security-advisories/cve-2026-42811/)
   * [CVE-2026-42812](../security-advisories/cve-2026-42812/)
-
+* Fixed in Apache Polaris 1.8.0
+  * [CVE-2026-97395](../security-advisories/cve-2026-97395/)

@@ -25,6 +25,7 @@ import com.google.cloud.storage.StorageException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
+import com.microsoft.aad.msal4j.MsalServiceException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -63,6 +64,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.sts.model.StsException;
 
 @Provider
 public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException> {
@@ -211,6 +213,9 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   public static int extractHttpCodeFromCloudException(Throwable t) {
     return switch (t) {
       case S3Exception s3e -> s3e.statusCode();
+      case MsalServiceException mse ->
+          Optional.ofNullable(mse.statusCode()).orElse(UNKNOWN_CLOUD_HTTP_CODE);
+      case StsException stse -> stse.statusCode();
       case HttpResponseException hre -> hre.getResponse().getStatusCode();
       case StorageException se -> se.getCode();
       default -> UNKNOWN_CLOUD_HTTP_CODE;
@@ -226,6 +231,8 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
    */
   static Optional<Integer> mapCloudExceptionToResponseCode(Throwable t) {
     if (!(t instanceof S3Exception
+        || t instanceof MsalServiceException
+        || t instanceof StsException
         || t instanceof AzureException
         || t instanceof StorageException)) {
       return Optional.empty();

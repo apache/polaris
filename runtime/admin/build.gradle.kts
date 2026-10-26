@@ -41,20 +41,35 @@ dependencies {
   runtimeOnly(project(":polaris-persistence-nosql-metastore"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus-distcache"))
+  runtimeOnly(project(":polaris-persistence-nosql-inmemory")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-inmemory-quarkus")
+    }
+  }
+  runtimeOnly(project(":polaris-persistence-nosql-mongodb")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-mongodb-quarkus")
+    }
+  }
+  runtimeOnly(project(":polaris-persistence-nosql-dynamodb")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-dynamodb-quarkus")
+    }
+  }
   runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
   runtimeOnly(project(":polaris-persistence-nosql-metastore-maintenance"))
 
-  runtimeOnly("io.quarkus:quarkus-mongodb-client")
-
   implementation("io.quarkus:quarkus-jdbc-postgresql")
-  implementation(enforcedPlatform(libs.quarkus.bom))
+  implementation(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+  }
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
 
   implementation(platform(libs.awssdk.bom))
-  implementation("software.amazon.awssdk:apache-client") {
-    exclude("commons-logging", "commons-logging")
-  }
+  implementation("software.amazon.awssdk:apache5-client")
 
   implementation(project(":polaris-runtime-common"))
 
@@ -65,7 +80,11 @@ dependencies {
   testFixturesApi(project(":polaris-core"))
   testFixturesImplementation(project(":polaris-runtime-test-common"))
 
-  testFixturesApi(enforcedPlatform(libs.quarkus.bom))
+  testFixturesApi(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+  }
   testFixturesApi("io.quarkus:quarkus-junit")
 
   testFixturesApi(project(":polaris-container-spec-helper"))
@@ -90,7 +109,7 @@ quarkus {
         .attributes
         .map { e -> "quarkus.package.jar.manifest.attributes.\"${e.key}\"" to e.value.toString() }
         .toMap()
-    }
+    },
   )
   buildForkOptions {
     maxHeapSize = "2G"

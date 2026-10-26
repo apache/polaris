@@ -27,7 +27,9 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -49,11 +51,10 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
     return newWrapper(
         PolarisPrincipal.of(
             principalEntity.getName(),
-            Map.of(
-                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-                principalEntity,
-                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
-                true),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
             Set.of()));
   }
 
@@ -61,7 +62,9 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
     return newWrapper(
         PolarisPrincipal.of(
             principalEntity.getName(),
-            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+                .build(),
             activatedPrincipalRoles));
   }
 
@@ -112,7 +115,8 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         .action(
             () ->
                 newWrapper(Set.of(PRINCIPAL_ROLE1))
-                    .createGenericTable(newtable, "format", "file:///temp/", "doc", Map.of()))
+                    .createGenericTable(
+                        newtable, "format", "file:///tmp/authz/ns2/newtable", "doc", Map.of()))
         .cleanupAction(() -> newWrapper(Set.of(PRINCIPAL_ROLE2)).dropGenericTable(newtable))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
@@ -148,7 +152,11 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
             () ->
                 newWrapper(Set.of(PRINCIPAL_ROLE2))
                     .createGenericTable(
-                        TABLE_NS1_1_GENERIC, "format", "file:///temp/", "doc", Map.of()))
+                        TABLE_NS1_1_GENERIC,
+                        "format",
+                        "file:///tmp/authz/ns1/layer1_table_generic",
+                        "doc",
+                        Map.of()))
         .shouldPassWith(PolarisPrivilege.TABLE_DROP)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -200,7 +208,11 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
             () ->
                 newWrapper(Set.of(PRINCIPAL_ROLE2))
                     .createGenericTable(
-                        TABLE_NS1_1_GENERIC, "format", "file:///temp/", "doc", Map.of()))
+                        TABLE_NS1_1_GENERIC,
+                        "format",
+                        "file:///tmp/authz/ns1/layer1_table_generic",
+                        "doc",
+                        Map.of()))
         .shouldPassWith(PolarisPrivilege.TABLE_DROP)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)

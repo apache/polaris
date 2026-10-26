@@ -143,6 +143,14 @@
     {
       "request": { "authzOp": "LOAD_VIEW", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/view1" },
       "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "UPDATE_TABLE", "principal": { "name": "datawriter1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "COMMIT_TRANSACTION", "principal": { "name": "datawriter1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
     }
   ]
 }

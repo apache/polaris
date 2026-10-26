@@ -23,7 +23,7 @@ import java.util.Optional;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.persistence.cache.EntityWeigher;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 
 /**
  * Configurations for features within Polaris. These configurations are intended to be customized
@@ -403,6 +403,23 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   StorageConfigInfo.StorageTypeEnum.GCS.name()))
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<List<String>>
+      SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS =
+          PolarisConfiguration.<List<String>>builder()
+              .key("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS")
+              .description(
+                  "The credential vending mechanisms an S3 catalog in this realm may name explicitly. Names\n"
+                      + "are case-sensitive and must match a mechanism's identifier exactly, for example STS.\n"
+                      + "Apache Polaris supports STS, which is STS AssumeRole. A catalog that\n"
+                      + "leaves credentialVendingMechanism empty uses the server's default mechanism and is\n"
+                      + "always allowed. Realm-level only; catalog properties cannot widen it. Enforced at\n"
+                      + "catalog create and update, and when the server builds the storage integration that\n"
+                      + "vends credentials for a catalog. A listed mechanism with no implementation in this\n"
+                      + "server is reported at startup and refused at catalog create and update and whenever\n"
+                      + "a credential is vended for a catalog that names it.")
+              .defaultValue(List.of(S3CredentialVendingMechanism.STS))
+              .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_NAMESPACE_DROP")
@@ -495,12 +512,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + " when LIST_PAGINATION_ENABLED is true; with pagination disabled the requested page"
                   + " size is ignored and the full result set is returned. For federated catalogs it"
                   + " always applies, because Polaris paginates those listings itself. Values <= 0 mean"
-                  + " unlimited (no max page size enforced), which is the default. Setting a maximum"
-                  + " deviates from the Iceberg REST specification, which requires a request that"
-                  + " does not supply a pageToken to receive the complete result with a null"
-                  + " next-page-token: such a request is then truncated to the maximum and answered"
-                  + " with a continuation token, so a client that does not follow continuations sees"
-                  + " only the first page.")
+                  + " unlimited (no max page size enforced), which is the default. A request that"
+                  + " supplies neither pageToken nor pageSize asks for the complete listing, so when"
+                  + " the result does not fit the maximum it is rejected rather than truncated and"
+                  + " answered with a continuation token. An empty pageToken starts a paginated"
+                  + " listing and is capped like any other paginated request.")
           .defaultValue(-1)
           .buildFeatureConfiguration();
 
@@ -515,10 +531,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Long>builder()
           .key("ENTITY_CACHE_WEIGHER_TARGET")
           .description(
-              "The maximum weight for the entity cache. This is a heuristic value without any particular"
-                  + " unit of measurement. It roughly correlates with the total heap size of cached values. Fine-tuning"
-                  + " requires experimentation in the specific deployment environment")
-          .defaultValue(100 * EntityWeigher.WEIGHT_PER_MB)
+              "The maximum weight for the entity cache. Weights approximate the size in bytes of the"
+                  + " cached entities and of their grant records, so the default corresponds to roughly"
+                  + " 100 MiB of entity data. This is a heuristic: actual heap usage is higher than the"
+                  + " configured weight, and fine-tuning requires experimentation in the specific"
+                  + " deployment environment.")
+          .defaultValue(100L * 1024 * 1024)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> ENABLE_CATALOG_FEDERATION =

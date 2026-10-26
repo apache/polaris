@@ -64,7 +64,7 @@ tasks.named<Test>("test") {
 }
 
 private class ConfigDocsGenCommandLineArgumentProvider(
-  @get:Classpath val libraries: Provider<List<File>>
+  @get:Classpath val libraries: Provider<List<File>>,
 ) : CommandLineArgumentProvider {
   override fun asArguments(): Iterable<String> {
     return listOf("-Dtesting.libraries=" + libraries.get().joinToString(":"))

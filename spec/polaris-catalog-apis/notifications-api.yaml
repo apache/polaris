@@ -141,4 +141,4 @@ components:
           "type": "AlreadyExistsException",
           "code": 409
         }
-      }
+       }

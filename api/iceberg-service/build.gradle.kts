@@ -63,12 +63,12 @@ val generatedOpenApiSrcDir = project.layout.buildDirectory.dir("generated-openap
 openApiGenerate {
   // The OpenAPI generator does NOT resolve relative paths correctly against the Gradle project
   // directory
-  inputSpec = provider { specsDir.file("polaris-catalog-service.yaml").asFile.absolutePath }
+  inputSpec = specsDir.file("generated/bundled-polaris-catalog-service.yaml")
   generatorName = "jaxrs-resteasy"
-  outputDir = provider { generatedDir.get().asFile.absolutePath }
+  outputDir = generatedDir
   apiPackage = "org.apache.polaris.service.catalog.api"
-  ignoreFileOverride.set(provider { rootDir.file(".openapi-generator-ignore").asFile.absolutePath })
-  templateDir.set(provider { templatesDir.asFile.absolutePath })
+  ignoreFileOverride = rootDir.file(".openapi-generator-ignore")
+  templateDir = templatesDir
   removeOperationIdPrefix.set(true)
   globalProperties.put("apis", "CatalogApi,ConfigurationApi,OAuth2Api")
   globalProperties.put("models", "false")
@@ -112,6 +112,8 @@ openApiGenerate {
       "RegisterViewRequest" to "org.apache.iceberg.rest.requests.RegisterViewRequest",
       "IcebergErrorResponse" to "org.apache.iceberg.rest.responses.ErrorResponse",
       "OAuthError" to "org.apache.iceberg.rest.responses.ErrorResponse",
+      "RemoteSignRequest" to "org.apache.iceberg.rest.requests.RemoteSignRequest",
+      "RemoteSignResult" to "org.apache.iceberg.rest.responses.RemoteSignResponse",
 
       // Custom types defined below
       "CommitViewRequest" to "org.apache.polaris.service.types.CommitViewRequest",

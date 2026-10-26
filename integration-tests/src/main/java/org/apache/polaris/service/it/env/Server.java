@@ -56,8 +56,7 @@ public interface Server extends AutoCloseable {
    * be confused with the Polaris Management API. This URI includes the management interface root
    * path, usually {@code /q} on Quarkus platforms.
    *
-   * <p>The management URI is sometimes unavailable, e.g. in the case of a @QuarkusIntegrationTest;
-   * in such cases this method returns empty.
+   * <p>The management URI may be unavailable; in such cases this method returns empty.
    */
   default Optional<URI> managementUri() {
     return Optional.empty();

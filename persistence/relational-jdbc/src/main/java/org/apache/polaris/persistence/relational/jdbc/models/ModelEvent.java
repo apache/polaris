@@ -44,14 +44,9 @@ public interface ModelEvent extends Converter<EventEntity> {
   String ADDITIONAL_PROPERTIES = "additional_properties";
 
   /**
-   * Legacy sentinel stored in {@code events.catalog_id} for events that are not catalog-scoped on
-   * schema versions &lt; 5, where the column is {@code NOT NULL}. Never exposed outside the JDBC
-   * layer: {@link #fromEvent(EventEntity, int)} substitutes it for a null catalog id on pre-v5
-   * schemas, and {@link #fromResultSet} coalesces it back to null on read.
-   *
-   * <p>Because {@link #fromResultSet} cannot know which schema version a row was written under, the
-   * coalescing is unconditional, so this string remains reserved on all schema versions: a catalog
-   * literally named {@code __realm__} would have its events read back as realm-scoped.
+   * Legacy sentinel that was stored in {@code events.catalog_id} for realm-scoped events on schema
+   * versions &lt; 5, where the column was {@code NOT NULL}. Coalesced back to null on read so that
+   * rows written by older Polaris versions are still readable.
    */
   String LEGACY_REALM_SCOPED_CATALOG_ID = "__realm__";
 
@@ -148,16 +143,10 @@ public interface ModelEvent extends Converter<EventEntity> {
     return map;
   }
 
-  static ModelEvent fromEvent(EventEntity event, int schemaVersion) {
+  static ModelEvent fromEvent(EventEntity event) {
     if (event == null) return null;
-
-    String catalogId = event.getCatalogId();
-    if (schemaVersion < 5 && catalogId == null) {
-      // Schema versions < 5 declare events.catalog_id NOT NULL; store the legacy sentinel there.
-      catalogId = LEGACY_REALM_SCOPED_CATALOG_ID;
-    }
     return ImmutableModelEvent.builder()
-        .catalogId(catalogId)
+        .catalogId(event.getCatalogId())
         .eventId(event.getId())
         .requestId(event.getRequestId())
         .eventType(event.getEventType())

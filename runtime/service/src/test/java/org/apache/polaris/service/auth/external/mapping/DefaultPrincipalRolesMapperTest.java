@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.auth.external.mapping;
 
-import static org.apache.polaris.service.auth.external.tenant.OidcTenantResolvingAugmentor.TENANT_CONFIG_ATTRIBUTE;
+import static org.apache.polaris.service.auth.external.OidcIdentityPreparer.TENANT_CONFIG_ATTRIBUTE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;

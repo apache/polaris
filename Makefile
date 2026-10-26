@@ -131,6 +131,21 @@ spotless-apply: check-dependencies ## Apply code formatting using Spotless Gradl
 	@./gradlew spotlessApply
 	@echo "--- Spotless formatting applied ---"
 
+.PHONY: spec-bundle
+spec-bundle: ## Regenerate the bundled OpenAPI spec, license header included
+	@echo "--- Regenerating bundled OpenAPI spec ---"
+	@./spec/bundle.sh
+	@echo "--- Bundled OpenAPI spec regenerated ---"
+
+.PHONY: spec-bundle-verify
+spec-bundle-verify: spec-bundle ## Verify the bundled OpenAPI spec is up to date
+	@echo "--- Verifying bundled OpenAPI spec is up to date ---"
+	@if ! git diff --exit-code spec/generated/; then \
+		echo "ERROR: bundled OpenAPI spec is out of date. Please run 'make spec-bundle' and commit the changes."; \
+		exit 1; \
+	fi
+	@echo "--- Bundled OpenAPI spec is up to date ---"
+
 ##@ Polaris Client
 
 # Target to create the virtual environment directory

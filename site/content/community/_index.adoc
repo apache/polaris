@@ -72,11 +72,15 @@ pass:[<a href="https://lists.apache.org/list.html?commits@polaris.apache.org" ta
 [cols="4,1,3"]
 |===
 
+| https://github.com/adam-christian-software[Adam Christian] | Committer |
+| https://github.com/adnanhemani[Adnan Hemani] | Committer |
 | https://github.com/ajantha-bhat[Ajantha Bhat] | Committer | link:https://www.dremio.com/[Dremio]
 | https://github.com/adutra[Alex Dutra] | PMC Member | link:https://www.dremio.com/[Dremio]
 | https://github.com/annafil[Anna Filippova] | Committer | link:https://www.snowflake.com/[Snowflake]
 | Anoop Johnson | PMC Member | link:https://www.databricks.com/[Databricks]
 | https://github.com/ashvina[Ashvin Agrawal] | PMC Member | link:https://www.microsoft.com/[Microsoft]
+| https://github.com/XN137[Christopher Lambert] | Committer |
+| https://github.com/danicafine[Danica Fine] | Committer |
 | https://github.com/dennishuo[Dennis Huo] | PMC Member | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/dimas-b[Dmitri Bourlatchkov] | PMC Member | link:https://www.dremio.com/[Dremio]
 | https://github.com/eric-maynard[Eric Maynard] | Committer |
@@ -88,15 +92,17 @@ pass:[<a href="https://lists.apache.org/list.html?commits@polaris.apache.org" ta
 | https://github.com/HonahX[Jonas Jiang] | Committer | link:https://www.snowflake.com/[Snowflake]
 | Kent Yao | PMC Member |
 | https://github.com/collado-mike[Michael Collado] | PMC Member | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/nandorKollar[Nándor Kollár] | Committer |
 | https://github.com/pingtimeout[Pierre Laporte] | Committer | link:https://www.dremio.com/[Dremio]
 | https://github.com/singhpk234[Prashant Singh] | Committer | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/snazy[Robert Stupp] | PMC Member | link:https://www.dremio.com/[Dremio]
 | https://github.com/russellspitzer[Russell Spitzer] | PMC Member | link:https://www.snowflake.com/[Snowflake]
 | Ryan Blue | PMC Member | link:https://www.databricks.com/[Databricks]
-| https://github.com/sungwy[Sung Yun] | Committer | link:https://www.bloomberg.com/[Bloomberg]
+| https://github.com/sungwy[Sung Yun] | PMC Member | link:https://www.bloomberg.com/[Bloomberg]
 | https://github.com/takidau[Tyler Akidau] | PMC Member | link:https://www.redpanda.com/[Redpanda]
 | https://github.com/MonkeyCanCode[Yong Zheng] | PMC Member |
 | https://github.com/flyrain[Yufei Gu] | PMC Member | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/gh-yzou[Yun Zou] | Committer |
 | https://github.com/ebyhr[Yuya Ebihara] | Committer | link:https://www.starburst.io/[Starburst]
 |===
 {{% /blocks/feature %}}

@@ -107,6 +107,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     PageToken pageRequest =
         PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
     Page<TableIdentifier> page = genericTableCatalog.listGenericTables(parent, pageRequest);
+    rejectIncompleteListing(pageToken, pageSize, page.encodedResponseToken());
     return ListGenericTablesResponse.builder()
         .setIdentifiers(new LinkedHashSet<>(page.items()))
         .setNextPageToken(page.encodedResponseToken())
@@ -161,20 +162,5 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             .build();
 
     return LoadGenericTableResponse.builder().setTable(loadedTable).build();
-  }
-
-  private boolean shouldDecodeToken() {
-    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
-    return catalogEntity == null
-        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED)
-        : realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED, catalogEntity);
-  }
-
-  private int maxPageSize() {
-    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
-    return catalogEntity == null
-        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE)
-        : realmConfig()
-            .getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity);
   }
 }

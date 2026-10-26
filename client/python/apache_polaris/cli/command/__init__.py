@@ -188,6 +188,8 @@ class Command(ABC):
                 ),
                 location=options_get(Arguments.LOCATION),
                 properties=properties,
+                set_properties=set_properties,
+                remove_properties=remove_properties,
                 page_size=options_get(Arguments.PAGE_SIZE),
             )
         elif options.command == Commands.PROFILES:
@@ -205,6 +207,7 @@ class Command(ABC):
                 subcommand,
                 catalog_name=options_get(Arguments.CATALOG),
                 namespace=options_get(Arguments.NAMESPACE),
+                page_size=options_get(Arguments.PAGE_SIZE),
                 policy_name=options_get(Arguments.POLICY),
                 policy_file=options_get(Arguments.POLICY_FILE),
                 policy_type=options_get(Arguments.POLICY_TYPE),
@@ -238,6 +241,8 @@ class Command(ABC):
                 ),
                 table_name=options_get(Arguments.TABLE),
                 page_size=options_get(Arguments.PAGE_SIZE),
+                metadata_location=options_get(Arguments.METADATA_LOCATION),
+                overwrite=options_get(Arguments.OVERWRITE),
             )
         elif options.command == Commands.VIEWS:
             from apache_polaris.cli.command.views import ViewCommand
@@ -251,6 +256,7 @@ class Command(ABC):
                 ),
                 view_name=options_get(Arguments.VIEW),
                 page_size=options_get(Arguments.PAGE_SIZE),
+                metadata_location=options_get(Arguments.METADATA_LOCATION),
             )
         elif options.command == Commands.GENERIC_TABLES:
             from apache_polaris.cli.command.generic_tables import GenericTableCommand

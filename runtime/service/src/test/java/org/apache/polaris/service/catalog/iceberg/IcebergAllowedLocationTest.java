@@ -65,6 +65,7 @@ import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
+import org.apache.iceberg.rest.responses.GetNamespaceResponse;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -74,6 +75,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.jetbrains.annotations.NotNull;
@@ -196,7 +198,7 @@ public class IcebergAllowedLocationTest {
                     catalog,
                     namespace,
                     createTableRequest,
-                    "vended-credentials",
+                    List.of("vended-credentials"),
                     IDEMPOTENCY_KEY,
                     services.realmContext(),
                     services.securityContext()));
@@ -227,7 +229,7 @@ public class IcebergAllowedLocationTest {
                 catalog,
                 namespace,
                 createTableRequest,
-                "vended-credentials",
+                List.of("vended-credentials"),
                 IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
@@ -295,7 +297,7 @@ public class IcebergAllowedLocationTest {
                 catalog,
                 namespace,
                 createTableRequest,
-                "vended-credentials",
+                List.of("vended-credentials"),
                 IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
@@ -885,6 +887,127 @@ public class IcebergAllowedLocationTest {
     }
   }
 
+  /**
+   * A namespace whose parent is a nested namespace with no stored location is still validated
+   * against the default location derived from that parent, both when the location of an existing
+   * namespace is set and when a namespace is created with one.
+   */
+  @Test
+  void testNestedNamespaceValidatedAgainstParentWithoutStoredLocation(@TempDir Path tmpDir) {
+    TestServices services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE")))
+            .build();
+    String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+
+    String sep = NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR;
+    String child = namespace + sep + "child";
+    String grandchild = child + sep + "grandchild";
+    createNestedNamespace(services, namespace, null);
+    createNestedNamespace(services, child, null);
+    createNestedNamespace(services, grandchild, null);
+
+    // The parent keeps no stored location once it is removed, so the grandchild's default location
+    // has to be derived from the parent's name.
+    removeNestedNamespaceProperties(services, child, "location");
+
+    String grandchildLocation = loadNestedNamespaceProperties(services, grandchild).get("location");
+    updateNestedNamespaceProperties(services, grandchild, Map.of("location", grandchildLocation));
+
+    // The derived default is still what a requested location is compared against.
+    assertThatThrownBy(
+            () ->
+                updateNestedNamespaceProperties(
+                    services, grandchild, Map.of("location", catalogLocation + "elsewhere")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("has a custom location");
+
+    // Creating a namespace with an explicit location under the same parent is validated the same
+    // way.
+    String sibling = child + sep + "sibling";
+    createNestedNamespace(services, sibling, grandchildLocation.replace("grandchild", "sibling"));
+
+    assertThatThrownBy(
+            () ->
+                createNestedNamespace(
+                    services, child + sep + "other", catalogLocation + "elsewhere"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("has a custom location");
+  }
+
+  private void createNestedNamespace(TestServices services, String nsPath, String location) {
+    CreateNamespaceRequest.Builder builder =
+        CreateNamespaceRequest.builder()
+            .withNamespace(
+                NamespaceUtils.splitNamespace(nsPath, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR));
+    if (location != null) {
+      Map<String, String> namespaceProperties = new HashMap<>();
+      namespaceProperties.put("location", location);
+      builder.setProperties(namespaceProperties);
+    }
+    CreateNamespaceRequest request = builder.build();
+    try (Response response =
+        services
+            .restApi()
+            .createNamespace(
+                catalog,
+                request,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  private Map<String, String> loadNestedNamespaceProperties(TestServices services, String nsPath) {
+    try (Response response =
+        services
+            .restApi()
+            .loadNamespaceMetadata(
+                catalog, nsPath, services.realmContext(), services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return response.readEntity(GetNamespaceResponse.class).properties();
+    }
+  }
+
+  private void removeNestedNamespaceProperties(
+      TestServices services, String nsPath, String... removals) {
+    UpdateNamespacePropertiesRequest.Builder request = UpdateNamespacePropertiesRequest.builder();
+    for (String removal : removals) {
+      request.remove(removal);
+    }
+    sendNamespaceUpdate(services, nsPath, request.build());
+  }
+
+  private void updateNestedNamespaceProperties(
+      TestServices services, String nsPath, Map<String, String> updates) {
+    UpdateNamespacePropertiesRequest.Builder request = UpdateNamespacePropertiesRequest.builder();
+    updates.forEach(request::update);
+    sendNamespaceUpdate(services, nsPath, request.build());
+  }
+
+  private void sendNamespaceUpdate(
+      TestServices services, String nsPath, UpdateNamespacePropertiesRequest request) {
+    try (Response response =
+        services
+            .restApi()
+            .updateProperties(
+                catalog,
+                nsPath,
+                request,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
   private void updateNamespaceProperties(TestServices services, Map<String, String> updates) {
     UpdateNamespacePropertiesRequest.Builder request = UpdateNamespacePropertiesRequest.builder();
     updates.forEach(request::update);
@@ -1020,7 +1143,7 @@ public class IcebergAllowedLocationTest {
                 catalog,
                 namespace,
                 createReq,
-                "vended-credentials",
+                List.of("vended-credentials"),
                 IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {

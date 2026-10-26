@@ -19,6 +19,12 @@
 
 package org.apache.polaris.extension.auth.ranger;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -30,16 +36,54 @@ import org.apache.polaris.core.entity.CatalogEntity;
 public class RangerTestUtils {
 
   private static final String REALM_CONTEXT_NAME = "POLARIS";
+  private static final String SERVICE_DEF_PLACEHOLDER = "@@POLARIS_RANGER_SERVICE_DEF@@";
 
-  public static RangerPolarisAuthorizerConfig createConfig() {
+  /**
+   * Writes the {@code dev_polaris.json} authz fixture into {@code policyDir} by splicing the
+   * shipped {@code polaris-ranger-servicedef.json} into the checked-in template, then points the
+   * returned config at that directory via {@code LocalFolderPolicySource}. Keeping this in test
+   * code (rather than a build-time Gradle task) keeps the fixture generation next to the test that
+   * actually consumes it.
+   */
+  public static RangerPolarisAuthorizerConfig createConfig(Path policyDir) {
+    writeAuthzTestFixture(policyDir);
+
     Map<String, String> properties = new HashMap<>();
-
     properties.put(
         "authz.default.policy.source.impl",
-        "org.apache.ranger.admin.client.EmbeddedResourcePolicySource");
-    properties.put("authz.default.policy.source.embedded_resource.path", "/authz_tests");
+        "org.apache.ranger.admin.client.LocalFolderPolicySource");
+    properties.put("authz.default.policy.source.local_folder.path", policyDir.toString());
 
     return createConfig("dev_polaris", properties);
+  }
+
+  private static void writeAuthzTestFixture(Path policyDir) {
+    String serviceDef = readClasspathResource("/polaris-ranger-servicedef.json");
+    String template =
+        stripLicenseHeader(readClasspathResource("/authz_tests/dev_polaris.json.template"));
+    String merged = template.replace(SERVICE_DEF_PLACEHOLDER, serviceDef);
+    try {
+      Files.writeString(policyDir.resolve("dev_polaris.json"), merged);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  // Strips the ASF license header (required since this template is a checked-in source file)
+  // that precedes the "{" starting the actual, not-quite-valid-JSON template content.
+  private static String stripLicenseHeader(String text) {
+    return text.substring(text.indexOf("*/") + 2).stripLeading();
+  }
+
+  private static String readClasspathResource(String resourcePath) {
+    try (InputStream in = RangerTestUtils.class.getResourceAsStream(resourcePath)) {
+      if (in == null) {
+        throw new IOException(resourcePath + " not found on classpath");
+      }
+      return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   public static RangerPolarisAuthorizerConfig createConfig(

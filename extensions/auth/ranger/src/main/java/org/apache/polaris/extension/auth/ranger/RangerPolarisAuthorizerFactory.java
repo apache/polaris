@@ -39,14 +39,13 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
   private static final String ERR_AUTHORIZER_FACTORY_NOT_INITIALIZED =
       "Ranger authorizer factory was not initialized successfully";
 
-  private final RangerPolarisAuthorizerConfig config;
-  private RangerEmbeddedAuthorizer authorizer;
-  private String serviceName;
+  private final RangerEmbeddedAuthorizer authorizer;
+  private final String serviceName;
+
   @Inject private RealmContext realmContext;
 
   @Inject
   RangerPolarisAuthorizerFactory(RangerPolarisAuthorizerConfig config) {
-    this.config = config;
     config.validate();
     LOG.info("Initializing RangerAuthorizer");
     try {
@@ -71,7 +70,7 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
     }
 
     RangerPolarisAuthorizer polarisAuthorizer =
-        new RangerPolarisAuthorizer(authorizer, serviceName, realmConfig);
+        new RangerPolarisAuthorizer(authorizer, serviceName);
 
     if (realmContext != null) {
       polarisAuthorizer.setRealmContext(realmContext);

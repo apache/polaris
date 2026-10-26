@@ -26,7 +26,9 @@ import static org.apache.polaris.persistence.nosql.api.index.IndexKey.INDEX_KEY_
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.NULL_ESCAPED;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.deserializeKey;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.key;
+import static org.apache.polaris.persistence.nosql.api.index.IndexKey.skip;
 import static org.apache.polaris.persistence.nosql.api.index.Util.asHex;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.InstanceOfAssertFactories.INTEGER;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -58,12 +60,28 @@ public class TestIndexKey {
   @ParameterizedTest
   @MethodSource("keyLengthGood")
   void keyLengthGood(String value) {
-    key(value);
+    var indexKey = key(value);
+    var buffer = ByteBuffer.allocate(indexKey.serializedSize());
+    indexKey.serialize(buffer).flip();
+
+    assertThat(deserializeKey(buffer.duplicate())).isEqualTo(indexKey);
+    var skipped = buffer.duplicate();
+    var positionBeforeSkip = skipped.position();
+    skip(skipped);
+    assertThat(skipped.position() - positionBeforeSkip).isEqualTo(indexKey.serializedSize());
+    assertThat(skipped.remaining()).isZero();
   }
 
   static Stream<String> keyLengthGood() {
+    // Include MAX_LENGTH keys of escaped bytes: skip used to count two units per escaped byte and
+    // reject these after they had already been written and deserialized successfully.
     return Stream.of(
-        "1", STRING_100, STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100);
+        "1",
+        STRING_100,
+        STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100,
+        "\u0001".repeat(IndexKey.MAX_LENGTH),
+        "\u0002".repeat(IndexKey.MAX_LENGTH),
+        "\u0001".repeat(IndexKey.MAX_LENGTH - 1) + "a");
   }
 
   @ParameterizedTest
@@ -77,7 +95,23 @@ public class TestIndexKey {
   static Stream<String> keyTooLong() {
     return Stream.of(
         STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100 + "x",
-        STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100);
+        STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100,
+        "\u0001".repeat(IndexKey.MAX_LENGTH + 1),
+        "\u0002".repeat(IndexKey.MAX_LENGTH + 1));
+  }
+
+  @Test
+  void skipRejectsDecodedLengthOverMax() {
+    // Wire form that key() cannot produce: MAX_LENGTH + 1 plain bytes then EOF.
+    var buffer = ByteBuffer.allocate(IndexKey.MAX_LENGTH + 2);
+    for (int i = 0; i < IndexKey.MAX_LENGTH + 1; i++) {
+      buffer.put((byte) 'a');
+    }
+    buffer.put(EOF).flip();
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> skip(buffer.duplicate()))
+        .withMessage("Deserialized key too long");
   }
 
   @ParameterizedTest
@@ -246,6 +280,12 @@ public class TestIndexKey {
     var deserialized = deserializeKey(serialized.duplicate());
     soft.assertThat(deserialized).isEqualTo(key);
 
+    var toSkip = serialized.duplicate();
+    var positionBeforeSkip = toSkip.position();
+    skip(toSkip);
+    soft.assertThat(toSkip.position() - positionBeforeSkip).isEqualTo(expectedSerializedSize);
+    soft.assertThat(toSkip.remaining()).isZero();
+
     var big = alloc.apply(8192);
     big.position(1234);
     big.put(serialized.duplicate());
@@ -254,6 +294,11 @@ public class TestIndexKey {
     ser.position(1234);
     deserialized = deserializeKey(ser.duplicate());
     soft.assertThat(deserialized).isEqualTo(key);
+
+    var bigSkip = ser.duplicate();
+    positionBeforeSkip = bigSkip.position();
+    skip(bigSkip);
+    soft.assertThat(bigSkip.position() - positionBeforeSkip).isEqualTo(expectedSerializedSize);
   }
 
   static Stream<Arguments> keySerializationJsonRoundTrip() {

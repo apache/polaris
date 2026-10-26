@@ -44,6 +44,16 @@ dependencies {
   runtimeOnly(project(":polaris-persistence-nosql-metastore"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus-distcache"))
+  runtimeOnly(project(":polaris-persistence-nosql-inmemory")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-inmemory-quarkus")
+    }
+  }
+  runtimeOnly(project(":polaris-persistence-nosql-mongodb")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-mongodb-quarkus")
+    }
+  }
   runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
   runtimeOnly(project(":polaris-persistence-nosql-metastore-maintenance"))
 
@@ -82,7 +92,6 @@ dependencies {
   implementation(libs.auth0.jwt)
 
   implementation(libs.smallrye.common.annotation)
-  implementation(libs.swagger.jaxrs)
   implementation(libs.microprofile.fault.tolerance.api)
 
   compileOnly(libs.jspecify)
@@ -96,13 +105,16 @@ dependencies {
   implementation("software.amazon.awssdk:s3")
   implementation("software.amazon.awssdk:kms")
   implementation("software.amazon.awssdk:cloudwatchlogs")
-  implementation("software.amazon.awssdk:apache-client") {
+  implementation("software.amazon.awssdk:apache5-client")
+  // Iceberg 1.11.0 still requires Apache 4 for its default S3 HTTP client.
+  runtimeOnly("software.amazon.awssdk:apache-client") {
     exclude("commons-logging", "commons-logging")
   }
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-core")
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
+  implementation(libs.msal4j)
 
   compileOnly(libs.swagger.annotations)
 
@@ -134,8 +146,6 @@ dependencies {
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(project(":polaris-relational-jdbc"))
 
-  testImplementation(project(":polaris-rustfs-testcontainer"))
-
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
   testImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")
 
@@ -143,9 +153,14 @@ dependencies {
   testImplementation("software.amazon.awssdk:kms")
   testImplementation("software.amazon.awssdk:dynamodb")
 
-  testImplementation(enforcedPlatform(libs.quarkus.bom))
+  testImplementation(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+  }
   testImplementation("io.quarkus:quarkus-junit")
   testImplementation("io.quarkus:quarkus-junit-mockito")
+  testImplementation("io.quarkus:quarkus-test-oidc-server")
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
   testImplementation("io.quarkus:quarkus-jdbc-h2")
@@ -155,10 +170,12 @@ dependencies {
   testImplementation("io.rest-assured:rest-assured")
 
   testImplementation(platform(libs.testcontainers.bom))
+  testImplementation("org.testcontainers:testcontainers")
+  testImplementation("org.testcontainers:testcontainers-postgresql")
   testImplementation(project(":polaris-floci-aws-testcontainer"))
   testImplementation(project(":polaris-floci-az-testcontainer"))
   testImplementation(project(":polaris-floci-gcp-testcontainer"))
-  testImplementation(project(":polaris-keycloak-testcontainer"))
+  testImplementation(project(":polaris-rustfs-testcontainer"))
 
   testImplementation(project(":polaris-runtime-test-common"))
   testImplementation(project(":polaris-container-spec-helper"))
@@ -169,10 +186,6 @@ dependencies {
   testImplementation(libs.awaitility)
 
   testImplementation(libs.junit.pioneer)
-
-  testImplementation(platform(libs.testcontainers.bom))
-  testImplementation("org.testcontainers:testcontainers")
-  testImplementation("org.testcontainers:testcontainers-postgresql")
 
   testImplementation(project(":polaris-persistence-nosql-api"))
   testImplementation(testFixtures(project(":polaris-persistence-nosql-api")))
@@ -238,19 +251,16 @@ tasks.withType(Test::class.java).configureEach {
   // - Hadoop's stats-cleaner (org.apache.hadoop.fs.FileSystem.Statistics.STATS_DATA_CLEANER)
   // - Guava's 'MoreExecutors' (via Iceberg `ThreadPools`)`
   // Forcing a new JVM after each test class works around this issue.
-  if ("test" == name) {
-    forkEvery = 1
-
-    // enlarge the max heap size to avoid out of memory error
-    maxHeapSize = "4g"
-  }
+  forkEvery = 1
+  // enlarge the max heap size to avoid out of memory error
+  maxHeapSize = "4g"
 
   if ("intTest" == name || "cloutTest" == name) {
     val logsDir = buildDir.map { b -> b.asFile.resolve("logs") }
 
     // JVM arguments provider does not interfere with Gradle's cache keys
     jvmArgumentProviders.add(
-      IntTestArgumentProvider(logsDir, quarkusProperties, quarkusTestArgLine)
+      IntTestArgumentProvider(logsDir, quarkusProperties, quarkusTestArgLine),
     )
 
     // delete files from previous runs

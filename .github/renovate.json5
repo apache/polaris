@@ -105,11 +105,6 @@
       ],
       enabled: false
     },
-    // Disable update for openapi-generator-cli due to our OpenAPI spec version
-    {
-      matchPackageNames: ["openapi-generator-cli"],
-      enabled: false
-    },
     // Disable update for python version
     {
       matchPackageNames: ["python"],

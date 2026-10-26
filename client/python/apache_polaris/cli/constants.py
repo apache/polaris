@@ -142,6 +142,7 @@ class Subcommands:
     APPLY = "apply"
     EXPORT = "export"
     SUMMARIZE = "summarize"
+    REGISTER = "register"
 
 
 class Actions:
@@ -204,6 +205,8 @@ class Arguments:
     REGION = "region"
     PROFILE = "profile"
     PROXY = "proxy"
+    SSL_CA_CERT = "ssl_ca_cert"
+    INSECURE = "insecure"
     DEBUG = "debug"
     HADOOP_WAREHOUSE = "hadoop_warehouse"
     HIVE_WAREHOUSE = "hive_warehouse"
@@ -249,6 +252,8 @@ class Arguments:
     HEADER = "header"
     IDENTIFIER = "identifier"
     PAGE_SIZE = "page_size"
+    METADATA_LOCATION = "metadata_location"
+    OVERWRITE = "overwrite"
 
 
 class Hints:
@@ -296,6 +301,10 @@ class Hints:
     NAMESPACE = "A period-delimited namespace"
     TABLE = "The name of a table"
     VIEW = "The name of a view"
+
+    # Tables/Views Registration Hints
+    METADATA_LOCATION = "The absolute location of the Iceberg metadata file"
+    OVERWRITE = "Overwrite an existing table at the same identifier if the table is already registered"
 
     # Storage Hints
     ## S3

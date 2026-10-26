@@ -42,6 +42,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.UUIDDeserializer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.ImmutablePolarisEventMetadata;
@@ -64,12 +65,16 @@ import tools.jackson.databind.json.JsonMapper;
 @Testcontainers
 @ExtendWith(MockitoExtension.class)
 class KafkaEventListenerTest {
+  // apache/kafka-native images built with GraalVM < 25 segfault in getpwuid() on about 2% of
+  // starts (KAFKA-20314). Testcontainers only notices once the 60 second log wait times out, so
+  // allow more attempts; each starts a new container. Remove once the image is 4.4.0 or later.
   @Container
   private static final KafkaContainer KAFKA_CONTAINER =
       new KafkaContainer(
-          containerSpecHelper("kafka", KafkaEventListenerTest.class)
-              .dockerImageName(null)
-              .asCompatibleSubstituteFor("kafka-native"));
+              containerSpecHelper("kafka", KafkaEventListenerTest.class)
+                  .dockerImageName(null)
+                  .asCompatibleSubstituteFor("kafka-native"))
+          .withStartupAttempts(3);
 
   private static final String TOPIC = "polaris-events";
   private static final String REALM = "test-realm";
@@ -77,7 +82,7 @@ class KafkaEventListenerTest {
   private static final String KAFKA_GROUP_ID = "polaris-group-id";
   private static final String TEST_CATALOG = "test_catalog";
   private static final PolarisPrincipal PRINCIPAL =
-      PolarisPrincipal.of(TEST_USER, Map.of(), Set.of("role1", "role2"));
+      PolarisPrincipal.of(TEST_USER, AttributeMap.EMPTY, Set.of("role1", "role2"));
   private static final TableIdentifier TEST_TABLE_IDENTIFIER =
       TableIdentifier.of("test_namespace", "test_table");
   private static final JsonMapper OBJECT_MAPPER = JsonMapper.shared();

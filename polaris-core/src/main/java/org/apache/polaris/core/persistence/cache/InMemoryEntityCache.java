@@ -21,7 +21,6 @@ package org.apache.polaris.core.persistence.cache;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalListener;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -29,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -53,14 +51,20 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** An in-memory entity cache with a limit of 100k entities and a 1h TTL. */
+/**
+ * An in-memory entity cache. Entities are held in a single cache keyed by entity id, bounded by a
+ * weight budget ({@code ENTITY_CACHE_WEIGHER_TARGET}) and expiring after 1h of no access.
+ *
+ * <p>Lookups by name go through a secondary index mapping name keys to entity ids; every read
+ * through this index is validated against the primary id cache.
+ */
 public class InMemoryEntityCache implements EntityCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryEntityCache.class);
   public static final int MAX_CACHE_REFRESH_ATTEMPTS = 100;
   private final PolarisDiagnostics diagnostics;
   private final PolarisMetaStoreManager polarisMetaStoreManager;
   private final Cache<Long, ResolvedPolarisEntity> byId;
-  private final AbstractMap<EntityCacheByNameKey, ResolvedPolarisEntity> byName;
+  private final Cache<EntityCacheByNameKey, Long> nameIndex;
 
   /**
    * Constructor. Cache can be private or shared
@@ -73,32 +77,33 @@ public class InMemoryEntityCache implements EntityCache {
       @NonNull PolarisMetaStoreManager polarisMetaStoreManager) {
     this.diagnostics = diagnostics;
 
-    // by name cache
-    this.byName = new ConcurrentHashMap<>();
+    long weigherTarget = realmConfig.getConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
 
-    // When an entry is removed, we simply remove it from the byName map
-    RemovalListener<Long, ResolvedPolarisEntity> removalListener =
+    // The name index only holds ids. Its entries are normally removed together with the byId
+    // entries they point to, but an entry can be left dangling when the byId value was garbage
+    // collected (soft values), so the index expires on the same schedule as byId. A dangling entry
+    // can only cause a cache miss. The index itself must never use soft values.
+    this.nameIndex = Caffeine.newBuilder().expireAfterAccess(1, TimeUnit.HOURS).build();
+
+    // When an entry is evicted from byId, drop its name index entry. Explicit removals and
+    // replacements are handled by the code performing them. An eviction listener runs atomically
+    // with the eviction for that id, so it cannot race with cacheNewEntry re-inserting the same id.
+    RemovalListener<Long, ResolvedPolarisEntity> evictionListener =
         (key, value, cause) -> {
           if (value != null) {
-            // compute name key
-            EntityCacheByNameKey nameKey = new EntityCacheByNameKey(value.getEntity());
-
-            // if it is still active, remove it from the name key
-            this.byName.remove(nameKey, value);
+            // Only remove the entry if it maps to the same id
+            this.nameIndex.asMap().remove(new EntityCacheByNameKey(value.getEntity()), key);
           }
         };
 
-    long weigherTarget = realmConfig.getConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
     Caffeine<Long, ResolvedPolarisEntity> byIdBuilder =
         Caffeine.newBuilder()
             .maximumWeight(weigherTarget)
-            .weigher(EntityWeigher.asWeigher())
+            .weigher(EntityWeigher.INSTANCE)
             .expireAfterAccess(1, TimeUnit.HOURS) // Expire entries after 1 hour of no access
-            .removalListener(removalListener); // Set the removal listener
+            .evictionListener(evictionListener);
 
-    boolean useSoftValues =
-        realmConfig.getConfig(BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES);
-    if (useSoftValues) {
+    if (realmConfig.getConfig(BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES)) {
       byIdBuilder.softValues();
     }
 
@@ -116,14 +121,21 @@ public class InMemoryEntityCache implements EntityCache {
    */
   @Override
   public void removeCacheEntry(@NonNull ResolvedPolarisEntity cacheEntry) {
-    // compute name key
-    EntityCacheByNameKey nameKey = new EntityCacheByNameKey(cacheEntry.getEntity());
+    long id = cacheEntry.getEntity().getId();
 
-    // remove this old entry, this will immediately remove the named entry
-    this.byId.asMap().remove(cacheEntry.getEntity().getId(), cacheEntry);
-
-    // remove it from the name key
-    this.byName.remove(nameKey, cacheEntry);
+    // Only drop the entry, and its name index entry, if this exact entry is the one cached. Both
+    // removals happen atomically for a given id so they cannot race with cacheNewEntry.
+    this.byId
+        .asMap()
+        .computeIfPresent(
+            id,
+            (key, oldCacheEntry) -> {
+              if (oldCacheEntry != cacheEntry) {
+                return oldCacheEntry;
+              }
+              this.nameIndex.asMap().remove(new EntityCacheByNameKey(cacheEntry.getEntity()), id);
+              return null;
+            });
   }
 
   /**
@@ -132,39 +144,36 @@ public class InMemoryEntityCache implements EntityCache {
    * @param cacheEntry new cache entry
    */
   private void cacheNewEntry(@NonNull ResolvedPolarisEntity cacheEntry) {
+    long id = cacheEntry.getEntity().getId();
 
-    // compute name key
-    EntityCacheByNameKey nameKey = new EntityCacheByNameKey(cacheEntry.getEntity());
-
-    // get old value if one exist
-    ResolvedPolarisEntity oldCacheEntry = this.byId.getIfPresent(cacheEntry.getEntity().getId());
-
-    // put new entry, only if really newer one
+    // The version check and the name index update happen atomically for a given id
     this.byId
         .asMap()
-        .merge(
-            cacheEntry.getEntity().getId(),
-            cacheEntry,
-            (oldValue, newValue) -> this.isNewer(newValue, oldValue) ? newValue : oldValue);
+        .compute(
+            id,
+            (key, oldCacheEntry) -> {
+              ResolvedPolarisEntity winner =
+                  oldCacheEntry == null || this.isNewer(cacheEntry, oldCacheEntry)
+                      ? cacheEntry
+                      : oldCacheEntry;
+              EntityCacheByNameKey winnerKey = new EntityCacheByNameKey(winner.getEntity());
 
-    // only update the name key if this entity was not dropped. Soft-deleted entities stay in
-    // the by-id map (and in the active name index in persistence) but must not resolve by name.
-    if (!cacheEntry.getEntity().isDropped()) {
-      // here we don't really care about concurrent update to the key. Basically if we are
-      // pointing to the wrong entry, we will detect this and fix the issue
-      this.byName.put(nameKey, cacheEntry);
-    } else {
-      this.byName.remove(nameKey);
-    }
+              // remove old name if it has changed
+              if (oldCacheEntry != null) {
+                EntityCacheByNameKey oldNameKey =
+                    new EntityCacheByNameKey(oldCacheEntry.getEntity());
+                if (!oldNameKey.equals(winnerKey)) {
+                  this.nameIndex.asMap().remove(oldNameKey, id);
+                }
+              }
 
-    // remove old name if it has changed
-    if (oldCacheEntry != null) {
-      // old name
-      EntityCacheByNameKey oldNameKey = new EntityCacheByNameKey(oldCacheEntry.getEntity());
-      if (!oldNameKey.equals(nameKey)) {
-        this.byName.remove(oldNameKey, oldCacheEntry);
-      }
-    }
+              if (winner.getEntity().isDropped()) {
+                this.nameIndex.asMap().remove(winnerKey, id);
+              } else {
+                this.nameIndex.put(winnerKey, id);
+              }
+              return winner;
+            });
   }
 
   /**
@@ -178,50 +187,6 @@ public class InMemoryEntityCache implements EntityCache {
     return (newValue.getEntity().getEntityVersion() > oldValue.getEntity().getEntityVersion()
         || newValue.getEntity().getGrantRecordsVersion()
             > oldValue.getEntity().getGrantRecordsVersion());
-  }
-
-  /**
-   * Replace an old entry with a new one
-   *
-   * @param oldCacheEntry old entry
-   * @param newCacheEntry new entry
-   */
-  private void replaceCacheEntry(
-      @Nullable ResolvedPolarisEntity oldCacheEntry, @NonNull ResolvedPolarisEntity newCacheEntry) {
-
-    // need to remove old?
-    if (oldCacheEntry != null) {
-      // only replace if there is a difference
-      if (this.entityNameKeyMismatch(oldCacheEntry.getEntity(), newCacheEntry.getEntity())
-          || oldCacheEntry.getEntity().getEntityVersion()
-              < newCacheEntry.getEntity().getEntityVersion()
-          || oldCacheEntry.getEntity().getGrantRecordsVersion()
-              < newCacheEntry.getEntity().getGrantRecordsVersion()) {
-        // write new one
-        this.cacheNewEntry(newCacheEntry);
-
-        // delete the old one assuming it has not been replaced by the above new entry
-        this.removeCacheEntry(oldCacheEntry);
-      }
-    } else {
-      // write new one
-      this.cacheNewEntry(newCacheEntry);
-    }
-  }
-
-  /**
-   * Check if two entities have different cache keys (either by id or by name)
-   *
-   * @param entity the entity
-   * @param otherEntity the other entity
-   * @return true if there is a mismatch
-   */
-  private boolean entityNameKeyMismatch(
-      @NonNull PolarisBaseEntity entity, @NonNull PolarisBaseEntity otherEntity) {
-    return entity.getId() != otherEntity.getId()
-        || entity.getParentId() != otherEntity.getParentId()
-        || !entity.getName().equals(otherEntity.getName())
-        || entity.getTypeCode() != otherEntity.getTypeCode();
   }
 
   /**
@@ -242,7 +207,18 @@ public class InMemoryEntityCache implements EntityCache {
    */
   public @Nullable ResolvedPolarisEntity getEntityByName(
       @NonNull EntityCacheByNameKey entityNameKey) {
-    return byName.get(entityNameKey);
+    Long id = nameIndex.getIfPresent(entityNameKey);
+    if (id == null) {
+      return null;
+    }
+    ResolvedPolarisEntity entry = byId.getIfPresent(id);
+    // The index may be stale, e.g. the byId value was garbage collected. Drop the stale mapping so
+    // repeated misses do not keep it alive, but only if it still points to the same id.
+    if (entry == null || !new EntityCacheByNameKey(entry.getEntity()).equals(entityNameKey)) {
+      nameIndex.asMap().remove(entityNameKey, id);
+      return null;
+    }
+    return entry;
   }
 
   /**
@@ -269,17 +245,6 @@ public class InMemoryEntityCache implements EntityCache {
 
     // first lookup the cache to find the existing cache entry
     ResolvedPolarisEntity existingCacheEntry = this.getEntityById(entityId);
-
-    // the caller's fetched entity may have come from a stale lookup byName; we should consider
-    // the existingCacheEntry to be the older of the two for purposes of invalidation to make
-    // sure when we replaceCacheEntry we're also removing the old name if it's no longer valid
-    EntityCacheByNameKey nameKey = new EntityCacheByNameKey(entityToValidate);
-    ResolvedPolarisEntity existingCacheEntryByName = this.getEntityByName(nameKey);
-    if (existingCacheEntryByName != null
-        && existingCacheEntry != null
-        && isNewer(existingCacheEntry, existingCacheEntryByName)) {
-      existingCacheEntry = existingCacheEntryByName;
-    }
 
     // the new one to be returned
     final ResolvedPolarisEntity newCacheEntry;
@@ -347,7 +312,7 @@ public class InMemoryEntityCache implements EntityCache {
           new ResolvedPolarisEntity(diagnostics, entity, grantRecords, grantRecordsVersion);
 
       // insert cache entry
-      this.replaceCacheEntry(existingCacheEntry, newCacheEntry);
+      this.cacheNewEntry(newCacheEntry);
     } else {
       // found it in the cache and it is up-to-date, simply return it
       newCacheEntry = existingCacheEntry;

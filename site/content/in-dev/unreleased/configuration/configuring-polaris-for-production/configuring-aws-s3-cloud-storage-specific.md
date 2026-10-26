@@ -219,8 +219,12 @@ For AWS S3 and S3-compatible backends that expose the STS API (such as MinIO), l
 For S3-compatible backends without STS (Apache Ozone S3 gateway, or Ceph RGW without STS enabled),
 set `stsUnavailable: true`. Polaris will then skip subscoped credential vending entirely, and the
 client must omit `X-Iceberg-Access-Delegation: vended-credentials` and authenticate to the object
-store directly. The Polaris guides for [Apache Ozone][ozone-guide] and [Ceph][ceph-guide] show
-this pattern end-to-end.
+store directly. A client that still sends the header gets `400 Bad Request` (`Credential vending
+was requested for table ..., but no credentials are available`); see
+[When delegation cannot be satisfied]({{% relref "../../vended-credentials#when-delegation-cannot-be-satisfied" %}}).
+In Spark this means dropping `spark.sql.catalog.<name>.header.X-Iceberg-Access-Delegation` and
+supplying the S3 credentials through the usual Hadoop or Iceberg FileIO properties. The Polaris
+guides for [Apache Ozone][ozone-guide] and [Ceph][ceph-guide] show this pattern end-to-end.
 
 ```json
 "storageConfigInfo": {
@@ -244,7 +248,7 @@ Spark example, matching the property names used by the existing MinIO / RustFS g
 
 ```shell
 bin/spark-sql \
-    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1 \
+    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.12.0,org.apache.iceberg:iceberg-aws-bundle:1.12.0 \
     --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
     --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \
     --conf spark.sql.catalog.polaris.type=rest \

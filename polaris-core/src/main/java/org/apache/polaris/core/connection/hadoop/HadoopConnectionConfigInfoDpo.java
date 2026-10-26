@@ -50,8 +50,15 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
           @NonNull AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "serviceIdentity", required = false)
           @Nullable ServiceIdentityInfoDpo serviceIdentityInfo,
-      @JsonProperty(value = "warehouse", required = false) @Nullable String remoteCatalogName) {
-    super(ConnectionType.HADOOP.getCode(), uri, authenticationParameters, serviceIdentityInfo);
+      @JsonProperty(value = "warehouse", required = false) @Nullable String remoteCatalogName,
+      @JsonProperty(value = "properties", required = false)
+          @Nullable Map<String, String> properties) {
+    super(
+        ConnectionType.HADOOP.getCode(),
+        uri,
+        authenticationParameters,
+        serviceIdentityInfo,
+        properties);
     this.warehouse = remoteCatalogName;
   }
 
@@ -67,6 +74,7 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
         .add("warehouse", getWarehouse())
         .add("authenticationParameters", getAuthenticationParameters().toString())
         .add("serviceIdentity", getServiceIdentity())
+        .add("properties", getProperties())
         .toString();
   }
 
@@ -90,7 +98,11 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
   public ConnectionConfigInfoDpo withServiceIdentity(
       @NonNull ServiceIdentityInfoDpo serviceIdentityInfo) {
     return new HadoopConnectionConfigInfoDpo(
-        getUri(), getAuthenticationParameters(), serviceIdentityInfo, getWarehouse());
+        getUri(),
+        getAuthenticationParameters(),
+        serviceIdentityInfo,
+        getWarehouse(),
+        getProperties());
   }
 
   @Override
@@ -108,6 +120,7 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
                     serviceIdentityInfoDpo ->
                         serviceIdentityInfoDpo.asServiceIdentityInfoModel(serviceIdentityProvider))
                 .orElse(null))
+        .setProperties(getProperties())
         .build();
   }
 }

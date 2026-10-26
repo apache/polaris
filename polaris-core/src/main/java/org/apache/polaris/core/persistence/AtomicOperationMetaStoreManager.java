@@ -29,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.polaris.core.PolarisCallContext;
@@ -655,6 +656,19 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @NonNull PolarisEntityType entityType,
       @NonNull PolarisEntitySubType entitySubType,
       @NonNull PageToken pageToken) {
+    return listFullEntities(
+        callCtx, catalogPath, entityType, entitySubType, entity -> true, pageToken);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull Page<PolarisBaseEntity> listFullEntities(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull Predicate<PolarisBaseEntity> entityFilter,
+      @NonNull PageToken pageToken) {
     // get meta store we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -678,7 +692,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         parentId,
         entityType,
         entitySubType,
-        entity -> true,
+        entityFilter,
         Function.identity(),
         pageToken);
   }
@@ -801,9 +815,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             || internalProps.get(
                     PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
                 != null;
-    PolarisPrincipalSecrets secrets =
-        ((IntegrationPersistence) ms)
-            .rotatePrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash);
+    PolarisPrincipalSecrets secrets;
+    try {
+      secrets =
+          ((IntegrationPersistence) ms)
+              .rotatePrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash);
+    } catch (RetryOnConcurrencyException e) {
+      return new PrincipalSecretsResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());
+    }
 
     PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
     if (reset
@@ -1157,15 +1177,13 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       }
 
       // get the list of catalog roles, at most 2
-      List<PolarisBaseEntity> catalogRoles =
-          ms.listFullEntities(
+      List<EntityNameLookupRecord> catalogRoles =
+          ms.listEntities(
                   callCtx,
                   catalogId,
                   catalogId,
                   PolarisEntityType.CATALOG_ROLE,
                   PolarisEntitySubType.ANY_SUBTYPE,
-                  entity -> true,
-                  Function.identity(),
                   PageToken.fromLimit(2))
               .items();
 
@@ -1177,7 +1195,17 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       // if 1, drop the last catalog role. Should be the catalog admin role but don't validate this
       if (!catalogRoles.isEmpty()) {
         // drop the last catalog role in that catalog, should be the admin catalog role
-        this.dropEntity(callCtx, ms, catalogRoles.get(0));
+        EntityNameLookupRecord lastCatalogRole = catalogRoles.get(0);
+        PolarisBaseEntity catalogRoleToDrop =
+            ms.lookupEntity(
+                callCtx,
+                lastCatalogRole.getCatalogId(),
+                lastCatalogRole.getId(),
+                lastCatalogRole.getTypeCode());
+        // null means it was dropped concurrently, which leaves nothing to do
+        if (catalogRoleToDrop != null) {
+          this.dropEntity(callCtx, ms, catalogRoleToDrop);
+        }
       }
     } else if (refreshEntityToDrop.getType() == PolarisEntityType.NAMESPACE) {
       if (ms.hasChildren(
@@ -1809,9 +1837,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> parentPath,
+          T entity) {
     BasePersistence ms = callContext.getMetaStore();
-    return ms.hasOverlappingSiblings(callContext, entity);
+    return ms.hasOverlappingSiblings(callContext, parentPath, entity);
   }
 
   @Override

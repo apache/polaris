@@ -26,7 +26,6 @@ import static org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.
 import static org.apache.polaris.persistence.nosql.quarkus.distcache.AddressResolver.LOCAL_ADDRESSES;
 import static org.apache.polaris.persistence.nosql.quarkus.distcache.CacheInvalidationReceiver.CACHE_INVALIDATION_TOKEN_HEADER;
 import static org.apache.polaris.persistence.nosql.quarkus.distcache.QuarkusDistributedCacheInvalidationsConfig.CACHE_INVALIDATIONS_CONFIG_PREFIX;
-import static org.apache.polaris.persistence.nosql.quarkus.distcache.QuarkusDistributedCacheInvalidationsConfig.CONFIG_SERVICE_NAMES;
 import static org.apache.polaris.persistence.nosql.quarkus.distcache.QuarkusDistributedCacheInvalidationsConfig.CONFIG_VALID_TOKENS;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -75,12 +74,12 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
   private static final Logger LOGGER = LoggerFactory.getLogger(CacheInvalidationSender.class);
 
   private final Vertx vertx;
-  private final long serviceNameLookupIntervalMillis;
+  private final long peerDiscoveryIntervalMillis;
 
   private final HttpClient httpClient;
-  private final AddressResolver addressResolver;
+  private final CacheInvalidationPeerDiscovery peerDiscovery;
+  private final boolean peerDiscoveryConfigured;
 
-  private final List<String> serviceNames;
   private final String invalidationUri;
   private final long requestTimeout;
 
@@ -93,35 +92,40 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
 
   private int quarkusManagementPort;
 
-  /** Contains the IPv4/6 addresses resolved from {@link #serviceNames}. */
-  private volatile List<String> resolvedAddresses = emptyList();
+  /** Contains the peers from the most recently successful discovery request. */
+  private volatile List<CacheInvalidationPeer> resolvedPeers = emptyList();
 
   @Inject
   CacheInvalidationSender(
       @SuppressWarnings("CdiInjectionPointsInspection") Vertx vertx,
       QuarkusDistributedCacheInvalidationsConfig config,
-      ServerInstanceId serverInstanceId) {
+      ServerInstanceId serverInstanceId,
+      CacheInvalidationPeerDiscovery peerDiscovery) {
     this.vertx = vertx;
 
-    this.addressResolver = new AddressResolver(vertx, config.dnsQueryTimeout().toMillis());
+    this.peerDiscovery = peerDiscovery;
+    this.peerDiscoveryConfigured = peerDiscovery.isConfigured();
     this.requestTimeout =
         config
             .cacheInvalidationRequestTimeout()
             .orElse(Duration.of(30, ChronoUnit.SECONDS))
             .toMillis();
     this.httpClient = vertx.createHttpClient();
-    this.serviceNames = config.cacheInvalidationServiceNames().orElse(emptyList());
     this.invalidationUri =
         config.cacheInvalidationUri() + "?sender=" + serverInstanceId.instanceId();
-    this.serviceNameLookupIntervalMillis =
+    this.peerDiscoveryIntervalMillis =
         config.cacheInvalidationServiceNameLookupInterval().toMillis();
     this.batchSize = config.cacheInvalidationBatchSize();
     this.token = config.cacheInvalidationValidTokens().map(List::getFirst).orElse(null);
-    if (!serviceNames.isEmpty()) {
+    if (peerDiscoveryConfigured) {
       try {
-        LOGGER.info("Sending remote cache invalidations to service name(s) {}", serviceNames);
-        // Wait for the initial name service resolution to complete.
-        updateServiceNames().toCompletionStage().toCompletableFuture().get();
+        LOGGER.info(
+            "Sending remote cache invalidations using peer discovery {}",
+            peerDiscovery.getClass().getName());
+        var initialDiscovery = updatePeerDiscovery();
+        if (config.cacheInvalidationInitialDiscoveryRequired()) {
+          initialDiscovery.toCompletionStage().toCompletableFuture().get();
+        }
         if (config.cacheInvalidationValidTokens().isEmpty()) {
           LOGGER.warn(
               "No token configured for cache invalidation messages - will not send any invalidation message. You need to configure the token(s) via {}.{}",
@@ -130,61 +134,73 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
         }
       } catch (Exception e) {
         throw new RuntimeException(
-            "Failed to resolve service names " + serviceNames + " for remote cache invalidations",
+            "Failed to discover peers for remote cache invalidations",
             (e instanceof ExecutionException) ? e.getCause() : e);
       }
     } else if (token != null) {
       LOGGER.warn(
-          "No service names are configured to send cache invalidation messages to - will not send any invalidation message. You need to configure the service name(s) via {}.{}",
-          CACHE_INVALIDATIONS_CONFIG_PREFIX,
-          CONFIG_SERVICE_NAMES);
+          "No peer discovery is configured to send cache invalidation messages to - will not send any invalidation message.");
     }
   }
 
-  private Future<List<String>> updateServiceNames() {
-    var previous = new HashSet<>(resolvedAddresses);
-    return resolveServiceNames(serviceNames)
-        .map(all -> all.stream().filter(adr -> !LOCAL_ADDRESSES.contains(adr)).toList())
+  @VisibleForTesting
+  CacheInvalidationSender(
+      Vertx vertx,
+      QuarkusDistributedCacheInvalidationsConfig config,
+      ServerInstanceId serverInstanceId) {
+    this(vertx, config, serverInstanceId, new DnsCacheInvalidationPeerDiscovery(vertx, config));
+  }
+
+  private Future<List<CacheInvalidationPeer>> updatePeerDiscovery() {
+    var previous = new HashSet<>(resolvedPeers);
+    return discoverPeers()
+        .map(
+            all ->
+                all.stream()
+                    // DNS peers use the sender's management port, so a locally bound address is
+                    // always this sender. Explicitly addressed peers can represent a different
+                    // process on the same host and are left to the receiver's instance-ID check.
+                    .filter(
+                        peer ->
+                            peer.managementPort().isPresent()
+                                || !LOCAL_ADDRESSES.contains(peer.host()))
+                    .toList())
         .onSuccess(
             all -> {
-              // refresh addresses regularly
-              scheduleServiceNameResolution();
+              schedulePeerDiscovery();
 
               var resolved = new HashSet<>(all);
               if (!resolved.equals(previous)) {
-                LOGGER.info(
-                    "Service names for remote cache invalidations {} now resolve to {}",
-                    serviceNames,
-                    all);
+                LOGGER.info("Peers for remote cache invalidations now resolve to {}", all);
               }
 
-              updateResolvedAddresses(all);
+              updateResolvedPeers(all);
             })
         .onFailure(
             t -> {
-              // refresh addresses regularly
-              scheduleServiceNameResolution();
+              schedulePeerDiscovery();
 
-              LOGGER.warn("Failed to resolve service names: {}", t.toString());
+              LOGGER.warn(
+                  "Failed to discover peers for remote cache invalidations: {}", t.toString());
             });
   }
 
   @VisibleForTesting
-  void updateResolvedAddresses(List<String> all) {
-    resolvedAddresses = all;
+  void updateResolvedPeers(List<CacheInvalidationPeer> all) {
+    resolvedPeers = all;
   }
 
-  private void scheduleServiceNameResolution() {
-    vertx.setTimer(serviceNameLookupIntervalMillis, x -> updateServiceNames());
+  private void schedulePeerDiscovery() {
+    vertx.setTimer(peerDiscoveryIntervalMillis, x -> updatePeerDiscovery());
   }
 
   @VisibleForTesting
-  Future<List<String>> resolveServiceNames(List<String> serviceNames) {
-    return addressResolver.resolveAll(serviceNames);
+  Future<List<CacheInvalidationPeer>> discoverPeers() {
+    return peerDiscovery.discoverPeers();
   }
 
   void enqueue(CacheInvalidation invalidation) {
-    if (serviceNames.isEmpty() || token == null) {
+    if (!peerDiscoveryConfigured || token == null) {
       // Don't do anything if there are no targets to send invalidations to or whether no token has
       // been configured.
       return;
@@ -220,7 +236,7 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
         } finally {
           lock.unlock();
         }
-        submit(batch, resolvedAddresses, httpPort);
+        submit(batch, resolvedPeers, httpPort);
         batch = new ArrayList<>(batchSize);
       }
     } finally {
@@ -250,17 +266,19 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
 
   @VisibleForTesting
   List<Future<Map.Entry<HttpClientResponse, Buffer>>> submit(
-      List<CacheInvalidation> batch, List<String> resolvedAddresses, int httpPort) {
+      List<CacheInvalidation> batch, List<CacheInvalidationPeer> resolvedPeers, int httpPort) {
     LOGGER.trace("Submitting {} invalidations", batch.size());
 
     String json = objectMapper.writeValueAsString(cacheInvalidations(batch));
 
     var futures =
-        new ArrayList<Future<Map.Entry<HttpClientResponse, Buffer>>>(resolvedAddresses.size());
-    for (var address : resolvedAddresses) {
+        new ArrayList<Future<Map.Entry<HttpClientResponse, Buffer>>>(resolvedPeers.size());
+    for (var peer : resolvedPeers) {
+      var address = peer.host();
+      var peerManagementPort = peer.managementPortOrDefault(httpPort);
       futures.add(
           httpClient
-              .request(HttpMethod.POST, httpPort, address, invalidationUri)
+              .request(HttpMethod.POST, peerManagementPort, address, invalidationUri)
               .compose(
                   req ->
                       req.putHeader("Content-Type", APPLICATION_JSON)
@@ -277,14 +295,17 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
                           "{} cache invalidations could not be sent to {}:{}{} - HTTP {}/{} - body: {}",
                           batch.size(),
                           address,
-                          httpPort,
+                          peerManagementPort,
                           invalidationUri,
                           statusCode,
                           resp.statusMessage(),
                           success.getValue());
                     } else {
                       LOGGER.trace(
-                          "{} cache invalidations sent to {}:{}", batch.size(), address, httpPort);
+                          "{} cache invalidations sent to {}:{}",
+                          batch.size(),
+                          address,
+                          peerManagementPort);
                     }
                   },
                   failure -> {
@@ -293,14 +314,14 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
                       LOGGER.warn(
                           "Technical network issue sending cache invalidations to {}:{}{} : {}",
                           address,
-                          httpPort,
+                          peerManagementPort,
                           invalidationUri,
                           failure.getMessage());
                     } else {
                       LOGGER.error(
                           "Technical failure sending cache invalidations to {}:{}{}",
                           address,
-                          httpPort,
+                          peerManagementPort,
                           invalidationUri,
                           failure);
                     }

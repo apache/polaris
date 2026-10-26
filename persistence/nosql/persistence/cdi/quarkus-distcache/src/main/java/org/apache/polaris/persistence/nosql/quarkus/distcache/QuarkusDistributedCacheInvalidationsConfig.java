@@ -38,18 +38,19 @@ public interface QuarkusDistributedCacheInvalidationsConfig {
   String CONFIG_URI = "uri";
   String CONFIG_BATCH_SIZE = "batch-size";
   String CONFIG_SERVICE_NAME_LOOKUP_INTERVAL = "service-name-lookup-interval";
+  String CONFIG_INITIAL_DISCOVERY_REQUIRED = "initial-discovery-required";
   String CONFIG_REQUEST_TIMEOUT = "request-timeout";
   String CONFIG_DNS_QUERY_TIMEOUT = "dns.query-timeout";
 
   /**
-   * Host names or IP addresses or kubernetes headless-service name of all Polaris server instances
-   * accessing the same repository.
+   * Host names, IP addresses, or Kubernetes headless-service name of all Polaris server instances
+   * accessing the same repository, used by the default DNS peer discovery implementation.
    *
    * <p>This value is automatically configured via the Polaris Helm chart, additional configuration
    * is not required.
    *
-   * <p>If you have your own Helm chart or custom deployment, make sure to configure the IPs of all
-   * Polaris instances here.
+   * <p>If you have your own Helm chart or custom deployment using DNS peer discovery, make sure to
+   * configure the IPs of all Polaris instances here.
    *
    * <p>Names that start with an equal sign are not resolved but used "as is".
    */
@@ -72,13 +73,20 @@ public interface QuarkusDistributedCacheInvalidationsConfig {
   @WithDefault("/polaris-management/cache-coherency")
   String cacheInvalidationUri();
 
-  /**
-   * Interval of service-name lookups to resolve the {@linkplain #cacheInvalidationServiceNames()
-   * service names} into IP addresses.
-   */
+  /** Interval between peer discovery refreshes. */
   @WithName(CONFIG_SERVICE_NAME_LOOKUP_INTERVAL)
   @WithDefault("PT10S")
   Duration cacheInvalidationServiceNameLookupInterval();
+
+  /**
+   * Whether startup fails when the initial peer discovery request fails.
+   *
+   * <p>A successful empty peer snapshot does not fail startup. When disabled, discovery failures
+   * are retried in the background.
+   */
+  @WithName(CONFIG_INITIAL_DISCOVERY_REQUIRED)
+  @WithDefault("true")
+  boolean cacheInvalidationInitialDiscoveryRequired();
 
   /** Maximum number of cache-invalidation messages to send in a single request to peer nodes. */
   @WithName(CONFIG_BATCH_SIZE)
@@ -92,7 +100,7 @@ public interface QuarkusDistributedCacheInvalidationsConfig {
   @WithName(CONFIG_REQUEST_TIMEOUT)
   Optional<Duration> cacheInvalidationRequestTimeout();
 
-  /** Timeout for DNS queries to resolve peer nodes. */
+  /** Timeout for DNS queries performed by the default peer discovery implementation. */
   @WithName(CONFIG_DNS_QUERY_TIMEOUT)
   @WithDefault("PT5S")
   Duration dnsQueryTimeout();

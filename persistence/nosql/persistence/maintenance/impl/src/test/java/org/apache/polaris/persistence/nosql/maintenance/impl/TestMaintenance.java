@@ -20,10 +20,13 @@ package org.apache.polaris.persistence.nosql.maintenance.impl;
 
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.apache.polaris.persistence.nosql.maintenance.impl.MutableMaintenanceConfig.GRACE_TIME;
+import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.ACTIVE;
+import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.INITIALIZING;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.inject.Inject;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
@@ -40,6 +43,8 @@ import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInform
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInformation.MaintenanceStats;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunSpec;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceService;
+import org.apache.polaris.persistence.nosql.realms.api.RealmDefinition;
+import org.apache.polaris.persistence.nosql.realms.api.RealmManagement;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
@@ -69,6 +74,7 @@ public class TestMaintenance {
   @Inject MaintenanceService maintenance;
   @Inject @SystemPersistence Persistence systemPersistence;
   @Inject RealmPersistenceFactory realmPersistenceFactory;
+  @Inject RealmManagement realmManagement;
   @Inject MutableMonotonicClock mutableMonotonicClock;
 
   @BeforeEach
@@ -125,6 +131,47 @@ public class TestMaintenance {
         .contains(MaintenanceStats.builder().scanned(2L).purged(0L).retained(2L).newer(0L).build());
     soft.assertThat(runInfo.identifiedReferences().orElse(-1)).isEqualTo(0L);
     soft.assertThat(runInfo.identifiedObjs().orElse(-1)).isEqualTo(0L);
+  }
+
+  @Test
+  public void purgeHonorsRealmStateFilter() {
+    // A realm that is not in PURGING/PURGED state must never be deleted, even if a (stale or
+    // hand-built) run spec lists it in realmsToPurge(). The direct backend deletion has to honor
+    // the same state filter that the scan-based deletion and the "will therefore not be purged"
+    // log message already rely on.
+    var created = realmManagement.create(realmOne);
+    var initializing =
+        realmManagement.update(
+            created, RealmDefinition.builder().from(created).status(INITIALIZING).build());
+    var active =
+        realmManagement.update(
+            initializing, RealmDefinition.builder().from(initializing).status(ACTIVE).build());
+    soft.assertThat(active.status()).isSameAs(ACTIVE);
+
+    var obj =
+        persOne.write(
+            ObjOne.builder().text("keep-me").id(persOne.generateId()).build(), ObjOne.class);
+    persOne.createReference("ref1", Optional.empty());
+
+    mutableMonotonicClock.advanceBoth(GRACE_TIME);
+
+    // The caller lists the ACTIVE realm for purging - the service must filter it out.
+    var runInfo =
+        maintenance.performMaintenance(
+            MaintenanceRunSpec.builder()
+                .includeSystemRealm(false)
+                .realmsToPurge(Set.of(realmOne))
+                .build(),
+            OptionalLong.empty());
+
+    // The run must finish successfully and nothing may have been purged against the backend.
+    soft.assertThat(runInfo)
+        .extracting(MaintenanceRunInformation::success, MaintenanceRunInformation::purgedRealms)
+        .containsExactly(true, OptionalInt.of(0));
+
+    // The ACTIVE realm's data must still be there.
+    soft.assertThat(persOne.fetch(objRef(obj), ObjOne.class)).isEqualTo(obj);
+    soft.assertThatCode(() -> persOne.fetchReference("ref1")).doesNotThrowAnyException();
   }
 
   @Test

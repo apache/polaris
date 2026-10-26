@@ -20,8 +20,10 @@ package org.apache.polaris.core.persistence.cache;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -34,6 +36,9 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -479,8 +484,8 @@ public class InMemoryEntityCacheTest {
 
   /* Helper for `testEntityWeigher` */
   private int getEntityWeight(PolarisEntity entity) {
-    return EntityWeigher.getInstance()
-        .weigh(-1L, new ResolvedPolarisEntity(diagServices, entity, List.of(), 1));
+    return EntityWeigher.INSTANCE.weigh(
+        -1L, new ResolvedPolarisEntity(diagServices, entity, List.of(), 1));
   }
 
   @Test
@@ -1070,6 +1075,38 @@ public class InMemoryEntityCacheTest {
     } finally {
       executorService.shutdown();
     }
+  }
+
+  /** Regression test for the unbounded {@code byName} map issue reported in #5386. */
+  @Test
+  public void testNameEntriesAreReclaimedUnderWeightBound() {
+    PolarisBaseEntity catalog = this.tm.ensureExistsByName(null, PolarisEntityType.CATALOG, "test");
+    EntityCacheByNameKey nameKey =
+        new EntityCacheByNameKey(
+            this.tm.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1"));
+
+    // A weight budget smaller than a single entity, so the entity is evicted right after loading.
+    InMemoryEntityCache boundedCache = newCache(100L);
+    assertThat(boundedCache.getOrLoadEntityByName(this.callCtx, nameKey)).isNotNull();
+    // Caffeine evicts from a background maintenance task, so wait instead of asserting immediately.
+    await("name entry must be reclaimed under the weight bound")
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(() -> assertThat(boundedCache.getEntityByName(nameKey)).isNull());
+
+    // Control: with the default budget the same entry stays resident.
+    InMemoryEntityCache unboundedCache =
+        newCache(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET.defaultValue());
+    assertThat(unboundedCache.getOrLoadEntityByName(this.callCtx, nameKey)).isNotNull();
+    assertThat(unboundedCache.getEntityByName(nameKey)).isNotNull();
+  }
+
+  private InMemoryEntityCache newCache(long weigherTarget) {
+    RealmConfig realmConfig = Mockito.mock(RealmConfig.class);
+    Mockito.when(realmConfig.getConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET))
+        .thenReturn(weigherTarget);
+    Mockito.when(realmConfig.getConfig(BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES))
+        .thenReturn(false);
+    return new InMemoryEntityCache(diagServices, realmConfig, this.metaStoreManager);
   }
 
   private static ResolvedPolarisEntity getResolvedPolarisEntity(PolarisBaseEntity catalog) {

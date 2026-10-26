@@ -20,6 +20,7 @@
 package org.apache.polaris.persistence.nosql.metastore.mutation;
 
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_NOT_FOUND;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_MAPPING_NOT_FOUND;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping.POLICY_MAPPING_SERIALIZER;
@@ -27,7 +28,6 @@ import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping
 import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMappingsObj.PolicyMappingKey.fromIndexKey;
 
 import java.util.Map;
-import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyType;
@@ -92,9 +92,7 @@ public record PolicyMutation(
 
                 var policyOptional = policyCatalogAccess.byId(policyId);
                 if (policyOptional.isEmpty()) {
-                  return state.noCommit(
-                      new PolicyAttachmentResult(
-                          BaseResult.ReturnStatus.POLICY_MAPPING_NOT_FOUND, null));
+                  return state.noCommit(new PolicyAttachmentResult(POLICY_MAPPING_NOT_FOUND, null));
                 }
                 if (targetCatalogId != 0L && targetCatalogId != targetId) {
                   // catalog content, check whether the entity exists
@@ -126,7 +124,6 @@ public record PolicyMutation(
                     new PolicyMappingsObj.KeyByEntity(
                         targetCatalogId, targetId, policyType.getCode(), policyCatalogId, policyId);
 
-                var changed = false;
                 if (doAttach) {
                   if (policyType.isInheritable()) {
                     // The contract says that at max one policy of the same inheritable policy type
@@ -163,19 +160,20 @@ public record PolicyMutation(
                   // note: parameters are only added to the "by entity" entry
                   index.put(keyByPolicy.toIndexKey(), PolicyMapping.EMPTY);
                   index.put(keyByEntity.toIndexKey(), policyMapping);
-                  changed = true;
                 } else {
-                  changed |= index.remove(keyByPolicy.toIndexKey());
-                  changed |= index.remove(keyByEntity.toIndexKey());
+                  var removedByPolicy = index.remove(keyByPolicy.toIndexKey());
+                  var removedByEntity = index.remove(keyByEntity.toIndexKey());
+                  if (!removedByPolicy && !removedByEntity) {
+                    // Nothing to detach: the policy was never attached to this target.
+                    return state.noCommit(
+                        new PolicyAttachmentResult(POLICY_MAPPING_NOT_FOUND, null));
+                  }
                 }
 
-                if (changed) {
-                  // Replacing this inline index leaves older mapping objects and stripes stale
-                  // until a later maintenance purge.
-                  builder.policyMappings(index.toIndexed("mappings", state::writeOrReplace));
-                  return state.commitResult(result, builder, refObj);
-                }
-                return state.noCommit(result);
+                // Replacing this inline index leaves older mapping objects and stripes stale
+                // until a later maintenance purge.
+                builder.policyMappings(index.toIndexed("mappings", state::writeOrReplace));
+                return state.commitResult(result, builder, refObj);
               })
           .orElseThrow();
     } finally {

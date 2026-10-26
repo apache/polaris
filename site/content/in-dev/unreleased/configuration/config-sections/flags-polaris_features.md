@@ -367,7 +367,7 @@ If set to true, require that principals must rotate their credentials before bei
 
 ##### `polaris.features."ENTITY_CACHE_WEIGHER_TARGET"`
 
-The maximum weight for the entity cache. This is a heuristic value without any particular unit of measurement. It roughly correlates with the total heap size of cached values. Fine-tuning requires experimentation in the specific deployment environment
+The maximum weight for the entity cache. Weights approximate the size in bytes of the cached entities and of their grant records, so the default corresponds to roughly 100 MiB of entity data. This is a heuristic: actual heap usage is higher than the configured weight, and fine-tuning requires experimentation in the specific deployment environment.
 
 - **Type:** `Long`
 - **Default:** `104857600`
@@ -460,7 +460,7 @@ If set to true, pagination for APIs like listTables is enabled.
 
 ##### `polaris.features."LIST_PAGINATION_MAX_PAGE_SIZE"`
 
-The largest page size a client may request for APIs like listTables. Larger requested page sizes are reduced to this value. The Iceberg REST specification treats the requested page size as an upper bound. For local catalogs this takes effect only when LIST_PAGINATION_ENABLED is true; with pagination disabled the requested page size is ignored and the full result set is returned. For federated catalogs it always applies, because Polaris paginates those listings itself. Values <= 0 mean unlimited (no max page size enforced), which is the default. Setting a maximum deviates from the Iceberg REST specification, which requires a request that does not supply a pageToken to receive the complete result with a null next-page-token: such a request is then truncated to the maximum and answered with a continuation token, so a client that does not follow continuations sees only the first page.
+The largest page size a client may request for APIs like listTables. Larger requested page sizes are reduced to this value. The Iceberg REST specification treats the requested page size as an upper bound. For local catalogs this takes effect only when LIST_PAGINATION_ENABLED is true; with pagination disabled the requested page size is ignored and the full result set is returned. For federated catalogs it always applies, because Polaris paginates those listings itself. Values <= 0 mean unlimited (no max page size enforced), which is the default. A request that supplies neither pageToken nor pageSize asks for the complete listing, so when the result does not fit the maximum it is rejected rather than truncated and answered with a continuation token. An empty pageToken starts a paginated listing and is capped like any other paginated request.
 
 - **Type:** `Integer`
 - **Default:** `-1`
@@ -584,6 +584,15 @@ The list of supported authentication types for catalog federation
 
 - **Type:** `List<String>`
 - **Default:** `[OAUTH, BEARER, GCP, SIGV4]`
+
+---
+
+##### `polaris.features."SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS"`
+
+The credential vending mechanisms an S3 catalog in this realm may name explicitly. Names are case-sensitive and must match a mechanism's identifier exactly, for example STS. Apache Polaris supports STS, which is STS AssumeRole. A catalog that leaves credentialVendingMechanism empty uses the server's default mechanism and is always allowed. Realm-level only; catalog properties cannot widen it. Enforced at catalog create and update, and when the server builds the storage integration that vends credentials for a catalog. A listed mechanism with no implementation in this server is reported at startup and refused at catalog create and update and whenever a credential is vended for a catalog that names it.
+
+- **Type:** `List<String>`
+- **Default:** `[STS]`
 
 ---
 
