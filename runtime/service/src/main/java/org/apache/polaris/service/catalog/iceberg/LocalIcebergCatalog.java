@@ -481,6 +481,18 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     IcebergTableLikeEntity existingEntity = IcebergTableLikeEntity.of(rawEntity);
 
     Map<String, String> storedProperties = buildTableMetadataPropertiesMap(metadata);
+    // Retry keys belong to the table UUID, not the registration's metadata location.
+    Map<String, String> existingInternalProperties = existingEntity.getInternalPropertiesAsMap();
+    if (metadata.uuid() != null
+        && metadata
+            .uuid()
+            .equals(existingInternalProperties.get(IcebergTableLikeEntity.TABLE_UUID))) {
+      String priorWindow =
+          existingInternalProperties.get(EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY);
+      if (priorWindow != null) {
+        storedProperties.put(EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY, priorWindow);
+      }
+    }
     IcebergTableLikeEntity updatedEntity =
         new IcebergTableLikeEntity.Builder(existingEntity)
             .setInternalProperties(storedProperties)
