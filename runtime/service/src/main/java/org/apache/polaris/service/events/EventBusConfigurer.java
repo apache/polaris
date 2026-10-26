@@ -22,14 +22,23 @@ package org.apache.polaris.service.events;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.vertx.LocalEventBusCodec;
 import io.vertx.core.eventbus.EventBus;
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
+import jakarta.inject.Inject;
 
 @ApplicationScoped
 public class EventBusConfigurer {
   private static final String LOCAL_CODEC_NAME = "polaris-events-local";
 
-  void configureEventBus(@Observes StartupEvent ev, EventBus eventBus) {
+  @Inject EventBus eventBus;
+
+  void registerEventCodec(@Observes StartupEvent ev) {
     eventBus.registerDefaultCodec(PolarisEvent.class, new LocalEventBusCodec<>(LOCAL_CODEC_NAME));
+  }
+
+  @PreDestroy
+  void unregisterEventCodec() {
+    eventBus.unregisterDefaultCodec(PolarisEvent.class);
   }
 }
