@@ -96,9 +96,6 @@ import org.junit.jupiter.params.provider.ValueSource;
  *       <li>{@link
  *           org.apache.polaris.core.config.FeatureConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
  *           {@code true}
- *       <li>{@link
- *           org.apache.polaris.core.config.FeatureConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
- *           {@code true}
  *     </ul>
  *     The server must also be configured to reject request body sizes larger than 1MB (1000000
  *     bytes).

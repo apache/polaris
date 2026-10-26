@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -89,6 +90,22 @@ public abstract class PolarisStorageConfigurationInfo {
   public abstract String getStorageName();
 
   public abstract StorageType getStorageType();
+
+  /**
+   * Optional Iceberg FileIO configuration properties not covered by typed fields on subclasses.
+   * Typed fields take precedence when both are set. Semantics follow Iceberg FileIO conventions.
+   * Credential-looking keys are folded into {@link StorageAccessConfig#internalProperties()}
+   * (server FileIO only); other entries may be exposed to clients via load-table config.
+   */
+  @Nullable
+  public abstract Map<String, String> getFileIoProperties();
+
+  /** Returns {@link #getFileIoProperties()} or an empty map when unset. */
+  @JsonIgnore
+  public final Map<String, String> getFileIoPropertiesOrEmpty() {
+    Map<String, String> properties = getFileIoProperties();
+    return properties == null ? Map.of() : properties;
+  }
 
   private static final ObjectMapper DEFAULT_MAPPER;
 

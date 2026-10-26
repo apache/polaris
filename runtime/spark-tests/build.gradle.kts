@@ -105,7 +105,6 @@ fun JvmTestSuite.configureSparkIntegrationDependencies() {
 
 fun Test.configureSparkIntegrationTestTask(
   suiteName: String,
-  skipCredentialSubscoping: Boolean,
   storageAccessKey: String? = null,
   storageSecretKey: String? = null,
   withHiveRustfsStartupAction: Boolean = false,
@@ -165,8 +164,6 @@ fun Test.configureSparkIntegrationTestTask(
         "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"" to "true",
         "polaris.features.\"DROP_WITH_PURGE_ENABLED\"" to "true",
         "polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"" to "true",
-        "polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"" to
-          skipCredentialSubscoping.toString(),
         "polaris.features.\"ENABLE_CATALOG_FEDERATION\"" to "true",
         "polaris.features.\"SUPPORTED_CATALOG_CONNECTION_TYPES\"" to "[\"ICEBERG_REST\",\"HIVE\"]",
         "polaris.features.\"SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES\"" to
@@ -193,10 +190,7 @@ testing {
 
       targets.configureEach {
         testTask.configure {
-          configureSparkIntegrationTestTask(
-            suiteName = "sparkIntTest",
-            skipCredentialSubscoping = true,
-          )
+          configureSparkIntegrationTestTask(suiteName = "sparkIntTest")
         }
       }
     }
@@ -209,7 +203,6 @@ testing {
         testTask.configure {
           configureSparkIntegrationTestTask(
             suiteName = "catalogFederationIntTest",
-            skipCredentialSubscoping = false,
             storageAccessKey = "test-ak-123-catalog-federation",
             storageSecretKey = "test-sk-123-catalog-federation",
           )
@@ -226,7 +219,6 @@ testing {
         testTask.configure {
           configureSparkIntegrationTestTask(
             suiteName = "hiveFederationIntTest",
-            skipCredentialSubscoping = false,
             storageAccessKey = "test-ak-123-hive-federation",
             storageSecretKey = "test-sk-123-hive-federation",
             withHiveRustfsStartupAction = true,

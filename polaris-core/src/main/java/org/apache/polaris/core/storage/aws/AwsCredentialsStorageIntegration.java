@@ -44,6 +44,7 @@ import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.StorageConfigurationAccessProperties;
 import org.apache.polaris.core.storage.StorageUri;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
@@ -217,7 +218,13 @@ public class AwsCredentialsStorageIntegration
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     String region = awsStorageConfig.getRegion();
+    // Bag extras first, then typed S3 fields (typed wins). STS session credentials below are the
+    // only AccessConfig.credentials() entries.
+    StorageAccessConfig fromStorageConfig =
+        StorageConfigurationAccessProperties.storageConfigOnly(awsStorageConfig);
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
+    fromStorageConfig.extraProperties().forEach(accessConfig::putExtraProperty);
+    applyTypedAwsFields(awsStorageConfig, accessConfig);
     String roleSessionName = key.roleSessionName();
 
     if (shouldUseSts(awsStorageConfig)) {
@@ -266,24 +273,6 @@ public class AwsCredentialsStorageIntegration
                       String.valueOf(i.toEpochMilli())));
     }
 
-    if (region != null) {
-      accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
-    }
-
-    URI endpointUri = awsStorageConfig.getEndpointUri();
-    if (endpointUri != null) {
-      accessConfig.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
-    }
-    URI internalEndpointUri = awsStorageConfig.getInternalEndpointUri();
-    if (internalEndpointUri != null) {
-      accessConfig.putInternalProperty(
-          StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), internalEndpointUri.toString());
-    }
-
-    if (Boolean.TRUE.equals(awsStorageConfig.getPathStyleAccess())) {
-      accessConfig.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
-    }
-
     if ("aws-us-gov".equals(awsStorageConfig.getAwsPartition()) && region == null) {
       throw new IllegalArgumentException(
           String.format(
@@ -296,6 +285,28 @@ public class AwsCredentialsStorageIntegration
 
   private static boolean shouldUseSts(AwsStorageConfigurationInfo storageConfig) {
     return !Boolean.TRUE.equals(storageConfig.getStsUnavailable());
+  }
+
+  private static void applyTypedAwsFields(
+      AwsStorageConfigurationInfo aws, StorageAccessConfig.Builder accessConfig) {
+    URI endpointUri = aws.getEndpointUri();
+    if (endpointUri != null) {
+      accessConfig.putExtraProperty(
+          StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpointUri.toString());
+    }
+    URI internalEndpointUri = aws.getInternalEndpointUri();
+    if (internalEndpointUri != null) {
+      accessConfig.putInternalProperty(
+          StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), internalEndpointUri.toString());
+    }
+    if (Boolean.TRUE.equals(aws.getPathStyleAccess())) {
+      accessConfig.putExtraProperty(
+          StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), Boolean.TRUE.toString());
+    }
+    if (aws.getRegion() != null) {
+      accessConfig.putExtraProperty(
+          StorageAccessProperty.CLIENT_REGION.getPropertyName(), aws.getRegion());
+    }
   }
 
   private static boolean shouldUseKms(AwsStorageConfigurationInfo storageConfig) {

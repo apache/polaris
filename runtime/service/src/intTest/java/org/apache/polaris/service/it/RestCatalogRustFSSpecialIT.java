@@ -19,7 +19,6 @@
 package org.apache.polaris.service.it;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX;
 import static org.apache.iceberg.aws.AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT;
 import static org.apache.iceberg.aws.s3.S3FileIOProperties.ACCESS_KEY_ID;
 import static org.apache.iceberg.aws.s3.S3FileIOProperties.ENDPOINT;
@@ -225,13 +224,15 @@ public class RestCatalogRustFSSpecialIT {
     region.ifPresent(storageConfig::setRegion);
     roleArn.ifPresent(storageConfig::setRoleArn);
     kmsUnavailable.ifPresent(storageConfig::setKmsUnavailable);
+    if (!stsEnabled) {
+      storageConfig.setFileIoProperties(
+          Map.of(
+              AWS_KEY_ID.getPropertyName(), ACCESS_KEY,
+              AWS_SECRET_KEY.getPropertyName(), SECRET_KEY));
+    }
 
     CatalogProperties.Builder catalogProps =
         CatalogProperties.builder(storageBase.toASCIIString() + "/" + catalogName);
-    if (!stsEnabled) {
-      catalogProps.addProperty(TABLE_DEFAULT_PREFIX + AWS_KEY_ID.getPropertyName(), ACCESS_KEY);
-      catalogProps.addProperty(TABLE_DEFAULT_PREFIX + AWS_SECRET_KEY.getPropertyName(), SECRET_KEY);
-    }
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)

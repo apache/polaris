@@ -58,7 +58,6 @@ public final class Profiles {
           .put("quarkus.http.limits.max-body-size", "1000000")
           .put("polaris.realm-context.realms", "POLARIS,OTHER")
           .put("polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true")
-          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true")
           .build();
     }
   }
@@ -120,7 +119,6 @@ public final class Profiles {
           .put("polaris.features.\"ALLOW_TABLE_LOCATION_OVERLAP\"", "true")
           .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
           .put("polaris.features.\"ALLOW_WILDCARD_LOCATION\"", "true")
-          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true")
           .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
           .put("polaris.test.rootAugmentor.enabled", "true")
           .build();
