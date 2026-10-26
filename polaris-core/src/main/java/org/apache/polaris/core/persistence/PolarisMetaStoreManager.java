@@ -468,8 +468,8 @@ public interface PolarisMetaStoreManager
    * Check whether the base location of the specified IcebergTableLikeEntity / NamespaceEntity
    * overlaps the base location of another table, view, or namespace in the same catalog. The check
    * is not limited to entities under the same parent; see {@link
-   * BasePersistence#hasOverlappingSiblings} for the exact semantics. In particular, the entity
-   * itself is never reported, so already persisted entities may be checked, e.g. on rename.
+   * BasePersistence#hasOverlappingSiblings} for the exact semantics. Implementations should avoid
+   * checking the entity against itself in case of updates or renames.
    *
    * @param callContext the polaris call context
    * @param parentPath the entity's resolved parent path: the catalog first, then each parent

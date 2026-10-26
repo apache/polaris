@@ -411,9 +411,9 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * nest under the parent's location. An ancestor whose location equals the entity's location is
    * still reported.
    *
-   * <p>The entity itself, identified by its id, is never reported. This allows checking an entity
-   * that is already persisted, e.g. when it is being renamed or updated, without it conflicting
-   * with its own persisted location.
+   * <p>The entity itself, identified by its id, is never reported. Implementations should avoid
+   * checking the entity against itself when it is already persisted, e.g. on a location update or a
+   * rename, so that it does not conflict with its own persisted location.
    *
    * @param callContext the polaris call context
    * @param parentPath the entity's resolved parent path: the catalog first, then each parent
