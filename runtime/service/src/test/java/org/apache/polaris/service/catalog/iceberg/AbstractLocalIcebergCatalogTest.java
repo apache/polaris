@@ -559,6 +559,26 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testTableExistsForMetadataTable() {
+    LocalIcebergCatalog catalog = catalog();
+    TableIdentifier table = TableIdentifier.of("ns", "tbl");
+    TableIdentifier metadataTable = TableIdentifier.of("ns", "tbl", "snapshots");
+
+    catalog.createNamespace(table.namespace());
+    catalog.buildTable(table, SCHEMA).create();
+
+    Assertions.assertThat(catalog.tableExists(table))
+        .as("Table should exist after create")
+        .isTrue();
+    Assertions.assertThat(catalog.loadTable(metadataTable))
+        .as("Metadata table should load")
+        .isNotNull();
+    Assertions.assertThat(catalog.tableExists(metadataTable))
+        .as("Metadata table should not be reported as a stored table")
+        .isFalse();
+  }
+
+  @Test
   public void testCreateNestedNamespaceUnderMissingParent() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
