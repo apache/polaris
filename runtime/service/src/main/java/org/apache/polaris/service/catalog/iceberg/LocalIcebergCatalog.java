@@ -915,9 +915,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     // Compare normalized (slash-terminated) locations so that merely normalizing a legacy
     // slash-less location does not count as a move. Otherwise an unrelated property update on a
     // namespace stored before Polaris always appended a slash would flip locationChanged to true
-    // and run the overlap check against the namespace's own still-persisted slash-less row (which
-    // the optimized sibling check does not exclude), wrongly rejecting the update. A genuine move
-    // still differs after normalization and is validated.
+    // and run the overlap check against the namespace's own still-persisted slash-less row,
+    // wrongly rejecting the update. A genuine move still differs after normalization and is
+    // validated.
     boolean locationChanged =
         !Objects.equal(
             StorageLocation.ensureTrailingSlash(NamespaceEntity.of(entity).getBaseLocation()),
@@ -1439,11 +1439,18 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
 
       // Create a fake IcebergTableLikeEntity to check for overlap, since no real entity
-      // has been created yet.
+      // has been created yet. If the table or view already exists, the fake entity carries its id,
+      // so that the check does not conflict with the entity's own persisted location. When the
+      // leaf is not a table-like entity, it is the parent namespace or catalog, which must not be
+      // ignored.
       var lastNamespace = resolvedNamespace.getLast();
       IcebergTableLikeEntity virtualEntity =
           IcebergTableLikeEntity.of(
               new PolarisEntity.Builder()
+                  .setId(
+                      entity.getType() == PolarisEntityType.TABLE_LIKE
+                          ? entity.getId()
+                          : PolarisEntityConstants.getNullId())
                   .setName(identifier.name())
                   .setType(PolarisEntityType.TABLE_LIKE)
                   .setSubType(PolarisEntitySubType.ICEBERG_TABLE)

@@ -819,6 +819,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
       StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
       for (PolarisBaseEntity result : results) {
+        if (result.getId() == entity.getId()) {
+          continue;
+        }
         // JDBC materializes persisted rows as PolarisBaseEntity. Resolve the sibling location
         // via PolarisEntityUtils instead of casting to LocationBasedEntity.
         Optional<StorageLocation> resultLocation =
