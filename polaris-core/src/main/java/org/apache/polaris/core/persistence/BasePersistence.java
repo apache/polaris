@@ -406,18 +406,21 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * OPTIMIZED_SIBLING_CHECK}; the fallback used when that flag is off inspects only the entities
    * directly under the same parent.
    *
-   * <p>The entity's own ancestors, given by {@code parentPath}, are excluded: a parent namespace
-   * whose location strictly contains the entity's location is not reported, since default locations
-   * nest under the parent's location. An ancestor whose location equals the entity's location is
-   * still reported.
+   * <p>The ancestors given by {@code parentPath} are excluded: a parent namespace whose location
+   * strictly contains the entity's location is not reported, since default locations nest under the
+   * parent's location. An ancestor whose location equals the entity's location is still reported.
    *
    * <p>The entity itself, identified by its id, is never reported. Implementations should avoid
    * checking the entity against itself when it is already persisted, e.g. on a location update or a
    * rename, so that it does not conflict with its own persisted location.
    *
    * @param callContext the polaris call context
-   * @param parentPath the entity's resolved parent path: the catalog first, then each parent
-   *     namespace, not including the entity itself
+   * @param parentPath the namespaces (and catalog) that may contain the entity's location without
+   *     being reported as conflicts. This is normally the entity's resolved parent path: the
+   *     catalog first, then each parent namespace, not including the entity itself. When an
+   *     existing entity is being moved, callers may also include its current parents, since it is
+   *     still located under them. Implementations only use the entities' ids and must not rely on
+   *     the list being an ordered path.
    * @param entity the entity whose base location to check
    * @return Optional.of(Optional.of(location)) with the base location of a conflicting entity,
    *     Optional.of(Optional.empty()) if there is no conflict, and Optional.empty() if the

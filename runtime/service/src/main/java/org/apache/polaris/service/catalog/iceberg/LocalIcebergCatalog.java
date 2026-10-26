@@ -53,6 +53,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
@@ -1429,6 +1430,21 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       List<PolarisEntity> resolvedNamespace,
       String location,
       PolarisEntity entity) {
+    validateNoLocationOverlap(catalog, identifier, resolvedNamespace, location, entity, List.of());
+  }
+
+  /**
+   * @param previousParentPath the path of the namespaces that currently contain the entity, if it
+   *     is being moved to {@code resolvedNamespace}; they are not reported as conflicts by the
+   *     optimized sibling check
+   */
+  private void validateNoLocationOverlap(
+      CatalogEntity catalog,
+      TableIdentifier identifier,
+      List<PolarisEntity> resolvedNamespace,
+      String location,
+      PolarisEntity entity,
+      List<PolarisEntity> previousParentPath) {
     boolean validateViewOverlap =
         realmConfig.getConfig(BehaviorChangeConfiguration.VALIDATE_VIEW_LOCATION_OVERLAP);
 
@@ -1459,7 +1475,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
                   .build());
 
-      validateNoLocationOverlap(virtualEntity, resolvedNamespace);
+      validateNoLocationOverlap(virtualEntity, resolvedNamespace, previousParentPath);
     }
   }
 
@@ -1536,6 +1552,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
    */
   private <T extends PolarisEntity & LocationBasedEntity> void validateNoLocationOverlap(
       T entity, List<PolarisEntity> parentPath) {
+    validateNoLocationOverlap(entity, parentPath, List.of());
+  }
+
+  private <T extends PolarisEntity & LocationBasedEntity> void validateNoLocationOverlap(
+      T entity, List<PolarisEntity> parentPath, List<PolarisEntity> previousParentPath) {
 
     String location = entity.getBaseLocation();
     String name = entity.getName();
@@ -1544,10 +1565,15 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     boolean useOptimizedSiblingCheck =
         realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
     if (useOptimizedSiblingCheck) {
+      // The optimized check does not interpret this list as a path: it only uses it as the set of
+      // namespaces that may contain the entity without being reported. An entity being moved is
+      // still contained in its previous parents, so they are added to the new ones.
+      List<PolarisEntity> allowedContainers =
+          Stream.concat(parentPath.stream(), previousParentPath.stream()).toList();
       Optional<Optional<String>> directSiblingCheckResult =
           getMetaStoreManager()
               .hasOverlappingSiblings(
-                  getCurrentPolarisContext(), PolarisEntity.toCoreList(parentPath), entity);
+                  getCurrentPolarisContext(), PolarisEntity.toCoreList(allowedContainers), entity);
       if (directSiblingCheckResult.isPresent()) {
         if (directSiblingCheckResult.get().isPresent()) {
           throw new org.apache.iceberg.exceptions.ForbiddenException(
@@ -2795,7 +2821,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       newCatalogPath = resolvedNewParentEntities.getRawFullPath();
 
       validateLocationsForRenamedTableLike(
-          to, IcebergTableLikeEntity.of(leafEntity), resolvedNewParentEntities);
+          to, IcebergTableLikeEntity.of(leafEntity), resolvedNewParentEntities, catalogPath);
 
       // the "to" table has a new parent and a new name / namespace path
       toEntity =
@@ -2898,7 +2924,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   private void validateLocationsForRenamedTableLike(
       TableIdentifier to,
       IcebergTableLikeEntity entity,
-      PolarisResolvedPathWrapper resolvedNewParent) {
+      PolarisResolvedPathWrapper resolvedNewParent,
+      List<PolarisEntity> previousParentPath) {
     Set<String> tableLocations =
         StorageUtil.getLocationsUsedByTable(
             entity.getBaseLocation(), entity.getInternalPropertiesAsMap());
@@ -2910,7 +2937,12 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     for (String location : tableLocations) {
       validateNoLocationOverlap(
-          catalogEntity, to, resolvedNewParent.getRawFullPath(), location, entity);
+          catalogEntity,
+          to,
+          resolvedNewParent.getRawFullPath(),
+          location,
+          entity,
+          previousParentPath);
     }
   }
 
