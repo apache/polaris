@@ -19,6 +19,8 @@
 package org.apache.polaris.persistence.atomic.dynamodb;
 
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
 import software.amazon.awssdk.services.dynamodb.model.BillingMode;
@@ -41,6 +43,8 @@ import software.amazon.awssdk.services.dynamodb.model.TableDescription;
  * <p>Provisioning is a control-plane step run at bootstrap, not on the request path.
  */
 public final class DynamoDbSchema {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DynamoDbSchema.class);
 
   private DynamoDbSchema() {}
 
@@ -83,7 +87,8 @@ public final class DynamoDbSchema {
       client.deleteTable(builder -> builder.tableName(tableName));
       client.waiter().waitUntilTableNotExists(builder -> builder.tableName(tableName));
     } catch (ResourceNotFoundException alreadyGone) {
-      // Nothing to delete.
+      // Table already gone -- the expected case for deleteIfExists, so no warning.
+      LOGGER.debug("Table {} already absent; nothing to delete.", tableName);
     }
   }
 
