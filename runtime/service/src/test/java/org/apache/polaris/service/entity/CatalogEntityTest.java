@@ -667,6 +667,16 @@ public class CatalogEntityTest {
     assertThat(MAPPER.writeValueAsString(b.build())).contains("skipSasTokenGeneration");
   }
 
+  @Test
+  public void testGcpConfigJsonPropertiesPresence() {
+    GcpStorageConfigInfo.Builder b =
+        GcpStorageConfigInfo.builder().setStorageType(StorageConfigInfo.StorageTypeEnum.GCS);
+    assertThat(MAPPER.writeValueAsString(b.build())).contains("storageType");
+    assertThat(MAPPER.writeValueAsString(b.build())).doesNotContain("skipCredentialDownscoping");
+    b.setSkipCredentialDownscoping(true);
+    assertThat(MAPPER.writeValueAsString(b.build())).contains("skipCredentialDownscoping");
+  }
+
   @ParameterizedTest(name = "[{index}] base={1} within allowed={0}")
   @CsvSource({"s3://bucket/, s3://bucket/path/to/data", "s3://bucket/, s3://bucket/"})
   public void testBaseWithinAllowed_accepted(String allowed, String base) {

@@ -115,7 +115,8 @@ principal as described above.
 
 ## Skipping SAS token generation
 
-For non-cloud or emulator deployments that must not mint Azure SAS tokens, set
+For self-managed client-side storage access or emulator deployments that must not
+mint Azure SAS tokens, set
 `skipSasTokenGeneration: true` on the catalog storage configuration. Polaris then skips SAS
 vending for that catalog, the same way S3 `stsUnavailable: true` skips STS. Unset or `false`
 keeps SAS vending enabled.
