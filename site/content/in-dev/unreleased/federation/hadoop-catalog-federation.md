@@ -67,29 +67,31 @@ For Kubernetes deployments, add these properties to the ConfigMap mounted into t
   There is no remote service in between, so the file system behind the `warehouse` location must be
   reachable from the Polaris process with permission to do all three.
 - **Configuration discovery:** Polaris initializes the `HadoopCatalog` with a default Hadoop
-  `Configuration`, which loads `core-site.xml` and `hdfs-site.xml` from the classpath. Provide them
-  via `HADOOP_CONF_DIR` or an image layer when the warehouse is on HDFS or needs non-default client
-  settings.
+  `Configuration`, which reads `core-site.xml` (and `hdfs-site.xml` once the HDFS client loads)
+  from the JVM classpath. The Java client does not consult `HADOOP_CONF_DIR` by itself, so place
+  those files on the Polaris server classpath, for example through an image layer, when the
+  warehouse is on HDFS or needs non-default client settings.
 - **Authentication:** Hadoop federation only supports `IMPLICIT` authentication, meaning Polaris
   uses the operating-system or Kerberos identity of the running process (no stored secrets). For a
   Kerberized HDFS, ensure the service principal holds a valid keytab/TGT before starting Polaris;
   the [Kerberos setup example]({{% ref "hive-metastore-federation.md#kerberos-setup-example" %}})
   for Hive federation applies here as well.
-- **Object storage role:** When the warehouse is on S3, configure
-  `polaris.service-identity.<realm>.aws-iam.*` (or the default realm) so the server can assume the
-  AWS role referenced by the catalog, and read the warehouse access notes below.
+- **Object storage access:** The server-side `HadoopCatalog` reaches an S3 warehouse with the
+  ambient AWS credentials of the Polaris process; the `roleArn` in `storageConfigInfo` is used for
+  vending credentials to clients, which for federated catalogs is governed by
+  `ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING`. Read the warehouse access notes below.
 
 ## Warehouse access patterns
 
-The default Polaris build ships the Hadoop client libraries, but not cloud connectors such as
-`hadoop-aws`. Polaris also has no HDFS storage type: `allowedLocations` and `default-base-location`
-must use a prefix accepted by one of the `FILE`, `S3`, `AZURE` or `GCS` storage types. Together this
-leads to the following patterns:
+The default Polaris build ships the Hadoop client libraries and `S3FileIO`, but not Hadoop cloud
+connectors such as `hadoop-aws`. Polaris also has no HDFS storage type: `allowedLocations` and
+`default-base-location` must use a prefix accepted by one of the `FILE`, `S3`, `AZURE` or `GCS`
+storage types. Together this leads to the following patterns:
 
 | Pattern                                                                              | Works with the default build       | Notes                                                                                                                                                                                                                                                      |
 |--------------------------------------------------------------------------------------|------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Local or network-mounted directory (`file:///...`) with `FILE` storage               | Yes                                | Simplest setup for tests and single-writer deployments. `FILE` storage is intended for testing; it performs no credential vending.                                                                                                                         |
-| HDFS warehouse handled by ambient Hadoop config and process identity                 | Only with wildcard locations       | `hdfs://` is not an accepted prefix for any storage type. Use `FILE` storage with `allowedLocations: ["*"]` and `ALLOW_WILDCARD_LOCATION=true`, which disables Polaris location checks for the catalog, so restrict access at the HDFS permission level.   |
+| HDFS warehouse handled by ambient Hadoop config and process identity                 | Not expressible in `storageConfigInfo` | `hdfs://` is not an accepted location prefix for any storage type, and `default-base-location` must lie within an allowed location, so an HDFS warehouse cannot be described directly. The `*` wildcard entry (`ALLOW_WILDCARD_LOCATION=true`) lifts the runtime location checks but still needs a `file://` base location next to it. |
 | `HadoopFileIO` with `s3a://` warehouses                                              | Only with extra runtime packaging  | `hadoop-aws` and related file system dependencies are not included in the Polaris runtime.                                                                                                                                                                 |
 | `S3FileIO` with ambient AWS credentials                                              | Sometimes                          | Set `io-impl=org.apache.iceberg.aws.s3.S3FileIO` in the catalog-level `properties`. Commits still rely on atomic rename, which S3 does not provide, so concurrent writers are unsafe.                                                                       |
 | **UNSAFE!** Putting object-store credentials in catalog properties                   | **DO NOT USE / THIS IS UNSAFE**    | Secrets placed in catalog properties are returned to authenticated catalog clients through `/config`. This **exposes passwords, access keys, session tokens, or other secrets as plain text**.                                                             |
@@ -139,9 +141,10 @@ is required by the connection configuration API but is not used by the Hadoop ca
 validates it as a `java.net.URL`, so it must use a scheme the JVM knows (`file`, `http`, `https`);
 `hdfs://` and `s3://` values are rejected with `Invalid remote URI`. For a `file://` warehouse,
 reuse the warehouse location; for HDFS or S3 warehouses, use a descriptive `http(s)` address such as
-the NameNode web UI. `default-base-location` is required; it tells Polaris and Iceberg where to
-place new metadata files. For an S3 warehouse, use `"storageType": "S3"` with `roleArn` and
-`region` as in the Hive federation example.
+the NameNode web UI. `default-base-location` is required for every Polaris catalog; the
+`HadoopCatalog` itself places tables and their metadata under `warehouse`, so keep the two values
+aligned. For an S3 warehouse, use `"storageType": "S3"` with `roleArn` and `region` as in the Hive
+federation example.
 
 Grant catalog roles to principal roles exactly as you would for internal catalogs so engines can
 obtain tokens that authorize against the federated metadata.
