@@ -1235,7 +1235,17 @@ class OptionTree:
                     input_name=Arguments.SETUP_CONFIG,
                     input_metavar="SETUP_CONFIG_FILE",
                 ),
-                Option(Subcommands.EXPORT, hint="Export current configuration"),
+                Option(
+                    Subcommands.EXPORT,
+                    hint="Export current configuration",
+                    args=[
+                        Argument(
+                            Arguments.INCLUDE_TABLES_AND_VIEWS,
+                            bool,
+                            "Also export tables and views of internal catalogs",
+                        )
+                    ],
+                ),
             ],
         )
 
