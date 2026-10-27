@@ -38,5 +38,6 @@ interface WebhookHttpClient {
   Response post(
       @HeaderParam(WebhookEventListener.EVENT_TYPE_HEADER) String eventType,
       @HeaderParam(WebhookEventListener.SIGNATURE_HEADER) String signature,
+      @HeaderParam(WebhookEventListener.DELIVERY_TIME_HEADER) String deliveryTime,
       String payload);
 }

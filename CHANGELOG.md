@@ -103,13 +103,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Shared CloudEvents 1.0 JSON mapper for Polaris events (`CloudEventsEventJsonMapper` next to
   the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
-  lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners
-  (webhook / Kafka / CloudWatch) can adopt this in follow-ups.
+  lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). The webhook listener
+  uses this mapper; Kafka / CloudWatch can adopt it in follow-ups.
 - Python CLI: added `register` support for both `tables` and `views` commands
 - Python CLI: added `namespaces update` to set and remove namespace properties
 - NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
-- Added a `webhook` event listener (`polaris.event-listener.types=webhook`) that delivers sanitized Polaris events as JSON HTTP POSTs to a configurable endpoint (SIEM/audit collectors). Payloads use a CloudEvents-shaped envelope (`specversion`, `id`, `type`, `source`, original `time`, plus `deliverytime` and CloudEvents-compliant extension attribute names) with optional HMAC-SHA256 signing (`X-Polaris-Signature-256`). Delivery is best-effort and bounded (`max-concurrent`, `max-pending`); transient failures retry with jitter (and `Retry-After` when present); HTTPS is required by default (`require-https`); reserved signature/event headers cannot be overridden by custom headers. Metrics cover success, failure, retries, drops, pending, in-flight, and latency.
+- Added a `webhook` event listener (`polaris.event-listener.types=webhook`) that delivers sanitized Polaris events as JSON HTTP POSTs to a configurable endpoint (SIEM/audit collectors). Payloads use the shared `CloudEventsEventJsonMapper` envelope (CE context at the top, Kafka-parity Polaris fields in `data`). Delivery time is the `X-Polaris-Delivery-Time` header, not a CloudEvents extension. Optional HMAC-SHA256 signing (`X-Polaris-Signature-256`). Delivery is best-effort and bounded (`max-concurrent`, `max-pending`); transient failures retry with jitter (and `Retry-After` when present); HTTPS is required by default (`require-https`); reserved signature/event/delivery-time headers cannot be overridden by custom headers. Metrics cover success, failure, retries, drops, pending, in-flight, and latency.
 
 ### Changes
 
