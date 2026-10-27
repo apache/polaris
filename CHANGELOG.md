@@ -278,6 +278,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The Ranger authorizer no longer fails with `NoClassDefFoundError: javax/ws/rs/core/Cookie` when
   using `RangerAdminRESTClient` as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
+- Iceberg REST: creating a namespace with a request that omits `namespace` now returns
+  `400 Bad Request` instead of `500 Internal Server Error`.
 
 ### Commits
 
