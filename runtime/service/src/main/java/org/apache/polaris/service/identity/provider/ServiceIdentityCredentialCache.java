@@ -21,59 +21,55 @@ package org.apache.polaris.service.identity.provider;
 
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
-import org.apache.polaris.core.identity.ServiceIdentityType;
-import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
-import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.utils.SdkAutoCloseable;
 
 /**
- * Application-scoped cache of resolved {@link ServiceIdentityCredential}s, keyed by the realm whose
- * configuration they were resolved from and their identity type.
+ * Application-scoped cache of the AWS credentials providers behind service identity credentials,
+ * keyed by the realm whose configuration they were created from.
  *
  * <p>{@link DefaultServiceIdentityProvider} is request scoped, so without this cache every request
- * would build a new credential and, with it, a new AWS credentials provider. With the AWS default
- * credential chain (e.g. web identity on EKS), each provider instance owns its own STS client and
- * credential cache, so a new instance per request means a new STS call per request. Service
- * identity configuration is fixed at startup, so a credential resolved for a reference stays valid
- * for the lifetime of the application, and the SDK provider refreshes the underlying session
- * credentials itself.
+ * would build a new AWS credentials provider. With the AWS default credential chain (e.g. web
+ * identity on EKS), each provider instance owns its own STS client and credential cache, so a new
+ * instance per request means a new STS call per request. Service identity configuration is fixed at
+ * startup, so a provider created for a realm stays valid for the lifetime of the application, and
+ * it refreshes the underlying session credentials itself.
  */
 @ApplicationScoped
 public class ServiceIdentityCredentialCache {
 
-  private record Key(String realm, ServiceIdentityType type) {}
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(ServiceIdentityCredentialCache.class);
 
-  private final ConcurrentMap<Key, ServiceIdentityCredential> credentials =
+  private final ConcurrentMap<String, AwsCredentialsProvider> awsCredentialsProviders =
       new ConcurrentHashMap<>();
 
   /**
-   * Returns the credential cached for the given realm and identity type, resolving it with {@code
-   * resolver} on first use. Empty results are not cached.
+   * Returns the AWS credentials provider cached for {@code realm}, creating it with {@code factory}
+   * on first use.
    */
-  Optional<ServiceIdentityCredential> getOrResolve(
-      String realm,
-      ServiceIdentityType type,
-      Supplier<Optional<? extends ServiceIdentityCredential>> resolver) {
-    return Optional.ofNullable(
-        credentials.computeIfAbsent(new Key(realm, type), key -> resolver.get().orElse(null)));
+  AwsCredentialsProvider awsCredentialsProvider(
+      String realm, Supplier<AwsCredentialsProvider> factory) {
+    return awsCredentialsProviders.computeIfAbsent(realm, key -> factory.get());
   }
 
   @PreDestroy
   void shutdown() {
-    credentials
-        .values()
-        .forEach(
-            credential -> {
-              if (credential instanceof AwsIamServiceIdentityCredential awsCredential
-                  && awsCredential.getAwsCredentialsProvider()
-                      instanceof SdkAutoCloseable closeable) {
-                closeable.close();
-              }
-            });
-    credentials.clear();
+    awsCredentialsProviders.forEach(
+        (realm, provider) -> {
+          if (provider instanceof SdkAutoCloseable closeable) {
+            try {
+              closeable.close();
+            } catch (RuntimeException e) {
+              LOGGER.warn("Failed to close AWS credentials provider for realm {}", realm, e);
+            }
+          }
+        });
+    awsCredentialsProviders.clear();
   }
 }
