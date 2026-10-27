@@ -25,7 +25,6 @@ import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
@@ -41,6 +40,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
@@ -134,7 +134,7 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(
                 callContext, candidateNamespace, Set.of(catalog.getId())))
-        .contains(Optional.of("s3://bucket/warehouse/existing/"));
+        .isEqualTo(new LocationOverlapResult.Overlap("s3://bucket/warehouse/existing/"));
 
     TestLocationBasedEntity nonOverlappingNamespace =
         new TestLocationBasedEntity(
@@ -147,7 +147,7 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(
                 callContext, nonOverlappingNamespace, Set.of(catalog.getId())))
-        .contains(Optional.empty());
+        .isEqualTo(new LocationOverlapResult.NoOverlap());
 
     // The persisted entity itself, e.g. when renamed, does not conflict with its own location.
     TestLocationBasedEntity renamedNamespace =
@@ -158,7 +158,7 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(
                 callContext, renamedNamespace, Set.of(catalog.getId())))
-        .contains(Optional.empty());
+        .isEqualTo(new LocationOverlapResult.NoOverlap());
   }
 
   @Test

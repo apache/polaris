@@ -120,6 +120,7 @@ import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -1571,16 +1572,17 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           Stream.concat(parentPath.stream(), previousParentPath.stream())
               .map(PolarisEntity::getId)
               .collect(Collectors.toSet());
-      Optional<Optional<String>> directSiblingCheckResult =
-          getMetaStoreManager()
-              .hasOverlappingSiblings(getCurrentPolarisContext(), entity, allowedContainerIds);
-      if (directSiblingCheckResult.isPresent()) {
-        if (directSiblingCheckResult.get().isPresent()) {
-          throw new org.apache.iceberg.exceptions.ForbiddenException(
-              "Unable to create entity at location '%s' because it conflicts with existing table or namespace at %s",
-              location, directSiblingCheckResult.get().get());
-        } else {
+      switch (getMetaStoreManager()
+          .hasOverlappingSiblings(getCurrentPolarisContext(), entity, allowedContainerIds)) {
+        case LocationOverlapResult.Overlap overlap ->
+            throw new org.apache.iceberg.exceptions.ForbiddenException(
+                "Unable to create entity at location '%s' because it conflicts with existing table or namespace at %s",
+                location, overlap.conflictingLocation());
+        case LocationOverlapResult.NoOverlap noOverlap -> {
           return;
+        }
+        case LocationOverlapResult.Unsupported unsupported -> {
+          // fall through to listing the siblings
         }
       }
     }

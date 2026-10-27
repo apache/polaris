@@ -19,7 +19,6 @@
 package org.apache.polaris.core.persistence;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -423,16 +422,16 @@ public interface BasePersistence extends PolicyMappingPersistence {
    *     entity's parent path: the catalog and each parent namespace, not including the entity
    *     itself. When an existing entity is being moved, callers may also include the ids of its
    *     current parents, since it is still located under them.
-   * @return Optional.of(Optional.of(location)) with the base location of a conflicting entity,
-   *     Optional.of(Optional.empty()) if there is no conflict, and Optional.empty() if the
-   *     metastore doesn't support this operation
+   * @return {@link LocationOverlapResult.Overlap} with the base location of a conflicting entity,
+   *     {@link LocationOverlapResult.NoOverlap} if there is no conflict, and {@link
+   *     LocationOverlapResult.Unsupported} if the metastore doesn't support this operation
    */
   default <T extends PolarisEntity & LocationBasedEntity>
-      Optional<Optional<String>> hasOverlappingSiblings(
+      LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
           @NonNull Set<Long> allowedContainerIds) {
-    return Optional.empty();
+    return new LocationOverlapResult.Unsupported();
   }
 
   /**

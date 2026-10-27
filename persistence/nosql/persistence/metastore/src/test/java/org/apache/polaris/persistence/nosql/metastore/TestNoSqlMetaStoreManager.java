@@ -39,7 +39,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,6 +58,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
@@ -268,8 +268,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
                     .setBaseLocation("s3://bucket/foo/newchild/")
                     .build(),
                 Set.of(catalog.getId())))
-        .isPresent()
-        .contains(Optional.of("s3://bucket/foo/"));
+        .isEqualTo(new LocationOverlapResult.Overlap("s3://bucket/foo/"));
 
     // The same location is a conflict, unless the entity is the persisted one (e.g. a rename).
     var renamedFoo =
@@ -279,8 +278,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
             .build();
     soft.assertThat(
             metaStore.hasOverlappingSiblings(callContext, renamedFoo, Set.of(catalog.getId())))
-        .isPresent()
-        .contains(Optional.of("s3://bucket/foo/"));
+        .isEqualTo(new LocationOverlapResult.Overlap("s3://bucket/foo/"));
     var persistedFoo =
         new NamespaceEntity.Builder(Namespace.of("renamed"))
             .setId(nsFoo.getEntity().getId())
@@ -289,8 +287,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
             .build();
     soft.assertThat(
             metaStore.hasOverlappingSiblings(callContext, persistedFoo, Set.of(catalog.getId())))
-        .isPresent()
-        .contains(Optional.empty());
+        .isEqualTo(new LocationOverlapResult.NoOverlap());
 
     var nsBar =
         createEntity(
@@ -326,8 +323,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
                     .setBaseLocation("s3://bucket/foo/")
                     .build(),
                 Set.of(catalog.getId())))
-        .isPresent()
-        .contains(Optional.of("s3://bucket/foo/"));
+        .isEqualTo(new LocationOverlapResult.Overlap("s3://bucket/foo/"));
 
     for (var check :
         List.of(
@@ -343,8 +339,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
                       .setBaseLocation(check)
                       .build(),
                   Set.of(catalog.getId())))
-          .isPresent()
-          .contains(Optional.of("s3://bucket/foo/bar/"));
+          .isEqualTo(new LocationOverlapResult.Overlap("s3://bucket/foo/bar/"));
     }
 
     soft.assertThat(
@@ -355,8 +350,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
                     .setBaseLocation("s3://other/data/stuff/")
                     .build(),
                 Set.of(catalog.getId())))
-        .isPresent()
-        .contains(Optional.empty());
+        .isEqualTo(new LocationOverlapResult.NoOverlap());
 
     // Drop one of the entities with the duplicate base location
     metaStore.dropEntityIfExists(callContext, List.of(catalog), nsFoobar.getEntity(), null, false);
@@ -369,8 +363,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
                     .setBaseLocation("s3://bucket/foo/bar")
                     .build(),
                 Set.of(catalog.getId())))
-        .isPresent()
-        .contains(Optional.of("s3://bucket/foo/bar/"));
+        .isEqualTo(new LocationOverlapResult.Overlap("s3://bucket/foo/bar/"));
 
     // Drop one of the entities with the duplicate base location
     metaStore.dropEntityIfExists(callContext, List.of(catalog), nsFoobar2.getEntity(), null, false);
@@ -387,8 +380,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
                     .setBaseLocation("s3://bucket/foo/bar")
                     .build(),
                 Set.of(catalog.getId())))
-        .isPresent()
-        .contains(Optional.empty());
+        .isEqualTo(new LocationOverlapResult.NoOverlap());
   }
 
   @Test

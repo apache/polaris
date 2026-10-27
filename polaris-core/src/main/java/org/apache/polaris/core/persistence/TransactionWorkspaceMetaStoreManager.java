@@ -22,7 +22,6 @@ import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
@@ -367,7 +366,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
-      Optional<Optional<String>> hasOverlappingSiblings(
+      LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
           @NonNull Set<Long> allowedContainerIds) {

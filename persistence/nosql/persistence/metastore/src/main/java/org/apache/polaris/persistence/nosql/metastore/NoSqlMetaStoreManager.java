@@ -51,6 +51,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.RenameEntityUtil;
@@ -493,11 +494,14 @@ record NoSqlMetaStoreManager(
 
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
-      Optional<Optional<String>> hasOverlappingSiblings(
+      LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
           @NonNull Set<Long> allowedContainerIds) {
-    return Optional.of(ms(callContext).hasOverlappingSiblings(entity, allowedContainerIds));
+    return ms(callContext)
+        .hasOverlappingSiblings(entity, allowedContainerIds)
+        .<LocationOverlapResult>map(LocationOverlapResult.Overlap::new)
+        .orElseGet(LocationOverlapResult.NoOverlap::new);
   }
 
   @NonNull

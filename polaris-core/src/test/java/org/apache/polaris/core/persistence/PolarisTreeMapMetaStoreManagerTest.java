@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -78,13 +77,12 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
     // A different entity at the same location is a conflict.
     var other = new LocationBasedTestEntity(buildNamespace(catalog, existing.getId() + 1));
     var conflict = metaStoreManager.hasOverlappingSiblings(callContext, other, allowedContainerIds);
-    assertThat(conflict).isPresent();
-    assertThat(conflict.get()).isPresent();
+    assertThat(conflict).isInstanceOf(LocationOverlapResult.Overlap.class);
 
     // The persisted entity itself, e.g. when renamed, is not a conflict.
     var self = new LocationBasedTestEntity(buildNamespace(catalog, existing.getId()));
     assertThat(metaStoreManager.hasOverlappingSiblings(callContext, self, allowedContainerIds))
-        .contains(Optional.empty());
+        .isEqualTo(new LocationOverlapResult.NoOverlap());
   }
 
   private static PolarisBaseEntity buildNamespace(PolarisBaseEntity catalog, long entityId) {

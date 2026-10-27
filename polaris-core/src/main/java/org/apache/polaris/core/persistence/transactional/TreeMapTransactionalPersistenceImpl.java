@@ -43,6 +43,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -673,7 +674,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
-      Optional<Optional<String>> hasOverlappingSiblings(
+      LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
           @NonNull Set<Long> allowedContainerIds) {
@@ -702,10 +703,10 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
           continue;
         }
         if (containsEntity || containedByEntity) {
-          return Optional.of(Optional.of(maybeSiblingLocationWithoutScheme.toString()));
+          return new LocationOverlapResult.Overlap(maybeSiblingLocationWithoutScheme.toString());
         }
       }
     }
-    return Optional.of(Optional.empty());
+    return new LocationOverlapResult.NoOverlap();
   }
 }

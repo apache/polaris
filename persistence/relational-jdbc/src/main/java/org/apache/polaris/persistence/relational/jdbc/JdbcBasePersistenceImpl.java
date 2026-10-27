@@ -57,6 +57,7 @@ import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
@@ -793,13 +794,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
-      Optional<Optional<String>> hasOverlappingSiblings(
+      LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
           @NonNull Set<Long> allowedContainerIds) {
     if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count()
         > MAX_LOCATION_COMPONENTS) {
-      return Optional.empty();
+      return new LocationOverlapResult.Unsupported();
     }
 
     PreparedQuery query =
@@ -808,7 +809,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity());
       if (results.isEmpty()) {
-        return Optional.of(Optional.empty());
+        return new LocationOverlapResult.NoOverlap();
       }
       // The query matches every entity whose location is an ancestor of, equal to, or a descendant
       // of the entity's location. The entity's own parent namespaces may match the ancestor terms:
@@ -836,10 +837,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           continue;
         }
         if (containsEntity || containedByEntity) {
-          return Optional.of(Optional.of(resultLocation.get().toString()));
+          return new LocationOverlapResult.Overlap(resultLocation.get().toString());
         }
       }
-      return Optional.of(Optional.empty());
+      return new LocationOverlapResult.NoOverlap();
     } catch (SQLException e) {
       LOGGER.error(
           "Failed to retrieve location overlap for location {} due to {}",
