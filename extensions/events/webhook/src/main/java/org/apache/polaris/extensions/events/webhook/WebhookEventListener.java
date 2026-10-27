@@ -54,19 +54,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.service.events.EventAttributes;
+import org.apache.polaris.service.events.CloudEventsEventJsonMapper;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
-import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Delivers Polaris events to an HTTP(S) endpoint as JSON POSTs, optionally signed with HMAC-SHA256.
+ *
+ * <p>The JSON body is the shared {@link CloudEventsEventJsonMapper} envelope. Delivery time is sent
+ * as the {@code X-Polaris-Delivery-Time} header, not as a CloudEvents extension.
  *
  * <p>Delivery is best-effort and bounded: concurrency and pending work are capped; retries use
  * exponential backoff with full jitter for transient failures only. Ordering is not guaranteed.
@@ -79,14 +78,10 @@ public class WebhookEventListener implements PolarisEventListener {
 
   static final String SIGNATURE_HEADER = "X-Polaris-Signature-256";
   static final String EVENT_TYPE_HEADER = "X-Polaris-Event";
+  static final String DELIVERY_TIME_HEADER = "X-Polaris-Delivery-Time";
 
-  /** CloudEvents spec version the payload envelope is shaped after. */
-  static final String SPEC_VERSION = "1.0";
-
-  /** CloudEvents {@code source} attribute identifying Polaris as the event producer. */
-  static final String EVENT_SOURCE = "org.apache.polaris";
-
-  private static final ObjectMapper MAPPER = JsonMapper.shared();
+  private static final CloudEventsEventJsonMapper EVENT_JSON_MAPPER =
+      new CloudEventsEventJsonMapper();
 
   private static final Set<String> RESERVED_HEADERS =
       Set.of(
@@ -94,7 +89,8 @@ public class WebhookEventListener implements PolarisEventListener {
           "content-length",
           "host",
           SIGNATURE_HEADER.toLowerCase(Locale.ROOT),
-          EVENT_TYPE_HEADER.toLowerCase(Locale.ROOT));
+          EVENT_TYPE_HEADER.toLowerCase(Locale.ROOT),
+          DELIVERY_TIME_HEADER.toLowerCase(Locale.ROOT));
 
   private final URI endpoint;
   private final String secret;
@@ -228,7 +224,8 @@ public class WebhookEventListener implements PolarisEventListener {
   interface WebhookTransport extends AutoCloseable {
     record Result(int status, String retryAfter) {}
 
-    Result post(String eventType, String signature, String payload) throws Exception;
+    Result post(String eventType, String signature, String deliveryTime, String payload)
+        throws Exception;
 
     @Override
     default void close() throws Exception {}
@@ -262,9 +259,9 @@ public class WebhookEventListener implements PolarisEventListener {
     }
 
     @Override
-    public Result post(String eventType, String signature, String payload) {
+    public Result post(String eventType, String signature, String deliveryTime, String payload) {
       try {
-        try (Response response = client.post(eventType, signature, payload)) {
+        try (Response response = client.post(eventType, signature, deliveryTime, payload)) {
           return toResult(response);
         }
       } catch (WebApplicationException e) {
@@ -422,8 +419,9 @@ public class WebhookEventListener implements PolarisEventListener {
     inFlight.incrementAndGet();
     long startNanos = System.nanoTime();
     String signature = secret != null ? "sha256=" + sign(payload, secret) : null;
+    String deliveryTime = clock.instant().toString();
     try {
-      WebhookTransport.Result result = transport.post(eventType, signature, payload);
+      WebhookTransport.Result result = transport.post(eventType, signature, deliveryTime, payload);
       deliveryTimer.record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
       int status = result.status();
       if (status >= 200 && status < 300) {
@@ -545,36 +543,10 @@ public class WebhookEventListener implements PolarisEventListener {
 
   @VisibleForTesting
   String toJson(PolarisEvent event) {
-    // ObjectNode preserves insertion order: core CloudEvents attributes first, then extension
-    // attributes (compliant names: lowercase alphanumerics).
-    ObjectNode root = MAPPER.createObjectNode();
-    root.put("specversion", SPEC_VERSION);
-    root.put("id", event.metadata().eventId().toString());
-    root.put("type", event.type().name());
-    root.put("source", EVENT_SOURCE);
-    // Original event time from metadata (not delivery time), RFC 3339 per CloudEvents.
-    root.put("time", event.metadata().timestamp().toString());
-    root.put("deliverytime", clock.instant().toString());
-    root.put("realmid", event.metadata().realmId());
-    event
-        .attributes()
-        .getOptional(EventAttributes.TABLE_IDENTIFIER)
-        .map(TableIdentifier::toString)
-        .ifPresent(id -> root.put("tableidentifier", id));
-    event
-        .metadata()
-        .user()
-        .ifPresent(
-            p -> {
-              root.put("principal", p.getName());
-              root.set("activatedroles", MAPPER.valueToTree(p.getRoles()));
-            });
-    event.metadata().requestId().ifPresent(id -> root.put("requestid", id));
     try {
-      return MAPPER.writeValueAsString(root);
+      return EVENT_JSON_MAPPER.eventToJson(event);
     } catch (JacksonException e) {
       LOGGER.error("Error processing event into JSON string: ", e);
-      LOGGER.debug("Failed to convert the following object into JSON string: {}", root);
       return null;
     }
   }

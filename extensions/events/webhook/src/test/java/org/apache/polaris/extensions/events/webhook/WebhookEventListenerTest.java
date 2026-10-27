@@ -46,7 +46,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.MutableAttributeMap;
+import org.apache.polaris.service.events.CloudEventsEventJsonMapper;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
@@ -68,7 +70,7 @@ class WebhookEventListenerTest {
   private static final UUID EVENT_ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
   private static final Instant EVENT_TIME = Instant.parse("2026-01-15T12:00:00Z");
   private static final PolarisPrincipal PRINCIPAL =
-      PolarisPrincipal.of(TEST_USER, Map.of(), Set.of("role1", "role2"));
+      PolarisPrincipal.of(TEST_USER, AttributeMap.EMPTY, Set.of("role1", "role2"));
   private static final Clock CLOCK = Clock.systemUTC();
 
   private static final JsonMapper OBJECT_MAPPER = JsonMapper.shared();
@@ -84,7 +86,7 @@ class WebhookEventListenerTest {
   private SimpleMeterRegistry meterRegistry;
 
   private record RecordedRequest(
-      String body, String signature, String eventType, String authorization) {}
+      String body, String signature, String eventType, String authorization, String deliveryTime) {}
 
   @BeforeEach
   void setUp() throws Exception {
@@ -105,7 +107,10 @@ class WebhookEventListenerTest {
                   body,
                   exchange.getRequestHeaders().getFirst(WebhookEventListener.SIGNATURE_HEADER),
                   exchange.getRequestHeaders().getFirst(WebhookEventListener.EVENT_TYPE_HEADER),
-                  exchange.getRequestHeaders().getFirst("Authorization")));
+                  exchange.getRequestHeaders().getFirst("Authorization"),
+                  exchange
+                      .getRequestHeaders()
+                      .getFirst(WebhookEventListener.DELIVERY_TIME_HEADER)));
           int status;
           if (failAlways.get()) {
             status = 500;
@@ -181,12 +186,14 @@ class WebhookEventListenerTest {
     }
 
     @Override
-    public Result post(String eventType, String signature, String payload) throws Exception {
+    public Result post(String eventType, String signature, String deliveryTime, String payload)
+        throws Exception {
       HttpRequest.Builder requestBuilder =
           HttpRequest.newBuilder(endpoint)
               .timeout(timeout)
               .header("Content-Type", "application/json")
               .header(WebhookEventListener.EVENT_TYPE_HEADER, eventType)
+              .header(WebhookEventListener.DELIVERY_TIME_HEADER, deliveryTime)
               .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8));
       if (signature != null) {
         requestBuilder.header(WebhookEventListener.SIGNATURE_HEADER, signature);
@@ -231,17 +238,26 @@ class WebhookEventListenerTest {
 
       RecordedRequest request = recordedRequests.getFirst();
       JsonNode json = OBJECT_MAPPER.readTree(request.body());
-      assertThat(json.get("specversion").asString()).isEqualTo(WebhookEventListener.SPEC_VERSION);
+      assertThat(json.get("specversion").asString())
+          .isEqualTo(CloudEventsEventJsonMapper.SPEC_VERSION);
       assertThat(json.get("id").asString()).isEqualTo(EVENT_ID.toString());
       assertThat(json.get("time").asString()).isEqualTo(EVENT_TIME.toString());
-      assertThat(json.get("deliverytime").asString()).isNotBlank();
-      assertThat(json.get("source").asString()).isEqualTo(WebhookEventListener.EVENT_SOURCE);
+      assertThat(json.get("source").asString()).isEqualTo(CloudEventsEventJsonMapper.SOURCE);
       assertThat(json.get("type").asString())
+          .isEqualTo(
+              CloudEventsEventJsonMapper.cloudEventsType(PolarisEventType.AFTER_REFRESH_TABLE));
+      assertThat(json.get("datacontenttype").asString()).isEqualTo("application/json");
+      assertThat(json.has("deliverytime")).isFalse();
+      assertThat(json.has("realmid")).isFalse();
+      JsonNode data = json.get("data");
+      assertThat(data.get("realm_id").asString()).isEqualTo(REALM);
+      assertThat(data.get("principal").asString()).isEqualTo(TEST_USER);
+      assertThat(data.get("activated_roles")).hasSize(2);
+      assertThat(data.get("catalog_name").asString()).isEqualTo("test_catalog");
+      assertThat(data.get("table_identifier").isArray()).isTrue();
+      assertThat(data.get("event_type").asString())
           .isEqualTo(PolarisEventType.AFTER_REFRESH_TABLE.name());
-      assertThat(json.get("realmid").asString()).isEqualTo(REALM);
-      assertThat(json.get("principal").asString()).isEqualTo(TEST_USER);
-      assertThat(json.get("activatedroles")).hasSize(2);
-      assertThat(json.get("tableidentifier").asString()).isEqualTo("test_ns.test_table");
+      assertThat(request.deliveryTime()).isNotBlank();
       assertThat(request.eventType()).isEqualTo(PolarisEventType.AFTER_REFRESH_TABLE.name());
       assertThat(request.signature())
           .isEqualTo("sha256=" + WebhookEventListener.sign(request.body(), SECRET));
@@ -368,9 +384,10 @@ class WebhookEventListenerTest {
 
   @Test
   void restClientTransportPreservesStatusFromResponse() throws Exception {
-    WebhookHttpClient client = (eventType, signature, payload) -> Response.status(400).build();
+    WebhookHttpClient client =
+        (eventType, signature, deliveryTime, payload) -> Response.status(400).build();
     WebhookEventListener.WebhookTransport.Result result =
-        WebhookEventListener.restClientTransport(client).post("T", null, "{}");
+        WebhookEventListener.restClientTransport(client).post("T", null, "t", "{}");
     assertThat(result.status()).isEqualTo(400);
     assertThat(result.retryAfter()).isNull();
     assertThat(WebhookEventListener.isTransient(result.status(), null)).isFalse();
@@ -381,12 +398,12 @@ class WebhookEventListenerTest {
       throws Exception {
     // Simulates the MP default mapper path that disableDefaultMapper(true) avoids in production.
     WebhookHttpClient client =
-        (eventType, signature, payload) -> {
+        (eventType, signature, deliveryTime, payload) -> {
           throw new WebApplicationException(
               Response.status(429).header("Retry-After", "7").build());
         };
     WebhookEventListener.WebhookTransport.Result result =
-        WebhookEventListener.restClientTransport(client).post("T", null, "{}");
+        WebhookEventListener.restClientTransport(client).post("T", null, "t", "{}");
     assertThat(result.status()).isEqualTo(429);
     assertThat(result.retryAfter()).isEqualTo("7");
     assertThat(WebhookEventListener.isTransient(result.status(), null)).isTrue();
@@ -497,6 +514,7 @@ class WebhookEventListenerTest {
   @Test
   void reservedHeaderDetection() {
     assertThat(WebhookEventListener.isReservedHeader("X-Polaris-Signature-256")).isTrue();
+    assertThat(WebhookEventListener.isReservedHeader("X-Polaris-Delivery-Time")).isTrue();
     assertThat(WebhookEventListener.isReservedHeader("content-type")).isTrue();
     assertThat(WebhookEventListener.isReservedHeader("Authorization")).isFalse();
   }
