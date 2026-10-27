@@ -494,9 +494,9 @@ record NoSqlMetaStoreManager(
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> parentPath,
+          @NonNull List<PolarisEntityCore> allowedContainers,
           T entity) {
-    return Optional.of(ms(callContext).hasOverlappingSiblings(parentPath, entity));
+    return Optional.of(ms(callContext).hasOverlappingSiblings(allowedContainers, entity));
   }
 
   @NonNull

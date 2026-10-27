@@ -368,7 +368,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> parentPath,
+          @NonNull List<PolarisEntityCore> allowedContainers,
           T entity) {
     throw illegalMethodError("hasOverlappingSiblings");
   }
