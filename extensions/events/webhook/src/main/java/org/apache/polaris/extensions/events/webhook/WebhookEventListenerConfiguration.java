@@ -48,8 +48,8 @@ public interface WebhookEventListenerConfiguration {
   /**
    * HTTP(S) endpoint that receives webhook POSTs with a JSON body.
    *
-   * <p>A 2xx response marks success. Transient failures (network errors, 408/429/5xx) are retried
-   * within the concurrency limits; permanent client errors (other 4xx) are not retried.
+   * <p>A 2xx response marks success. Transient failures (network errors, 408/425/429/5xx) are
+   * retried within the concurrency limits; permanent client errors (other 4xx) are not retried.
    *
    * <p>Required when the {@code webhook} event listener is enabled.
    *

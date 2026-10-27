@@ -149,25 +149,31 @@ the CloudEvents envelope (no CloudEvents SDK required):
 {
   "specversion": "1.0",
   "id": "11111111-2222-3333-4444-555555555555",
-  "type": "AFTER_REFRESH_TABLE",
+  "type": "org.apache.polaris.after_refresh_table",
   "source": "org.apache.polaris",
   "time": "2026-01-15T12:00:00Z",
-  "deliverytime": "2026-01-15T12:00:01Z",
-  "realmid": "my-realm",
-  "principal": "alice",
-  "activatedroles": ["role1", "role2"],
-  "requestid": "d3b0...",
-  "tableidentifier": "ns.tbl"
+  "datacontenttype": "application/json",
+  "data": {
+    "event_type": "AFTER_REFRESH_TABLE",
+    "event_id": "11111111-2222-3333-4444-555555555555",
+    "timestamp": "2026-01-15T12:00:00Z",
+    "catalog_name": "test_catalog",
+    "table_identifier": ["ns", "tbl"],
+    "realm_id": "my-realm",
+    "principal": "alice",
+    "activated_roles": ["role1", "role2"],
+    "request_id": "d3b0..."
+  }
 }
 ```
 
-`time` is the original event time from Polaris event metadata (RFC 3339); `deliverytime` is when
-the payload was serialized for send. `id` is stable for the event and can be used by receivers
-to detect retry duplicates. Extension attributes use CloudEvents-compliant names (lowercase
-alphanumerics). `principal`, `activatedroles`, `requestid`, and `tableidentifier`
-are omitted when not applicable. Each request carries an `X-Polaris-Event` header with the event
-type. When `polaris.event-listener.webhook.secret` is set, an `X-Polaris-Signature-256` header
-contains `sha256=` followed by the hex-encoded HMAC-SHA256 of the raw request body.
+The body is the shared CloudEvents mapper envelope: context fields at the top, Kafka-parity
+Polaris fields in `data`. `time` is the original event time from Polaris event metadata
+(RFC 3339). `id` is stable for the event and can be used by receivers to detect retry
+duplicates. Fields in `data` are omitted when not applicable. Each request carries
+`X-Polaris-Event` with the Polaris event type and `X-Polaris-Delivery-Time` with the send
+time. When `polaris.event-listener.webhook.secret` is set, an `X-Polaris-Signature-256`
+header contains `sha256=` followed by the hex-encoded HMAC-SHA256 of the raw request body.
 
 Delivery is **best-effort and bounded**: concurrency and pending work are capped
 (`max-concurrent`, `max-pending`); excess events are dropped. Only transient failures (network
