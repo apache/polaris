@@ -25,6 +25,7 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CRE
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Answers.RETURNS_SELF;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -50,8 +51,10 @@ import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
+import org.apache.iceberg.Transaction;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
@@ -113,6 +116,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 class IcebergCatalogHandlerTest {
@@ -749,8 +753,11 @@ class IcebergCatalogHandlerTest {
     return federated;
   }
 
-  @Test
-  void createTableStagedAppliesCatalogTableDefaultAndOverrideProperties() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void createTableStagedAppliesCatalogTableDefaultAndOverrideProperties(
+      boolean withRequestLocation) {
+    Schema schema = new Schema(Types.NestedField.required(1, "id", Types.IntegerType.get()));
     LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
     when(icebergCatalog.properties())
         .thenReturn(
@@ -763,6 +770,15 @@ class IcebergCatalogHandlerTest {
                 "catalog-override"));
     when(icebergCatalog.transformTableLikeLocation(TABLE2, TABLE_LOCATION))
         .thenReturn(TABLE_LOCATION);
+    // Without a request location, the default location comes from the catalog's table builder.
+    Catalog.TableBuilder tableBuilder =
+        mock(Catalog.TableBuilder.class, withSettings().defaultAnswer(RETURNS_SELF));
+    Transaction transaction = mock(Transaction.class);
+    Table stagedTable = mock(Table.class);
+    when(icebergCatalog.buildTable(TABLE2, schema)).thenReturn(tableBuilder);
+    when(tableBuilder.createTransaction()).thenReturn(transaction);
+    when(transaction.table()).thenReturn(stagedTable);
+    when(stagedTable.location()).thenReturn(TABLE_LOCATION);
     when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
     when(realmConfig.getConfig(
             eq(FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION), eq(catalogEntity)))
@@ -775,8 +791,8 @@ class IcebergCatalogHandlerTest {
     CreateTableRequest request =
         CreateTableRequest.builder()
             .withName(TABLE2.name())
-            .withLocation(TABLE_LOCATION)
-            .withSchema(new Schema(Types.NestedField.required(1, "id", Types.IntegerType.get())))
+            .withLocation(withRequestLocation ? TABLE_LOCATION : null)
+            .withSchema(schema)
             .setProperties(ImmutableMap.of("shared-key", "request", "override-key", "request"))
             .stageCreate()
             .build();
