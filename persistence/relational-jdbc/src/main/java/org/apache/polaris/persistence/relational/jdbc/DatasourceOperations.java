@@ -29,6 +29,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLTimeoutException;
+import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
@@ -459,11 +462,11 @@ public class DatasourceOperations {
    * Precise, non-fuzzy signals of an ambiguous outcome: a timeout/connection subtype or SQLSTATE.
    */
   private static boolean hasAmbiguousOutcomeType(SQLException e) {
-    if (e instanceof java.sql.SQLTimeoutException) {
+    if (e instanceof SQLTimeoutException) {
       return true;
     }
-    if (e instanceof java.sql.SQLTransientConnectionException
-        || e instanceof java.sql.SQLNonTransientConnectionException) {
+    if (e instanceof SQLTransientConnectionException
+        || e instanceof SQLNonTransientConnectionException) {
       return true;
     }
     String sqlState = e.getSQLState();
@@ -524,8 +527,8 @@ public class DatasourceOperations {
       return true;
     }
     // For mutating operations an ambiguous outcome (connection loss, timeout, cancellation) may
-    // mean the write already committed under auto-commit, so retrying risks a double-apply or a
-    // misreported result. Reads have no commit outcome to protect, so they stay retryable.
+    // mean the commit was already applied, so retrying risks a double-apply or a misreported
+    // result. Reads have no commit outcome to protect, so they stay retryable.
     if (mutating && isAmbiguousCommitOutcome(e)) {
       return false;
     }

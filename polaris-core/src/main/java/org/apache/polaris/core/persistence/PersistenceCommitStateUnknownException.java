@@ -23,7 +23,7 @@ import org.apache.polaris.core.exceptions.PolarisException;
 
 /**
  * Thrown when a persistence write may have committed but the client cannot confirm the outcome (for
- * example a connection drop or timeout after the database applied an auto-commit update). Named to
+ * example a connection drop or timeout after {@code commit()} was sent to the database). Named to
  * distinguish it from Iceberg's table-commit {@code CommitStateUnknownException}.
  *
  * <p>Callers must not treat this as a definite failure: newly written metadata files must not be

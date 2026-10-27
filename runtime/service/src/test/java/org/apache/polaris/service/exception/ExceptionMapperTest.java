@@ -159,7 +159,7 @@ public class ExceptionMapperTest {
     // A definite non-write is transient and safe to retry, so it maps to 503, not the 500 used
     // for an unknown commit outcome, and carries a Retry-After header like other 503s.
     assertThat(response.getStatus()).isEqualTo(503);
-    assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo("0");
+    assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo("3");
   }
 
   @ParameterizedTest

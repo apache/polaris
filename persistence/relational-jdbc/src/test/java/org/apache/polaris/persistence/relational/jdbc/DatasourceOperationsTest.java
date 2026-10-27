@@ -35,6 +35,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLTimeoutException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -381,8 +382,7 @@ public class DatasourceOperationsTest {
     assertTrue(
         datasourceOperations.isAmbiguousCommitOutcome(
             new SQLException("Connection reset by peer")));
-    assertTrue(
-        datasourceOperations.isAmbiguousCommitOutcome(new java.sql.SQLTimeoutException("timeout")));
+    assertTrue(datasourceOperations.isAmbiguousCommitOutcome(new SQLTimeoutException("timeout")));
     // Serialization failure is a definite rollback — retryable, not ambiguous commit success.
     assertTrue(
         !datasourceOperations.isAmbiguousCommitOutcome(new SQLException("serialization", "40001")));
@@ -423,7 +423,7 @@ public class DatasourceOperationsTest {
     // throw, so the ambiguous subtype is only reachable through the cause chain.
     SQLException rewrappedTimeout =
         new SQLException(
-            "Failed after retries", null, 0, new java.sql.SQLTimeoutException("statement timeout"));
+            "Failed after retries", null, 0, new SQLTimeoutException("statement timeout"));
     assertTrue(datasourceOperations.isAmbiguousCommitOutcome(rewrappedTimeout));
 
     // A definite failure in the cause chain must not be misread as ambiguous.

@@ -36,8 +36,9 @@ import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
  */
 public class PersistenceWriteNotStartedException extends PolarisServiceUnavailableException {
 
-  // The write never reached the store, so the client can retry without delay.
-  private static final int RETRY_AFTER_SECONDS = 0;
+  // Usually the store is down or the connection pool is exhausted, so ask clients to back off
+  // briefly rather than retry immediately.
+  private static final int RETRY_AFTER_SECONDS = 3;
 
   public PersistenceWriteNotStartedException(String message, Throwable cause) {
     // "%s" keeps the pre-formatted message literal; it may contain '%' from a driver error.

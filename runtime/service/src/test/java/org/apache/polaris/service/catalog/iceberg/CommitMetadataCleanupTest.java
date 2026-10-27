@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.ws.rs.core.Response;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -40,11 +41,16 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.CommitFailedException;
+import org.apache.iceberg.exceptions.CommitStateUnknownException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
+import org.apache.iceberg.rest.requests.CreateViewRequest;
+import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
+import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
+import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -64,9 +70,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
+import org.mockito.stubbing.Answer;
 
 /**
- * Tests that single-table commit cleanup of newly written metadata files only runs for known
+ * Tests that table and view commit cleanup of newly written metadata files only runs for known
  * failures, not when the metastore write may already have succeeded (ambiguous outcome).
  */
 public class CommitMetadataCleanupTest {
@@ -75,9 +82,10 @@ public class CommitMetadataCleanupTest {
   private static final String PROPERTY_NAME = "custom-property-1";
   private static final UUID IDEMPOTENCY_KEY = new UUID(116617318654508422L, -7820829973016961092L);
 
-  @Test
-  void retainsMetadataWhenPersistenceThrowsAfterSuccessfulWrite(@TempDir Path tempDir)
-      throws Exception {
+  @ParameterizedTest
+  @MethodSource("failuresAfterSuccessfulWrite")
+  void retainsMetadataWhenPersistenceThrowsAfterSuccessfulWrite(
+      RuntimeException failure, @TempDir Path tempDir) throws Exception {
     String location = catalogBaseLocation(tempDir);
     AtomicBoolean shouldFail = new AtomicBoolean(false);
     TestServices testServices =
@@ -96,8 +104,7 @@ public class CommitMetadataCleanupTest {
                             Object result = invocation.callRealMethod();
                             if (shouldFail.get()) {
                               // Simulate: DB applied the CAS, then client lost the ack.
-                              throw new RuntimeException(
-                                  "boom", new SQLException("Connection reset", "08006"));
+                              throw failure;
                             }
                             return result;
                           })
@@ -137,7 +144,93 @@ public class CommitMetadataCleanupTest {
             .get()
             .tableMetadata()
             .metadataFileLocation();
-    assertThat(Path.of(java.net.URI.create(metadataLocation).getPath())).exists();
+    assertThat(Path.of(URI.create(metadataLocation).getPath())).exists();
+  }
+
+  static Stream<Arguments> failuresAfterSuccessfulWrite() {
+    return Stream.of(
+        // Opaque failure from a backend without commit-outcome classification.
+        Arguments.of(new RuntimeException("boom", new SQLException("Connection reset", "08006"))),
+        // What relational JDBC throws when the connection drops during commit().
+        Arguments.of(
+            new PersistenceCommitStateUnknownException(
+                "boom", new SQLException("Connection reset", "08006"))));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("viewCommitFailureCases")
+  void viewCommitCleansUpMetadataOnlyOnKnownFailures(
+      String description, Answer<Object> failure, boolean expectCleanup, @TempDir Path tempDir)
+      throws Exception {
+    String location = catalogBaseLocation(tempDir);
+    AtomicBoolean shouldFail = new AtomicBoolean(false);
+    TestServices testServices =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE")))
+            .metaStoreManagerDecorator(
+                msm -> {
+                  PolarisMetaStoreManager spy = Mockito.spy(msm);
+                  Mockito.doAnswer(
+                          invocation ->
+                              shouldFail.get()
+                                  ? failure.answer(invocation)
+                                  : invocation.callRealMethod())
+                      .when(spy)
+                      .updateEntityPropertiesIfNotChanged(
+                          Mockito.any(), Mockito.any(), Mockito.any());
+                  return spy;
+                })
+            .build();
+
+    createCatalogAndNamespace(testServices, location);
+    TableIdentifier viewId = TableIdentifier.of(NAMESPACE, "cleanup-view");
+    createView(testServices, viewId.name());
+
+    Set<Path> metadataFilesBefore = metadataFiles(tempDir);
+    shouldFail.set(true);
+
+    assertThatThrownBy(() -> updateView(testServices, viewId, "value-after"))
+        .isInstanceOf(RuntimeException.class);
+
+    Set<Path> metadataFilesAfter = metadataFiles(tempDir);
+    if (expectCleanup) {
+      assertThat(metadataFilesAfter)
+          .as("Orphan view metadata from a known failure should be cleaned up")
+          .isEqualTo(metadataFilesBefore);
+    } else {
+      assertThat(metadataFilesAfter)
+          .as("New view metadata must be retained when commit outcome may be success")
+          .hasSizeGreaterThan(metadataFilesBefore.size())
+          .containsAll(metadataFilesBefore);
+    }
+  }
+
+  static Stream<Arguments> viewCommitFailureCases() {
+    Answer<Object> commitOutcomeUnknown =
+        invocation -> {
+          invocation.callRealMethod();
+          throw new PersistenceCommitStateUnknownException(
+              "boom", new SQLException("Connection reset", "08006"));
+        };
+    Answer<Object> writeNotStarted =
+        invocation -> {
+          throw new PersistenceWriteNotStartedException(
+              "write did not start", new SQLException("Connection refused", "08001"));
+        };
+    Answer<Object> concurrentModification =
+        invocation ->
+            new EntityResult(
+                BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
+                "simulated concurrent modification");
+    return Stream.of(
+        Arguments.of("commit outcome unknown keeps metadata", commitOutcomeUnknown, false),
+        Arguments.of("write not started cleans up metadata", writeNotStarted, true),
+        Arguments.of("concurrent modification cleans up metadata", concurrentModification, true));
   }
 
   @Test
@@ -262,10 +355,7 @@ public class CommitMetadataCleanupTest {
             new PersistenceWriteNotStartedException(
                 "write did not start", new SQLException("Connection refused", "08001")),
             true),
-        Arguments.of(
-            new org.apache.iceberg.exceptions.CommitStateUnknownException(
-                new RuntimeException("db timeout")),
-            false),
+        Arguments.of(new CommitStateUnknownException(new RuntimeException("db timeout")), false),
         Arguments.of(new CommitFailedException("concurrent metadata location"), true),
         Arguments.of(new CommitConflictException("concurrent entity version"), true),
         Arguments.of(new AlreadyExistsException("table exists"), true),
@@ -297,6 +387,49 @@ public class CommitMetadataCleanupTest {
         .catalogAdapter()
         .newHandler(services.securityContext(), CATALOG)
         .updateTable(tableId, request);
+  }
+
+  private void updateView(TestServices services, TableIdentifier viewId, String propertyValue) {
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            viewId,
+            List.of(),
+            List.of(new MetadataUpdate.SetProperties(Map.of(PROPERTY_NAME, propertyValue))));
+    services
+        .catalogAdapter()
+        .newHandler(services.securityContext(), CATALOG)
+        .replaceView(viewId, request);
+  }
+
+  private void createView(TestServices services, String viewName) {
+    CreateViewRequest createViewRequest =
+        ImmutableCreateViewRequest.builder()
+            .name(viewName)
+            .schema(SCHEMA)
+            .viewVersion(
+                ImmutableViewVersion.builder()
+                    .versionId(1)
+                    .timestampMillis(System.currentTimeMillis())
+                    .schemaId(SCHEMA.schemaId())
+                    .defaultNamespace(Namespace.of(NAMESPACE))
+                    .addRepresentations(
+                        ImmutableSQLViewRepresentation.builder()
+                            .sql("SELECT 1")
+                            .dialect("spark")
+                            .build())
+                    .build())
+            .build();
+    try (Response response =
+        services
+            .restApi()
+            .createView(
+                CATALOG,
+                NAMESPACE,
+                createViewRequest,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
   }
 
   private void createCatalogAndNamespace(TestServices services, String catalogLocation) {
