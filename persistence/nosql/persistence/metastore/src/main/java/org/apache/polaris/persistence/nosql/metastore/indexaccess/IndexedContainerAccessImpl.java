@@ -27,6 +27,7 @@ import com.google.common.base.Suppliers;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.api.Persistence;
+import org.apache.polaris.persistence.nosql.api.exceptions.ReferenceNotFoundException;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
@@ -77,8 +78,16 @@ final class IndexedContainerAccessImpl<C extends ContainerObj> extends IndexedCo
     if (r == null || referenceName == null) {
       return false;
     }
-    var current = persistence.fetchReference(referenceName);
-    return !r.map(ContainerObj::id).equals(current.pointer().map(ObjRef::id));
+    Optional<ObjRef> currentPointer;
+    try {
+      currentPointer = persistence.fetchReference(referenceName).pointer();
+    } catch (ReferenceNotFoundException e) {
+      // The reference does not exist (any more). An access that still reflects a
+      // container fetched before the reference was purged is stale; an access that
+      // already reflects the absent container is not.
+      return r.isPresent();
+    }
+    return !r.map(ContainerObj::id).equals(currentPointer.map(ObjRef::id));
   }
 
   @SuppressWarnings("OptionalAssignedToNull")
@@ -86,7 +95,17 @@ final class IndexedContainerAccessImpl<C extends ContainerObj> extends IndexedCo
   public Optional<C> refObj() {
     if (this.refObj == null) {
       if (referenceName != null) {
-        this.refObj = persistence.fetchReferenceHead(referenceName, referenceObjType);
+        try {
+          this.refObj = persistence.fetchReferenceHead(referenceName, referenceObjType);
+        } catch (ReferenceNotFoundException e) {
+          // Catalog containers are created eagerly when the catalog is created, so a
+          // missing container reference means maintenance purged it after the catalog
+          // was dropped. Reads through a purged reference behave like an absent
+          // container, the same treatment the maintenance-side EntityLookupCache
+          // applies when it resolves stale grant records.
+          LOGGER.debug("Reference '{}' does not exist: {}", referenceName, e.getMessage());
+          this.refObj = Optional.empty();
+        }
         LOGGER.debug("Fetched head {} for reference '{}'", refObj, referenceName);
       } else if (containerObjRef != null) {
         this.refObj = Optional.ofNullable(persistence.fetch(containerObjRef, referenceObjType));
