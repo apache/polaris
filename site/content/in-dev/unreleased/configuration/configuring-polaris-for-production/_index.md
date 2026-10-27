@@ -235,9 +235,8 @@ boundary model and should only be enabled for specific interoperability or migra
 changes how overlap detection is performed and should only be enabled when the required index and
 backfill state is known to be correct.
 
-`DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED` depends on these flags. See
-[Default table location object storage prefix]({{% ref "../default-table-location-object-storage-prefix.md" %}})
-for the combination it requires and how it compares with Iceberg's object store layout.
+See [Storage Layout]({{% ref "../storage-layout.md" %}}) for how these flags change where tables
+are stored, and how they interact with each other.
 
 ### Polaris Server Header
 

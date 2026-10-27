@@ -1,0 +1,271 @@
+---
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+title: Storage Layout
+linkTitle: Storage Layout
+type: docs
+weight: 300
+---
+
+This page explains where Polaris places namespaces, tables, and views in object storage, and how
+the settings that change this layout interact. Several of these settings have overlapping effects,
+and some combinations are rejected, so it is worth reading this page before changing any of them.
+
+The page covers internal catalogs. External and federated catalogs do not use Polaris's layout
+rules: their table locations are managed by the system that owns the tables.
+
+All feature flags mentioned here are described in the
+[configuration reference]({{% ref "configuration-reference.md" %}}). Most of them can be set for a
+whole realm with `polaris.features."<FLAG>"`, or for a single catalog with the catalog property
+listed in the [summary of settings](#summary-of-settings) at the end of this page.
+
+## Default layout
+
+By default, Polaris uses a structured layout that mirrors the namespace hierarchy:
+
+- The catalog's `default-base-location` property is the root of the catalog. If the catalog's
+  storage configuration does not list any `allowedLocations`, the default base location is the
+  only allowed location.
+- A namespace's location is its parent's location followed by the namespace name. The parent is
+  either the catalog or the enclosing namespace.
+- A table's or view's location is its namespace's location followed by the table or view name.
+- Within a table's location, Iceberg writes metadata files under `metadata/` and data files under
+  `data/`.
+
+Polaris always ends namespace and table locations with a slash. For example, with
+`default-base-location` set to `s3://bucket/warehouse` and a table `sales.emea.orders`:
+
+```text
+s3://bucket/warehouse/                                  catalog
+s3://bucket/warehouse/sales/                            namespace sales
+s3://bucket/warehouse/sales/emea/                       namespace sales.emea
+s3://bucket/warehouse/sales/emea/orders/                table sales.emea.orders
+s3://bucket/warehouse/sales/emea/orders/metadata/00000-<uuid>.metadata.json
+s3://bucket/warehouse/sales/emea/orders/data/<partition>/<file>.parquet
+```
+
+With the default settings, Polaris also enforces the following rules:
+
+- A client may supply its own table or view location (the `location` field, or the
+  `write.data.path` and `write.metadata.path` table properties), but each of these must be inside
+  the namespace's location and inside the catalog's allowed locations.
+- A table's metadata files must be inside the table's location.
+- A new table, view, or namespace location may not overlap the location of a sibling, that is,
+  another table, view, or namespace directly under the same parent.
+- A namespace may only be created with a `location` property if that location is the default one.
+
+{{< alert note >}}
+Polaris stores each namespace's and table's location when it is created, and derives new
+locations from the stored location of the parent. Changing a catalog's `default-base-location`, or
+a namespace's `location` property, therefore does not move anything that already exists. Only
+namespaces and tables created afterwards use the new location.
+{{< /alert >}}
+
+## Unique table locations
+
+When a table is dropped and a new table with the same name is created, the default layout gives
+both tables the same location. Setting `DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED` to `true` appends a
+random suffix to the table or view name in generated locations, so that every new table gets its
+own directory:
+
+```text
+s3://bucket/warehouse/sales/emea/orders-<32 hexadecimal characters>/
+```
+
+The suffix is only added when Polaris generates the location. Client-supplied locations are used
+as given.
+
+## Custom namespace locations
+
+To create or update a namespace with a `location` property that is different from its default
+location, enable the behavior change `ALLOW_NAMESPACE_CUSTOM_LOCATION`. Tables and nested
+namespaces created later in that namespace are placed under its custom location.
+
+## Unstructured table locations
+
+Setting `ALLOW_UNSTRUCTURED_TABLE_LOCATION` to `true` lets table and view locations, including
+`write.data.path` and `write.metadata.path`, be anywhere inside the catalog's allowed locations,
+instead of only inside their namespace's location. Generated locations still follow the default
+layout unless the object storage prefix described below is enabled.
+
+Related settings:
+
+- `ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION`, which is `true` by default, controls whether clients may
+  supply locations at all. When it is `false`, requests that set a location or a write path
+  property are rejected, whatever the other flags are.
+- `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` separately allows metadata files outside the table's
+  location. `ALLOW_UNSTRUCTURED_TABLE_LOCATION` does not affect this check.
+
+{{< alert warning >}}
+By default, overlap checks only compare a new location with siblings under the same parent. Once
+tables can be placed outside their namespace, a table can land inside the location of a table or
+namespace elsewhere in the catalog without being detected. Enable `OPTIMIZED_SIBLING_CHECK` (see
+[Overlap checks](#overlap-checks)) to check overlaps across the whole catalog.
+{{< /alert >}}
+
+## Object storage prefix for table locations
+
+Object stores such as Amazon S3 scale request rates by key prefix. When many tables in the same
+namespace share a long common prefix, such as `s3://bucket/warehouse/sales/emea/`, their traffic is
+concentrated on a narrow part of the key space.
+
+Setting `DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED` to `true` changes the generated location
+of new tables and views. Instead of placing them under their namespace's location, Polaris places
+them directly under the catalog's `default-base-location`, behind a hash of the table identifier,
+followed by the namespace levels and the table name:
+
+```text
+s3://bucket/warehouse/1111/1111/0100/01010000/sales/emea/orders/
+```
+
+The hash values in the examples on this page are illustrative. The hash is computed from the table
+identifier, so it is the same for a given identifier and differs between tables.
+
+Things to be aware of:
+
+- All files of a table share the same hash prefix. This spreads different tables across the key
+  space, but does not spread the files of a single busy table. For that, use Iceberg's object store
+  layout, described in the next section.
+- The prefix is only added when Polaris generates the location. Client-supplied locations are used
+  as given.
+- The prefixed location is built from the catalog's `default-base-location`, so a custom namespace
+  location is not used for these tables.
+- Existing tables and views are not moved.
+- When `DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED` is also enabled, the table name in the prefixed
+  location gets the unique suffix.
+
+Because prefixed tables are not inside their namespace's location, this flag only works together
+with other settings. If they are not set, creating a table or view without a location fails with
+an error that names the missing setting:
+
+- `ALLOW_UNSTRUCTURED_TABLE_LOCATION` must be `true`.
+- Unless `ALLOW_TABLE_LOCATION_OVERLAP` is `true`, which disables overlap protection and is not
+  recommended, `OPTIMIZED_SIBLING_CHECK` must be `true` so that overlaps are checked across the
+  catalog rather than only within the namespace.
+
+For example, for a catalog in a new realm, set the catalog properties:
+
+```properties
+polaris.config.default-table-location-object-storage-prefix.enabled=true
+polaris.config.allow.unstructured.table.location=true
+```
+
+and enable the optimized sibling check for the realm:
+
+```properties
+polaris.features."OPTIMIZED_SIBLING_CHECK"=true
+polaris.features."ALLOW_OPTIMIZED_SIBLING_CHECK"=true
+```
+
+Only set `ALLOW_OPTIMIZED_SIBLING_CHECK` for new realms. See [Overlap checks](#overlap-checks) for
+the reason.
+
+{{< alert note >}}
+Amazon documents per-prefix request scaling for S3, but does not specify exactly what counts as a
+partitioned prefix. Polaris has no benchmarks for this layout, so evaluate it for your workload
+rather than enabling it by default.
+{{< /alert >}}
+
+## Iceberg object store layout
+
+Iceberg has its own layout option, enabled with the table property `write.object-storage.enabled`.
+It is independent of Polaris: it applies only to data files, and adds a hash computed from each
+file's name under the table's data location. Metadata files are not affected.
+
+To enable it for all new tables in a catalog, set the catalog property
+`table-default.write.object-storage.enabled=true`.
+
+```text
+s3://bucket/warehouse/sales/emea/orders/data/0011/0100/1011/11101010/<partition>/file1.parquet
+s3://bucket/warehouse/sales/emea/orders/data/0011/0001/0001/00000001/<partition>/file2.parquet
+```
+
+The two options work at different levels and can be combined:
+
+| | Polaris `DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED` | Iceberg `write.object-storage.enabled` |
+|---|---|---|
+| Configured as | Polaris feature flag or catalog property | Iceberg table property |
+| Affects | The table's location | The location of each data file |
+| Hash computed from | The table identifier | Each data file's name |
+| Spreads | Different tables | Files of the same table |
+| Metadata files | Under the prefixed table location | Not affected |
+
+With both enabled, a table's data files look like this:
+
+```text
+s3://bucket/warehouse/1111/1111/0100/01010000/sales/emea/orders/data/0011/0100/1011/11101010/<partition>/file1.parquet
+```
+
+### Sharing a data location between tables
+
+If `write.data.path` points outside the table's location, Iceberg's object store layout puts the
+per-file hash directly under `write.data.path`, followed by the last namespace level and the table
+name:
+
+```text
+<write.data.path>/<file hash>/<namespace>/<table>/<partition>/<file>
+```
+
+Pointing `write.data.path` at a short shared location, such as the warehouse root, therefore spreads
+the data files of all tables over the key space. Polaris validates `write.data.path` like the
+table's own location, though, so this layout needs two relaxations:
+
+- `ALLOW_UNSTRUCTURED_TABLE_LOCATION`, because the shared location is outside the namespace.
+- In practice, `ALLOW_TABLE_LOCATION_OVERLAP`, because a location above other tables and namespaces
+  overlaps them, and the overlap check rejects the second table that uses it.
+
+Disabling overlap protection removes a safeguard that keeps tables from writing into each other's
+locations, so only use this layout when storage isolation is enforced outside Polaris.
+
+## Overlap checks
+
+Unless `ALLOW_TABLE_LOCATION_OVERLAP` is enabled, Polaris rejects a table or view whose location is
+inside, or contains, the location of another table, view, or namespace. The same applies to
+namespaces, controlled by `ALLOW_NAMESPACE_LOCATION_OVERLAP`. View locations are only checked while
+the behavior change `VALIDATE_VIEW_LOCATION_OVERLAP` is `true`, which is the default.
+
+By default, the check lists the siblings of the new entity, that is, the entities directly under the
+same parent, and compares their locations. That is enough for the default layout, where each
+entity's location is inside its parent's, but not for unstructured locations.
+
+`OPTIMIZED_SIBLING_CHECK` replaces the listing with a query on a location index kept by the JDBC and
+NoSQL metastores, which also covers entities elsewhere in the catalog. It is a realm-level setting
+with no catalog property. Realms created by older Polaris versions may not have that index
+populated, so Polaris refuses to start with `OPTIMIZED_SIBLING_CHECK` enabled unless
+`ALLOW_OPTIMIZED_SIBLING_CHECK` is also set, as an acknowledgment that the realm's index is
+complete.
+
+## Summary of settings
+
+| Setting | Default | Catalog property | Effect on the layout |
+|---|---|---|---|
+| `DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED` | `false` | `polaris.config.default-unique-table-location.enabled` | Adds a unique suffix to generated table and view locations |
+| `ALLOW_NAMESPACE_CUSTOM_LOCATION` (behavior change) | `false` | `polaris.config.namespace-custom-location.enabled` | Allows namespace locations other than the default |
+| `ALLOW_UNSTRUCTURED_TABLE_LOCATION` | `false` | `polaris.config.allow.unstructured.table.location` | Allows table and view locations outside their namespace |
+| `ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION` | `true` | `polaris.config.allow.client-specified.table.location` | Allows clients to supply locations at all |
+| `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` | `false` | `polaris.config.allow.external.metadata.file.location` | Allows metadata files outside the table location |
+| `DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED` | `false` | `polaris.config.default-table-location-object-storage-prefix.enabled` | Places generated table and view locations under a per-table hash |
+| `ALLOW_TABLE_LOCATION_OVERLAP` | `false` | `polaris.config.allow.overlapping.table.location` | Disables overlap checks for tables and views |
+| `ALLOW_NAMESPACE_LOCATION_OVERLAP` | `false` | None | Disables overlap checks for namespaces |
+| `OPTIMIZED_SIBLING_CHECK` | `false` | None | Checks overlaps across the catalog using the metastore's location index |
+
+## See also
+
+- [Configuring Polaris for Production]({{% ref "configuring-polaris-for-production" %}})
+- [Configuration reference]({{% ref "configuration-reference.md" %}})
