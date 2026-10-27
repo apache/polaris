@@ -20,7 +20,10 @@
 FROM docker.io/apache/spark:3.5.9-java17
 
 ENV PYSPARK_PYTHON=/home/spark/venv/bin/python \
-    PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:/home/spark/venv/lib/python3.10/site-packages"
+    PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:/home/spark/venv/lib/python3.10/site-packages" \
+    UV_PROJECT_ENVIRONMENT=/home/spark/venv \
+    UV_PYTHON_INSTALL_DIR=/home/spark/.local/share/uv/python \
+    UV_TOOL_DIR=/home/spark/.local/share/uv/tools
 
 USER root
 
@@ -40,13 +43,13 @@ COPY --chown=spark regtests/requirements.txt /tmp
 COPY --chown=spark regtests/notebook_requirements.txt /tmp
 COPY --chown=spark plugins/spark/v3.5/spark/build/2.12/libs/*bundle.jar /opt/spark/jars/
 
-RUN python3 -m venv /home/spark/venv && \
-    . /home/spark/venv/bin/activate && \
-    pip install -r /tmp/requirements.txt && \
-    cd client/python && \
-    uv lock && \
-    uv sync --active --all-extras && \
-    uv pip install -r /tmp/notebook_requirements.txt
+RUN python3 -m venv /home/spark/uv-venv && \
+    /home/spark/uv-venv/bin/pip install -r /tmp/requirements.txt && \
+    cd /home/spark/client/python && \
+    /home/spark/uv-venv/bin/uv python install 3.11 && \
+    /home/spark/uv-venv/bin/uv lock --python 3.11 && \
+    /home/spark/uv-venv/bin/uv sync --python 3.11 --all-extras && \
+    /home/spark/uv-venv/bin/uv pip install --python /home/spark/venv/bin/python -r /tmp/notebook_requirements.txt
 
 EXPOSE 8888
 CMD ["/home/spark/venv/bin/jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--NotebookApp.token=''"]
