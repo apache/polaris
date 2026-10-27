@@ -35,7 +35,7 @@ import software.amazon.awssdk.services.dynamodb.model.ProjectionType;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 
-class DynamoDbSchemaTest extends AbstractDynamoDbTest {
+class DynamoDbSchemaIT extends AbstractDynamoDbTest {
 
   @Test
   void createIfAbsentProvisionsTableAndByNameGsi() {
