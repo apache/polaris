@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.IntFunction;
 import java.util.function.LongFunction;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
@@ -494,6 +495,32 @@ public class TestUpdatableIndexImpl {
     soft.assertThat(readIndex.get(firstKey)).isEqualTo(firstValue);
     soft.assertThat(readIndex.get(largeKey)).isEqualTo(largeValue);
     soft.assertThat(readIndex.get(lastKey)).isEqualTo(lastValue);
+  }
+
+  @Test
+  public void collidingToSafeStringKeysPersistAsDistinctStripes() {
+    var updatable = updatableIndexForTest(Map.of(), Map.of(), OBJ_TEST_SERIALIZER);
+    var spaceKey = key("a b");
+    var escapedLookalike = key("ax20b");
+    var stripeSize = persistence.params().maxIndexStripeSize().asLong();
+    var spaceValue = objTestValueOfSize(valueSizeAroundUpperBound(spaceKey, stripeSize, 0));
+    var lookalikeValue =
+        objTestValueOfSize(valueSizeAroundUpperBound(escapedLookalike, stripeSize, 0));
+
+    updatable.put(spaceKey, spaceValue);
+    updatable.put(escapedLookalike, lookalikeValue);
+
+    var toPersist = new ArrayList<Map.Entry<String, Obj>>();
+    var indexed = updatable.toIndexed("idx-", (n, o) -> toPersist.add(Map.entry(n, o)));
+
+    soft.assertThat(toPersist).hasSizeGreaterThanOrEqualTo(2);
+    soft.assertThat(toPersist.stream().map(Map.Entry::getKey).collect(Collectors.toSet()))
+        .hasSize(toPersist.size());
+
+    toPersist.stream().map(Map.Entry::getValue).forEach(o -> persistence.write(o, Obj.class));
+    var readIndex = indexed.indexForRead(persistence, OBJ_TEST_SERIALIZER);
+    soft.assertThat(readIndex.get(spaceKey)).isEqualTo(spaceValue);
+    soft.assertThat(readIndex.get(escapedLookalike)).isEqualTo(lookalikeValue);
   }
 
   @Test
