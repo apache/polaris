@@ -48,6 +48,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.MetadataTableType;
 import org.apache.iceberg.MetadataUpdate;
@@ -89,6 +90,7 @@ import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
+import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -653,9 +655,21 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     rejectClientSpecifiedLocationIfDisallowed(request.location(), request.properties());
 
-    Map<String, String> properties = Maps.newHashMap();
+    // Apply the catalog's table-default.* and table-override.* properties with the same precedence
+    // as a direct create, which gets them from the catalog's table builder.
+    Map<String, String> catalogProperties =
+        baseCatalog instanceof LocalIcebergCatalog localCatalog
+            ? localCatalog.properties()
+            : Map.of();
+    Map<String, String> properties =
+        Maps.newHashMap(
+            PropertyUtil.propertiesWithPrefix(
+                catalogProperties, CatalogProperties.TABLE_DEFAULT_PREFIX));
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
     properties.putAll(reservedProperties().removeReservedProperties(request.properties()));
+    properties.putAll(
+        PropertyUtil.propertiesWithPrefix(
+            catalogProperties, CatalogProperties.TABLE_OVERRIDE_PREFIX));
 
     String location;
     if (request.location() != null) {

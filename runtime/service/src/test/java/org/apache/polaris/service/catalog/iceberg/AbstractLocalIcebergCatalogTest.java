@@ -2912,6 +2912,48 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testStagedCreateCommitPassesTableDefaultPropertiesToFileIO() {
+    FileIOFactory fileIOFactorySpy = spy(fileIOFactory);
+    LocalIcebergCatalog testCatalog =
+        newIcebergCatalog(catalog().name(), metaStoreManager, fileIOFactorySpy);
+    testCatalog.setCatalogFileIo(new InMemoryFileIO());
+    testCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(TABLE_PREFIXES)
+            .buildKeepingLast());
+    testCatalog.createNamespace(TABLE.namespace());
+
+    // Commit a staged create from a client that does not send the table properties back, so the
+    // committed metadata carries none of the catalog's table-default.* values.
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE,
+            List.of(new UpdateRequirement.AssertTableDoesNotExist()),
+            List.of(
+                new MetadataUpdate.AssignUUID(UUID.randomUUID().toString()),
+                new MetadataUpdate.UpgradeFormatVersion(2),
+                new MetadataUpdate.AddSchema(SCHEMA),
+                new MetadataUpdate.SetCurrentSchema(-1),
+                new MetadataUpdate.AddPartitionSpec(PartitionSpec.unpartitioned()),
+                new MetadataUpdate.SetDefaultPartitionSpec(-1),
+                new MetadataUpdate.AddSortOrder(SortOrder.unsorted()),
+                new MetadataUpdate.SetDefaultSortOrder(-1),
+                new MetadataUpdate.SetLocation(testCatalog.defaultWarehouseLocation(TABLE))));
+    new CatalogHandlerUtils(5, true).updateTable(testCatalog, TABLE, request);
+
+    Assertions.assertThat(testCatalog.tableExists(TABLE)).isTrue();
+    Mockito.verify(fileIOFactorySpy, Mockito.atLeastOnce()).loadFileIO(any(), any(), anyMap());
+    Mockito.verify(fileIOFactorySpy, Mockito.never())
+        .loadFileIO(
+            any(),
+            any(),
+            Mockito.argThat(
+                properties -> !"catalog-default-key1".equals(properties.get("default-key1"))));
+  }
+
+  @Test
   public void testConcurrencyConflictCreateTableUpdatedDuringFinalTransaction() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
