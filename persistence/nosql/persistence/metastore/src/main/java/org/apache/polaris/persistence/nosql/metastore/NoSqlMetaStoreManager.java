@@ -30,6 +30,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -494,9 +495,9 @@ record NoSqlMetaStoreManager(
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> allowedContainers,
-          T entity) {
-    return Optional.of(ms(callContext).hasOverlappingSiblings(allowedContainers, entity));
+          T entity,
+          @NonNull Set<Long> allowedContainerIds) {
+    return Optional.of(ms(callContext).hasOverlappingSiblings(entity, allowedContainerIds));
   }
 
   @NonNull

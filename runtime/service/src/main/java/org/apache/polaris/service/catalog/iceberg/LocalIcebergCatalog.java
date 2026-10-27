@@ -1565,15 +1565,15 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     boolean useOptimizedSiblingCheck =
         realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
     if (useOptimizedSiblingCheck) {
-      // The optimized check does not interpret this list as a path: it only uses it as the set of
-      // namespaces that may contain the entity without being reported. An entity being moved is
-      // still contained in its previous parents, so they are added to the new ones.
-      List<PolarisEntity> allowedContainers =
-          Stream.concat(parentPath.stream(), previousParentPath.stream()).toList();
+      // The namespaces that may contain the entity without being reported. An entity being moved
+      // is still contained in its previous parents, so they are added to the new ones.
+      Set<Long> allowedContainerIds =
+          Stream.concat(parentPath.stream(), previousParentPath.stream())
+              .map(PolarisEntity::getId)
+              .collect(Collectors.toSet());
       Optional<Optional<String>> directSiblingCheckResult =
           getMetaStoreManager()
-              .hasOverlappingSiblings(
-                  getCurrentPolarisContext(), PolarisEntity.toCoreList(allowedContainers), entity);
+              .hasOverlappingSiblings(getCurrentPolarisContext(), entity, allowedContainerIds);
       if (directSiblingCheckResult.isPresent()) {
         if (directSiblingCheckResult.get().isPresent()) {
           throw new org.apache.iceberg.exceptions.ForbiddenException(

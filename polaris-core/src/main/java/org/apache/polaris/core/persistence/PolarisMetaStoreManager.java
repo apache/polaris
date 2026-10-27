@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthBootstrapUtil;
@@ -472,13 +473,12 @@ public interface PolarisMetaStoreManager
    * checking the entity against itself in case of updates or renames.
    *
    * @param callContext the polaris call context
-   * @param allowedContainers the namespaces (and catalog) that may contain the entity's location
-   *     without being reported as conflicts. This is normally the entity's resolved parent path:
-   *     the catalog first, then each parent namespace, not including the entity itself. When an
-   *     existing entity is being moved, callers may also include its current parents, since it is
-   *     still located under them. Implementations only use the entities' ids and must not rely on
-   *     the list being an ordered path.
    * @param entity the entity whose base location to check
+   * @param allowedContainerIds the ids of the namespaces (and catalog) that may contain the
+   *     entity's location without being reported as conflicts. This is normally the ids of the
+   *     entity's parent path: the catalog and each parent namespace, not including the entity
+   *     itself. When an existing entity is being moved, callers may also include the ids of its
+   *     current parents, since it is still located under them.
    * @return Optional.of(Optional.of(location)) with the base location of a conflicting entity,
    *     Optional.of(Optional.empty()) if there is no conflict, and Optional.empty() if the
    *     metastore doesn't support this operation
@@ -486,8 +486,8 @@ public interface PolarisMetaStoreManager
   default <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> allowedContainers,
-          T entity) {
+          T entity,
+          @NonNull Set<Long> allowedContainerIds) {
     return Optional.empty();
   }
 

@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -368,8 +369,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> allowedContainers,
-          T entity) {
+          T entity,
+          @NonNull Set<Long> allowedContainerIds) {
     throw illegalMethodError("hasOverlappingSiblings");
   }
 

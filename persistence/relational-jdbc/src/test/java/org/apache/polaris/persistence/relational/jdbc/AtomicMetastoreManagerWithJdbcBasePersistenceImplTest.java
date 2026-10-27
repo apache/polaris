@@ -26,6 +26,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -132,7 +133,7 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(
-                callContext, List.of(PolarisEntity.toCore(catalog)), candidateNamespace))
+                callContext, candidateNamespace, Set.of(catalog.getId())))
         .contains(Optional.of("s3://bucket/warehouse/existing/"));
 
     TestLocationBasedEntity nonOverlappingNamespace =
@@ -145,7 +146,7 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(
-                callContext, List.of(PolarisEntity.toCore(catalog)), nonOverlappingNamespace))
+                callContext, nonOverlappingNamespace, Set.of(catalog.getId())))
         .contains(Optional.empty());
 
     // The persisted entity itself, e.g. when renamed, does not conflict with its own location.
@@ -156,7 +157,7 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(
-                callContext, List.of(PolarisEntity.toCore(catalog)), renamedNamespace))
+                callContext, renamedNamespace, Set.of(catalog.getId())))
         .contains(Optional.empty());
   }
 

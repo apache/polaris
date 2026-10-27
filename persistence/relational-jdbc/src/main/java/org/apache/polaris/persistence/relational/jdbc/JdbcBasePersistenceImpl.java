@@ -795,8 +795,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> allowedContainers,
-          T entity) {
+          T entity,
+          @NonNull Set<Long> allowedContainerIds) {
     if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count()
         > MAX_LOCATION_COMPONENTS) {
       return Optional.empty();
@@ -814,9 +814,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       // of the entity's location. The entity's own parent namespaces may match the ancestor terms:
       // they always do when locations follow the namespace tree, as default locations do. Such an
       // ancestor is not a sibling.
-      Set<Long> ancestorIds =
-          allowedContainers.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
-
       StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
       for (PolarisBaseEntity result : results) {
         if (result.getId() == entity.getId()) {
@@ -835,7 +832,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         boolean containsEntity = entityLocation.isChildOf(resultLocation.get());
         boolean containedByEntity = resultLocation.get().isChildOf(entityLocation);
         // An ancestor may contain the entity, but the entity may not sit at exactly its location.
-        if (containsEntity && !containedByEntity && ancestorIds.contains(result.getId())) {
+        if (containsEntity && !containedByEntity && allowedContainerIds.contains(result.getId())) {
           continue;
         }
         if (containsEntity || containedByEntity) {

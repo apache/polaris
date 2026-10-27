@@ -675,8 +675,8 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> allowedContainers,
-          T entity) {
+          T entity,
+          @NonNull Set<Long> allowedContainerIds) {
     // TODO we could optimize this full scan
     StorageLocation entityLocationWithoutScheme =
         StorageLocation.of(StorageLocation.of(entity.getBaseLocation()).withoutScheme());
@@ -684,9 +684,6 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
     // The entity's own parent namespaces may contain its location: they always do when locations
     // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
-    Set<Long> ancestorIds =
-        allowedContainers.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
-
     for (PolarisBaseEntity siblingEntity : allEntities) {
       if (siblingEntity.getId() == entity.getId()) {
         continue;
@@ -699,7 +696,9 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
         boolean containedByEntity =
             maybeSiblingLocationWithoutScheme.get().isChildOf(entityLocationWithoutScheme);
         // An ancestor may contain the entity, but the entity may not sit at exactly its location.
-        if (containsEntity && !containedByEntity && ancestorIds.contains(siblingEntity.getId())) {
+        if (containsEntity
+            && !containedByEntity
+            && allowedContainerIds.contains(siblingEntity.getId())) {
           continue;
         }
         if (containsEntity || containedByEntity) {

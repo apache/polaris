@@ -40,6 +40,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
@@ -51,7 +52,6 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -263,11 +263,11 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
-                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://bucket/foo/newchild/")
-                    .build()))
+                    .build(),
+                Set.of(catalog.getId())))
         .isPresent()
         .contains(Optional.of("s3://bucket/foo/"));
 
@@ -278,8 +278,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
             .setBaseLocation("s3://bucket/foo/")
             .build();
     soft.assertThat(
-            metaStore.hasOverlappingSiblings(
-                callContext, List.of(PolarisEntity.toCore(catalog)), renamedFoo))
+            metaStore.hasOverlappingSiblings(callContext, renamedFoo, Set.of(catalog.getId())))
         .isPresent()
         .contains(Optional.of("s3://bucket/foo/"));
     var persistedFoo =
@@ -289,8 +288,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
             .setBaseLocation("s3://bucket/foo/")
             .build();
     soft.assertThat(
-            metaStore.hasOverlappingSiblings(
-                callContext, List.of(PolarisEntity.toCore(catalog)), persistedFoo))
+            metaStore.hasOverlappingSiblings(callContext, persistedFoo, Set.of(catalog.getId())))
         .isPresent()
         .contains(Optional.empty());
 
@@ -323,11 +321,11 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
-                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://bucket/foo/")
-                    .build()))
+                    .build(),
+                Set.of(catalog.getId())))
         .isPresent()
         .contains(Optional.of("s3://bucket/foo/"));
 
@@ -340,11 +338,11 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
       soft.assertThat(
               metaStore.hasOverlappingSiblings(
                   callContext,
-                  List.of(PolarisEntity.toCore(catalog)),
                   new NamespaceEntity.Builder(Namespace.of("x"))
                       .setCatalogId(catalog.getId())
                       .setBaseLocation(check)
-                      .build()))
+                      .build(),
+                  Set.of(catalog.getId())))
           .isPresent()
           .contains(Optional.of("s3://bucket/foo/bar/"));
     }
@@ -352,11 +350,11 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
-                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://other/data/stuff/")
-                    .build()))
+                    .build(),
+                Set.of(catalog.getId())))
         .isPresent()
         .contains(Optional.empty());
 
@@ -366,11 +364,11 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
-                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://bucket/foo/bar")
-                    .build()))
+                    .build(),
+                Set.of(catalog.getId())))
         .isPresent()
         .contains(Optional.of("s3://bucket/foo/bar/"));
 
@@ -384,11 +382,11 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(
             metaStore.hasOverlappingSiblings(
                 callContext,
-                List.of(PolarisEntity.toCore(catalog)),
                 new NamespaceEntity.Builder(Namespace.of("x"))
                     .setCatalogId(catalog.getId())
                     .setBaseLocation("s3://bucket/foo/bar")
-                    .build()))
+                    .build(),
+                Set.of(catalog.getId())))
         .isPresent()
         .contains(Optional.empty());
   }
