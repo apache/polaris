@@ -30,6 +30,8 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
+import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -63,8 +65,8 @@ import org.slf4j.LoggerFactory;
  *             returns {@link AccessDelegationMode#REMOTE_SIGNING}.
  *         <li>If credential subscoping is skipped, returns {@link
  *             AccessDelegationMode#REMOTE_SIGNING}.
- *         <li>If STS is unavailable for the catalog's AWS storage, returns {@link
- *             AccessDelegationMode#REMOTE_SIGNING}.
+ *         <li>If credential vending is unavailable for the catalog's storage configuration, returns
+ *             {@link AccessDelegationMode#REMOTE_SIGNING}.
  *         <li>Otherwise returns {@link AccessDelegationMode#VENDED_CREDENTIALS}.
  *       </ul>
  * </ol>
@@ -200,27 +202,27 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
   }
 
   /**
-   * Determines if STS is available for the catalog's storage configuration.
+   * Determines if credential vending is available for the catalog's storage configuration.
    *
-   * <p>For AWS storage, this checks the {@link AwsStorageConfigurationInfo#getStsUnavailable()}
-   * flag. For other storage types, STS is considered available by default (since they may have
-   * their own credential vending mechanisms).
+   * <p>AWS uses {@link AwsStorageConfigurationInfo#getStsUnavailable()}, Azure uses {@link
+   * AzureStorageConfigurationInfo#getSkipSasTokenGeneration()}, and GCS uses {@link
+   * GcpStorageConfigurationInfo#getSkipCredentialDownscoping()}. Other storage types are treated as
+   * able to vend credentials.
    *
    * @param catalogEntity The catalog entity to check
-   * @return true if STS is available or the storage type doesn't require STS
+   * @return true if the catalog can vend storage credentials
    */
   private boolean isCredentialVendingAvailable(@NonNull CatalogEntity catalogEntity) {
     PolarisStorageConfigurationInfo storageConfig = catalogEntity.getStorageConfigurationInfo();
 
     if (storageConfig == null) {
       LOGGER.debug(
-          "No storage configuration found for catalog {}, assuming STS is available",
+          "No storage configuration found for catalog {}, assuming credential vending is available",
           catalogEntity.getName());
       return true;
     }
 
     if (storageConfig instanceof AwsStorageConfigurationInfo awsConfig) {
-      // STS is available unless explicitly marked as unavailable
       boolean stsUnavailable = Boolean.TRUE.equals(awsConfig.getStsUnavailable());
       LOGGER.debug(
           "AWS storage configuration for catalog {}: stsUnavailable={}",
@@ -229,10 +231,26 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       return !stsUnavailable;
     }
 
-    // For non-AWS storage types, assume STS-like functionality is available
-    // (e.g., Azure uses different mechanisms, GCP uses service accounts)
+    if (storageConfig instanceof AzureStorageConfigurationInfo azureConfig) {
+      boolean skipSas = Boolean.TRUE.equals(azureConfig.getSkipSasTokenGeneration());
+      LOGGER.debug(
+          "Azure storage configuration for catalog {}: skipSasTokenGeneration={}",
+          catalogEntity.getName(),
+          skipSas);
+      return !skipSas;
+    }
+
+    if (storageConfig instanceof GcpStorageConfigurationInfo gcpConfig) {
+      boolean skipDownscoping = Boolean.TRUE.equals(gcpConfig.getSkipCredentialDownscoping());
+      LOGGER.debug(
+          "GCS storage configuration for catalog {}: skipCredentialDownscoping={}",
+          catalogEntity.getName(),
+          skipDownscoping);
+      return !skipDownscoping;
+    }
+
     LOGGER.debug(
-        "Non-AWS storage type {} for catalog {}, assuming credential vending is available",
+        "Storage type {} for catalog {}, assuming credential vending is available",
         storageConfig.getStorageType(),
         catalogEntity.getName());
     return true;

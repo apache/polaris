@@ -30,3 +30,24 @@ All catalog operations in Polaris for Google Cloud Storage (GCS)—including lis
 Polaris requires both IAM roles and [Hierarchical Namespace (HNS)](https://docs.cloud.google.com/storage/docs/hns-overview) ACLs (if HNS is enabled) to be properly configured. Even with the correct IAM role (e.g., `roles/storage.objectAdmin`), access to paths such as `gs://<bucket>/idsp_ns/sample_table4/` may fail with 403 errors if HNS ACLs are missing for scoped tokens. The original access token may work, but scoped (vended) tokens require HNS ACLs on the base path or relevant subpath.
 
 **Note:** HNS is not mandatory when using GCS for a catalog in Polaris. If HNS is not enabled on the bucket, only IAM roles are required for access. Always verify HNS ACLs in addition to IAM roles when troubleshooting GCS access issues with credential vending and HNS enabled.
+
+## Skipping credential downscoping
+
+For non-cloud or emulator deployments that must not downscope GCS credentials, set
+`skipCredentialDownscoping: true` on the catalog storage configuration. Polaris then skips
+GCS credential vending for that catalog, the same way S3 `stsUnavailable: true` skips STS.
+Unset or `false` keeps downscoping enabled.
+
+A client that still sends `X-Iceberg-Access-Delegation: vended-credentials` gets `400 Bad Request`;
+see [When delegation cannot be satisfied]({{% relref "../../vended-credentials#when-delegation-cannot-be-satisfied" %}}).
+Omit the header and configure GCS credentials on the client instead.
+
+```json
+"storageConfigInfo": {
+  "storageType": "GCS",
+  "skipCredentialDownscoping": true,
+  "allowedLocations": [
+    "gs://example-bucket/"
+  ]
+}
+```

@@ -101,6 +101,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Azure and GCS storage configurations gain optional catalog-level flags
+  `skipSasTokenGeneration` and `skipCredentialDownscoping`, matching S3 `stsUnavailable`.
+  Set either to `true` to skip SAS generation or GCS downscoping and disable credential
+  vending for that catalog. Unset or `false` keeps today's vending behavior. Intended for
+  non-cloud or emulator deployments now that `SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION` is
+  not a mainstream knob.
 - Shared CloudEvents 1.0 JSON mapper for Polaris events (`CloudEventsEventJsonMapper` next to
   the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
   lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners
