@@ -83,13 +83,16 @@ quarkus.mongodb.read-preference=primaryPreferred
 ```
 
 Polaris retries a failed commit until [`polaris.persistence.retry.timeout`]({{% relref
-"../configuration/config-sections/smallrye-polaris_persistence" %}}) has passed. Set it longer than
-`read-timeout` and `server-selection-timeout`, so that a commit can still be retried after a MongoDB
-operation timed out:
+"../configuration/config-sections/smallrye-polaris_persistence" %}}) has passed since its first
+attempt. Set it to at least twice the longer of `read-timeout` and `server-selection-timeout`, so
+that a commit can still be retried after a MongoDB operation timed out:
 
 ```properties
 polaris.persistence.retry.timeout=PT60S
 ```
+
+A commit request can take longer than the retry timeout. Keep the request timeouts of proxies, load
+balancers and clients in front of Polaris well above it, so that clients receive the commit result.
 
 For TLS/SSL connections, add `tls=true` to the connection string:
 

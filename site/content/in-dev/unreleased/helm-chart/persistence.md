@@ -169,7 +169,7 @@ persistence:
 
 ### Advanced MongoDB Configuration
 
-For advanced MongoDB settings, use the `advancedConfig` section to pass Quarkus MongoDB configuration properties:
+For advanced MongoDB settings, use the `advancedConfig` section to pass Quarkus MongoDB and Polaris persistence properties:
 
 ```yaml
 advancedConfig:
@@ -181,8 +181,13 @@ advancedConfig:
   polaris.persistence.retry.timeout: "PT60S"
 ```
 
-Set `polaris.persistence.retry.timeout` longer than `read-timeout` and `server-selection-timeout`, so
-that a commit can still be retried after a MongoDB operation timed out.
+Set [`polaris.persistence.retry.timeout`]({{% relref
+"../configuration/config-sections/smallrye-polaris_persistence" %}}) to at least twice the longer of
+`read-timeout` and `server-selection-timeout`, so that a commit can still be retried after a MongoDB
+operation timed out.
+
+A commit request can take longer than the retry timeout. Keep the request timeouts of proxies, load
+balancers and clients in front of Polaris well above it, so that clients receive the commit result.
 
 See the [Quarkus MongoDB configuration reference](https://quarkus.io/guides/mongodb#configuration-reference) for all available options.
 
