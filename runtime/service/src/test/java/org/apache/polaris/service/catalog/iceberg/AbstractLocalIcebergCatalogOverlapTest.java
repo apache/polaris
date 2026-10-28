@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -79,6 +80,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -87,9 +90,8 @@ import software.amazon.awssdk.services.sts.model.Credentials;
 
 /**
  * Base class for persistence-backend-agnostic overlap tests. Concrete subclasses provide a Quarkus
- * test profile with location-overlap enforcement and the optimized sibling check enabled, so the
- * tests exercise the {@code hasOverlappingSiblings} path of whichever metastore implementation the
- * profile wires in.
+ * test profile with location-overlap enforcement enabled, exercising both the optimized and
+ * list-based sibling checks across metastore implementations.
  */
 public abstract class AbstractLocalIcebergCatalogOverlapTest {
 
@@ -262,6 +264,80 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         fileIOFactory,
         polarisEventDispatcher,
         eventMetadataFactory);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {TableProperties.WRITE_DATA_LOCATION, TableProperties.WRITE_METADATA_LOCATION})
+  public void testTableAtSiblingWritePathIsRejected(String writePathProperty) {
+    Namespace ns = Namespace.of("ns");
+    catalog().createNamespace(ns);
+    String writePath = STORAGE_LOCATION + "/ns/t2";
+    catalog()
+        .buildTable(TableIdentifier.of(ns, "t1"), SCHEMA)
+        .withProperty(writePathProperty, writePath)
+        .create();
+
+    // t2's default location is t1's write path.
+    assertThatThrownBy(() -> catalog().buildTable(TableIdentifier.of(ns, "t2"), SCHEMA).create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(writePath);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {TableProperties.WRITE_DATA_LOCATION, TableProperties.WRITE_METADATA_LOCATION})
+  public void testNamespaceContainingSiblingWritePathIsRejected(String writePathProperty) {
+    Namespace ns = Namespace.of("ns");
+    catalog().createNamespace(ns);
+    String writePath = STORAGE_LOCATION + "/ns/child/t2";
+    catalog()
+        .buildTable(TableIdentifier.of(ns, "t1"), SCHEMA)
+        .withProperty(writePathProperty, writePath)
+        .create();
+
+    // The child namespace's default location contains t1's write path.
+    assertThatThrownBy(() -> catalog().createNamespace(Namespace.of("ns", "child")))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(writePath);
+  }
+
+  @Test
+  public void testTablesSharingWritePathAreRejected() {
+    Namespace ns = Namespace.of("ns");
+    catalog().createNamespace(ns);
+    String writePath = STORAGE_LOCATION + "/ns/data";
+    catalog()
+        .buildTable(TableIdentifier.of(ns, "t1"), SCHEMA)
+        .withProperty(TableProperties.WRITE_DATA_LOCATION, writePath)
+        .create();
+
+    assertThatThrownBy(
+            () ->
+                catalog()
+                    .buildTable(TableIdentifier.of(ns, "t2"), SCHEMA)
+                    .withProperty(TableProperties.WRITE_DATA_LOCATION, writePath)
+                    .create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(writePath);
+  }
+
+  @Test
+  public void testWritePathUnderOwnLocationDoesNotBlockSiblings() {
+    Namespace ns = Namespace.of("ns");
+    catalog().createNamespace(ns);
+    catalog()
+        .buildTable(TableIdentifier.of(ns, "t1"), SCHEMA)
+        .withProperty(TableProperties.WRITE_DATA_LOCATION, STORAGE_LOCATION + "/ns/t1/files")
+        .create();
+
+    assertThatCode(() -> catalog().buildTable(TableIdentifier.of(ns, "t2"), SCHEMA).create())
+        .doesNotThrowAnyException();
+    assertThatCode(() -> catalog().createNamespace(Namespace.of("ns", "child")))
+        .doesNotThrowAnyException();
   }
 
   @Test
