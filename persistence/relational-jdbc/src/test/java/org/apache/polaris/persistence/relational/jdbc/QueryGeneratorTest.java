@@ -461,8 +461,9 @@ public class QueryGeneratorTest {
   }
 
   @Test
-  void generateOverlapQueryWithScopeContainingLocation() {
-    // All the descendants of the location are inside the scope, but only some of its ancestors.
+  void generateOverlapQueryWithSearchRootContainingLocation() {
+    // All the descendants of the location are inside the search root, but only some of its
+    // ancestors.
     var query =
         QueryGenerator.generateOverlapQuery(
             "realmId", -123, "s3://bucket/ns/t/", StorageLocation.of("s3://bucket/ns/"));
@@ -479,8 +480,9 @@ public class QueryGeneratorTest {
   }
 
   @Test
-  void generateOverlapQueryWithScopeInsideLocation() {
-    // Only the descendants of the scope can match, and no ancestor of the location: the scope's
+  void generateOverlapQueryWithSearchRootInsideLocation() {
+    // Only the descendants of the search root can match, and no ancestor of the location: the
+    // search root's
     // LIKE condition replaces the location's.
     var query =
         QueryGenerator.generateOverlapQuery(
@@ -492,7 +494,7 @@ public class QueryGeneratorTest {
   }
 
   @Test
-  void generateOverlapQueryRejectsUnrelatedScope() {
+  void generateOverlapQueryRejectsUnrelatedSearchRoot() {
     Assertions.assertThatThrownBy(
             () ->
                 QueryGenerator.generateOverlapQuery(

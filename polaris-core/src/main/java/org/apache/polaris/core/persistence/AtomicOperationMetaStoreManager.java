@@ -1806,10 +1806,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
-          @NonNull Set<Long> allowedContainerIds,
-          @Nullable StorageLocation scope) {
+          @NonNull Set<Long> parentPathIds,
+          @Nullable StorageLocation searchRoot) {
     BasePersistence ms = callContext.getMetaStore();
-    return ms.hasOverlappingSiblings(callContext, entity, allowedContainerIds, scope);
+    return ms.hasOverlappingSiblings(callContext, entity, parentPathIds, searchRoot);
   }
 
   @Override

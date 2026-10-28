@@ -498,10 +498,10 @@ record NoSqlMetaStoreManager(
       LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
-          @NonNull Set<Long> allowedContainerIds,
-          @Nullable StorageLocation scope) {
+          @NonNull Set<Long> parentPathIds,
+          @Nullable StorageLocation searchRoot) {
     return ms(callContext)
-        .hasOverlappingSiblings(entity, allowedContainerIds, scope)
+        .hasOverlappingSiblings(entity, parentPathIds, searchRoot)
         .<LocationOverlapResult>map(LocationOverlapResult.Overlap::new)
         .orElseGet(LocationOverlapResult.NoOverlap::new);
   }

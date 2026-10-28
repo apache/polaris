@@ -2325,15 +2325,15 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
-          @NonNull Set<Long> allowedContainerIds,
-          @Nullable StorageLocation scope) {
+          @NonNull Set<Long> parentPathIds,
+          @Nullable StorageLocation searchRoot) {
     TransactionalPersistence ms = ((TransactionalPersistence) callContext.getMetaStore());
     return ms.runInTransaction(
         callContext,
         () -> {
           return callContext
               .getMetaStore()
-              .hasOverlappingSiblings(callContext, entity, allowedContainerIds, scope);
+              .hasOverlappingSiblings(callContext, entity, parentPathIds, searchRoot);
         });
   }
 

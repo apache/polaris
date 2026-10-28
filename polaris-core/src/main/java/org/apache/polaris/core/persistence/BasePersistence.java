@@ -407,10 +407,9 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * OPTIMIZED_SIBLING_CHECK}; the fallback used when that flag is off inspects only the entities
    * directly under the same parent.
    *
-   * <p>The ancestors given by {@code allowedContainerIds} are excluded: a parent namespace whose
-   * location strictly contains the entity's location is not reported, since default locations nest
-   * under the parent's location. An ancestor whose location equals the entity's location is still
-   * reported.
+   * <p>The ancestors given by {@code parentPathIds} are excluded: a parent namespace whose location
+   * strictly contains the entity's location is not reported, since default locations nest under the
+   * parent's location. An ancestor whose location equals the entity's location is still reported.
    *
    * <p>The entity itself, identified by its id, is never reported. Implementations should avoid
    * checking the entity against itself when it is already persisted, e.g. on a location update or a
@@ -418,14 +417,11 @@ public interface BasePersistence extends PolicyMappingPersistence {
    *
    * @param callContext the polaris call context
    * @param entity the entity whose base location to check
-   * @param allowedContainerIds the ids of the namespaces (and catalog) that may contain the
-   *     entity's location without being reported as conflicts. This is normally the ids of the
-   *     entity's parent path: the catalog and each parent namespace, not including the entity
-   *     itself.
-   * @param scope if not null, only the entities whose base locations are inside this location (or
-   *     equal to it) are considered; the others are ignored. This is meant for an existing entity
-   *     that is moved, e.g. renamed, into another namespace: it keeps its location, so its
-   *     relationship with the entities outside the destination namespace does not change.
+   * @param parentPathIds IDs of the entity's catalog and parent namespaces. A parent whose location
+   *     strictly contains the entity's location is not a conflict. An exact location match is still
+   *     a conflict.
+   * @param searchRoot root location to search for overlapping entities, or null to search the whole
+   *     catalog. Only entities located at or below this path are checked.
    * @return {@link LocationOverlapResult.Overlap} with the base location of a conflicting entity,
    *     {@link LocationOverlapResult.NoOverlap} if there is no conflict, and {@link
    *     LocationOverlapResult.Unsupported} if the metastore doesn't support this operation
@@ -434,8 +430,8 @@ public interface BasePersistence extends PolicyMappingPersistence {
       LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
-          @NonNull Set<Long> allowedContainerIds,
-          @Nullable StorageLocation scope) {
+          @NonNull Set<Long> parentPathIds,
+          @Nullable StorageLocation searchRoot) {
     return new LocationOverlapResult.Unsupported();
   }
 

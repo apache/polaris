@@ -630,7 +630,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   <T extends PolarisEntity & LocationBasedEntity> Optional<String> hasOverlappingSiblings(
-      T entity, Set<Long> allowedContainerIds, @Nullable StorageLocation scope) {
+      T entity, Set<Long> parentPathIds, @Nullable StorageLocation searchRoot) {
     var baseLocation = entity.getBaseLocation();
     if (baseLocation == null) {
       return Optional.empty();
@@ -642,7 +642,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     // The entity's own parent namespaces may contain its location: they always do when locations
     // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
     return hasOverlappingSiblings(
-        catalogId, checkLocation, allowedContainerIds, entity.getId(), scope);
+        catalogId, checkLocation, parentPathIds, entity.getId(), searchRoot);
   }
 
   Optional<String> hasOverlappingSiblings(
@@ -650,25 +650,28 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
       String checkLocation,
       Set<Long> ancestorIds,
       long entityId,
-      @Nullable StorageLocation scope) {
+      @Nullable StorageLocation searchRoot) {
     var locationIdentifier = identifierFromLocationString(checkLocation);
-    var scopeIdentifier =
-        scope == null ? null : identifierFromLocationString(scope.withoutScheme());
+    var searchRootIdentifier =
+        searchRoot == null ? null : identifierFromLocationString(searchRoot.withoutScheme());
 
-    // With a scope, only the entities located inside the scope are considered. The candidates are
+    // With a search root, only the entities located inside the search root are considered. The
+    // candidates are
     // the descendants of the location (including an entity at exactly the location) and its
     // ancestors:
-    // - If the location is inside the scope, all its descendants are inside the scope, but only
-    //   the ancestors that are at least as deep as the scope are.
-    // - If the scope is inside the location, only the descendants of the scope can match, and no
-    //   ancestor can: it would be shallower than the scope.
+    // - If the location is inside the search root, all its descendants are inside the search root,
+    // but only
+    //   the ancestors that are at least as deep as the search root are.
+    // - If the search root is inside the location, only the descendants of the search root can
+    // match, and no
+    //   ancestor can: it would be shallower than the search root.
     // - Otherwise, nothing can match.
-    var locationInsideScope =
-        scopeIdentifier == null || locationIdentifier.startsWith(scopeIdentifier);
-    if (!locationInsideScope && !scopeIdentifier.startsWith(locationIdentifier)) {
+    var locationInsideSearchRoot =
+        searchRootIdentifier == null || locationIdentifier.startsWith(searchRootIdentifier);
+    if (!locationInsideSearchRoot && !searchRootIdentifier.startsWith(locationIdentifier)) {
       return Optional.empty();
     }
-    var scanIdentifier = locationInsideScope ? locationIdentifier : scopeIdentifier;
+    var scanIdentifier = locationInsideSearchRoot ? locationIdentifier : searchRootIdentifier;
 
     return memoizedIndexedAccess
         .catalogContent(catalogId)
@@ -723,13 +726,13 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
               // Check for parent (prefix) overlaps. These have shorter keys and are missed by
               // forward iteration starting at the full target key.
-              if (!locationInsideScope) {
-                // Location is outside the scope: no ancestor could be inside it,
+              if (!locationInsideSearchRoot) {
+                // Location is outside the search root: no ancestor could be inside it,
                 // so skip prefix checks.
                 return Optional.empty();
               }
               var firstPrefixLength =
-                  scopeIdentifier == null ? 1 : Math.max(1, scopeIdentifier.length());
+                  searchRootIdentifier == null ? 1 : Math.max(1, searchRootIdentifier.length());
               for (int i = firstPrefixLength; i <= locationIdentifier.length(); i++) {
                 var prefixElements = locationIdentifier.elements().subList(0, i);
                 var prefix = ContentIdentifier.identifier(prefixElements);

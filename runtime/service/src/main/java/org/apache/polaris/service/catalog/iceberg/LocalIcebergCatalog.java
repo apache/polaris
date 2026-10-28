@@ -1434,8 +1434,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
-   * @param scope if not null, only the entities located inside this location are considered by the
-   *     optimized sibling check
+   * @param searchRoot if not null, only the entities located at or below this location are
+   *     considered by the optimized sibling check
    */
   private void validateNoLocationOverlap(
       CatalogEntity catalog,
@@ -1443,7 +1443,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       List<PolarisEntity> resolvedNamespace,
       String location,
       PolarisEntity entity,
-      @Nullable StorageLocation scope) {
+      @Nullable StorageLocation searchRoot) {
     boolean validateViewOverlap =
         realmConfig.getConfig(BehaviorChangeConfiguration.VALIDATE_VIEW_LOCATION_OVERLAP);
 
@@ -1474,7 +1474,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
                   .build());
 
-      validateNoLocationOverlap(virtualEntity, resolvedNamespace, scope);
+      validateNoLocationOverlap(virtualEntity, resolvedNamespace, searchRoot);
     }
   }
 
@@ -1555,7 +1555,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   private <T extends PolarisEntity & LocationBasedEntity> void validateNoLocationOverlap(
-      T entity, List<PolarisEntity> parentPath, @Nullable StorageLocation scope) {
+      T entity, List<PolarisEntity> parentPath, @Nullable StorageLocation searchRoot) {
 
     String location = entity.getBaseLocation();
     String name = entity.getName();
@@ -1563,10 +1563,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     // Attempt to directly query for siblings
     if (realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK)) {
       // The entity's own parents may contain its location without being reported.
-      Set<Long> allowedContainerIds =
+      Set<Long> parentPathIds =
           parentPath.stream().map(PolarisEntity::getId).collect(Collectors.toSet());
       switch (getMetaStoreManager()
-          .hasOverlappingSiblings(getCurrentPolarisContext(), entity, allowedContainerIds, scope)) {
+          .hasOverlappingSiblings(getCurrentPolarisContext(), entity, parentPathIds, searchRoot)) {
         case LocationOverlapResult.Overlap overlap ->
             throw new ForbiddenException(
                 "Unable to create entity at location '%s' because it conflicts with existing table or namespace at %s",

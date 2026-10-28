@@ -116,12 +116,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Azure credential vending now maps MSAL authentication failures using their HTTP status codes,
   including the existing `401` to `403` and `404` to `400` mappings.
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
-  take the ids of the namespaces that may contain the entity's location, so implementations exclude
-  them without re-reading the parent chain from the metastore, and return a
-  `LocationOverlapResult`. They also take an optional scope location: when set, only the entities
-  located inside it are considered, which allows renamed entities to be checked against the
-  destination namespace only. Implementations must also ignore the entity itself, identified by its
-  id, so that an already persisted entity does not conflict with its own location.
+  take the ids of the entity's catalog and parent namespaces, so implementations exclude them
+  without re-reading the parent chain from the metastore, and return a `LocationOverlapResult`. They
+  also take an optional search root: when set, only the entities located at or below it are
+  considered, which allows renamed entities to be checked against the destination namespace only.
+  Implementations must also ignore the entity itself, identified by its id, so that an already
+  persisted entity does not conflict with its own location.
 - Apache Iceberg has been upgraded to 1.12.0. The Java REST client now encodes spaces in namespace
   and table names as `%20` instead of `+` (apache/iceberg#15989). Polaris decodes path segments
   per RFC 3986 and has always treated `+` as a literal character, so the server behaves the same for

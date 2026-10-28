@@ -385,7 +385,7 @@ public class QueryGenerator {
    */
   @VisibleForTesting
   public static PreparedQuery generateOverlapQuery(
-      String realmId, long catalogId, String baseLocation, @Nullable StorageLocation scope) {
+      String realmId, long catalogId, String baseLocation, @Nullable StorageLocation searchRoot) {
     StorageLocation baseStorageLocation = StorageLocation.of(baseLocation);
     String locationWithoutScheme = baseStorageLocation.withoutScheme();
 
@@ -411,27 +411,29 @@ public class QueryGenerator {
     // The location whose descendants are matched by the LIKE condition below.
     String descendantsRoot = locationWithoutScheme;
 
-    if (scope != null) {
-      // Only the entities located inside the scope, i.e. at exactly the scope or below it, can
+    if (searchRoot != null) {
+      // Only the entities located inside the search root, i.e. at exactly the search root or below
+      // it, can
       // match.
-      if (baseStorageLocation.isChildOf(scope)) {
-        // All the descendants of the location are inside the scope, but only some of its ancestors.
+      if (baseStorageLocation.isChildOf(searchRoot)) {
+        // All the descendants of the location are inside the search root, but only some of its
+        // ancestors.
         // The prefixes are compared as plain strings, like the stored locations are by the query.
-        String scopePrefix = StorageLocation.ensureTrailingSlash(scope.withoutScheme());
+        String searchRootPrefix = StorageLocation.ensureTrailingSlash(searchRoot.withoutScheme());
         prefixTerms.removeIf(
-            prefix -> !StorageLocation.ensureTrailingSlash(prefix).startsWith(scopePrefix));
+            prefix -> !StorageLocation.ensureTrailingSlash(prefix).startsWith(searchRootPrefix));
       } else {
-        // Only the descendants of the scope can match, and no ancestor of the location can.
+        // Only the descendants of the search root can match, and no ancestor of the location can.
         Preconditions.checkArgument(
-            scope.isChildOf(baseStorageLocation),
-            "The scope %s and the location %s are not nested",
-            scope,
+            searchRoot.isChildOf(baseStorageLocation),
+            "The search root %s and the location %s are not nested",
+            searchRoot,
             baseLocation);
-        String normalizedScope = stripTrailingSlash(scope.withoutScheme());
+        String normalizedSearchRoot = stripTrailingSlash(searchRoot.withoutScheme());
         prefixTerms.clear();
-        prefixTerms.add(normalizedScope);
-        prefixTerms.add(normalizedScope + "/");
-        descendantsRoot = normalizedScope;
+        prefixTerms.add(normalizedSearchRoot);
+        prefixTerms.add(normalizedSearchRoot + "/");
+        descendantsRoot = normalizedSearchRoot;
       }
     }
 

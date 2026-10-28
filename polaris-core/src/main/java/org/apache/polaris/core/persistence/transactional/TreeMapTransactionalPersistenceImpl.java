@@ -677,15 +677,15 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
-          @NonNull Set<Long> allowedContainerIds,
-          @Nullable StorageLocation scope) {
+          @NonNull Set<Long> parentPathIds,
+          @Nullable StorageLocation searchRoot) {
     // TODO we could optimize this full scan
     StorageLocation entityLocationWithoutScheme =
         StorageLocation.of(StorageLocation.of(entity.getBaseLocation()).withoutScheme());
     List<PolarisBaseEntity> allEntities = this.store.getSliceEntities().readRange("");
 
-    StorageLocation scopeWithoutScheme =
-        scope == null ? null : StorageLocation.of(scope.withoutScheme());
+    StorageLocation searchRootWithoutScheme =
+        searchRoot == null ? null : StorageLocation.of(searchRoot.withoutScheme());
 
     // The entity's own parent namespaces may contain its location: they always do when locations
     // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
@@ -696,8 +696,8 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       Optional<StorageLocation> maybeSiblingLocationWithoutScheme =
           getEntityLocationWithoutScheme(siblingEntity).map(StorageLocation::of);
       if (maybeSiblingLocationWithoutScheme.isPresent()) {
-        if (scopeWithoutScheme != null
-            && !maybeSiblingLocationWithoutScheme.get().isChildOf(scopeWithoutScheme)) {
+        if (searchRootWithoutScheme != null
+            && !maybeSiblingLocationWithoutScheme.get().isChildOf(searchRootWithoutScheme)) {
           continue;
         }
         boolean containsEntity =
@@ -705,9 +705,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
         boolean containedByEntity =
             maybeSiblingLocationWithoutScheme.get().isChildOf(entityLocationWithoutScheme);
         // An ancestor may contain the entity, but the entity may not sit at exactly its location.
-        if (containsEntity
-            && !containedByEntity
-            && allowedContainerIds.contains(siblingEntity.getId())) {
+        if (containsEntity && !containedByEntity && parentPathIds.contains(siblingEntity.getId())) {
           continue;
         }
         if (containsEntity || containedByEntity) {

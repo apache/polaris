@@ -370,8 +370,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
-          @NonNull Set<Long> allowedContainerIds,
-          @Nullable StorageLocation scope) {
+          @NonNull Set<Long> parentPathIds,
+          @Nullable StorageLocation searchRoot) {
     throw illegalMethodError("hasOverlappingSiblings");
   }
 

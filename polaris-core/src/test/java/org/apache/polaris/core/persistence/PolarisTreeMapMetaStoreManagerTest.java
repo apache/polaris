@@ -73,43 +73,35 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
     metaStoreManager.createEntityIfNotExists(
         callContext, List.of(PolarisEntity.toCore(catalog)), existing);
 
-    var allowedContainerIds = Set.of(catalog.getId());
+    var parentPathIds = Set.of(catalog.getId());
 
     // A different entity at the same location is a conflict.
     var other = new LocationBasedTestEntity(buildNamespace(catalog, existing.getId() + 1));
-    var conflict =
-        metaStoreManager.hasOverlappingSiblings(callContext, other, allowedContainerIds, null);
+    var conflict = metaStoreManager.hasOverlappingSiblings(callContext, other, parentPathIds, null);
     // The conflicting location is the location of the existing entity, as it is stored.
     assertThat(conflict)
         .isEqualTo(new LocationOverlapResult.Overlap("s3://bucket/warehouse/existing/"));
 
     // The persisted entity itself, e.g. when renamed, is not a conflict.
     var self = new LocationBasedTestEntity(buildNamespace(catalog, existing.getId()));
-    assertThat(
-            metaStoreManager.hasOverlappingSiblings(callContext, self, allowedContainerIds, null))
+    assertThat(metaStoreManager.hasOverlappingSiblings(callContext, self, parentPathIds, null))
         .isEqualTo(new LocationOverlapResult.NoOverlap());
 
-    // With a scope location, only the entities located inside it are considered.
+    // With a search root, only the entities located inside it are considered.
     assertThat(
             metaStoreManager.hasOverlappingSiblings(
-                callContext,
-                other,
-                allowedContainerIds,
-                StorageLocation.of("s3://bucket/warehouse/")))
+                callContext, other, parentPathIds, StorageLocation.of("s3://bucket/warehouse/")))
         .isInstanceOf(LocationOverlapResult.Overlap.class);
     assertThat(
             metaStoreManager.hasOverlappingSiblings(
                 callContext,
                 other,
-                allowedContainerIds,
+                parentPathIds,
                 StorageLocation.of("s3://bucket/warehouse/existing/")))
         .isInstanceOf(LocationOverlapResult.Overlap.class);
     assertThat(
             metaStoreManager.hasOverlappingSiblings(
-                callContext,
-                other,
-                allowedContainerIds,
-                StorageLocation.of("s3://bucket/elsewhere/")))
+                callContext, other, parentPathIds, StorageLocation.of("s3://bucket/elsewhere/")))
         .isEqualTo(new LocationOverlapResult.NoOverlap());
   }
 

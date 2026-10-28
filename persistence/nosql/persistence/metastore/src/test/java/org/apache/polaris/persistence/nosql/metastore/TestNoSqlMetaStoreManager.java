@@ -272,7 +272,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
                 null))
         .isEqualTo(new LocationOverlapResult.Overlap("s3://bucket/foo/"));
 
-    // With a scope location, only the entities located inside it are considered.
+    // With a search root, only the entities located inside it are considered.
     var newChild =
         new NamespaceEntity.Builder(Namespace.of("x"))
             .setCatalogId(catalog.getId())

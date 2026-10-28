@@ -797,8 +797,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
-          @NonNull Set<Long> allowedContainerIds,
-          @Nullable StorageLocation scope) {
+          @NonNull Set<Long> parentPathIds,
+          @Nullable StorageLocation searchRoot) {
     if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count()
         > MAX_LOCATION_COMPONENTS) {
       return new LocationOverlapResult.Unsupported();
@@ -806,17 +806,18 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
     StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
 
-    if (scope != null) {
-      // Only the entities located inside the scope are considered: if the scope and the entity's
+    if (searchRoot != null) {
+      // Only the entities located inside the search root are considered: if the search root and the
+      // entity's
       // location are not nested, there is none that can overlap the location.
-      if (!entityLocation.isChildOf(scope) && !scope.isChildOf(entityLocation)) {
+      if (!entityLocation.isChildOf(searchRoot) && !searchRoot.isChildOf(entityLocation)) {
         return new LocationOverlapResult.NoOverlap();
       }
     }
 
     PreparedQuery query =
         QueryGenerator.generateOverlapQuery(
-            realmId, entity.getCatalogId(), entity.getBaseLocation(), scope);
+            realmId, entity.getCatalogId(), entity.getBaseLocation(), searchRoot);
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity());
       if (results.isEmpty()) {
@@ -843,7 +844,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         boolean containsEntity = entityLocation.isChildOf(resultLocation.get());
         boolean containedByEntity = resultLocation.get().isChildOf(entityLocation);
         // An ancestor may contain the entity, but the entity may not sit at exactly its location.
-        if (containsEntity && !containedByEntity && allowedContainerIds.contains(result.getId())) {
+        if (containsEntity && !containedByEntity && parentPathIds.contains(result.getId())) {
           continue;
         }
         if (containsEntity || containedByEntity) {
