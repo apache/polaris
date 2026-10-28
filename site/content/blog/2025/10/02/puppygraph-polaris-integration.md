@@ -98,10 +98,10 @@ Check out the code from the Apache Polaris repository.
 git clone https://github.com/apache/polaris.git
 ```
 
-Build and run an Apache Polaris server. Note that JDK 21 is required to build and run the Apache Polaris.
+JDK 21 is required to build and run Apache Polaris. Polaris dev mode listens on localhost by default. Allow connections from the PuppyGraph Docker container when starting the server:
 ```shell   
 cd polaris  
-./gradlew run
+QUARKUS_HTTP_HOST=0.0.0.0 ./gradlew run
 ```
 
 Then use the provided spark shell to create a data catalog and prepare data. Start a different shell and run the following command in the polaris directory: 
@@ -143,8 +143,10 @@ Then you’ll need to deploy PuppyGraph. Luckily, this is easy and can currently
 
 With Docker installed, you can run the following command in your terminal:
 ```shell
-docker run -p 8081:8081 -p 8183:8182 -p 7687:7687 -v /tmp/polaris:/tmp/polaris --name puppy --rm -itd puppygraph/puppygraph:stable
+docker run -p 8081:8081 -p 8183:8182 -p 7687:7687 -v /tmp/polaris:/tmp/polaris --name puppy --rm -itd puppygraph/puppygraph:latest
 ```
+
+The commands and JSON below target PuppyGraph 1.x and were tested with PuppyGraph 1.17.0. Screenshots show the original interface; the current interface may differ. See the [migration guide](https://docs.puppygraph.com/modeling/migrating-from-v0/) for existing 0.x schemas.
 
 This will spin up a PuppyGraph instance on your local machine (or on a cloud or bare metal server if that's where you want to deploy it). Next, you can go to **localhost:8081** or the URL on which you launched the instance. This will show you the PuppyGraph login screen:
 
@@ -154,10 +156,10 @@ After logging in with the default credentials (username: “`puppygraph”` and 
 
 ### Connect to Your Data Source and Define Your Schema
 
-Next, we must connect to our data source to run graph queries against it. Users have a choice of how they would like to go about this. Firstly, you could use a JSON schema document to define your connectivity parameters and data mapping. As an example, here is what one of these schemas might look like:
+Next, we must connect to our data source to run graph queries against it. Users have a choice of how they would like to go about this. Firstly, you could use a JSON schema document to define your connectivity parameters and data mapping. The example below uses the PuppyGraph 1.x schema format. Replace the connection settings with those for your deployment:
 ```json
 {
-  "catalogs": [
+  "catalog": [
     {
       "name": "test",
       "type": "iceberg",
@@ -165,171 +167,212 @@ Next, we must connect to our data source to run graph queries against it. Users 
         "type": "rest",
         "uri": "http://172.17.0.1:8181/api/catalog",
         "warehouse": "manual_spark",
+        "security": "oauth2",
         "credential": "root:s3cr3t",
         "scope": "PRINCIPAL_ROLE:ALL"
       }
     }
   ],
-  "graph": {
-    "vertices": [
-      {
-        "label": "person",
-        "oneToOne": {
-          "tableSource": {
-            "catalog": "test",
-            "schema": "modern",
-            "table": "person"
-          },
-          "id": {
-            "fields": [
-              {
-                "type": "String",
-                "field": "id",
-                "alias": "id"
-              }
-            ]
-          },
-          "attributes": [
+  "node": [
+    {
+      "label": "person",
+      "dataSourceGroup": {
+        "externalDataSource": {
+          "enabled": true,
+          "catalog": "test",
+          "schema": "modern",
+          "table": "person",
+          "mappedField": [
             {
-              "type": "String",
-              "field": "name",
-              "alias": "name"
+              "sourceFieldName": "id",
+              "targetFieldName": "id"
             },
             {
-              "type": "Int",
-              "field": "age",
-              "alias": "age"
+              "sourceFieldName": "name",
+              "targetFieldName": "name"
+            },
+            {
+              "sourceFieldName": "age",
+              "targetFieldName": "age"
             }
           ]
         }
       },
-      {
-        "label": "software",
-        "oneToOne": {
-          "tableSource": {
-            "catalog": "test",
-            "schema": "modern",
-            "table": "software"
-          },
-          "id": {
-            "fields": [
-              {
-                "type": "String",
-                "field": "id",
-                "alias": "id"
-              }
-            ]
-          },
-          "attributes": [
+      "id": [
+        {
+          "name": "id",
+          "type": "String"
+        }
+      ],
+      "attribute": [
+        {
+          "name": "name",
+          "type": "String"
+        },
+        {
+          "name": "age",
+          "type": "Int"
+        }
+      ]
+    },
+    {
+      "label": "software",
+      "dataSourceGroup": {
+        "externalDataSource": {
+          "enabled": true,
+          "catalog": "test",
+          "schema": "modern",
+          "table": "software",
+          "mappedField": [
             {
-              "type": "String",
-              "field": "name",
-              "alias": "name"
+              "sourceFieldName": "id",
+              "targetFieldName": "id"
             },
             {
-              "type": "String",
-              "field": "lang",
-              "alias": "lang"
+              "sourceFieldName": "name",
+              "targetFieldName": "name"
+            },
+            {
+              "sourceFieldName": "lang",
+              "targetFieldName": "lang"
             }
           ]
         }
-      }
-    ],
-    "edges": [
-      {
-        "label": "created",
-        "fromVertex": "person",
-        "toVertex": "software",
-        "tableSource": {
-          "catalog": "test",
-          "schema": "modern",
-          "table": "created"
-        },
-        "id": {
-          "fields": [
-            {
-              "type": "String",
-              "field": "id",
-              "alias": "id"
-            }
-          ]
-        },
-        "fromId": {
-          "fields": [
-            {
-              "type": "String",
-              "field": "from_id",
-              "alias": "from_id"
-            }
-          ]
-        },
-        "toId": {
-          "fields": [
-            {
-              "type": "String",
-              "field": "to_id",
-              "alias": "to_id"
-            }
-          ]
-        },
-        "attributes": [
-          {
-            "type": "Double",
-            "field": "weight",
-            "alias": "weight"
-          }
-        ]
       },
-      {
-        "label": "knows",
-        "fromVertex": "person",
-        "toVertex": "person",
-        "tableSource": {
+      "id": [
+        {
+          "name": "id",
+          "type": "String"
+        }
+      ],
+      "attribute": [
+        {
+          "name": "name",
+          "type": "String"
+        },
+        {
+          "name": "lang",
+          "type": "String"
+        }
+      ]
+    }
+  ],
+  "edge": [
+    {
+      "label": "created",
+      "fromNodeLabel": "person",
+      "toNodeLabel": "software",
+      "dataSourceGroup": {
+        "externalDataSource": {
+          "enabled": true,
           "catalog": "test",
           "schema": "modern",
-          "table": "knows"
-        },
-        "id": {
-          "fields": [
+          "table": "created",
+          "mappedField": [
             {
-              "type": "String",
-              "field": "id",
-              "alias": "id"
+              "sourceFieldName": "id",
+              "targetFieldName": "id"
+            },
+            {
+              "sourceFieldName": "from_id",
+              "targetFieldName": "from_id"
+            },
+            {
+              "sourceFieldName": "to_id",
+              "targetFieldName": "to_id"
+            },
+            {
+              "sourceFieldName": "weight",
+              "targetFieldName": "weight"
             }
           ]
-        },
-        "fromId": {
-          "fields": [
+        }
+      },
+      "id": [
+        {
+          "name": "id",
+          "type": "String"
+        }
+      ],
+      "fromKey": [
+        {
+          "name": "from_id",
+          "type": "String"
+        }
+      ],
+      "toKey": [
+        {
+          "name": "to_id",
+          "type": "String"
+        }
+      ],
+      "attribute": [
+        {
+          "name": "weight",
+          "type": "Double"
+        }
+      ]
+    },
+    {
+      "label": "knows",
+      "fromNodeLabel": "person",
+      "toNodeLabel": "person",
+      "dataSourceGroup": {
+        "externalDataSource": {
+          "enabled": true,
+          "catalog": "test",
+          "schema": "modern",
+          "table": "knows",
+          "mappedField": [
             {
-              "type": "String",
-              "field": "from_id",
-              "alias": "from_id"
+              "sourceFieldName": "id",
+              "targetFieldName": "id"
+            },
+            {
+              "sourceFieldName": "from_id",
+              "targetFieldName": "from_id"
+            },
+            {
+              "sourceFieldName": "to_id",
+              "targetFieldName": "to_id"
+            },
+            {
+              "sourceFieldName": "weight",
+              "targetFieldName": "weight"
             }
           ]
-        },
-        "toId": {
-          "fields": [
-            {
-              "type": "String",
-              "field": "to_id",
-              "alias": "to_id"
-            }
-          ]
-        },
-        "attributes": [
-          {
-            "type": "Double",
-            "field": "weight",
-            "alias": "weight"
-          }
-        ]
-      }
-    ]
-  }
+        }
+      },
+      "id": [
+        {
+          "name": "id",
+          "type": "String"
+        }
+      ],
+      "fromKey": [
+        {
+          "name": "from_id",
+          "type": "String"
+        }
+      ],
+      "toKey": [
+        {
+          "name": "to_id",
+          "type": "String"
+        }
+      ],
+      "attribute": [
+        {
+          "name": "weight",
+          "type": "Double"
+        }
+      ]
+    }
+  ]
 }
 ```
 
-In the example, you can see the data store details under the **catalogs** section. This is all that is needed to connect to the Apache Polaris instance. Underneath the **catalogs** section, you’ll notice that we have defined the nodes and edges and where the data comes from. This tells PuppyGraph how to map the SQL data into the graph hosted within PuppyGraph. This can then be uploaded to PuppyGraph, and you’ll be ready to query\! 
+In the example, you can see the data store details under the **catalog** section. This is all that is needed to connect to the Apache Polaris instance. Underneath the **catalog** section, you’ll notice that we have defined the nodes and edges and where the data comes from. This tells PuppyGraph how to map the SQL data into the graph hosted within PuppyGraph. This can then be uploaded to PuppyGraph, and you’ll be ready to query\!
 
 ![](/img/blog/2025/10/02/fig5-puppygraph-schema-upload-page.png) 
 To create the schema in this way, just save the schema to a JSON file, modify the uri and credential to reflect the actual Polaris uri and credential, and select “Upload Graph Schema JSON” to upload the JSON file. The graph will then be created.
