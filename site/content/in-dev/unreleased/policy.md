@@ -55,6 +55,11 @@ Polaris supports several predefined system policy types (prefixed with `system.`
 Support for additional predefined system policy types and custom policy type definitions is in progress.
 For more details, please refer to the [roadmap](https://github.com/apache/polaris/discussions/1028).
 
+Polaris stores and resolves these policies but does not run the maintenance operations itself. Compaction,
+snapshot expiration and orphan file removal are performed by external engines or services, for example Spark's
+Iceberg maintenance procedures or table maintenance tools such as
+[Floe](https://github.com/nssalian/floe) and [OLake Fusion](https://olake.io/docs/fusion/compaction/types-of-compaction).
+
 ### Policy Inheritance
 
 The entity hierarchy in Polaris is structured as follows:
