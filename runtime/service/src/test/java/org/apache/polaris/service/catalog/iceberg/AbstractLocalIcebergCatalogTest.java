@@ -60,6 +60,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -96,6 +98,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.iceberg.exceptions.ValidationException;
@@ -1216,6 +1219,270 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThat(catalog.tableExists(table))
         .as("Table should be created on receiving notification")
         .isTrue();
+  }
+
+  @Test
+  public void testNotificationUpdateRetriesOnConcurrentModification() {
+    assumeNotificationRetryTestsApply();
+    TableIdentifier table = TableIdentifier.of(Namespace.of("parent", "child1"), "retry_table");
+    String tableLocation = "s3://externally-owned-bucket/retry-table/";
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    LocalIcebergCatalog catalog = catalogWithNotificationTable(spyMetaStore, table, tableLocation);
+
+    // Before the first attempt writes, another writer commits an unrelated property change. The
+    // first attempt then fails for real on its stale entity version, so the notification only
+    // succeeds if the retry reloads and rebuilds from the latest persisted entity.
+    AtomicInteger updateAttempts = new AtomicInteger();
+    AtomicReference<PolarisBaseEntity> tableEntity = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              if (updateAttempts.incrementAndGet() == 1) {
+                PolarisBaseEntity pending = invocation.getArgument(2);
+                tableEntity.set(pending);
+                IcebergTableLikeEntity concurrentChange =
+                    new IcebergTableLikeEntity.Builder(loadTableEntity(pending))
+                        .addProperty("concurrent-key", "concurrent-value")
+                        .build();
+                Assertions.assertThat(
+                        metaStoreManager.updateEntityPropertiesIfNotChanged(
+                            polarisContext, invocation.getArgument(1), concurrentChange))
+                    .returns(true, EntityResult::isSuccess);
+              }
+              return invocation.callRealMethod();
+            })
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+
+    String updateMetadataLocation = tableLocation + "metadata/v2.metadata.json";
+    Assertions.assertThat(
+            catalog.sendNotification(
+                table,
+                notificationRequest(NotificationType.UPDATE, table, updateMetadataLocation, 200L)))
+        .as("Notification should succeed after retry")
+        .isTrue();
+    Assertions.assertThat(updateAttempts.get())
+        .as("Should have retried once after concurrent modification")
+        .isEqualTo(2);
+
+    IcebergTableLikeEntity updated = loadTableEntity(tableEntity.get());
+    Assertions.assertThat(updated.getPropertiesAsMap())
+        .as("Retry should preserve the concurrent change")
+        .containsEntry("concurrent-key", "concurrent-value");
+    Assertions.assertThat(updated.getMetadataLocation()).isEqualTo(updateMetadataLocation);
+    Assertions.assertThat(updated.getLastAdmittedNotificationTimestamp()).contains(200L);
+  }
+
+  @Test
+  public void testNotificationUpdateGivesUpAfterMaxRetries() {
+    assumeNotificationRetryTestsApply();
+    TableIdentifier table = TableIdentifier.of(Namespace.of("parent", "child1"), "exhaust_table");
+    String tableLocation = "s3://externally-owned-bucket/exhaust-table/";
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    LocalIcebergCatalog catalog = catalogWithNotificationTable(spyMetaStore, table, tableLocation);
+
+    doReturn(new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+
+    Mockito.clearInvocations(spyMetaStore);
+    Assertions.assertThatThrownBy(
+            () ->
+                catalog.sendNotification(
+                    table,
+                    notificationRequest(
+                        NotificationType.UPDATE,
+                        table,
+                        tableLocation + "metadata/v2.metadata.json",
+                        200L)))
+        .isInstanceOf(CommitConflictException.class);
+    Mockito.verify(spyMetaStore, Mockito.times(3))
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+  }
+
+  @Test
+  public void testNotificationUpdateRetryRejectsNewerConcurrentNotification() {
+    assumeNotificationRetryTestsApply();
+    TableIdentifier table = TableIdentifier.of(Namespace.of("parent", "child1"), "newer_table");
+    String tableLocation = "s3://externally-owned-bucket/newer-table/";
+    String newerMetadataLocation = tableLocation + "metadata/v3.metadata.json";
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    LocalIcebergCatalog catalog = catalogWithNotificationTable(spyMetaStore, table, tableLocation);
+
+    // Before the first attempt writes, a notification with a newer timestamp is admitted.
+    AtomicInteger updateAttempts = new AtomicInteger();
+    AtomicReference<PolarisBaseEntity> tableEntity = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              if (updateAttempts.incrementAndGet() == 1) {
+                PolarisBaseEntity pending = invocation.getArgument(2);
+                tableEntity.set(pending);
+                IcebergTableLikeEntity newerNotification =
+                    new IcebergTableLikeEntity.Builder(loadTableEntity(pending))
+                        .setMetadataLocation(newerMetadataLocation)
+                        .setLastNotificationTimestamp(300L)
+                        .build();
+                Assertions.assertThat(
+                        metaStoreManager.updateEntityPropertiesIfNotChanged(
+                            polarisContext, invocation.getArgument(1), newerNotification))
+                    .returns(true, EntityResult::isSuccess);
+              }
+              return invocation.callRealMethod();
+            })
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+
+    Assertions.assertThatThrownBy(
+            () ->
+                catalog.sendNotification(
+                    table,
+                    notificationRequest(
+                        NotificationType.UPDATE,
+                        table,
+                        tableLocation + "metadata/v2.metadata.json",
+                        200L)))
+        .isInstanceOf(AlreadyExistsException.class);
+    Assertions.assertThat(updateAttempts.get()).isEqualTo(1);
+
+    IcebergTableLikeEntity stored = loadTableEntity(tableEntity.get());
+    Assertions.assertThat(stored.getMetadataLocation()).isEqualTo(newerMetadataLocation);
+    Assertions.assertThat(stored.getLastAdmittedNotificationTimestamp()).contains(300L);
+  }
+
+  @Test
+  public void testNotificationUpdateRetryDoesNotFollowConcurrentRename() {
+    assumeNotificationRetryTestsApply();
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "rename_table");
+    TableIdentifier renamed = TableIdentifier.of(namespace, "renamed_table");
+    String tableLocation = "s3://externally-owned-bucket/rename-table/";
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    LocalIcebergCatalog catalog = catalogWithNotificationTable(spyMetaStore, table, tableLocation);
+
+    // Before the first attempt writes, the table is renamed. The rename keeps the entity id, so
+    // the retry must not apply this notification to the renamed table. Depending on the
+    // persistence backend, the stale write fails either as a conflict, which the retry then
+    // rejects, or as an unresolvable parent path.
+    AtomicInteger updateAttempts = new AtomicInteger();
+    AtomicReference<PolarisBaseEntity> tableEntity = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              if (updateAttempts.incrementAndGet() == 1) {
+                tableEntity.set(invocation.getArgument(2));
+                catalog().renameTable(table, renamed);
+              }
+              return invocation.callRealMethod();
+            })
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+
+    Assertions.assertThatThrownBy(
+            () ->
+                catalog.sendNotification(
+                    table,
+                    notificationRequest(
+                        NotificationType.UPDATE,
+                        table,
+                        tableLocation + "metadata/v2.metadata.json",
+                        200L)))
+        .isInstanceOfAny(CommitConflictException.class, NotFoundException.class);
+    Assertions.assertThat(updateAttempts.get()).isEqualTo(1);
+
+    IcebergTableLikeEntity stored = loadTableEntity(tableEntity.get());
+    Assertions.assertThat(stored.getName()).isEqualTo(renamed.name());
+    Assertions.assertThat(stored.getMetadataLocation())
+        .isEqualTo(tableLocation + "metadata/v1.metadata.json");
+  }
+
+  @Test
+  public void testNotificationUpdateRetryReportsConcurrentDrop() {
+    assumeNotificationRetryTestsApply();
+    TableIdentifier table = TableIdentifier.of(Namespace.of("parent", "child1"), "drop_table");
+    String tableLocation = "s3://externally-owned-bucket/drop-table/";
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    LocalIcebergCatalog catalog = catalogWithNotificationTable(spyMetaStore, table, tableLocation);
+
+    // The first attempt fails with a conflict, and the table is dropped before the retry reloads
+    // it. The sender should learn that the table is gone rather than be told to retry.
+    AtomicInteger updateAttempts = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              if (updateAttempts.incrementAndGet() == 1) {
+                Assertions.assertThat(catalog().dropTable(table, false)).isTrue();
+                return new EntityResult(
+                    BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
+              }
+              return invocation.callRealMethod();
+            })
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+
+    Assertions.assertThatThrownBy(
+            () ->
+                catalog.sendNotification(
+                    table,
+                    notificationRequest(
+                        NotificationType.UPDATE,
+                        table,
+                        tableLocation + "metadata/v2.metadata.json",
+                        200L)))
+        .isInstanceOf(NoSuchTableException.class);
+    Assertions.assertThat(updateAttempts.get()).isEqualTo(1);
+  }
+
+  private void assumeNotificationRetryTestsApply() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+  }
+
+  /**
+   * Returns a catalog backed by {@code metaStore} in which {@code table} was created by a CREATE
+   * notification at {@code metadata/v1.metadata.json}, timestamp 100. Metadata files {@code v2} and
+   * {@code v3} also exist under {@code tableLocation}.
+   */
+  private LocalIcebergCatalog catalogWithNotificationTable(
+      PolarisMetaStoreManager metaStore, TableIdentifier table, String tableLocation) {
+    LocalIcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, metaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    for (String version : List.of("v1", "v2", "v3")) {
+      fileIO.addFile(
+          tableLocation + "metadata/" + version + ".metadata.json",
+          TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
+    }
+    catalog.sendNotification(
+        table,
+        notificationRequest(
+            NotificationType.CREATE, table, tableLocation + "metadata/v1.metadata.json", 100L));
+    Assertions.assertThat(catalog.tableExists(table)).isTrue();
+    return catalog;
+  }
+
+  private static NotificationRequest notificationRequest(
+      NotificationType type, TableIdentifier table, String metadataLocation, long timestamp) {
+    TableUpdateNotification payload = new TableUpdateNotification();
+    payload.setMetadataLocation(metadataLocation);
+    payload.setTableName(table.name());
+    payload.setTableUuid(UUID.randomUUID().toString());
+    payload.setTimestamp(timestamp);
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(type);
+    request.setPayload(payload);
+    return request;
+  }
+
+  private IcebergTableLikeEntity loadTableEntity(PolarisBaseEntity entity) {
+    return IcebergTableLikeEntity.of(
+        metaStoreManager
+            .loadEntity(
+                polarisContext, entity.getCatalogId(), entity.getId(), PolarisEntityType.TABLE_LIKE)
+            .getEntity());
   }
 
   @Test
