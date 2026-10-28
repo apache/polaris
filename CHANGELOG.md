@@ -131,6 +131,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- `renameTable` and `renameView` now retry a concurrent modification of the source entity
+  server-side before returning HTTP 503. Retries use Iceberg's `Tasks` API with exponential
+  backoff and reload the entity between attempts. The number of retries is
+  `RENAME_RETRY_MAX_ATTEMPTS` (default 3); `0` disables them. The HTTP 503 response and
+  `Retry-After` header are unchanged when retries are exhausted.
 - Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
   the packaged chart, so `helm test` ran no tests.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from

@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.iceberg.TableProperties.COMMIT_MAX_RETRY_WAIT_MS_DEFAULT;
+import static org.apache.iceberg.TableProperties.COMMIT_MIN_RETRY_WAIT_MS_DEFAULT;
+import static org.apache.iceberg.TableProperties.COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionWithSameNameForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.entityNameForSubType;
@@ -2783,8 +2786,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
     PolarisEntity leafEntity = resolvedEntities.getRawLeafEntity();
-    final IcebergTableLikeEntity toEntity;
     List<PolarisEntity> newCatalogPath = null;
+    Long newParentId = null;
     if (!from.namespace().equals(to.namespace())) {
       PolarisResolvedPathWrapper resolvedNewParentEntities =
           resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(to.namespace()));
@@ -2793,32 +2796,87 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             "Cannot rename %s to %s. Namespace does not exist: %s", from, to, to.namespace());
       }
       newCatalogPath = resolvedNewParentEntities.getRawFullPath();
-
-      // the "to" table has a new parent and a new name / namespace path
-      toEntity =
-          new IcebergTableLikeEntity.Builder(IcebergTableLikeEntity.of(leafEntity))
-              .setTableIdentifier(to)
-              .setParentId(resolvedNewParentEntities.getResolvedLeafEntity().getEntity().getId())
-              .build();
-    } else {
-      // only the name of the entity is changed
-      toEntity =
-          new IcebergTableLikeEntity.Builder(IcebergTableLikeEntity.of(leafEntity))
-              .setTableIdentifier(to)
-              .build();
+      newParentId = resolvedNewParentEntities.getResolvedLeafEntity().getEntity().getId();
     }
 
-    // rename the entity now
-    EntityResult returnedEntityResult =
-        getMetaStoreManager()
-            .renameEntity(
-                getCurrentPolarisContext(),
-                PolarisEntity.toCoreList(catalogPath),
-                leafEntity,
-                PolarisEntity.toCoreList(newCatalogPath),
-                toEntity);
+    int maxRetries =
+        Math.max(0, realmConfig.getConfig(FeatureConfiguration.RENAME_RETRY_MAX_ATTEMPTS));
+    final List<PolarisEntity> destinationCatalogPath = newCatalogPath;
+    final Long destinationParentId = newParentId;
+    AtomicBoolean isRetry = new AtomicBoolean(false);
+    AtomicReference<PolarisEntity> currentLeaf = new AtomicReference<>(leafEntity);
+    AtomicReference<EntityResult> returnedEntityResultRef = new AtomicReference<>();
+    AtomicReference<IcebergTableLikeEntity> toEntityRef = new AtomicReference<>();
+    try {
+      Tasks.foreach(from)
+          .retry(maxRetries)
+          .exponentialBackoff(
+              COMMIT_MIN_RETRY_WAIT_MS_DEFAULT,
+              COMMIT_MAX_RETRY_WAIT_MS_DEFAULT,
+              COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT,
+              2.0 /* exponential */)
+          .onlyRetryOn(ConcurrentRenameException.class)
+          .run(
+              source -> {
+                PolarisEntity leaf = currentLeaf.get();
+                if (isRetry.get()) {
+                  EntityResult reloaded =
+                      getMetaStoreManager()
+                          .loadEntity(
+                              getCurrentPolarisContext(),
+                              leafEntity.getCatalogId(),
+                              leafEntity.getId(),
+                              leafEntity.getType());
+                  if (!reloaded.isSuccess() || reloaded.getEntity() == null) {
+                    returnedEntityResultRef.set(
+                        new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null));
+                    return;
+                  }
+                  leaf = PolarisEntity.of(reloaded.getEntity());
+                  currentLeaf.set(leaf);
+                  LOGGER.debug(
+                      "Concurrent modification renaming {} to {}; retrying with refreshed entity",
+                      source,
+                      to);
+                }
+                isRetry.set(true);
 
-    // handle error
+                IcebergTableLikeEntity.Builder builder =
+                    new IcebergTableLikeEntity.Builder(IcebergTableLikeEntity.of(leaf))
+                        .setTableIdentifier(to);
+                if (destinationParentId != null) {
+                  builder.setParentId(destinationParentId);
+                }
+                IcebergTableLikeEntity built = builder.build();
+                toEntityRef.set(built);
+
+                EntityResult result =
+                    getMetaStoreManager()
+                        .renameEntity(
+                            getCurrentPolarisContext(),
+                            PolarisEntity.toCoreList(catalogPath),
+                            leaf,
+                            PolarisEntity.toCoreList(destinationCatalogPath),
+                            built);
+                returnedEntityResultRef.set(result);
+                if (!result.isSuccess()
+                    && result.getReturnStatus()
+                        == BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED) {
+                  throw new ConcurrentRenameException(source, to);
+                }
+              });
+    } catch (ConcurrentRenameException e) {
+      LOGGER.info(
+          "Concurrent modification persisted across {} attempt(s) renaming {} to {}: {}",
+          maxRetries + 1,
+          from,
+          to,
+          e.getMessage());
+    }
+
+    EntityResult returnedEntityResult =
+        Preconditions.checkNotNull(
+            returnedEntityResultRef.get(), "Rename of %s to %s produced no result", from, to);
     if (!returnedEntityResult.isSuccess()) {
       LOGGER.debug(
           "Rename error {} trying to rename {} to {}. Checking existing object.",
@@ -2858,16 +2916,17 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               from,
               to);
 
-        // some entities cannot be renamed
         case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RENAMED:
           throw new BadRequestException("Cannot rename built-in object %s", leafEntity.getName());
 
-        // some entities cannot be renamed
         default:
           throw new IllegalStateException(
               "Unknown error status " + returnedEntityResult.getReturnStatus());
       }
     } else {
+      IcebergTableLikeEntity toEntity =
+          Preconditions.checkNotNull(
+              toEntityRef.get(), "Rename of %s to %s produced no entity", from, to);
       IcebergTableLikeEntity returnedEntity =
           IcebergTableLikeEntity.of(returnedEntityResult.getEntity());
       if (!toEntity.getTableIdentifier().equals(returnedEntity.getTableIdentifier())) {
@@ -3291,5 +3350,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
   private int getMaxMetadataRefreshRetries() {
     return realmConfig.getConfig(FeatureConfiguration.MAX_METADATA_REFRESH_RETRIES);
+  }
+
+  private static final class ConcurrentRenameException extends RuntimeException {
+    private ConcurrentRenameException(TableIdentifier from, TableIdentifier to) {
+      super(String.format("Concurrent modification renaming %s to %s", from, to));
+    }
   }
 }

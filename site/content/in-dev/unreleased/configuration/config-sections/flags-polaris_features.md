@@ -505,6 +505,15 @@ If set to true, Polaris will attempt to delete view metadata files when a view i
 
 ---
 
+##### `polaris.features."RENAME_RETRY_MAX_ATTEMPTS"`
+
+How many times to retry a renameTable / renameView when the entity is concurrently modified before surfacing the error to the client. Retries use Iceberg's Tasks API with exponential backoff, and the entity is reloaded between attempts. The first attempt is not counted as a retry, so a value of 0 disables retries entirely. After all retries are exhausted, the server returns a retriable PolarisServiceUnavailableException (HTTP 503).
+
+- **Type:** `Integer`
+- **Default:** `3`
+
+---
+
 ##### `polaris.features."RESOLVE_CREDENTIALS_BY_STORAGE_NAME"`
 
 If set to true, resolve AWS credentials based on the storageName field of the storage configuration. When disabled, the default AWS credentials are used for all storages.
