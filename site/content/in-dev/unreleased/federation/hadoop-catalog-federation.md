@@ -28,13 +28,6 @@ a warehouse directory in which namespaces and tables are tracked by directory la
 metastore service. This lets existing file-based Iceberg tables remain where they are while Polaris
 brokers access, policies, and multi-engine connectivity.
 
-{{% alert title="Note" color="primary" %}}
-The Iceberg documentation states that the Hadoop catalog "can only be used with HDFS or similar
-file systems that support atomic rename" and that "concurrent writes with a Hadoop catalog are not
-safe with a local FS or S3". Those constraints apply unchanged when the catalog is reached through
-Polaris.
-{{% /alert %}}
-
 ## Build-time enablement
 
 Unlike Hive and BigQuery federation, the Hadoop factory is part of the default server build:
@@ -137,15 +130,48 @@ polaris catalogs create analytics_hadoop \
   --catalog-authentication-type implicit
 ```
 
-`warehouse` is the root directory that the `HadoopCatalog` scans for namespaces and tables. `uri`
-is required by the connection configuration API but is not used by the Hadoop catalog. Polaris
-validates it as a `java.net.URL`, so it must use a scheme the JVM knows (`file`, `http`, `https`);
-`hdfs://` and `s3://` values are rejected with `Invalid remote URI`. For a `file://` warehouse,
-reuse the warehouse location; for HDFS or S3 warehouses, use a descriptive `http(s)` address such as
-the NameNode web UI. `default-base-location` is required for every Polaris catalog; the
-`HadoopCatalog` itself places tables and their metadata under `warehouse`, so keep the two values
-aligned. For an S3 warehouse, use `"storageType": "S3"` with `roleArn` and `region` as in the Hive
-federation example.
+`warehouse` is the root directory that the `HadoopCatalog` scans for namespaces and tables.
+`default-base-location` is required for every Polaris catalog; the `HadoopCatalog` itself places
+tables and their metadata under `warehouse`, so keep the two values aligned.
+
+`uri` is ignored for `HADOOP` connections: the Hadoop catalog has no service endpoint, and Polaris
+never passes the value on. The connection configuration API still requires the field and validates
+it as a `java.net.URL`, so it must use a scheme the JVM knows (`file`, `http`, `https`); `hdfs://`
+and `s3://` values are rejected with `Invalid remote URI`. Reuse the `file://` warehouse location,
+or any `http(s)` address, as a placeholder.
+
+For an S3 warehouse, use `"storageType": "S3"` with `roleArn` and `region`, point `warehouse` at
+the bucket prefix, and select `S3FileIO` through the catalog-level `properties` so that the server
+does not need the `hadoop-aws` connector (see the warehouse access patterns above):
+
+```bash
+curl -X POST https://<polaris-host>/management/v1/catalogs \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "type": "EXTERNAL",
+        "name": "analytics_hadoop_s3",
+        "storageConfigInfo": {
+          "storageType": "S3",
+          "roleArn": "arn:aws:iam::123456789012:role/polaris-warehouse-access",
+          "region": "us-east-1",
+          "allowedLocations": ["s3://analytics-bucket/warehouse/"]
+        },
+        "properties": {
+          "default-base-location": "s3://analytics-bucket/warehouse/",
+          "io-impl": "org.apache.iceberg.aws.s3.S3FileIO"
+        },
+        "connectionConfigInfo": {
+          "connectionType": "HADOOP",
+          "uri": "https://analytics-bucket.s3.us-east-1.amazonaws.com/",
+          "warehouse": "s3://analytics-bucket/warehouse/",
+          "authenticationParameters": { "authenticationType": "IMPLICIT" }
+        }
+      }'
+```
+
+The server-side `HadoopCatalog` reads and writes this warehouse with the ambient AWS credentials of
+the Polaris process, not with `roleArn`, which only serves credential vending to clients.
 
 Grant catalog roles to principal roles exactly as you would for internal catalogs so engines can
 obtain tokens that authorize against the federated metadata.
