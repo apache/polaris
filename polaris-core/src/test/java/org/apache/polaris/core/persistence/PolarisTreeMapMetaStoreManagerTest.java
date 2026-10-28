@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -36,6 +36,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -72,18 +73,36 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
     metaStoreManager.createEntityIfNotExists(
         callContext, List.of(PolarisEntity.toCore(catalog)), existing);
 
-    var parentPath = List.of(PolarisEntity.toCore(catalog));
+    var parentPathIds = Set.of(catalog.getId());
 
     // A different entity at the same location is a conflict.
     var other = new LocationBasedTestEntity(buildNamespace(catalog, existing.getId() + 1));
-    var conflict = metaStoreManager.hasOverlappingSiblings(callContext, parentPath, other);
-    assertThat(conflict).isPresent();
-    assertThat(conflict.get()).isPresent();
+    var conflict = metaStoreManager.hasOverlappingSiblings(callContext, other, parentPathIds, null);
+    // The conflicting location is the location of the existing entity, as it is stored.
+    assertThat(conflict)
+        .isEqualTo(new LocationOverlapResult.Overlap("s3://bucket/warehouse/existing/"));
 
     // The persisted entity itself, e.g. when renamed, is not a conflict.
     var self = new LocationBasedTestEntity(buildNamespace(catalog, existing.getId()));
-    assertThat(metaStoreManager.hasOverlappingSiblings(callContext, parentPath, self))
-        .contains(Optional.empty());
+    assertThat(metaStoreManager.hasOverlappingSiblings(callContext, self, parentPathIds, null))
+        .isEqualTo(new LocationOverlapResult.NoOverlap());
+
+    // With a search root, only the entities located inside it are considered.
+    assertThat(
+            metaStoreManager.hasOverlappingSiblings(
+                callContext, other, parentPathIds, StorageLocation.of("s3://bucket/warehouse/")))
+        .isInstanceOf(LocationOverlapResult.Overlap.class);
+    assertThat(
+            metaStoreManager.hasOverlappingSiblings(
+                callContext,
+                other,
+                parentPathIds,
+                StorageLocation.of("s3://bucket/warehouse/existing/")))
+        .isInstanceOf(LocationOverlapResult.Overlap.class);
+    assertThat(
+            metaStoreManager.hasOverlappingSiblings(
+                callContext, other, parentPathIds, StorageLocation.of("s3://bucket/elsewhere/")))
+        .isEqualTo(new LocationOverlapResult.NoOverlap());
   }
 
   private static PolarisBaseEntity buildNamespace(PolarisBaseEntity catalog, long entityId) {
