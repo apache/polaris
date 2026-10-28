@@ -23,7 +23,7 @@ plugins {
   id("polaris-runtime")
 }
 
-configurations.all {
+configurations.configureEach {
   if (name != "checkstyle") {
     exclude(group = "org.antlr", module = "antlr4-runtime")
     exclude(group = "org.scala-lang", module = "scala-library")
@@ -35,20 +35,17 @@ dependencies {
   implementation(libs.s3mock.testcontainers)
   implementation(project(":polaris-core"))
   implementation(libs.jakarta.ws.rs.api)
-  implementation(enforcedPlatform(libs.quarkus.bom))
+  implementation(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+  }
   implementation("io.quarkus:quarkus-junit")
 
   implementation(platform(libs.testcontainers.bom))
   implementation("org.testcontainers:testcontainers")
   implementation("org.testcontainers:testcontainers-postgresql")
   implementation("org.testcontainers:testcontainers-cockroachdb")
-
-  implementation(libs.testcontainers.keycloak) {
-    exclude(group = "org.keycloak", module = "keycloak-admin-client")
-  }
-  // Keycloak Admin Client brings RESTEasy Classic, which conflicts with Quarkus RESTEasy Reactive;
-  // it must not be present during Quarkus augmentation otherwise Quarkus tests won't start.
-  compileOnly(libs.keycloak.admin.client)
 
   implementation(project(":polaris-container-spec-helper"))
 }

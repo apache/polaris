@@ -25,11 +25,11 @@ import jakarta.decorator.Delegate;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogPolicyApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
@@ -65,10 +65,11 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_CREATE_POLICY,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
-                  .put(EventAttributes.CREATE_POLICY_REQUEST, createPolicyRequest)));
+                  .put(EventAttributes.CREATE_POLICY_REQUEST, createPolicyRequest)
+                  .build()));
     }
     Response resp =
         delegate.createPolicy(
@@ -78,12 +79,11 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_CREATE_POLICY,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
-                  .put(
-                      EventAttributes.LOAD_POLICY_RESPONSE,
-                      (LoadPolicyResponse) resp.getEntity())));
+                  .put(EventAttributes.LOAD_POLICY_RESPONSE, (LoadPolicyResponse) resp.getEntity())
+                  .build()));
     }
     return resp;
   }
@@ -103,10 +103,11 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_LIST_POLICIES,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
-                  .put(EventAttributes.POLICY_TYPE, policyType)));
+                  .put(EventAttributes.POLICY_TYPE, policyType)
+                  .build()));
     }
     Response resp =
         delegate.listPolicies(
@@ -116,10 +117,11 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_LIST_POLICIES,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
-                  .put(EventAttributes.POLICY_TYPE, policyType)));
+                  .put(EventAttributes.POLICY_TYPE, policyType)
+                  .build()));
     }
     return resp;
   }
@@ -137,10 +139,11 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_LOAD_POLICY,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
-                  .put(EventAttributes.POLICY_NAME, policyName)));
+                  .put(EventAttributes.POLICY_NAME, policyName)
+                  .build()));
     }
     Response resp =
         delegate.loadPolicy(prefix, namespace, policyName, realmContext, securityContext);
@@ -149,12 +152,11 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_LOAD_POLICY,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
-                  .put(
-                      EventAttributes.LOAD_POLICY_RESPONSE,
-                      (LoadPolicyResponse) resp.getEntity())));
+                  .put(EventAttributes.LOAD_POLICY_RESPONSE, (LoadPolicyResponse) resp.getEntity())
+                  .build()));
     }
     return resp;
   }
@@ -173,11 +175,12 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_UPDATE_POLICY,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
                   .put(EventAttributes.POLICY_NAME, policyName)
-                  .put(EventAttributes.UPDATE_POLICY_REQUEST, updatePolicyRequest)));
+                  .put(EventAttributes.UPDATE_POLICY_REQUEST, updatePolicyRequest)
+                  .build()));
     }
     Response resp =
         delegate.updatePolicy(
@@ -187,12 +190,11 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_UPDATE_POLICY,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
-                  .put(
-                      EventAttributes.LOAD_POLICY_RESPONSE,
-                      (LoadPolicyResponse) resp.getEntity())));
+                  .put(EventAttributes.LOAD_POLICY_RESPONSE, (LoadPolicyResponse) resp.getEntity())
+                  .build()));
     }
     return resp;
   }
@@ -211,11 +213,12 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_DROP_POLICY,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
                   .put(EventAttributes.POLICY_NAME, policyName)
-                  .put(EventAttributes.DETACH_ALL, detachAll)));
+                  .put(EventAttributes.DETACH_ALL, detachAll)
+                  .build()));
     }
     Response resp =
         delegate.dropPolicy(
@@ -225,11 +228,12 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_DROP_POLICY,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
                   .put(EventAttributes.POLICY_NAME, policyName)
-                  .put(EventAttributes.DETACH_ALL, detachAll)));
+                  .put(EventAttributes.DETACH_ALL, detachAll)
+                  .build()));
     }
     return resp;
   }
@@ -248,11 +252,12 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_ATTACH_POLICY,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
                   .put(EventAttributes.POLICY_NAME, policyName)
-                  .put(EventAttributes.ATTACH_POLICY_REQUEST, attachPolicyRequest)));
+                  .put(EventAttributes.ATTACH_POLICY_REQUEST, attachPolicyRequest)
+                  .build()));
     }
     Response resp =
         delegate.attachPolicy(
@@ -262,11 +267,12 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_ATTACH_POLICY,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
                   .put(EventAttributes.POLICY_NAME, policyName)
-                  .put(EventAttributes.ATTACH_POLICY_REQUEST, attachPolicyRequest)));
+                  .put(EventAttributes.ATTACH_POLICY_REQUEST, attachPolicyRequest)
+                  .build()));
     }
     return resp;
   }
@@ -285,11 +291,12 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_DETACH_POLICY,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
                   .put(EventAttributes.POLICY_NAME, policyName)
-                  .put(EventAttributes.DETACH_POLICY_REQUEST, detachPolicyRequest)));
+                  .put(EventAttributes.DETACH_POLICY_REQUEST, detachPolicyRequest)
+                  .build()));
     }
     Response resp =
         delegate.detachPolicy(
@@ -299,11 +306,12 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_DETACH_POLICY,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
                   .put(EventAttributes.POLICY_NAME, policyName)
-                  .put(EventAttributes.DETACH_POLICY_REQUEST, detachPolicyRequest)));
+                  .put(EventAttributes.DETACH_POLICY_REQUEST, detachPolicyRequest)
+                  .build()));
     }
     return resp;
   }
@@ -324,11 +332,12 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_GET_APPLICABLE_POLICIES,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
                   .put(EventAttributes.TARGET_NAME, targetName)
-                  .put(EventAttributes.POLICY_TYPE, policyType)));
+                  .put(EventAttributes.POLICY_TYPE, policyType)
+                  .build()));
     }
     Response resp =
         delegate.getApplicablePolicies(
@@ -345,14 +354,15 @@ public class CatalogPolicyEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_GET_APPLICABLE_POLICIES,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
                   .put(EventAttributes.TARGET_NAME, targetName)
                   .put(EventAttributes.POLICY_TYPE, policyType)
                   .put(
                       EventAttributes.GET_APPLICABLE_POLICIES_RESPONSE,
-                      (GetApplicablePoliciesResponse) resp.getEntity())));
+                      (GetApplicablePoliciesResponse) resp.getEntity())
+                  .build()));
     }
     return resp;
   }

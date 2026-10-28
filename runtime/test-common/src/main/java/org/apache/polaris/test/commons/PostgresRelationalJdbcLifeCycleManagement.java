@@ -22,6 +22,9 @@ import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpec
 
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Map;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
@@ -56,6 +59,9 @@ public class PostgresRelationalJdbcLifeCycleManagement
 
     context.containerNetworkId().ifPresent(postgres::withNetworkMode);
     postgres.start();
+    // Polaris does not create its schema; create it here (the DBA step) so the datasources'
+    // configured currentSchema (POLARIS_SCHEMA by default) resolves.
+    createPolarisSchema();
     // Configure both the main datasource and the metrics named datasource
     // pointing to the same PostgreSQL instance for tests
     return Map.ofEntries(
@@ -66,11 +72,23 @@ public class PostgresRelationalJdbcLifeCycleManagement
         Map.entry("quarkus.datasource.username", postgres.getUsername()),
         Map.entry("quarkus.datasource.password", postgres.getPassword()),
         Map.entry("quarkus.datasource.jdbc.initial-size", "10"),
-        // Configure metrics named datasource to use the same PostgreSQL instance
+        // Configure metrics named datasource to use the same PostgreSQL instance and schema
         Map.entry("quarkus.datasource.metrics.db-kind", "postgresql"),
         Map.entry("quarkus.datasource.metrics.jdbc.url", postgres.getJdbcUrl()),
+        Map.entry(
+            "quarkus.datasource.metrics.jdbc.additional-jdbc-properties.currentSchema",
+            "POLARIS_SCHEMA"),
         Map.entry("quarkus.datasource.metrics.username", postgres.getUsername()),
         Map.entry("quarkus.datasource.metrics.password", postgres.getPassword()));
+  }
+
+  private void createPolarisSchema() {
+    try (Connection connection = postgres.createConnection("");
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA");
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to create the Polaris schema", e);
+    }
   }
 
   @Override

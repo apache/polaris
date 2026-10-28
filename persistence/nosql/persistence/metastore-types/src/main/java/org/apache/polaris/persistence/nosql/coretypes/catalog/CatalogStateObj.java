@@ -19,8 +19,6 @@
 package org.apache.polaris.persistence.nosql.coretypes.catalog;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
@@ -31,6 +29,8 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
 import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
 import org.apache.polaris.persistence.nosql.coretypes.changes.Change;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Holds the state of all catalog entities. The current version of this object is maintained via the

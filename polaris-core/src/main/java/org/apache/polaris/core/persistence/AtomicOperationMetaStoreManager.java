@@ -29,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.polaris.core.PolarisCallContext;
@@ -127,6 +128,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         return new EntityResult(
             BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, e.getExistingEntity().getSubTypeCode());
       }
+    } catch (RetryOnConcurrencyException e) {
+      // The persistence layer saw a unique constraint violation but could not resolve the
+      // conflicting row in the current snapshot (e.g. under SERIALIZABLE isolation). We know
+      // an entity with this name exists, so report it as already-existing.
+      return new EntityResult(
+          BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, entity.getSubTypeCode());
     }
     return new EntityResult(entity);
   }
@@ -249,6 +256,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     List<PolarisBaseEntity> entities =
         ms.lookupEntities(callCtx, new ArrayList<>(entityIdsGrantChanged));
     for (PolarisBaseEntity originalEntity : entities) {
+      if (originalEntity == null) {
+        continue; // entity was concurrently dropped/purged after grants were removed
+      }
       PolarisBaseEntity entityGrantChanged =
           originalEntity.withGrantRecordsVersion(originalEntity.getGrantRecordsVersion() + 1);
       ms.writeEntity(callCtx, entityGrantChanged, false, originalEntity);
@@ -647,6 +657,19 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @NonNull PolarisEntityType entityType,
       @NonNull PolarisEntitySubType entitySubType,
       @NonNull PageToken pageToken) {
+    return listFullEntities(
+        callCtx, catalogPath, entityType, entitySubType, entity -> true, pageToken);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull Page<PolarisBaseEntity> listFullEntities(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull Predicate<PolarisBaseEntity> entityFilter,
+      @NonNull PageToken pageToken) {
     // get meta store we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -670,7 +693,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         parentId,
         entityType,
         entitySubType,
-        entity -> true,
+        entityFilter,
         Function.identity(),
         pageToken);
   }
@@ -793,9 +816,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             || internalProps.get(
                     PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
                 != null;
-    PolarisPrincipalSecrets secrets =
-        ((IntegrationPersistence) ms)
-            .rotatePrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash);
+    PolarisPrincipalSecrets secrets;
+    try {
+      secrets =
+          ((IntegrationPersistence) ms)
+              .rotatePrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash);
+    } catch (RetryOnConcurrencyException e) {
+      return new PrincipalSecretsResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());
+    }
 
     PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
     if (reset
@@ -896,6 +925,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
               e.getExistingEntity().getId(),
               e.getExistingEntity().getTypeCode(),
               e.getExistingEntity().getSubTypeCode()));
+    } catch (RetryOnConcurrencyException e) {
+      // The persistence layer saw a unique constraint violation but could not resolve the
+      // conflicting row in the current snapshot (e.g. under SERIALIZABLE isolation).
+      return new EntitiesResult(
+          BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
+          "Conflicting entity is not visible in the current transaction snapshot; retry");
     }
 
     return new EntitiesResult(Page.fromItems(createdEntities));
@@ -986,6 +1021,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             (newCatalogPath == null) || (catalogPath != null),
             "newCatalogPath_specified_without_catalogPath");
 
+    RenameEntityUtil.checkRenameStaysWithinCatalog(entityToRename, newCatalogPath);
+
     // null is shorthand for saying the path isn't changing
     if (newCatalogPath == null) {
       newCatalogPath = catalogPath;
@@ -1053,9 +1090,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // persist the entity after change. This will update the lastUpdateTimestamp and bump up the
     // version. Indicate that the nameOrParent changed, so that we also update any by-name
     // lookups if applicable
-    PolarisBaseEntity renamedEntityToReturn =
-        this.persistEntityAfterChange(
-            callCtx, ms, refreshEntityToRenameBuilder.build(), true, refreshEntityToRename);
+    PolarisBaseEntity renamedEntityToReturn;
+    try {
+      renamedEntityToReturn =
+          this.persistEntityAfterChange(
+              callCtx, ms, refreshEntityToRenameBuilder.build(), true, refreshEntityToRename);
+    } catch (RetryOnConcurrencyException e) {
+      return new EntityResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());
+    }
 
     // TODO: Use post-validation of source and destination parent paths and/or update the
     // BasePersistence interface to support conditions on entities *other* than the main
@@ -1135,15 +1178,13 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       }
 
       // get the list of catalog roles, at most 2
-      List<PolarisBaseEntity> catalogRoles =
-          ms.listFullEntities(
+      List<EntityNameLookupRecord> catalogRoles =
+          ms.listEntities(
                   callCtx,
                   catalogId,
                   catalogId,
                   PolarisEntityType.CATALOG_ROLE,
                   PolarisEntitySubType.ANY_SUBTYPE,
-                  entity -> true,
-                  Function.identity(),
                   PageToken.fromLimit(2))
               .items();
 
@@ -1155,7 +1196,17 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       // if 1, drop the last catalog role. Should be the catalog admin role but don't validate this
       if (!catalogRoles.isEmpty()) {
         // drop the last catalog role in that catalog, should be the admin catalog role
-        this.dropEntity(callCtx, ms, catalogRoles.get(0));
+        EntityNameLookupRecord lastCatalogRole = catalogRoles.get(0);
+        PolarisBaseEntity catalogRoleToDrop =
+            ms.lookupEntity(
+                callCtx,
+                lastCatalogRole.getCatalogId(),
+                lastCatalogRole.getId(),
+                lastCatalogRole.getTypeCode());
+        // null means it was dropped concurrently, which leaves nothing to do
+        if (catalogRoleToDrop != null) {
+          this.dropEntity(callCtx, ms, catalogRoleToDrop);
+        }
       }
     } else if (refreshEntityToDrop.getType() == PolarisEntityType.NAMESPACE) {
       if (ms.hasChildren(
@@ -1752,9 +1803,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> parentPath,
+          T entity) {
     BasePersistence ms = callContext.getMetaStore();
-    return ms.hasOverlappingSiblings(callContext, entity);
+    return ms.hasOverlappingSiblings(callContext, parentPath, entity);
   }
 
   @Override

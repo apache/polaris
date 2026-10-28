@@ -18,10 +18,11 @@
  */
 package org.apache.polaris.service.it.ext;
 
-import static org.apache.polaris.service.it.ext.PolarisServerManagerLoader.polarisServerManager;
-
+import java.util.Optional;
+import java.util.function.Supplier;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ClientPrincipal;
+import org.apache.polaris.service.it.env.PlatformApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.Server;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -38,6 +39,19 @@ import org.junit.platform.engine.UniqueId;
 public class PolarisIntegrationTestExtension implements ParameterResolver {
   private static final Namespace NAMESPACE =
       Namespace.create(PolarisIntegrationTestExtension.class);
+  private final Supplier<PolarisServerManager> serverManagerSupplier;
+
+  public PolarisIntegrationTestExtension() {
+    this(PolarisServerManagerLoader::polarisServerManager);
+  }
+
+  PolarisIntegrationTestExtension(PolarisServerManager serverManager) {
+    this(() -> serverManager);
+  }
+
+  private PolarisIntegrationTestExtension(Supplier<PolarisServerManager> serverManagerSupplier) {
+    this.serverManagerSupplier = serverManagerSupplier;
+  }
 
   @Override
   public boolean supportsParameter(
@@ -45,6 +59,7 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
       throws ParameterResolutionException {
     Class<?> type = parameterContext.getParameter().getType();
     return type.isAssignableFrom(PolarisApiEndpoints.class)
+        || type.isAssignableFrom(PlatformApiEndpoints.class)
         || type.isAssignableFrom(ClientPrincipal.class)
         || type.isAssignableFrom(ClientCredentials.class);
   }
@@ -57,6 +72,10 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
     Class<?> type = parameterContext.getParameter().getType();
     if (type.isAssignableFrom(PolarisApiEndpoints.class)) {
       return env.endpoints();
+    } else if (type.isAssignableFrom(PlatformApiEndpoints.class)) {
+      return env.quarkusEndpoints()
+          .orElseThrow(
+              () -> new IllegalStateException("Quarkus management endpoint is not available"));
     } else if (type.isAssignableFrom(ClientPrincipal.class)) {
       return env.server.adminCredentials();
     } else if (type.isAssignableFrom(ClientCredentials.class)) {
@@ -69,7 +88,9 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
     ExtensionContext classCtx = classContext(context);
     ExtensionContext.Store store = classCtx.getStore(NAMESPACE);
     return store.computeIfAbsent(
-        Env.class, (key) -> new Env(polarisServerManager().serverForContext(classCtx)), Env.class);
+        Env.class,
+        (key) -> new Env(serverManagerSupplier.get().serverForContext(classCtx)),
+        Env.class);
   }
 
   private ExtensionContext classContext(ExtensionContext context) {
@@ -91,12 +112,15 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
 
     private Env(Server server) {
       this.server = server;
-      this.endpoints =
-          new PolarisApiEndpoints(server.baseUri(), server.realmId(), server.headers());
+      this.endpoints = new PolarisApiEndpoints(server::baseUri, server.realmId(), server.headers());
     }
 
     PolarisApiEndpoints endpoints() {
       return endpoints;
+    }
+
+    Optional<PlatformApiEndpoints> quarkusEndpoints() {
+      return server.managementUri().map(PlatformApiEndpoints::new);
     }
 
     @Override

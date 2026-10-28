@@ -44,6 +44,16 @@ dependencies {
   runtimeOnly(project(":polaris-persistence-nosql-metastore"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus-distcache"))
+  runtimeOnly(project(":polaris-persistence-nosql-inmemory")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-inmemory-quarkus")
+    }
+  }
+  runtimeOnly(project(":polaris-persistence-nosql-mongodb")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-mongodb-quarkus")
+    }
+  }
   runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
   runtimeOnly(project(":polaris-persistence-nosql-metastore-maintenance"))
 
@@ -82,7 +92,6 @@ dependencies {
   implementation(libs.auth0.jwt)
 
   implementation(libs.smallrye.common.annotation)
-  implementation(libs.swagger.jaxrs)
   implementation(libs.microprofile.fault.tolerance.api)
 
   compileOnly(libs.jspecify)
@@ -96,13 +105,16 @@ dependencies {
   implementation("software.amazon.awssdk:s3")
   implementation("software.amazon.awssdk:kms")
   implementation("software.amazon.awssdk:cloudwatchlogs")
-  implementation("software.amazon.awssdk:apache-client") {
+  implementation("software.amazon.awssdk:apache5-client")
+  // Iceberg 1.11.0 still requires Apache 4 for its default S3 HTTP client.
+  runtimeOnly("software.amazon.awssdk:apache-client") {
     exclude("commons-logging", "commons-logging")
   }
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-core")
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
+  implementation(libs.msal4j)
 
   compileOnly(libs.swagger.annotations)
 
@@ -110,6 +122,12 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-smile")
+
+  implementation(platform(libs.jackson3.bom))
+  implementation("com.fasterxml.jackson.core:jackson-annotations")
+  implementation("tools.jackson.core:jackson-core")
+  implementation("tools.jackson.core:jackson-databind")
 
   implementation(libs.jakarta.servlet.api)
 
@@ -128,9 +146,6 @@ dependencies {
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(project(":polaris-relational-jdbc"))
 
-  testImplementation(project(":polaris-minio-testcontainer"))
-  testImplementation(project(":polaris-rustfs-testcontainer"))
-
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
   testImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")
 
@@ -138,9 +153,14 @@ dependencies {
   testImplementation("software.amazon.awssdk:kms")
   testImplementation("software.amazon.awssdk:dynamodb")
 
-  testImplementation(enforcedPlatform(libs.quarkus.bom))
+  testImplementation(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+  }
   testImplementation("io.quarkus:quarkus-junit")
   testImplementation("io.quarkus:quarkus-junit-mockito")
+  testImplementation("io.quarkus:quarkus-test-oidc-server")
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
   testImplementation("io.quarkus:quarkus-jdbc-h2")
@@ -150,7 +170,12 @@ dependencies {
   testImplementation("io.rest-assured:rest-assured")
 
   testImplementation(platform(libs.testcontainers.bom))
-  testImplementation("org.testcontainers:testcontainers-localstack")
+  testImplementation("org.testcontainers:testcontainers")
+  testImplementation("org.testcontainers:testcontainers-postgresql")
+  testImplementation(project(":polaris-floci-aws-testcontainer"))
+  testImplementation(project(":polaris-floci-az-testcontainer"))
+  testImplementation(project(":polaris-floci-gcp-testcontainer"))
+  testImplementation(project(":polaris-rustfs-testcontainer"))
 
   testImplementation(project(":polaris-runtime-test-common"))
   testImplementation(project(":polaris-container-spec-helper"))
@@ -161,10 +186,6 @@ dependencies {
   testImplementation(libs.awaitility)
 
   testImplementation(libs.junit.pioneer)
-
-  testImplementation(platform(libs.testcontainers.bom))
-  testImplementation("org.testcontainers:testcontainers")
-  testImplementation("org.testcontainers:testcontainers-postgresql")
 
   testImplementation(project(":polaris-persistence-nosql-api"))
   testImplementation(testFixtures(project(":polaris-persistence-nosql-api")))
@@ -203,67 +224,47 @@ dependencies {
   testFixturesImplementation("com.azure:azure-core")
   testFixturesImplementation("com.azure:azure-storage-blob")
   testFixturesImplementation("com.azure:azure-storage-file-datalake")
-
-  // This dependency brings in RESTEasy Classic, which conflicts with Quarkus RESTEasy Reactive;
-  // it must not be present during Quarkus augmentation otherwise Quarkus tests won't start.
-  intTestRuntimeOnly(libs.keycloak.admin.client)
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
 
-tasks.withType(Test::class.java).configureEach {
-  if (System.getenv("AWS_REGION") == null) {
-    environment("AWS_REGION", "us-west-2")
-  }
-  // Note: the test secrets are referenced in
-  // org.apache.polaris.service.it.ServerManager
-  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
-  jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
-  // Need to allow a java security manager after Java 21, for Subject.getSubject to work
-  // "getSubject is supported only if a security manager is allowed".
-  systemProperty("java.security.manager", "allow")
-}
-
 val buildDir = project.layout.buildDirectory
-
-// Same issue as above: allow a java security manager after Java 21
-// (this setting is for the application under test, while the setting above is for test
-// code).
-val securityManagerAllow = "-Djava.security.manager=allow"
 
 // Example: to attach a debugger to the spawned JVM running Quarkus, add
 // -Dquarkus.test.arg-line=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
 // to your test configuration.
-val quarkusTestArgLine =
-  providers
-    .systemProperty("quarkus.test.arg-line")
-    .map { "$it $securityManagerAllow" }
-    .orElse(securityManagerAllow)
-    .get()
+val quarkusTestArgLine = providers.systemProperty("quarkus.test.arg-line").orElse("").get()
 
 val quarkusProperties = providers.systemPropertiesPrefixedBy("quarkus.")
 
-listOf("intTest", "cloudTest").forEach {
-  tasks.named<Test>(it).configure(IntTestConfig(buildDir, quarkusProperties, quarkusTestArgLine))
-}
+tasks.withType(Test::class.java).configureEach {
+  environment("AWS_REGION", providers.environmentVariable("AWS_REGION").getOrElse("us-west-2"))
+  // Note: the test secrets are referenced in
+  // org.apache.polaris.service.it.ServerManager
+  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
+  jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
 
-class IntTestConfig(
-  @get:Internal val buildDir: DirectoryProperty,
-  @get:Input val quarkusProperties: Provider<Map<String, String>>,
-  @get:Input val quarkusTestArgLine: String,
-) : Action<Test> {
-  override fun execute(t: Test) {
-    t.maxParallelForks = 1
+  // Quarkus tests run "in isolated class loaders", which means that class-statically active
+  // resources pile up used JVM, as those classes cannot be GC'd.
+  // Examples of those statically held active resources are:
+  // - Iceberg's worker pools (thread pools, executors, etc.)
+  // - Hadoop's stats-cleaner (org.apache.hadoop.fs.FileSystem.Statistics.STATS_DATA_CLEANER)
+  // - Guava's 'MoreExecutors' (via Iceberg `ThreadPools`)`
+  // Forcing a new JVM after each test class works around this issue.
+  forkEvery = 1
+  // enlarge the max heap size to avoid out of memory error
+  maxHeapSize = "4g"
 
+  if ("intTest" == name || "cloutTest" == name) {
     val logsDir = buildDir.map { b -> b.asFile.resolve("logs") }
 
     // JVM arguments provider does not interfere with Gradle's cache keys
-    t.jvmArgumentProviders.add(
-      IntTestArgumentProvider(logsDir, quarkusProperties, quarkusTestArgLine)
+    jvmArgumentProviders.add(
+      IntTestArgumentProvider(logsDir, quarkusProperties, quarkusTestArgLine),
     )
 
     // delete files from previous runs
-    t.doFirst(IntTestCleanup(logsDir, buildDir))
+    doFirst(IntTestCleanup(logsDir, buildDir))
   }
 }
 
@@ -287,7 +288,9 @@ class IntTestArgumentProvider(
   override fun asArguments(): Iterable<String?> {
     val args = mutableListOf<String>()
 
-    args.add("-Dquarkus.test.arg-line=$quarkusTestArgLine")
+    if (quarkusTestArgLine.isNotBlank()) {
+      args.add("-Dquarkus.test.arg-line=$quarkusTestArgLine")
+    }
     // This property is not honored in a per-profile application.properties file,
     // so we need to set it here.
     args.add("-Dquarkus.log.file.path=${logsDir.get().resolve("polaris.log").absolutePath}")

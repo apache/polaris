@@ -175,7 +175,7 @@ def test_principal_token(
         CatalogApiClientConfiguration(
             host=polaris_catalog_url,
             username=test_principal.principal.client_id,
-            password=test_principal.credentials.client_secret,
+            password=test_principal.credentials.client_secret.get_secret_value(),
         )
     )
     oauth_api = IcebergOAuth2API(client)
@@ -231,7 +231,7 @@ def test_catalog(
     test_catalog_client: IcebergCatalogAPI,
 ) -> Catalog:
     storage_conf = FileStorageConfigInfo(
-        storage_type="FILE", allowed_locations=["file:///tmp"]
+        storage_type="FILE", allowed_locations=["file:///tmp/polaris"]
     )
     catalog_name = "polaris_test_catalog"
     catalog = Catalog(

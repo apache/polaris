@@ -25,16 +25,36 @@ This directory contains the Polaris Spark plugins. The plugins are built for spe
 
 The Polaris Spark plugin provides a SparkCatalog class, which communicates with the Polaris
 REST endpoints, and provides implementations for Apache Spark's
-- [TableCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java)
-- [ViewCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java)
-- [SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java)
+- [TableCatalog](https://github.com/apache/spark/blob/v3.5.9/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java)
+- [ViewCatalog](https://github.com/apache/spark/blob/v3.5.9/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java)
+- [SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.9/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java)
 
 The plugin provides support for Spark 3.5 (Scala version 2.12 and 2.13) and Spark 4.0 (Scala version 2.13).
 
-The Polaris Spark client supports catalog management for both Iceberg and Delta tables. It routes all Iceberg table
-requests to the Iceberg REST endpoints and routes all Delta table requests to the Generic Table REST endpoints.
+The Polaris Spark client supports catalog management for Iceberg and generic table formats,
+including Delta, Hudi, and Paimon. Iceberg requests use the Iceberg REST endpoints. Generic
+formats are registered through the Generic Table REST endpoints so they participate in the same
+catalog listing.
 
-The Spark Client requires at least delta 3.2.1 to work with Delta tables for Spark 3.5, and delta 4.0.1 for Spark 4.0.
+The Spark Client requires at least delta 3.2.1 to work with Delta tables for Spark 3.5, and delta 4.2.0 for Spark 4.0.
+
+## Paimon configuration
+
+To use Paimon, add a Paimon Spark runtime compatible with the selected Spark and Scala versions to
+Spark's classpath and configure a separate physical Paimon warehouse:
+
+```shell
+--conf spark.sql.catalog.<catalog-name>.paimon-warehouse=<paimon-warehouse-path>
+```
+
+The physical table is owned by the Paimon catalog at that warehouse. Polaris additionally stores a
+Generic Table registration for unified discovery and `SHOW TABLES`. The Paimon catalog
+implementation defaults to `org.apache.paimon.spark.SparkCatalog`; it can be overridden when
+needed:
+
+```shell
+--conf spark.sql.catalog.<catalog-name>.paimon-catalog-impl=<table-catalog-class>
+```
 
 # Start Spark with local Polaris service using the Polaris Spark plugin
 The following command starts a Polaris server for local testing, it runs on localhost:8181 with default
@@ -58,7 +78,7 @@ Run the following command to build the Polaris Spark project and publish the sou
 
 ```shell
 bin/spark-shell \
---packages org.apache.polaris:polaris-spark-<spark_version>_<scala_version>:<polaris_version>,org.apache.iceberg:iceberg-aws-bundle:1.11.0,io.delta:delta-spark_<scala_version>:<delta_version> \
+--packages org.apache.polaris:polaris-spark-<spark_version>_<scala_version>:<polaris_version>,org.apache.iceberg:iceberg-aws-bundle:1.12.0,io.delta:delta-spark_<scala_version>:<delta_version> \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \
@@ -82,7 +102,7 @@ The Spark command would look like following:
 
 ```shell
 bin/spark-shell \
---packages org.apache.polaris:polaris-spark-3.5_2.12:1.6.0-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.11.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.polaris:polaris-spark-3.5_2.12:1.6.0-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.12.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.polaris.warehouse=polaris \
@@ -108,7 +128,7 @@ To start Spark using the bundle JAR, specify it with the `--jars` option as show
 ```shell
 bin/spark-shell \
 --jars <path-to-spark-client-jar> \
---packages org.apache.iceberg:iceberg-aws-bundle:1.11.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.iceberg:iceberg-aws-bundle:1.12.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \
@@ -125,7 +145,8 @@ bin/spark-shell \
 The following describes the current limitations of the Polaris Spark client:
 
 ## General Limitations
-1. The Polaris Spark client only supports Iceberg and Delta tables. It does not support other table formats like CSV, JSON, etc.
+1. Generic formats other than Delta, Hudi, and Paimon are only registered in Polaris; their
+   format-specific lifecycle is not managed by the plugin.
 2. Generic tables (non-Iceberg tables) do not currently support credential vending.
 
 ## Delta Table Limitations
@@ -134,3 +155,10 @@ The following describes the current limitations of the Polaris Spark client:
 2. Create a Delta table without explicit location is not supported.
 3. Rename a Delta table is not supported.
 4. ALTER TABLE ... SET LOCATION is not supported for DELTA table.
+
+## Paimon Table Limitations
+
+1. Staged Paimon operations are not supported. This includes create-table-as-select (CTAS),
+   replace-table-as-select (RTAS), and APIs such as `DataFrameWriter.saveAsTable` that use Spark's
+   staged table path.
+2. Renaming Paimon tables through the Polaris Spark catalog is not supported.

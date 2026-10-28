@@ -24,7 +24,7 @@ import jakarta.inject.Inject;
 import java.util.List;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
-import org.apache.polaris.service.catalog.Profiles;
+import org.apache.polaris.service.Profiles;
 
 @QuarkusTest
 @TestProfile(Profiles.DefaultNoSqlProfile.class)

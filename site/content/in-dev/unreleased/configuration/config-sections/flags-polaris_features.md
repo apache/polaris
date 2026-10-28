@@ -27,7 +27,7 @@ Feature configurations for Polaris. These are stable, user-facing settings.
 
 ##### `polaris.features."ADD_TRAILING_SLASH_TO_LOCATION"`
 
-When set, the base location for a table or namespace will have `/` added as a suffix if not present
+Deprecated and ignored: Polaris always appends a trailing slash to table and namespace base locations. Retained so existing configuration remains accepted rather than rejected.
 
 - **Type:** `Boolean`
 - **Default:** `true`
@@ -35,9 +35,19 @@ When set, the base location for a table or namespace will have `/` added as a su
 
 ---
 
+##### `polaris.features."ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION"`
+
+If set to true (the default), Polaris honors a `location` (and the `write.data.path` / `write.metadata.path` properties) explicitly supplied in a create or update request, subject to the usual structured-location, allowed-location, metadata-location, and overlap validation. If set to false, such requests are rejected, regardless of the other location compatibility flags. This setting does not apply to federated catalogs.
+
+- **Type:** `Boolean`
+- **Default:** `true`
+- **Catalog Config:** `polaris.config.allow.client-specified.table.location`
+
+---
+
 ##### `polaris.features."ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG"`
 
-If enabled, allow dropping a passthrough-facade catalog even if it contains namespaces or tables. passthrough-facade catalogs may contain leftover entities when syncing with source catalog.In the short term these entities will be ignored, in the long term there will be method/background job to clean them up.
+If enabled, allow dropping a passthrough-facade catalog even if it contains namespaces or tables. passthrough-facade catalogs may contain leftover entities when syncing with source catalog. In the short term these entities will be ignored, in the long term there will be method/background job to clean them up.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -61,12 +71,13 @@ If set to true, Polaris allows metadata files to be located outside the table's 
 
 - **Type:** `Boolean`
 - **Default:** `false`
+- **Catalog Config:** `polaris.config.allow.external.metadata.file.location`
 
 ---
 
 ##### `polaris.features."ALLOW_EXTERNAL_TABLE_LOCATION"`
 
-If set to true, Polaris treats table locations as externally managed instead of assuming the default managed structure. Allowed-location validation still applies, but metadata location checks are relaxed, so operators should keep allowed locations narrow and specific. This setting is typically used together with ALLOW_UNSTRUCTURED_TABLE_LOCATION.
+Deprecated. Use ALLOW_EXTERNAL_METADATA_FILE_LOCATION instead. When enabled, this legacy compatibility flag relaxes metadata location checks; it does not control whether table locations may escape the structured namespace layout. Use ALLOW_UNSTRUCTURED_TABLE_LOCATION for that behavior.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -131,7 +142,7 @@ If set to true (default), Polaris will permit S3 storage configurations to have 
 
 ##### `polaris.features."ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS"`
 
-If set to true (default), Polaris will allow setting or changing catalog property polaris.config.enable-sub-catalog-rbac-for-federated-catalogs.If set to false, Polaris will disallow setting or changing the above catalog property
+If set to true (default), Polaris will allow setting or changing catalog property polaris.config.enable-sub-catalog-rbac-for-federated-catalogs. If set to false, Polaris will disallow setting or changing the above catalog property
 
 - **Type:** `Boolean`
 - **Default:** `true`
@@ -205,7 +216,7 @@ Initial delay in milliseconds before first retry for Azure API requests. Delay d
 
 ##### `polaris.features."AZURE_RETRY_JITTER_FACTOR"`
 
-Jitter factor (0.0 to 1.0) applied to retry delays for Azure API requests. The jitter is applied as a random percentage of the computed exponential backoff delay. For example, 0.5 means up to 50%% random jitter will be added to each retry delay. Helps prevent thundering herd when multiple requests fail simultaneously.
+Jitter factor (0.0 to 1.0) applied to retry delays for Azure API requests. The jitter is applied as a random percentage of the computed exponential backoff delay. For example, 0.5 means up to 50% random jitter will be added to each retry delay. Helps prevent thundering herd when multiple requests fail simultaneously.
 
 - **Type:** `Double`
 - **Default:** `0.5`
@@ -243,7 +254,7 @@ If set to true, clean up data when a namespace is dropped
 
 ##### `polaris.features."DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED"`
 
-When enabled, Iceberg tables and views created without a location specified will have a prefix applied to the location within the catalog's base location, rather than a location directly inside the parent namespace. Note that this requires ALLOW_EXTERNAL_TABLE_LOCATION to be enabled, but with OPTIMIZED_SIBLING_CHECK enabled it is still possible to enforce the uniqueness of table locations within a catalog.
+When enabled, Iceberg tables and views created without a location specified will have a prefix applied to the location within the catalog's base location, rather than a location directly inside the parent namespace. Note that this requires ALLOW_UNSTRUCTURED_TABLE_LOCATION to be enabled, but with OPTIMIZED_SIBLING_CHECK enabled it is still possible to enforce the uniqueness of table locations within a catalog.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -251,9 +262,19 @@ When enabled, Iceberg tables and views created without a location specified will
 
 ---
 
+##### `polaris.features."DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED"`
+
+When enabled, a managed location generated for a table or view created without an explicit location is given a unique, unpredictable suffix, so that no two tables share a path prefix. When disabled (the default), the generated location is the legacy `<namespace location>/<table name>` form.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+- **Catalog Config:** `polaris.config.default-unique-table-location.enabled`
+
+---
+
 ##### `polaris.features."DROP_WITH_PURGE_ENABLED"`
 
-If set to true, allows tables to be dropped with the purge parameter set to true.
+If set to true, allows Iceberg tables to be dropped with the purge parameter set to true.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -298,12 +319,30 @@ If true, the generic-tables endpoints are enabled
 
 ---
 
+##### `polaris.features."ENABLE_OPENLINEAGE_INGEST"`
+
+If true, the OpenLineage ingest endpoints are enabled and advertised to clients in the catalog configuration response during endpoint discovery. If false, the endpoints return 501 Not Implemented and are not advertised. The routes are always mounted when the OpenLineage extension is assembled into the server; this flag is the runtime switch that turns the feature on or off.
+
+- **Type:** `Boolean`
+- **Default:** `true`
+
+---
+
 ##### `polaris.features."ENABLE_POLICY_STORE"`
 
 If true, the policy-store endpoints are enabled
 
 - **Type:** `Boolean`
 - **Default:** `true`
+
+---
+
+##### `polaris.features."ENABLE_SEMANTIC_MODELS"`
+
+If true, the semantic-model (Apache Ossie) endpoints are enabled. This is a beta feature: the API is under active development and may change in a backward-incompatible way. It is disabled by default; enable it with caution and report any issues encountered.
+
+- **Type:** `Boolean`
+- **Default:** `false`
 
 ---
 
@@ -328,10 +367,55 @@ If set to true, require that principals must rotate their credentials before bei
 
 ##### `polaris.features."ENTITY_CACHE_WEIGHER_TARGET"`
 
-The maximum weight for the entity cache. This is a heuristic value without any particular unit of measurement. It roughly correlates with the total heap size of cached values. Fine-tuning requires experimentation in the specific deployment environment
+The maximum weight for the entity cache. Weights approximate the size in bytes of the cached entities and of their grant records, so the default corresponds to roughly 100 MiB of entity data. This is a heuristic: actual heap usage is higher than the configured weight, and fine-tuning requires experimentation in the specific deployment environment.
 
 - **Type:** `Long`
 - **Default:** `104857600`
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_ENABLED"`
+
+Enables GCS principal attribution via Workload Identity Federation. When true, credential vending chains a catalog-signed JWT through an STS token exchange and service-account impersonation so the Polaris principal appears in GCS Data Access audit logs (serviceAccountDelegationInfo.principalSubject). Requires GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE, GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER, and GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE to also be set; a missing required value is a fatal configuration error. Also requires a gcpServiceAccount on the catalog StorageConfiguration. Default: false (attribution disabled).
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE"`
+
+Filesystem path to the PKCS#8 PEM RSA private key used to sign GCS attribution JWTs (RS256). The corresponding public key must be published in the Workload Identity Pool provider's uploaded JWKS. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID"`
+
+Key ID (kid) written into the header of GCS attribution JWTs so the Workload Identity Pool provider can select the right public key from its JWKS during key rotation (when the JWKS holds both the old and new keys). Must match the kid of the JWKS entry for the configured signing key. Empty omits the header (only safe with a single-key JWKS).
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER"`
+
+Issuer (iss claim) of catalog-minted GCS attribution JWTs; must match the issuer configured on the Workload Identity Pool OIDC provider. The provider verifies signatures against its uploaded JWKS, so no public discovery endpoint is required. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE"`
+
+Full resource name of the Workload Identity Pool provider used for GCS principal attribution, e.g. //iam.googleapis.com/projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>. Used as both the attribution JWT 'aud' claim and the STS token-exchange audience. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
+
+- **Type:** `String`
+- **Default:** ``
 
 ---
 
@@ -369,8 +453,18 @@ If set to true, principal name will be included in temporary subscoped credentia
 If set to true, pagination for APIs like listTables is enabled.
 
 - **Type:** `Boolean`
-- **Default:** `false`
+- **Default:** `true`
 - **Catalog Config:** `polaris.config.list-pagination-enabled`
+
+---
+
+##### `polaris.features."LIST_PAGINATION_MAX_PAGE_SIZE"`
+
+The largest page size a client may request for APIs like listTables. Larger requested page sizes are reduced to this value. The Iceberg REST specification treats the requested page size as an upper bound. For local catalogs this takes effect only when LIST_PAGINATION_ENABLED is true; with pagination disabled the requested page size is ignored and the full result set is returned. For federated catalogs it always applies, because Polaris paginates those listings itself. Values <= 0 mean unlimited (no max page size enforced), which is the default. A request that supplies neither pageToken nor pageSize asks for the complete listing, so when the result does not fit the maximum it is rejected rather than truncated and answered with a continuation token. An empty pageToken starts a paginated listing and is capped like any other paginated request.
+
+- **Type:** `Integer`
+- **Default:** `-1`
+- **Catalog Config:** `polaris.config.list-pagination-max-page-size`
 
 ---
 
@@ -385,7 +479,7 @@ How many times to retry refreshing metadata when the previous error was retryabl
 
 ##### `polaris.features."OPTIMIZED_SIBLING_CHECK"`
 
-When set, Polaris uses an index to perform sibling overlap checks between tables, views, and namespaces. This is not a bypass mode, but enabling or disabling it can change overlap-detection coverage for non-standard location layouts. Only enable it when the required index and backfill state is known to be correct. For correct results, locations should end with a slash; see ADD_TRAILING_SLASH_TO_LOCATION. Supported by the JDBC and NoSQL metastore implementations.
+When set, Polaris uses an index to perform sibling overlap checks between tables, views, and namespaces. This is not a bypass mode, but enabling or disabling it can change overlap-detection coverage for non-standard location layouts. Only enable it when the required index and backfill state is known to be correct. Locations written by Polaris always end with a slash; locations stored by older versions without one are still handled. Supported by the JDBC and NoSQL metastore implementations.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -408,6 +502,15 @@ If set to true, Polaris will attempt to delete view metadata files when a view i
 - **Type:** `Boolean`
 - **Default:** `true`
 - **Catalog Config:** `polaris.config.purge-view-metadata-on-drop`
+
+---
+
+##### `polaris.features."RENAME_RETRY_MAX_ATTEMPTS"`
+
+How many times to retry a renameTable / renameView when the entity is concurrently modified before surfacing the error to the client. Retries use Iceberg's Tasks API with exponential backoff, and the entity is reloaded between attempts. The first attempt is not counted as a retry, so a value of 0 disables retries entirely. After all retries are exhausted, the server returns a retriable PolarisServiceUnavailableException (HTTP 503).
+
+- **Type:** `Integer`
+- **Default:** `3`
 
 ---
 
@@ -458,7 +561,7 @@ How long to store storage credentials in the local cache. This should be less th
 
 ##### `polaris.features."STORAGE_CREDENTIAL_DURATION_SECONDS"`
 
-The duration of time that vended storage credentials are valid for. Support for longer (or shorter) durations is dependent on the storage provider. GCS current does not respect this value.
+The duration of time that vended storage credentials are valid for. Support for longer (or shorter) durations is dependent on the storage provider. GCS currently does not respect this value.
 
 - **Type:** `Integer`
 - **Default:** `3600`
@@ -490,6 +593,15 @@ The list of supported authentication types for catalog federation
 
 - **Type:** `List<String>`
 - **Default:** `[OAUTH, BEARER, GCP, SIGV4]`
+
+---
+
+##### `polaris.features."SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS"`
+
+The credential vending mechanisms an S3 catalog in this realm may name explicitly. Names are case-sensitive and must match a mechanism's identifier exactly, for example STS. Apache Polaris supports STS, which is STS AssumeRole. A catalog that leaves credentialVendingMechanism empty uses the server's default mechanism and is always allowed. Realm-level only; catalog properties cannot widen it. Enforced at catalog create and update, and when the server builds the storage integration that vends credentials for a catalog. A listed mechanism with no implementation in this server is reported at startup and refused at catalog create and update and whenever a credential is vended for a catalog that names it.
+
+- **Type:** `List<String>`
+- **Default:** `[STS]`
 
 ---
 

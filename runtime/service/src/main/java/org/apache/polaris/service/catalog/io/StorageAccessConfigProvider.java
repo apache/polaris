@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
@@ -80,8 +81,8 @@ public class StorageAccessConfigProvider {
       @NonNull PolarisResolvedPathWrapper resolvedPath) {
     LOGGER
         .atDebug()
-        .addKeyValue("tableIdentifier", tableIdentifier)
-        .addKeyValue("tableLocation", tableLocations)
+        .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+        .addKeyValue(StructuredLogKeys.TABLE_LOCATION, tableLocations)
         .log("Fetching client credentials for table");
 
     StorageAccessConfig accessConfig =
@@ -93,9 +94,9 @@ public class StorageAccessConfigProvider {
 
     LOGGER
         .atDebug()
-        .addKeyValue("tableIdentifier", tableIdentifier)
-        .addKeyValue("credentialKeys", accessConfig.credentials().keySet())
-        .addKeyValue("extraProperties", accessConfig.extraProperties())
+        .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+        .addKeyValue(StructuredLogKeys.CREDENTIAL_KEYS, accessConfig.credentials().keySet())
+        .addKeyValue(StructuredLogKeys.EXTRA_PROPERTIES, accessConfig.extraProperties())
         .log("Loaded scoped credentials for table");
     if (accessConfig.credentials().isEmpty()) {
       LOGGER.debug("No credentials found for table");

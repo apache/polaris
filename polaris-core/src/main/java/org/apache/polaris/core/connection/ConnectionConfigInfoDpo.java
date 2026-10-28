@@ -23,13 +23,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.util.Collection;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.BigQueryMetastoreConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
@@ -46,6 +43,9 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The internal persistence-object counterpart to ConnectionConfigInfo defined in the API model.
@@ -140,14 +140,28 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     return properties;
   }
 
+  /**
+   * Copies the connection properties whose keys are in {@code allowedKeys} into {@code target}.
+   * Connection properties are set by catalog administrators, so each connection type forwards only
+   * an explicit allow-list to the Iceberg catalog client instead of every key.
+   */
+  protected void copyAllowedProperties(Map<String, String> target, Collection<String> allowedKeys) {
+    for (String key : allowedKeys) {
+      if (properties.containsKey(key)) {
+        target.put(key, properties.get(key));
+      }
+    }
+  }
+
   private static final ObjectMapper DEFAULT_MAPPER;
 
   static {
     DEFAULT_MAPPER =
         JsonMapper.builder()
-            .defaultPropertyInclusion(
-                JsonInclude.Value.construct(
-                    JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
+            .changeDefaultPropertyInclusion(
+                incl ->
+                    incl.withValueInclusion(JsonInclude.Include.NON_NULL)
+                        .withContentInclusion(JsonInclude.Include.NON_NULL))
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .build();
   }
@@ -161,11 +175,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   }
 
   public static ConnectionConfigInfoDpo deserialize(final @NonNull String jsonStr) {
-    try {
-      return DEFAULT_MAPPER.readValue(jsonStr, ConnectionConfigInfoDpo.class);
-    } catch (JsonProcessingException ex) {
-      throw new RuntimeException("deserialize failed: " + ex.getMessage(), ex);
-    }
+    return DEFAULT_MAPPER.readValue(jsonStr, ConnectionConfigInfoDpo.class);
   }
 
   /** Validates the remote URI. */
@@ -219,7 +229,8 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 hadoopConfigModel.getUri(),
                 authenticationParameters,
                 null /*Service Identity Info*/,
-                hadoopConfigModel.getWarehouse());
+                hadoopConfigModel.getWarehouse(),
+                hadoopConfigModel.getProperties());
         break;
       case HIVE:
         HiveConnectionConfigInfo hiveConfigModel =
@@ -232,7 +243,8 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 hiveConfigModel.getUri(),
                 authenticationParameters,
                 hiveConfigModel.getWarehouse(),
-                null /*Service Identity Info*/);
+                null /*Service Identity Info*/,
+                hiveConfigModel.getProperties());
         break;
       case BIGQUERY:
         BigQueryMetastoreConnectionConfigInfo bigqueryConfigModel =

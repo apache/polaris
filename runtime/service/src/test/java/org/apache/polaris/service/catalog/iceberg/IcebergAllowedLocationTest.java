@@ -29,21 +29,43 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iceberg.DataFile;
+import org.apache.iceberg.GenericStatisticsFile;
+import org.apache.iceberg.ImmutableGenericPartitionStatisticsFile;
+import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.MetadataUpdate;
+import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.PartitionStatisticsFile;
+import org.apache.iceberg.Snapshot;
+import org.apache.iceberg.SortOrder;
+import org.apache.iceberg.StatisticsFile;
+import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
+import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
+import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
+import org.apache.iceberg.rest.responses.GetNamespaceResponse;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -51,10 +73,15 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mockito;
 
 public class IcebergAllowedLocationTest {
   private static final String namespace = "ns";
@@ -119,7 +146,7 @@ public class IcebergAllowedLocationTest {
     assertNotEquals(catalogLocation, namespaceLocation);
 
     // add the namespace location to the allowed locations of the catalog
-    createCatalog(services, Map.of(), catalogLocation, List.of(namespaceLocation));
+    createCatalog(services, Map.of(), catalogLocation, List.of(tmpDir.toUri().toString()));
 
     createNamespace(services, namespaceLocation);
 
@@ -171,7 +198,7 @@ public class IcebergAllowedLocationTest {
                     catalog,
                     namespace,
                     createTableRequest,
-                    "vended-credentials",
+                    List.of("vended-credentials"),
                     IDEMPOTENCY_KEY,
                     services.realmContext(),
                     services.securityContext()));
@@ -185,7 +212,7 @@ public class IcebergAllowedLocationTest {
     var namespaceLocation = tmpDir.resolve(namespace).toAbsolutePath().toUri().toString();
     assertNotEquals(catalogLocation, namespaceLocation);
 
-    createCatalog(services, Map.of(), catalogLocation, List.of(namespaceLocation));
+    createCatalog(services, Map.of(), catalogLocation, List.of(tmpDir.toUri().toString()));
     createNamespace(services, namespaceLocation);
 
     var createTableRequest =
@@ -202,7 +229,7 @@ public class IcebergAllowedLocationTest {
                 catalog,
                 namespace,
                 createTableRequest,
-                "vended-credentials",
+                List.of("vended-credentials"),
                 IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
@@ -270,7 +297,7 @@ public class IcebergAllowedLocationTest {
                 catalog,
                 namespace,
                 createTableRequest,
-                "vended-credentials",
+                List.of("vended-credentials"),
                 IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
@@ -493,6 +520,316 @@ public class IcebergAllowedLocationTest {
         .containsEntry("write.data.path", writeDataPath);
   }
 
+  @Test
+  void testUpdateTableRejectsManifestListOutsideAllowedLocations(@TempDir Path tmpDir) {
+    var tableName = getTableName();
+    var tableId = TableIdentifier.of(namespace, tableName);
+
+    var services = createTableUnderAllowedCatalogLocation(tmpDir, tableName);
+
+    var outsideLocation = tmpDir.resolve("outside").toAbsolutePath().toUri().toString();
+    var snapshot =
+        new TestSnapshot(1L, 1L, null, System.currentTimeMillis(), outsideLocation + "snap.avro");
+
+    var updateRequest =
+        UpdateTableRequest.create(
+            tableId, List.of(), List.of(new MetadataUpdate.AddSnapshot(snapshot)));
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogAdapter()
+                    .newHandler(services.securityContext(), catalog)
+                    .updateTable(tableId, updateRequest))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+  }
+
+  @Test
+  void testUpdateTableRejectsStatisticsFileOutsideAllowedLocations(@TempDir Path tmpDir) {
+    var tableName = getTableName();
+    var tableId = TableIdentifier.of(namespace, tableName);
+
+    var services = createTableUnderAllowedCatalogLocation(tmpDir, tableName);
+
+    var outsideLocation = tmpDir.resolve("outside").toAbsolutePath().toUri().toString();
+    StatisticsFile statisticsFile =
+        new GenericStatisticsFile(1L, outsideLocation + "stats.puffin", 1L, 1L, List.of());
+
+    var updateRequest =
+        UpdateTableRequest.create(
+            tableId, List.of(), List.of(new MetadataUpdate.SetStatistics(statisticsFile)));
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogAdapter()
+                    .newHandler(services.securityContext(), catalog)
+                    .updateTable(tableId, updateRequest))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+  }
+
+  @Test
+  void testUpdateTableRejectsPartitionStatisticsFileOutsideAllowedLocations(@TempDir Path tmpDir) {
+    var tableName = getTableName();
+    var tableId = TableIdentifier.of(namespace, tableName);
+
+    var services = createTableUnderAllowedCatalogLocation(tmpDir, tableName);
+
+    var outsideLocation = tmpDir.resolve("outside").toAbsolutePath().toUri().toString();
+    PartitionStatisticsFile partitionStatisticsFile =
+        ImmutableGenericPartitionStatisticsFile.builder()
+            .snapshotId(1L)
+            .path(outsideLocation + "partition-stats.puffin")
+            .fileSizeInBytes(1L)
+            .build();
+
+    var updateRequest =
+        UpdateTableRequest.create(
+            tableId,
+            List.of(),
+            List.of(new MetadataUpdate.SetPartitionStatistics(partitionStatisticsFile)));
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogAdapter()
+                    .newHandler(services.securityContext(), catalog)
+                    .updateTable(tableId, updateRequest))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+  }
+
+  private TestServices createTableUnderAllowedCatalogLocation(Path tmpDir, String tableName) {
+    var services = getTestServices();
+    var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var namespaceLocation = catalogLocation + "/" + namespace;
+
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNamespace(services, namespaceLocation);
+
+    var createTableRequest =
+        CreateTableRequest.builder().withName(tableName).withSchema(SCHEMA).build();
+
+    var createResponse =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                namespace,
+                createTableRequest,
+                null,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext());
+    assertThat(createResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    return services;
+  }
+
+  @Test
+  void testRegisterTableRejectsDirectMetadataReferencesOutsideAllowedLocations(@TempDir Path tmpDir)
+      throws IOException {
+    var services = getTestServices();
+    var tableName = getTableName();
+
+    var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var namespaceLocation = catalogLocation + "/" + namespace;
+
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNamespace(services, namespaceLocation);
+
+    var tableDir = tmpDir.resolve(catalog).resolve(namespace).resolve(tableName);
+    var metadataPath = tableDir.resolve("metadata").resolve("00000.metadata.json");
+    Files.createDirectories(metadataPath.getParent());
+
+    var tableLocation = tableDir.toAbsolutePath().toUri().toString();
+    var outsideLocation = tmpDir.resolve("outside").toAbsolutePath().toUri().toString();
+    var snapshot =
+        new TestSnapshot(1L, 1L, null, System.currentTimeMillis(), outsideLocation + "snap.avro");
+    var metadata =
+        TableMetadata.buildFrom(
+                TableMetadata.newTableMetadata(
+                    SCHEMA,
+                    PartitionSpec.unpartitioned(),
+                    SortOrder.unsorted(),
+                    tableLocation,
+                    Map.of()))
+            .addSnapshot(snapshot)
+            .build();
+
+    Files.writeString(metadataPath, TableMetadataParser.toJson(metadata), StandardCharsets.UTF_8);
+
+    var registerRequest =
+        ImmutableRegisterTableRequest.builder()
+            .name(tableName)
+            .metadataLocation(metadataPath.toAbsolutePath().toUri().toString())
+            .build();
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogAdapter()
+                    .newHandler(services.securityContext(), catalog)
+                    .registerTable(
+                        Namespace.of(namespace),
+                        registerRequest,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+  }
+
+  @Test
+  void testCreateNamespaceWhenBaseLocationIsNestedInsideAllowedLocation(@TempDir Path tmpDir) {
+    TestServices services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE")))
+            .build();
+
+    String allowedLocation = tmpDir.toAbsolutePath().toUri().toString();
+    String catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    createCatalog(services, Map.of(), catalogLocation, List.of(allowedLocation));
+
+    CreateNamespaceRequest derivedLocationRequest =
+        CreateNamespaceRequest.builder().withNamespace(Namespace.of(namespace)).build();
+    try (Response response =
+        services
+            .restApi()
+            .createNamespace(
+                catalog,
+                derivedLocationRequest,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    // A caller-specified location must still be rejected.
+    Map<String, String> customLocation = new HashMap<>();
+    customLocation.put("location", allowedLocation + "elsewhere");
+    CreateNamespaceRequest customLocationRequest =
+        CreateNamespaceRequest.builder()
+            .withNamespace(Namespace.of("ns2"))
+            .setProperties(customLocation)
+            .build();
+    assertThatThrownBy(
+            () ->
+                services
+                    .restApi()
+                    .createNamespace(
+                        catalog,
+                        customLocationRequest,
+                        IDEMPOTENCY_KEY,
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("has a custom location");
+  }
+
+  /**
+   * The four namespace-location cases, with ALLOW_NAMESPACE_CUSTOM_LOCATION off for the first three
+   * and on for the last.
+   */
+  @Test
+  void testNamespaceCustomLocationRules(@TempDir Path tmpDir) {
+    Map<String, Object> baseConfig =
+        Map.of(
+            "ALLOW_INSECURE_STORAGE_TYPES",
+            "true",
+            "SUPPORTED_CATALOG_STORAGE_TYPES",
+            List.of("FILE"));
+    String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
+
+    TestServices strict = TestServices.builder().config(baseConfig).build();
+    createCatalog(strict, Map.of(), catalogLocation, List.of(catalogLocation));
+    String defaultBase = String.format("%s/%s", catalogLocation, catalog);
+
+    // 1. No location requested: the default is derived and used.
+    assertThat(createNamespaceStatus(strict, "ns1", null))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+
+    // 2. The default location, stated explicitly: allowed, it is explicit but not custom.
+    assertThat(createNamespaceStatus(strict, "ns2", defaultBase + "/ns2"))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+
+    // 3. A location other than the default: rejected as custom.
+    assertThatThrownBy(() -> createNamespaceStatus(strict, "ns3", catalogLocation + "elsewhere"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("has a custom location");
+
+    // 4. With custom locations enabled, the same request is allowed.
+    Map<String, Object> permissive = new HashMap<>(baseConfig);
+    permissive.put("ALLOW_NAMESPACE_CUSTOM_LOCATION", "true");
+    TestServices lenient = TestServices.builder().config(permissive).build();
+    createCatalog(lenient, Map.of(), catalogLocation, List.of(catalogLocation));
+    assertThat(createNamespaceStatus(lenient, "ns4", catalogLocation + "elsewhere"))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+  }
+
+  private int createNamespaceStatus(TestServices services, String name, String location) {
+    CreateNamespaceRequest.Builder request =
+        CreateNamespaceRequest.builder().withNamespace(Namespace.of(name));
+    if (location != null) {
+      Map<String, String> properties = new HashMap<>();
+      properties.put("location", location);
+      request.setProperties(properties);
+    }
+    try (Response response =
+        services
+            .restApi()
+            .createNamespace(
+                catalog,
+                request.build(),
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      return response.getStatus();
+    }
+  }
+
+  /**
+   * With custom namespace locations disabled, restating a namespace's existing default location was
+   * rejected because the update validated the pre-update entity against the namespace itself as its
+   * own parent.
+   */
+  @Test
+  void testNamespacePropertyUpdateAcceptsTheDefaultLocation(@TempDir Path tmpDir) {
+    TestServices services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE")))
+            .build();
+
+    Path warehouse = tmpDir.resolve("warehouse");
+    String catalogLocation = warehouse.toAbsolutePath().toUri().toString();
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+
+    // createCatalog derives default-base-location as <catalogLocation>/<catalog>, so the
+    // namespace's default location is one level below that.
+    String defaultLocation =
+        warehouse.resolve(catalog).resolve(namespace).toAbsolutePath().toUri().toString();
+    createNamespace(services, defaultLocation);
+
+    // Restating the location the namespace already has is not a custom location.
+    updateNamespaceProperties(services, Map.of("location", defaultLocation));
+
+    // A different location is still rejected.
+    String otherLocation = warehouse.resolve("elsewhere").toAbsolutePath().toUri().toString();
+    assertThatThrownBy(() -> updateNamespaceProperties(services, Map.of("location", otherLocation)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("has a custom location");
+  }
+
   private void createCatalog(
       TestServices services,
       Map<String, String> catalogConfig,
@@ -547,6 +884,327 @@ public class IcebergAllowedLocationTest {
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  /**
+   * A namespace whose parent is a nested namespace with no stored location is still validated
+   * against the default location derived from that parent, both when the location of an existing
+   * namespace is set and when a namespace is created with one.
+   */
+  @Test
+  void testNestedNamespaceValidatedAgainstParentWithoutStoredLocation(@TempDir Path tmpDir) {
+    TestServices services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE")))
+            .build();
+    String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+
+    String sep = NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR;
+    String child = namespace + sep + "child";
+    String grandchild = child + sep + "grandchild";
+    createNestedNamespace(services, namespace, null);
+    createNestedNamespace(services, child, null);
+    createNestedNamespace(services, grandchild, null);
+
+    // The parent keeps no stored location once it is removed, so the grandchild's default location
+    // has to be derived from the parent's name.
+    removeNestedNamespaceProperties(services, child, "location");
+
+    String grandchildLocation = loadNestedNamespaceProperties(services, grandchild).get("location");
+    updateNestedNamespaceProperties(services, grandchild, Map.of("location", grandchildLocation));
+
+    // The derived default is still what a requested location is compared against.
+    assertThatThrownBy(
+            () ->
+                updateNestedNamespaceProperties(
+                    services, grandchild, Map.of("location", catalogLocation + "elsewhere")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("has a custom location");
+
+    // Creating a namespace with an explicit location under the same parent is validated the same
+    // way.
+    String sibling = child + sep + "sibling";
+    createNestedNamespace(services, sibling, grandchildLocation.replace("grandchild", "sibling"));
+
+    assertThatThrownBy(
+            () ->
+                createNestedNamespace(
+                    services, child + sep + "other", catalogLocation + "elsewhere"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("has a custom location");
+  }
+
+  private void createNestedNamespace(TestServices services, String nsPath, String location) {
+    CreateNamespaceRequest.Builder builder =
+        CreateNamespaceRequest.builder()
+            .withNamespace(
+                NamespaceUtils.splitNamespace(nsPath, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR));
+    if (location != null) {
+      Map<String, String> namespaceProperties = new HashMap<>();
+      namespaceProperties.put("location", location);
+      builder.setProperties(namespaceProperties);
+    }
+    CreateNamespaceRequest request = builder.build();
+    try (Response response =
+        services
+            .restApi()
+            .createNamespace(
+                catalog,
+                request,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  private Map<String, String> loadNestedNamespaceProperties(TestServices services, String nsPath) {
+    try (Response response =
+        services
+            .restApi()
+            .loadNamespaceMetadata(
+                catalog, nsPath, services.realmContext(), services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return response.readEntity(GetNamespaceResponse.class).properties();
+    }
+  }
+
+  private void removeNestedNamespaceProperties(
+      TestServices services, String nsPath, String... removals) {
+    UpdateNamespacePropertiesRequest.Builder request = UpdateNamespacePropertiesRequest.builder();
+    for (String removal : removals) {
+      request.remove(removal);
+    }
+    sendNamespaceUpdate(services, nsPath, request.build());
+  }
+
+  private void updateNestedNamespaceProperties(
+      TestServices services, String nsPath, Map<String, String> updates) {
+    UpdateNamespacePropertiesRequest.Builder request = UpdateNamespacePropertiesRequest.builder();
+    updates.forEach(request::update);
+    sendNamespaceUpdate(services, nsPath, request.build());
+  }
+
+  private void sendNamespaceUpdate(
+      TestServices services, String nsPath, UpdateNamespacePropertiesRequest request) {
+    try (Response response =
+        services
+            .restApi()
+            .updateProperties(
+                catalog,
+                nsPath,
+                request,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  private void updateNamespaceProperties(TestServices services, Map<String, String> updates) {
+    UpdateNamespacePropertiesRequest.Builder request = UpdateNamespacePropertiesRequest.builder();
+    updates.forEach(request::update);
+    try (Response response =
+        services
+            .restApi()
+            .updateProperties(
+                catalog,
+                namespace,
+                request.build(),
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  @Test
+  void testNamespacePropertyUpdateValidatesLocationOnlyWhenItChanges(@TempDir Path tmpDir) {
+    AtomicBoolean counting = new AtomicBoolean(false);
+    AtomicInteger listEntitiesCalls = new AtomicInteger();
+
+    TestServices services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE"),
+                    "ALLOW_NAMESPACE_CUSTOM_LOCATION",
+                    "true",
+                    OPTIMIZED_SIBLING_CHECK.key(),
+                    "false"))
+            .metaStoreManagerDecorator(
+                msm -> {
+                  PolarisMetaStoreManager spy = Mockito.spy(msm);
+                  Mockito.doAnswer(
+                          invocation -> {
+                            if (counting.get()) {
+                              listEntitiesCalls.incrementAndGet();
+                            }
+                            return invocation.callRealMethod();
+                          })
+                      .when(spy)
+                      .listEntities(
+                          Mockito.any(),
+                          Mockito.any(),
+                          Mockito.any(),
+                          Mockito.any(),
+                          Mockito.any());
+                  return spy;
+                })
+            .build();
+
+    String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    String namespaceLocation = String.format("%s/%s/%s", catalogLocation, catalog, namespace);
+    createNamespace(services, namespaceLocation);
+
+    counting.set(true);
+
+    updateNamespaceProperties(services, Map.of("owner", "bob"));
+    assertThat(listEntitiesCalls.get()).isZero();
+
+    listEntitiesCalls.set(0);
+    updateNamespaceProperties(services, Map.of("location", namespaceLocation + "_moved"));
+    assertThat(listEntitiesCalls.get()).isPositive();
+  }
+
+  private void updateCatalogAllowedLocations(
+      TestServices services, List<String> newAllowedLocations) {
+    // Fetch current catalog to get entity version for update.
+    Catalog fetched;
+    try (Response getResp =
+        services
+            .catalogsApi()
+            .getCatalog(catalog, services.realmContext(), services.securityContext())) {
+      assertThat(getResp.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      fetched = getResp.readEntity(Catalog.class);
+    }
+
+    StorageConfigInfo newConfig =
+        FileStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+            .setAllowedLocations(newAllowedLocations)
+            .build();
+
+    UpdateCatalogRequest updateRequest =
+        UpdateCatalogRequest.builder()
+            .setCurrentEntityVersion(fetched.getEntityVersion())
+            .setStorageConfigInfo(newConfig)
+            .setProperties(Map.of("default-base-location", newAllowedLocations.get(0)))
+            .build();
+
+    try (Response updateResp =
+        services
+            .catalogsApi()
+            .updateCatalog(
+                catalog, updateRequest, services.realmContext(), services.securityContext())) {
+      assertThat(updateResp.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  @Test
+  void testNativeCredentialVendingRejectsStaleLocationsAfterAllowedLocationsShrink(
+      @TempDir Path tmpDir) {
+    var services = getTestServices();
+
+    var baseDir = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var allowedWhenCreated = baseDir + "/original-data";
+    var disallowedAfterShrink = baseDir + "/other-data";
+
+    // Catalog initially allows the original location
+    createCatalog(services, Map.of(), allowedWhenCreated, List.of(allowedWhenCreated));
+    createNamespace(services, allowedWhenCreated + "/" + namespace);
+
+    String tableName = getTableName();
+    TableIdentifier tableId = TableIdentifier.of(Namespace.of(namespace), tableName);
+
+    var createReq =
+        CreateTableRequest.builder()
+            .withName(tableName)
+            .withSchema(SCHEMA)
+            .withLocation(allowedWhenCreated + "/" + namespace + "/" + tableName)
+            .build();
+
+    // Create succeeds under current allowed
+    try (Response createResp =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                namespace,
+                createReq,
+                List.of("vended-credentials"),
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(createResp.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    // Now shrink: update catalog to only allow a completely different location
+    updateCatalogAllowedLocations(services, List.of(disallowedAfterShrink));
+
+    // Credential vending for the existing table (which has stale location in its entity)
+    // must now be rejected.
+    IcebergCatalogHandler handler =
+        services.catalogAdapter().newHandler(services.securityContext(), catalog);
+
+    assertThatThrownBy(() -> handler.loadCredentials(tableId, Optional.empty()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("outside the catalog's current allowed locations");
+  }
+
+  @SuppressWarnings({"deprecation", "RedundantSuppression"})
+  private record TestSnapshot(
+      long sequenceNumber,
+      long snapshotId,
+      Long parentId,
+      long timestampMillis,
+      String manifestListLocation)
+      implements Snapshot {
+
+    @Override
+    public List<ManifestFile> allManifests(FileIO io) {
+      return List.of();
+    }
+
+    @Override
+    public List<ManifestFile> dataManifests(FileIO io) {
+      return List.of();
+    }
+
+    @Override
+    public List<ManifestFile> deleteManifests(FileIO io) {
+      return List.of();
+    }
+
+    @Override
+    public String operation() {
+      return "append";
+    }
+
+    @Override
+    public Map<String, String> summary() {
+      return Map.of("operation", operation());
+    }
+
+    @Override
+    public Iterable<DataFile> addedDataFiles(FileIO io) {
+      return List.of();
+    }
+
+    @Override
+    public Iterable<DataFile> removedDataFiles(FileIO io) {
+      return List.of();
     }
   }
 }

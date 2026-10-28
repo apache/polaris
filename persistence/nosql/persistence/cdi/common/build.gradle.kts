@@ -35,9 +35,9 @@ dependencies {
   runtimeOnly(project(":polaris-persistence-nosql-realms-impl"))
   runtimeOnly(project(":polaris-persistence-nosql-realms-store-nosql"))
 
-  compileOnly(platform(libs.jackson.bom))
+  compileOnly(platform(libs.jackson3.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
-  compileOnly("com.fasterxml.jackson.core:jackson-databind")
+  compileOnly("tools.jackson.core:jackson-databind")
 
   implementation(libs.guava)
   implementation(libs.slf4j.api)

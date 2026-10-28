@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.persistence.nosql.nodeids.api;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import java.time.Duration;
@@ -28,6 +26,8 @@ import org.apache.polaris.ids.api.IdGeneratorSpec;
 import org.apache.polaris.ids.api.SnowflakeIdGenerator;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /** Node management configuration. */
 @ConfigMapping(prefix = "polaris.node")

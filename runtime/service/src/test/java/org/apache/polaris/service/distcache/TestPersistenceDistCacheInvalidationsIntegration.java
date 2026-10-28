@@ -29,7 +29,6 @@ import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.list;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -49,7 +48,7 @@ import org.apache.polaris.persistence.nosql.api.cache.CacheBackend;
 import org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations;
 import org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.CacheInvalidation;
 import org.apache.polaris.persistence.nosql.api.obj.SimpleTestObj;
-import org.apache.polaris.service.catalog.iceberg.AbstractIcebergCatalogTest;
+import org.apache.polaris.service.Profiles;
 import org.assertj.core.api.SoftAssertions;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.AfterEach;
@@ -60,6 +59,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 @QuarkusTest
 @TestProfile(TestPersistenceDistCacheInvalidationsIntegration.Profile.class)
@@ -69,7 +70,7 @@ import org.junit.jupiter.api.condition.OS;
 @SuppressWarnings("CdiInjectionPointsInspection")
 public class TestPersistenceDistCacheInvalidationsIntegration {
 
-  public static class Profile extends AbstractIcebergCatalogTest.Profile {
+  public static class Profile extends Profiles.NoSqlIcebergCatalogProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
@@ -77,9 +78,6 @@ public class TestPersistenceDistCacheInvalidationsIntegration {
           .put("quarkus.management.port", "0")
           .put("quarkus.management.host", "127.0.0.1")
           .put("quarkus.management.enabled", "true")
-          .put("polaris.persistence.type", "nosql")
-          .put("polaris.persistence.auto-bootstrap-types", "nosql")
-          .put("polaris.persistence.nosql.backend", "InMemory")
           .put(
               "polaris.persistence.distributed-cache-invalidations.valid-tokens", "token1," + TOKEN)
           .put(
@@ -103,7 +101,7 @@ public class TestPersistenceDistCacheInvalidationsIntegration {
   @BeforeEach
   public void before() {
     soft = new SoftAssertions();
-    mapper = new ObjectMapper();
+    mapper = JsonMapper.shared();
   }
 
   @AfterEach

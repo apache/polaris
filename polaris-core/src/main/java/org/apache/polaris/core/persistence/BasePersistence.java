@@ -24,6 +24,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -32,7 +33,6 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -53,10 +53,9 @@ import org.jspecify.annotations.Nullable;
  * the underlying data store. The goal is to make it really easy to back this using databases like
  * Postgres or simpler KV store.
  *
- * <p>Metrics-related persistence is intentionally decoupled and lives in {@code
- * MetricsPersistence}. A concrete backend may implement both SPIs on the same class, but callers
- * that only need metrics persistence should depend on {@code MetricsPersistence} directly rather
- * than on {@link BasePersistence}.
+ * <p>Metrics-related persistence is intentionally decoupled from this SPI and lives in the {@code
+ * polaris-extensions-metrics-reports-jdbc} extension module, which provides its own {@code
+ * MetricsPersistence} implementation independently of {@link BasePersistence}.
  */
 public interface BasePersistence extends PolicyMappingPersistence {
   /**
@@ -148,7 +147,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    *
    * @param events events to persist
    */
-  void writeEvents(@NonNull List<PolarisEvent> events);
+  void writeEvents(@NonNull List<EventEntity> events);
 
   /**
    * Delete this entity from the meta store.
@@ -398,18 +397,37 @@ public interface BasePersistence extends PolicyMappingPersistence {
       long parentId);
 
   /**
-   * Check if the specified IcebergTableLikeEntity / NamespaceEntity has any sibling entities which
-   * share a base location
+   * Check whether the base location of the specified IcebergTableLikeEntity / NamespaceEntity
+   * overlaps the base location of another entity in the same catalog.
+   *
+   * <p>Despite the name, implementations do not limit the search to siblings under the same parent.
+   * They consider every table, view, and namespace in the catalog whose base location contains,
+   * equals, or is contained by the entity's base location. This is the check behind {@code
+   * OPTIMIZED_SIBLING_CHECK}; the fallback used when that flag is off inspects only the entities
+   * directly under the same parent.
+   *
+   * <p>The entity's own ancestors, given by {@code parentPath}, are excluded: a parent namespace
+   * whose location strictly contains the entity's location is not reported, since default locations
+   * nest under the parent's location. An ancestor whose location equals the entity's location is
+   * still reported.
+   *
+   * <p>The entity itself, identified by its id, is never reported. Implementations should avoid
+   * checking the entity against itself when it is already persisted, e.g. on a location update or a
+   * rename, so that it does not conflict with its own persisted location.
    *
    * @param callContext the polaris call context
-   * @param entity the entity to check for overlapping siblings for
-   * @return Optional.of(Optional.of(location)) if the parent entity has children,
-   *     Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
-   *     this operation
+   * @param parentPath the entity's resolved parent path: the catalog first, then each parent
+   *     namespace, not including the entity itself
+   * @param entity the entity whose base location to check
+   * @return Optional.of(Optional.of(location)) with the base location of a conflicting entity,
+   *     Optional.of(Optional.empty()) if there is no conflict, and Optional.empty() if the
+   *     metastore doesn't support this operation
    */
   default <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @NonNull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext,
+          @NonNull List<PolarisEntityCore> parentPath,
+          T entity) {
     return Optional.empty();
   }
 

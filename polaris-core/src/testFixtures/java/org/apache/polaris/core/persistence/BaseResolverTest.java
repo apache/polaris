@@ -25,10 +25,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -36,7 +37,6 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -413,7 +413,7 @@ public abstract class BaseResolverTest {
   @NonNull
   private Resolver allocateResolver(
       @Nullable InMemoryEntityCache cache,
-      Set<String> principalRolesScope,
+      @Nullable Set<String> principalRolesScope,
       @Nullable String referenceCatalogName) {
 
     // create a new cache if needs be
@@ -421,21 +421,19 @@ public abstract class BaseResolverTest {
       this.cache =
           new InMemoryEntityCache(diagServices, callCtx().getRealmConfig(), metaStoreManager());
     }
-    boolean allRoles = principalRolesScope == null;
-    Optional<List<PrincipalRoleEntity>> roleEntities =
-        Optional.ofNullable(principalRolesScope)
-            .map(
-                scopes ->
-                    scopes.stream()
-                        .map(
-                            roleName ->
-                                metaStoreManager().findPrincipalRoleByName(callCtx(), roleName))
-                        .filter(Optional::isPresent)
-                        .map(Optional::get)
-                        .collect(Collectors.toList()));
+
+    PrincipalEntity principalEntity = PrincipalEntity.of(P1);
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(
-            PrincipalEntity.of(P1), Optional.ofNullable(principalRolesScope).orElse(Set.of()));
+            principalEntity.getName(),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+                .put(
+                    PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                    principalRolesScope == null)
+                .build(),
+            Optional.ofNullable(principalRolesScope).orElse(Set.of()));
+
     return new Resolver(
         diagServices,
         callCtx(),

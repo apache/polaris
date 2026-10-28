@@ -44,15 +44,6 @@ Whether or not to use soft values in the entity cache
 
 ---
 
-##### `polaris.behavior-changes."SCHEMA_VERSION_FALL_BACK_ON_DNE"`
-
-If set to true, exceptions encountered while loading the VERSION table which appear to be caused by the VERSION table not existing will be interpreted as meaning that the schema version is currently 0.
-
-- **Type:** `Boolean`
-- **Default:** `true`
-
----
-
 ##### `polaris.behavior-changes."STORAGE_CONFIGURATION_MAX_LOCATIONS"`
 
 How many locations can be associated with a storage configuration, or -1 for unlimited locations
@@ -74,6 +65,15 @@ If true, BasePolarisTableOperations should mark the metadata that is passed into
 ##### `polaris.behavior-changes."VALIDATE_VIEW_LOCATION_OVERLAP"`
 
 If true, validate that view locations don't overlap when views are created
+
+- **Type:** `Boolean`
+- **Default:** `true`
+
+---
+
+##### `polaris.behavior-changes."VIEW_OPERATIONS_MAKE_METADATA_CURRENT_ON_COMMIT"`
+
+If true, BasePolarisViewOperations should mark the metadata that is passed into `commit` as current, and reuse it to skip a trip to object storage to re-construct the committed metadata again.
 
 - **Type:** `Boolean`
 - **Default:** `true`

@@ -25,6 +25,7 @@ from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
     AwsStorageConfigInfo,
+    StorageConfigInfo,
 )
 
 
@@ -43,6 +44,29 @@ class TestCatalogsCommand(CLITestBase):
             lambda: self.mock_execute(
                 mock_client,
                 ["catalogs", "create", "my-catalog", "--storage-type", "gcs"],
+            ),
+            "--default-base-location",
+        )
+        # External catalogs also require --storage-type and --default-base-location.
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                ["catalogs", "create", "my-catalog", "--type", "external"],
+            ),
+            "--storage-type",
+        )
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                [
+                    "catalogs",
+                    "create",
+                    "my-catalog",
+                    "--type",
+                    "external",
+                    "--storage-type",
+                    "file",
+                ],
             ),
             "--default-base-location",
         )
@@ -113,6 +137,10 @@ class TestCatalogsCommand(CLITestBase):
                     "my-catalog",
                     "--type",
                     "external",
+                    "--storage-type",
+                    "file",
+                    "--default-base-location",
+                    "dbl",
                     "--catalog-connection-type",
                     "iceberg-rest",
                     "--catalog-authentication-type",
@@ -133,6 +161,10 @@ class TestCatalogsCommand(CLITestBase):
                     "my-catalog",
                     "--type",
                     "external",
+                    "--storage-type",
+                    "file",
+                    "--default-base-location",
+                    "dbl",
                     "--catalog-connection-type",
                     "iceberg-rest",
                     "--catalog-authentication-type",
@@ -155,6 +187,29 @@ class TestCatalogsCommand(CLITestBase):
         self.assertEqual(cmd.properties, {})
         self.assertEqual(cmd.hierarchical, False)
         self.assertEqual(cmd.sts_unavailable, False)
+
+    def test_deprecated_kms_options_warn(self) -> None:
+        cmd = CatalogsCommand(
+            catalogs_subcommand=Subcommands.CREATE,
+            catalog_name="s3-catalog",
+            storage_type="s3",
+            default_base_location="s3://bucket/path",
+            current_kms_key="current-key",
+            allowed_kms_keys=["allowed-key"],
+        )
+
+        with self.assertLogs(
+            "apache_polaris.cli.command.catalogs", level="WARNING"
+        ) as logs:
+            cmd.validate()
+
+        self.assertEqual(
+            logs.output,
+            [
+                "WARNING:apache_polaris.cli.command.catalogs:--current-kms-key is deprecated; use --encryption-key instead.",
+                "WARNING:apache_polaris.cli.command.catalogs:--allowed-kms-key is deprecated; use --encryption-key instead.",
+            ],
+        )
 
     def test_catalog_create_s3_options(self) -> None:
         mock_client = self.build_mock_client()
@@ -183,6 +238,9 @@ class TestCatalogsCommand(CLITestBase):
         )
         self.assertTrue(call_args.catalog.storage_config_info.sts_unavailable)
         self.assertTrue(call_args.catalog.storage_config_info.kms_unavailable)
+        self.assertIsNone(call_args.catalog.storage_config_info.endpoint)
+        self.assertIsNone(call_args.catalog.storage_config_info.endpoint_internal)
+        self.assertIsNone(call_args.catalog.storage_config_info.sts_endpoint)
 
         self.mock_execute(
             mock_client,
@@ -238,6 +296,63 @@ class TestCatalogsCommand(CLITestBase):
         self.assertEqual(call_args.catalog.properties.default_base_location, "x")
         self.assertEqual(call_args.catalog.storage_config_info.allowed_locations, ["a"])
         self.assertEqual(call_args.catalog.storage_config_info.region, "us-west-2")
+
+    def test_catalog_create_s3_endpoints(self) -> None:
+        mock_client = self.build_mock_client()
+        self.mock_execute(
+            mock_client,
+            [
+                "catalogs",
+                "create",
+                "s3-catalog",
+                "--storage-type",
+                "s3",
+                "--default-base-location",
+                "s3://bucket/path",
+                "--endpoint",
+                "https://s3.us-west-2.amazonaws.com",
+                "--endpoint-internal",
+                "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com",
+                "--sts-endpoint",
+                "https://sts.amazonaws.com",
+            ],
+        )
+        call_args = mock_client.create_catalog.call_args[0][0]
+        self.assertEqual(call_args.catalog.name, "s3-catalog")
+        self.assertEqual(call_args.catalog.storage_config_info.storage_type, "S3")
+        self.assertEqual(
+            call_args.catalog.storage_config_info.endpoint, "https://s3.us-west-2.amazonaws.com"
+        )
+        self.assertEqual(
+            call_args.catalog.storage_config_info.endpoint_internal,
+            "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com",
+        )
+        self.assertEqual(
+            call_args.catalog.storage_config_info.sts_endpoint,
+            "https://sts.amazonaws.com",
+        )
+
+    def test_catalog_create_s3_storage_name(self) -> None:
+        mock_client = self.build_mock_client()
+        self.mock_execute(
+            mock_client,
+            [
+                "catalogs",
+                "create",
+                "s3-catalog",
+                "--storage-type",
+                "s3",
+                "--default-base-location",
+                "s3://bucket/path",
+                "--storage-name",
+                "analytics-prod",
+            ],
+        )
+        call_args = mock_client.create_catalog.call_args[0][0]
+        self.assertEqual(call_args.catalog.name, "s3-catalog")
+        self.assertEqual(
+            call_args.catalog.storage_config_info.storage_name, "analytics-prod"
+        )
 
     def test_catalog_create_gcs_options(self) -> None:
         mock_client = self.build_mock_client()
@@ -370,6 +485,14 @@ class TestCatalogsCommand(CLITestBase):
             call_args.catalog.connection_config_info.remote_catalog_name, "i"
         )
         self.assertEqual(call_args.catalog.connection_config_info.uri, "u")
+        self.assertEqual(
+            call_args.catalog.connection_config_info.authentication_parameters.bearer_token.get_secret_value(),
+            "b",
+        )
+        self.assertEqual(
+            call_args.catalog.connection_config_info.authentication_parameters.authentication_type,
+            "BEARER",
+        )
 
     def test_catalog_storage_type_exclusivity(self) -> None:
         mock_client = self.build_mock_client()
@@ -460,6 +583,86 @@ class TestCatalogsCommand(CLITestBase):
         self.mock_execute(mock_client, ["catalogs", "get", "foo"])
         mock_client.get_catalog.assert_called_with("foo")
 
+    def test_catalog_update_s3_options(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="s3-catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="s3://bucket/path", additional_properties={}
+            ),
+            storage_config_info=AwsStorageConfigInfo(
+                storage_type="S3", allowed_locations=[]
+            ),
+        )
+        self.mock_execute(
+            mock_client,
+            ["catalogs", "update", "s3-catalog", "--no-sts", "--no-kms"],
+        )
+        call_args = mock_client.update_catalog.call_args[0][1]
+        self.assertTrue(call_args.storage_config_info.sts_unavailable)
+        self.assertTrue(call_args.storage_config_info.kms_unavailable)
+
+        # --no-kms alone (without any other AWS storage option) must still be applied
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="s3-catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="s3://bucket/path", additional_properties={}
+            ),
+            storage_config_info=AwsStorageConfigInfo(
+                storage_type="S3", allowed_locations=[]
+            ),
+        )
+        self.mock_execute(
+            mock_client,
+            ["catalogs", "update", "s3-catalog", "--no-kms"],
+        )
+        call_args = mock_client.update_catalog.call_args[0][1]
+        self.assertTrue(call_args.storage_config_info.kms_unavailable)
+
+        # --no-kms against a non-S3 catalog should raise
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="gcs-catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="gs://bucket/path", additional_properties={}
+            ),
+            storage_config_info=StorageConfigInfo(
+                storage_type="GCS", allowed_locations=[]
+            ),
+        )
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                ["catalogs", "update", "gcs-catalog", "--no-kms"],
+            ),
+            "--no-kms requires S3 storage_type",
+        )
+
+    def test_catalog_update_storage_name(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="s3-catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="s3://bucket/path", additional_properties={}
+            ),
+            storage_config_info=AwsStorageConfigInfo(
+                storage_type="S3", allowed_locations=[]
+            ),
+        )
+        self.mock_execute(
+            mock_client,
+            ["catalogs", "update", "s3-catalog", "--storage-name", "analytics-prod"],
+        )
+        call_args = mock_client.update_catalog.call_args[0][1]
+        self.assertEqual(call_args.storage_config_info.storage_name, "analytics-prod")
+
     def test_catalog_list(self) -> None:
         mock_client = self.build_mock_client()
         mock_client.list_catalogs.return_values.catalogs = []
@@ -521,6 +724,10 @@ class TestCatalogsCommand(CLITestBase):
             "OAUTH",
         )
         self.assertEqual(
+            call_args.catalog.connection_config_info.authentication_parameters.client_secret.get_secret_value(),
+            "test-secret",
+        )
+        self.assertEqual(
             call_args.catalog.connection_config_info.uri, "thrift://hive-metastore:9083"
         )
 
@@ -579,11 +786,65 @@ class TestCatalogsCommand(CLITestBase):
             "i",
         )
         self.assertEqual(
+            call_args.catalog.connection_config_info.authentication_parameters.client_secret.get_secret_value(),
+            "k",
+        )
+        self.assertEqual(
             call_args.catalog.connection_config_info.authentication_parameters.scopes,
             ["s1", "s2"],
         )
         self.assertEqual(call_args.catalog.storage_config_info.storage_type, "GCS")
         self.assertEqual(call_args.catalog.properties.default_base_location, "dbl")
+
+    def test_external_catalog_gcp(self) -> None:
+        mock_client = self.build_mock_client()
+        self.mock_execute(
+            mock_client,
+            [
+                "catalogs",
+                "create",
+                "my-catalog",
+                "--type",
+                "external",
+                "--storage-type",
+                "gcs",
+                "--default-base-location",
+                "dbl",
+                "--catalog-connection-type",
+                "iceberg-rest",
+                "--iceberg-remote-catalog-name",
+                "biglake",
+                "--catalog-uri",
+                "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                "--catalog-authentication-type",
+                "gcp",
+                "--property",
+                "header.x-goog-user-project=my-billing-project",
+            ],
+        )
+        call_args = mock_client.create_catalog.call_args[0][0]
+        self.assertEqual(call_args.catalog.name, "my-catalog")
+        self.assertEqual(call_args.catalog.type, "EXTERNAL")
+        self.assertEqual(
+            call_args.catalog.connection_config_info.connection_type, "ICEBERG_REST"
+        )
+        self.assertEqual(
+            call_args.catalog.connection_config_info.remote_catalog_name, "biglake"
+        )
+        self.assertEqual(
+            call_args.catalog.connection_config_info.uri,
+            "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+        )
+        self.assertEqual(
+            call_args.catalog.connection_config_info.authentication_parameters.authentication_type,
+            "GCP",
+        )
+        self.assertEqual(call_args.catalog.storage_config_info.storage_type, "GCS")
+        self.assertEqual(call_args.catalog.properties.default_base_location, "dbl")
+        self.assertEqual(
+            call_args.catalog.properties.additional_properties,
+            {"header.x-goog-user-project": "my-billing-project"},
+        )
 
     def test_external_catalog_hadoop(self) -> None:
         mock_client = self.build_mock_client()
@@ -749,4 +1010,32 @@ class TestCatalogsCommand(CLITestBase):
         self.mock_execute(mock_client, ["catalogs", "summarize", "foo"])
         mock_client.get_catalog.assert_called_with("foo")
         mock_iceberg_api.list_namespaces.assert_called_with(prefix="foo", parent=None)
+        mock_policy_api.get_applicable_policies.assert_called_with(prefix="foo")
+
+    @patch("apache_polaris.cli.command.catalogs.IcebergCatalogAPI")
+    @patch("apache_polaris.cli.command.catalogs.PolicyAPI")
+    def test_catalog_summary_with_paginate(
+        self, mock_policy_api_class: MagicMock, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="foo",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="s3://bucket/path", additional_properties={}
+            ),
+            storage_config_info=AwsStorageConfigInfo(
+                storage_type="S3", allowed_locations=[]
+            ),
+        )
+        mock_client.list_catalog_roles.return_value.roles = []
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        empty_page = MagicMock(namespaces=[], next_page_token=None)
+        mock_iceberg_api.list_namespaces.return_value = empty_page
+        mock_policy_api = mock_policy_api_class.return_value
+        mock_policy_api.get_applicable_policies.return_value.applicable_policies = []
+        self.mock_execute(mock_client, ["--page-size", "10",  "catalogs", "summarize", "foo"])
+        mock_client.get_catalog.assert_called_with("foo")
+        mock_iceberg_api.list_namespaces.assert_called_with(prefix="foo", parent=None, page_size=10, page_token="")
         mock_policy_api.get_applicable_policies.assert_called_with(prefix="foo")

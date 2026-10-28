@@ -20,11 +20,12 @@ from dataclasses import dataclass, field
 from typing import List, Optional, cast
 
 from apache_polaris.cli.command import Command
-from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.command.utils import get_catalog_api_client, paginate
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
+from apache_polaris.sdk.catalog.models import RegisterTableRequest
 from apache_polaris.sdk.management import PolarisDefaultApi
 from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
 from apache_polaris.cli.command.utils import (
@@ -44,13 +45,17 @@ class TableCommand(Command):
         * polaris tables list --catalog my_catalog --namespace ns1
         * polaris tables get my_table --catalog my_catalog --namespace ns1
         * polaris tables summarize my_table --catalog my_catalog --namespace ns1
-        * polaris tables delete my_table --catalog my_catalog --namesapce ns1
+        * polaris tables delete my_table --catalog my_catalog --namespace ns1
+        * polaris tables register my_table --catalog my_catalog --namespace ns1 --metadata-location s3://bucket/path/00001-(uuid).metadata.json
     """
 
     table_subcommand: str
     catalog_name: Optional[str] = None
     namespace: Optional[List[str]] = field(default_factory=list)
     table_name: Optional[str] = None
+    page_size: Optional[int] = None
+    metadata_location: Optional[str] = None
+    overwrite: Optional[bool] = None
 
     def validate(self) -> None:
         if not self.catalog_name:
@@ -65,9 +70,14 @@ class TableCommand(Command):
             self.table_subcommand == Subcommands.GET
             or self.table_subcommand == Subcommands.SUMMARIZE
             or self.table_subcommand == Subcommands.DELETE
+            or self.table_subcommand == Subcommands.REGISTER
         ):
             if not self.table_name or not self.table_name.strip():
                 raise CliError("The table name cannot be empty.")
+        if self.table_subcommand == Subcommands.REGISTER:
+            if not self.metadata_location or not self.metadata_location.strip():
+                raise CliError("Missing required argument: --metadata-location")
+            self.metadata_location = self.metadata_location.strip()
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))
@@ -77,45 +87,49 @@ class TableCommand(Command):
         ns_str = UNIT_SEPARATOR.join(namespace_list)
 
         if self.table_subcommand == Subcommands.LIST:
-            try:
-                result = catalog_api.list_tables(prefix=catalog_name, namespace=ns_str)
-                for table_identifier in result.identifiers:
+            for resp in paginate(
+                catalog_api.list_tables,
+                page_size=self.page_size,
+                prefix=catalog_name,
+                namespace=ns_str,
+            ):
+                for table_identifier in resp.identifiers or []:
                     print(table_identifier.to_json())
-            except Exception as e:
-                handle_api_exception(
-                    f"Table Listing ({'.'.join(namespace_list)})",
-                    e,
-                )
         elif self.table_subcommand == Subcommands.GET:
-            try:
-                print(
-                    catalog_api.load_table(
-                        prefix=catalog_name,
-                        namespace=ns_str,
-                        table=table_name,
-                    ).to_json()
-                )
-            except Exception as e:
-                handle_api_exception(f"Table Load ({table_name})", e)
-        elif self.table_subcommand == Subcommands.DELETE:
-            namespace_dot = ".".join(namespace_list)
-            print(f"De-registering table {namespace_dot}.{table_name}...")
-            try:
-                catalog_api.drop_table(
+            print(
+                catalog_api.load_table(
                     prefix=catalog_name,
                     namespace=ns_str,
                     table=table_name,
-                    purge_requested=False,
-                )
-                print(f"De-registering table {namespace_dot}.{table_name} completed")
-            except Exception as e:
-                handle_api_exception(f"Table De-registration ({table_name})", e)
+                ).to_json()
+            )
+        elif self.table_subcommand == Subcommands.DELETE:
+            namespace_dot = ".".join(namespace_list)
+            print(f"De-registering table {namespace_dot}.{table_name}...")
+            catalog_api.drop_table(
+                prefix=catalog_name,
+                namespace=ns_str,
+                table=table_name,
+                purge_requested=False,
+            )
+            print(f"De-registering table {namespace_dot}.{table_name} completed")
         elif self.table_subcommand == Subcommands.SUMMARIZE:
-            self._generate_summary(api, catalog_api, ns_str)
+            self._generate_summary(catalog_api, ns_str)
+        elif self.table_subcommand == Subcommands.REGISTER:
+            namespace_dot = ".".join(namespace_list)
+            print(f"Registering table {namespace_dot}.{table_name}...")
+            catalog_api.register_table(
+                prefix=catalog_name,
+                namespace=ns_str,
+                register_table_request=RegisterTableRequest(
+                    name=table_name,
+                    metadata_location=self.metadata_location,
+                    overwrite=bool(self.overwrite),
+                ),
+            )
+            print(f"Registering table {namespace_dot}.{table_name} completed")
 
-    def _generate_summary(
-        self, api: PolarisDefaultApi, catalog_api: IcebergCatalogAPI, ns_str: str
-    ) -> None:
+    def _generate_summary(self, catalog_api: IcebergCatalogAPI, ns_str: str) -> None:
         catalog_name = cast(str, self.catalog_name)
         namespace_list = cast(List[str], self.namespace)
         table_name = cast(str, self.table_name)

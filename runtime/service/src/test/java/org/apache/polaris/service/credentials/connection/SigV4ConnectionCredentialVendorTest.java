@@ -110,7 +110,8 @@ public class SigV4ConnectionCredentialVendorTest {
             "my-session",
             "external-id-123",
             "us-west-2",
-            "glue");
+            "glue",
+            null);
 
     // Create connection config with service identity and auth params
     IcebergRestConnectionConfigInfoDpo connectionConfig =
@@ -141,6 +142,8 @@ public class SigV4ConnectionCredentialVendorTest {
         .isEqualTo("arn:aws:iam::123456789012:role/customer-role");
     Assertions.assertThat(capturedRequest.roleSessionName()).isEqualTo("my-session");
     Assertions.assertThat(capturedRequest.externalId()).isEqualTo("external-id-123");
+    // No session policy → no policy attached
+    Assertions.assertThat(capturedRequest.policy()).isNull();
   }
 
   @Test
@@ -153,7 +156,7 @@ public class SigV4ConnectionCredentialVendorTest {
     // SigV4 auth without explicit session name
     SigV4AuthenticationParametersDpo authParams =
         new SigV4AuthenticationParametersDpo(
-            "arn:aws:iam::123456789012:role/customer-role", null, null, "us-west-2", "glue");
+            "arn:aws:iam::123456789012:role/customer-role", null, null, "us-west-2", "glue", null);
 
     // Create connection config with service identity and auth params
     IcebergRestConnectionConfigInfoDpo connectionConfig =
@@ -191,7 +194,8 @@ public class SigV4ConnectionCredentialVendorTest {
             "my-session",
             "external-id-123",
             "eu-west-1",
-            "glue");
+            "glue",
+            null);
 
     IcebergRestConnectionConfigInfoDpo connectionConfig =
         createConnectionConfig(authParams, serviceIdentity);
@@ -204,6 +208,39 @@ public class SigV4ConnectionCredentialVendorTest {
   }
 
   @Test
+  public void testSessionPolicyPassedToAssumeRole() {
+    ServiceIdentityInfoDpo serviceIdentity =
+        new AwsIamServiceIdentityInfoDpo(
+            new SecretReference("urn:polaris-secret:test:my-realm:AWS_IAM", Map.of()));
+
+    String customPolicy =
+        "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\","
+            + "\"Action\":[\"glue:*\",\"s3:GetObject\",\"s3:ListBucket\"],"
+            + "\"Resource\":\"*\"}]}";
+
+    SigV4AuthenticationParametersDpo authParams =
+        new SigV4AuthenticationParametersDpo(
+            "arn:aws:iam::123456789012:role/customer-role",
+            "my-session",
+            "external-id-123",
+            "us-west-2",
+            "glue",
+            customPolicy);
+
+    IcebergRestConnectionConfigInfoDpo connectionConfig =
+        createConnectionConfig(authParams, serviceIdentity);
+
+    vendor.getConnectionCredentials(connectionConfig);
+
+    // Verify the session policy is passed to AssumeRole
+    ArgumentCaptor<AssumeRoleRequest> requestCaptor =
+        ArgumentCaptor.forClass(AssumeRoleRequest.class);
+    Mockito.verify(mockStsClient).assumeRole(requestCaptor.capture());
+
+    Assertions.assertThat(requestCaptor.getValue().policy()).isEqualTo(customPolicy);
+  }
+
+  @Test
   public void testStsDestinationUsesDifferentRegions() {
     ServiceIdentityInfoDpo serviceIdentity =
         new AwsIamServiceIdentityInfoDpo(
@@ -211,7 +248,12 @@ public class SigV4ConnectionCredentialVendorTest {
 
     SigV4AuthenticationParametersDpo authParams =
         new SigV4AuthenticationParametersDpo(
-            "arn:aws:iam::123456789012:role/customer-role", null, null, "ap-southeast-1", null);
+            "arn:aws:iam::123456789012:role/customer-role",
+            null,
+            null,
+            "ap-southeast-1",
+            null,
+            null);
 
     IcebergRestConnectionConfigInfoDpo connectionConfig =
         createConnectionConfig(authParams, serviceIdentity);

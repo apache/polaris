@@ -180,7 +180,7 @@ public class PolarisApplicationIntegrationTest {
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
             .setExternalId("externalId")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
             .build(),
         "s3://my-bucket/path/to/data");
   }
@@ -702,6 +702,20 @@ public class PolarisApplicationIntegrationTest {
       } else {
         assertThatCode(createBadChildGoodParent).doesNotThrowAnyException();
       }
+    }
+  }
+
+  @Test
+  public void testRenameTableNonExistentSourceReportsSourceIdentifier() throws IOException {
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(internalCatalogName)) {
+      SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
+      sessionCatalog.createNamespace(sessionContext, Namespace.of("ns1"));
+      TableIdentifier nonExistentSource = TableIdentifier.of("ns1", "no_such_table");
+      TableIdentifier destination = TableIdentifier.of("ns1", "another");
+      assertThatThrownBy(
+              () -> sessionCatalog.renameTable(sessionContext, nonExistentSource, destination))
+          .isInstanceOf(NoSuchTableException.class)
+          .hasMessageContaining(nonExistentSource.toString());
     }
   }
 }

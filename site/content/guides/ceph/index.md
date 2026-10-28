@@ -19,6 +19,7 @@
 #
 linkTitle: "Storage: Ceph"
 title: "Getting Started with Apache Polaris and Ceph"
+description: "Uses a single-node Ceph cluster with RADOS Gateway (RGW) for S3-compatible object storage."
 weight: 200
 tags:
   - ceph
@@ -94,7 +95,7 @@ services:
 
 ```shell
 bin/spark-sql \
-    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1 \
+    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.12.0,org.apache.iceberg:iceberg-aws-bundle:1.12.0 \
     --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
     --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \
     --conf spark.sql.catalog.polaris.type=rest \
@@ -132,7 +133,7 @@ SELECT * FROM ns.t1;
 ## Lack of Credential Vending
 
 Notice that the Spark configuration does not contain a `X-Iceberg-Access-Delegation` header.
-This is because example cluster does not include STS (Security Token Service) or temporary credentials. 
+This is because the example cluster does not include STS (Security Token Service) or temporary credentials.
 
 The lack of STS API is represented in the Catalog storage configuration by the 
 `stsUnavailable=true` property.

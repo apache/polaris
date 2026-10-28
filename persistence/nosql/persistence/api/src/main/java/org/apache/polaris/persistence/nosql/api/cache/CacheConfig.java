@@ -22,8 +22,6 @@ import static com.google.common.base.Preconditions.checkState;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
@@ -32,6 +30,8 @@ import java.util.Optional;
 import java.util.function.LongSupplier;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /** Persistence cache configuration. */
 @ConfigMapping(prefix = "polaris.persistence.cache")

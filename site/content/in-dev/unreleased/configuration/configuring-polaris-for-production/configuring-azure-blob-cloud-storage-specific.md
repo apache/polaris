@@ -137,7 +137,7 @@ Spark example, matching the property names used by the existing MinIO / RustFS g
 
 ```shell
 bin/spark-sql \
-    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-azure-bundle:1.10.1 \
+    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.12.0,org.apache.iceberg:iceberg-azure-bundle:1.12.0 \
     --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
     --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \
     --conf spark.sql.catalog.polaris.type=rest \
@@ -147,9 +147,14 @@ bin/spark-sql \
     --conf spark.sql.catalog.polaris.warehouse=warehouse_azure \
     --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \
     --conf spark.sql.catalog.polaris.credential=<client-id>:<client-secret> \
+    --conf spark.redaction.regex='(?i)secret|password|token|access[.]?key|credential' \
     --conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials \
     --conf spark.sql.catalog.polaris.io-impl=org.apache.iceberg.azure.adlsv2.ADLSFileIO
 ```
+
+The `spark.redaction.regex` line redacts the `credential` secret from the Spark UI and logs, since
+Spark's default redaction pattern does not cover `credential`. Newer Spark releases redact this key
+by default; the line keeps it redacted on earlier versions.
 
 The `oauth2-server-uri` is recommended: without it the Iceberg REST client falls back to a
 hard-coded `/v1/oauth/tokens` path and logs a deprecation warning, since the automatic fallback

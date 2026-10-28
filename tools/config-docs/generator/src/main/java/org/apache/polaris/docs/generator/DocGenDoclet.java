@@ -83,12 +83,14 @@ public class DocGenDoclet implements Doclet {
     var propertiesConfigs = new PropertiesConfigs(environment);
     var smallryeConfigs = new SmallRyeConfigs(environment);
     var polarisConfigs = new PolarisConfigurationConfigs(environment);
+    var storageAccessPropertyConfigs = new StorageAccessPropertyConfigs(environment);
 
     for (var includedElement : environment.getIncludedElements()) {
       try {
         includedElement.accept(propertiesConfigs.visitor(), null);
         includedElement.accept(smallryeConfigs.visitor(), null);
         includedElement.accept(polarisConfigs.visitor(), null);
+        includedElement.accept(storageAccessPropertyConfigs.visitor(), null);
       } catch (RuntimeException ex) {
         throw new RuntimeException("Failure processing included element " + includedElement, ex);
       }
@@ -99,6 +101,8 @@ public class DocGenDoclet implements Doclet {
     smallryeConfigPages(environment, smallryeConfigs);
 
     polarisConfigPages(polarisConfigs);
+
+    storageAccessPropertyPages(storageAccessPropertyConfigs);
 
     return true;
   }
@@ -344,6 +348,28 @@ public class DocGenDoclet implements Doclet {
       String propertyNamePrefix, String propertyName, String propertySuffix) {
     var r = concatWithDot(propertyNamePrefix, propertyName);
     return propertySuffix.isEmpty() ? r : concatWithDot(r, "`_`<" + propertySuffix + ">`_`");
+  }
+
+  private void storageAccessPropertyPages(
+      StorageAccessPropertyConfigs storageAccessPropertyConfigs) {
+    var byStorageType = storageAccessPropertyConfigs.byStorageType();
+    if (byStorageType.isEmpty()) {
+      return;
+    }
+    System.out.println("... generating storage access property pages");
+    for (var entry : byStorageType.entrySet()) {
+      var storageType = entry.getKey();
+      var properties = entry.getValue();
+      System.out.printf("... generating storage access property page for %s%n", storageType);
+      var page = new StorageAccessPropertySectionPage(properties);
+      var file = outputDirectory.resolve("storage-" + storageType.toLowerCase(Locale.ROOT) + ".md");
+      try (var pw =
+          new PrintWriter(Files.newBufferedWriter(file, UTF_8, CREATE, TRUNCATE_EXISTING))) {
+        page.writeTo(pw);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   private String safeFileName(String str) {

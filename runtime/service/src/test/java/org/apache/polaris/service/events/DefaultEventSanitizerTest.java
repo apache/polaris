@@ -25,6 +25,8 @@ import static org.mockito.Mockito.when;
 
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
+import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.junit.jupiter.api.Test;
 
 class DefaultEventSanitizerTest {
@@ -41,14 +43,15 @@ class DefaultEventSanitizerTest {
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_NAMESPACE,
             null,
-            new EventAttributeMap()
+            ImmutableAttributeMap.builder()
                 .put(EventAttributes.NAMESPACE, Namespace.of("ns1"))
-                .put(EventAttributes.CATALOG, catalog));
+                .put(EventAttributes.CATALOG, catalog)
+                .build());
 
     PolarisEvent sanitized = sanitizer.sanitize(input);
 
-    assertThat(sanitized.attributes().contains(EventAttributes.CATALOG)).isFalse();
-    assertThat(sanitized.attributes().contains(EventAttributes.NAMESPACE)).isTrue();
+    assertThat(sanitized.attributes().containsKey(EventAttributes.CATALOG)).isFalse();
+    assertThat(sanitized.attributes().containsKey(EventAttributes.NAMESPACE)).isTrue();
   }
 
   @Test
@@ -60,12 +63,13 @@ class DefaultEventSanitizerTest {
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_CATALOG,
             null,
-            new EventAttributeMap().put(EventAttributes.CATALOG, catalog));
+            ImmutableAttributeMap.builder().put(EventAttributes.CATALOG, catalog).build());
 
     PolarisEvent sanitized = sanitizer.sanitize(input);
 
-    assertThat(sanitized.attributes().contains(EventAttributes.CATALOG)).isFalse();
-    assertThat(sanitized.attributes().get(EventAttributes.CATALOG_NAME)).hasValue("derived");
+    assertThat(sanitized.attributes().containsKey(EventAttributes.CATALOG)).isFalse();
+    assertThat(sanitized.attributes().getOptional(EventAttributes.CATALOG_NAME))
+        .hasValue("derived");
   }
 
   @Test
@@ -77,25 +81,27 @@ class DefaultEventSanitizerTest {
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_CATALOG,
             null,
-            new EventAttributeMap()
+            ImmutableAttributeMap.builder()
                 .put(EventAttributes.CATALOG_NAME, "explicit")
-                .put(EventAttributes.CATALOG, catalog));
+                .put(EventAttributes.CATALOG, catalog)
+                .build());
 
     PolarisEvent sanitized = sanitizer.sanitize(input);
 
-    assertThat(sanitized.attributes().get(EventAttributes.CATALOG_NAME)).hasValue("explicit");
+    assertThat(sanitized.attributes().getOptional(EventAttributes.CATALOG_NAME))
+        .hasValue("explicit");
   }
 
   @Test
   void shouldReturnNewEventInstanceWithoutMutatingInput() {
-    EventAttributeMap originalAttributes =
-        new EventAttributeMap().put(EventAttributes.NAMESPACE, Namespace.of("ns1"));
+    MutableAttributeMap originalAttributes = new MutableAttributeMap();
+    originalAttributes.put(EventAttributes.NAMESPACE, Namespace.of("ns1"));
     PolarisEvent input =
         new PolarisEvent(PolarisEventType.AFTER_CREATE_NAMESPACE, null, originalAttributes);
 
     PolarisEvent sanitized = sanitizer.sanitize(input);
 
     assertThat(sanitized).isNotSameAs(input);
-    assertThat(input.attributes().contains(EventAttributes.NAMESPACE)).isTrue();
+    assertThat(input.attributes().containsKey(EventAttributes.NAMESPACE)).isTrue();
   }
 }

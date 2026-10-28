@@ -23,32 +23,29 @@ from functools import cached_property
 from typing import Optional, Dict, Any
 
 from apache_polaris.cli.constants import (
-    CONFIG_FILE,
     CLIENT_PROFILE_ENV,
     CLIENT_ID_ENV,
     CLIENT_SECRET_ENV,
     REALM_ENV,
     HEADER_ENV,
     Arguments,
+    DEFAULT_HEADER,
     DEFAULT_HOSTNAME,
     DEFAULT_PORT,
+    DEFAULT_SCHEME,
 )
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 from apache_polaris.cli.options.option_tree import Argument
+from apache_polaris.cli.profile_config import load_profiles
 from apache_polaris.sdk.management import ApiClient, Configuration
-
-
-def _load_profiles() -> Dict[str, Dict[str, Any]]:
-    if not os.path.exists(CONFIG_FILE):
-        return {}
-    with open(CONFIG_FILE, "r") as f:
-        return json.load(f)
 
 
 class BuilderConfig:
     def __init__(self, options: Namespace):
         self.options = options
         self.proxy = options.proxy
+        self.ssl_ca_cert = options.ssl_ca_cert
+        self.insecure = options.insecure
         self.access_token = options.access_token
 
     @cached_property
@@ -56,7 +53,7 @@ class BuilderConfig:
         profile: Dict[str, Any] = {}
         client_profile = self.options.profile or os.getenv(CLIENT_PROFILE_ENV)
         if client_profile:
-            profiles = _load_profiles()
+            profiles = load_profiles()
             loaded_profile = profiles.get(client_profile)
             if loaded_profile is None:
                 raise CliError(f"Polaris profile {client_profile} not found")
@@ -66,25 +63,44 @@ class BuilderConfig:
     @cached_property
     def base_url(self) -> str:
         if self.options.base_url:
-            if self.options.host is not None or self.options.port is not None:
+            if (
+                self.options.host is not None
+                or self.options.port is not None
+                or self.options.scheme is not None
+            ):
                 raise CliError(
                     f"Please provide either {Argument.to_flag_name(Arguments.BASE_URL)} or"
                     f" {Argument.to_flag_name(Arguments.HOST)} &"
-                    f" {Argument.to_flag_name(Arguments.PORT)}, but not both"
+                    f" {Argument.to_flag_name(Arguments.PORT)} (with optional"
+                    f" {Argument.to_flag_name(Arguments.SCHEME)}), but not both"
                 )
             return self.options.base_url
 
         host = self.options.host or self.profile.get(Arguments.HOST) or DEFAULT_HOSTNAME
         port = self.options.port or self.profile.get(Arguments.PORT) or DEFAULT_PORT
-        return f"http://{host}:{port}"
+        scheme = (
+            self.options.scheme or self.profile.get(Arguments.SCHEME) or DEFAULT_SCHEME
+        )
+        return f"{scheme}://{host}:{port}"
 
     @cached_property
     def management_url(self) -> str:
         return f"{self.base_url}/api/management/v1"
 
     @cached_property
+    def explicit_catalog_url(self) -> Optional[str]:
+        # Direct catalog base URL provided via --catalog-url (or profile).
+        # Used verbatim for custom IRC paths (e.g. proxy-mapped roots).
+        direct = getattr(self.options, "catalog_url", None) or self.profile.get(
+            Arguments.CATALOG_URL
+        )
+        return direct.rstrip("/") if direct else None
+
+    @cached_property
     def catalog_url(self) -> str:
-        return f"{self.base_url}/api/catalog/v1"
+        # Falls back to standard Polaris layout under the base URL if no explicit
+        # --catalog-url is provided.
+        return self.explicit_catalog_url or f"{self.base_url}/api/catalog"
 
     @cached_property
     def client_id(self) -> Optional[str]:
@@ -112,11 +128,12 @@ class BuilderConfig:
         return realms
 
     @cached_property
-    def header(self) -> Optional[str]:
+    def header(self) -> str:
         return (
             self.options.header
             or os.getenv(HEADER_ENV)
             or self.profile.get(Arguments.HEADER)
+            or DEFAULT_HEADER
         )
 
 
@@ -125,17 +142,24 @@ class ApiClientBuilder:
         self.conf = BuilderConfig(options)
         self.direct_auth_enabled = direct_authentication
 
+    def _new_configuration(self) -> Configuration:
+        config = Configuration(
+            host=self.conf.management_url, ssl_ca_cert=self.conf.ssl_ca_cert
+        )
+        config.proxy = self.conf.proxy
+        config.verify_ssl = not self.conf.insecure
+        return config
+
     def _get_token(self) -> str:
         header_params = {"Content-Type": "application/x-www-form-urlencoded"}
         if self.conf.header and self.conf.realm:
             header_params[self.conf.header] = self.conf.realm
 
-        conf = Configuration(host=self.conf.management_url)
-        conf.proxy = self.conf.proxy
+        conf = self._new_configuration()
         api_client = ApiClient(conf)
         response = api_client.call_api(
             "POST",
-            f"{self.conf.catalog_url}/oauth/tokens",
+            f"{self.conf.catalog_url}/v1/oauth/tokens",
             header_params=header_params,
             post_params={
                 "grant_type": "client_credentials",
@@ -144,10 +168,20 @@ class ApiClientBuilder:
                 "scope": "PRINCIPAL_ROLE:ALL",
             },
         ).response.data
-        if "access_token" not in json.loads(response):
-            # Distinct from validation errors: HTTP succeeded but body was not a usable token.
-            raise CliError("Failed to get access token", exit_code=CLI_ERROR_EXIT_CODE)
-        return json.loads(response)["access_token"]
+        data = json.loads(response)
+        if "access_token" in data:
+            return data["access_token"]
+
+        error = data.get("error")
+        error_description = data.get("error_description")
+        if error and error_description:
+            message = f"Failed to get access token: {error} - {error_description}"
+        elif error:
+            message = f"Failed to get access token: {error}"
+        else:
+            message = "Failed to get access token"
+        # Distinct from validation errors: HTTP succeeded but body was not a usable token.
+        raise CliError(message, exit_code=CLI_ERROR_EXIT_CODE)
 
     def _build(self) -> ApiClient:
         has_access_token = self.conf.access_token is not None
@@ -171,8 +205,7 @@ class ApiClientBuilder:
                 f" {CLIENT_SECRET_ENV}."
             )
 
-        config = Configuration(host=self.conf.management_url)
-        config.proxy = self.conf.proxy
+        config = self._new_configuration()
         if has_access_token:
             config.access_token = self.conf.access_token
         elif has_client_secret:
@@ -189,7 +222,15 @@ class ApiClientBuilder:
             client_params["header_name"] = self.conf.header
             client_params["header_value"] = self.conf.realm
 
-        return ApiClient(config, **client_params)
+        api_client = ApiClient(config, **client_params)
+        if self.conf.explicit_catalog_url:
+            # Attach direct catalog base so that get_catalog_api_client() can use
+            # it verbatim instead of the regex hack. This enables custom IRC base
+            # URIs (see https://github.com/apache/polaris/issues/4927).
+            api_client.configuration._polaris_catalog_base = (
+                self.conf.explicit_catalog_url
+            )
+        return api_client
 
     def get_api_client(self) -> ApiClient:
         return self._build()

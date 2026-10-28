@@ -18,20 +18,17 @@
  */
 package org.apache.polaris.core.secrets;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Base test class for implementations of UserSecretsManager which can be extended by different
  * implementation-specific unittests.
  */
 public abstract class UserSecretsManagerBaseTest {
-  private static final ObjectMapper DEFAULT_MAPPER = JsonMapper.builder().build();
 
   /**
    * @return a fresh instance of a UserSecretsManager to use in test cases.
@@ -39,7 +36,7 @@ public abstract class UserSecretsManagerBaseTest {
   protected abstract UserSecretsManager newSecretsManager();
 
   @Test
-  public void testBasicSecretStorageAndRetrieval() throws JsonProcessingException {
+  public void testBasicSecretStorageAndRetrieval() {
     UserSecretsManager secretsManager = newSecretsManager();
 
     PolarisEntity entity1 = new CatalogEntity.Builder().setId(1111L).setName("entity1").build();
@@ -52,13 +49,13 @@ public abstract class UserSecretsManagerBaseTest {
     SecretReference reference2 = secretsManager.writeSecret(secret2, entity2);
 
     // Make sure we can JSON-serialize and deserialize the SecretReference objects.
-    String serializedReference1 = DEFAULT_MAPPER.writeValueAsString(reference1);
-    String serializedReference2 = DEFAULT_MAPPER.writeValueAsString(reference2);
+    String serializedReference1 = JsonMapper.shared().writeValueAsString(reference1);
+    String serializedReference2 = JsonMapper.shared().writeValueAsString(reference2);
 
     SecretReference reassembledReference1 =
-        DEFAULT_MAPPER.readValue(serializedReference1, SecretReference.class);
+        JsonMapper.shared().readValue(serializedReference1, SecretReference.class);
     SecretReference reassembledReference2 =
-        DEFAULT_MAPPER.readValue(serializedReference2, SecretReference.class);
+        JsonMapper.shared().readValue(serializedReference2, SecretReference.class);
 
     Assertions.assertThat(reassembledReference1).isEqualTo(reference1);
     Assertions.assertThat(reassembledReference2).isEqualTo(reference2);

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.auth;
 
+import java.util.function.Consumer;
 import org.jspecify.annotations.NonNull;
 
 /** Authorization intent describing an operation and its target resource shape. */
@@ -30,5 +31,15 @@ public sealed interface AuthorizationIntent
         PrivilegeGrantAuthorizationIntent,
         RootPrivilegeGrantAuthorizationIntent {
 
-  @NonNull PolarisAuthorizableOperation getOperation();
+  @NonNull PolarisAuthorizableOperation operation();
+
+  /**
+   * @deprecated Since Polaris 1.8; use {@link #operation()} instead.
+   */
+  @Deprecated(since = "1.8", forRemoval = true)
+  default @NonNull PolarisAuthorizableOperation getOperation() {
+    return operation();
+  }
+
+  void visitSecurables(Consumer<PolarisSecurable> visitor);
 }

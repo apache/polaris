@@ -219,7 +219,12 @@ public record MutationAttempt(
           case CATALOG -> {
             var catalogState = memoizedIndexedAccess.catalogContent(entity.getId());
 
-            if (catalogState.nameIndex().map(idx -> idx.iterator().hasNext()).orElse(false)) {
+            // A non-empty catalog may only be dropped if the caller requested it. Its remaining
+            // namespaces and tables are not dropped here: the catalog's content is no longer
+            // reachable once the catalog is gone, and will be eventually purged by
+            // persistence-maintenance.
+            if (!update.dropNonEmptyCatalog()
+                && catalogState.nameIndex().map(idx -> idx.iterator().hasNext()).orElse(false)) {
               mutationResults.dropResult(NAMESPACE_NOT_EMPTY);
               yield false;
             }
@@ -535,6 +540,10 @@ public record MutationAttempt(
 
   public static void updateLocationsIndex(
       UpdatableIndex<EntityIdSet> locations, ObjBase originalObj, ObjBase entityObj) {
+    if (locations == null) {
+      return;
+    }
+
     var previousBaseLocation =
         originalObj != null ? originalObj.properties().get(ENTITY_BASE_LOCATION) : null;
     var entityBaseLocation =

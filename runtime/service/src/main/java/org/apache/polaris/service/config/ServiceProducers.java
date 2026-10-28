@@ -38,9 +38,9 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
+import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
@@ -53,7 +53,6 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -77,13 +76,13 @@ import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.credentials.PolarisCredentialManagerConfiguration;
 import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
+import org.apache.polaris.service.metrics.IcebergMetricsReporter;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.reporting.MetricsReportingConfiguration;
-import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.secrets.SecretsManagerConfiguration;
 import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
@@ -98,7 +97,7 @@ import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.http.SdkHttpClient;
-import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.http.apache5.Apache5HttpClient;
 
 public class ServiceProducers {
   private static final Logger LOGGER = LoggerFactory.getLogger(ServiceProducers.class);
@@ -140,13 +139,7 @@ public class ServiceProducers {
       RealmConfigurationSource configurationSource,
       MetaStoreManagerFactory metaStoreManagerFactory) {
     BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    // When the backend implements both SPIs on the same instance (e.g. JDBC, in-memory), reuse the
-    // session instead of building a second persistence instance per request.
-    MetricsPersistence metricsPersistence =
-        (metaStore instanceof MetricsPersistence mp)
-            ? mp
-            : metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext);
-    return new PolarisCallContext(realmContext, metaStore, metricsPersistence, configurationSource);
+    return new PolarisCallContext(realmContext, metaStore, configurationSource);
   }
 
   @Produces
@@ -171,12 +164,6 @@ public class ServiceProducers {
   public PolarisAuthorizer polarisAuthorizer(
       PolarisAuthorizerFactory factory, RealmConfig realmConfig) {
     return factory.create(realmConfig);
-  }
-
-  @Produces
-  @RequestScoped
-  public AuthorizationState authorizationState() {
-    return new AuthorizationState();
   }
 
   @Produces
@@ -250,7 +237,7 @@ public class ServiceProducers {
   @Singleton
   @Identifier("aws-sdk-http-client")
   public SdkHttpClient sdkHttpClient(S3AccessConfig config) {
-    ApacheHttpClient.Builder httpClient = ApacheHttpClient.builder();
+    Apache5HttpClient.Builder httpClient = Apache5HttpClient.builder();
     config.maxHttpConnections().ifPresent(httpClient::maxConnections);
     config.readTimeout().ifPresent(httpClient::socketTimeout);
     config.connectTimeout().ifPresent(httpClient::connectionTimeout);
@@ -457,9 +444,27 @@ public class ServiceProducers {
 
   @Produces
   @ApplicationScoped
-  public PolarisMetricsReporter metricsReporter(
-      MetricsReportingConfiguration config, @Any Instance<PolarisMetricsReporter> reporters) {
-    return reporters.select(Identifier.Literal.of(config.type())).get();
+  public IcebergMetricsReporter metricsReporter(
+      MetricsReportingConfiguration config, @Any Instance<IcebergMetricsReporter> reporters) {
+    Instance<IcebergMetricsReporter> selected =
+        reporters.select(Identifier.Literal.of(config.type()));
+    if (selected.isResolvable()) {
+      return selected.get();
+    }
+    // No reporter matched the configured type. Reporter implementations live in the
+    // polaris-extensions-metrics-reports(-jdbc) modules; a downstream build may legitimately omit
+    // them. Don't warn at startup (it would be a false alarm for such builds); instead return a
+    // reporter that fails loudly only if metrics are actually reported.
+    String type = config.type();
+    return envelope -> {
+      LOGGER.error(
+          "No IcebergMetricsReporter is configured for type '{}'; cannot report Iceberg metrics."
+              + " Install a metrics reporter extension or set"
+              + " polaris.iceberg-metrics.reporting.type to an available reporter.",
+          type);
+      throw new IllegalStateException(
+          "No IcebergMetricsReporter configured for type '" + type + "'");
+    };
   }
 
   @Produces
@@ -472,11 +477,15 @@ public class ServiceProducers {
             "Event listener executor is not available because no event listeners are configured");
       };
     }
+    int poolSize = config.executor().poolSize();
+    if (poolSize == -1) {
+      poolSize = Math.min(config.types().get().size(), Runtime.getRuntime().availableProcessors());
+    }
     return SmallRyeManagedExecutor.builder()
         .injectionPointName("event-listener-executor")
         .propagated(ThreadContext.ALL_REMAINING)
         .cleared(ThreadContext.CDI)
-        .maxAsync(config.executor().poolSize())
+        .maxAsync(poolSize)
         .maxQueued(config.executor().queueSize())
         .build();
   }
@@ -486,5 +495,12 @@ public class ServiceProducers {
     if (executor instanceof ManagedExecutor managedExecutor) {
       managedExecutor.close();
     }
+  }
+
+  @Produces
+  @RequestScoped
+  @Identifier("event-attribute-map")
+  public MutableAttributeMap eventAttributeMap() {
+    return new MutableAttributeMap();
   }
 }

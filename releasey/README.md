@@ -46,10 +46,13 @@ The release automation is implemented through the following GitHub workflows:
    - Builds Docker images for server and admin tool
    - Builds Helm charts and stages them to dist dev repository
 4. **[Publish Release](../.github/workflows/release-4-publish-release.yml)** - Finalizes the release:
-   - Copies distribution from dist dev to dist release space
-   - Creates a final release tag and GitHub release
+   - Creates a final release tag and GitHub release (artifacts downloaded from dist dev)
    - Publishes Docker images to Docker Hub
    - Releases the candidate repository on Nexus
+   - Note: moving artifacts from `dist dev` to `dist release` and cleaning up superseded
+     versions in `dist release` are performed manually by a PMC member after this workflow,
+     because the workflow credentials do not have write access to the release area. See the
+     semi-automated release guide for the exact `svn` commands.
 
 ## Directory Structure
 

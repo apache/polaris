@@ -70,7 +70,7 @@ public class AzureLocation extends StorageLocation {
     this.storageAccount = hostParts[0];
     this.endpoint = hostParts[1];
     String path = matcher.group(3);
-    filePath = path == null ? "" : path.startsWith("/") ? path.substring(1) : path;
+    filePath = StorageLocation.trimLeadingSlash(path);
   }
 
   /** Get the storage account */
@@ -86,6 +86,21 @@ public class AzureLocation extends StorageLocation {
   /** Get the endpoint, for example: blob.core.windows.net */
   public String getEndpoint() {
     return endpoint;
+  }
+
+  /** Get the storage DNS name, for example: myaccount.blob.core.windows.net */
+  public String getStorageDnsName() {
+    return storageAccount + "." + endpoint;
+  }
+
+  /** Returns true if this location uses the ADLS (DFS) endpoint. */
+  public boolean isAdls() {
+    return ADLS_ENDPOINT.equalsIgnoreCase(endpoint);
+  }
+
+  /** Returns true if this location uses the Blob endpoint. */
+  public boolean isBlob() {
+    return BLOB_ENDPOINT.equalsIgnoreCase(endpoint);
   }
 
   /** Get the file path */
@@ -107,9 +122,10 @@ public class AzureLocation extends StorageLocation {
     if (potentialParent instanceof AzureLocation potentialAzureParent) {
       if (this.container.equals(potentialAzureParent.container)) {
         if (this.storageAccount.equals(potentialAzureParent.storageAccount)) {
-          String formattedFilePath = ensureLeadingSlash(ensureTrailingSlash(this.filePath));
-          String formattedParentFilePath =
-              ensureLeadingSlash(ensureTrailingSlash(potentialAzureParent.filePath));
+          // filePath has its separator slash removed, so always add it back (only adding it when
+          // missing would make "container@host//a" and "container@host/a" equivalent).
+          String formattedFilePath = ensureTrailingSlash("/" + this.filePath);
+          String formattedParentFilePath = ensureTrailingSlash("/" + potentialAzureParent.filePath);
           return formattedFilePath.startsWith(formattedParentFilePath);
         }
       }

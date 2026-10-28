@@ -43,7 +43,7 @@ follows:
   :polaris-server:assemble \
   :polaris-server:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.build=true
-S3_TEST_BACKEND=minio docker compose --profile minio -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
+S3_TEST_BACKEND=rustfs docker compose --profile rustfs -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
 
 In this setup, a Polaris container will be started in a docker-compose group, using the image
@@ -132,22 +132,18 @@ AZURE_BLOB_TEST_BASE=abfss://<container-name>@<storage-account-name>.blob.core.w
 into the `credentials` folder. Then specify the name of the file in your .env file - do not change the
 path, as `/tmp/credentials` is the folder on the container where the credentials file will be mounted.
 
-## Local S3-compatible Storage (MinIO or RustFS)
+## Local S3-compatible Storage (RustFS)
 
 Regression tests support local S3-compatible storage as an alternative to real AWS S3.
 
-Currently supported backends:
-- **MinIO** (Default)
-- **RustFS**
+The supported local backend is **RustFS**.
 
 ### Running with Local Backend
 
 The `docker-compose` setup use **Docker Compose Profiles** to manage these backends.
 
 ```shell
-# Run with MinIO (default)
-S3_TEST_BACKEND=minio docker compose --profile minio -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
-# Run with RustFS
+# Run with RustFS (default)
 S3_TEST_BACKEND=rustfs docker compose --profile rustfs -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
 
@@ -169,18 +165,6 @@ Local backends use hardcoded test credentials:
 
 These are configured automatically in both storage backends and the Polaris service during testing.
 
-### Configuration
-
-When running locally, you can access the storage console:
-- **MINIO_ENDPOINT** - http://localhost:9001
-
-### Limitations
-
-MinIO mode has some differences from AWS mode:
-- **KMS policy limitation**: MinIO supports KMS for server-side encryption, but its STS policy evaluator does not support KMS ARNs as resource identifiers in IAM policies. Polaris includes KMS key resources when subscoping credentials via STS AssumeRole, which MinIO rejects. The catalog is therefore configured with `kmsUnavailable=true` to omit KMS resources from the inline policy.
-- **Path-style access**: MinIO uses path-style S3 access (`http://endpoint/bucket/key`) instead of virtual-hosted style.
-
-MinIO does support STS AssumeRole on the same port as S3, so the full credential vending flow (vended credentials with session tokens) works identically to AWS.
 
 ## Fixing a failed test due to incorrect expected output
 
@@ -188,15 +172,15 @@ If a test fails due to incorrect expected output, the test harness will generate
 you compare the actual output with the expected output. The script will be located in the `output`
 directory, and will have the same name as the test, with the extension `.fixdiffs.sh`.
 
-For example, if the test `t_hello_world` fails, the script to compare the actual and expected output
-will be located at `output/t_hello_world/hello_world.sh.fixdiffs.sh`:
+For example, if the test `t_catalog_federation` fails, the script to compare the actual and expected
+output will be located at `output/t_catalog_federation/catalog_federation.sh.fixdiffs.sh`:
 
 ```
 Tue Apr 23 06:32:23 UTC 2024: Running all tests
-Tue Apr 23 06:32:23 UTC 2024: Starting test t_hello_world:hello_world.sh
-Tue Apr 23 06:32:23 UTC 2024: Test run concluded for t_hello_world:hello_world.sh
-Tue Apr 23 06:32:23 UTC 2024: Test FAILED: t_hello_world:hello_world.sh
-Tue Apr 23 06:32:23 UTC 2024: To compare and fix diffs: /tmp/polaris-regtests/t_hello_world/hello_world.sh.fixdiffs.sh
+Tue Apr 23 06:32:23 UTC 2024: Starting test t_catalog_federation:catalog_federation.sh
+Tue Apr 23 06:32:23 UTC 2024: Test run concluded for t_catalog_federation:catalog_federation.sh
+Tue Apr 23 06:32:23 UTC 2024: Test FAILED: t_catalog_federation:catalog_federation.sh
+Tue Apr 23 06:32:23 UTC 2024: To compare and fix diffs: /tmp/polaris-regtests/t_catalog_federation/catalog_federation.sh.fixdiffs.sh
 Tue Apr 23 06:32:23 UTC 2024: Starting test t_spark_sql:spark_sql_basic.sh
 Tue Apr 23 06:32:32 UTC 2024: Test run concluded for t_spark_sql:spark_sql_basic.sh
 Tue Apr 23 06:32:32 UTC 2024: Test SUCCEEDED: t_spark_sql:spark_sql_basic.sh
@@ -205,7 +189,7 @@ Tue Apr 23 06:32:32 UTC 2024: Test SUCCEEDED: t_spark_sql:spark_sql_basic.sh
 Simply execute the specified `fixdiffs.sh` file, which will in turn run `meld` and fix the ref file:
 
 ```
-/tmp/polaris-regtests/t_hello_world/hello_world.sh.fixdiffs.sh
+/tmp/polaris-regtests/t_catalog_federation/catalog_federation.sh.fixdiffs.sh
 ```
 
 Then commit the changes to the ref file.

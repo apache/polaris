@@ -45,7 +45,9 @@ options:
 Global Options:
   --host HOST                    Polaris server hostname
   --port PORT                    Polaris server port
-  --base-url BASE_URL            Complete base URL (overrides host/port)
+  --scheme {http,https}          URL scheme for host/port (default: http)
+  --base-url BASE_URL            Complete base URL (overrides host/port/scheme)
+  --catalog-url CATALOG_URL      Base URL for the Iceberg REST Catalog (IRC) API. Use when your --base-url or deployment maps directly to the catalog root (no /api/catalog appended).
   --client-id CLIENT_ID          OAuth client ID
   --client-secret CLIENT_SECRET  OAuth client secret
   --access-token ACCESS_TOKEN    OAuth access token
@@ -53,7 +55,10 @@ Global Options:
   --header HEADER                Context header name (default: Polaris-Realm)
   --profile PROFILE              Polaris profile name
   --proxy PROXY                  Proxy URL
+  --ssl-ca-cert SSL_CA_CERT      Path to a PEM file of CA certificates used to verify the server
+  --insecure                     Disable TLS certificate verification (not recommended)
   --debug                        Enable debug mode
+  --page-size PAGE_SIZE          Upper bound on the number of entries returned per API request where pagination is supported. Requires the server-side LIST_PAGINATION_ENABLED feature flag. If not set, fetches all results in a single API request.
 ```
 
 `COMMAND` must be one of the following:
@@ -69,7 +74,9 @@ Global Options:
 10. setup
 11. find
 12. tables
-13. repl
+13. views
+14. generic-tables
+15. repl
 
 Each _command_ supports several _subcommands_, and some _subcommands_ have _actions_ that come after the subcommand in turn. Finally, _arguments_ follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the _command_ refers to. Again, the ordering of this positional argument relative to named arguments is not important.
 
@@ -87,6 +94,8 @@ polaris repair
 polaris setup apply setup-config.yaml
 polaris find some_table
 polaris tables list --catalog my_catalog --namespace ns1
+polaris views list --catalog my_catalog --namespace ns1
+polaris generic-tables list --catalog my_catalog --namespace ns1
 polaris repl
 ```
 
@@ -166,6 +175,7 @@ options:
 Command Options:
   --type {internal,external}                                           The type of catalog [INTERNAL, EXTERNAL]
   --storage-type {s3,azure,gcs,file}                                   (Required) The storage type [S3, AZURE, GCS, FILE]
+  --storage-name STORAGE_NAME                                          An optional name referencing a server-side storage configuration
   --default-base-location DEFAULT_BASE_LOCATION                        (Required) Default base location for the catalog
   --allowed-location ALLOWED_LOCATION                                  An allowed location for files tracked by the catalog
   --property PROPERTY                                                  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once. Do not put passwords, tokens, access keys, or other secrets into the client-visible catalog properties.
@@ -177,8 +187,10 @@ AWS S3 Storage Options:
   --no-sts                                                             Indicates that Polaris should not use STS (e.g. if STS is not available)
   --no-kms                                                             Indicates that Polaris should not use KMS (e.g. if KMS is not available)
   --path-style-access                                                  Whether to use path-style-access for S3
-  --current-kms-key CURRENT_KMS_KEY                                    The AWS KMS key ARN to be used for encrypting new S3 data
-  --allowed-kms-key ALLOWED_KMS_KEY                                    AWS KMS key ARN(s) that this catalog and its clients are allowed to use for reading S3 data (zero or more)
+  --current-kms-key CURRENT_KMS_KEY                                    Deprecated. Use --encryption-key instead
+  --allowed-kms-key ALLOWED_KMS_KEY                                    Deprecated. Use --encryption-key instead
+  --encryption-key ENCRYPTION_KEY                                      AWS KMS key identifier(s) that this catalog and its clients may use to encrypt S3 data; these keys are also granted decryption permissions (zero or more)
+  --decryption-key DECRYPTION_KEY                                      AWS KMS key identifier(s) that this catalog and its clients may use to decrypt S3 data (zero or more)
   --role-arn ROLE_ARN                                                  A role ARN to use when connecting to S3
   --region REGION                                                      The region to use when connecting to S3
   --external-id EXTERNAL_ID                                            The external ID to use when connecting to S3
@@ -197,7 +209,7 @@ External Catalog Federation: General Options:
   --iceberg-remote-catalog-name ICEBERG_REMOTE_CATALOG_NAME            The remote catalog name when federating to an Iceberg REST catalog
   --hadoop-warehouse HADOOP_WAREHOUSE                                  The warehouse to use when federating to a HADOOP catalog
   --hive-warehouse HIVE_WAREHOUSE                                      The warehouse to use when federating to a HIVE catalog
-  --catalog-authentication-type {oauth,bearer,sigv4,implicit}          Authentication type [OAUTH, BEARER, SIGV4, IMPLICIT]
+  --catalog-authentication-type {oauth,bearer,gcp,sigv4,implicit}      Authentication type [OAUTH, BEARER, GCP, SIGV4, IMPLICIT]
   --catalog-service-identity-type {aws_iam}                            Service identity type [AWS_IAM]
   --catalog-uri CATALOG_URI                                            The URI of the external catalog
 
@@ -342,6 +354,7 @@ options:
   -h, --help                                     show this help message and exit
 
 Command Options:
+  --storage-name STORAGE_NAME                    A new storage name referencing a server-side storage configuration
   --default-base-location DEFAULT_BASE_LOCATION  A new default base location for the catalog
   --allowed-location ALLOWED_LOCATION            An additional allowed location for files
   --set-property SET_PROPERTY                    A key/value pair such as: tag=value. Merges the specified key/value into an existing properties map by updating the value if the key already exists or creating a new entry if not. Multiple can be provided by specifying this option more than once. Do not put passwords, tokens, access keys, or other secrets into the client-visible catalog properties.
@@ -349,6 +362,8 @@ Command Options:
 
 AWS S3 Storage Options:
   --region REGION                                The region to use when connecting to S3
+  --no-sts                                       Indicates that Polaris should not use STS (e.g. if STS is not available)
+  --no-kms                                       Indicates that Polaris should not use KMS (e.g. if KMS is not available)
 ```
 
 ##### Examples
@@ -357,6 +372,8 @@ AWS S3 Storage Options:
 polaris catalogs update --set-property tag=new_value my_catalog
 
 polaris catalogs update --default-base-location s3://new-bucket/my_data my_catalog
+
+polaris catalogs update --no-kms my_catalog
 ```
 
 ### Principals
@@ -1005,6 +1022,7 @@ The `namespaces` command is used to manage namespaces within Polaris.
 3. get
 4. list
 5. summarize
+6. update
 
 #### create
 
@@ -1131,6 +1149,33 @@ Command Options:
 
 ```
 polaris namespaces summarize --catalog my_catalog a.b
+```
+
+#### update
+
+The `update` subcommand is used to set or remove properties on a namespace.
+
+```
+usage: polaris namespaces update [-h] [options] NAMESPACE
+
+positional arguments:
+  NAMESPACE                          namespace
+
+options:
+  -h, --help                         show this help message and exit
+
+Command Options:
+  --catalog CATALOG                  The name of a catalog
+  --set-property SET_PROPERTY        A key/value pair such as: tag=value. Merges the specified key/value into an existing properties map by updating the value if the key already exists or creating a new entry if not. Multiple can be provided by specifying this option more than once
+  --remove-property REMOVE_PROPERTY  A key to remove from a properties map. If the key already does not exist then no action is taken for the specified key. Multiple can be provided by specifying this option more than once
+```
+
+##### Examples
+
+```
+polaris namespaces update --catalog my_catalog --set-property owner=data_team a.b
+
+polaris namespaces update --catalog my_catalog --set-property k1=v1 --remove-property k2 a.b
 ```
 
 ### Privileges
@@ -1644,7 +1689,7 @@ The `repair` command is a bash script wrapper used to regenerate Python client c
 
 ### Setup
 
-The `setup` command is used to automate the creation of various entities in Polaris, such as principals, roles, catalogs, namespaces, privileges, and policies, based on a configuration file. This simplifies the process of setting up a Polaris environment.
+The `setup` command is used to automate the creation of various entities in Polaris, such as principals, roles, catalogs, namespaces, tables, views, privileges, and policies, based on a configuration file. This simplifies the process of setting up a Polaris environment. Tables and views are only exported for internal catalogs.
 
 `setup` supports the following subcommands:
 
@@ -1653,7 +1698,7 @@ The `setup` command is used to automate the creation of various entities in Pola
 
 #### apply
 
-The `apply` subcommand reads a configuration file and creates the specified entities in Polaris. The configuration file must be in YAML format and define the entities to be created.
+The `apply` subcommand reads a configuration file and creates the specified entities in Polaris. The configuration file must be in YAML format and define the entities to be created. Tables and views are registered only if they do not already exist. An existing table or view is left unchanged even if the current `metadata_location` differs from the one in the configuraiton file.
 
 ```
 usage: polaris setup apply [-h] [options] SETUP_CONFIG_FILE
@@ -1678,17 +1723,26 @@ polaris setup apply setup-config.yaml
 
 The `export` subcommand retrieves the current Polaris configuration and outputs it in a YAML format. This output is compatible with the apply subcommand, allowing you to easily back up, migrate, or recreate your Polaris environment.
 
+Exported policies are represented as a list with explicit `name` and `namespace` fields so policies with the same name in different namespaces are preserved. The `apply` subcommand also accepts the legacy policy mapping keyed by name, but that format cannot represent duplicate policy names because YAML mapping keys must be unique.
+
+Tables and views are exported only when `--include-tables-and-views` is set. They are exported as lists of `{name, namespace, metadata_location}`, sorted by namespace and name. Staged tables within a transaction are skipped. Because each table and view is loaded individually, this can significantly increase export time for catalogs with many tables.
+
 ```
 usage: polaris setup export [-h] [options]
 
 options:
-  -h, --help  show this help message and exit
+  -h, --help                  show this help message and exit
+
+Command Options:
+  --include-tables-and-views  Also export tables and views of internal catalogs
 ```
 
 ##### Examples
 
 ```
 polaris setup export
+
+polaris setup export --include-tables-and-views
 ```
 
 ### Find
@@ -1715,10 +1769,11 @@ The `tables` command is used to manage Iceberg tables within a Polaris Catalog.
 2. get
 3. summarize
 4. delete
+5. register
 
 #### list
 
-The `list` subcommand is used to list tables within a namesace from a given catalog.
+The `list` subcommand is used to list tables within a namespace from a given catalog.
 
 ```
 usage: polaris tables list [-h] [options]
@@ -1763,7 +1818,7 @@ polaris tables get my_table --catalog my_catalog --namespace ns1
 
 #### summarize
 
-The `summarize` subcommand provides a detail overview of a table.
+The `summarize` subcommand provides a detailed overview of a table.
 
 ```
 usage: polaris tables summarize [-h] [options] TABLE_NAME
@@ -1807,6 +1862,241 @@ Command Options:
 
 ```
 polaris tables delete my_table --catalog my_catalog --namespace ns1
+```
+
+#### register
+
+The `register` subcommand is used to register a table to catalog by its metadata location
+
+```
+usage: polaris tables register [-h] [options] TABLE_NAME
+
+positional arguments:
+  TABLE_NAME                             table
+
+options:
+  -h, --help                             show this help message and exit
+
+Command Options:
+  --catalog CATALOG                      The name of a catalog
+  --namespace NAMESPACE                  A period-delimited namespace
+  --metadata-location METADATA_LOCATION  The absolute location of the Iceberg metadata file
+  --overwrite                            Overwrite an existing table at the same identifier if the table is already registered
+```
+
+##### Examples
+
+```
+polaris tables register my_table --catalog my_catalog --namespace ns1 --metadata-location s3://bucket/path/00001-(uuid).metadata.json
+```
+
+### Views
+
+The `views` command is used to manage Iceberg views within a Polaris Catalog.
+
+`views` supports the following subcommands:
+
+1. list
+2. get
+3. summarize
+4. delete
+5. register
+
+#### list
+
+The `list` subcommand is used to list views within a namespace from a given catalog.
+
+```
+usage: polaris views list [-h] [options]
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris views list
+```
+
+#### get
+
+The `get` subcommand retrieves the view metadata for a specific view.
+
+```
+usage: polaris views get [-h] [options] VIEW_NAME
+
+positional arguments:
+  VIEW_NAME              view
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris views get my_view --catalog my_catalog --namespace ns1
+```
+
+#### summarize
+
+The `summarize` subcommand provides a detailed overview of a view.
+
+```
+usage: polaris views summarize [-h] [options] VIEW_NAME
+
+positional arguments:
+  VIEW_NAME              view
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris views summarize my_view --catalog my_catalog --namespace ns1
+```
+
+#### delete
+
+The `delete` subcommand drops a view from the catalog.
+
+```
+usage: polaris views delete [-h] [options] VIEW_NAME
+
+positional arguments:
+  VIEW_NAME              view
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris views delete my_view --catalog my_catalog --namespace ns1
+```
+
+#### register
+
+The `register` subcommand is used to register a view to catalog by its metadata location
+
+```
+usage: polaris views register [-h] [options] VIEW_NAME
+
+positional arguments:
+  VIEW_NAME                              view
+
+options:
+  -h, --help                             show this help message and exit
+
+Command Options:
+  --catalog CATALOG                      The name of a catalog
+  --namespace NAMESPACE                  A period-delimited namespace
+  --metadata-location METADATA_LOCATION  The absolute location of the Iceberg metadata file
+```
+
+##### Examples
+
+```
+polaris views register my_view --catalog my_catalog --namespace ns1 --metadata-location s3://bucket/path/00001-(uuid).metadata.json
+```
+
+### Generic Tables
+
+The `generic-tables` command is used to manage generic tables within a Polaris Catalog.
+
+`generic-tables` supports the following subcommands:
+
+1. list
+2. get
+3. delete
+
+#### list
+
+The `list` subcommand is used to list generic tables within a namespace from a given catalog.
+
+```
+usage: polaris generic-tables list [-h] [options]
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris generic-tables list
+```
+
+#### get
+
+The `get` subcommand retrieves the generic table metadata for a specific generic table.
+
+```
+usage: polaris generic-tables get [-h] [options] GENERIC_TABLE_NAME
+
+positional arguments:
+  GENERIC_TABLE_NAME     generic-table
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris generic-tables get my_generic_table --catalog my_catalog --namespace ns1
+```
+
+#### delete
+
+The `delete` subcommand drops a generic table from the catalog.
+
+```
+usage: polaris generic-tables delete [-h] [options] GENERIC_TABLE_NAME
+
+positional arguments:
+  GENERIC_TABLE_NAME     generic-table
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris generic-tables delete my_generic_table --catalog my_catalog --namespace ns1
 ```
 
 ### REPL

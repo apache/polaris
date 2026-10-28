@@ -58,11 +58,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -91,7 +91,6 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.Index;
@@ -144,20 +143,12 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
   private final Persistence persistence;
   private final Privileges privileges;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final MemoizedIndexedAccess memoizedIndexedAccess;
-  private final PolarisDiagnostics diagnostics;
 
-  NoSqlMetaStore(
-      Persistence persistence,
-      Privileges privileges,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
-      PolarisDiagnostics diagnostics) {
+  NoSqlMetaStore(Persistence persistence, Privileges privileges) {
     this.persistence = persistence;
     this.privileges = privileges;
-    this.storageIntegrationProvider = storageIntegrationProvider;
     this.memoizedIndexedAccess = newMemoizedIndexedAccess(persistence);
-    this.diagnostics = diagnostics;
   }
 
   <REF_OBJ extends ContainerObj, RESULT> RESULT performChange(
@@ -413,7 +404,10 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   DropEntityResult dropEntity(
-      PolarisBaseEntity entityToDrop, Map<String, String> cleanupProperties, boolean cleanup) {
+      PolarisBaseEntity entityToDrop,
+      Map<String, String> cleanupProperties,
+      boolean cleanup,
+      boolean dropNonEmptyCatalog) {
     requireNonNull(entityToDrop);
 
     LOGGER.atDebug().addArgument(() -> logEntityInfo(entityToDrop)).log("drop entity: {}");
@@ -421,7 +415,9 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     var results =
         performEntityMutations(
             updateKeyForCatalogAndEntityType(entityToDrop),
-            List.of(new EntityUpdate(EntityUpdate.Operation.DELETE, entityToDrop, cleanup)));
+            List.of(
+                new EntityUpdate(
+                    EntityUpdate.Operation.DELETE, entityToDrop, cleanup, dropNonEmptyCatalog)));
 
     if (cleanup && PolarisEntityType.POLICY == entityToDrop.getType()) {
       cleanup = false;
@@ -634,18 +630,24 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   <T extends PolarisEntity & LocationBasedEntity> Optional<String> hasOverlappingSiblings(
-      T entity) {
+      List<PolarisEntityCore> parentPath, T entity) {
     var baseLocation = entity.getBaseLocation();
     if (baseLocation == null) {
       return Optional.empty();
     }
 
+    var catalogId = entity.getCatalogId();
     var checkLocation = StorageLocation.of(baseLocation).withoutScheme();
 
-    return hasOverlappingSiblings(entity.getCatalogId(), checkLocation);
+    // The entity's own parent namespaces may contain its location: they always do when locations
+    // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
+    var ancestorIds = parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
+
+    return hasOverlappingSiblings(catalogId, checkLocation, ancestorIds, entity.getId());
   }
 
-  Optional<String> hasOverlappingSiblings(long catalogId, String checkLocation) {
+  Optional<String> hasOverlappingSiblings(
+      long catalogId, String checkLocation, Set<Long> ancestorIds, long entityId) {
     return memoizedIndexedAccess
         .catalogContent(catalogId)
         .refObj()
@@ -663,37 +665,82 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
               var locationIdentifier = identifierFromLocationString(checkLocation);
               var locationIndexKey = locationIdentifier.toIndexKey();
-              // TODO VALIDATE THE CHECKS HERE !
+
+              // Check for children and exact matches first using forward iteration (preserves
+              // existing test expectations on which conflicting location is reported).
+              // Also iterate fully in case early entries are filtered out.
               var iter = locationsIndex.iterator(locationIndexKey, null, false);
-              if (!iter.hasNext()) {
-                return Optional.empty();
+              while (iter.hasNext()) {
+                var elem = iter.next();
+                var elemKey = elem.key();
+                var elemIdentifier = indexKeyToIdentifier(elemKey);
+                if (!elemIdentifier.startsWith(locationIdentifier)) {
+                  break; // No more matches due to ordering
+                }
+
+                var conflicting =
+                    elem.value().entityIds().stream()
+                        .filter(id -> id != entityId)
+                        .map(IndexKey::key)
+                        .map(byId::get)
+                        .filter(Objects::nonNull)
+                        .map(byName::get)
+                        .filter(Objects::nonNull)
+                        .map(objRef -> persistence.fetch(objRef, ContentObj.class))
+                        .filter(Objects::nonNull)
+                        .map(
+                            contentObj -> {
+                              var conflictingBaseLocation =
+                                  contentObj.properties().get(ENTITY_BASE_LOCATION);
+                              return conflictingBaseLocation != null
+                                  ? conflictingBaseLocation
+                                  : String.join("/", elemIdentifier.elements());
+                            })
+                        .findFirst();
+                if (conflicting.isPresent()) {
+                  return conflicting;
+                }
               }
 
-              var elem = iter.next();
-              var elemKey = elem.key();
-              var elemIdentifier = indexKeyToIdentifier(elemKey);
-              if (!elemIdentifier.startsWith(locationIdentifier)) {
-                return Optional.empty();
+              // Check for parent (prefix) overlaps. These have shorter keys and are missed by
+              // forward iteration starting at the full target key.
+              for (int i = 1; i <= locationIdentifier.length(); i++) {
+                var prefixElements = locationIdentifier.elements().subList(0, i);
+                var prefix = ContentIdentifier.identifier(prefixElements);
+                var prefixKey = prefix.toIndexKey();
+                var entry = locationsIndex.get(prefixKey);
+                if (entry != null) {
+                  // An ancestor found at a strict prefix is the expected layout when locations
+                  // follow the namespace tree, not a sibling conflict. An ancestor at exactly the
+                  // entity's location still conflicts.
+                  var strictPrefix = i < locationIdentifier.length();
+                  var conflicting =
+                      entry.entityIds().stream()
+                          .filter(id -> id != entityId)
+                          .filter(id -> !strictPrefix || !ancestorIds.contains(id))
+                          .map(IndexKey::key)
+                          .map(byId::get)
+                          .filter(Objects::nonNull)
+                          .map(byName::get)
+                          .filter(Objects::nonNull)
+                          .map(objRef -> persistence.fetch(objRef, ContentObj.class))
+                          .filter(Objects::nonNull)
+                          .map(
+                              contentObj -> {
+                                var conflictingBaseLocation =
+                                    contentObj.properties().get(ENTITY_BASE_LOCATION);
+                                return conflictingBaseLocation != null
+                                    ? conflictingBaseLocation
+                                    : String.join("/", prefix.elements());
+                              })
+                          .findFirst();
+                  if (conflicting.isPresent()) {
+                    return conflicting;
+                  }
+                }
               }
 
-              return elem.value().entityIds().stream()
-                  .map(IndexKey::key)
-                  .map(byId::get)
-                  .filter(Objects::nonNull)
-                  .map(byName::get)
-                  .filter(Objects::nonNull)
-                  .map(objRef -> persistence.fetch(objRef, ContentObj.class))
-                  .filter(Objects::nonNull)
-                  .map(
-                      contentObj -> {
-                        // Check if conflict is the parent namespace - TODO recurse??
-                        var conflictingBaseLocation =
-                            contentObj.properties().get(ENTITY_BASE_LOCATION);
-                        return conflictingBaseLocation != null
-                            ? conflictingBaseLocation
-                            : String.join("/", elemIdentifier.elements());
-                      })
-                  .findFirst();
+              return Optional.empty();
             });
   }
 
@@ -804,6 +851,9 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
             : catalogContent
                 ? memoizedIndexedAccess.catalogContent(catalogStableId)
                 : memoizedIndexedAccess.indexedAccess(catalogStableId, entityType.getCode());
+    if (paginationToken.isPresent() && access.refObj().isEmpty()) {
+      throw new IllegalArgumentException("Invalid or expired NoSQL pagination token");
+    }
     var nameIndex = access.nameIndex().orElse(null);
 
     if (nameIndex == null) {
@@ -916,7 +966,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
             listEntitiesBuildPagePart(
                 access, fetchBuffer, mapper, filter, transformer, result, limit);
         fetchBuffer.clear();
-        if (nextToken != null || result.size() == limit) {
+        if (nextToken != null) {
           break;
         }
       }
@@ -1168,6 +1218,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     Predicate<GrantTriplet> entryFilter = GrantTriplet::reverseOrKey;
     entryFilter = onSecurable ? entryFilter.negate() : entryFilter;
 
+    var targets = new ArrayList<GrantTarget>();
     collectGrantRecords(
         catalogId,
         aclName,
@@ -1197,28 +1248,37 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
             return;
           }
 
-          var indexedAccess = memoizedIndexedAccess.indexedAccess(targetCatalogId, targetTypeCode);
-          var entityOptional =
-              indexedAccess.byId(targetId).map(o -> mapToEntity(o, targetCatalogId));
-
-          if (entityOptional.isPresent()) {
-            PolarisBaseEntity entity = entityOptional.get();
-            LOGGER.trace(
-                "    Adding entity to load-grants-result: catalog:{}, id:{}, type:{}",
-                entity.getCatalogId(),
-                entity.getId(),
-                entity.getType());
-            collector.handle(securableAndGrantee, granted);
-            if (ids.add(targetId)) {
-              entities.add(entity);
-            }
-          } else {
-            // Missing targets indicate tolerated stale grant references that maintenance will
-            // eventually prune.
-            LOGGER.trace("    Not returning stale entity reference");
-          }
+          targets.add(
+              new GrantTarget(
+                  securableAndGrantee, granted, targetCatalogId, targetId, targetTypeCode));
         },
         entryFilter);
+
+    // byId() resolves the reference before fetching, so collecting the references first defers the
+    // fetches without adding index work.
+    var targetObjs = resolveGrantTargetObjs(targets);
+
+    for (int i = 0; i < targets.size(); i++) {
+      var target = targets.get(i);
+      var obj = targetObjs[i];
+      var entity = obj != null ? mapToEntity(obj, target.catalogId()) : null;
+
+      if (entity != null) {
+        LOGGER.trace(
+            "    Adding entity to load-grants-result: catalog:{}, id:{}, type:{}",
+            entity.getCatalogId(),
+            entity.getId(),
+            entity.getType());
+        collector.handle(target.securableAndGrantee(), target.granted());
+        if (ids.add(target.id())) {
+          entities.add(entity);
+        }
+      } else {
+        // Missing targets indicate tolerated stale grant references that maintenance will
+        // eventually prune.
+        LOGGER.trace("    Not returning stale entity reference");
+      }
+    }
 
     LOGGER.trace(
         "Returning {} grant records for loadGrants for catalog:{}, id:{}, entityType:{}({})",
@@ -1330,6 +1390,52 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                   });
             });
   }
+
+  /**
+   * Resolves each grant target to its object, fetching in batches. Returns an array parallel to
+   * {@code targets}, with {@code null} for targets that no longer exist.
+   */
+  private ObjBase[] resolveGrantTargetObjs(List<GrantTarget> targets) {
+    var targetObjs = new ObjBase[targets.size()];
+    var accesses = new HashMap<GrantTargetType, IndexedContainerAccess<?>>();
+    // fetchMany requires the ids to be distinct, and the same target can be referenced by more
+    // than one grant, so each reference is fetched once and copied to every occurrence.
+    var refOccurrences = new HashMap<ObjRef, List<Integer>>();
+    for (int i = 0; i < targets.size(); i++) {
+      var target = targets.get(i);
+      var access =
+          accesses.computeIfAbsent(
+              new GrantTargetType(target.catalogId(), target.typeCode()),
+              key -> memoizedIndexedAccess.indexedAccess(key.catalogId(), key.typeCode()));
+      var objRef = access.objRefById(target.id());
+      if (objRef.isPresent()) {
+        refOccurrences.computeIfAbsent(objRef.get(), key -> new ArrayList<>()).add(i);
+      } else {
+        // The root container is the only access that cannot yield a reference without fetching.
+        targetObjs[i] = access.byId(target.id()).orElse(null);
+      }
+    }
+
+    persistence
+        .bucketizedBulkFetches(refOccurrences.keySet().stream(), ObjBase.class)
+        .forEach(
+            obj -> {
+              var occurrences = refOccurrences.get(objRef(obj));
+              for (var occurrence : occurrences) {
+                targetObjs[occurrence] = obj;
+              }
+            });
+    return targetObjs;
+  }
+
+  record GrantTarget(
+      SecurableAndGrantee securableAndGrantee,
+      PrivilegeSet granted,
+      long catalogId,
+      long id,
+      int typeCode) {}
+
+  record GrantTargetType(long catalogId, int typeCode) {}
 
   static class GrantRecordsCollector implements AclEntryHandler {
     final List<PolarisGrantRecord> grantRecords = new ArrayList<>();

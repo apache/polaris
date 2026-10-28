@@ -98,12 +98,53 @@ build-spark-plugin-3.5-2.13: check-dependencies ## Build Spark plugin v3.5 with 
 		:polaris-spark-3.5_2.13:assemble
 	@echo "--- Spark plugin v3.5 with Scala v2.13 build complete ---"
 
+build-spark-plugin-4.0-2.13: DEPENDENCIES := java21
+.PHONY: build-spark-plugin-4.0-2.13
+build-spark-plugin-4.0-2.13: check-dependencies ## Build Spark plugin v4.0 with Scala v2.13
+	@echo "--- Building Spark plugin v4.0 with Scala v2.13 ---"
+	@./gradlew \
+		:polaris-spark-4.0_2.13:assemble
+	@echo "--- Spark plugin v4.0 with Scala v2.13 build complete ---"
+
+config-doc-generate: DEPENDENCIES := java21
+.PHONY: config-doc-generate
+config-doc-generate: check-dependencies ## Generate configuration reference documentation
+	@echo "--- Generating configuration reference documentation ---"
+	@./gradlew :polaris-config-docs-site:copyConfigSectionsToSite
+	@echo "--- Configuration reference documentation generated ---"
+
+config-doc-verify: DEPENDENCIES := java21 git
+.PHONY: config-doc-verify
+config-doc-verify: config-doc-generate ## Verify configuration reference documentation is up to date
+	@echo "--- Verifying configuration reference documentation is up to date ---"
+	@if ! git diff --exit-code site/content/in-dev/unreleased/configuration/config-sections/ || \
+		[ -n "$$(git ls-files --others --exclude-standard site/content/in-dev/unreleased/configuration/config-sections/)" ]; then \
+		echo "ERROR: Configuration reference is out of date. Please run 'make config-doc-generate' and commit the changes."; \
+		exit 1; \
+	fi
+	@echo "--- Configuration reference documentation is up to date ---"
+
 spotless-apply: DEPENDENCIES := java21
 .PHONY: spotless-apply
 spotless-apply: check-dependencies ## Apply code formatting using Spotless Gradle plugin.
 	@echo "--- Applying Spotless formatting ---"
 	@./gradlew spotlessApply
 	@echo "--- Spotless formatting applied ---"
+
+.PHONY: spec-bundle
+spec-bundle: ## Regenerate the bundled OpenAPI spec, license header included
+	@echo "--- Regenerating bundled OpenAPI spec ---"
+	@./spec/bundle.sh
+	@echo "--- Bundled OpenAPI spec regenerated ---"
+
+.PHONY: spec-bundle-verify
+spec-bundle-verify: spec-bundle ## Verify the bundled OpenAPI spec is up to date
+	@echo "--- Verifying bundled OpenAPI spec is up to date ---"
+	@if ! git diff --exit-code spec/generated/; then \
+		echo "ERROR: bundled OpenAPI spec is out of date. Please run 'make spec-bundle' and commit the changes."; \
+		exit 1; \
+	fi
+	@echo "--- Bundled OpenAPI spec is up to date ---"
 
 ##@ Polaris Client
 
@@ -133,19 +174,21 @@ client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist o
 	@echo "--- Client distribution build complete ---"
 
 .PHONY: client-cleanup
-client-cleanup: ## Cleanup virtual environment and Python cache files
-	@echo "--- Cleaning up virtual environment and Python cache files ---"
-	@echo "Attempting to remove virtual environment directory: $(VENV_DIR)..."
-	@if [ -n "$(VENV_DIR)" ] && [ -d "$(VENV_DIR)" ]; then \
-		rm -rf "$(VENV_DIR)"; \
-		echo "Virtual environment removed."; \
-	else \
-		echo "Virtual environment directory '$(VENV_DIR)' not found or VENV_DIR is empty. No action taken."; \
-	fi
-	@echo "Cleaning up Python cache files..."
-	@find $(PYTHON_CLIENT_DIR) -type f -name "*.pyc" -delete
+client-cleanup: ## Cleanup virtual environment, build artifacts, and generated files
+	@echo "--- Cleaning up client environment and generated files ---"
+	@echo "Removing virtual environment..."
+	@rm -rf "$(VENV_DIR)"
+	@echo "Removing build artifacts..."
+	@rm -rf $(PYTHON_CLIENT_DIR)/dist
+	@echo "Removing copied spec files..."
+	@rm -rf $(PYTHON_CLIENT_DIR)/spec
+	@echo "Removing pytest cache..."
+	@rm -rf $(PYTHON_CLIENT_DIR)/.pytest_cache
+	@echo "Removing OpenAPI generator cache..."
+	@rm -rf $(PYTHON_CLIENT_DIR)/.openapi-generator
+	@echo "Removing Python cache files..."
 	@find $(PYTHON_CLIENT_DIR) -type d -name "__pycache__" -delete
-	@echo "--- Virtual environment and Python cache cleanup complete ---"
+	@echo "--- Client cleanup complete ---"
 
 .PHONY: client-setup-env
 client-setup-env: $(VENV_DIR) ## Set up Python client environment (venv + dependencies)
@@ -383,13 +426,6 @@ minikube-stop-cluster: check-dependencies ## Stop the Minikube cluster
 
 ##@ Regression Tests
 
-regtest-minio: DEPENDENCIES := $(DOCKER)
-.PHONY: regtest-minio
-regtest-minio: check-dependencies ## Run regression tests with MinIO
-	@echo "--- Running regression tests with MinIO ---"
-	@S3_TEST_BACKEND=minio $(DOCKER) compose --profile minio -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
-	@echo "--- Regression tests with MinIO completed ---"
-
 regtest-rustfs: DEPENDENCIES := $(DOCKER)
 .PHONY: regtest-rustfs
 regtest-rustfs: check-dependencies ## Run regression tests with RustFS
@@ -401,13 +437,13 @@ regtest-cleanup: DEPENDENCIES := $(DOCKER)
 .PHONY: regtest-cleanup
 regtest-cleanup: check-dependencies ## Stop and remove regression test containers, networks, and volumes
 	@echo "--- Cleaning up all regression tests resources ---"
-	@$(DOCKER) compose --profile minio --profile rustfs -f ./regtests/docker-compose.yml down --volumes --remove-orphans
+	@$(DOCKER) compose --profile rustfs -f ./regtests/docker-compose.yml down --volumes --remove-orphans
 	@echo "--- All regression resources cleanup completed ---"
 
 ##@ Pre-commit
 
 .PHONY: pre-commit
-pre-commit: spotless-apply helm-doc-generate client-lint ## Run tasks for pre-commit
+pre-commit: spotless-apply helm-doc-generate config-doc-generate client-lint ## Run tasks for pre-commit
 
 ##@ Dependencies
 

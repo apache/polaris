@@ -18,7 +18,7 @@
 #
 
 ---
-openapi: 3.0.3
+openapi: 3.1.1
 info:
   title: Apache Polaris and Apache Iceberg REST Catalog API
   license:
@@ -91,14 +91,26 @@ paths:
   /v1/{prefix}/namespaces/{namespace}/tables:
     $ref: './iceberg-rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables'
 
+  # /v1/{prefix}/namespaces/{namespace}/functions:
+  # Not implemented in Polaris
+
+  # /v1/{prefix}/namespaces/{namespace}/functions/{function}:
+  # Not implemented in Polaris
+
   /v1/{prefix}/namespaces/{namespace}/register:
     $ref: './iceberg-rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1register'
 
   /v1/{prefix}/namespaces/{namespace}/tables/{table}:
     $ref: './iceberg-rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}'
 
+  # /v1/{prefix}/namespaces/{namespace}/tables/{table}/unregister:
+  # Not implemented in Polaris
+
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials:
     $ref: './iceberg-rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1credentials'
+
+  /v1/{prefix}/namespaces/{namespace}/tables/{table}/sign:
+    $ref: './iceberg-rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1sign'
 
   /v1/{prefix}/tables/rename:
     $ref: './iceberg-rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1tables~1rename'
@@ -161,6 +173,16 @@ paths:
 
   /polaris/v1/{prefix}/applicable-policies:
     $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1applicable-policies'
+
+  ##############################
+  # Polaris Semantic Model API #
+  ##############################
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/semantic-models:
+    $ref: './polaris-catalog-apis/semantic-models-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1semantic-models'
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/semantic-models/{semantic-model-name}:
+    $ref: './polaris-catalog-apis/semantic-models-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1semantic-models~1{semantic-model-name}'
 
 
 components:

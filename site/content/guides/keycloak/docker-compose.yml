@@ -34,17 +34,25 @@ services:
     environment:
       JAVA_DEBUG: true
       JAVA_DEBUG_PORT: "*:5005"
-      POLARIS_BOOTSTRAP_CREDENTIALS: realm-internal,root,s3cr3t;realm-external,root,s3cr3t;realm-mixed,root,s3cr3t
-      polaris.realm-context.realms: realm-internal,realm-external,realm-mixed
-      polaris.authentication.type: internal
-      polaris.authentication."realm-external".type: external
-      polaris.authentication."realm-mixed".type: mixed
+      # In this setup, the "root" service account should only be used for synchronizing
+      # real Keycloak users with Polaris principals. It should only call the Polaris Management
+      # API, not other APIs like the Iceberg REST one.
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
+      # "mixed" is required in this setup because it keeps the internal token endpoint
+      # active (needed for the root service account that only exists in Polaris), while also
+      # accepting tokens issued by Keycloak (needed for all other Keycloak users).
+      polaris.authentication.type: mixed
       quarkus.oidc.tenant-enabled: true
       quarkus.oidc.auth-server-url: http://keycloak:8080/realms/iceberg
       quarkus.oidc.client-id: client1
-      quarkus.oidc.roles.role-claim-path: principal_roles
-      polaris.oidc.principal-mapper.id-claim-path: principal_id
-      polaris.oidc.principal-mapper.name-claim-path: principal_name
+      # "keycloak-admin" is a real Keycloak user (not a hardcoded claim), authenticated with
+      # the "password" grant; its roles and name come from the standard "resource_access" and
+      # "preferred_username" claims.
+      quarkus.oidc.roles.role-claim-path: resource_access/client1/roles
+      # Principals are always matched by name: there is no way to retrieve, ahead of time,
+      # the principal ID that Polaris will assign to a newly-created principal, so
+      # principal-mapper.id-claim-path is intentionally left unset.
+      polaris.oidc.principal-mapper.name-claim-path: preferred_username
       polaris.oidc.principal-roles-mapper.mappings[0].regex: (.+)
       polaris.oidc.principal-roles-mapper.mappings[0].replacement: PRINCIPAL_ROLE:$1
       polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
@@ -58,7 +66,7 @@ services:
       start_period: 10s
 
   polaris-setup:
-    image: alpine/curl:8.19.0
+    image: alpine/curl:8.22.0
     depends_on:
       polaris:
         condition: service_healthy
@@ -68,14 +76,16 @@ services:
     volumes:
       - ../assets/polaris/:/polaris
     entrypoint: "/bin/sh"
+    # In this setup, the Keycloak user "keycloak-admin" must be synchronized
+    # as a Polaris principal before they can be used to contact Polaris.
+    # The synchronization is done using the Polaris "root" service account.
     command:
       - "-c"
       - >-
         apk add --no-cache jq &&
-        token=$$(curl http://keycloak:8080/realms/iceberg/protocol/openid-connect/token --user client1:s3cr3t -d 'grant_type=client_credentials' | jq -r .access_token) && 
-        /polaris/create-catalog.sh realm-internal && 
-        /polaris/create-catalog.sh realm-external $$token && 
-        /polaris/create-catalog.sh realm-mixed $$token &&
+        /polaris/create-principal.sh POLARIS keycloak-admin service_admin &&
+        keycloak_token=$$(curl --fail-with-body -s http://keycloak:8080/realms/iceberg/protocol/openid-connect/token --user client1:s3cr3t -d 'grant_type=password' -d 'username=keycloak-admin' -d 'password=s3cr3t' | jq -er .access_token) &&
+        /polaris/create-catalog.sh POLARIS $$keycloak_token &&
         touch /tmp/polaris-setup-done &&
         tail -f /dev/null
     healthcheck:
@@ -85,7 +95,7 @@ services:
       test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.6.3
+    image: quay.io/keycloak/keycloak:26.8.1
     ports:
       - "8080:8080"
     environment:

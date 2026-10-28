@@ -24,9 +24,10 @@ import io.quarkus.test.junit.TestProfile;
 import io.quarkus.test.junit.main.Launch;
 import io.quarkus.test.junit.main.LaunchResult;
 import io.quarkus.test.junit.main.QuarkusMainTest;
+import org.apache.polaris.admintool.AdminProfiles;
 import org.junit.jupiter.api.Test;
 
-@TestProfile(NoSqlMongoProfile.class)
+@TestProfile(AdminProfiles.NoSqlMongo.class)
 @QuarkusMainTest
 class NoSqlMongoMaintenanceCommandTest {
   @Test

@@ -60,7 +60,7 @@ class LicenseFileValidation : DependencyFilter {
 
     data.allDependencies.forEach { mod ->
       val licenses =
-        (mod.manifests.map { it.license } +
+        (mod.manifests.flatMap { manifest -> manifest.licenses.map { it.name } } +
             mod.licenseFiles.flatMap { it.fileDetails }.map { it.license } +
             mod.poms.flatMap { it.licenses }.map { it.name })
           .distinct()
@@ -103,7 +103,7 @@ class LicenseFileValidation : DependencyFilter {
           --------------------------------
           ${missingApacheMentions.sorted().joinToString("\n") { "$LICENSE_MENTION_PREFIX$it" }}
           """
-          .trimIndent()
+          .trimIndent(),
       )
     }
     if (!missingFullMentions.isEmpty()) {
@@ -115,7 +115,7 @@ class LicenseFileValidation : DependencyFilter {
           ------------------------------
           ${missingFullMentions.toSortedMap().values.joinToString("\n") { "$LICENSE_MENTION_PREFIX$it" }}
           """
-          .trimIndent()
+          .trimIndent(),
       )
     }
     if (!superfluousDependencies.isEmpty()) {
@@ -127,12 +127,12 @@ class LicenseFileValidation : DependencyFilter {
           ------------------------------------------------
           ${superfluousDependencies.sorted().joinToString("\n") { "$LICENSE_MENTION_PREFIX$it" }}
           """
-          .trimIndent()
+          .trimIndent(),
       )
     }
     if (!missingError.isEmpty()) {
       throw GradleException(
-        "License information for the following artifacts is missing in the root LICENSE file: $missingError"
+        "License information for the following artifacts is missing in the root LICENSE file: $missingError",
       )
     }
 

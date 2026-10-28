@@ -216,8 +216,9 @@ final class CommitsImpl implements Commits {
           }
           lastCommit = null;
 
-          var ids = new ObjRef[REVERSE_COMMIT_FETCH_SIZE];
-          for (var i = 0; i < REVERSE_COMMIT_FETCH_SIZE && i < tail.length; i++) {
+          var pageSize = Math.min(REVERSE_COMMIT_FETCH_SIZE, tail.length);
+          var ids = new ObjRef[pageSize];
+          for (var i = 0; i < pageSize; i++) {
             ids[i] = objRef(type, tail[i], 1);
           }
 

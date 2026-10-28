@@ -63,6 +63,9 @@ public interface StorageAccessConfig {
 
   interface Builder {
     @CanIgnoreReturnValue
+    Builder from(StorageAccessConfig instance);
+
+    @CanIgnoreReturnValue
     Builder putCredential(String key, String value);
 
     @CanIgnoreReturnValue

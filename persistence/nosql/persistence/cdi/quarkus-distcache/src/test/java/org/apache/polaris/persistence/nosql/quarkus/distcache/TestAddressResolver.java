@@ -90,7 +90,7 @@ public class TestAddressResolver {
 
     List<String> withoutSearchList =
         addressResolver
-            .resolveAll(singletonList("projectnessie.org"))
+            .resolveAll(singletonList("polaris.apache.org"))
             .toCompletionStage()
             .toCompletableFuture()
             .get(1, TimeUnit.MINUTES);
@@ -98,7 +98,7 @@ public class TestAddressResolver {
 
     List<String> withSearchList1 =
         addressResolverWithSearch
-            .resolveAll(singletonList("projectnessie.org"))
+            .resolveAll(singletonList("polaris.apache.org"))
             .toCompletionStage()
             .toCompletableFuture()
             .get(1, TimeUnit.MINUTES);
@@ -108,7 +108,7 @@ public class TestAddressResolver {
 
     List<String> withSearchList2 =
         addressResolverWithSearch
-            .resolveAll(singletonList("projectnessie"))
+            .resolveAll(singletonList("polaris.apache"))
             .toCompletionStage()
             .toCompletableFuture()
             .get(1, TimeUnit.MINUTES);
@@ -117,7 +117,7 @@ public class TestAddressResolver {
 
     List<String> withSearchListQualified =
         addressResolverWithSearch
-            .resolveAll(singletonList("projectnessie.org."))
+            .resolveAll(singletonList("polaris.apache.org."))
             .toCompletionStage()
             .toCompletableFuture()
             .get(1, TimeUnit.MINUTES);

@@ -39,7 +39,7 @@ paths:
         User provides the following inputs when creating a policy
         - `name` (REQUIRED): The name of the policy.
         - `type` (REQUIRED): The type of the policy.
-          - **Predefined Policies:** policies have a `system.*` prefix in their type, such as `system.data_compaction`
+          - **Predefined Policies:** policies have a `system.*` prefix in their type, such as `system.data-compaction`
         - `description` (OPTIONAL): Provides details about the policy's purpose and functionality
         - `content` (OPTIONAL): Defines the rules that control actions and access conditions on resources. The format can be JSON, SQL, or any other format.
 
@@ -195,7 +195,7 @@ paths:
                 PolicyToUpdateDoesNotExist:
                   $ref: '#/components/examples/NoSuchPolicyError'
         409:
-          description: "The policy version doesn't match the current-policy-version; retry after fetching latest version"
+          description: "The policy version doesn't match the current-policy-version, or the policy was concurrently modified; retry after fetching latest version"
           content:
             application/json:
               schema:
@@ -482,8 +482,7 @@ components:
 
     PolicyType:
       description: The type of a policy
-      type: string
-      nullable: true
+      type: [string, "null"]
       example: system.data-compaction
 
     PolicyName:
@@ -637,7 +636,6 @@ components:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/Namespace'
         name:
           type: string
-          nullable: false
 
     ListPoliciesResponse:
       type: object
@@ -717,7 +715,7 @@ components:
           "type": "NoSuchPolicyException",
           "code": 404
         }
-      }
+       }
 
     PolicyAlreadyExistsError:
         summary: The requested policy identifier already exists
@@ -727,7 +725,7 @@ components:
             "type": "AlreadyExistsException",
             "code": 409
             }
-        }
+         }
 
     PolicyVersionMismatchError:
       summary: The policy version doesn't match the current-policy-version
@@ -737,7 +735,7 @@ components:
           "type": "PolicyVersionMismatchException",
           "code": 409
         }
-      }
+       }
 
     NoSuchTargetError:
       summary: The requested target does not exist
@@ -747,7 +745,7 @@ components:
           "type": "NoSuchTargetException",
           "code": 404
         }
-      }
+       }
 
     NoSuchMappingError:
       summary: The requested mapping between policy and target does not exist
@@ -757,7 +755,7 @@ components:
           "type": "NoSuchMappingException",
           "code": 404
         }
-      }
+       }
 
     PolicyInUseError:
       summary: The policy is attached to one or more targets
@@ -767,7 +765,7 @@ components:
           "type": "PolicyInUseException",
           "code": 400
         }
-      }
+       }
 
     ConflictPolicyAttachmentError:
       summary: The policy type is inheritable and there is already a policy of the same type attached to the target entity
@@ -777,7 +775,7 @@ components:
           "type": "ConflictPolicyAttachmentException",
           "code": 409
         }
-      }
+       }
 
     ListPoliciesNonEmptyExample:
       summary: A non-empty list of policy identifiers

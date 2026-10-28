@@ -22,6 +22,7 @@ import static java.util.Spliterators.spliteratorUnknownSize;
 import static java.util.stream.StreamSupport.stream;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.key;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
+import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.deserializeStoreIndex;
 import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.indexElement;
 import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.lazyStoreIndex;
 import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.newStoreIndex;
@@ -162,6 +163,23 @@ public class TestLazyIndexImpl {
     soft.assertThat(splits).hasSize(expectedSplits.size());
     soft.assertThat(splits.stream().map(IndexSpi::asKeyList))
         .containsExactlyElementsOf(expectedSplits.stream().map(IndexSpi::asKeyList).toList());
+  }
+
+  @Test
+  public void splitByTargetSizeUsesLazyCommonPrefixKeysWithoutSplitting() {
+    var base = newStoreIndex(OBJ_REF_SERIALIZER);
+    var keyPrefix = "catalog/" + "shared-prefix/".repeat(32);
+    for (var i = 0; i < 512; i++) {
+      base.put(key(keyPrefix + "table-%03d".formatted(i)), randomObjId());
+    }
+
+    var serialized = base.serialize();
+    var deserialized = deserializeStoreIndex(serialized, OBJ_REF_SERIALIZER);
+
+    var lazyIndex = lazyStoreIndex(() -> deserialized, deserialized.first(), deserialized.last());
+
+    soft.assertThat(lazyIndex.splitByTargetSize(serialized.remaining()))
+        .containsExactly(deserialized);
   }
 
   @Test

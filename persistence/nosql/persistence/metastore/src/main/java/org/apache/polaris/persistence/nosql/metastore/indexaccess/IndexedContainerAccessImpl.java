@@ -147,7 +147,8 @@ final class IndexedContainerAccessImpl<C extends ContainerObj> extends IndexedCo
     return catalogStableId;
   }
 
-  private Optional<ObjRef> objRefById(long stableId) {
+  @Override
+  public Optional<ObjRef> objRefById(long stableId) {
     return nameKeyById(stableId).flatMap(this::objRefByName);
   }
 

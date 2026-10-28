@@ -17,6 +17,8 @@
  * under the License.
  */
 
+import org.gradle.api.component.AdhocComponentWithVariants
+
 plugins {
   id("org.kordamp.gradle.jandex")
   id("polaris-server")
@@ -24,10 +26,31 @@ plugins {
 
 description = "Polaris NoSQL persistence, MongoDB implementation"
 
+val quarkusRuntimeOnly =
+  configurations.dependencyScope("quarkusRuntimeOnly") {
+    extendsFrom(configurations.implementation.get(), configurations.runtimeOnly.get())
+  }
+val quarkusRuntimeElements =
+  configurations.consumable("quarkusRuntimeElements") {
+    extendsFrom(quarkusRuntimeOnly.get())
+    attributes {
+      addAllLater(configurations.runtimeElements.get().attributes)
+    }
+    outgoing {
+      artifact(tasks.named("jar"))
+      capability("$group:${project.name}-quarkus:$version")
+    }
+  }
+
+(components["java"] as AdhocComponentWithVariants).addVariantsFromConfiguration(
+  quarkusRuntimeElements.get(),
+) {}
+
 dependencies {
   implementation(project(":polaris-persistence-nosql-api"))
   implementation(project(":polaris-persistence-nosql-impl"))
   implementation(project(":polaris-idgen-api"))
+  compileOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
 
   implementation(libs.mongodb.driver.sync)
 
@@ -42,13 +65,16 @@ dependencies {
   compileOnly(libs.smallrye.config.core)
   compileOnly(platform(libs.quarkus.bom))
   compileOnly("io.quarkus:quarkus-core")
+  compileOnly("io.quarkus:quarkus-mongodb-client")
+  add("quarkusRuntimeOnly", platform(libs.quarkus.bom))
+  add("quarkusRuntimeOnly", "io.quarkus:quarkus-mongodb-client")
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
-  compileOnly(platform(libs.jackson.bom))
+  compileOnly(platform(libs.jackson3.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
-  compileOnly("com.fasterxml.jackson.core:jackson-databind")
+  compileOnly("tools.jackson.core:jackson-databind")
 
   testFixturesApi(testFixtures(project(":polaris-persistence-nosql-impl")))
 
@@ -66,15 +92,14 @@ dependencies {
 
 testing {
   suites {
-    val intTest by
-      registering(JvmTestSuite::class) {
-        dependencies {
-          runtimeOnly(platform(libs.testcontainers.bom))
-          runtimeOnly("org.testcontainers:testcontainers-mongodb")
+    register<JvmTestSuite>("intTest") {
+      dependencies {
+        runtimeOnly(platform(libs.testcontainers.bom))
+        runtimeOnly("org.testcontainers:testcontainers-mongodb")
 
-          compileOnly(platform(libs.jackson.bom))
-          compileOnly("com.fasterxml.jackson.core:jackson-annotations")
-        }
+        compileOnly(platform(libs.jackson.bom))
+        compileOnly("com.fasterxml.jackson.core:jackson-annotations")
       }
+    }
   }
 }

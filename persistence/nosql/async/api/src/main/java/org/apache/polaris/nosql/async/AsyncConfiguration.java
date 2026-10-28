@@ -20,14 +20,14 @@ package org.apache.polaris.nosql.async;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.OptionalInt;
 import org.apache.polaris.immutables.PolarisImmutable;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /** Advanced configuration options to tune async activities. */
 @PolarisImmutable

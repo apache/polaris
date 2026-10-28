@@ -20,6 +20,7 @@ package org.apache.polaris.persistence.nosql.quarkus.backend;
 
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 
-interface BackendBuilder {
+/** SPI implemented by backend-specific Quarkus adapters. */
+public interface BackendBuilder {
   Backend buildBackend();
 }

@@ -27,9 +27,9 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.rest.responses.ConfigResponse;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
@@ -65,7 +65,7 @@ public class IcebergRestConfigurationEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_GET_CONFIG,
               eventMetadataFactory.create(),
-              new EventAttributeMap().put(EventAttributes.WAREHOUSE, warehouse)));
+              ImmutableAttributeMap.builder().put(EventAttributes.WAREHOUSE, warehouse).build()));
     }
     Response resp = delegate.getConfig(warehouse, realmContext, securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_GET_CONFIG)) {
@@ -73,8 +73,9 @@ public class IcebergRestConfigurationEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_GET_CONFIG,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
-                  .put(EventAttributes.CONFIG_RESPONSE, (ConfigResponse) resp.getEntity())));
+              ImmutableAttributeMap.builder()
+                  .put(EventAttributes.CONFIG_RESPONSE, (ConfigResponse) resp.getEntity())
+                  .build()));
     }
     return resp;
   }

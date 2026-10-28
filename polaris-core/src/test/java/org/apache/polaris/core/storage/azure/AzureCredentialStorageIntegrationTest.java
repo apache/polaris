@@ -128,7 +128,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
             /* allowedWriteLoc= */ new ArrayList<>(),
             allowListAction);
     Assertions.assertThat(storageAccessConfig.credentials()).hasSize(2);
-    String sasToken = storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN);
+    String sasToken = storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN_BARE);
     Assertions.assertThat(sasToken).isNotNull();
     String serviceEndpoint =
         String.format("https://icebergdfsstorageacct.%s.core.windows.net", service);
@@ -201,7 +201,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
 
     BlobClient blobClient =
         createBlobClient(
-            storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN),
+            storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN_BARE),
             "https://icebergdfsstorageacct.dfs.core.windows.net",
             "container",
             allowedPrefix);
@@ -232,7 +232,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
     // read fail because container is blocked
     BlobClient blobClientReadFail =
         createBlobClient(
-            storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN),
+            storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN_BARE),
             String.format("https://icebergdfsstorageacct.%s.core.windows.net", service),
             "regtest",
             blockedPrefix);
@@ -272,13 +272,13 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
         String.format("https://icebergdfsstorageacct.%s.core.windows.net", service);
     BlobClient blobClient =
         createBlobClient(
-            storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN),
+            storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN_BARE),
             serviceEndpoint,
             "container",
             allowedPrefix + "metadata/00000-65ffa17b-fe64-4c38-bcb9-06f9bd12aa2a.metadata.json");
     DataLakeFileClient fileClient =
         createDatalakeFileClient(
-            storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN),
+            storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN_BARE),
             serviceEndpoint,
             "container",
             "polaris-test/scopedcreds/metadata",
@@ -313,13 +313,13 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
     String blockedContainer = "regtest";
     BlobClient blobClientWriteFail =
         createBlobClient(
-            storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN),
+            storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN_BARE),
             serviceEndpoint,
             blockedContainer,
             blockedPrefix);
     DataLakeFileClient fileClientFail =
         createDatalakeFileClient(
-            storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN),
+            storageAccessConfig.get(StorageAccessProperty.AZURE_SAS_TOKEN_BARE),
             serviceEndpoint,
             blockedContainer,
             "polaris-test/scopedcreds/metadata",

@@ -42,14 +42,7 @@ Each guide has detailed instructions.
 
 ## Getting Started Examples
 
-- [Spark](spark): An example that uses an in-memory metastore, automatically bootstrapped, with
-  Apache Spark and a Jupyter notebook.
-
-- [Telemetry](telemetry): An example that includes Prometheus and Jaeger to collect metrics and
-  traces from Apache Polaris. This example automatically creates a `polaris_demo` catalog.
-
-- [Keycloak](keycloak): An example that uses Keycloak as an external identity provider (IDP) for
-  authentication.
+{{< guides-list >}}
 
 ## Authoring Guides
 
@@ -59,8 +52,7 @@ run in CI and locally.
 
 ### Running guides CI tests locally
 
-Requirements: Python 3.14 installed locally. Other Python 3 versions should work as well, but
-have not been validated.
+Requirements: Python 3.11 or later.
 
 To run tests for all guides in `site/content/guides`, run
 ```shell

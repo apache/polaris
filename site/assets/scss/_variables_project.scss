@@ -23,8 +23,8 @@
  */
 $td-enable-google-fonts: false;
 
-// Keep the layout on the Polaris site as it was with Docsy 0.10.0
-$td-navbar-bg-color: #30638e !default;
+// Use the dark Polaris palette for shared site navigation.
+$td-navbar-bg-color: #03242d !default;
 
 // Dark mode disabled - see hugo.yaml.
 // https://www.docsy.dev/docs/content/lookandfeel/#how-to-disable-dark-mode

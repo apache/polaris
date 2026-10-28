@@ -36,6 +36,11 @@ public class TestPolarisEventListener implements PolarisEventListener {
     latestEvents.clear();
   }
 
+  /** Returns whether an event of the given type has been recorded. */
+  public boolean hasEvent(PolarisEventType type) {
+    return latestEvents.containsKey(type);
+  }
+
   public PolarisEvent getLatest(PolarisEventType type) {
     var latest = latestEvents.get(type);
     if (latest == null) {

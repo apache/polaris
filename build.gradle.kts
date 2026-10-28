@@ -63,6 +63,8 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("ide-name.txt")
   excludes.add("version.txt")
 
+  excludes.add(".env")
+
   excludes.add("**/LICENSE*")
   excludes.add("**/NOTICE*")
 
@@ -92,6 +94,11 @@ tasks.named<RatTask>("rat").configure {
   excludes.add(".git")
   excludes.add(".github/pull_request_template.md")
 
+  // AI agents
+  excludes.add(".claude/**")
+  excludes.add(".agents/**")
+  excludes.add(".conductor/**")
+
   // Misc build artifacts
   excludes.add(".java-version")
   excludes.add("**/.keep")
@@ -100,7 +107,7 @@ tasks.named<RatTask>("rat").configure {
 
   // Binary files
   excludes.add(
-    "persistence/nosql/persistence/index/src/testFixtures/resources/org/apache/polaris/persistence/indexes/words.gz"
+    "persistence/nosql/persistence/index/src/testFixtures/resources/org/apache/polaris/persistence/indexes/words.gz",
   )
 
   // Polaris service startup banner
@@ -111,6 +118,7 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("site/.user-settings")
   excludes.add("site/node_modules/**")
   excludes.add("site/layouts/robots.txt")
+  excludes.add("site/hugo.direct.sum")
   // Ignore generated stuff, when the Hugo is run w/o Docker
   excludes.add("site/public/**")
   excludes.add("site/resources/_gen/**")
@@ -137,15 +145,18 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("regtests/**/py.typed")
   excludes.add("regtests/**/*.ref")
   excludes.add("regtests/.env")
-  excludes.add("regtests/derby.log")
-  excludes.add("regtests/metastore_db/**")
   excludes.add("regtests/output/**")
   excludes.add("plugins/**/*.ref")
+
+  // Spark
+  excludes.add("**/derby.log")
+  excludes.add("**/metastore_db/**")
 
   // IntelliJ
   excludes.add(".idea")
   excludes.add("site/it/.idea")
   excludes.add("**/*.iml")
+  excludes.add("**/*.ipr")
   excludes.add("**/*.iws")
 
   // Rat can't scan binary images
@@ -160,7 +171,7 @@ tasks.register<Exec>("buildPythonClient") {
   description = "Build the python client"
 
   workingDir = project.projectDir
-  if (project.hasProperty("python.format")) {
+  if (providers.gradleProperty("python.format").isPresent) {
     environment("FORMAT", project.property("python.format") as String)
   }
   commandLine("make", "client-build")
@@ -246,7 +257,7 @@ changelog {
       "Deprecations",
       "Fixes",
       "Commits",
-    )
+    ),
   )
   version.set(provider { project.version.toString() })
 }
@@ -256,7 +267,7 @@ tasks.register("showVersion") {
   description = "Show the Polaris version"
   actions.add {
     logger.lifecycle(
-      "Polaris version is ${project.file("version.txt").readText(Charsets.UTF_8).trim()}"
+      "Polaris version is ${project.file("version.txt").readText(Charsets.UTF_8).trim()}",
     )
   }
 }
@@ -269,6 +280,7 @@ tasks.named<Wrapper>("wrapper") {
     val insertAtLine =
       scriptLines.indexOf("# Use the maximum available, or set MAX_FD != -1 to use that value.")
     scriptLines.add(insertAtLine, "")
+    scriptLines.add(insertAtLine, $$"[ -f \"${APP_HOME}/.env\" ] && . \"${APP_HOME}/.env\"")
     scriptLines.add(insertAtLine, $$". \"${APP_HOME}/gradle/gradlew-include.sh\"")
 
     scriptFile.writeText(scriptLines.joinToString("\n"))

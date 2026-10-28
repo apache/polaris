@@ -118,7 +118,9 @@ public class GenericTableCatalogAdapter
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
     ListGenericTablesResponse response =
         handler.listGenericTables(
-            NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR));
+            NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR),
+            pageToken,
+            pageSize);
     return Response.ok(response).build();
   }
 

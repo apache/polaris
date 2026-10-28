@@ -47,7 +47,8 @@ import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
+import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.assertj.core.api.Assertions;
 import org.jspecify.annotations.NonNull;
@@ -105,7 +106,7 @@ public class FileIOFactoryTest {
     Supplier<FileIOFactory> fileIOFactorySupplier =
         () ->
             Mockito.spy(
-                new DefaultFileIOFactory() {
+                new DefaultFileIOFactory(S3AccessConfig.empty()) {
                   @Override
                   FileIO loadFileIOInternal(
                       @NonNull String ioImplClassName, @NonNull Map<String, String> properties) {
@@ -144,7 +145,7 @@ public class FileIOFactoryTest {
   @ParameterizedTest
   @ValueSource(strings = {"s3a", "s3"})
   public void testLoadFileIOForTableLike(String scheme) {
-    IcebergCatalog catalog = createCatalog(testServices, scheme);
+    LocalIcebergCatalog catalog = createCatalog(testServices, scheme);
     catalog.createNamespace(NS);
     catalog.createTable(TABLE, SCHEMA);
 
@@ -156,7 +157,7 @@ public class FileIOFactoryTest {
   @ParameterizedTest
   @ValueSource(strings = {"s3a", "s3"})
   public void testLoadFileIOForCleanupTask(String scheme) {
-    IcebergCatalog catalog = createCatalog(testServices, scheme);
+    LocalIcebergCatalog catalog = createCatalog(testServices, scheme);
     catalog.createNamespace(NS);
     catalog.createTable(TABLE, SCHEMA);
     catalog.dropTable(TABLE, true);
@@ -183,7 +184,7 @@ public class FileIOFactoryTest {
         .loadFileIO(Mockito.any(), Mockito.any(), Mockito.any());
   }
 
-  IcebergCatalog createCatalog(TestServices services, String scheme) {
+  LocalIcebergCatalog createCatalog(TestServices services, String scheme) {
     String storageLocation = scheme + "://my-bucket/path/to/data";
     AwsStorageConfigInfo awsStorageConfigInfo =
         AwsStorageConfigInfo.builder()
@@ -197,7 +198,7 @@ public class FileIOFactoryTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(CATALOG_NAME)
-            .setProperties(new CatalogProperties(scheme + "://tmp/path/to/data"))
+            .setProperties(new CatalogProperties(storageLocation))
             .setStorageConfigInfo(awsStorageConfigInfo)
             .build();
     services
@@ -208,8 +209,8 @@ public class FileIOFactoryTest {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             services.resolutionManifestFactory(), services.principal(), CATALOG_NAME);
-    IcebergCatalog polarisCatalog =
-        new IcebergCatalog(
+    LocalIcebergCatalog polarisCatalog =
+        new LocalIcebergCatalog(
             services.polarisDiagnostics(),
             services.resolverFactory(),
             services.metaStoreManager(),

@@ -32,9 +32,11 @@ public record IfNoneMatch(boolean isWildcard, @NonNull List<String> eTags) {
   // Matches but does not capture any content of an ETag
   private static final String ETAG_REGEX = "(?:W/)?\"(?:[^\"]*)\"";
 
-  // Builds comma separated list of ETags and disallows trailing comma
+  // Builds comma separated list of ETags and disallows trailing comma. Per RFC 7230 section 7 the
+  // list separator is a comma surrounded by optional whitespace (OWS = *( SP / HTAB )), so the
+  // elements may be separated by a bare comma or by a comma padded with spaces/tabs.
   private static final String IF_NONE_MATCH_REGEX =
-      String.format("(?:%s, )*%s", ETAG_REGEX, ETAG_REGEX);
+      String.format("(?:%s[ \t]*,[ \t]*)*%s", ETAG_REGEX, ETAG_REGEX);
 
   // Wraps pattern in capture group to capture entire ETag
   private static final Pattern ETAG_PATTERN = Pattern.compile(String.format("(%s)", ETAG_REGEX));

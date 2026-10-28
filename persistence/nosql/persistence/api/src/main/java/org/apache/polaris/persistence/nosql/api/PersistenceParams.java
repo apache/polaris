@@ -20,15 +20,16 @@ package org.apache.polaris.persistence.nosql.api;
 
 import static com.google.common.base.Preconditions.checkState;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
 import java.util.stream.Stream;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.misc.types.memorysize.MemorySize;
 import org.apache.polaris.persistence.nosql.api.commit.RetryConfig;
 import org.immutables.value.Value;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 @ConfigMapping(prefix = "polaris.persistence")
 @JsonSerialize(as = ImmutableBuildablePersistenceParams.class)
@@ -61,10 +62,8 @@ public interface PersistenceParams {
   @WithDefault(DEFAULT_MAX_INDEX_STRIPE_SIZE_STRING)
   MemorySize maxIndexStripeSize();
 
-  @Value.Default
-  default RetryConfig retryConfig() {
-    return RetryConfig.DEFAULT_RETRY_CONFIG;
-  }
+  @WithName("retry")
+  RetryConfig retryConfig();
 
   String DEFAULT_BUCKETIZED_BULK_FETCH_SIZE_STRING = "16";
   int DEFAULT_BUCKETIZED_BULK_FETCH_SIZE =

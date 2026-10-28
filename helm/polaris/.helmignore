@@ -42,5 +42,5 @@
 .vscode/
 # Helm chart testing, CI and release management
 ci/
-tests/
+/tests/
 artifacthub-repo.yml

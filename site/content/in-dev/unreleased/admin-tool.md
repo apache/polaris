@@ -33,7 +33,7 @@ The default build includes drivers for the PostgreSQL and NoSQL (MongoDB) backen
 
 ## Usage
 
-Please make sure the admin tool and Polaris server are with the same version before using it.
+Please make sure the admin tool and Polaris server are at the same version before using it.
 To run the standalone JAR, use the following command:
 
 If you downloaded the [binary distribution]({{% ref "getting-started/binary-distribution" %}}), you
@@ -77,7 +77,10 @@ See the [Metastores]({{% ref "metastores" %}}) section for more information on c
 database connection. See [Configuration Reference]({{% ref "configuration/configuration-reference"
 %}}) for the full list of configuration options.
 
-Note: Polaris will always create the schema `polaris_schema` during bootstrap under the configured database.
+Note: Polaris does not create the database schema. The schema (by default `polaris_schema`, selected
+through the JDBC driver's `currentSchema` connection property) must already exist before bootstrapping;
+creating it is a database-administrator task. See the [Metastores]({{% ref "metastores" %}}) section for
+details.
 
 ## Bootstrapping Realms and Principal Credentials
 
@@ -102,15 +105,11 @@ docker run apache/polaris-admin-tool:latest bootstrap --help
 The basic usage of the `bootstrap` command is outlined below:
 
 ```
-Usage: polaris-admin-tool.jar bootstrap [-hV] [-v=<schema version>]
-                                        ([-r=<realm> [-r=<realm>]... [-c=<realm,
-                                        clientId,clientSecret>]... [-p]] |
-                                        [[-f=<file>]])
+Usage: polaris-admin-tool.jar bootstrap [-hV] ([-r=<realm> [-r=<realm>]...
+                                        [-c=<realm,clientId,clientSecret>]...
+                                        [-p]] | [[-f=<file>]])
 Bootstraps realms and root principal credentials.
   -h, --help                Show this help message and exit.
-  -v, --schema-version=<schema version>
-                            The version of the schema to load in [1, 2, 3,
-                              LATEST].
   -V, --version             Print version information and exit.
 Standard Input Options:
   -c, --credential=<realm,clientId,clientSecret>
@@ -123,6 +122,13 @@ File Input Options:
                             A file containing root principal credentials to
                               bootstrap.
 ```
+
+Every realm passed with `--realm` must have a matching `--credential`, unless
+`--print-credentials` is given. Without one of the two, that realm's root principal would be
+created with a randomly generated secret that is never shown, leaving the realm unusable; the
+command lists the realms that are missing credentials and exits without bootstrapping
+anything. This does not apply to `--credentials-file`, where the realms to bootstrap are taken
+from the file's own entries.
 
 For example, to bootstrap the `realm1` realm and create its root principal credential with the
 client ID `admin` and client secret `admin`, you can run the following commands:
@@ -231,7 +237,7 @@ NoSQL maintenance is run using the `nosql maintenance-run` command.
 Maintenance covers the deletion of stale database entries.
 
 {{< alert note >}}
-It is recommended to run the `nosql maintenance-run` command regulary, for example, once per day.
+It is recommended to run the `nosql maintenance-run` command regularly, for example, once per day.
 {{< /alert >}}
 
 The output shows a bunch of configuration options, most of which are automatically determined by the tool.

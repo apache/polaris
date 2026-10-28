@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.core.persistence.pagination;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.Optional;
 import java.util.OptionalInt;
 import org.apache.polaris.immutables.PolarisImmutable;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 @PolarisImmutable
 @JsonSerialize(as = ImmutableDummyTestToken.class)

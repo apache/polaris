@@ -161,27 +161,28 @@ ill-formed ARN is rejected at catalog creation time.
 
 ## Server-side encryption with KMS
 
-When the bucket uses SSE-KMS, supply both `currentKmsKey` (the key Polaris should use for writes)
-and `allowedKmsKeys` (every key the catalog is allowed to read from). The two fields are processed
-independently in `AwsCredentialsStorageIntegration`, so the write key must be included in
-`allowedKmsKeys` as well if you want it readable through vended credentials:
+When the bucket uses SSE-KMS, list the keys used for writes in `encryptionKeys`. Polaris grants
+these keys both encryption and decryption permissions. List any additional keys needed to read
+historical data in `decryptionKeys`. A key may appear in both lists; Polaris combines duplicate
+decryption permissions. The deprecated `currentKmsKey` and `allowedKmsKeys` properties are treated
+as entries in `encryptionKeys` for backward compatibility:
 
 ```json
 "storageConfigInfo": {
   "storageType": "S3",
   "roleArn": "...",
   "region": "us-east-1",
-  "currentKmsKey": "arn:aws:kms:us-east-1:123456789012:key/aaaa-bbbb",
-  "allowedKmsKeys": [
-    "arn:aws:kms:us-east-1:123456789012:key/aaaa-bbbb",
+  "encryptionKeys": [
+    "arn:aws:kms:us-east-1:123456789012:key/aaaa-bbbb"
+  ],
+  "decryptionKeys": [
     "arn:aws:kms:us-east-1:123456789012:key/cccc-dddd"
   ]
 }
 ```
 
-The IAM role's policy must include `kms:GenerateDataKey` and `kms:Decrypt` on `currentKmsKey` and
-`kms:Decrypt` on every key listed in `allowedKmsKeys`, and each key policy must grant the same to
-the role principal.
+The IAM role and key policies must allow encryption actions on every key in `encryptionKeys` and
+decryption actions on every key in `encryptionKeys` and `decryptionKeys`.
 
 If the deployment does not use KMS, set `kmsUnavailable` to `true` so Polaris will not request
 KMS-related session permissions:
@@ -218,8 +219,12 @@ For AWS S3 and S3-compatible backends that expose the STS API (such as MinIO), l
 For S3-compatible backends without STS (Apache Ozone S3 gateway, or Ceph RGW without STS enabled),
 set `stsUnavailable: true`. Polaris will then skip subscoped credential vending entirely, and the
 client must omit `X-Iceberg-Access-Delegation: vended-credentials` and authenticate to the object
-store directly. The Polaris guides for [Apache Ozone][ozone-guide] and [Ceph][ceph-guide] show
-this pattern end-to-end.
+store directly. A client that still sends the header gets `400 Bad Request` (`Credential vending
+was requested for table ..., but no credentials are available`); see
+[When delegation cannot be satisfied]({{% relref "../../vended-credentials#when-delegation-cannot-be-satisfied" %}}).
+In Spark this means dropping `spark.sql.catalog.<name>.header.X-Iceberg-Access-Delegation` and
+supplying the S3 credentials through the usual Hadoop or Iceberg FileIO properties. The Polaris
+guides for [Apache Ozone][ozone-guide] and [Ceph][ceph-guide] show this pattern end-to-end.
 
 ```json
 "storageConfigInfo": {
@@ -243,7 +248,7 @@ Spark example, matching the property names used by the existing MinIO / RustFS g
 
 ```shell
 bin/spark-sql \
-    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1 \
+    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.12.0,org.apache.iceberg:iceberg-aws-bundle:1.12.0 \
     --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
     --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \
     --conf spark.sql.catalog.polaris.type=rest \
@@ -253,8 +258,13 @@ bin/spark-sql \
     --conf spark.sql.catalog.polaris.warehouse=warehouse_s3 \
     --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \
     --conf spark.sql.catalog.polaris.credential=<client-id>:<client-secret> \
+    --conf spark.redaction.regex='(?i)secret|password|token|access[.]?key|credential' \
     --conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials
 ```
+
+The `spark.redaction.regex` line redacts the `credential` secret from the Spark UI and logs, since
+Spark's default redaction pattern does not cover `credential`. Newer Spark releases redact this key
+by default; the line keeps it redacted on earlier versions.
 
 The `oauth2-server-uri` is recommended: without it the Iceberg REST client falls back to a
 hard-coded `/v1/oauth/tokens` path and logs a deprecation warning, since the automatic fallback
@@ -318,7 +328,8 @@ SELECT * FROM warehouse_s3.demo.t;
 If `INSERT` or `SELECT` fails with a 403, the most common causes are:
 
 - The IAM role's trust policy does not match the `roleArn` / `externalId` Polaris is presenting.
-- The role grants S3 permissions but is missing the KMS actions for `currentKmsKey`.
+- The role grants S3 permissions but is missing the required KMS actions for `encryptionKeys` or
+  `decryptionKeys`.
 - The bucket policy denies access from outside a specific VPC endpoint.
 
 Polaris logs the assumed-role STS request at debug level, which is the fastest way to confirm

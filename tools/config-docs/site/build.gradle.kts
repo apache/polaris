@@ -19,6 +19,7 @@
 
 plugins {
   `java-library`
+  id("polaris-base")
   id("polaris-reproducible")
 }
 
@@ -28,23 +29,25 @@ val genProjectPaths = listOf(
   ":polaris-async-api",
   ":polaris-core",
   ":polaris-extensions-auth-opa",
+  ":polaris-extensions-events-kafka",
   ":polaris-nodes-api",
   ":polaris-persistence-nosql-api",
   ":polaris-persistence-nosql-impl",
   ":polaris-persistence-nosql-cdi-quarkus",
   ":polaris-persistence-nosql-cdi-quarkus-distcache",
-  ":polaris-persistence-nosql-inmemory",
   ":polaris-persistence-nosql-maintenance-api",
   ":polaris-persistence-nosql-metastore-maintenance",
-  ":polaris-persistence-nosql-mongodb",
   ":polaris-persistence-nosql-metastore-types",
+  ":polaris-persistence-nosql-inmemory",
+  ":polaris-persistence-nosql-mongodb",
+  ":polaris-persistence-nosql-dynamodb",
   ":polaris-runtime-common",
   ":polaris-runtime-service",
 )
 
-val genProjects by configurations.creating
-val genSources by configurations.creating
-val doclet by configurations.creating
+val genProjects = configurations.create("genProjects")
+val genSources = configurations.create("genSources")
+val doclet = configurations.create("doclet")
 
 dependencies {
   doclet(project(":polaris-config-docs-annotations"))
@@ -82,7 +85,7 @@ val generatedMarkdownDocs = tasks.register<JavaExec>("generatedMarkdownDocs") {
   classpath(doclet)
 }
 
-val generateDocs by tasks.registering(Sync::class) {
+val generateDocs = tasks.register<Sync>("generateDocs") {
   dependsOn(generatedMarkdownDocs)
 
   val targetDir = layout.buildDirectory.dir("markdown-docs")
@@ -97,7 +100,7 @@ val generateDocs by tasks.registering(Sync::class) {
   duplicatesStrategy = DuplicatesStrategy.FAIL
 }
 
-val copyConfigSectionsToSite by tasks.registering(CopyConfigSectionsToSite::class) {
+val copyConfigSectionsToSite = tasks.register<CopyConfigSectionsToSite>("copyConfigSectionsToSite") {
   dependsOn(generateDocs)
 
   description = "Copies the generated configuration section files to the site content directory as a headless bundle"
@@ -159,6 +162,7 @@ abstract class CopyConfigSectionsToSite : DefaultTask() {
       .matching {
         include("smallrye-*.md")
         include("flags-*.md")
+        include("storage-*.md")
       }
       .files
       .forEach { file ->

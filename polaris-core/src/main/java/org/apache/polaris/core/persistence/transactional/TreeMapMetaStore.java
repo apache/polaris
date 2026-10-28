@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence.transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -63,8 +64,6 @@ public class TreeMapMetaStore {
     /**
      * read a value in the slice, will return null if not found
      *
-     * <p>TODO: return a copy of each object to avoid mutating the records
-     *
      * @param key key for that value
      */
     public T read(String key) {
@@ -81,16 +80,32 @@ public class TreeMapMetaStore {
     public List<T> readRange(String prefix) {
       ensureReadTr();
       if (prefix.isEmpty()) {
-        return new ArrayList<>(this.slice.values());
+        return copyValues(this.slice.values());
       }
 
-      // end of the key
-      String endKey =
-          prefix.substring(0, prefix.length() - 1)
-              + (char) (prefix.charAt(prefix.length() - 1) + 1);
+      // Get the sub-map with keys in the range [prefix, rangeEndKey(prefix))
+      return copyValues(slice.subMap(prefix, true, rangeEndKey(prefix), false).values());
+    }
 
-      // Get the sub-map with keys in the range [prefix, endKey)
-      return new ArrayList<>(slice.subMap(prefix, true, endKey, false).values());
+    private List<T> copyValues(Collection<T> values) {
+      List<T> copied = new ArrayList<>(values.size());
+      for (T value : values) {
+        copied.add(this.copyRecord.apply(value));
+      }
+      return copied;
+    }
+
+    private List<String> copyKeysInRange(String prefix) {
+      if (prefix.isEmpty()) {
+        return new ArrayList<>(this.slice.keySet());
+      }
+
+      return new ArrayList<>(slice.subMap(prefix, true, rangeEndKey(prefix), false).keySet());
+    }
+
+    private String rangeEndKey(String prefix) {
+      return prefix.substring(0, prefix.length() - 1)
+          + (char) (prefix.charAt(prefix.length() - 1) + 1);
     }
 
     /**
@@ -132,9 +147,9 @@ public class TreeMapMetaStore {
      */
     public void deleteRange(String prefix) {
       ensureReadWriteTr();
-      List<T> elements = this.readRange(prefix);
-      for (T element : elements) {
-        this.delete(element);
+      List<String> keys = this.copyKeysInRange(prefix);
+      for (String key : keys) {
+        this.delete(key);
       }
     }
 

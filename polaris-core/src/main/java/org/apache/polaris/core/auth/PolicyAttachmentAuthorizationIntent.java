@@ -19,6 +19,7 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
+import java.util.function.Consumer;
 import org.jspecify.annotations.NonNull;
 
 /** Authorization intent for attaching or detaching a policy to another securable. */
@@ -34,7 +35,8 @@ public record PolicyAttachmentAuthorizationIntent(
   }
 
   @Override
-  public @NonNull PolarisAuthorizableOperation getOperation() {
-    return operation;
+  public void visitSecurables(Consumer<PolarisSecurable> visitor) {
+    visitor.accept(policy);
+    visitor.accept(attachedTo);
   }
 }

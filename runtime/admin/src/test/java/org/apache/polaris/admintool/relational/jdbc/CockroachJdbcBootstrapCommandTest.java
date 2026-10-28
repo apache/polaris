@@ -18,25 +18,8 @@
  */
 package org.apache.polaris.admintool.relational.jdbc;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import io.quarkus.test.junit.TestProfile;
-import io.quarkus.test.junit.main.LaunchResult;
-import io.quarkus.test.junit.main.QuarkusMainLauncher;
-import org.junit.jupiter.api.Test;
+import org.apache.polaris.admintool.AdminProfiles;
 
-@TestProfile(CockroachJdbcAdminProfile.class)
-public class CockroachJdbcBootstrapCommandTest extends RelationalJdbcBootstrapCommandTest {
-
-  @Override
-  @Test
-  public void testBootstrapFailsWhenAddingRealmWithDifferentSchemaVersion(
-      QuarkusMainLauncher launcher) {
-    // CockroachDB only has schema v4 (no v1, v2 or v3 schemas exist).
-    // Override to bootstrap with v4, which is the only version available for CockroachDB.
-    LaunchResult result1 =
-        launcher.launch("bootstrap", "-v", "4", "-r", "realm1", "-c", "realm1,root,s3cr3t");
-    assertThat(result1.exitCode()).isEqualTo(0);
-    assertThat(result1.getOutput()).contains("Bootstrap completed successfully.");
-  }
-}
+@TestProfile(AdminProfiles.CockroachJdbc.class)
+public class CockroachJdbcBootstrapCommandTest extends RelationalJdbcBootstrapCommandTest {}

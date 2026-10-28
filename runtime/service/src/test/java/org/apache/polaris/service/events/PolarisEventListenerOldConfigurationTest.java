@@ -22,27 +22,16 @@ package org.apache.polaris.service.events;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import java.util.Map;
 import java.util.Set;
+import org.apache.polaris.service.Profiles;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-@TestProfile(PolarisEventListenerOldConfigurationTest.OldConfigEventListenerProfile.class)
+@TestProfile(Profiles.DefaultProfile.class)
 public class PolarisEventListenerOldConfigurationTest {
-
-  public static class OldConfigEventListenerProfile implements QuarkusTestProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .put("polaris.event-listener.type", "test")
-          .build();
-    }
-  }
 
   @Inject PolarisEventListenerConfiguration polarisEventListenerConfiguration;
 

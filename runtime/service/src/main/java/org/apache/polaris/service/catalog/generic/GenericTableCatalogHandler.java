@@ -24,6 +24,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
@@ -34,6 +35,8 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.types.GenericTable;
@@ -61,7 +64,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     if (connectionConfigInfoDpo != null) {
       LOGGER
           .atInfo()
-          .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
+          .addKeyValue(StructuredLogKeys.REMOTE_URL, connectionConfigInfoDpo.getUri())
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
           realmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
@@ -96,12 +99,18 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     }
   }
 
-  public ListGenericTablesResponse listGenericTables(Namespace parent) {
+  public ListGenericTablesResponse listGenericTables(
+      Namespace parent, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
+    PageToken pageRequest =
+        PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
+    Page<TableIdentifier> page = genericTableCatalog.listGenericTables(parent, pageRequest);
+    rejectIncompleteListing(pageToken, pageSize, page.encodedResponseToken());
     return ListGenericTablesResponse.builder()
-        .setIdentifiers(new LinkedHashSet<>(genericTableCatalog.listGenericTables(parent)))
+        .setIdentifiers(new LinkedHashSet<>(page.items()))
+        .setNextPageToken(page.encodedResponseToken())
         .build();
   }
 
@@ -131,14 +140,16 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
 
   public boolean dropGenericTable(TableIdentifier identifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.GENERIC_TABLE, identifier);
 
     return this.genericTableCatalog.dropGenericTable(identifier);
   }
 
   public LoadGenericTableResponse loadGenericTable(TableIdentifier identifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.GENERIC_TABLE, identifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.GENERIC_TABLE, identifier);
 
     GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
     GenericTable loadedTable =

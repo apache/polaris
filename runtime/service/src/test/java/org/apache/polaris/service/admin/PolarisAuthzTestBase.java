@@ -56,6 +56,8 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -74,9 +76,8 @@ import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
@@ -85,7 +86,10 @@ import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
+import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
+import org.apache.polaris.service.storage.StsCredentialVendingMechanism;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.assertj.core.api.Assertions;
@@ -99,29 +103,6 @@ import software.amazon.awssdk.services.sts.StsClient;
 
 /** Base class for shared test setup logic used by various Polaris authz-related tests. */
 public abstract class PolarisAuthzTestBase {
-
-  public static class Profile extends Profiles.DefaultProfile {
-
-    @Override
-    public Set<Class<?>> getEnabledAlternatives() {
-      return Set.of(TestPolarisLocalCatalogFactory.class);
-    }
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .put("polaris.features.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"", "true")
-          .put("polaris.features.\"ENABLE_GENERIC_TABLES\"", "true")
-          .put(
-              "polaris.features.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
-              "true")
-          .put("polaris.features.\"DROP_WITH_PURGE_ENABLED\"", "true")
-          .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
-          .put("polaris.features.\"ENABLE_CATALOG_FEDERATION\"", "true")
-          .build();
-    }
-  }
 
   protected static final String CATALOG_NAME = "polaris-catalog";
   protected static final String FEDERATED_CATALOG_NAME = "federated-polaris-catalog";
@@ -197,7 +178,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected RealmContextHolder realmContextHolder;
   @Inject protected PolarisEventDispatcher polarisEventDispatcher;
 
-  protected IcebergCatalog baseCatalog;
+  protected LocalIcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
   protected PolicyCatalog policyCatalog;
   protected PolarisAdminService adminService;
@@ -211,14 +192,18 @@ public abstract class PolarisAuthzTestBase {
   @BeforeAll
   public static void setUpMocks() {
     StsClient stsClient = Mockito.mock(StsClient.class);
+    S3CredentialVendingMechanisms mechanisms =
+        new S3CredentialVendingMechanisms(
+            Map.of(
+                "STS",
+                new StsCredentialVendingMechanism(
+                    destination -> stsClient, Optional.empty(), null, null)));
     PolarisStorageIntegrationProviderImpl mock =
         new PolarisStorageIntegrationProviderImpl(
-            destination -> stsClient,
-            Optional.empty(),
+            mechanisms,
             () -> GoogleCredentials.create(new AccessToken("abc", new Date())),
             null,
-            null,
-            new org.apache.polaris.core.PolarisDefaultDiagServiceImpl());
+            null);
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
@@ -238,15 +223,22 @@ public abstract class PolarisAuthzTestBase {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     polarisContext = callContext.getPolarisCallContext();
 
-    polarisAuthorizer = new PolarisAuthorizerImpl(realmConfig);
+    polarisAuthorizer = new PolarisAuthorizerImpl();
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    this.authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
+    this.authenticatedRoot =
+        PolarisPrincipal.of(
+            rootPrincipal.getName(),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, rootPrincipal)
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
+            Set.of());
     QuarkusMock.installMockForType(authenticatedRoot, PolarisPrincipal.class);
 
     this.adminService =
-        new PolarisAdminService(
+        PolarisAdminServiceTestSupport.newAdminService(
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -287,10 +279,7 @@ public abstract class PolarisAuthzTestBase {
             .setName(FEDERATED_CATALOG_NAME)
             .setCatalogType("EXTERNAL")
             .setDefaultBaseLocation(storageLocationForFederatedCatalog)
-            .setStorageConfigurationInfo(
-                realmConfig,
-                storageConfigModelForFederatedCatalog,
-                storageLocationForFederatedCatalog)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModelForFederatedCatalog)
             .addProperty("polaris.config.enable-sub-catalog-rbac-for-federated-catalogs", "true")
             .build();
     ExternalCatalog externalCatalog =
@@ -310,21 +299,24 @@ public abstract class PolarisAuthzTestBase {
             .build();
 
     catalogEntity =
-        adminService.createCatalog(
-            new CreateCatalogRequest(
-                new CatalogEntity.Builder()
-                    .setName(CATALOG_NAME)
-                    .setCatalogType("INTERNAL")
-                    .setDefaultBaseLocation(storageLocation)
-                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
-                    .build()
-                    .asCatalog(serviceIdentityProvider)));
-    federatedCatalogEntity = adminService.createCatalog(new CreateCatalogRequest(externalCatalog));
+        newRootAdminService()
+            .createCatalog(
+                new CreateCatalogRequest(
+                    new CatalogEntity.Builder()
+                        .setName(CATALOG_NAME)
+                        .setCatalogType("INTERNAL")
+                        .setDefaultBaseLocation(storageLocation)
+                        .setStorageConfigurationInfo(realmConfig, storageConfigModel)
+                        .build()
+                        .asCatalog(serviceIdentityProvider)));
+    federatedCatalogEntity =
+        newRootAdminService().createCatalog(new CreateCatalogRequest(externalCatalog));
 
     initBaseCatalog();
 
     PrincipalWithCredentials principal =
-        adminService.createPrincipal(new PrincipalEntity.Builder().setName(PRINCIPAL_NAME).build());
+        newRootAdminService()
+            .createPrincipal(new PrincipalEntity.Builder().setName(PRINCIPAL_NAME).build());
     principalEntity =
         rotateAndRefreshPrincipal(
             metaStoreManager, PRINCIPAL_NAME, principal.getCredentials(), polarisContext);
@@ -332,42 +324,49 @@ public abstract class PolarisAuthzTestBase {
     // Pre-create the principal roles and catalog roles without any grants on securables, but
     // assign both principal roles to the principal, then CATALOG_ROLE1 to PRINCIPAL_ROLE1,
     // CATALOG_ROLE2 to PRINCIPAL_ROLE2, and CATALOG_ROLE_SHARED to both.
-    adminService.createPrincipalRole(
-        new PrincipalRoleEntity.Builder().setName(PRINCIPAL_ROLE1).build());
-    adminService.createPrincipalRole(
-        new PrincipalRoleEntity.Builder().setName(PRINCIPAL_ROLE2).build());
-    adminService.createCatalogRole(
-        CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
-    adminService.createCatalogRole(
-        CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE2).build());
-    adminService.createCatalogRole(
-        CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE_SHARED).build());
-    adminService.createCatalogRole(
-        FEDERATED_CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
-    adminService.createCatalogRole(
-        FEDERATED_CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE2).build());
+    newRootAdminService()
+        .createPrincipalRole(new PrincipalRoleEntity.Builder().setName(PRINCIPAL_ROLE1).build());
+    newRootAdminService()
+        .createPrincipalRole(new PrincipalRoleEntity.Builder().setName(PRINCIPAL_ROLE2).build());
+    newRootAdminService()
+        .createCatalogRole(
+            CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
+    newRootAdminService()
+        .createCatalogRole(
+            CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE2).build());
+    newRootAdminService()
+        .createCatalogRole(
+            CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE_SHARED).build());
+    newRootAdminService()
+        .createCatalogRole(
+            FEDERATED_CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
+    newRootAdminService()
+        .createCatalogRole(
+            FEDERATED_CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE2).build());
 
-    assertSuccess(adminService.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE1));
-    assertSuccess(adminService.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE2));
+    assertSuccess(newRootAdminService().assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE1));
+    assertSuccess(newRootAdminService().assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE2));
 
     assertSuccess(
-        adminService.assignCatalogRoleToPrincipalRole(
-            PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE1));
+        newRootAdminService()
+            .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE1));
     assertSuccess(
-        adminService.assignCatalogRoleToPrincipalRole(
-            PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE2));
+        newRootAdminService()
+            .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE2));
     assertSuccess(
-        adminService.assignCatalogRoleToPrincipalRole(
-            PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE_SHARED));
+        newRootAdminService()
+            .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE_SHARED));
     assertSuccess(
-        adminService.assignCatalogRoleToPrincipalRole(
-            PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE_SHARED));
+        newRootAdminService()
+            .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE_SHARED));
     assertSuccess(
-        adminService.assignCatalogRoleToPrincipalRole(
-            PRINCIPAL_ROLE1, FEDERATED_CATALOG_NAME, CATALOG_ROLE1));
+        newRootAdminService()
+            .assignCatalogRoleToPrincipalRole(
+                PRINCIPAL_ROLE1, FEDERATED_CATALOG_NAME, CATALOG_ROLE1));
     assertSuccess(
-        adminService.assignCatalogRoleToPrincipalRole(
-            PRINCIPAL_ROLE2, FEDERATED_CATALOG_NAME, CATALOG_ROLE2));
+        newRootAdminService()
+            .assignCatalogRoleToPrincipalRole(
+                PRINCIPAL_ROLE2, FEDERATED_CATALOG_NAME, CATALOG_ROLE2));
 
     // Do some shared setup with non-authz-aware baseCatalog.
     baseCatalog.createNamespace(NS1);
@@ -383,7 +382,11 @@ public abstract class PolarisAuthzTestBase {
     baseCatalog.buildTable(TABLE_NS2_1, SCHEMA).create();
 
     genericTableCatalog.createGenericTable(
-        TABLE_NS1_1_GENERIC, "format", "file:///tmp/test_table", "doc", Map.of());
+        TABLE_NS1_1_GENERIC,
+        "format",
+        "file:///tmp/authz/ns1/layer1_table_generic",
+        "doc",
+        Map.of());
 
     policyCatalog.createPolicy(
         POLICY_NS1_1,
@@ -479,7 +482,7 @@ public abstract class PolarisAuthzTestBase {
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
     this.baseCatalog =
-        new IcebergCatalog(
+        new LocalIcebergCatalog(
             diagServices,
             resolverFactory,
             metaStoreManager,
@@ -507,7 +510,7 @@ public abstract class PolarisAuthzTestBase {
 
     @SuppressWarnings("unused") // Required by CDI
     protected TestPolarisLocalCatalogFactory() {
-      this(null, null, null, null, null, null, null, null, null, null);
+      this(null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Inject
@@ -521,7 +524,8 @@ public abstract class PolarisAuthzTestBase {
         PolarisEventMetadataFactory eventMetadataFactory,
         PolarisMetaStoreManager metaStoreManager,
         CallContext callContext,
-        PolarisPrincipal principal) {
+        PolarisPrincipal principal,
+        IdempotencyRequestContext idempotencyRequestContext) {
       super(
           diagnostics,
           resolverFactory,
@@ -532,7 +536,8 @@ public abstract class PolarisAuthzTestBase {
           eventMetadataFactory,
           metaStoreManager,
           callContext,
-          principal);
+          principal,
+          idempotencyRequestContext);
     }
 
     @Override
@@ -548,9 +553,21 @@ public abstract class PolarisAuthzTestBase {
     }
   }
 
+  protected PolarisAdminService newRootAdminService() {
+    return PolarisAdminServiceTestSupport.newAdminService(
+        callContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        serviceIdentityProvider,
+        authenticatedRoot,
+        polarisAuthorizer,
+        reservedProperties);
+  }
+
   protected PolarisAuthzTestsFactory.Builder authzTestsBuilder(String operationName) {
     return PolarisAuthzTestsFactory.builder()
-        .adminService(adminService)
+        .adminServiceSupplier(this::newRootAdminService)
         .operationName(operationName);
   }
 }

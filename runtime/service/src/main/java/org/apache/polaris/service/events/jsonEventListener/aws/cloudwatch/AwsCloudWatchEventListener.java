@@ -149,7 +149,7 @@ public class AwsCloudWatchEventListener implements PolarisEventListener {
     properties.put("event_type", event.type().name());
     event
         .attributes()
-        .get(EventAttributes.TABLE_IDENTIFIER)
+        .getOptional(EventAttributes.TABLE_IDENTIFIER)
         .map(TableIdentifier::toString)
         .ifPresent(id -> properties.put("table_identifier", id));
 

@@ -148,7 +148,7 @@ _Note: the credentials provided here are those for our principal, not the root c
 
 ```shell
 bin/spark-sql \
---packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.0,org.apache.iceberg:iceberg-aws-bundle:1.10.0 \
+--packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.12.0,org.apache.iceberg:iceberg-aws-bundle:1.12.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
 --conf spark.sql.catalog.polaris.warehouse=quickstart_catalog \
 --conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials \
@@ -156,12 +156,17 @@ bin/spark-sql \
 --conf spark.sql.catalog.polaris.catalog-impl=org.apache.iceberg.rest.RESTCatalog \
 --conf spark.sql.catalog.polaris.uri=http://localhost:8181/api/catalog \
 --conf spark.sql.catalog.polaris.credential=${USER_CLIENT_ID}:${USER_CLIENT_SECRET} \
+--conf spark.redaction.regex='(?i)secret|password|token|access[.]?key|credential' \
 --conf spark.sql.catalog.polaris.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.polaris.token-refresh-enabled=true \
 --conf spark.sql.catalog.polaris.client.region=us-west-2
 ```
 
-Similar to the CLI commands above, this configures Spark to use the Polaris running at `localhost:8181`. If your Polaris server is running elsewhere, but sure to update the configuration appropriately.
+The `spark.redaction.regex` line redacts the `credential` secret from the Spark UI and logs, since
+Spark's default redaction pattern does not cover `credential`. Newer Spark releases redact this key
+by default; the line keeps it redacted on earlier versions.
+
+Similar to the CLI commands above, this configures Spark to use the Polaris running at `localhost:8181`. If your Polaris server is running elsewhere, be sure to update the configuration appropriately.
 
 Finally, note that we include the `iceberg-aws-bundle` package here. If your table is using a different filesystem, be sure to include the appropriate dependency.
 
@@ -341,6 +346,7 @@ curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "
 
 ## Next Steps
 * Visit [Using Keycloak as the external identity provider]({{% relref "keycloak-idp" %}}).
+* Visit [Using Keycloak and OPA for fully external principals]({{% relref "keycloak-opa-idp" %}}).
 * Visit [Using Polaris with telemetry tools]({{% relref "telemetry-tools" %}}).
 * Visit [Configuring Polaris for Production]({{% relref "../../configuration/configuring-polaris-for-production" %}}).
 * A Getting Started experience for using Spark with Jupyter Notebooks is documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).

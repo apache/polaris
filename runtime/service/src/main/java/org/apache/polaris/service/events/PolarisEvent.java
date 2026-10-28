@@ -18,18 +18,20 @@
  */
 package org.apache.polaris.service.events;
 
+import org.apache.polaris.core.collection.AttributeMap;
+
 /**
  * Represents an event emitted by Polaris. Events have a type, metadata, and a map of typed
  * attributes
  */
 public record PolarisEvent(
-    PolarisEventType type, PolarisEventMetadata metadata, EventAttributeMap attributes) {
+    PolarisEventType type, PolarisEventMetadata metadata, AttributeMap attributes) {
 
   public PolarisEvent {
-    attributes = new EventAttributeMap(attributes);
+    attributes = AttributeMap.copyOf(attributes);
   }
 
   public PolarisEvent(PolarisEventType type, PolarisEventMetadata metadata) {
-    this(type, metadata, new EventAttributeMap());
+    this(type, metadata, AttributeMap.EMPTY);
   }
 }

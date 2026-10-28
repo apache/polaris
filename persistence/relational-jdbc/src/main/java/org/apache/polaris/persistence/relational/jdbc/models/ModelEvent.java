@@ -24,13 +24,13 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.core.entity.PolarisEvent;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.jspecify.annotations.Nullable;
 
 @PolarisImmutable
-public interface ModelEvent extends Converter<PolarisEvent> {
+public interface ModelEvent extends Converter<EventEntity> {
   String TABLE_NAME = "EVENTS";
 
   String CATALOG_ID = "catalog_id";
@@ -42,6 +42,13 @@ public interface ModelEvent extends Converter<PolarisEvent> {
   String RESOURCE_TYPE = "resource_type";
   String RESOURCE_IDENTIFIER = "resource_identifier";
   String ADDITIONAL_PROPERTIES = "additional_properties";
+
+  /**
+   * Legacy sentinel that was stored in {@code events.catalog_id} for realm-scoped events on schema
+   * versions &lt; 5, where the column was {@code NOT NULL}. Coalesced back to null on read so that
+   * rows written by older Polaris versions are still readable.
+   */
+  String LEGACY_REALM_SCOPED_CATALOG_ID = "__realm__";
 
   List<String> ALL_COLUMNS =
       List.of(
@@ -62,19 +69,18 @@ public interface ModelEvent extends Converter<PolarisEvent> {
    */
   ModelEvent CONVERTER =
       ImmutableModelEvent.builder()
-          .catalogId("")
           .eventId("")
           .requestId("")
           .eventType("")
           .timestampMs(0L)
           .principalName("")
-          .resourceType(PolarisEvent.ResourceType.CATALOG)
+          .resourceType(EventEntity.ResourceType.CATALOG)
           .resourceIdentifier("")
           .additionalProperties("")
           .build();
 
-  // catalog id
-  String getCatalogId();
+  // catalog id, null for events that are not catalog-scoped
+  @Nullable String getCatalogId();
 
   // event id
   String getEventId();
@@ -92,7 +98,7 @@ public interface ModelEvent extends Converter<PolarisEvent> {
   @Nullable String getPrincipalName();
 
   // Enum that states the type of resource was being operated on
-  PolarisEvent.ResourceType getResourceType();
+  EventEntity.ResourceType getResourceType();
 
   // Which resource was operated on
   String getResourceIdentifier();
@@ -101,16 +107,17 @@ public interface ModelEvent extends Converter<PolarisEvent> {
   String getAdditionalProperties();
 
   @Override
-  default PolarisEvent fromResultSet(ResultSet rs) throws SQLException {
+  default EventEntity fromResultSet(ResultSet rs) throws SQLException {
+    String catalogId = rs.getString(CATALOG_ID);
     var modelEvent =
         ImmutableModelEvent.builder()
-            .catalogId(rs.getString(CATALOG_ID))
+            .catalogId(LEGACY_REALM_SCOPED_CATALOG_ID.equals(catalogId) ? null : catalogId)
             .eventId(rs.getString(EVENT_ID))
             .requestId(rs.getString(REQUEST_ID))
             .eventType(rs.getString(EVENT_TYPE))
             .timestampMs(rs.getLong(TIMESTAMP_MS))
             .principalName(rs.getString(PRINCIPAL_NAME))
-            .resourceType(PolarisEvent.ResourceType.valueOf(rs.getString(RESOURCE_TYPE)))
+            .resourceType(EventEntity.ResourceType.valueOf(rs.getString(RESOURCE_TYPE)))
             .resourceIdentifier(rs.getString(RESOURCE_IDENTIFIER))
             .additionalProperties(rs.getString(ADDITIONAL_PROPERTIES))
             .build();
@@ -136,9 +143,8 @@ public interface ModelEvent extends Converter<PolarisEvent> {
     return map;
   }
 
-  static ModelEvent fromEvent(PolarisEvent event) {
+  static ModelEvent fromEvent(EventEntity event) {
     if (event == null) return null;
-
     return ImmutableModelEvent.builder()
         .catalogId(event.getCatalogId())
         .eventId(event.getId())
@@ -152,11 +158,11 @@ public interface ModelEvent extends Converter<PolarisEvent> {
         .build();
   }
 
-  static PolarisEvent toEvent(ModelEvent model) {
+  static EventEntity toEvent(ModelEvent model) {
     if (model == null) return null;
 
-    PolarisEvent polarisEvent =
-        new PolarisEvent(
+    EventEntity polarisEvent =
+        new EventEntity(
             model.getCatalogId(),
             model.getEventId(),
             model.getRequestId(),

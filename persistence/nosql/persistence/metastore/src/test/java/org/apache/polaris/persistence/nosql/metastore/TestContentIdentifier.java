@@ -42,7 +42,7 @@ public class TestContentIdentifier {
     soft.assertThat(identifier.elements()).containsExactlyElementsOf(elements);
     var inKey = identifier.toIndexKey();
     var identifierFromKey = ContentIdentifier.indexKeyToIdentifier(inKey);
-    soft.assertThat(identifierFromKey).isEqualTo(identifierFromKey);
+    soft.assertThat(identifierFromKey).isEqualTo(identifier);
   }
 
   static Stream<Arguments> storageLocation() {

@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence;
 
 import com.google.errorprone.annotations.FormatMethod;
+import jakarta.ws.rs.core.Response;
 import org.apache.polaris.core.exceptions.PolarisException;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 
@@ -44,5 +45,10 @@ public class PolicyMappingAlreadyExistsException extends PolarisException {
 
   public PolarisPolicyMappingRecord getExistingRecord() {
     return this.existingRecord;
+  }
+
+  @Override
+  public int httpStatusCode() {
+    return Response.Status.CONFLICT.getStatusCode();
   }
 }

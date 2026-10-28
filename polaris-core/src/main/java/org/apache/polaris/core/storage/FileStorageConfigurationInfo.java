@@ -32,6 +32,8 @@ import org.apache.polaris.immutables.PolarisImmutable;
 @PolarisImmutable
 @JsonSerialize(as = ImmutableFileStorageConfigurationInfo.class)
 @JsonDeserialize(as = ImmutableFileStorageConfigurationInfo.class)
+@tools.jackson.databind.annotation.JsonSerialize(as = ImmutableFileStorageConfigurationInfo.class)
+@tools.jackson.databind.annotation.JsonDeserialize(as = ImmutableFileStorageConfigurationInfo.class)
 @JsonTypeName("FileStorageConfigurationInfo")
 public abstract class FileStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 

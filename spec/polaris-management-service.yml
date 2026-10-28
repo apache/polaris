@@ -16,7 +16,7 @@
 #  under the License.
 
 
-openapi: 3.0.3
+openapi: 3.1.1
 info:
   title: Polaris Management Service
   version: 0.0.1
@@ -84,7 +84,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: getCatalog
       description: Get the details of a catalog
@@ -187,7 +187,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: getPrincipal
       description: Get the principal details
@@ -248,7 +248,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     post:
       operationId: rotateCredentials
       description: Rotate a principal's credentials. The new credentials will be returned in the response. This is the only
@@ -275,7 +275,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     post:
       operationId: resetCredentials
       description: >-
@@ -310,7 +310,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: listPrincipalRolesAssigned
       description: List the roles assigned to the principal
@@ -354,7 +354,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: principalRoleName
         in: path
         description: The name of the role
@@ -363,7 +363,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     delete:
       operationId: revokePrincipalRole
       description: Remove a role from a catalog principal
@@ -421,7 +421,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: getPrincipalRole
       description: Get the principal role details
@@ -482,7 +482,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: listAssigneePrincipalsForPrincipalRole
       description: List the Principals to whom the target principal role has been assigned
@@ -508,7 +508,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: catalogName
         in: path
         required: true
@@ -517,7 +517,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: listCatalogRolesForPrincipalRole
       description: Get the catalog roles mapped to the principal role
@@ -559,7 +559,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: catalogName
         in: path
         description: The name of the catalog that contains the role to revoke
@@ -568,7 +568,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: catalogRoleName
         in: path
         description: The name of the catalog role that should be revoked
@@ -577,7 +577,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     delete:
       operationId: revokeCatalogRoleFromPrincipalRole
       description: Remove a catalog role from a principal role
@@ -599,7 +599,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: listCatalogRoles
       description: List existing roles in the catalog
@@ -640,7 +640,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: catalogRoleName
         in: path
         description: The name of the role
@@ -649,7 +649,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: getCatalogRole
       description: Get the details of an existing role
@@ -708,7 +708,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: catalogRoleName
         in: path
         required: true
@@ -717,7 +717,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: listAssigneePrincipalRolesForCatalogRole
       description: List the PrincipalRoles to which the target catalog role has been assigned
@@ -743,7 +743,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: catalogRoleName
         in: path
         required: true
@@ -752,7 +752,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: listGrantsForCatalogRole
       description: List the grants the catalog role holds
@@ -854,7 +854,7 @@ components:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
           description: The name of the catalog
         properties:
           type: object
@@ -1073,6 +1073,14 @@ components:
           type: string
           description: The service name to be used by the SigV4 protocol for signing requests, the default signing name is "execute-api" is if not provided
           example: "glue"
+        sessionPolicy:
+          type: string
+          description: >-
+            An optional IAM session policy (JSON) attached to the STS AssumeRole request.
+            This policy intersects with the IAM role's permissions to further restrict
+            the vended credentials. When omitted, no session policy is applied and the
+            credentials inherit the full permissions of the assumed role.
+          example: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["glue:*","s3:GetObject","s3:ListBucket"],"Resource":"*"}]}'
       required:
         - roleArn
         - signingRegion
@@ -1134,14 +1142,28 @@ components:
               example: "arn:aws:iam::123456789001:user/abc1-b-self1234"
             currentKmsKey:
               type: string
-              description: the aws kms key arn used to encrypt s3 data
-              example: "arn:aws:kms::123456789001:key/01234578"
+              deprecated: true
+              description: Deprecated. Use encryptionKeys instead. The AWS KMS key ARN used to encrypt and decrypt S3 data.
+              example: "arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"
             allowedKmsKeys:
               type: array
-              description: The list of kms keys that this catalog and its clients are allowed to use for reading s3 data
+              deprecated: true
+              description: Deprecated. Use encryptionKeys instead. The list of KMS keys that this catalog and its clients may use to encrypt and decrypt S3 data.
               items:
                 type: string
-              example: ["arn:aws:kms::123456789001:key/01234578"]
+              example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
+            encryptionKeys:
+              type: array
+              description: A list of KMS keys that can be used to encrypt S3 data. These keys are also granted decryption permissions.
+              items:
+                type: string
+              example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
+            decryptionKeys:
+              type: array
+              description: A list of KMS keys that can be used to decrypt S3 data. Keeping this list separate from encryptionKeys is recommended, though overlapping keys are allowed.
+              items:
+                type: string
+              example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
             region:
               type: string
               description: the aws region where data is stored
@@ -1182,6 +1204,18 @@ components:
               type: boolean
               description: >-
                 if set to `true`, instructs Polaris Servers to avoid adding KMS key policies.
+            credentialVendingMechanism:
+              type: string
+              example: "STS"
+              description: |
+                How Polaris vends subscoped storage credentials for this catalog. Leave the field empty
+                to use the server's default mechanism, which is STS in Apache Polaris.
+
+                Apache Polaris supports these values:
+                - `STS`: STS AssumeRole against the configured role.
+
+                Later releases may add values. The server returns HTTP 400 for a value it does not
+                support.
 
     AzureStorageConfigInfo:
       type: object
@@ -1317,7 +1351,7 @@ components:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
         clientId:
           type: string
           description: The output-only OAuth clientId associated with this principal if applicable
@@ -1362,6 +1396,7 @@ components:
             Must be a valid client ID previously generated by this service.
         clientSecret:
           type: string
+          format: password
           description: >
             Optional client secret to set for the principal.
             Polaris service implementations may impose extra requirements on what is accepted as a secret (special chars, length, etc.)
@@ -1395,7 +1430,7 @@ components:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
           description: The name of the role
         federated:
           type: boolean
@@ -1462,7 +1497,7 @@ components:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
           description: The name of the role
         properties:
           type: object
@@ -1515,6 +1550,7 @@ components:
         - TABLE_WRITE_PROPERTIES
         - TABLE_READ_DATA
         - TABLE_WRITE_DATA
+        - TABLE_READ_METRICS
         - TABLE_FULL_METADATA
         - TABLE_ATTACH_POLICY
         - TABLE_DETACH_POLICY
@@ -1537,6 +1573,16 @@ components:
         - TABLE_REMOVE_PARTITION_SPECS
         - TABLE_MANAGE_STRUCTURE
 
+    SemanticModelPrivilege:
+      type: string
+      enum:
+        - CATALOG_MANAGE_ACCESS
+        - SEMANTIC_MODEL_READ
+        - SEMANTIC_MODEL_WRITE
+        - SEMANTIC_MODEL_DROP
+        - SEMANTIC_MODEL_FULL_METADATA
+        - SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE
+
     PolicyPrivilege:
       type: string
       enum:
@@ -1552,6 +1598,13 @@ components:
     NamespacePrivilege:
       type: string
       enum:
+        - SEMANTIC_MODEL_LIST
+        - SEMANTIC_MODEL_CREATE
+        - SEMANTIC_MODEL_READ
+        - SEMANTIC_MODEL_WRITE
+        - SEMANTIC_MODEL_DROP
+        - SEMANTIC_MODEL_FULL_METADATA
+        - SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE
         - CATALOG_MANAGE_ACCESS
         - CATALOG_MANAGE_CONTENT
         - CATALOG_MANAGE_METADATA
@@ -1572,6 +1625,7 @@ components:
         - VIEW_WRITE_PROPERTIES
         - TABLE_READ_DATA
         - TABLE_WRITE_DATA
+        - TABLE_READ_METRICS
         - NAMESPACE_FULL_METADATA
         - TABLE_FULL_METADATA
         - VIEW_FULL_METADATA
@@ -1605,6 +1659,13 @@ components:
     CatalogPrivilege:
       type: string
       enum:
+        - SEMANTIC_MODEL_LIST
+        - SEMANTIC_MODEL_CREATE
+        - SEMANTIC_MODEL_READ
+        - SEMANTIC_MODEL_WRITE
+        - SEMANTIC_MODEL_DROP
+        - SEMANTIC_MODEL_FULL_METADATA
+        - SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE
         - CATALOG_MANAGE_ACCESS
         - CATALOG_MANAGE_CONTENT
         - CATALOG_MANAGE_METADATA
@@ -1627,6 +1688,7 @@ components:
         - VIEW_WRITE_PROPERTIES
         - TABLE_READ_DATA
         - TABLE_WRITE_DATA
+        - TABLE_READ_METRICS
         - NAMESPACE_FULL_METADATA
         - TABLE_FULL_METADATA
         - VIEW_FULL_METADATA
@@ -1709,6 +1771,26 @@ components:
             - tableName
             - privilege
 
+    SemanticModelGrant:
+      allOf:
+        - $ref: '#/components/schemas/GrantResource'
+        - type: object
+          properties:
+            namespace:
+              type: array
+              items:
+                type: string
+            semanticModelName:
+              type: string
+              minLength: 1
+              maxLength: 256
+            privilege:
+              $ref: '#/components/schemas/SemanticModelPrivilege'
+          required:
+            - namespace
+            - semanticModelName
+            - privilege
+
     PolicyGrant:
       allOf:
         - $ref: '#/components/schemas/GrantResource'
@@ -1763,6 +1845,7 @@ components:
           table: '#/components/schemas/TableGrant'
           view: '#/components/schemas/ViewGrant'
           policy: '#/components/schemas/PolicyGrant'
+          semantic-model: '#/components/schemas/SemanticModelGrant'
       properties:
         type:
           type: string
@@ -1772,6 +1855,7 @@ components:
             - table
             - view
             - policy
+            - semantic-model
       required:
         - type
 

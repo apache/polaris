@@ -20,9 +20,12 @@
 package org.apache.polaris.core.storage.aws;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
+import java.util.List;
 import java.util.stream.Stream;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,6 +33,11 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public class AwsStorageConfigurationInfoTest {
+
+  private static final String ALLOWED_KMS_KEY_ARN =
+      "arn:aws:kms:us-east-1:012345678901:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+  private static final String DECRYPTION_KEY_ARN =
+      "arn:aws:kms:us-east-1:012345678901:key/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 
   @Test
   public void testStsEndpoint() {
@@ -138,6 +146,29 @@ public class AwsStorageConfigurationInfoTest {
     assertThat(newBuilder().kmsUnavailable(true).build().getKmsUnavailable()).isTrue();
   }
 
+  @Test
+  @SuppressWarnings("deprecation")
+  public void testEffectiveEncryptionKeysIncludeDeprecatedProperties() {
+    assertThat(
+            newBuilder()
+                .currentKmsKey(ALLOWED_KMS_KEY_ARN)
+                .allowedKmsKeys(List.of(DECRYPTION_KEY_ARN))
+                .build()
+                .getEffectiveEncryptionKeys())
+        .containsExactly(DECRYPTION_KEY_ARN, ALLOWED_KMS_KEY_ARN);
+  }
+
+  @Test
+  public void testDecryptionKeysMayOverlapEncryptionKeys() {
+    assertThat(
+            newBuilder()
+                .encryptionKeys(List.of(ALLOWED_KMS_KEY_ARN))
+                .decryptionKeys(List.of(ALLOWED_KMS_KEY_ARN, "provider-specific-key"))
+                .build()
+                .getDecryptionKeys())
+        .containsExactly(ALLOWED_KMS_KEY_ARN, "provider-specific-key");
+  }
+
   @ParameterizedTest
   @MethodSource
   public void testRoleArnParsing(
@@ -167,5 +198,81 @@ public class AwsStorageConfigurationInfoTest {
         Arguments.of(
             "urn:ecs:sts::namespace:assumed-role/s3assumeRole/user1-105-temp", "namespace", "ecs"),
         Arguments.of("urn:sgws:identity::12345:group/foo-bar-abcdef", "12345", "sgws"));
+  }
+
+  @Test
+  void anEmptyMechanismReadsAsNullAndResolvesToSts() {
+    AwsStorageConfigurationInfo config =
+        newBuilder().addAllowedLocation("s3://bucket/path/").build();
+    assertThat(config.getCredentialVendingMechanism()).isNull();
+    assertThat(config.resolvedCredentialVendingMechanism())
+        .isEqualTo(S3CredentialVendingMechanism.STS);
+    assertThat(config.serialize()).doesNotContain("credentialVendingMechanism");
+  }
+
+  @Test
+  void anExplicitMechanismResolvesToItself() {
+    AwsStorageConfigurationInfo config =
+        newBuilder()
+            .addAllowedLocation("s3://bucket/path/")
+            .credentialVendingMechanism(S3CredentialVendingMechanism.STS)
+            .build();
+    assertThat(config.resolvedCredentialVendingMechanism())
+        .isEqualTo(S3CredentialVendingMechanism.STS);
+    assertThat(config.serialize()).contains("\"credentialVendingMechanism\":\"STS\"");
+  }
+
+  @Test
+  void aPersistedRowWithoutTheKeyReadsAsEmpty() throws Exception {
+    String json =
+        "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\","
+            + "\"allowedLocations\":[\"s3://bucket/\"]}";
+    AwsStorageConfigurationInfo info =
+        (AwsStorageConfigurationInfo) PolarisStorageConfigurationInfo.deserialize(json);
+    assertThat(info.getCredentialVendingMechanism()).isNull();
+    assertThat(info.resolvedCredentialVendingMechanism())
+        .isEqualTo(S3CredentialVendingMechanism.STS);
+  }
+
+  @Test
+  void theApiValueNormalizerTreatsNullAndBlankAsEmpty() {
+    assertThat(AwsStorageConfigurationInfo.credentialVendingMechanismOf(null)).isNull();
+    assertThat(AwsStorageConfigurationInfo.credentialVendingMechanismOf("")).isNull();
+    assertThat(AwsStorageConfigurationInfo.credentialVendingMechanismOf("  ")).isNull();
+    assertThat(AwsStorageConfigurationInfo.credentialVendingMechanismOf("STS")).isEqualTo("STS");
+  }
+
+  @Test
+  void blankMechanismIsRejected() {
+    assertThatThrownBy(
+            () ->
+                AwsStorageConfigurationInfo.builder()
+                    .credentialVendingMechanism(" ")
+                    .addAllowedLocation("s3://bucket/")
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("credentialVendingMechanism must not be blank");
+  }
+
+  @Test
+  void unknownMechanismIsCarriedByTheModel() {
+    assertThat(
+            AwsStorageConfigurationInfo.builder()
+                .credentialVendingMechanism("DOWNSTREAM_MECHANISM")
+                .addAllowedLocation("s3://bucket/")
+                .build()
+                .getCredentialVendingMechanism())
+        .isEqualTo("DOWNSTREAM_MECHANISM");
+  }
+
+  @Test
+  void aPersistedRowWithTheKeyReadsItBack() throws Exception {
+    String json =
+        "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\","
+            + "\"allowedLocations\":[\"s3://bucket/\"],"
+            + "\"credentialVendingMechanism\":\"DOWNSTREAM_MECHANISM\"}";
+    AwsStorageConfigurationInfo info =
+        (AwsStorageConfigurationInfo) PolarisStorageConfigurationInfo.deserialize(json);
+    assertThat(info.getCredentialVendingMechanism()).isEqualTo("DOWNSTREAM_MECHANISM");
   }
 }

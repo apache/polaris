@@ -18,13 +18,12 @@
  */
 package org.apache.polaris.persistence.nosql.api.obj;
 
-import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
-import static com.fasterxml.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjSerializationHelper.contextualReader;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjTypes.objTypeById;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static tools.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
 
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
@@ -35,6 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestGenericObj {
@@ -61,10 +61,10 @@ public class TestGenericObj {
     var jsonAllAttributes = writerAllAttributes.writeValueAsString(realObj);
     var genericObj =
         contextualReader(mapper, genericType, id, 0, versionToken, realObj.createdAtMicros())
-            .readValue(json, genericType.targetClass());
+            .readValue(json);
     var genericObjAllAttributes =
         contextualReader(mapper, genericType, id, 0, versionToken, realObj.createdAtMicros())
-            .readValue(jsonAllAttributes, genericType.targetClass());
+            .readValue(jsonAllAttributes);
     soft.assertThat(genericObj)
         .isEqualTo(genericObjAllAttributes)
         .isInstanceOf(GenericObj.class)
@@ -76,10 +76,10 @@ public class TestGenericObj {
     var jsonGenericAllAttributes = writerAllAttributes.writeValueAsString(genericObj);
     var deserRealObj =
         contextualReader(mapper, realType, id, 1, versionToken, realObj.createdAtMicros())
-            .readValue(jsonGeneric, realType.targetClass());
+            .readValue(jsonGeneric);
     var deserRealObjAllAttributes =
         contextualReader(mapper, realType, id, 1, versionToken, realObj.createdAtMicros())
-            .readValue(jsonGenericAllAttributes, realType.targetClass());
+            .readValue(jsonGenericAllAttributes);
     soft.assertThat(deserRealObj).isEqualTo(realObj).isEqualTo(deserRealObjAllAttributes);
   }
 

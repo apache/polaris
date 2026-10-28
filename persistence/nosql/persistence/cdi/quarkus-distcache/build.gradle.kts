@@ -28,9 +28,9 @@ dependencies {
   implementation(project(":polaris-persistence-nosql-cdi-common"))
   implementation(project(":polaris-persistence-nosql-api"))
 
-  implementation(platform(libs.jackson.bom))
+  implementation(platform(libs.jackson3.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")
-  implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation("tools.jackson.core:jackson-databind")
 
   compileOnly(libs.smallrye.config.core)
 
@@ -57,5 +57,9 @@ dependencies {
 
   // Must stick with the Quarkus platform versions of Vert.X
   // (signature of io.vertx.core.Vertx.createHttpClient() changed from 4.5 to 5.0)
-  testImplementation(enforcedPlatform(libs.quarkus.bom))
+  testImplementation(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+  }
 }

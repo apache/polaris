@@ -18,22 +18,22 @@
  */
 package org.apache.polaris.core.auth;
 
-import java.util.List;
-import java.util.Set;
-import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
 /** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {
   /**
-   * Resolve authorizer-specific inputs before authorization.
+   * Analyzes authorizer {@link AuthorizationRequest inputs}, prepares the {@link
+   * AuthorizationState} for entity {@link AuthorizationState#resolve() resolution} and resolves the
+   * {@link PolarisResolutionManifest} by calling {@link AuthorizationState#resolve()}.
    *
-   * <p>Implementations may resolve only the entities required for the request (for example, the
-   * caller principal, principal roles, catalog roles, and requested targets) and store that state
-   * in {@link AuthorizationState}.
+   * <p>Implementations should invoke {@link AuthorizationState#select(Resolvable)} or {@link
+   * AuthorizationState#selectAll()} as appropriate.
+   *
+   * <p>Implementations should be aware that the provided {@link AuthorizationState} may already
+   * have some selectors injected by the caller before invoking this method.
    *
    * <p>This method should not perform authorization decisions directly.
    */
@@ -52,32 +52,4 @@ public interface PolarisAuthorizer {
    */
   @NonNull AuthorizationDecision authorize(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request);
-
-  /**
-   * Convenience method that throws a {@link ForbiddenException} when authorization is denied.
-   *
-   * <p>Implementations should provide allow/deny decisions via {@link #authorize}.
-   */
-  default void authorizeOrThrow(
-      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    AuthorizationDecision decision = authorize(authzState, request);
-    if (!decision.isAllowed()) {
-      String message = decision.getMessage().orElse("Authorization denied");
-      throw new ForbiddenException("%s", message);
-    }
-  }
-
-  void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary);
-
-  void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable List<PolarisResolvedPathWrapper> targets,
-      @Nullable List<PolarisResolvedPathWrapper> secondaries);
 }

@@ -24,10 +24,6 @@ import static org.assertj.core.groups.Tuple.tuple;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfigBuilder;
@@ -44,6 +40,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestMemorySize {
@@ -145,8 +145,7 @@ public class TestMemorySize {
 
   @ParameterizedTest
   @MethodSource("parse")
-  public void serdeJackson(@SuppressWarnings("unused") String input, BigInteger expected)
-      throws Exception {
+  public void serdeJackson(@SuppressWarnings("unused") String input, BigInteger expected) {
     var value = new MemorySize.MemorySizeBig(expected);
 
     var immutable =
@@ -157,16 +156,16 @@ public class TestMemorySize {
             .optionalPresentInt(value)
             .build();
 
-    var mapper = new ObjectMapper().findAndRegisterModules();
+    var mapper = JsonMapper.builder().findAndAddModules().build();
     var json = mapper.writeValueAsString(immutable);
     var nodes = mapper.readValue(json, JsonNode.class);
     var deser = mapper.readValue(json, MemorySizeJson.class);
 
     soft.assertThat(deser).isEqualTo(immutable);
 
-    soft.assertThat(nodes.get("implicit").asText()).isEqualTo(value.toString());
+    soft.assertThat(nodes.get("implicit").asString()).isEqualTo(value.toString());
     soft.assertThat(nodes.get("implicitInt").bigIntegerValue()).isEqualTo(value.asBigInteger());
-    soft.assertThat(nodes.get("optionalPresent").asText()).isEqualTo(value.toString());
+    soft.assertThat(nodes.get("optionalPresent").asString()).isEqualTo(value.toString());
     soft.assertThat(nodes.get("optionalPresentInt").bigIntegerValue())
         .isEqualTo(value.asBigInteger());
   }

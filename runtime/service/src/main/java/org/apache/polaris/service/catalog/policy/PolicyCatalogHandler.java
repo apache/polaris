@@ -23,16 +23,24 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNam
 import com.google.common.base.Strings;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.PolicyAttachmentAuthorizationIntent;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -40,6 +48,7 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
+import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
@@ -63,12 +72,19 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
         new PolicyCatalog(metaStoreManager(), callContext(), this.resolutionManifest);
   }
 
-  public ListPoliciesResponse listPolicies(Namespace parent, @Nullable PolicyType policyType) {
+  public ListPoliciesResponse listPolicies(
+      Namespace parent, @Nullable PolicyType policyType, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_POLICY;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
+    PageToken pageRequest =
+        PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
+    Page<PolicyIdentifier> page = policyCatalog.listPolicies(parent, policyType, pageRequest);
+    rejectIncompleteListing(pageToken, pageSize, page.encodedResponseToken());
+
     return ListPoliciesResponse.builder()
-        .setIdentifiers(new HashSet<>(policyCatalog.listPolicies(parent, policyType)))
+        .setIdentifiers(new LinkedHashSet<>(page.items()))
+        .setNextPageToken(page.encodedResponseToken())
         .build();
   }
 
@@ -98,6 +114,10 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
   public LoadPolicyResponse updatePolicy(PolicyIdentifier identifier, UpdatePolicyRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_POLICY;
     authorizeBasicPolicyOperationOrThrow(op, identifier);
+
+    if (request.getCurrentPolicyVersion() == null) {
+      throw new BadRequestException("current-policy-version is required to update a policy");
+    }
 
     return LoadPolicyResponse.builder()
         .setPolicy(
@@ -144,7 +164,14 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
             PolarisCatalogHelpers.identifierToList(identifier.namespace(), identifier.name()),
             PolarisEntityType.POLICY,
             true /* optional */));
-    resolutionManifest.resolveAll();
+    AuthorizationRequest authorizationRequest =
+        new AuthorizationRequest(
+            polarisPrincipal(),
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    op, PolarisSecurableMapper.policy(catalogName(), identifier))));
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
 
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(
@@ -153,13 +180,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
     }
 
-    authorizer()
-        .authorizeOrThrow(
-            polarisPrincipal(),
-            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-            op,
-            target,
-            null /* secondary */);
+    authorizer().authorize(authorizationState, authorizationRequest).throwIfDenied();
 
     initializeCatalog();
   }
@@ -182,27 +203,28 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
       PolarisAuthorizableOperation op =
           PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_TABLE;
       // only Iceberg tables are supported
-      authorizeBasicTableLikeOperationOrThrow(
+      resolveAndAuthorizeBasicTableLikeOperationOrThrow(
           op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
   }
 
   private void authorizeBasicCatalogOperationOrThrow(PolarisAuthorizableOperation op) {
     resolutionManifest = newResolutionManifest();
-    resolutionManifest.resolveAll();
+    AuthorizationRequest authorizationRequest =
+        new AuthorizationRequest(
+            polarisPrincipal(),
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    op, PolarisSecurableMapper.catalog(catalogName()))));
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
 
     PolarisResolvedPathWrapper targetCatalog =
         resolutionManifest.getResolvedReferenceCatalogEntity();
     if (targetCatalog == null) {
       throw new NotFoundException("Catalog not found");
     }
-    authorizer()
-        .authorizeOrThrow(
-            polarisPrincipal(),
-            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-            op,
-            targetCatalog,
-            null);
+    authorizer().authorize(authorizationState, authorizationRequest).throwIfDenied();
 
     initializeCatalog();
   }
@@ -234,7 +256,20 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
       default -> throw new IllegalArgumentException("Unsupported target type: " + target.getType());
     }
 
-    ResolverStatus status = resolutionManifest.resolveAll();
+    PolarisAuthorizableOperation requestedOp =
+        determineRequestedPolicyMappingOperation(target, isAttach);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    authorizer()
+        .resolveAuthorizationInputs(
+            authorizationState,
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new PolicyAttachmentAuthorizationIntent(
+                        requestedOp,
+                        PolarisSecurableMapper.policy(catalogName(), identifier),
+                        PolarisSecurableMapper.policyAttachmentTarget(catalogName(), target)))));
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     throwNotFoundExceptionIfFailToResolve(status, identifier);
 
@@ -253,12 +288,16 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
         determinePolicyMappingOperation(target, targetWrapper, isAttach);
 
     authorizer()
-        .authorizeOrThrow(
-            polarisPrincipal(),
-            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-            op,
-            policyWrapper,
-            targetWrapper);
+        .authorize(
+            authorizationState,
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new PolicyAttachmentAuthorizationIntent(
+                        op,
+                        PolarisSecurableMapper.policy(catalogName(), identifier),
+                        PolarisSecurableMapper.policyAttachmentTarget(catalogName(), target)))))
+        .throwIfDenied();
 
     initializeCatalog();
   }
@@ -283,6 +322,25 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
         }
         throw new IllegalArgumentException("Unsupported table-like subtype: " + subType);
       }
+      default -> throw new IllegalArgumentException("Unsupported target type: " + target.getType());
+    };
+  }
+
+  private PolarisAuthorizableOperation determineRequestedPolicyMappingOperation(
+      PolicyAttachmentTarget target, boolean isAttach) {
+    return switch (target.getType()) {
+      case CATALOG ->
+          isAttach
+              ? PolarisAuthorizableOperation.ATTACH_POLICY_TO_CATALOG
+              : PolarisAuthorizableOperation.DETACH_POLICY_FROM_CATALOG;
+      case NAMESPACE ->
+          isAttach
+              ? PolarisAuthorizableOperation.ATTACH_POLICY_TO_NAMESPACE
+              : PolarisAuthorizableOperation.DETACH_POLICY_FROM_NAMESPACE;
+      case TABLE_LIKE ->
+          isAttach
+              ? PolarisAuthorizableOperation.ATTACH_POLICY_TO_TABLE
+              : PolarisAuthorizableOperation.DETACH_POLICY_FROM_TABLE;
       default -> throw new IllegalArgumentException("Unsupported target type: " + target.getType());
     };
   }

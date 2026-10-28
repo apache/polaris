@@ -28,10 +28,20 @@ import java.util.Map;
 public class RestApi {
   private final Client client;
   private final URI uri;
+  private final String contentType;
 
   RestApi(Client client, URI uri) {
+    this(client, uri, "application/json");
+  }
+
+  RestApi(Client client, URI uri, String contentType) {
     this.client = client;
     this.uri = uri;
+    this.contentType = contentType;
+  }
+
+  public Invocation.Builder request() {
+    return client.target(uri).request(contentType);
   }
 
   public Invocation.Builder request(String path) {
@@ -59,7 +69,7 @@ public class RestApi {
     for (Map.Entry<String, String> entry : queryParams.entrySet()) {
       target = target.queryParam(entry.getKey(), entry.getValue());
     }
-    Invocation.Builder request = target.request("application/json");
+    Invocation.Builder request = target.request(contentType);
     headers.forEach(request::header);
     return request;
   }

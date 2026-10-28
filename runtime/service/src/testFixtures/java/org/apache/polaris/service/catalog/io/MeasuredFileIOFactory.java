@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -47,7 +48,7 @@ public class MeasuredFileIOFactory implements FileIOFactory {
 
   @Inject
   public MeasuredFileIOFactory() {
-    defaultFileIOFactory = new DefaultFileIOFactory();
+    defaultFileIOFactory = new DefaultFileIOFactory(S3AccessConfig.empty());
   }
 
   @Override

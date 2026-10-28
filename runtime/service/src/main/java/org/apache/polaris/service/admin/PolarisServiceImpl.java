@@ -29,6 +29,7 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -56,6 +57,7 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.Principals;
 import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
+import org.apache.polaris.core.admin.model.SemanticModelGrant;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -142,7 +144,7 @@ public class PolarisServiceImpl
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
       LOGGER
           .atWarn()
-          .addKeyValue("storageConfig", storageConfigInfo)
+          .addKeyValue(StructuredLogKeys.STORAGE_CONFIG, storageConfigInfo)
           .log("Disallowed storage type in catalog");
       throw new IllegalArgumentException(
           "Unsupported storage type: " + storageConfigInfo.getStorageType());
@@ -690,11 +692,26 @@ public class PolarisServiceImpl
                       catalogName, catalogRoleName, identifier, privilege);
           break;
         }
+      case SemanticModelGrant semanticModelGrant:
+        {
+          var privilege = PolarisPrivilege.valueOf(semanticModelGrant.getPrivilege().toString());
+          var identifier =
+              TableIdentifier.of(
+                  toNamespace(semanticModelGrant.getNamespace()),
+                  semanticModelGrant.getSemanticModelName());
+          result =
+              direction == GrantDirection.GRANT
+                  ? adminService.grantPrivilegeOnSemanticModelToRole(
+                      catalogName, catalogRoleName, identifier, privilege)
+                  : adminService.revokePrivilegeOnSemanticModelFromRole(
+                      catalogName, catalogRoleName, identifier, privilege);
+          break;
+        }
       default:
         LOGGER
             .atWarn()
-            .addKeyValue("catalog", catalogName)
-            .addKeyValue("role", catalogRoleName)
+            .addKeyValue(StructuredLogKeys.CATALOG, catalogName)
+            .addKeyValue(StructuredLogKeys.ROLE, catalogRoleName)
             .log(
                 "Don't know how to handle privilege {}: {}",
                 direction == GrantDirection.GRANT ? "grant" : "revocation",

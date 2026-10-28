@@ -48,6 +48,12 @@ public class PolarisResourcePaths {
       "/polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}/mappings";
   public static final String V1_APPLICABLE_POLICIES = "/polaris/v1/{prefix}/applicable-policies";
 
+  // Semantic Model endpoints
+  public static final String V1_SEMANTIC_MODELS =
+      "/polaris/v1/{prefix}/namespaces/{namespace}/semantic-models";
+  public static final String V1_SEMANTIC_MODEL =
+      "/polaris/v1/{prefix}/namespaces/{namespace}/semantic-models/{semantic-model-name}";
+
   private final String prefix;
   private final String namespaceSeparatorEncoded;
 
@@ -73,9 +79,7 @@ public class PolarisResourcePaths {
         "v1",
         prefix,
         "namespaces",
-        // FIXME use RESTUtil.encodeNamespaceAsPathSegment(), see
-        // https://github.com/apache/iceberg/pull/15989
-        RESTUtil.encodeNamespace(ns, namespaceSeparatorEncoded),
+        RESTUtil.encodeNamespaceAsPathSegment(ns, namespaceSeparatorEncoded),
         "generic-tables");
   }
 
@@ -84,12 +88,9 @@ public class PolarisResourcePaths {
         "v1",
         prefix,
         "namespaces",
-        // FIXME use RESTUtil.encodeNamespaceAsPathSegment(), see
-        // https://github.com/apache/iceberg/pull/15989
-        RESTUtil.encodeNamespace(ident.namespace(), namespaceSeparatorEncoded),
+        RESTUtil.encodeNamespaceAsPathSegment(ident.namespace(), namespaceSeparatorEncoded),
         "tables",
-        // FIXME use RESTUtil.encodePathSegment(), see https://github.com/apache/iceberg/pull/15989
-        RESTUtil.encodeString(ident.name()),
+        RESTUtil.encodePathSegment(ident.name()),
         "credentials");
   }
 
@@ -99,11 +100,8 @@ public class PolarisResourcePaths {
         "v1",
         prefix,
         "namespaces",
-        // FIXME use RESTUtil.encodeNamespaceAsPathSegment(), see
-        // https://github.com/apache/iceberg/pull/15989
-        RESTUtil.encodeNamespace(ident.namespace(), namespaceSeparatorEncoded),
+        RESTUtil.encodeNamespaceAsPathSegment(ident.namespace(), namespaceSeparatorEncoded),
         "generic-tables",
-        // FIXME use RESTUtil.encodePathSegment(), see https://github.com/apache/iceberg/pull/15989
-        RESTUtil.encodeString(ident.name()));
+        RESTUtil.encodePathSegment(ident.name()));
   }
 }

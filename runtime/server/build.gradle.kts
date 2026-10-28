@@ -27,11 +27,19 @@ plugins {
   id("polaris-license-report")
 }
 
-val quarkusRunner by
-  configurations.creating { description = "Used to reference the generated runner-jar" }
+val quarkusRunner =
+  configurations.create("quarkusRunner") {
+    description = "Used to reference the generated runner-jar"
+  }
 
 dependencies {
   implementation(project(":polaris-runtime-service"))
+
+  runtimeOnly(project(":polaris-persistence-nosql-dynamodb")) {
+    capabilities {
+      requireCapability("org.apache.polaris:polaris-persistence-nosql-dynamodb-quarkus")
+    }
+  }
 
   runtimeOnly("org.postgresql:postgresql")
   runtimeOnly(project(":polaris-relational-jdbc"))
@@ -39,17 +47,26 @@ dependencies {
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
   runtimeOnly(project(":polaris-extensions-auth-opa"))
   runtimeOnly(project(":polaris-extensions-auth-ranger"))
+  runtimeOnly(project(":polaris-extensions-events-kafka"))
+  runtimeOnly(project(":polaris-extensions-lineage"))
+  runtimeOnly(project(":polaris-extensions-semantic-models"))
+  runtimeOnly(project(":polaris-extensions-openlineage"))
+  runtimeOnly(project(":polaris-extensions-metrics-reports"))
+  runtimeOnly(project(":polaris-extensions-metrics-reports-jdbc"))
 
-  if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("HIVE") == true) {
+  val nonRestCatalogs = providers.gradleProperty("NonRESTCatalogs").orNull
+  if (nonRestCatalogs?.contains("HIVE") == true) {
     runtimeOnly(project(":polaris-extensions-federation-hive"))
   }
-
-  if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("BIGQUERY") == true) {
+  if (nonRestCatalogs?.contains("BIGQUERY") == true) {
     runtimeOnly(project(":polaris-extensions-federation-bigquery"))
   }
 
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom)) {
+    // Quarkus 3.40 downgraded Jackson from 2.22 to 2.21, but we need jackson-annotations version
+    // 2.22 for Jackson 3. Remove this for for the Quarkus 4 upgrade.
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
     exclude(group = "com.google.protobuf", module = "protobuf-java")
     exclude(group = "com.google.protobuf", module = "protobuf-java-util")
   }
@@ -69,8 +86,11 @@ quarkus {
         .attributes
         .map { e -> "quarkus.package.jar.manifest.attributes.\"${e.key}\"" to e.value.toString() }
         .toMap()
-    }
+    },
   )
+  buildForkOptions {
+    maxHeapSize = "2G"
+  }
 }
 
 tasks.register("run") {
@@ -84,6 +104,7 @@ tasks.named<QuarkusDev>("quarkusDev") {
     listOf(
       "-Dpolaris.bootstrap.credentials=POLARIS,root,s3cr3t",
       "-Dquarkus.console.color=true",
+      "-Dquarkus.observability.lgtm.enabled=false",
       "-Dpolaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"=true",
       "-Dpolaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"=[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]",
       "-Dpolaris.readiness.ignore-severe-issues=true",
@@ -94,14 +115,14 @@ tasks.named<QuarkusDev>("quarkusDev") {
 val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
 
 // Configuration to expose distribution artifacts
-val distributionElements by
-  configurations.creating {
+val distributionElements =
+  configurations.create("distributionElements") {
     isCanBeConsumed = true
     isCanBeResolved = false
   }
 
-val licenseNoticeElements by
-  configurations.creating {
+val licenseNoticeElements =
+  configurations.create("licenseNoticeElements") {
     isCanBeConsumed = true
     isCanBeResolved = false
   }
@@ -112,6 +133,8 @@ artifacts {
   add(quarkusRunner.name, quarkusBuild.map { it.fastJar.resolve("quarkus-run.jar") }) {
     builtBy(quarkusBuild)
   }
-  add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
-  add("licenseNoticeElements", layout.projectDirectory.dir("distribution"))
+  add(distributionElements.name, layout.buildDirectory.dir("quarkus-app")) {
+    builtBy("quarkusBuild")
+  }
+  add(licenseNoticeElements.name, layout.projectDirectory.dir("distribution"))
 }

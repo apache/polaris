@@ -18,19 +18,20 @@
  */
 package org.apache.polaris.core.policy.content;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 public class PolicyContentUtil {
   public static final ObjectMapper MAPPER = configureMapper();
 
   private static ObjectMapper configureMapper() {
-    ObjectMapper mapper = JsonMapper.builder().build();
-    // Fails if a required field (in the constructor) is missing
-    mapper.configure(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES, true);
-    // Fails if a required field is present but explicitly null, e.g., {"enable": null}
-    mapper.configure(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES, true);
-    return mapper;
+    return JsonMapper.builder()
+        // Fails if a required field (in the constructor) is missing
+        .configure(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES, true)
+        // Fails if a required field is present but explicitly null, e.g., {"enable": null}
+        .configure(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES, true)
+        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
+        .build();
   }
 }

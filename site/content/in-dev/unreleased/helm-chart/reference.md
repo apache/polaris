@@ -82,6 +82,7 @@ weight: 900
 | service.externalTrafficPolicy | string | `"Cluster"` | Controls how traffic from external sources is routed. Valid values are Cluster and Local. The default value is Cluster. Set the field to Cluster to route traffic to all ready endpoints. Set the field to Local to only route to ready node-local endpoints. If the traffic policy is Local and there are no node-local endpoints, traffic is dropped by kube-proxy. |
 | service.trafficDistribution | string | `nil` | The traffic distribution field provides another way to influence traffic routing within a Kubernetes Service. While traffic policies focus on strict semantic guarantees, traffic distribution allows you to express preferences such as routing to topologically closer endpoints. The only valid value is: PreferClose. The default value is implementation-specific. |
 | service.annotations | object | `{}` | Annotations to add to the service. |
+| service.labels | object | `{}` | Labels to add to the service. |
 
 ### Management Service
 
@@ -99,6 +100,7 @@ weight: 900
 | managementService.externalTrafficPolicy | string | `"Cluster"` | Controls how traffic from external sources is routed. |
 | managementService.trafficDistribution | string | `nil` | The traffic distribution field. |
 | managementService.annotations | object | `{}` | Annotations to add to the service. |
+| managementService.labels | object | `{}` | Labels to add to the service. |
 
 ### Extra Services
 
@@ -117,6 +119,7 @@ weight: 900
 | extraServices[0].externalTrafficPolicy | string | `"Cluster"` | Controls how traffic from external sources is routed. |
 | extraServices[0].trafficDistribution | string | `nil` | The traffic distribution field. |
 | extraServices[0].annotations | object | `{}` | Annotations to add to the extra service. |
+| extraServices[0].labels | object | `{}` | Labels to add to the service. |
 
 ### Ingress
 
@@ -265,6 +268,7 @@ weight: 900
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | persistence.type | string | `"in-memory"` | The type of persistence to use. Three built-in types are supported: in-memory, relational-jdbc, and nosql (beta). |
+| persistence.relationalJdbc.additionalProperties | object | `{"currentSchema":"POLARIS_SCHEMA"}` | Additional JDBC connection properties passed to the datasource driver as `quarkus.datasource.jdbc.additional-jdbc-properties.<name>`. The default sets `currentSchema`, which on PostgreSQL and CockroachDB selects the database schema (namespace) holding the Polaris tables; that schema must exist before Polaris connects (creating it is a DBA task) and is passed to the driver unquoted, so the database applies its usual identifier case folding. Note that `currentSchema` is PostgreSQL/CockroachDB-specific and is silently ignored by other drivers such as MySQL, where the schema is instead the database named in the JDBC URL. Add further entries to customize other driver properties. |
 | persistence.relationalJdbc.secret.name | string | `""` | The secret name to pull database connection properties from |
 | persistence.relationalJdbc.secret.username | string | `"username"` | The secret key holding the database username for authentication |
 | persistence.relationalJdbc.secret.password | string | `"password"` | The secret key holding the database password for authentication |
@@ -347,3 +351,32 @@ weight: 900
 |-----|------|---------|-------------|
 | tasks.maxConcurrentTasks | int | `0` | The maximum number of concurrent tasks that can be executed at the same time. If unspecified or zero, defaults to the number of available cores. |
 | tasks.maxQueuedTasks | int | `0` | The maximum number of tasks that can be queued up for execution. If unspecified or zero, defaults to Integer.MAX_VALUE. |
+
+### Maintenance
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| maintenance | object | See sub-fields below. | Configuration for Polaris maintenance tasks running as Kubernetes CronJobs. Maintenance pods inherit the global pod-level scheduling and hardening settings but do NOT inherit env-var or volume settings. The latter must be configured explicitly under maintenance.* to prevent server-specific secrets and configuration from being exposed to maintenance pods. |
+| maintenance.annotations | object | `{}` | Annotations to add to every maintenance CronJob object. |
+| maintenance.podAnnotations | object | `{}` | Annotations to add to every maintenance pod. NOT merged with the global `podAnnotations` as annotations can grant extra access, so maintenance pods receive only what is configured here. |
+| maintenance.podLabels | object | `{}` | Labels to add to every maintenance pod (e.g., team, cost-center). NOT merged with the global `podLabels`. User-supplied labels are rendered after the chart-managed maintenance labels. |
+| maintenance.extraEnv | list | `[]` | Extra environment variables to add to every maintenance CronJob object. NOT merged with the global `extraEnv` as maintenance pods receive only values configured here. |
+| maintenance.envFrom | list | `[]` | Bulk import environment variables from Secrets or ConfigMaps to every maintenance CronJob object. NOT merged with the global `envFrom` as maintenance pods receive only values configured here. |
+| maintenance.extraVolumes | list | `[]` | Extra volumes to add to every maintenance CronJob object. NOT merged with the global `extraVolumes` — see `maintenance.extraEnv` for the rationale. |
+| maintenance.extraVolumeMounts | list | `[]` | Extra volume mounts to add to every maintenance CronJob object. NOT merged with the global `extraVolumeMounts` as maintenance pods receive only values configured here. |
+| maintenance.image | object | `{"pullPolicy":"IfNotPresent","repository":"apache/polaris-admin-tool","tag":"latest"}` | The container image used by every maintenance CronJob object. |
+| maintenance.image.repository | string | `"apache/polaris-admin-tool"` | The image repository to pull from for the Polaris admin tool. |
+| maintenance.image.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
+| maintenance.image.tag | string | `"latest"` | The image tag. |
+| maintenance.jobs | object | See sub-fields below. | Define maintenance CronJobs. |
+| maintenance.jobs.nosql-maintenance.enabled | bool | `false` | Enable this maintenance job. |
+| maintenance.jobs.nosql-maintenance.schedule | string | `"0 2 * * *"` | The schedule in Cron format. |
+| maintenance.jobs.nosql-maintenance.args | list | `["nosql","maintenance-run"]` | The arguments to pass to the admin tool. |
+| maintenance.jobs.nosql-maintenance.concurrencyPolicy | string | `"Forbid"` | The concurrency policy. Valid values are: Allow, Forbid, Replace. |
+| maintenance.jobs.nosql-maintenance.resources | object | `{}` | Resource requests and limits for this job's container. Not merged with the global `resources` as server's resource profile is typically not suitable for short-lived maintenance jobs. Configure resources explicitly when needed. Unset by default. |
+| maintenance.jobs.nosql-maintenance.restartPolicy | string | `"Never"` | The pod's restartPolicy. |
+| maintenance.jobs.nosql-maintenance.backoffLimit | int | `6` | Maximum number of retries before marking this Job failed. |
+| maintenance.jobs.nosql-maintenance.activeDeadlineSeconds | string | `nil` | Maximum runtime in seconds for a single job run. Null means no limit. |
+| maintenance.jobs.nosql-maintenance.successfulJobsHistoryLimit | int | `3` | How many successful finished Jobs to retain in history. |
+| maintenance.jobs.nosql-maintenance.failedJobsHistoryLimit | int | `1` | How many failed finished Jobs to retain in history. |
+| maintenance.jobs.nosql-maintenance.serviceAccountName | string | `""` | Per-job ServiceAccount override. Empty means use the global ServiceAccount. |

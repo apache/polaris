@@ -53,7 +53,7 @@ This will spin up 2 container services
 * The `jupyter` service for running Jupyter notebook with PySpark
 
 NOTE: Starting the container first time may take a couple of minutes, because it will need to download the Spark 4.0.2.
-When working with Delta, the Polaris Spark client requires delta-io >= 4.0.1, and it requires at least Spark 4.0.2.
+When working with Delta, the Polaris Spark client requires delta-io >= 4.2.0, and it requires at least Spark 4.0.2.
 
 ### Run with AWS access setup
 If you want to interact with S3 bucket, make sure you have the following environment variables setup correctly in

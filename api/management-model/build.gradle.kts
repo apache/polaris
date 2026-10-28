@@ -34,11 +34,11 @@ dependencies {
 
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
-  testImplementation(platform(libs.jackson.bom))
-  testImplementation("com.fasterxml.jackson.core:jackson-databind")
+  testImplementation(platform(libs.jackson3.bom))
+  testImplementation("tools.jackson.core:jackson-databind")
 }
 
-val rootDir = rootProject.layout.projectDirectory
+val rootDir = layout.settingsDirectory
 val specsDir = rootDir.dir("spec")
 val templatesDir = rootDir.dir("server-templates")
 // Use a different directory than 'generated/', because OpenAPI generator's `GenerateTask` adds the
@@ -50,13 +50,13 @@ val generatedOpenApiSrcDir = project.layout.buildDirectory.dir("generated-openap
 openApiGenerate {
   // The OpenAPI generator does NOT resolve relative paths correctly against the Gradle project
   // directory
-  inputSpec = provider { specsDir.file("polaris-management-service.yml").asFile.absolutePath }
+  inputSpec = specsDir.file("polaris-management-service.yml")
   generatorName = "jaxrs-resteasy"
-  outputDir = provider { generatedDir.get().asFile.absolutePath }
+  outputDir = generatedDir
   modelPackage = "org.apache.polaris.core.admin.model"
-  ignoreFileOverride.set(provider { rootDir.file(".openapi-generator-ignore").asFile.absolutePath })
+  ignoreFileOverride = rootDir.file(".openapi-generator-ignore")
   removeOperationIdPrefix.set(true)
-  templateDir.set(provider { templatesDir.asFile.absolutePath })
+  templateDir = templatesDir
   globalProperties.put("apis", "false")
   globalProperties.put("models", "")
   globalProperties.put("apiDocs", "false")

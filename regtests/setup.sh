@@ -31,7 +31,7 @@ if [ -z "${SPARK_HOME}" ]; then
 fi
 SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
 DERBY_HOME="/tmp/derby"
-ICEBERG_VERSION="1.11.0"
+ICEBERG_VERSION="1.12.0"
 export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
 
 # Download a file to $dest if it does not already exist.
@@ -103,7 +103,8 @@ if grep 'POLARIS_TESTCONF_V5' ${SPARK_CONF} 2>/dev/null; then
 else
   echo 'Setting spark conf...'
   # Instead of clobbering existing spark conf, just comment it all out in case it was customized carefully.
-  sed -i 's/^/# /' ${SPARK_CONF}
+  # Use an explicit backup suffix so the in-place edit works on both GNU and BSD/macOS sed, then remove the backup.
+  sed -i.bak 's/^/# /' ${SPARK_CONF} && rm -f ${SPARK_CONF}.bak
 cat << EOF >> ${SPARK_CONF}
 
 # POLARIS_TESTCONF_V5

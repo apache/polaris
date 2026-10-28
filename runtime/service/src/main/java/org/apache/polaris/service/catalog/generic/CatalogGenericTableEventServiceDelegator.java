@@ -26,11 +26,11 @@ import jakarta.decorator.Delegate;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
@@ -78,10 +78,11 @@ public class CatalogGenericTableEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_CREATE_GENERIC_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
-                  .put(EventAttributes.CREATE_GENERIC_TABLE_REQUEST, createGenericTableRequest)));
+                  .put(EventAttributes.CREATE_GENERIC_TABLE_REQUEST, createGenericTableRequest)
+                  .build()));
     }
     Response resp =
         delegate.createGenericTable(
@@ -96,12 +97,13 @@ public class CatalogGenericTableEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_CREATE_GENERIC_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
                   .put(
                       EventAttributes.GENERIC_TABLE,
-                      ((LoadGenericTableResponse) resp.getEntity()).getTable())));
+                      ((LoadGenericTableResponse) resp.getEntity()).getTable())
+                  .build()));
     }
     return resp;
   }
@@ -119,10 +121,11 @@ public class CatalogGenericTableEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_DROP_GENERIC_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
-                  .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)));
+                  .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)
+                  .build()));
     }
     Response resp =
         delegate.dropGenericTable(prefix, namespace, genericTable, realmContext, securityContext);
@@ -131,10 +134,11 @@ public class CatalogGenericTableEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_DROP_GENERIC_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
-                  .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)));
+                  .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)
+                  .build()));
     }
     return resp;
   }
@@ -153,9 +157,10 @@ public class CatalogGenericTableEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_LIST_GENERIC_TABLES,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.NAMESPACE_NAME, namespace)));
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .build()));
     }
     Response resp =
         delegate.listGenericTables(
@@ -165,9 +170,10 @@ public class CatalogGenericTableEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_LIST_GENERIC_TABLES,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.NAMESPACE_NAME, namespace)));
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .build()));
     }
     return resp;
   }
@@ -186,10 +192,11 @@ public class CatalogGenericTableEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_LOAD_GENERIC_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
-                  .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)));
+                  .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)
+                  .build()));
     }
     Response resp =
         delegate.loadGenericTable(
@@ -204,12 +211,13 @@ public class CatalogGenericTableEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_LOAD_GENERIC_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
                   .put(
                       EventAttributes.GENERIC_TABLE,
-                      ((LoadGenericTableResponse) resp.getEntity()).getTable())));
+                      ((LoadGenericTableResponse) resp.getEntity()).getTable())
+                  .build()));
     }
     return resp;
   }

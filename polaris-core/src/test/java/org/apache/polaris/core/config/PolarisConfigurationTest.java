@@ -137,4 +137,20 @@ class PolarisConfigurationTest {
                 name -> null, Map.of("polaris.config.test1", "cat1", "legacy2", "old2")::get))
         .isEqualTo("cat1");
   }
+
+  @Test
+  void tableLocationDefaults() {
+    // Lock the production defaults: legacy locations, caller-specified locations allowed.
+    assertThat(FeatureConfiguration.DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.key())
+        .isEqualTo("DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED");
+    assertThat(FeatureConfiguration.DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.catalogConfig())
+        .isEqualTo("polaris.config.default-unique-table-location.enabled");
+    assertThat(FeatureConfiguration.DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.defaultValue()).isFalse();
+
+    assertThat(FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.key())
+        .isEqualTo("ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION");
+    assertThat(FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.catalogConfig())
+        .isEqualTo("polaris.config.allow.client-specified.table.location");
+    assertThat(FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.defaultValue()).isTrue();
+  }
 }

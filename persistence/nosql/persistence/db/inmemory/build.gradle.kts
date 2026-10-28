@@ -17,6 +17,8 @@
  * under the License.
  */
 
+import org.gradle.api.component.AdhocComponentWithVariants
+
 plugins {
   id("org.kordamp.gradle.jandex")
   id("polaris-server")
@@ -24,18 +26,39 @@ plugins {
 
 description = "Polaris NoSQL persistence, in-memory implementation"
 
+val quarkusRuntimeOnly =
+  configurations.dependencyScope("quarkusRuntimeOnly") {
+    extendsFrom(configurations.implementation.get(), configurations.runtimeOnly.get())
+  }
+val quarkusRuntimeElements =
+  configurations.consumable("quarkusRuntimeElements") {
+    extendsFrom(quarkusRuntimeOnly.get())
+    attributes {
+      addAllLater(configurations.runtimeElements.get().attributes)
+    }
+    outgoing {
+      artifact(tasks.named("jar"))
+      capability("$group:${project.name}-quarkus:$version")
+    }
+  }
+
+(components["java"] as AdhocComponentWithVariants).addVariantsFromConfiguration(
+  quarkusRuntimeElements.get(),
+) {}
+
 dependencies {
   implementation(project(":polaris-persistence-nosql-api"))
   implementation(project(":polaris-persistence-nosql-impl"))
   implementation(project(":polaris-idgen-api"))
+  compileOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
 
   implementation(libs.guava)
   implementation(libs.slf4j.api)
 
-  implementation(platform(libs.jackson.bom))
+  implementation(platform(libs.jackson3.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")
-  implementation("com.fasterxml.jackson.core:jackson-core")
-  implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation("tools.jackson.core:jackson-core")
+  implementation("tools.jackson.core:jackson-databind")
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
@@ -55,7 +78,7 @@ dependencies {
   compileOnly(platform(libs.quarkus.bom))
   compileOnly("io.quarkus:quarkus-core")
 
-  testFixturesCompileOnly(platform(libs.jackson.bom))
+  testFixturesCompileOnly(platform(libs.jackson3.bom))
   testFixturesCompileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
   testFixturesCompileOnly(libs.jspecify)

@@ -22,8 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Tests for If-None-Match header processing and ETag interaction scenarios. This includes both HTTP
@@ -60,6 +64,38 @@ public class IfNoneMatchTest {
     Assertions.assertEquals(etagValue1, etag1);
     Assertions.assertEquals(etagValue2, etag2);
     Assertions.assertEquals(etagValue3, etag3);
+  }
+
+  /**
+   * The RFC 9110 section 5.6.1 list separator is a comma with optional whitespace (OWS = *( SP /
+   * HTAB )) on either side, independently. Every permutation below - bare, before-only, after-only,
+   * multiple, and mixed spaces/tabs - must parse to the same two ETags.
+   */
+  static Stream<Arguments> optionalWhitespaceSeparators() {
+    return Stream.of(
+        Arguments.of("bare comma", ","),
+        Arguments.of("space before only", " ,"),
+        Arguments.of("space after only", ", "),
+        Arguments.of("tab before only", "\t,"),
+        Arguments.of("tab after only", ",\t"),
+        Arguments.of("single space both sides", " , "),
+        Arguments.of("single tab both sides", "\t,\t"),
+        Arguments.of("multiple spaces both sides", "   ,   "),
+        Arguments.of("multiple tabs both sides", "\t\t,\t\t"),
+        Arguments.of("mixed spaces and tabs", " \t , \t "),
+        Arguments.of("mixed multiple, before only", " \t \t,"));
+  }
+
+  @ParameterizedTest(name = "[{index}] {0}")
+  @MethodSource("optionalWhitespaceSeparators")
+  public void validMultipleETagsWithOptionalWhitespaceAroundComma(
+      String description, String separator) {
+    String etagValue1 = "W/\"etag1\"";
+    String etagValue2 = "W/\"etag2\"";
+
+    IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(etagValue1 + separator + etagValue2);
+
+    Assertions.assertEquals(List.of(etagValue1, etagValue2), ifNoneMatch.eTags());
   }
 
   @Test

@@ -23,20 +23,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.azure.core.exception.AzureException;
 import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
+import com.microsoft.aad.msal4j.MsalServiceException;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.CommitFailedException;
+import org.apache.iceberg.exceptions.CommitStateUnknownException;
 import org.apache.iceberg.exceptions.RuntimeIOException;
+import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.sts.model.StsException;
 
 public class IcebergExceptionMapperTest {
-
   static Stream<Arguments> fileIOExceptionMapping() {
     Map<Integer, Integer> cloudCodeMappings =
         Map.of(
@@ -64,6 +69,15 @@ public class IcebergExceptionMapperTest {
             Arguments.of(new AzureException("Not Authorized"), 403),
             Arguments.of(new AzureException("Access Denied"), 403),
             Arguments.of(S3Exception.builder().message("Access denied").build(), 403),
+            Arguments.of(
+                StsException.builder()
+                    .message("is not authorized to perform: sts:AssumeRole")
+                    .statusCode(Response.Status.FORBIDDEN.getStatusCode())
+                    .build(),
+                Response.Status.FORBIDDEN.getStatusCode()),
+            Arguments.of(
+                StsException.builder().message("Request failed").build(),
+                Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()),
             Arguments.of(new StorageException(1, "access denied"), 403),
             Arguments.of(
                 new FileIOUnknownHostException(
@@ -86,6 +100,33 @@ public class IcebergExceptionMapperTest {
                                     .build(),
                                 entry.getValue()),
                             Arguments.of(
+                                new MsalServiceException(
+                                    "AADSTS7000222: The provided client secret keys for app "
+                                        + "'abc12345-abcd-4abc-8abc-1234567890ab' are expired. "
+                                        + "Visit the Azure portal to create new keys for your "
+                                        + "app: https://aka.ms/NewClientSecret, or consider using "
+                                        + "certificate credentials for added security: "
+                                        + "https://aka.ms/certCreds. Trace ID: "
+                                        + "abc12345-abcd-4abc-8abc-1234567890ac Correlation ID: "
+                                        + "abc12345-abcd-4abc-8abc-1234567890ad Timestamp: "
+                                        + "2026-09-24 07:59:05Z",
+                                    "service_error") {
+                                  @Override
+                                  public Integer statusCode() {
+                                    return entry.getKey();
+                                  }
+                                },
+                                entry.getValue()),
+                            Arguments.of(
+                                new MsalServiceException("Authentication failed", "service_error"),
+                                Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()),
+                            Arguments.of(
+                                StsException.builder()
+                                    .message("")
+                                    .statusCode(entry.getKey())
+                                    .build(),
+                                entry.getValue()),
+                            Arguments.of(
                                 new StorageException(entry.getKey(), ""), entry.getValue()))
                         .flatMap(
                             args ->
@@ -100,6 +141,26 @@ public class IcebergExceptionMapperTest {
   @ParameterizedTest
   @MethodSource
   void fileIOExceptionMapping(RuntimeException ex, int statusCode) {
+    IcebergExceptionMapper mapper = new IcebergExceptionMapper();
+    try (Response response = mapper.toResponse(ex)) {
+      assertThat(response.getStatus()).isEqualTo(statusCode);
+      assertThat(response.getEntity()).extracting("message").isEqualTo(ex.getMessage());
+    }
+  }
+
+  static Stream<Arguments> coreExceptionMapping() {
+    return Stream.of(
+        // Commit state unknown means the commit may or may not have been applied; per the Iceberg
+        // REST spec it must be a 5xx so clients do not mistake it for a rejected request.
+        Arguments.of(new CommitStateUnknownException(new RuntimeException("db timeout")), 500),
+        Arguments.of(new CommitFailedException("commit failed"), 409),
+        Arguments.of(new AlreadyExistsException("already exists"), 409),
+        Arguments.of(new ValidationException("invalid"), 400));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void coreExceptionMapping(RuntimeException ex, int statusCode) {
     IcebergExceptionMapper mapper = new IcebergExceptionMapper();
     try (Response response = mapper.toResponse(ex)) {
       assertThat(response.getStatus()).isEqualTo(statusCode);

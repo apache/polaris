@@ -53,7 +53,7 @@ class PageTokenTest {
     soft.assertThat(pageEverything.encodedResponseToken()).isNull();
     soft.assertThat(pageEverything.items()).containsExactly(1, 2, 3, 4);
 
-    r = PageToken.build(null, null, () -> true);
+    r = PageToken.build(null, null, -1, () -> true);
     soft.assertThat(r.paginationRequested()).isFalse();
     soft.assertThat(r.pageSize()).isEmpty();
     soft.assertThat(r.value()).isEmpty();
@@ -62,7 +62,7 @@ class PageTokenTest {
   @Test
   public void testLimit() {
     PageToken r = PageToken.fromLimit(123);
-    soft.assertThat(r).isEqualTo(PageToken.build(null, 123, () -> true));
+    soft.assertThat(r).isEqualTo(PageToken.build(null, 123, -1, () -> true));
     soft.assertThat(r.paginationRequested()).isTrue();
     soft.assertThat(r.pageSize()).isEqualTo(OptionalInt.of(123));
     soft.assertThat(r.value()).isEmpty();
@@ -71,7 +71,7 @@ class PageTokenTest {
   @Test
   public void testTokenValueForPaging() {
     PageToken r = PageToken.fromLimit(2);
-    soft.assertThat(r).isEqualTo(PageToken.build(null, 2, () -> true));
+    soft.assertThat(r).isEqualTo(PageToken.build(null, 2, -1, () -> true));
     Page<Integer> pageMoreData =
         Page.mapped(
             r,
@@ -103,7 +103,7 @@ class PageTokenTest {
     soft.assertThat(lastPageNotSaturated.items()).containsExactly(3);
 
     r = PageToken.fromLimit(200);
-    soft.assertThat(r).isEqualTo(PageToken.build(null, 200, () -> true));
+    soft.assertThat(r).isEqualTo(PageToken.build(null, 200, -1, () -> true));
     Page<Integer> page200 =
         Page.mapped(
             r,
@@ -114,12 +114,63 @@ class PageTokenTest {
     soft.assertThat(page200.items()).containsExactly(1, 2, 3, 4);
   }
 
+  @Test
+  public void testInvalidPageSizeOnlyRejectedWhenPaginationIsEnabled() {
+    soft.assertThatThrownBy(() -> PageToken.build(null, -1, -1, () -> true))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid page size");
+
+    // With pagination disabled the request is ignored wholesale, as it was before page size
+    // bounding existed, so an invalid size must not start failing the request.
+    soft.assertThat(PageToken.build(null, -1, -1, () -> false))
+        .isEqualTo(PageToken.readEverything());
+    soft.assertThat(PageToken.build(null, -1, 100, () -> false))
+        .isEqualTo(PageToken.readEverything());
+  }
+
+  @Test
+  public void testMaxPageSizeBoundsRequestedAndTokenEncodedSizes() {
+    // A requested size above the maximum is reduced to it; one below is left alone.
+    soft.assertThat(PageToken.build(null, 5000, 100, () -> true).pageSize()).hasValue(100);
+    soft.assertThat(PageToken.build(null, 10, 100, () -> true).pageSize()).hasValue(10);
+
+    // A token carries the size it was minted with, so that is bounded too.
+    String oversized =
+        PageTokenUtil.serializePageToken(
+            ImmutablePageToken.builder()
+                .pageSize(5000)
+                .value(EntityIdToken.fromEntityId(42))
+                .build());
+    soft.assertThat(PageToken.build(oversized, null, 100, () -> true).pageSize()).hasValue(100);
+  }
+
+  @Test
+  public void testMaxPageSizePaginatesWhenNothingIsRequested() {
+    // With a maximum configured, an unsized request is paginated rather than reading everything.
+    PageToken bounded = PageToken.build(null, null, 100, () -> true);
+    soft.assertThat(bounded.paginationRequested()).isTrue();
+    soft.assertThat(bounded.pageSize()).hasValue(100);
+
+    // Without one, the Iceberg REST "read everything" behaviour is preserved.
+    soft.assertThat(PageToken.build(null, null, -1, () -> true))
+        .isEqualTo(PageToken.readEverything());
+    soft.assertThat(PageToken.build(null, null, 0, () -> true))
+        .isEqualTo(PageToken.readEverything());
+
+    // An unlimited maximum never bounds an explicitly requested size either.
+    soft.assertThat(PageToken.build(null, 5000, -1, () -> true).pageSize()).hasValue(5000);
+
+    // Pagination disabled still reads everything, whatever the maximum.
+    soft.assertThat(PageToken.build(null, 5000, 100, () -> false))
+        .isEqualTo(PageToken.readEverything());
+  }
+
   @ParameterizedTest
   @MethodSource
   public void testDeSer(Integer pageSize, String serializedPageToken, PageToken expectedPageToken) {
-    soft.assertThat(PageTokenUtil.decodePageRequest(serializedPageToken, pageSize, () -> true))
+    soft.assertThat(PageTokenUtil.decodePageRequest(serializedPageToken, pageSize, -1, () -> true))
         .isEqualTo(expectedPageToken);
-    soft.assertThat(PageTokenUtil.decodePageRequest(serializedPageToken, pageSize, () -> false))
+    soft.assertThat(PageTokenUtil.decodePageRequest(serializedPageToken, pageSize, -1, () -> false))
         .isEqualTo(PageToken.readEverything());
   }
 
@@ -144,16 +195,16 @@ class PageTokenTest {
   @ParameterizedTest
   @MethodSource
   public void testApiRoundTrip(Token token) {
-    PageToken request = PageToken.build(null, 123, () -> true);
+    PageToken request = PageToken.build(null, 123, -1, () -> true);
     Page<?> page = Page.mapped(request, Stream.of("i1"), Function.identity(), x -> token);
     soft.assertThat(page.encodedResponseToken()).isNotBlank();
 
-    PageToken r = PageToken.build(page.encodedResponseToken(), null, () -> true);
+    PageToken r = PageToken.build(page.encodedResponseToken(), null, -1, () -> true);
     soft.assertThat(r.value()).contains(token);
     soft.assertThat(r.paginationRequested()).isTrue();
     soft.assertThat(r.pageSize()).isEqualTo(OptionalInt.of(123));
 
-    r = PageToken.build(page.encodedResponseToken(), 456, () -> true);
+    r = PageToken.build(page.encodedResponseToken(), 456, -1, () -> true);
     soft.assertThat(r.value()).contains(token);
     soft.assertThat(r.paginationRequested()).isTrue();
     soft.assertThat(r.pageSize()).isEqualTo(OptionalInt.of(456));

@@ -25,34 +25,20 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.smallrye.mutiny.subscription.BackPressureFailure;
 import java.time.Duration;
-import java.util.Map;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.service.Profiles;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.mockito.Mockito;
 
 @QuarkusTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@TestProfile(InMemoryBufferEventListenerBufferSizeTest.Profile.class)
+@TestProfile(Profiles.InMemoryBufferEventListenerBufferSizeProfile.class)
 class InMemoryBufferEventListenerBufferSizeTest extends InMemoryBufferEventListenerTestBase {
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(BASE_CONFIG)
-          .put("polaris.event-listener.persistence-in-memory-buffer.buffer-time", "60s")
-          .put("polaris.event-listener.persistence-in-memory-buffer.max-buffer-size", "10")
-          .build();
-    }
-  }
 
   @Test
   void testFlushOnSize() {

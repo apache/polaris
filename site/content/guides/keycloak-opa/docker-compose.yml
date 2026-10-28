@@ -1,0 +1,140 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+services:
+
+  polaris:
+    image: apache/polaris:latest
+    ports:
+      # API port
+      - "8181:8181"
+      # Management port (metrics and health checks)
+      - "8182:8182"
+      # Optional, allows attaching a debugger to the Polaris JVM
+      - "5005:5005"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      opa-wait:
+        condition: service_completed_successfully
+    environment:
+      JAVA_DEBUG: true
+      JAVA_DEBUG_PORT: "*:5005"
+      # In this setup, the "root" service account only exists to initialize the realm's metastore;
+      # it is never used to call any REST API, since authentication type and credential-mode are
+      # both external, so Polaris never even accepts a token issued to "root".
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
+      # Fully external principals: the "keycloak-admin" principal named in tokens issued
+      # by Keycloak never needs to exist in the Polaris metastore.
+      polaris.authentication.type: external
+      polaris.authentication.credential-mode: external
+      quarkus.oidc.tenant-enabled: true
+      quarkus.oidc.auth-server-url: http://keycloak:8080/realms/iceberg
+      quarkus.oidc.client-id: client1
+      # "keycloak-admin" is a real Keycloak user (not a hardcoded claim), authenticated with
+      # the "password" grant; its roles and name come from the standard "resource_access" and
+      # "preferred_username" claims.
+      quarkus.oidc.roles.role-claim-path: resource_access/client1/roles
+      # Principals are always matched by name: fully external principals have no
+      # metastore entity to look up by ID in the first place, so
+      # principal-mapper.id-claim-path is intentionally left unset.
+      polaris.oidc.principal-mapper.name-claim-path: preferred_username
+      # Fully external principals require a non-default authorizer, because the default
+      # (internal) authorizer authorizes requests using metastore-backed grants, which
+      # external principals don't have.
+      polaris.authorization.type: opa
+      polaris.authorization.opa.policy-uri: http://opa:8181/v1/data/polaris/authz
+      polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
+      polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
+      polaris.readiness.ignore-severe-issues: "true"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+  polaris-setup:
+    image: alpine/curl:8.22.0
+    depends_on:
+      polaris:
+        condition: service_healthy
+    volumes:
+      - ../assets/polaris/:/polaris
+    entrypoint: "/bin/sh"
+    # In this setup, the Keycloak user "keycloak-admin" doesn't need to be synchronized
+    # as a Polaris principal before they can be used to contact Polaris, as shown below
+    # when invoking create-catalog.sh.
+    command:
+      - "-c"
+      - >-
+        apk add --no-cache jq &&
+        keycloak_token=$$(curl --fail-with-body -s http://keycloak:8080/realms/iceberg/protocol/openid-connect/token --user client1:s3cr3t -d 'grant_type=password' -d 'username=keycloak-admin' -d 'password=s3cr3t' | jq -er .access_token) &&
+        /polaris/create-catalog.sh POLARIS $$keycloak_token &&
+        touch /tmp/polaris-setup-done &&
+        tail -f /dev/null
+    healthcheck:
+      interval: 1s
+      timeout: 10s
+      retries: 240
+      test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1
+    ports:
+      - "8080:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    volumes:
+      - ../assets/keycloak/iceberg-realm.json:/opt/keycloak/data/import/iceberg-realm.json
+    command: [
+      "start-dev",
+      "--import-realm",
+      "--health-enabled=true"
+    ]
+    healthcheck:
+      test: "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"
+      interval: 5s
+      timeout: 2s
+      retries: 15
+
+  opa:
+    image: openpolicyagent/opa:1.21.4
+    ports:
+      # Optional, lets you query OPA's REST API directly to inspect decisions
+      - "8183:8181"
+    volumes:
+      - ../assets/opa/polaris-authz.rego:/policies/polaris-authz.rego
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "/policies"]
+
+  # The official OPA image ships neither a shell nor an HTTP client, so it cannot run a
+  # Docker healthcheck on itself. This intermediate service polls OPA's "/health"
+  # endpoint from the outside and only completes once OPA is ready to accept queries;
+  # Polaris depends on it via "service_completed_successfully" below.
+  opa-wait:
+    image: alpine/curl:8.22.0
+    depends_on:
+      opa:
+        condition: service_started
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        until curl -sf http://opa:8181/health; do sleep 1; done

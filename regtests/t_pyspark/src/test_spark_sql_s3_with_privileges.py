@@ -42,8 +42,8 @@ from apache_polaris.sdk.management import PolarisDefaultApi, Principal, Principa
 
 
 _requires_s3_backend = pytest.mark.skipif(
-    os.environ.get('S3_TEST_BACKEND') not in ('aws', 'minio', 'rustfs'),
-    reason='S3_TEST_BACKEND is not set to aws, minio, or rustfs'
+    os.environ.get('S3_TEST_BACKEND') not in ('aws', 'rustfs'),
+    reason='S3_TEST_BACKEND is not set to aws or rustfs'
 )
 
 
@@ -52,7 +52,7 @@ def create_s3_client_from_config(config):
 
     Uses credentials, session token, and endpoint from the loadTable
     response config. Works for both AWS (vended credentials) and
-    MinIO (STS credentials with endpoint override).
+    RustFS (STS credentials with endpoint override).
     """
     client_kwargs = {
         'aws_access_key_id': config.get('s3.access-key-id'),
@@ -505,7 +505,7 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
 
     # fetch aws credentials to examine the metadata files
     response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'), table_name,
-                                                 "true")
+                                                 ['vended-credentials'])
     assert response.config is not None
     assert 's3.access-key-id' in response.config
     assert 's3.secret-access-key' in response.config
@@ -624,7 +624,7 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
 
     # fetch aws credentials to examine the metadata files
     response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'), table_name,
-                                                 "true")
+                                                 ['vended-credentials'])
     assert response.config is not None
     assert 's3.access-key-id' in response.config
     assert 's3.secret-access-key' in response.config
@@ -723,7 +723,7 @@ def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalo
 
     # fetch aws credentials to examine the metadata files
     response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'), table_name,
-                                                 "true")
+                                                 ['vended-credentials'])
     assert response.config is not None
     assert 's3.access-key-id' in response.config
     assert 's3.secret-access-key' in response.config
@@ -850,9 +850,9 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
 
   table2_metadata = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                       "iceberg_table_2",
-                                                      "vended-credentials").metadata_location
+                                                      ['vended-credentials']).metadata_location
   response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'), "iceberg_table",
-                                               "vended-credentials")
+                                               ['vended-credentials'])
   assert response.config is not None
   assert 's3.access-key-id' in response.config
   assert 's3.secret-access-key' in response.config
@@ -939,10 +939,10 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
 
   table2_metadata = reader_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                      "iceberg_table_2",
-                                                     "vended-credentials").metadata_location
+                                                     ['vended-credentials']).metadata_location
 
   response = reader_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'), "iceberg_table",
-                                              "vended-credentials")
+                                              ['vended-credentials'])
   assert response.config is not None
   assert 's3.access-key-id' in response.config
   assert 's3.secret-access-key' in response.config
@@ -1014,7 +1014,7 @@ def test_spark_credentials_s3_direct_without_read(
     creator_catalog_client.create_table(
       prefix=snowflake_catalog.name,
       namespace="some_schema",
-      x_iceberg_access_delegation="true",
+      x_iceberg_access_delegation=['vended-credentials'],
       create_table_request=CreateTableRequest(
         name="some_table",
         var_schema=ModelSchema(
@@ -1082,10 +1082,10 @@ def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, sno
   prefix2 = f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table_scope_loc_slashes/path_with_slashes'
   response1 = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                 "iceberg_table_scope_loc",
-                                                "vended-credentials")
+                                                ['vended-credentials'])
   response2 = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                 "iceberg_table_scope_loc_slashes",
-                                                "vended-credentials")
+                                                ['vended-credentials'])
   assert response1 is not None
   assert response2 is not None
   assert response1.metadata_location.startswith(f"s3://{test_bucket}/{prefix1}/metadata/")
@@ -1179,7 +1179,7 @@ def test_spark_credentials_s3_exception_on_metadata_file_deletion(root_client, s
 
     response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                         "iceberg_table",
-                                                        "vended-credentials")
+                                                        ['vended-credentials'])
     assert response.config is not None
     assert 's3.access-key-id' in response.config
     assert 's3.secret-access-key' in response.config
@@ -1210,7 +1210,7 @@ def test_spark_credentials_s3_exception_on_metadata_file_deletion(root_client, s
     try:
         response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                      "iceberg_table",
-                                                     "vended-credentials")
+                                                     ['vended-credentials'])
     except Exception as e:
         # 400 error(BadRequest) is thrown when metadata file is missing
         assert '400' in str(e)

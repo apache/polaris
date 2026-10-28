@@ -137,7 +137,10 @@ class TestPrincipalsCommand(CLITestBase):
         call_args = mock_client.reset_credentials.call_args[0]
         self.assertEqual(call_args[0], "test")
         self.assertEqual(call_args[1].client_id, "e469c048cf866df1")
-        self.assertEqual(call_args[1].client_secret, "e469c048cf866dfae469c048cf866df1")
+        self.assertEqual(
+            call_args[1].client_secret.get_secret_value(),
+            "e469c048cf866dfae469c048cf866df1",
+        )
 
         self.mock_execute(mock_client, ["principals", "reset", "test"])
         call_args = mock_client.reset_credentials.call_args[0]
@@ -166,7 +169,10 @@ class TestPrincipalsCommand(CLITestBase):
         call_args = mock_client.reset_credentials.call_args[0]
         self.assertEqual(call_args[0], "test")
         self.assertEqual(call_args[1].client_id, None)
-        self.assertEqual(call_args[1].client_secret, "e469c048cf866dfae469c048cf866df1")
+        self.assertEqual(
+            call_args[1].client_secret.get_secret_value(),
+            "e469c048cf866dfae469c048cf866df1",
+        )
 
     def test_principal_access(self) -> None:
         mock_client = self.build_mock_client()

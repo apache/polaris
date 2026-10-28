@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage.aws;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+import static org.apache.polaris.core.storage.StorageLocation.trimLeadingSlash;
 import static org.apache.polaris.core.storage.aws.AwsSessionNameBuilder.buildSessionName;
 import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
 
@@ -27,6 +28,7 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -108,15 +110,20 @@ public class AwsCredentialsStorageIntegration
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
-      @NonNull List<LocationGrant> grants,
-      @NonNull Optional<String> refreshEndpoint,
-      @NonNull CredentialVendingContext context) {
+      @NonNull List<LocationGrant> grants, @NonNull CredentialVendingContext context) {
     return buildCacheKey(
-        readLocations(grants),
-        listLocations(grants),
-        writeLocations(grants),
-        refreshEndpoint,
-        context);
+        readLocations(grants), listLocations(grants), writeLocations(grants), context);
+  }
+
+  @Override
+  protected StorageAccessConfig addExtraProperties(
+      @NonNull StorageAccessConfig accessConfig, @NonNull Optional<String> refreshEndpoint) {
+    return refreshEndpoint
+        .map(
+            endpoint ->
+                withExtraProperty(
+                    accessConfig, StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint))
+        .orElse(accessConfig);
   }
 
   private static Set<String> readLocations(List<LocationGrant> grants) {
@@ -149,7 +156,6 @@ public class AwsCredentialsStorageIntegration
       @NonNull Set<String> readLocations,
       @NonNull Set<String> listLocations,
       @NonNull Set<String> writeLocations,
-      @NonNull Optional<String> refreshEndpoint,
       @NonNull CredentialVendingContext context) {
     RealmConfig realmConfig = realmConfig();
     String principalName = context.principalName().orElse("");
@@ -161,7 +167,6 @@ public class AwsCredentialsStorageIntegration
         readLocations,
         listLocations,
         writeLocations,
-        refreshEndpoint,
         roleSessionName,
         sessionTags,
         stsClientProvider,
@@ -255,23 +260,15 @@ public class AwsCredentialsStorageIntegration
       accessConfig.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
       Optional.ofNullable(response.credentials().expiration())
           .ifPresent(
-              i -> {
-                accessConfig.put(
-                    StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
-                accessConfig.put(
-                    StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
-                    String.valueOf(i.toEpochMilli()));
-              });
+              i ->
+                  accessConfig.put(
+                      StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                      String.valueOf(i.toEpochMilli())));
     }
 
     if (region != null) {
       accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
     }
-
-    key.refreshCredentialsEndpoint()
-        .ifPresent(
-            endpoint ->
-                accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint));
 
     URI endpointUri = awsStorageConfig.getEndpointUri();
     if (endpointUri != null) {
@@ -330,8 +327,8 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
     String arnPrefix = arnPrefixForPartition(storageConfigurationInfo.getAwsPartition());
-    String currentKmsKey = storageConfigurationInfo.getCurrentKmsKey();
-    List<String> allowedKmsKeys = storageConfigurationInfo.getAllowedKmsKeys();
+    List<String> encryptionKeys = storageConfigurationInfo.getEffectiveEncryptionKeys();
+    List<String> decryptionKeys = storageConfigurationInfo.getDecryptionKeys();
 
     readLocations.forEach(
         location -> {
@@ -397,8 +394,8 @@ public class AwsCredentialsStorageIntegration
     }
     if (shouldUseKms(storageConfigurationInfo)) {
       if (addKmsKeyPolicy(
-          currentKmsKey,
-          allowedKmsKeys,
+          encryptionKeys,
+          decryptionKeys,
           policyBuilder,
           canWrite,
           region,
@@ -432,82 +429,93 @@ public class AwsCredentialsStorageIntegration
   }
 
   private static boolean addKmsKeyPolicy(
-      String kmsKeyArn,
-      List<String> allowedKmsKeys,
+      List<String> encryptionKeys,
+      List<String> decryptionKeys,
       IamPolicy.Builder policyBuilder,
       boolean canWrite,
       String region,
       String accountId) {
 
-    boolean hasCurrentKey = kmsKeyArn != null;
-    boolean hasAllowedKeys = hasAllowedKmsKeys(allowedKmsKeys);
+    boolean hasEncryptionKeys = hasKmsKeys(encryptionKeys);
+    boolean hasDecryptionKeys = hasKmsKeys(decryptionKeys);
     boolean isAwsS3 = region != null && accountId != null;
 
     // Nothing to do if no keys are configured and not AWS S3
-    if (!hasCurrentKey && !hasAllowedKeys && !isAwsS3) {
+    if (!hasEncryptionKeys && !hasDecryptionKeys && !isAwsS3) {
       return false;
     }
 
-    IamStatement.Builder allowKms = buildBaseKmsStatement(canWrite);
-
-    if (hasCurrentKey) {
-      addKmsKeyResource(kmsKeyArn, allowKms);
+    boolean statementAdded = false;
+    if (hasEncryptionKeys && canWrite) {
+      IamStatement.Builder allowEncryption = buildKmsEncryptionStatement();
+      addKmsKeyResources(encryptionKeys, allowEncryption, "encryption");
+      policyBuilder.addStatement(allowEncryption.build());
+      statementAdded = true;
     }
 
-    if (hasAllowedKeys) {
-      addAllowedKmsKeyResources(allowedKmsKeys, allowKms);
+    LinkedHashSet<String> remainingDecryptionKeys = new LinkedHashSet<>();
+    if (hasDecryptionKeys) {
+      remainingDecryptionKeys.addAll(decryptionKeys);
+    }
+    if (hasEncryptionKeys) {
+      if (canWrite) {
+        remainingDecryptionKeys.removeAll(encryptionKeys);
+      } else {
+        remainingDecryptionKeys.addAll(encryptionKeys);
+      }
+    }
+    if (!remainingDecryptionKeys.isEmpty()) {
+      IamStatement.Builder allowDecryption = buildKmsDecryptionStatement();
+      addKmsKeyResources(List.copyOf(remainingDecryptionKeys), allowDecryption, "decryption");
+      policyBuilder.addStatement(allowDecryption.build());
+      statementAdded = true;
     }
 
     // Only add wildcard KMS access for read-only operations on AWS S3 when no specific keys are
     // configured. This does not apply to services like Minio where region and accountId are not
     // available.
-    boolean shouldAddWildcard = !hasCurrentKey && !hasAllowedKeys && !canWrite && isAwsS3;
+    boolean shouldAddWildcard = !hasEncryptionKeys && !hasDecryptionKeys && !canWrite && isAwsS3;
     if (shouldAddWildcard) {
+      IamStatement.Builder allowKms = buildKmsDecryptionStatement();
       addAllKeysResource(region, accountId, allowKms);
-    }
-
-    if (hasCurrentKey || hasAllowedKeys || shouldAddWildcard) {
       policyBuilder.addStatement(allowKms.build());
-      return true;
+      statementAdded = true;
     }
-    return false;
+    return statementAdded;
   }
 
-  private static IamStatement.Builder buildBaseKmsStatement(boolean canEncrypt) {
-    IamStatement.Builder allowKms =
-        IamStatement.builder()
-            .effect(IamEffect.ALLOW)
-            .addAction("kms:DescribeKey")
-            .addAction("kms:Decrypt");
-
-    if (canEncrypt) {
-      allowKms
-          .addAction("kms:Encrypt")
-          .addAction("kms:GenerateDataKey")
-          .addAction("kms:GenerateDataKeyWithoutPlaintext");
-    }
-
-    return allowKms;
+  private static IamStatement.Builder buildKmsEncryptionStatement() {
+    return IamStatement.builder()
+        .effect(IamEffect.ALLOW)
+        .addAction("kms:DescribeKey")
+        .addAction("kms:Decrypt")
+        .addAction("kms:Encrypt")
+        .addAction("kms:GenerateDataKey")
+        .addAction("kms:GenerateDataKeyWithoutPlaintext");
   }
 
-  private static void addKmsKeyResource(String kmsKeyArn, IamStatement.Builder allowKms) {
+  private static IamStatement.Builder buildKmsDecryptionStatement() {
+    return IamStatement.builder()
+        .effect(IamEffect.ALLOW)
+        .addAction("kms:DescribeKey")
+        .addAction("kms:Decrypt");
+  }
+
+  private static void addKmsKeyResource(
+      String kmsKeyArn, IamStatement.Builder allowKms, String keyType) {
     if (kmsKeyArn != null) {
-      LOGGER.debug("Adding KMS key policy for key {}", kmsKeyArn);
+      LOGGER.debug("Adding {} KMS key policy for key {}", keyType, kmsKeyArn);
       allowKms.addResource(IamResource.create(kmsKeyArn));
     }
   }
 
-  private static boolean hasAllowedKmsKeys(List<String> allowedKmsKeys) {
-    return allowedKmsKeys != null && !allowedKmsKeys.isEmpty();
+  private static boolean hasKmsKeys(List<String> kmsKeys) {
+    return kmsKeys != null && !kmsKeys.isEmpty();
   }
 
-  private static void addAllowedKmsKeyResources(
-      List<String> allowedKmsKeys, IamStatement.Builder allowKms) {
-    allowedKmsKeys.forEach(
-        keyArn -> {
-          LOGGER.debug("Adding allowed KMS key policy for key {}", keyArn);
-          allowKms.addResource(IamResource.create(keyArn));
-        });
+  private static void addKmsKeyResources(
+      List<String> kmsKeys, IamStatement.Builder allowKms, String keyType) {
+    kmsKeys.forEach(keyArn -> addKmsKeyResource(keyArn, allowKms, keyType));
   }
 
   private static void addAllKeysResource(
@@ -548,12 +556,5 @@ public class AwsCredentialsStorageIntegration
       }
     }
     return escaped.toString();
-  }
-
-  private static @NonNull String trimLeadingSlash(String path) {
-    if (path.startsWith("/")) {
-      path = path.substring(1);
-    }
-    return path;
   }
 }

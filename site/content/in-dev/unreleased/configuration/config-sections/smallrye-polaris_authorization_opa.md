@@ -36,6 +36,8 @@ Beta Feature: OPA authorization is currently in Beta and is not a stable  releas
 | `polaris.authorization.opa.auth.bearer.file-based.refresh-interval` |  | `duration` | How often to refresh file-based bearer tokens (defaults to 5 minutes if not specified)  |
 | `polaris.authorization.opa.auth.bearer.file-based.jwt-expiration-refresh` |  | `boolean` | Whether to automatically detect JWT tokens and use their 'exp' field for refresh timing. If  true and the token is a valid JWT with an 'exp' claim, the token will be refreshed based on  the expiration time minus the buffer, rather than the fixed refresh interval. Defaults to  true if not specified.  |
 | `polaris.authorization.opa.auth.bearer.file-based.jwt-expiration-buffer` |  | `duration` | Buffer time before JWT expiration to refresh the token. Only used when jwtExpirationRefresh  is true and the token is a valid JWT. Defaults to 1 minute if not specified.  |
+| `polaris.authorization.opa.auth.bearer.file-based.initial-token-wait` |  | `duration` | How long to wait for the first token load before failing a request. Defaults to 5 seconds. |
+| `polaris.authorization.opa.auth.bearer.file-based.refresh-retry-interval` |  | `duration` | How long to wait before retrying after a failed token refresh. Defaults to 1 second. |
 | `polaris.authorization.opa.http.timeout` | `PT2S` | `duration` |  |
 | `polaris.authorization.opa.http.verify-ssl` | `true` | `boolean` |  |
 | `polaris.authorization.opa.http.trust-store-path` |  | `path` |  |

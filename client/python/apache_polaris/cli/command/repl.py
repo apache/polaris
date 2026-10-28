@@ -132,6 +132,8 @@ class PolarisRepl(Cmd):
             sys.stderr.write(f"{e}\n")
         except NotImplementedError as e:
             sys.stderr.write(f"Internal error: {e}\n")
+        except ValueError as e:
+            sys.stderr.write(f"Syntax error: {e}\n")
         except Exception as e:
             sys.stderr.write(f"An unexpected error occurred: {e}\n")
 

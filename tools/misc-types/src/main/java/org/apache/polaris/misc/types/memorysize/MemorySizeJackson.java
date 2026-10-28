@@ -18,16 +18,14 @@
  */
 package org.apache.polaris.misc.types.memorysize;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.BeanProperty;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.ser.ContextualSerializer;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.BeanProperty;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.module.SimpleModule;
 
 public class MemorySizeJackson extends SimpleModule {
   public MemorySizeJackson() {
@@ -35,9 +33,9 @@ public class MemorySizeJackson extends SimpleModule {
     addSerializer(MemorySize.class, MemorySizeSerializer.AS_STRING);
   }
 
-  private static class MemorySizeDeserializer extends JsonDeserializer<MemorySize> {
+  private static class MemorySizeDeserializer extends ValueDeserializer<MemorySize> {
     @Override
-    public MemorySize deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+    public MemorySize deserialize(JsonParser p, DeserializationContext ctxt) {
       switch (p.currentToken()) {
         case VALUE_NUMBER_INT:
           var bigInt = p.getBigIntegerValue();
@@ -47,7 +45,7 @@ public class MemorySizeJackson extends SimpleModule {
             return new MemorySize.MemorySizeBig(bigInt);
           }
         case VALUE_STRING:
-          return MemorySize.valueOf(p.getText());
+          return MemorySize.valueOf(p.getValueAsString());
         default:
           throw new IllegalArgumentException(
               "Unsupported token " + p.currentToken() + " for " + MemorySize.class.getName());
@@ -55,8 +53,7 @@ public class MemorySizeJackson extends SimpleModule {
     }
   }
 
-  private static class MemorySizeSerializer extends JsonSerializer<MemorySize>
-      implements ContextualSerializer {
+  private static class MemorySizeSerializer extends ValueSerializer<MemorySize> {
     final boolean asInt;
 
     static final MemorySizeSerializer AS_STRING = new MemorySizeSerializer(false);
@@ -67,8 +64,8 @@ public class MemorySizeJackson extends SimpleModule {
     }
 
     @Override
-    public void serialize(MemorySize value, JsonGenerator generator, SerializerProvider serializers)
-        throws IOException {
+    public void serialize(
+        MemorySize value, JsonGenerator generator, SerializationContext serializationContext) {
       if (asInt) {
         if (value instanceof MemorySize.MemorySizeBig) {
           generator.writeNumber(value.asBigInteger());
@@ -81,8 +78,8 @@ public class MemorySizeJackson extends SimpleModule {
     }
 
     @Override
-    public JsonSerializer<?> createContextual(SerializerProvider provider, BeanProperty property) {
-
+    public ValueSerializer<?> createContextual(
+        SerializationContext provider, BeanProperty property) {
       if (property != null) {
         var propertyFormat = property.findPropertyFormat(provider.getConfig(), handledType());
         if (propertyFormat != null) {

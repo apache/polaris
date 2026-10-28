@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.nosql.authz.impl;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.Shutdown;
@@ -32,6 +31,7 @@ import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.authz.api.Acl;
 import org.apache.polaris.persistence.nosql.authz.api.PrivilegeSet;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
+import tools.jackson.databind.module.SimpleModule;
 
 public class JacksonPrivilegesModule extends SimpleModule {
   @SuppressWarnings("unused")
@@ -60,7 +60,7 @@ public class JacksonPrivilegesModule extends SimpleModule {
   static class PrivilegesViaCDI {
     @Inject Privileges privileges;
 
-    private static volatile Privileges privilegesForJackson;
+    static volatile Privileges privilegesForJackson;
 
     void init(@Observes Startup startup) {
       checkState(

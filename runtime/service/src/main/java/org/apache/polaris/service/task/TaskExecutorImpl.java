@@ -38,17 +38,20 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.function.TriConsumer;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.ImmutablePolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
@@ -82,10 +85,11 @@ public class TaskExecutorImpl implements TaskExecutor {
   private final PolarisEventDispatcher polarisEventDispatcher;
   private final PolarisEventMetadataFactory eventMetadataFactory;
   @Nullable private final Tracer tracer;
+  private final TaskHandlerConfiguration taskConfiguration;
 
   @SuppressWarnings("unused") // Required by CDI
   protected TaskExecutorImpl() {
-    this(null, null, null, null, null, null, null, null, null, null, null);
+    this(null, null, null, null, null, null, null, null, null, null, null, null);
   }
 
   @Inject
@@ -101,7 +105,8 @@ public class TaskExecutorImpl implements TaskExecutor {
       PolarisEventMetadataFactory eventMetadataFactory,
       @Nullable Tracer tracer,
       PolarisPrincipalHolder polarisPrincipalHolder,
-      PolarisPrincipal polarisPrincipal) {
+      PolarisPrincipal polarisPrincipal,
+      TaskHandlerConfiguration taskConfiguration) {
     this.executor = executor;
     this.clock = clock;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
@@ -112,6 +117,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     this.tracer = tracer;
     this.polarisPrincipalHolder = polarisPrincipalHolder;
     this.polarisPrincipal = polarisPrincipal;
+    this.taskConfiguration = taskConfiguration;
 
     if (errorHandler != null && errorHandler.isResolvable()) {
       this.errorHandler = Optional.of(errorHandler.get());
@@ -126,10 +132,14 @@ public class TaskExecutorImpl implements TaskExecutor {
         new TableCleanupTaskHandler(this, clock, metaStoreManagerFactory, fileIOSupplier));
     addTaskHandler(
         new ManifestFileCleanupTaskHandler(
-            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+            fileIOSupplier,
+            Executors.newVirtualThreadPerTaskExecutor(),
+            taskConfiguration.fileDeletionTimeout()));
     addTaskHandler(
         new BatchFileCleanupTaskHandler(
-            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+            fileIOSupplier,
+            Executors.newVirtualThreadPerTaskExecutor(),
+            taskConfiguration.fileDeletionTimeout()));
   }
 
   /**
@@ -188,12 +198,35 @@ public class TaskExecutorImpl implements TaskExecutor {
               if (previousError != null) {
                 t.addSuppressed(previousError);
               }
-              LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, t));
+              if (!isRetryable(t)) {
+                LOGGER.warn(
+                    "Task entity id {} failed with a terminal error; not retrying in-process. The"
+                        + " task entity stays persisted (the same end state as exhausting retries).",
+                    taskEntityId,
+                    t);
+                return CompletableFuture.<Void>failedFuture(t);
+              }
+              LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
               return tryHandleTask(taskEntityId, callContext, eventMetadata, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
                 TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor));
+  }
+
+  /**
+   * Determines whether a failed task attempt should be retried in-process. Most failures are
+   * transient and worth retrying, but a {@link FileDeletionTimeoutException} means an object-store
+   * deletion is stalled; retrying would only stack more (uncancellable) deletions onto the same
+   * endpoint, so such failures are treated as terminal for the current execution.
+   */
+  static boolean isRetryable(Throwable t) {
+    for (Throwable cause = t; cause != null; cause = cause.getCause()) {
+      if (cause instanceof FileDeletionTimeoutException) {
+        return false;
+      }
+    }
+    return true;
   }
 
   protected void handleTask(
@@ -203,20 +236,45 @@ public class TaskExecutorImpl implements TaskExecutor {
           new PolarisEvent(
               PolarisEventType.BEFORE_ATTEMPT_TASK,
               eventMetadataFactory.copy(eventMetadata),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
-                  .put(EventAttributes.TASK_ATTEMPT, attempt)));
+                  .put(EventAttributes.TASK_ATTEMPT, attempt)
+                  .build()));
     }
 
     boolean success = false;
+    PolarisBaseEntity taskEntity = null;
     try {
       LOGGER.info("Handling task entity id {}", taskEntityId);
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
-      PolarisBaseEntity taskEntity =
-          metaStoreManager
-              .loadEntity(ctx.getPolarisCallContext(), 0L, taskEntityId, PolarisEntityType.TASK)
-              .getEntity();
+      EntityResult loadResult =
+          metaStoreManager.loadEntity(
+              ctx.getPolarisCallContext(), 0L, taskEntityId, PolarisEntityType.TASK);
+      if (loadResult.getReturnStatus() == BaseResult.ReturnStatus.ENTITY_NOT_FOUND) {
+        // The task entity is gone, so an earlier attempt already handled it and dropped the
+        // entity. A retry reaches this point when the handler completed but the subsequent
+        // dropEntityIfExists failed and was rethrown (see below). There is no work left to do,
+        // so report the attempt as successful.
+        success = true;
+        LOGGER
+            .atInfo()
+            .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+            .log("Task entity no longer exists; treating the task as already completed");
+        return;
+      }
+      if (!loadResult.isSuccess()) {
+        // Every other non-success status is a load failure, not evidence that the task is done.
+        // EntityResult carries a null entity for all of them, so the status is what distinguishes
+        // "already dropped" from "could not be read"; some, such as
+        // TARGET_ENTITY_CONCURRENTLY_MODIFIED, are explicitly retryable. Fail the attempt so it is
+        // retried instead of being recorded as a success and dropped.
+        throw new IllegalStateException(
+            String.format(
+                "Failed to load task entity id %d: %s",
+                taskEntityId, loadResult.getReturnStatus()));
+      }
+      taskEntity = loadResult.getEntity();
       if (!PolarisEntityType.TASK.equals(taskEntity.getType())) {
         throw new IllegalArgumentException("Provided taskId must be a task entity type");
       }
@@ -226,38 +284,54 @@ public class TaskExecutorImpl implements TaskExecutor {
       if (handlerOpt.isEmpty()) {
         LOGGER
             .atWarn()
-            .addKeyValue("taskEntityId", taskEntityId)
-            .addKeyValue("taskType", task.getTaskType())
+            .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+            .addKeyValue(StructuredLogKeys.TASK_TYPE, task.getTaskType())
             .log("Unable to find handler for task type");
-        return;
+        throw new TaskHandlerNotFoundException(
+            "Unable to find handler for task type "
+                + task.getTaskType()
+                + " for task entity id "
+                + taskEntityId);
       }
       TaskHandler handler = handlerOpt.get();
-      success = handler.handleTask(task, ctx);
-      if (success) {
-        LOGGER
-            .atInfo()
-            .addKeyValue("taskEntityId", taskEntityId)
-            .addKeyValue("handlerClass", handler.getClass())
-            .log("Task successfully handled");
-        metaStoreManager.dropEntityIfExists(
-            ctx.getPolarisCallContext(), null, taskEntity, Map.of(), false);
-      } else {
+      // Normal return from handleTask means the task work completed successfully. Set success
+      // before dropEntityIfExists so a later cleanup failure still reports TASK_SUCCESS=true
+      // (the exception is rethrown for retry/logging, but the attempt is not a handler failure).
+      handler.handleTask(task, ctx);
+      success = true;
+      LOGGER
+          .atInfo()
+          .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+          .addKeyValue(StructuredLogKeys.HANDLER_CLASS, handler.getClass())
+          .log("Task successfully handled");
+      metaStoreManager.dropEntityIfExists(
+          ctx.getPolarisCallContext(), null, taskEntity, Map.of(), false);
+    } catch (TaskHandlerNotFoundException e) {
+      // success stays false (never set true). Re-throw without the generic failure log below.
+      throw e;
+    } catch (Exception e) {
+      // Do not force success=false: handleTask may already have completed (success=true) and the
+      // failure may be from post-completion cleanup (e.g. dropEntityIfExists).
+      if (!success) {
         LOGGER
             .atWarn()
-            .addKeyValue("taskEntityId", taskEntityId)
-            .addKeyValue("taskEntityName", taskEntity.getName())
+            .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+            .addKeyValue(
+                StructuredLogKeys.TASK_ENTITY_NAME, taskEntity != null ? taskEntity.getName() : "")
             .log("Unable to execute async task");
       }
+      throw e;
     } finally {
       if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_ATTEMPT_TASK)) {
         polarisEventDispatcher.dispatch(
             new PolarisEvent(
                 PolarisEventType.AFTER_ATTEMPT_TASK,
                 eventMetadataFactory.copy(eventMetadata),
-                new EventAttributeMap()
+                ImmutableAttributeMap.builder()
                     .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
                     .put(EventAttributes.TASK_ATTEMPT, attempt)
-                    .put(EventAttributes.TASK_SUCCESS, success)));
+                    .put(EventAttributes.TASK_SUCCESS, success)
+                    .build()));
       }
     }
   }
@@ -296,6 +370,12 @@ public class TaskExecutorImpl implements TaskExecutor {
       } finally {
         span.end();
       }
+    }
+  }
+
+  private static final class TaskHandlerNotFoundException extends RuntimeException {
+    TaskHandlerNotFoundException(String message) {
+      super(message);
     }
   }
 }

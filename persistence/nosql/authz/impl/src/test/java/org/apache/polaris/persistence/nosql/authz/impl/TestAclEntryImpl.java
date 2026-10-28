@@ -18,11 +18,9 @@
  */
 package org.apache.polaris.persistence.nosql.authz.impl;
 
-import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
-import static com.fasterxml.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
+import static tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static tools.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.stream.Stream;
 import org.apache.polaris.persistence.nosql.authz.api.AclEntry;
 import org.apache.polaris.persistence.nosql.authz.api.Privilege;
@@ -33,6 +31,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestAclEntryImpl {
@@ -55,8 +55,7 @@ public class TestAclEntryImpl {
 
   @ParameterizedTest
   @MethodSource
-  public void aclEntry(AclEntry aclEntry) throws Exception {
-
+  public void aclEntry(AclEntry aclEntry) {
     String json = mapper.writeValueAsString(aclEntry);
     soft.assertThat(mapper.readValue(json, AclEntry.class)).isEqualTo(aclEntry);
   }

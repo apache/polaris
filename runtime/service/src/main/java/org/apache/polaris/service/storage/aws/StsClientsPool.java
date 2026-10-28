@@ -34,6 +34,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import software.amazon.awssdk.endpoints.Endpoint;
+import software.amazon.awssdk.endpoints.EndpointUrl;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -78,8 +79,9 @@ public class StsClientsPool implements StsClientProvider {
     StsClientBuilder builder = StsClient.builder();
     builder.httpClient(sdkClient);
     if (parameters.endpoint().isPresent()) {
+      EndpointUrl endpointUrl = EndpointUrl.fromUri(parameters.endpoint().get());
       CompletableFuture<Endpoint> endpointFuture =
-          completedFuture(Endpoint.builder().url(parameters.endpoint().get()).build());
+          completedFuture(Endpoint.builder().endpointUrl(endpointUrl).build());
       builder.endpointProvider(params -> endpointFuture);
     }
 

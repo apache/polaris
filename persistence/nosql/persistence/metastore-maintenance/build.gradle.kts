@@ -37,11 +37,11 @@ dependencies {
   implementation(libs.guava)
   implementation(libs.slf4j.api)
 
-  implementation(platform(libs.jackson.bom))
+  implementation(platform(libs.jackson3.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")
-  implementation("com.fasterxml.jackson.core:jackson-core")
-  implementation("com.fasterxml.jackson.core:jackson-databind")
-  implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-smile")
+  implementation("tools.jackson.core:jackson-core")
+  implementation("tools.jackson.core:jackson-databind")
+  implementation("tools.jackson.dataformat:jackson-dataformat-smile")
 
   compileOnly(libs.smallrye.config.core)
   compileOnly(platform(libs.quarkus.bom))
@@ -68,14 +68,15 @@ dependencies {
   testFixturesImplementation(libs.jakarta.enterprise.cdi.api)
   testImplementation(libs.smallrye.common.annotation)
 
-  testFixturesImplementation(platform(libs.jackson.bom))
+  testFixturesImplementation(platform(libs.jackson3.bom))
   testFixturesImplementation("com.fasterxml.jackson.core:jackson-annotations")
-  testFixturesImplementation("com.fasterxml.jackson.core:jackson-core")
+  testFixturesImplementation("tools.jackson.core:jackson-core")
 
   testImplementation(project(":polaris-idgen-mocks"))
   testImplementation(testFixtures(project(":polaris-persistence-nosql-maintenance-impl")))
   testImplementation(project(":polaris-persistence-nosql-impl"))
 
+  testImplementation(testFixtures(project(":polaris-persistence-nosql-cdi-weld")))
   testRuntimeOnly(testFixtures(project(":polaris-persistence-nosql-cdi-weld")))
   testImplementation(platform(libs.weld.core.bom))
   testImplementation("org.jboss.weld.se:weld-se-core")

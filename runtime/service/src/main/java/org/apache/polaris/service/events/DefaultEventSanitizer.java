@@ -29,6 +29,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
+import org.apache.polaris.core.collection.MutableAttributeMap;
 
 /**
  * Default implementation of {@link EventSanitizer}. Drops attributes whose keys are on the denylist
@@ -80,13 +82,13 @@ public class DefaultEventSanitizer implements EventSanitizer {
 
   @Override
   public PolarisEvent sanitize(PolarisEvent event) {
-    EventAttributeMap filtered = new EventAttributeMap();
+    MutableAttributeMap filtered = new MutableAttributeMap();
     event
         .attributes()
         .forEach(
-            (key, value) -> {
-              if (!denylist.contains(key)) {
-                putUnchecked(filtered, key, value);
+            attribute -> {
+              if (!denylist.contains(attribute.key())) {
+                filtered.put(attribute);
               }
             });
     extractDerivedAttributes(event, filtered);
@@ -109,18 +111,14 @@ public class DefaultEventSanitizer implements EventSanitizer {
     return Set.copyOf(resolved);
   }
 
-  private static void extractDerivedAttributes(PolarisEvent event, EventAttributeMap filtered) {
-    if (!filtered.contains(EventAttributes.CATALOG_NAME)) {
+  private static void extractDerivedAttributes(PolarisEvent event, MutableAttributeMap filtered) {
+    if (!filtered.containsKey(EventAttributes.CATALOG_NAME)) {
       event
           .attributes()
-          .get(EventAttributes.CATALOG)
+          .getOptional(EventAttributes.CATALOG)
           .map(Catalog::getName)
           .filter(name -> !name.isBlank())
           .ifPresent(name -> filtered.put(EventAttributes.CATALOG_NAME, name));
     }
-  }
-
-  private static <T> void putUnchecked(EventAttributeMap map, AttributeKey<T> key, Object value) {
-    map.put(key, key.cast(value));
   }
 }

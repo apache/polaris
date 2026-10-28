@@ -22,8 +22,8 @@ package org.apache.polaris.core.storage;
 import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_ENDPOINT;
 import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_SECRET_KEY;
 import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS;
-import static org.apache.polaris.core.storage.StorageAccessProperty.EXPIRATION_TIME;
-import static org.apache.polaris.core.storage.StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT;
+import static org.apache.polaris.core.storage.StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS;
+import static org.apache.polaris.core.storage.StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT_MS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
@@ -81,11 +81,11 @@ public class StorageAccessConfigTest {
   public void testExpiresAt() {
     StorageAccessConfig.Builder b = StorageAccessConfig.builder();
     assertThat(b.build().expiresAt()).isEmpty();
-    b.put(GCS_ACCESS_TOKEN_EXPIRES_AT, "111");
+    b.put(GCS_ACCESS_TOKEN_EXPIRES_AT_MS, "111");
     assertThat(b.build().expiresAt()).hasValue(Instant.ofEpochMilli(111));
     b.put(AWS_SESSION_TOKEN_EXPIRES_AT_MS, "222");
     assertThat(b.build().expiresAt()).hasValue(Instant.ofEpochMilli(222));
-    b.put(EXPIRATION_TIME, "333");
+    b.put(AZURE_SAS_TOKEN_EXPIRES_AT_MS, "333");
     assertThat(b.build().expiresAt()).hasValue(Instant.ofEpochMilli(333));
     b.expiresAt(Instant.ofEpochMilli(444));
     assertThat(b.build().expiresAt()).hasValue(Instant.ofEpochMilli(444));

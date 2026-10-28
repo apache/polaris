@@ -43,7 +43,7 @@ git clone https://github.com/apache/polaris.git ~/polaris
 ```
 
 ## Start Spark against a Deployed Polaris Service
-Before starting, ensure that the deployed Polaris service supports Generic Tables, and that Spark 3.5(version 3.5.3 or later is installed).
+Before starting, ensure that the deployed Polaris service supports Generic Tables, and that Spark 3.5 (version 3.5.3 or later) is installed.
 Spark 3.5.6 is recommended, and you can follow the instructions below to get a Spark 3.5.6 distribution.
 ```shell
 cd ~
@@ -59,7 +59,7 @@ a released Polaris Spark client.
 
 ```shell
 bin/spark-shell \
---packages <polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages <polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.12.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<spark-catalog-name>.warehouse=<polaris-catalog-name> \
@@ -67,9 +67,15 @@ bin/spark-shell \
 --conf spark.sql.catalog.<spark-catalog-name>=org.apache.polaris.spark.SparkCatalog \
 --conf spark.sql.catalog.<spark-catalog-name>.uri=<polaris-service-uri> \
 --conf spark.sql.catalog.<spark-catalog-name>.credential='<client-id>:<client-secret>' \
+--conf spark.redaction.regex='(?i)secret|password|token|access[.]?key|credential' \
 --conf spark.sql.catalog.<spark-catalog-name>.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.<spark-catalog-name>.token-refresh-enabled=true
 ```
+
+The `spark.redaction.regex` line redacts the `credential` secret from the Spark UI and logs, since
+Spark's default redaction pattern does not cover `credential`. Newer Spark releases redact this key
+by default; the line keeps it redacted on earlier versions.
+
 Assume the released Polaris Spark client you want to use is `org.apache.polaris:polaris-spark-3.5_2.12:1.0.0`,
 replace the `polaris-spark-client-package` field with the release.
 
@@ -82,18 +88,19 @@ Polaris service, the uri would be `http://localhost:8181/api/catalog`.
 For `client-id` and `client-secret` values, you can refer to [Using Polaris]({{% ref "getting-started/using-polaris" %}})
 for more details.
 
-You can also start the connection by programmatically initialize a SparkSession, following is an example with PySpark:
+You can also start the connection by programmatically initializing a SparkSession, following is an example with PySpark:
 ```python
 from pyspark.sql import SparkSession
 
 spark = SparkSession.builder
-  .config("spark.jars.packages", "<polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.12:3.3.1")
+  .config("spark.jars.packages", "<polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.12.0,io.delta:delta-spark_2.12:3.3.1")
   .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
   .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension")
   .config("spark.sql.catalog.<spark-catalog-name>", "org.apache.polaris.spark.SparkCatalog")
   .config("spark.sql.catalog.<spark-catalog-name>.uri", <polaris-service-uri>)
   .config("spark.sql.catalog.<spark-catalog-name>.token-refresh-enabled", "true")
   .config("spark.sql.catalog.<spark-catalog-name>.credential", "<client-id>:<client_secret>")
+  .config("spark.redaction.regex", "(?i)secret|password|token|access[.]?key|credential")
   .config("spark.sql.catalog.<spark-catalog-name>.warehouse", <polaris_catalog_name>)
   .config("spark.sql.catalog.polaris.scope", 'PRINCIPAL_ROLE:ALL')
   .config("spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation", 'vended-credentials')
@@ -102,7 +109,12 @@ spark = SparkSession.builder
 Similar as the CLI command, make sure the corresponding fields are replaced correctly.
 
 ### Create tables with Spark
-After Spark is started, you can use it to create and access Iceberg and Delta tables. For example:
+After Spark is started, you can use it to create and access Iceberg and Delta tables.
+
+The example below assumes FILE storage is enabled and the Polaris catalog's default base location
+and allowed location are both `file:///tmp/var/delta_tables`, with namespaces using their default
+locations. Adjust the table location to match your catalog and namespace configuration.
+
 ```python
 spark.sql("USE polaris")
 spark.sql("CREATE NAMESPACE IF NOT EXISTS DELTA_NS")
@@ -110,7 +122,7 @@ spark.sql("CREATE NAMESPACE IF NOT EXISTS DELTA_NS.PUBLIC")
 spark.sql("USE NAMESPACE DELTA_NS.PUBLIC")
 spark.sql("""CREATE TABLE IF NOT EXISTS PEOPLE (
     id int, name string)
-USING delta LOCATION 'file:///tmp/var/delta_tables/people';
+USING delta LOCATION 'file:///tmp/var/delta_tables/DELTA_NS/PUBLIC/people';
 """)
 ```
 
@@ -129,6 +141,9 @@ The following describes the current limitations of the Polaris Spark client:
 ### Delta Table Limitations
 1. Create table as select (CTAS) is not supported for Delta tables. As a result, the `saveAsTable` method of `Dataframe`
    is also not supported, since it relies on the CTAS support.
-2. Create a Delta table without explicit location is not supported.
-3. Rename a Delta table is not supported.
+2. Creating a Delta table without an explicit location is not supported.
+3. Renaming a Delta table is not supported.
 4. ALTER TABLE ... SET LOCATION is not supported for DELTA table.
+5. Delta table locations follow the [Generic Table location restrictions]({{% ref "generic-table.md" %}}):
+   they must be within the catalog's allowed locations and, by default, the parent namespace location.
+   The catalog property `polaris.config.allow.unstructured.table.location=true` removes only the namespace-location constraint.

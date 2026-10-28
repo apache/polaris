@@ -97,8 +97,7 @@
     },
     {
        "moduleLicense": "Unicode/ICU License",
-       "moduleName": "org.graalvm.shadowed:icu4j",
-       "moduleVersion": "25.0.3"
+       "moduleName": "org.graalvm.shadowed:icu4j"
     }
   ]
 }

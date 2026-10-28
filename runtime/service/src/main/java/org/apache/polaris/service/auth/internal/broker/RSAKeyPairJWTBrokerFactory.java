@@ -18,10 +18,13 @@
  */
 package org.apache.polaris.service.auth.internal.broker;
 
+import com.auth0.jwt.algorithms.Algorithm;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -38,7 +41,8 @@ public class RSAKeyPairJWTBrokerFactory implements TokenBrokerFactory {
 
   private final AuthenticationConfiguration authenticationConfiguration;
 
-  private final ConcurrentMap<String, KeyProvider> keyProviders = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, AlgorithmAndVerifier> algorithmAndVerifiers =
+      new ConcurrentHashMap<>();
 
   @Inject
   public RSAKeyPairJWTBrokerFactory(AuthenticationConfiguration authenticationConfiguration) {
@@ -51,17 +55,27 @@ public class RSAKeyPairJWTBrokerFactory implements TokenBrokerFactory {
     RealmContext realmContext = polarisCallContext.getRealmContext();
     AuthenticationRealmConfiguration config = authenticationConfiguration.forRealm(realmContext);
     Duration maxTokenGeneration = config.tokenBroker().maxTokenGeneration();
-    KeyProvider keyProvider =
-        keyProviders.computeIfAbsent(
+    AlgorithmAndVerifier algorithmAndVerifier =
+        algorithmAndVerifiers.computeIfAbsent(
             realmContext.getRealmIdentifier(),
-            k ->
-                config
-                    .tokenBroker()
-                    .rsaKeyPair()
-                    .map(this::fileSystemKeyPair)
-                    .orElseGet(this::generateEphemeralKeyPair));
-    return new RSAKeyPairJWTBroker(
-        metaStoreManager, polarisCallContext, (int) maxTokenGeneration.toSeconds(), keyProvider);
+            k -> {
+              KeyProvider keyProvider =
+                  config
+                      .tokenBroker()
+                      .rsaKeyPair()
+                      .map(this::fileSystemKeyPair)
+                      .orElseGet(this::generateEphemeralKeyPair);
+              return AlgorithmAndVerifier.of(
+                  Algorithm.RSA256(
+                      (RSAPublicKey) keyProvider.publicKey(),
+                      (RSAPrivateKey) keyProvider.privateKey()));
+            });
+    return new JWTBroker(
+        metaStoreManager,
+        polarisCallContext,
+        (int) maxTokenGeneration.toSeconds(),
+        algorithmAndVerifier.algorithm(),
+        algorithmAndVerifier.verifier());
   }
 
   private KeyProvider fileSystemKeyPair(RSAKeyPairConfiguration config) {

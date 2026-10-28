@@ -18,6 +18,11 @@
  */
 package org.apache.polaris.service.events;
 
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SAMPLED_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SPAN_ID_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_FLAGS_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_ID_KEY;
+
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 import io.quarkus.security.identity.CurrentIdentityAssociation;
@@ -124,13 +129,13 @@ public class PolarisEventMetadataFactory {
     SpanContext spanContext = Span.current().getSpanContext();
     if (spanContext.isValid()) {
       return Map.of(
-          "otel.span_id",
+          OPEN_TELEMETRY_SPAN_ID_KEY,
           spanContext.getSpanId(),
-          "otel.trace_id",
+          OPEN_TELEMETRY_TRACE_ID_KEY,
           spanContext.getTraceId(),
-          "otel.sampled",
+          OPEN_TELEMETRY_SAMPLED_KEY,
           String.valueOf(spanContext.isSampled()),
-          "otel.trace_flags",
+          OPEN_TELEMETRY_TRACE_FLAGS_KEY,
           spanContext.getTraceFlags().asHex());
     }
     return Map.of();

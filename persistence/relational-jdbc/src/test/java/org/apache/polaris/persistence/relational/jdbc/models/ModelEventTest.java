@@ -30,13 +30,14 @@ import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.R
 import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.TIMESTAMP_MS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
-import org.apache.polaris.core.entity.PolarisEvent;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PGobject;
@@ -49,8 +50,7 @@ public class ModelEventTest {
   private static final String TEST_EVENT_TYPE = "CREATE";
   private static final long TEST_TIMESTAMP_MS = 1234567890L;
   private static final String TEST_USER = "test-user";
-  private static final PolarisEvent.ResourceType TEST_RESOURCE_TYPE =
-      PolarisEvent.ResourceType.TABLE;
+  private static final EventEntity.ResourceType TEST_RESOURCE_TYPE = EventEntity.ResourceType.TABLE;
   private static final String TEST_RESOURCE_TYPE_STRING = "TABLE";
   private static final String TEST_RESOURCE_IDENTIFIER = "test-table";
   private static final String EMPTY_JSON = "{}";
@@ -71,7 +71,7 @@ public class ModelEventTest {
     when(mockResultSet.getString(ADDITIONAL_PROPERTIES)).thenReturn(EMPTY_JSON);
 
     // Act
-    PolarisEvent result = ModelEvent.CONVERTER.fromResultSet(mockResultSet);
+    EventEntity result = ModelEvent.CONVERTER.fromResultSet(mockResultSet);
 
     // Assert
     assertEquals(TEST_CATALOG_ID, result.getCatalogId());
@@ -83,6 +83,57 @@ public class ModelEventTest {
     assertEquals(TEST_RESOURCE_TYPE, result.getResourceType());
     assertEquals(TEST_RESOURCE_IDENTIFIER, result.getResourceIdentifier());
     assertEquals(EMPTY_JSON, result.getAdditionalProperties());
+  }
+
+  @Test
+  public void testFromResultSetCoalescesLegacyRealmScopedCatalogId() throws SQLException {
+    // Arrange
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.getString(CATALOG_ID)).thenReturn(ModelEvent.LEGACY_REALM_SCOPED_CATALOG_ID);
+    when(mockResultSet.getString(EVENT_ID)).thenReturn(TEST_EVENT_ID);
+    when(mockResultSet.getString(REQUEST_ID)).thenReturn(TEST_REQUEST_ID);
+    when(mockResultSet.getString(EVENT_TYPE)).thenReturn(TEST_EVENT_TYPE);
+    when(mockResultSet.getLong(TIMESTAMP_MS)).thenReturn(TEST_TIMESTAMP_MS);
+    when(mockResultSet.getString(PRINCIPAL_NAME)).thenReturn(TEST_USER);
+    when(mockResultSet.getString(RESOURCE_TYPE)).thenReturn(TEST_RESOURCE_TYPE_STRING);
+    when(mockResultSet.getString(RESOURCE_IDENTIFIER)).thenReturn(TEST_RESOURCE_IDENTIFIER);
+    when(mockResultSet.getString(ADDITIONAL_PROPERTIES)).thenReturn(EMPTY_JSON);
+
+    // Act
+    EventEntity result = ModelEvent.CONVERTER.fromResultSet(mockResultSet);
+
+    // Assert
+    assertNull(result.getCatalogId());
+    assertEquals(TEST_EVENT_ID, result.getId());
+  }
+
+  @Test
+  public void testRoundTripWithNullCatalogId() {
+    // Arrange
+    EventEntity polarisEvent =
+        new EventEntity(
+            null,
+            TEST_EVENT_ID,
+            TEST_REQUEST_ID,
+            TEST_EVENT_TYPE,
+            TEST_TIMESTAMP_MS,
+            TEST_USER,
+            TEST_RESOURCE_TYPE,
+            TEST_RESOURCE_IDENTIFIER);
+    polarisEvent.setAdditionalProperties(TEST_JSON);
+
+    // Act
+    ModelEvent modelEvent = ModelEvent.fromEvent(polarisEvent);
+    Map<String, Object> resultMap = modelEvent.toMap(DatabaseType.H2);
+    EventEntity result = ModelEvent.toEvent(modelEvent);
+
+    // Assert
+    assertNull(modelEvent.getCatalogId());
+    assertTrue(resultMap.containsKey(CATALOG_ID));
+    assertNull(resultMap.get(CATALOG_ID));
+    assertNull(result.getCatalogId());
+    assertEquals(TEST_EVENT_ID, result.getId());
+    assertEquals(TEST_JSON, result.getAdditionalProperties());
   }
 
   @Test
@@ -163,8 +214,8 @@ public class ModelEventTest {
   @Test
   public void testFromEvent() {
     // Arrange
-    PolarisEvent polarisEvent =
-        new PolarisEvent(
+    EventEntity polarisEvent =
+        new EventEntity(
             TEST_CATALOG_ID,
             TEST_EVENT_ID,
             TEST_REQUEST_ID,
@@ -207,7 +258,7 @@ public class ModelEventTest {
             .build();
 
     // Act
-    PolarisEvent result = ModelEvent.toEvent(modelEvent);
+    EventEntity result = ModelEvent.toEvent(modelEvent);
 
     // Assert
     assertEquals(TEST_CATALOG_ID, result.getCatalogId());

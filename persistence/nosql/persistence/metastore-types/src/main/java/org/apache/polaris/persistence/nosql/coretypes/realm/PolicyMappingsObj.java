@@ -22,8 +22,6 @@ import static org.apache.polaris.persistence.varint.VarInt.putVarInt;
 import static org.apache.polaris.persistence.varint.VarInt.readVarInt;
 import static org.apache.polaris.persistence.varint.VarInt.readVarLong;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.nio.ByteBuffer;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -33,6 +31,8 @@ import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.AbstractObjType;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 @PolarisImmutable
 @JsonSerialize(as = ImmutablePolicyMappingsObj.class)

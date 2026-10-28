@@ -73,7 +73,7 @@ class TestParserBasic(CLITestBase):
                     "gone",
                 ]
             )  # remote-url deprecated
-            self.assertEqual(cm.exception.code, INVALID_ARGS)
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
 
         with self.assertRaises(SystemExit) as cm:
             Parser.parse(["principals", "create", "name", "--type", "bad"])
@@ -151,7 +151,9 @@ class TestParserBasic(CLITestBase):
         )
 
     def test_version(self) -> None:
-        self.check_usage_output(lambda: Parser.parse(["--version"]), needle=f"polaris {__version__}")
+        self.check_usage_output(
+            lambda: Parser.parse(["--version"]), needle=f"polaris {__version__}"
+        )
 
     def test_global_flag_anywhere(self) -> None:
         # Test that global flags work when placed after subcommands
@@ -164,12 +166,61 @@ class TestParserBasic(CLITestBase):
         Parser.parse(["catalogs", "create", "catalog_name"])
         Parser.parse(["catalogs", "create", "catalog_name", "--type", "internal"])
         Parser.parse(["catalogs", "create", "catalog_name", "--type", "INTERNAL"])
+        options = Parser.parse(
+            [
+                "catalogs",
+                "create",
+                "catalog_name",
+                "--current-kms-key",
+                "arn:aws:kms:us-east-1:012345678901:key/current-key",
+                "--allowed-kms-key",
+                "arn:aws:kms:us-east-1:012345678901:key/allowed-key-1",
+                "--allowed-kms-key",
+                "arn:aws:kms:us-east-1:012345678901:key/allowed-key-2",
+                "--decryption-key",
+                "arn:aws:kms:us-east-1:012345678901:key/decryption-key-1",
+                "--decryption-key",
+                "arn:aws:kms:us-east-1:012345678901:key/decryption-key-2",
+                "--encryption-key",
+                "arn:aws:kms:us-east-1:012345678901:key/encryption-key-1",
+                "--encryption-key",
+                "arn:aws:kms:us-east-1:012345678901:key/encryption-key-2",
+            ]
+        )
+        self.assertEqual(
+            options.current_kms_key,
+            "arn:aws:kms:us-east-1:012345678901:key/current-key",
+        )
+        self.assertEqual(
+            options.allowed_kms_key,
+            [
+                "arn:aws:kms:us-east-1:012345678901:key/allowed-key-1",
+                "arn:aws:kms:us-east-1:012345678901:key/allowed-key-2",
+            ],
+        )
+        self.assertEqual(
+            options.decryption_key,
+            [
+                "arn:aws:kms:us-east-1:012345678901:key/decryption-key-1",
+                "arn:aws:kms:us-east-1:012345678901:key/decryption-key-2",
+            ],
+        )
+        self.assertEqual(
+            options.encryption_key,
+            [
+                "arn:aws:kms:us-east-1:012345678901:key/encryption-key-1",
+                "arn:aws:kms:us-east-1:012345678901:key/encryption-key-2",
+            ],
+        )
         Parser.parse(["catalogs", "list"])
         Parser.parse(["catalogs", "get", "catalog_name"])
         Parser.parse(["principals", "list"])
         Parser.parse(["--host", "some-host", "catalogs", "list"])
         Parser.parse(
             ["--base-url", "https://customservice.com/subpath", "catalogs", "list"]
+        )
+        Parser.parse(
+            ["--catalog-url", "http://localhost:8181/server1", "namespaces", "list", "--catalog", "polaris"]
         )
         Parser.parse(
             [

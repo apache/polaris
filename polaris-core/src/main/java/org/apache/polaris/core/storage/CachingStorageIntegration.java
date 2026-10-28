@@ -72,9 +72,18 @@ public abstract class CachingStorageIntegration<T extends PolarisStorageConfigur
       @NonNull List<LocationGrant> grants,
       @NonNull Optional<String> refreshEndpoint,
       @NonNull CredentialVendingContext context) {
-    StorageCredentialCacheKey key = buildCacheKey(grants, refreshEndpoint, context);
-    return cache != null ? cache.getOrLoad(key) : key.load();
+    StorageCredentialCacheKey key = buildCacheKey(grants, context);
+    StorageAccessConfig accessConfig = cache != null ? cache.getOrLoad(key) : key.load();
+    return addExtraProperties(accessConfig, refreshEndpoint);
   }
+
+  protected static StorageAccessConfig withExtraProperty(
+      StorageAccessConfig accessConfig, StorageAccessProperty property, String value) {
+    return StorageAccessConfig.builder().from(accessConfig).put(property, value).build();
+  }
+
+  protected abstract StorageAccessConfig addExtraProperties(
+      @NonNull StorageAccessConfig accessConfig, @NonNull Optional<String> refreshEndpoint);
 
   /**
    * Build a backend-specific cache key for the given vending request. The key must carry whatever
@@ -82,7 +91,5 @@ public abstract class CachingStorageIntegration<T extends PolarisStorageConfigur
    * {@link StorageCredentialCacheKey#load()} can mint credentials on miss.
    */
   protected abstract StorageCredentialCacheKey buildCacheKey(
-      @NonNull List<LocationGrant> grants,
-      @NonNull Optional<String> refreshEndpoint,
-      @NonNull CredentialVendingContext context);
+      @NonNull List<LocationGrant> grants, @NonNull CredentialVendingContext context);
 }

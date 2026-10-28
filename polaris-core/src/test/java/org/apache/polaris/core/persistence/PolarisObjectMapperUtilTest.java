@@ -134,4 +134,26 @@ class PolarisObjectMapperUtilTest {
         PolarisObjectMapperUtil.parseTaskState(entity);
     Assertions.assertThat(state).isNull();
   }
+
+  @Test
+  void entityEqualsIgnoresJsonFormatting() {
+    PolarisBaseEntity compact =
+        new PolarisBaseEntity.Builder()
+            .catalogId(1L)
+            .id(2L)
+            .typeCode(PolarisEntityType.TASK.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .parentId(0L)
+            .name("entity")
+            .properties("{\"key\":\"value\"}")
+            .internalProperties("{\"internal\":true}")
+            .build();
+    PolarisBaseEntity spaced =
+        new PolarisBaseEntity.Builder(compact)
+            .properties("{\"key\": \"value\"}")
+            .internalProperties("{\"internal\": true}")
+            .build();
+
+    Assertions.assertThat(compact).isEqualTo(spaced);
+  }
 }

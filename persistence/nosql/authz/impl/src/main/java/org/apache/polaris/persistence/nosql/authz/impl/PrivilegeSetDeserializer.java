@@ -20,17 +20,16 @@ package org.apache.polaris.persistence.nosql.authz.impl;
 
 import static java.util.Objects.requireNonNull;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import java.io.IOException;
 import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.authz.api.PrivilegeSet;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.databind.DatabindException;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
 
-class PrivilegeSetDeserializer extends JsonDeserializer<PrivilegeSet> {
+class PrivilegeSetDeserializer extends ValueDeserializer<PrivilegeSet> {
   private final Supplier<Privileges> privilegesResolver;
 
   PrivilegeSetDeserializer(Supplier<Privileges> privilegesResolver) {
@@ -39,11 +38,12 @@ class PrivilegeSetDeserializer extends JsonDeserializer<PrivilegeSet> {
   }
 
   @Override
-  public PrivilegeSet deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+  public PrivilegeSet deserialize(JsonParser p, DeserializationContext ctxt) {
     switch (p.currentToken()) {
       case VALUE_NULL:
         return new PrivilegeSetImpl(privilegesResolver.get(), new byte[0]);
       case VALUE_STRING:
+      case VALUE_EMBEDDED_OBJECT:
         // Internal, storage serialization format.
         var bytes = p.getBinaryValue();
         return new PrivilegeSetImpl(privilegesResolver.get(), bytes);
@@ -52,17 +52,18 @@ class PrivilegeSetDeserializer extends JsonDeserializer<PrivilegeSet> {
         var privileges = privilegesResolver.get();
         var builder = PrivilegeSetImpl.builder(privileges);
         for (var t = p.nextToken(); ; t = p.nextToken()) {
+          // Note: switch(t) lets checkstyle fail
           if (t == JsonToken.END_ARRAY) {
             break;
           }
           if (t != JsonToken.VALUE_STRING) {
-            throw new JsonMappingException(p, "Unexpected JSON token " + t + " in privilege array");
+            throw DatabindException.from(p, "Unexpected JSON token " + t + " in privilege array");
           }
-          builder.addPrivilege(privileges.byName(p.getText()));
+          builder.addPrivilege(privileges.byName(p.getString()));
         }
         return builder.build();
       default:
-        throw new JsonMappingException(p, "Unexpected JSON token " + p.currentToken());
+        throw DatabindException.from(p, "Unexpected JSON token " + p.currentToken());
     }
   }
 }

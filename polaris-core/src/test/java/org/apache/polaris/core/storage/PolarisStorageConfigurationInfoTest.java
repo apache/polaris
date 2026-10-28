@@ -21,9 +21,6 @@ package org.apache.polaris.core.storage;
 
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.stream.Stream;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
@@ -31,22 +28,16 @@ import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class PolarisStorageConfigurationInfoTest {
   @InjectSoftAssertions protected SoftAssertions soft;
-
-  private static ObjectMapper mapper;
-
-  @BeforeAll
-  public static void setup() {
-    mapper = JsonMapper.builder().build();
-  }
 
   @ParameterizedTest
   @MethodSource
@@ -54,14 +45,16 @@ public class PolarisStorageConfigurationInfoTest {
       throws Exception {
     var jsonStr = configInfo.serialize();
 
-    var asJsonNode = mapper.readValue(jsonStr, JsonNode.class);
-    var serializedJsonNode = mapper.readValue(serialized, JsonNode.class);
+    var asJsonNode = JsonMapper.shared().readValue(jsonStr, JsonNode.class);
+    var serializedJsonNode = JsonMapper.shared().readValue(serialized, JsonNode.class);
     soft.assertThat(asJsonNode).isEqualTo(serializedJsonNode);
 
-    var deserialized = mapper.readValue(serialized, PolarisStorageConfigurationInfo.class);
+    var deserialized =
+        JsonMapper.shared().readValue(serialized, PolarisStorageConfigurationInfo.class);
     soft.assertThat(deserialized).isEqualTo(configInfo);
 
-    var reserialized = mapper.readValue(jsonStr, PolarisStorageConfigurationInfo.class);
+    var reserialized =
+        JsonMapper.shared().readValue(jsonStr, PolarisStorageConfigurationInfo.class);
     soft.assertThat(reserialized).isEqualTo(configInfo);
   }
 
@@ -102,6 +95,16 @@ public class PolarisStorageConfigurationInfoTest {
                 .storageName("my-storage")
                 .build(),
             "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"storageName\":\"my-storage\",\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\",\"region\":\"no-where-1\",\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
+        arguments(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocations("s3://other-bucket/base/")
+                .credentialVendingMechanism("DOWNSTREAM_MECHANISM")
+                .endpoint("https://s3.example-compatible-store.test")
+                .pathStyleAccess(true)
+                .region("auto")
+                .storageName("other")
+                .build(),
+            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"credentialVendingMechanism\":\"DOWNSTREAM_MECHANISM\",\"allowedLocations\":[\"s3://other-bucket/base/\"],\"storageName\":\"other\",\"region\":\"auto\",\"endpoint\":\"https://s3.example-compatible-store.test\",\"pathStyleAccess\":true,\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
         //
         arguments(
             GcpStorageConfigurationInfo.builder()

@@ -19,6 +19,7 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
+import java.util.function.Consumer;
 import org.jspecify.annotations.NonNull;
 
 /** Authorization intent for granting or revoking privileges on a securable for a grantee. */
@@ -34,7 +35,8 @@ public record PrivilegeGrantAuthorizationIntent(
   }
 
   @Override
-  public @NonNull PolarisAuthorizableOperation getOperation() {
-    return operation;
+  public void visitSecurables(Consumer<PolarisSecurable> visitor) {
+    visitor.accept(grantTarget);
+    visitor.accept(grantee);
   }
 }

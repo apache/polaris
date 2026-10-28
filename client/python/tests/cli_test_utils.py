@@ -38,9 +38,12 @@ class CLITestBase(unittest.TestCase):
         client.api_client.configuration.host = "http://localhost:8080/api/management"
         client.api_client.configuration.proxy = None
         client.api_client.configuration.proxy_headers = None
+        client.api_client.configuration.ssl_ca_cert = None
+        client.api_client.configuration.verify_ssl = True
         client.api_client.configuration.username = None
         client.api_client.configuration.password = None
         client.api_client.configuration.access_token = None
+        client.api_client.configuration._polaris_catalog_base = None
         client.api_client.default_headers = {}
         return client
 

@@ -33,10 +33,17 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.RawEventAccess;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +58,7 @@ public class PolarisEventListeners {
 
   @Inject
   @Identifier("event-listener-executor")
-  Executor executor;
+  Executor sharedExecutor;
 
   private final EnumSet<PolarisEventType> eventTypesWithListeners =
       EnumSet.noneOf(PolarisEventType.class);
@@ -62,15 +69,23 @@ public class PolarisEventListeners {
    * <p>Each listener may enable event categories, individual event types, or both. When no
    * per-listener filters are configured, the listener receives every Polaris event type.
    */
-  public void onStartup(@Observes StartupEvent event) {
+  public void init(@Observes StartupEvent event) {
     var listenerTypeSet = configuration.types().orElseGet(HashSet::new);
+    if (listenerTypeSet.isEmpty()) {
+      LOGGER.debug("No event listeners present, skipping event listener setup");
+      return;
+    }
     for (String enabledEventListener : listenerTypeSet) {
       var listenerConfiguration = configuration.listenerConfig().get(enabledEventListener);
       var supportedTypes = resolveSupportedTypes(listenerConfiguration);
       var listener = eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
+      var listenerExecutor =
+          new ListenerExecutor(sharedExecutor, configuration.listenerBacklog().queueSize());
       // Reuse the same handler for every selected event type for this listener.
       Handler<Message<PolarisEvent>> handler =
-          message -> deliverEvent(message.body(), enabledEventListener, listener);
+          message ->
+              scheduleEventDelivery(
+                  message.body(), enabledEventListener, listener, listenerExecutor);
       for (var polarisEventType : supportedTypes) {
         eventTypesWithListeners.add(polarisEventType);
         eventBus.localConsumer(POLARIS_EVENT_CHANNEL + "." + polarisEventType, handler);
@@ -100,29 +115,44 @@ public class PolarisEventListeners {
     return supportedTypes;
   }
 
+  // Executed on a Vert.x event loop thread
+  private void scheduleEventDelivery(
+      PolarisEvent event,
+      String listenerName,
+      PolarisEventListener listener,
+      ListenerExecutor listenerExecutor) {
+    LOGGER.debug(
+        "Scheduling {} event delivery to listener '{}' ({})", event.type(), listenerName, listener);
+    try {
+      listenerExecutor.execute(() -> deliverEvent(event, listenerName, listener));
+      LOGGER.debug(
+          "Successfully scheduled {} event delivery to listener '{}' ({})",
+          event.type(),
+          listenerName,
+          listener);
+    } catch (Exception e) {
+      LOGGER.error(
+          "Error while scheduling {} event delivery to listener '{}' ({})",
+          event.type(),
+          listenerName,
+          listener,
+          e);
+    }
+  }
+
+  // Executed on the blocking shared executor
   private void deliverEvent(
       PolarisEvent event, String listenerName, PolarisEventListener listener) {
     LOGGER.debug("Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
+    PolarisEvent toDeliver =
+        (listener instanceof RawEventAccess) ? event : eventSanitizer.sanitize(event);
     try {
-      PolarisEvent toDeliver =
-          (listener instanceof RawEventAccess) ? event : eventSanitizer.sanitize(event);
-      executor.execute(
-          () -> {
-            LOGGER.debug(
-                "Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
-            try {
-              listener.onEvent(toDeliver);
-            } catch (Exception e) {
-              LOGGER.error(
-                  "Error while delivering {} event to listener '{}' ({})",
-                  event.type(),
-                  listenerName,
-                  listener,
-                  e);
-            }
-            LOGGER.debug(
-                "Delivered {} event to listener '{}' ({})", event.type(), listenerName, listener);
-          });
+      listener.onEvent(toDeliver);
+      LOGGER.debug(
+          "Successfully delivered {} event to listener '{}' ({})",
+          event.type(),
+          listenerName,
+          listener);
     } catch (Exception e) {
       LOGGER.error(
           "Error while delivering {} event to listener '{}' ({})",
@@ -135,5 +165,58 @@ public class PolarisEventListeners {
 
   public boolean hasListeners(PolarisEventType eventType) {
     return eventTypesWithListeners.contains(eventType);
+  }
+
+  private static class ListenerExecutor implements Executor {
+
+    private final Executor delegate;
+    private final Queue<Runnable> queue;
+    private final AtomicBoolean draining = new AtomicBoolean(false);
+
+    ListenerExecutor(Executor delegate, int capacity) {
+      this.delegate = delegate;
+      this.queue =
+          capacity == -1 ? new ConcurrentLinkedQueue<>() : new ArrayBlockingQueue<>(capacity);
+    }
+
+    @Override
+    @SuppressWarnings("FutureReturnValueIgnored")
+    public void execute(@NonNull Runnable task) {
+      if (!queue.offer(task)) {
+        throw new RejectedExecutionException("Event listener queue is full");
+      }
+      maybeScheduleDrain().exceptionally(this::onError);
+    }
+
+    private CompletableFuture<Void> maybeScheduleDrain() {
+      if (!queue.isEmpty() && draining.compareAndSet(false, true)) {
+        try {
+          return CompletableFuture.runAsync(this::drain, delegate)
+              // if tasks arrived in the interim, schedule another drain for fairness
+              .thenCompose(v -> maybeScheduleDrain())
+              .exceptionally(this::onError);
+        } catch (Throwable t) {
+          return CompletableFuture.failedFuture(t);
+        }
+      }
+      return CompletableFuture.completedFuture(null);
+    }
+
+    private void drain() {
+      try {
+        Runnable task;
+        while ((task = queue.poll()) != null) {
+          task.run();
+        }
+      } finally {
+        draining.set(false);
+      }
+    }
+
+    private Void onError(Throwable error) {
+      draining.set(false);
+      LOGGER.warn("Failed to drain listener backlog; task delivery may be delayed", error);
+      return null;
+    }
   }
 }

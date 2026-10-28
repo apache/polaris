@@ -32,11 +32,37 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.junit.jupiter.api.Test;
 import picocli.CommandLine;
 
 class PurgeCommandTest {
+
+  @Test
+  void testPurgeFailure() {
+    String realm = "missing-realm";
+    PurgeCommand command = new PurgeCommand();
+    command.metaStoreManagerFactory =
+        new FakeMetaStoreManagerFactory(
+            Map.of(
+                realm,
+                new BaseResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "Not bootstrapped")));
+
+    CommandLine commandLine = new CommandLine(command);
+    StringWriter out = new StringWriter();
+    StringWriter err = new StringWriter();
+    commandLine.setOut(new PrintWriter(out));
+    commandLine.setErr(new PrintWriter(err));
+
+    int exitCode = commandLine.execute("-r", realm);
+
+    assertThat(exitCode).isEqualTo(BaseCommand.EXIT_CODE_PURGE_ERROR);
+    assertThat(out.toString())
+        .contains(
+            "Realm "
+                + realm
+                + " is not bootstrapped, could not load root principal. Please run Bootstrap command.");
+    assertThat(err.toString()).contains("Purge encountered errors during operation.");
+  }
 
   /**
    * When {@code purgeRealms} fails (e.g. database connection failure, permission denied), the
@@ -48,7 +74,7 @@ class PurgeCommandTest {
     String failureMessage = "simulated database connection failure";
     PurgeCommand command = new PurgeCommand();
     command.metaStoreManagerFactory =
-        new ThrowingMetaStoreManagerFactory(new RuntimeException(failureMessage));
+        new FakeMetaStoreManagerFactory(new RuntimeException(failureMessage));
 
     CommandLine commandLine = new CommandLine(command);
     StringWriter err = new StringWriter();
@@ -63,26 +89,31 @@ class PurgeCommandTest {
         .contains("Purge encountered errors during operation.");
   }
 
-  /** Minimal {@link MetaStoreManagerFactory} whose {@code purgeRealms} always throws. */
-  private static final class ThrowingMetaStoreManagerFactory implements MetaStoreManagerFactory {
+  /** Minimal {@link MetaStoreManagerFactory} for testing purge command results and failures. */
+  private static final class FakeMetaStoreManagerFactory implements MetaStoreManagerFactory {
+    private final Map<String, BaseResult> results;
     private final RuntimeException failure;
 
-    private ThrowingMetaStoreManagerFactory(RuntimeException failure) {
+    private FakeMetaStoreManagerFactory(Map<String, BaseResult> results) {
+      this.results = results;
+      this.failure = null;
+    }
+
+    private FakeMetaStoreManagerFactory(RuntimeException failure) {
+      this.results = null;
       this.failure = failure;
     }
 
     @Override
     public Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
-      throw failure;
+      if (failure != null) {
+        throw failure;
+      }
+      return results;
     }
 
     @Override
     public PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
       throw new UnsupportedOperationException();
     }
 

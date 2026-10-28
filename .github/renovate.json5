@@ -35,6 +35,10 @@
     "main",
   ],
 
+  // Keep monorepo grouping when there are actually multiple updates,
+  // but allow one-dependency PRs to use version-specific titles.
+  groupSingleUpdates: false,
+
   pip_requirements: {
     // fileMatch default: (^|/)([\\w-]*)requirements\\.(txt|pip)$
     "managerFilePatterns": ["(^|/)([\\w-]*)requirements.*\\.txt$"],
@@ -87,15 +91,18 @@
       groupName: "Quarkus, ignore non Platform",
       matchManagers: ["gradle"],
       matchPackageNames: [
+        // Gradle plugin IDs
+        "io.quarkus",
+
+        // Maven coordinates
+        "/^io\\.quarkus:.+/",
         "io.quarkus.platform:quarkus-amazon-services-bom",
         "io.quarkus.platform:quarkus-google-cloud-services-bom",
-        "io.quarkus:io.quarkus.gradle.plugin",
+
+        // Do not disable the main platform BOM.
+        "io.quarkus.platform:*",
+        "!io.quarkus.platform:quarkus-bom"
       ],
-      enabled: false
-    },
-    // Disable update for openapi-generator-cli due to our OpenAPI spec version
-    {
-      matchPackageNames: ["openapi-generator-cli"],
       enabled: false
     },
     // Disable update for python version
@@ -127,6 +134,26 @@
       matchPackageNames: [ "org.scala-lang:*" ],
       matchCurrentVersion: "/^2\\.13\\./",
       allowedVersions: "/^2\\.13\\./"
+    },
+    // ANTLR runtime versions are pinned to match the version used by Delta
+    // https://github.com/delta-io/delta/blob/master/project/CrossSparkVersions.scala#L211
+    {
+      matchManagers: ["gradle"],
+      matchPackageNames: ["org.antlr:antlr4-runtime"],
+      enabled: false
+    },
+    // Apache Spark major/minor verisons are not comaptible with each other
+    {
+      matchManagers: ["dockerfile", "docker-compose"],
+      matchPackageNames: [ "apache/spark", "docker.io/apache/spark" ],
+      matchCurrentVersion: "/^3\\.5\\./",
+      allowedVersions: "/^3\\.5\\./"
+    },
+    {
+      matchManagers: ["dockerfile", "docker-compose"],
+      matchPackageNames: [ "apache/spark", "docker.io/apache/spark" ],
+      matchCurrentVersion: "/^4\\.0\\./",
+      allowedVersions: "/^4\\.0\\./"
     }
   ],
 

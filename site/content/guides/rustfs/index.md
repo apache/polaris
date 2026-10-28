@@ -19,6 +19,7 @@
 #
 linkTitle: "Storage: RustFS"
 title: "Getting Started with Apache Polaris and RustFS"
+description: "Uses RustFS for S3-compatible object storage and Apache Spark as the query engine."
 weight: 200
 tags:
    - rustfs
@@ -30,10 +31,6 @@ menus:
         parent: Guides
         weight: 200
 ---
-
-{{< alert warning >}}
-**Disclaimer:** This guide uses mc from MinIO OSS for local testing only. MinIO OSS is in maintenance mode, and MinIO container images may no longer receive updates or security fixes. For production setups, [rc](https://github.com/rustfs/cli) should be used.
-{{< /alert >}}
 
 ## Overview
 
@@ -63,7 +60,7 @@ See the [Spark Notebooks Example](../spark) for a more advanced Spark setup.
 
 ```shell
 bin/spark-sql \
-    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1 \
+    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.12.0,org.apache.iceberg:iceberg-aws-bundle:1.12.0 \
     --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
     --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \
     --conf spark.sql.catalog.polaris.type=rest \

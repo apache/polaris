@@ -20,15 +20,14 @@ package org.apache.polaris.persistence.nosql.authz.impl;
 
 import static java.util.Objects.requireNonNull;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import java.io.IOException;
 import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.authz.api.PrivilegeSet;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueSerializer;
 
-public class PrivilegeSetSerializer extends JsonSerializer<PrivilegeSet> {
+public class PrivilegeSetSerializer extends ValueSerializer<PrivilegeSet> {
   private final Supplier<Privileges> privilegesResolver;
 
   PrivilegeSetSerializer(Supplier<Privileges> privilegesResolver) {
@@ -37,9 +36,9 @@ public class PrivilegeSetSerializer extends JsonSerializer<PrivilegeSet> {
   }
 
   @Override
-  public void serialize(PrivilegeSet value, JsonGenerator gen, SerializerProvider serializers)
-      throws IOException {
-    var view = serializers.getActiveView();
+  public void serialize(
+      PrivilegeSet value, JsonGenerator gen, SerializationContext serializationContext) {
+    var view = serializationContext.getActiveView();
     if (view != null && view.getSimpleName().equals("StorageView")) {
       // When serializing for/to persistence as a use the bit-encoded/binary
       // serialization. This is triggered when the current Jackson view is

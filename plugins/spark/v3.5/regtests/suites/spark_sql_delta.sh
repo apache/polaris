@@ -24,7 +24,7 @@ SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN}"
 CATALOG_NAME="spark_sql_catalog"
 curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
-  -d '{"name": "spark_sql_catalog", "id": 100, "type": "INTERNAL", "readOnly": false, "properties": {"default-base-location": "file:///tmp/spark_catalog"}, "storageConfigInfo": {"storageType": "FILE", "allowedLocations": ["file:///tmp"]}}' > /dev/stderr
+  -d '{"name": "spark_sql_catalog", "id": 100, "type": "INTERNAL", "readOnly": false, "properties": {"default-base-location": "file:///tmp/spark_catalog"}, "storageConfigInfo": {"storageType": "FILE", "allowedLocations": ["file:///tmp/spark_catalog"]}}' > /dev/stderr
 
 # Add TABLE_WRITE_DATA to the catalog's catalog_admin role since by default it can only manage access and metadata
 curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
@@ -52,14 +52,14 @@ use db1.schema1;
 insert into iceberg_tb values (123), (234), (111);
 select * from iceberg_tb order by col1;
 
-create table delta_tb1(col1 string) using delta location 'file:///tmp/spark_catalog/delta_tb1';
+create table delta_tb1(col1 string) using delta location 'file:///tmp/spark_catalog/db1/schema1/delta_tb1';
 insert into delta_tb1 values ('ab'), ('bb'), ('dd');
 select * from delta_tb1 order by col1;
 
 show tables;
 
 use db1;
-create table delta_tb2(col1 int) using delta location 'file:///tmp/spark_catalog/delta_tb2';
+create table delta_tb2(col1 int) using delta location 'file:///tmp/spark_catalog/db1/delta_tb2';
 insert into delta_tb2 values (1), (2), (3) order by col1;
 select * from delta_tb2;
 

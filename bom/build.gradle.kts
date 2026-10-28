@@ -25,16 +25,19 @@ description = "Apache Polaris - Bill of Materials (BOM)"
 
 dependencies {
   constraints {
-    api(rootProject)
+    api(project(":"))
     api(project(":polaris-api-catalog-service"))
     api(project(":polaris-api-iceberg-service"))
     api(project(":polaris-api-management-model"))
     api(project(":polaris-api-management-service"))
+    api(project(":polaris-api-openlineage-service"))
 
     api(project(":polaris-container-spec-helper"))
-    api(project(":polaris-azurite-testcontainer"))
-    api(project(":polaris-gcs-testcontainer"))
-    api(project(":polaris-minio-testcontainer"))
+    api(project(":polaris-floci-aws-testcontainer"))
+    api(project(":polaris-floci-az-testcontainer"))
+    api(project(":polaris-floci-gcp-testcontainer"))
+    api(project(":polaris-keycloak-testcontainer"))
+    api(project(":polaris-opa-testcontainer"))
     api(project(":polaris-rustfs-testcontainer"))
     api(project(":polaris-immutables"))
     api(project(":polaris-misc-types"))
@@ -81,6 +84,7 @@ dependencies {
 
     api(project(":polaris-persistence-nosql-inmemory"))
     api(project(":polaris-persistence-nosql-mongodb"))
+    api(project(":polaris-persistence-nosql-dynamodb"))
 
     api(project(":polaris-persistence-nosql-maintenance-api"))
     api(project(":polaris-persistence-nosql-maintenance-impl"))
@@ -91,26 +95,30 @@ dependencies {
     api(project(":polaris-config-docs-generator"))
 
     api(project(":polaris-core"))
+    api(project(":polaris-extensions-lineage"))
 
     api(project(":polaris-relational-jdbc"))
+    api(project(":polaris-persistence-dynamodb-atomic"))
 
     api(project(":polaris-extensions-auth-opa"))
-    api(project(":polaris-extensions-auth-opa-tests"))
     api(project(":polaris-extensions-auth-ranger"))
-    api(project(":polaris-extensions-auth-ranger-tests"))
+    api(project(":polaris-extensions-events-kafka"))
     api(project(":polaris-extensions-federation-bigquery"))
     api(project(":polaris-extensions-federation-hadoop"))
     api(project(":polaris-extensions-federation-hive"))
+    api(project(":polaris-extensions-metrics-reports"))
+    api(project(":polaris-extensions-metrics-reports-jdbc"))
+    api(project(":polaris-extensions-openlineage"))
+    api(project(":polaris-extensions-semantic-models"))
     api(project(":polaris-hms-testcontainer"))
 
     api(project(":polaris-spark-3.5_2.12"))
-    api(project(":polaris-spark-integration-3.5_2.12"))
-    val ideaActive = providers.systemProperty("idea.active").getOrElse("false").toBoolean()
-    if (!ideaActive) {
+    val ideImportActive =
+      providers.systemProperty("idea.active").getOrElse("false").toBoolean() ||
+        providers.systemProperty("buildship.active").getOrElse("false").toBoolean()
+    if (!ideImportActive) {
       api(project(":polaris-spark-3.5_2.13"))
-      api(project(":polaris-spark-integration-3.5_2.13"))
       api(project(":polaris-spark-4.0_2.13"))
-      api(project(":polaris-spark-integration-4.0_2.13"))
     }
 
     api(project(":polaris-admin"))
@@ -119,6 +127,7 @@ dependencies {
     api(project(":polaris-runtime-defaults"))
     api(project(":polaris-server"))
     api(project(":polaris-runtime-service"))
+    api(project(":polaris-runtime-service-it"))
     api(project(":polaris-runtime-spark-tests"))
 
     api(project(":polaris-tests"))
@@ -130,10 +139,10 @@ tasks.register<VerifyBomDependenciesTask>("verifyBomDependencies") {
   description = "Checks if the BOM dependencies are complete"
 
   bomDependencyCoordinates.set(
-    configurations.api.map { it.dependencyConstraints.map { "${it.group}:${it.name}" } }
+    configurations.api.map { it.dependencyConstraints.map { "${it.group}:${it.name}" } },
   )
   projectCoordinatesByPath.set(
-    rootProject.allprojects.associate { it.path to "${it.group}:${it.name}" }
+    provider { rootProject.allprojects.associate { it.path to "${it.group}:${it.name}" } },
   )
   excludedProjectPaths.set(
     setOf(
@@ -141,7 +150,7 @@ tasks.register<VerifyBomDependenciesTask>("verifyBomDependencies") {
       ":aggregated-license-report",
       ":polaris-config-docs-site",
       ":polaris-distribution",
-    )
+    ),
   )
 }
 

@@ -71,7 +71,7 @@ services:
       start_period: 10s
 
   bucket-setup:
-    image: amazon/aws-cli:2.34.63
+    image: amazon/aws-cli:2.38.5
     depends_on:
       rustfs:
         condition: service_healthy
@@ -89,7 +89,7 @@ services:
         echo Bucket setup complete.
 
   polaris-setup:
-    image: alpine/curl:8.19.0
+    image: alpine/curl:8.22.0
     depends_on:
       polaris:
         condition: service_healthy
@@ -264,7 +264,7 @@ services:
         echo ""
         echo "To get started with Spark:"
         echo "  spark-sql \\"
-        echo "    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1 \\"
+        echo "    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.12.0,org.apache.iceberg:iceberg-aws-bundle:1.12.0 \\"
         echo "    --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \\"
         echo "    --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \\"
         echo "    --conf spark.sql.catalog.polaris.type=rest \\"

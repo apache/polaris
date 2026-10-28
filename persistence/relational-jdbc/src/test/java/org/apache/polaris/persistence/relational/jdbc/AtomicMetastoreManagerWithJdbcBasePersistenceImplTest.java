@@ -20,6 +20,7 @@ package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.List;
@@ -37,23 +38,39 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
-import org.assertj.core.api.Assumptions;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     extends BasePolarisMetaStoreManagerTest {
 
-  public DataSource createH2DataSource() {
-    return JdbcConnectionPool.create(
-        String.format("jdbc:h2:file:./build/test_data/polaris/db_%s", schemaVersion()), "sa", "");
+  protected DatabaseType databaseType() {
+    return DatabaseType.H2;
   }
 
-  public abstract int schemaVersion();
+  protected DataSource createDataSource() {
+    // The schema is provided by the datasource, not by the persistence code: INIT creates the
+    // schema (the DBA step in a real deployment) and selects it as the session schema on every
+    // connection (the currentSchema/SCHEMA driver setting in a real deployment).
+    return JdbcConnectionPool.create(
+        String.format(
+            "jdbc:h2:file:./build/test_data/polaris/db_%s"
+                + ";INIT=CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA\\;SET SCHEMA POLARIS_SCHEMA",
+            databaseType().getDisplayName()),
+        "sa",
+        "");
+  }
+
+  protected InputStream openSchemaScript() {
+    return databaseType().openInitScriptResource();
+  }
 
   @Override
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
@@ -61,29 +78,21 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     DatasourceOperations datasourceOperations;
     try {
       datasourceOperations =
-          new DatasourceOperations(createH2DataSource(), new H2JdbcConfiguration());
-      ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
-      InputStream scriptStream =
-          classLoader.getResourceAsStream(
-              String.format(
-                  "%s/schema-v%s.sql", DatabaseType.H2.getDisplayName(), schemaVersion()));
-      datasourceOperations.executeScript(scriptStream);
-    } catch (SQLException e) {
+          new DatasourceOperations(
+              createDataSource(),
+              SimpleRelationalJdbcConfiguration.forDatabaseType(databaseType()));
+      try (InputStream scriptStream = openSchemaScript()) {
+        datasourceOperations.executeScript(scriptStream);
+      }
+    } catch (SQLException | IOException e) {
       throw new RuntimeException(
-          String.format(
-              "Error executing %s script: %s", DatabaseType.H2.getDisplayName(), e.getMessage()),
-          e);
+          String.format("Error executing %s schema script: %s", databaseType(), e.getMessage()), e);
     }
 
     RealmContext realmContext = () -> "REALM";
     JdbcBasePersistenceImpl basePersistence =
         new JdbcBasePersistenceImpl(
-            diagServices,
-            datasourceOperations,
-            RANDOM_SECRETS,
-            Mockito.mock(),
-            realmContext.getRealmIdentifier(),
-            schemaVersion());
+            diagServices, datasourceOperations, RANDOM_SECRETS, realmContext.getRealmIdentifier());
     AtomicOperationMetaStoreManager metaStoreManager =
         new AtomicOperationMetaStoreManager(clock, diagServices);
     PolarisCallContext callCtx = new PolarisCallContext(realmContext, basePersistence);
@@ -92,9 +101,6 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
   @Test
   void testHasOverlappingSiblingsUsesStoredBaseLocation() {
-    // The optimized check relies on the location_without_scheme column added in schema v2.
-    Assumptions.assumeThat(schemaVersion()).isGreaterThanOrEqualTo(2);
-
     var metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager();
     var callContext = polarisTestMetaStoreManager.polarisCallContext();
     PolarisBaseEntity catalog =
@@ -124,7 +130,9 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
                 "candidate",
                 "s3://bucket/warehouse/existing/child"));
 
-    Assertions.assertThat(metaStoreManager.hasOverlappingSiblings(callContext, candidateNamespace))
+    Assertions.assertThat(
+            metaStoreManager.hasOverlappingSiblings(
+                callContext, List.of(PolarisEntity.toCore(catalog)), candidateNamespace))
         .contains(Optional.of("s3://bucket/warehouse/existing/"));
 
     TestLocationBasedEntity nonOverlappingNamespace =
@@ -136,8 +144,63 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
                 "s3://bucket/warehouse/non-overlapping"));
 
     Assertions.assertThat(
-            metaStoreManager.hasOverlappingSiblings(callContext, nonOverlappingNamespace))
+            metaStoreManager.hasOverlappingSiblings(
+                callContext, List.of(PolarisEntity.toCore(catalog)), nonOverlappingNamespace))
         .contains(Optional.empty());
+
+    // The persisted entity itself, e.g. when renamed, does not conflict with its own location.
+    TestLocationBasedEntity renamedNamespace =
+        new TestLocationBasedEntity(
+            buildLocationBasedNamespace(
+                catalog, existingNamespace.getId(), "renamed", "s3://bucket/warehouse/existing/"));
+
+    Assertions.assertThat(
+            metaStoreManager.hasOverlappingSiblings(
+                callContext, List.of(PolarisEntity.toCore(catalog)), renamedNamespace))
+        .contains(Optional.empty());
+  }
+
+  @Test
+  void dropCatalogListsAtMostTwoCatalogRoleIdentities() {
+    var metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager();
+    var callContext = polarisTestMetaStoreManager.polarisCallContext();
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStoreManager.generateNewEntityId(callContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "counted_catalog_roles");
+    catalog = metaStoreManager.createCatalog(callContext, catalog, List.of()).getCatalog();
+
+    BasePersistence spiedPersistence = Mockito.spy(callContext.getMetaStore());
+    PolarisCallContext spiedCallContext =
+        new PolarisCallContext(callContext.getRealmContext(), spiedPersistence);
+
+    metaStoreManager.dropEntityIfExists(spiedCallContext, null, catalog, Map.of(), false);
+
+    Mockito.verify(spiedPersistence, Mockito.never())
+        .listFullEntities(
+            Mockito.any(),
+            Mockito.anyLong(),
+            Mockito.anyLong(),
+            Mockito.eq(PolarisEntityType.CATALOG_ROLE),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any());
+
+    ArgumentCaptor<PageToken> pageToken = ArgumentCaptor.forClass(PageToken.class);
+    Mockito.verify(spiedPersistence)
+        .listEntities(
+            Mockito.any(),
+            Mockito.anyLong(),
+            Mockito.anyLong(),
+            Mockito.eq(PolarisEntityType.CATALOG_ROLE),
+            Mockito.any(),
+            pageToken.capture());
+    Assertions.assertThat(pageToken.getValue().pageSize()).hasValue(2);
   }
 
   private static PolarisBaseEntity buildLocationBasedNamespace(
@@ -163,29 +226,6 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     @Override
     public String getBaseLocation() {
       return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
-    }
-  }
-
-  private static class H2JdbcConfiguration implements RelationalJdbcConfiguration {
-
-    @Override
-    public Optional<Integer> maxRetries() {
-      return Optional.of(2);
-    }
-
-    @Override
-    public Optional<Long> maxDurationInMs() {
-      return Optional.of(100L);
-    }
-
-    @Override
-    public Optional<Long> initialDelayInMs() {
-      return Optional.of(100L);
-    }
-
-    @Override
-    public Optional<String> databaseType() {
-      return Optional.of("h2");
     }
   }
 }

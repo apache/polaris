@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -46,6 +47,7 @@ import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -57,6 +59,7 @@ import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
+import org.apache.polaris.service.catalog.config.CatalogConfigHandler;
 import org.apache.polaris.service.catalog.validation.EntityNameValidator;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.http.IcebergHttpUtil;
@@ -81,17 +84,20 @@ public class IcebergCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
   private final IcebergCatalogHandlerFactory handlerFactory;
+  private final CatalogConfigHandler configHandler;
 
   @Inject
   public IcebergCatalogAdapter(
       CallContext callContext,
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
-      IcebergCatalogHandlerFactory handlerFactory) {
+      IcebergCatalogHandlerFactory handlerFactory,
+      CatalogConfigHandler configHandler) {
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.handlerFactory = handlerFactory;
+    this.configHandler = configHandler;
   }
 
   /**
@@ -134,6 +140,7 @@ public class IcebergCatalogAdapter
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    createNamespaceRequest.validate();
     validateIcebergProperties(realmConfig, createNamespaceRequest.properties());
     EntityNameValidator.validateNamespace(createNamespaceRequest.namespace());
     return withCatalog(
@@ -193,8 +200,8 @@ public class IcebergCatalogAdapter
     } else {
       LOGGER
           .atWarn()
-          .addKeyValue("namespace", namespace)
-          .addKeyValue("tableName", tableName)
+          .addKeyValue(StructuredLogKeys.NAMESPACE, namespace)
+          .addKeyValue(StructuredLogKeys.TABLE_NAME, tableName)
           .log("Response has null metadataLocation; omitting etag");
     }
     return builder;
@@ -259,25 +266,19 @@ public class IcebergCatalogAdapter
         catalog -> Response.ok(catalog.updateNamespaceProperties(ns, revisedRequest)).build());
   }
 
-  private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
-    // Parse the access delegation modes - validation will happen after mode resolution
-    // in IcebergCatalogHandler.resolveAccessDelegationModes()
-    return AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
-  }
-
   @Override
   public Response createTable(
       String prefix,
       String namespace,
       CreateTableRequest createTableRequest,
-      String accessDelegationMode,
+      List<String> accessDelegationModes,
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     createTableRequest.validate();
     validateIcebergProperties(realmConfig, createTableRequest.properties());
     EnumSet<AccessDelegationMode> delegationModes =
-        parseAccessDelegationModes(accessDelegationMode);
+        AccessDelegationMode.fromProtocolValuesList(accessDelegationModes);
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     EntityNameValidator.validateIdentifier(TableIdentifier.of(ns, createTableRequest.name()));
@@ -327,14 +328,14 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       String table,
-      String accessDelegationMode,
+      List<String> accessDelegationModes,
       String ifNoneMatchString,
       String snapshots,
       String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     EnumSet<AccessDelegationMode> delegationModes =
-        parseAccessDelegationModes(accessDelegationMode);
+        AccessDelegationMode.fromProtocolValuesList(accessDelegationModes);
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
@@ -426,7 +427,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       RegisterTableRequest registerTableRequest,
-      String accessDelegationMode,
+      List<String> accessDelegationModes,
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
@@ -436,7 +437,7 @@ public class IcebergCatalogAdapter
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, registerTableRequest.name());
     EntityNameValidator.validateIdentifier(tableIdentifier);
     EnumSet<AccessDelegationMode> delegationModes =
-        parseAccessDelegationModes(accessDelegationMode);
+        AccessDelegationMode.fromProtocolValuesList(accessDelegationModes);
     return withCatalog(
         securityContext,
         prefix,
@@ -460,7 +461,7 @@ public class IcebergCatalogAdapter
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    EntityNameValidator.validateIdentifier(renameTableRequest.destination());
+    validateRenameRequest(renameTableRequest);
     return withCatalog(
         securityContext,
         prefix,
@@ -647,7 +648,7 @@ public class IcebergCatalogAdapter
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    EntityNameValidator.validateIdentifier(renameTableRequest.destination());
+    validateRenameRequest(renameTableRequest);
     return withCatalog(
         securityContext,
         prefix,
@@ -655,6 +656,24 @@ public class IcebergCatalogAdapter
           catalog.renameView(renameTableRequest);
           return Response.status(Response.Status.NO_CONTENT).build();
         });
+  }
+
+  /**
+   * Validates a rename request before it reaches the catalog. The {@code source} and {@code
+   * destination} identifiers are optional in the wire format (bean validation is disabled for the
+   * Iceberg REST models), so a missing identifier must be rejected here with a 400 rather than
+   * surfacing later as an opaque {@link NullPointerException}. Only the destination is subject to
+   * the entity-name character policy; the source is left unchecked so that objects created before
+   * the policy existed can still be renamed away.
+   */
+  private static void validateRenameRequest(RenameTableRequest renameTableRequest) {
+    if (renameTableRequest.source() == null) {
+      throw new IllegalArgumentException("Rename request is missing the source identifier");
+    }
+    if (renameTableRequest.destination() == null) {
+      throw new IllegalArgumentException("Rename request is missing the destination identifier");
+    }
+    EntityNameValidator.validateIdentifier(renameTableRequest.destination());
   }
 
   @Override
@@ -764,7 +783,7 @@ public class IcebergCatalogAdapter
     if (warehouse == null) {
       throw new BadRequestException("Please specify a warehouse");
     }
-    return withCatalogByName(
-        securityContext, warehouse, catalog -> Response.ok(catalog.getConfig()).build());
+    return Response.ok(configHandler.getConfig(warehouse, validatePrincipal(securityContext)))
+        .build();
   }
 }

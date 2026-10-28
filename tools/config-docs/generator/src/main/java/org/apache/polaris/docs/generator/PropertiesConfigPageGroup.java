@@ -78,7 +78,8 @@ public class PropertiesConfigPageGroup {
 
       @Override
       public Void visitType(TypeElement e, DocletEnvironment env) {
-        return e.accept(this, env);
+        e.getEnclosedElements().forEach(element -> element.accept(this, env));
+        return null;
       }
 
       @Override

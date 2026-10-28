@@ -82,6 +82,12 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
     return clientSecretReference;
   }
 
+  @JsonIgnore
+  @Override
+  public @NonNull List<SecretReference> getSecretReferences() {
+    return List.of(clientSecretReference);
+  }
+
   public @Nullable List<String> getScopes() {
     return scopes;
   }

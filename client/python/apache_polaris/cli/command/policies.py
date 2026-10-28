@@ -20,10 +20,10 @@
 import json
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List, cast
+from typing import Optional, Dict, List, Union, cast
 
 from apache_polaris.cli.command import Command
-from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.command.utils import get_catalog_api_client, paginate
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from apache_polaris.cli.options.option_tree import Argument
@@ -53,7 +53,8 @@ class PoliciesCommand(Command):
 
     policies_subcommand: str
     catalog_name: Optional[str] = None
-    namespace: Optional[str] = None
+    namespace: Optional[Union[str, List[str]]] = None
+    page_size: Optional[int] = None
     policy_name: Optional[str] = None
     policy_file: Optional[str] = None
     policy_type: Optional[str] = None
@@ -127,7 +128,11 @@ class PoliciesCommand(Command):
         policy_name = cast(str, self.policy_name)
 
         namespace_str = (
-            self.namespace.replace(".", UNIT_SEPARATOR) if self.namespace else ""
+            UNIT_SEPARATOR.join(self.namespace)
+            if isinstance(self.namespace, list)
+            else self.namespace.replace(".", UNIT_SEPARATOR)
+            if self.namespace
+            else ""
         )
         if self.policies_subcommand == Subcommands.CREATE:
             policy_file = cast(str, self.policy_file)
@@ -186,12 +191,15 @@ class PoliciesCommand(Command):
                     print(policy.to_json())
             else:
                 # List all policy identifiers in the namespace
-                policies_response = policy_api.list_policies(
+                for resp in paginate(
+                    policy_api.list_policies,
+                    page_size=self.page_size,
                     prefix=catalog_name,
                     namespace=namespace_str,
                     policy_type=self.policy_type,
-                ).to_json()
-                print(policies_response)
+                ):
+                    for policy in resp.identifiers or []:
+                        print(policy.to_json())
         elif self.policies_subcommand == Subcommands.UPDATE:
             policy_file = cast(str, self.policy_file)
             with open(policy_file, "r") as f:

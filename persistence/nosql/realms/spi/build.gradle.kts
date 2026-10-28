@@ -28,7 +28,7 @@ dependencies {
   implementation(project(":polaris-persistence-nosql-realms-api"))
   implementation(libs.guava)
 
-  compileOnly(platform(libs.jackson.bom))
+  compileOnly(platform(libs.jackson3.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
   compileOnly(libs.jakarta.annotation.api)
@@ -37,7 +37,7 @@ dependencies {
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
 
-  testFixturesApi(platform(libs.jackson.bom))
+  testFixturesApi(platform(libs.jackson3.bom))
   testFixturesApi("com.fasterxml.jackson.core:jackson-annotations")
 
   testFixturesApi(project(":polaris-persistence-nosql-api"))

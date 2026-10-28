@@ -22,6 +22,7 @@ package org.apache.polaris.core.exceptions;
  * Base class for Polaris-specific runtime exceptions.
  *
  * <p>All custom exceptions in Polaris should extend this class to provide specific error details.
+ * Subclasses must implement {@link #httpStatusCode()} to declare their HTTP response status.
  */
 public abstract class PolarisException extends RuntimeException {
 
@@ -32,4 +33,10 @@ public abstract class PolarisException extends RuntimeException {
   public PolarisException(String message, Throwable cause) {
     super(message, cause);
   }
+
+  /**
+   * Returns the HTTP status code that should be used when this exception is mapped to an HTTP
+   * response.
+   */
+  public abstract int httpStatusCode();
 }

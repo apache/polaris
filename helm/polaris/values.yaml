@@ -245,6 +245,10 @@ service:
   # -- Annotations to add to the service.
   # @section -- Service
   annotations: {}
+  # @schema additionalProperties: {type: string}
+  # -- Labels to add to the service.
+  # @section -- Service
+  labels: {}
 
 # Management service settings. These settings are used to configure liveness and readiness probes,
 # and to configure the dedicated headless service that will expose health checks and metrics, e.g.
@@ -309,6 +313,10 @@ managementService:
   # -- Annotations to add to the service.
   # @section -- Management Service
   annotations: {}
+  # @schema additionalProperties: {type: string}
+  # -- Labels to add to the service.
+  # @section -- Management Service
+  labels: {}
 
 # Additional service definitions. All service definitions always select all Polaris pods. Use
 # this if you need to expose specific ports with different configurations, e.g. expose polaris-http
@@ -371,6 +379,10 @@ extraServices:
     # -- Annotations to add to the extra service.
     # @section -- Extra Services
     annotations: {}
+    # @schema additionalProperties: {type: string}
+    # -- Labels to add to the service.
+    # @section -- Extra Services
+    labels: {}
 
 # Polaris Ingress settings.
 # These settings generate an Ingress resource that routes external traffic to the Polaris service
@@ -922,6 +934,18 @@ persistence:
   type: in-memory  # relational-jdbc, nosql
   # The configuration for the relational-jdbc persistence manager.
   relationalJdbc:
+    # @schema additionalProperties: {type: string}
+    # -- Additional JDBC connection properties passed to the datasource driver as
+    # `quarkus.datasource.jdbc.additional-jdbc-properties.<name>`. The default sets `currentSchema`,
+    # which on PostgreSQL and CockroachDB selects the database schema (namespace) holding the Polaris
+    # tables; that schema must exist before Polaris connects (creating it is a DBA task) and is passed
+    # to the driver unquoted, so the database applies its usual identifier case folding. Note that
+    # `currentSchema` is PostgreSQL/CockroachDB-specific and is silently ignored by other drivers such
+    # as MySQL, where the schema is instead the database named in the JDBC URL. Add further entries to
+    # customize other driver properties.
+    # @section -- Persistence
+    additionalProperties:
+      currentSchema: POLARIS_SCHEMA
     # The secret name to pull the database connection properties from.
     secret:
       # -- The secret name to pull database connection properties from
@@ -1167,3 +1191,147 @@ tasks:
   # -- The maximum number of tasks that can be queued up for execution. If unspecified or zero, defaults to Integer.MAX_VALUE.
   # @section -- Tasks
   maxQueuedTasks: 0  # 1000
+
+# @schema type: object
+# -- Configuration for Polaris maintenance tasks running as Kubernetes CronJobs.
+# Maintenance pods inherit the global pod-level scheduling and hardening
+# settings but do NOT inherit env-var or volume settings. The latter must be
+# configured explicitly under maintenance.* to prevent server-specific secrets
+# and configuration from being exposed to maintenance pods.
+# @default -- See sub-fields below.
+# @section -- Maintenance
+maintenance:
+  # @schema additionalProperties: {type: string}
+  # -- Annotations to add to every maintenance CronJob object.
+  # @section -- Maintenance
+  annotations: {}
+
+  # @schema additionalProperties: {type: string}
+  # -- Annotations to add to every maintenance pod.
+  # NOT merged with the global `podAnnotations` as annotations can grant
+  # extra access, so maintenance pods receive only what is configured here.
+  # @section -- Maintenance
+  podAnnotations: {}
+
+  # @schema additionalProperties: {type: string}
+  # -- Labels to add to every maintenance pod (e.g., team, cost-center).
+  # NOT merged with the global `podLabels`. User-supplied labels are
+  # rendered after the chart-managed maintenance labels.
+  # @section -- Maintenance
+  podLabels: {}
+
+  # @schema item: object
+  # -- Extra environment variables to add to every maintenance CronJob object.
+  # NOT merged with the global `extraEnv` as maintenance pods receive only
+  # values configured here.
+  # @section -- Maintenance
+  extraEnv: []
+  #  - name: AWS_STORAGE_BUCKET
+  #    value: s3://xxxxx/
+  #  - name: AWS_ACCESS_KEY_ID
+  #    valueFrom:
+  #      secretKeyRef:
+  #        name: aws-secret
+  #        key: access_key_id
+  #  - name: AWS_SECRET_ACCESS_KEY
+  #    valueFrom:
+  #      secretKeyRef:
+  #        name: aws-secret
+  #        key: secret_access_key
+
+  # @schema item: object
+  # -- Bulk import environment variables from Secrets or ConfigMaps to every maintenance CronJob object.
+  # NOT merged with the global `envFrom` as maintenance pods receive only
+  # values configured here.
+  # @section -- Maintenance
+  envFrom: []
+  #  - secretRef:
+  #      name: polaris-env-secret
+  #  - configMapRef:
+  #      name: polaris-env-configmap
+
+  # @schema item: object
+  # -- Extra volumes to add to every maintenance CronJob object.
+  # NOT merged with the global `extraVolumes` — see `maintenance.extraEnv` for the rationale.
+  # @section -- Maintenance
+  extraVolumes: []
+    # - name: extra-volume
+    #   emptyDir: {}
+
+  # @schema item: object
+  # -- Extra volume mounts to add to every maintenance CronJob object.
+  # NOT merged with the global `extraVolumeMounts` as maintenance pods receive only
+  # values configured here.
+  # @section -- Maintenance
+  extraVolumeMounts: []
+    # - name: extra-volume
+    #   mountPath: /usr/share/extra-volume
+
+  # -- The container image used by every maintenance CronJob object.
+  # @section -- Maintenance
+  image:
+    # -- The image repository to pull from for the Polaris admin tool.
+    # @section -- Maintenance
+    repository: apache/polaris-admin-tool
+    # @schema enum: [Always, IfNotPresent, Never]
+    # -- The image pull policy.
+    # @section -- Maintenance
+    pullPolicy: IfNotPresent
+    # -- The image tag.
+    # @section -- Maintenance
+    tag: "latest"  # This tag will be replaced with the chart version at release time.
+
+  # @schema additionalProperties: {type: object, required: [enabled, schedule]}
+  # -- Define maintenance CronJobs.
+  # @default -- See sub-fields below.
+  # @section -- Maintenance
+  jobs:
+    nosql-maintenance:
+      # -- Enable this maintenance job.
+      # @section -- Maintenance
+      enabled: false
+      # -- The schedule in Cron format.
+      # @section -- Maintenance
+      schedule: "0 2 * * *"
+      # -- The arguments to pass to the admin tool.
+      # @section -- Maintenance
+      args: ["nosql", "maintenance-run"]
+      # @schema enum: [Allow, Forbid, Replace]
+      # -- The concurrency policy. Valid values are: Allow, Forbid, Replace.
+      # @section -- Maintenance
+      concurrencyPolicy: Forbid
+      # @schema type: object
+      # -- Resource requests and limits for this job's container.
+      # Not merged with the global `resources` as server's resource profile
+      # is typically not suitable for short-lived maintenance jobs. Configure
+      # resources explicitly when needed. Unset by default.
+      # @section -- Maintenance
+      resources:
+        {}
+        # limits:
+        #   cpu: 100m
+        #   memory: 128Mi
+        # requests:
+        #   cpu: 100m
+        #   memory: 128Mi
+      # @schema enum: [Never, OnFailure]
+      # -- The pod's restartPolicy.
+      # @section -- Maintenance
+      restartPolicy: Never
+      # -- Maximum number of retries before marking this Job failed.
+      # @section -- Maintenance
+      backoffLimit: 6
+      # @schema type: [integer, "null"]
+      # @schema minimum: 1
+      # -- Maximum runtime in seconds for a single job run. Null means no limit.
+      # @section -- Maintenance
+      activeDeadlineSeconds: ~
+      # -- How many successful finished Jobs to retain in history.
+      # @section -- Maintenance
+      successfulJobsHistoryLimit: 3
+      # -- How many failed finished Jobs to retain in history.
+      # @section -- Maintenance
+      failedJobsHistoryLimit: 1
+      # -- Per-job ServiceAccount override. Empty means use the global ServiceAccount.
+      # @section -- Maintenance
+      serviceAccountName: ""

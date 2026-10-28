@@ -30,8 +30,8 @@ REST implementation), enabling a Polaris service to access table and view entiti
 - **REST endpoint:** The remote service must expose the Iceberg REST specification. Configure
   firewalls so Polaris can reach the base URI you provide in the connection config.
 - **Authentication:** Polaris forwards requests using the credentials defined in
-  `ConnectionConfigInfo.AuthenticationParameters`. OAuth2 client credentials, bearer tokens, and AWS
-  SigV4 are supported; choose the scheme the remote service expects.
+  `ConnectionConfigInfo.AuthenticationParameters`. OAuth2 client credentials, bearer tokens, GCP,
+  and AWS SigV4 are supported; choose the scheme the remote service expects.
 
 ## Feature configuration
 
@@ -66,7 +66,7 @@ polaris catalogs create \
     analytics_rest
 ```
 
-Refer to the [CLI documentation](../command-line-interface.md#catalogs) for details on alternative authentication types such as BEARER or SIGV4.
+Refer to the [CLI documentation]({{% ref "../command-line-interface.md#catalogs" %}}) for details on alternative authentication types such as BEARER or SIGV4.
 
 Grant catalog roles to principal roles the same way you do for internal catalogs so compute engines
 receive tokens with access to the federated namespace.
@@ -101,6 +101,20 @@ polaris catalogs update analytics_rest \
 ```
 
 Connection config properties (URI and authentication) take precedence if the same keys are present.
+
+### Custom HTTP headers
+
+Properties prefixed with `header.` add an HTTP header to every request sent to the remote catalog.
+For example, BigLake requires a billing project on each request:
+
+```bash
+polaris catalogs update analytics_rest \
+    --set-property header.x-goog-user-project=my-gcp-project
+```
+
+The warning in Outbound HTTP settings applies: headers set this way are visible to catalog clients
+through `/config`, so use the connection's authentication parameters for credentials, never a
+`header.Authorization` property.
 
 ## Operational notes
 

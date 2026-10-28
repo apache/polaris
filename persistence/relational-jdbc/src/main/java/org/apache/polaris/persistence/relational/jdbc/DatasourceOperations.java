@@ -30,19 +30,21 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.jspecify.annotations.NonNull;
@@ -53,6 +55,15 @@ public class DatasourceOperations {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
 
+  /** The schema version this binary expects to find in the version table. */
+  // Whenever a schema change requires a migration:
+  // 1) Increment the version number in all schema.sql scripts
+  //    (the version number MUST be the same on all scripts)
+  // 2) Increment this constant to match the version number in schema.sql
+  // 3) Add the corresponding migration SQL to the Relational JDBC metastore documentation
+  // 4) Add a note to the changelog
+  public static final int CURRENT_SCHEMA_VERSION = 6;
+
   // PG STATUS CODES
   // 23505 = unique key violation, consistent across PG/Cockroach/H2; other checks (FK, NOT NULL,
   // CHECK) all propagate
@@ -60,9 +71,12 @@ public class DatasourceOperations {
   private static final String RELATION_DOES_NOT_EXIST = "42P01";
 
   // H2 STATUS CODES
-  // 90079 = Schema not found, 42S02 = Table or view not found
+  // 90079 = Schema not found, 42S02 = Table or view not found, 42S04 = Table or view not found
+  // (database empty). The latter surfaces for unqualified table references against a fresh
+  // database, where previously a schema-qualified reference produced a schema-not-found error.
   private static final String H2_SCHEMA_DOES_NOT_EXIST = "90079";
   private static final String H2_TABLE_DOES_NOT_EXIST = "42S02";
+  private static final String H2_TABLE_NOT_FOUND_DATABASE_EMPTY = "42S04";
 
   // POSTGRES RETRYABLE EXCEPTIONS
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
@@ -94,7 +108,7 @@ public class DatasourceOperations {
     }
   }
 
-  DatabaseType getDatabaseType() {
+  public DatabaseType getDatabaseType() {
     return databaseType;
   }
 
@@ -151,9 +165,9 @@ public class DatasourceOperations {
    */
   public <T> List<T> executeSelect(
       @NonNull PreparedQuery query, @NonNull Converter<T> converterInstance) throws SQLException {
-    ArrayList<T> results = new ArrayList<>();
-    executeSelectOverStream(query, converterInstance, stream -> stream.forEach(results::add));
-    return results;
+    AtomicReference<List<T>> results = new AtomicReference<>();
+    executeSelectOverStream(query, converterInstance, stream -> results.set(stream.toList()));
+    return results.get();
   }
 
   /**
@@ -173,20 +187,60 @@ public class DatasourceOperations {
       throws SQLException {
     withRetries(
         () -> {
-          logQuery(query);
-          try (Connection connection = borrowConnection();
-              PreparedStatement statement = connection.prepareStatement(query.sql())) {
-            List<Object> params = query.parameters();
-            for (int i = 0; i < params.size(); i++) {
-              statement.setObject(i + 1, params.get(i));
-            }
-            try (ResultSet resultSet = statement.executeQuery()) {
-              ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
-              consumer.accept(iterator.toStream());
-              return null;
-            }
+          try (Connection connection = borrowConnection()) {
+            executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
+            return null;
           }
         });
+  }
+
+  /** Connection-aware version for use inside runWithinTransaction. */
+  public <T> void executeSelectOverStream(
+      @NonNull Connection connection,
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance,
+      @NonNull Consumer<Stream<T>> consumer)
+      throws SQLException {
+    withRetries(
+        () -> {
+          executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
+          return null;
+        });
+  }
+
+  /**
+   * Internal implementation that executes the SELECT on the provided connection. Does not manage
+   * connection lifecycle or retries.
+   */
+  private <T> void executeSelectOverStreamWithConnection(
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance,
+      @NonNull Consumer<Stream<T>> consumer,
+      @NonNull Connection connection)
+      throws SQLException {
+    logQuery(query);
+    try (PreparedStatement statement = connection.prepareStatement(query.sql())) {
+      List<Object> params = query.parameters();
+      for (int i = 0; i < params.size(); i++) {
+        statement.setObject(i + 1, params.get(i));
+      }
+      try (ResultSet resultSet = statement.executeQuery()) {
+        ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
+        consumer.accept(iterator.toStream());
+      }
+    }
+  }
+
+  /** Connection-aware version for use inside runWithinTransaction. */
+  public <T> List<T> executeSelect(
+      @NonNull Connection connection,
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance)
+      throws SQLException {
+    AtomicReference<List<T>> results = new AtomicReference<>();
+    executeSelectOverStream(
+        connection, query, converterInstance, stream -> results.set(stream.toList()));
+    return results.get();
   }
 
   /**
@@ -347,13 +401,16 @@ public class DatasourceOperations {
     while (attempts < maxAttempts) {
       try {
         return operation.execute();
+      } catch (EntityAlreadyExistsException | RetryOnConcurrencyException e) {
+        // Pass domain exceptions through unchanged. Do not unwrap their SQLException cause into
+        // the retry path (that would rewrap them as a generic SQLException and lose the typed
+        // signal upper layers need, e.g. ENTITY_ALREADY_EXISTS mapping).
+        throw e;
       } catch (SQLException | RuntimeException e) {
         SQLException sqlException;
         if (e instanceof RuntimeException) {
-          // Handle Exceptions from ResultSet Iterator consumer, as it throws a RTE, ignore RTE from
-          // the transactions.
-          if (e.getCause() instanceof SQLException
-              && !(e instanceof EntityAlreadyExistsException)) {
+          // ResultSet consumers and similar paths may wrap SQLException in RuntimeException.
+          if (e.getCause() instanceof SQLException) {
             sqlException = (SQLException) e.getCause();
           } else {
             throw e;
@@ -413,11 +470,62 @@ public class DatasourceOperations {
     return UNIQUENESS_CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState());
   }
 
+  /**
+   * Checks whether the version table reports the schema version this binary expects. Throws {@link
+   * IllegalStateException} on a mismatch, an absent version table, or an empty version table.
+   */
+  public void validateSchemaCompatibility() {
+    PreparedQuery query = QueryGenerator.generateVersionQuery();
+    try {
+      List<Integer> versions =
+          executeSelect(
+              query,
+              new Converter<>() {
+                @Override
+                public Integer fromResultSet(ResultSet rs) throws SQLException {
+                  return rs.getInt("version_value");
+                }
+
+                @Override
+                public Map<String, Object> toMap(DatabaseType databaseType) {
+                  return Map.of();
+                }
+              });
+      if (versions.isEmpty()) {
+        throw new IllegalStateException(
+            "Version table exists but contains no rows. "
+                + "The database may be in a corrupted state. "
+                + "See the Relational JDBC metastore documentation for upgrade instructions.");
+      }
+      int version = versions.getFirst();
+      if (version != CURRENT_SCHEMA_VERSION) {
+        throw new IllegalStateException(
+            String.format(
+                "Incompatible JDBC schema version %d (expected %d). "
+                    + "Please apply the required DDL migration before starting Polaris. "
+                    + "See the Relational JDBC metastore documentation for upgrade instructions.",
+                version, CURRENT_SCHEMA_VERSION));
+      }
+    } catch (SQLException e) {
+      if (isRelationDoesNotExist(e)) {
+        throw new IllegalStateException(
+            "Version table not found. "
+                + "Please run the bootstrap command before starting Polaris, "
+                + "or apply the required DDL migration. "
+                + "See the Relational JDBC metastore documentation for upgrade instructions.",
+            e);
+      }
+      throw new IllegalStateException(
+          "Could not validate JDBC schema compatibility: " + e.getMessage(), e);
+    }
+  }
+
   public boolean isRelationDoesNotExist(SQLException e) {
     return (RELATION_DOES_NOT_EXIST.equals(e.getSQLState())
             && (databaseType == DatabaseType.POSTGRES || databaseType == DatabaseType.COCKROACHDB))
         || ((H2_SCHEMA_DOES_NOT_EXIST.equals(e.getSQLState())
-                || H2_TABLE_DOES_NOT_EXIST.equals(e.getSQLState()))
+                || H2_TABLE_DOES_NOT_EXIST.equals(e.getSQLState())
+                || H2_TABLE_NOT_FOUND_DATABASE_EMPTY.equals(e.getSQLState()))
             && databaseType == DatabaseType.H2);
   }
 

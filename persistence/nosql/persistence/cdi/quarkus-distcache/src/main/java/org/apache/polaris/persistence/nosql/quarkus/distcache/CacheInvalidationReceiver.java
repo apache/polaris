@@ -18,11 +18,9 @@
  */
 package org.apache.polaris.persistence.nosql.quarkus.distcache;
 
-import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 import static java.util.Collections.emptyList;
+import static tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.quarkus.vertx.http.ManagementInterface;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -38,6 +36,8 @@ import org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.CacheIn
 import org.apache.polaris.persistence.nosql.api.cache.DistributedCacheInvalidation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Receiver for distributed cache invalidation messages.
@@ -70,11 +70,8 @@ class CacheInvalidationReceiver {
     this.invalidationPath = storeConfig.cacheInvalidationUri();
     this.validTokens =
         new HashSet<>(storeConfig.cacheInvalidationValidTokens().orElse(emptyList()));
-    this.objectMapper =
-        JsonMapper.builder()
-            // forward compatibility
-            .disable(FAIL_ON_UNKNOWN_PROPERTIES)
-            .build();
+    // Keep remote invalidation payloads forward-compatible with newer senders.
+    this.objectMapper = JsonMapper.builder().disable(FAIL_ON_UNKNOWN_PROPERTIES).build();
   }
 
   void registerManagementRoutes(@Observes ManagementInterface mi) {

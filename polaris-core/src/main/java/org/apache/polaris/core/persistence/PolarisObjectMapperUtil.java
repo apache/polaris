@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.IOException;
 import java.util.Map;
 import org.apache.iceberg.rest.RESTSerializers;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.jspecify.annotations.Nullable;
@@ -166,8 +167,8 @@ public final class PolarisObjectMapperUtil {
     } catch (IOException | NumberFormatException e) {
       LOGGER
           .atWarn()
-          .addKeyValue("json", entity.getProperties())
-          .addKeyValue("error", e.getMessage())
+          .addKeyValue(StructuredLogKeys.JSON, entity.getProperties())
+          .addKeyValue(StructuredLogKeys.ERROR, e.getMessage())
           .log("Unable to parse task properties");
       return null;
     }

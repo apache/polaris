@@ -17,8 +17,13 @@
  * under the License.
  */
 
+import java.io.ByteArrayOutputStream
+import javax.inject.Inject
 import org.gradle.api.Project
-import org.gradle.kotlin.dsl.extra
+import org.gradle.api.provider.Property
+import org.gradle.api.services.BuildService
+import org.gradle.api.services.BuildServiceParameters
+import org.gradle.process.ExecOperations
 
 /**
  * Container to memoize Git information retrieved via `git` command executions across all Gradle
@@ -30,41 +35,52 @@ class GitInfo(val gitHead: String, val gitDescribe: String, private val rawLinkR
     "https://raw.githubusercontent.com/apache/polaris/$rawLinkRef/$file"
 
   companion object {
-    private fun execGit(rootProject: Project, vararg args: Any): String {
-      val out =
-        rootProject.providers
-          .exec {
-            executable = "git"
-            args(args.toList())
-          }
-          .standardOutput
-          .asText
-          .get()
-      return out.trim()
-    }
-
     fun memoized(project: Project): GitInfo {
-      val rootProject = project.rootProject
-      return if (rootProject.extra.has("gitInfo")) {
-        @Suppress("UNCHECKED_CAST")
-        rootProject.extra["gitInfo"] as GitInfo
-      } else {
-        val isRelease =
-          rootProject.hasProperty("release") || rootProject.hasProperty("jarWithGitInfo")
-        val gitHead = execGit(rootProject, "rev-parse", "HEAD")
-        val gitDescribe =
-          if (isRelease)
-            try {
-              execGit(rootProject, "describe", "--tags")
-            } catch (_: Exception) {
-              execGit(rootProject, "describe", "--always", "--dirty")
-            }
-          else ""
-        val rawLinkRef = if (isRelease) gitDescribe else "HEAD"
-        val gitInfo = GitInfo(gitHead, gitDescribe, rawLinkRef)
-        rootProject.extra["gitInfo"] = gitInfo
-        return gitInfo
-      }
+      val isRelease =
+        project.providers.gradleProperty("release").isPresent ||
+          project.providers.gradleProperty("jarWithGitInfo").isPresent
+      val service =
+        project.gradle.sharedServices.registerIfAbsent(
+          "gitInfo-$isRelease",
+          GitInfoService::class.java,
+        ) {
+          parameters.release.set(isRelease)
+        }
+      return service.get().gitInfo
     }
+  }
+}
+
+abstract class GitInfoService : BuildService<GitInfoService.Parameters> {
+  interface Parameters : BuildServiceParameters {
+    val release: Property<Boolean>
+  }
+
+  @get:Inject abstract val execOperations: ExecOperations
+
+  val gitInfo: GitInfo by lazy {
+    val isRelease = parameters.release.get()
+    val gitHead = execGit("rev-parse", "HEAD")
+    val gitDescribe =
+      if (isRelease) {
+        try {
+          execGit("describe", "--tags")
+        } catch (_: Exception) {
+          execGit("describe", "--always", "--dirty")
+        }
+      } else {
+        ""
+      }
+    val rawLinkRef = if (isRelease) gitDescribe else "HEAD"
+    GitInfo(gitHead, gitDescribe, rawLinkRef)
+  }
+
+  private fun execGit(vararg args: String): String {
+    val out = ByteArrayOutputStream()
+    execOperations.exec {
+      commandLine(listOf("git") + args)
+      standardOutput = out
+    }
+    return out.toString().trim()
   }
 }

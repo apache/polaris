@@ -26,15 +26,15 @@ This page explains what a realm is and what it is used for in Polaris.
 
 ### What is it?
 
-A realm in Polaris serves as logical partitioning mechanism within the catalog system. This isolation allows for multitenancy, enabling different teams, environments or organizations to operate independently within the same Polaris deployment.
+A realm in Polaris serves as a logical partitioning mechanism within the catalog system. This isolation allows for multitenancy, enabling different teams, environments or organizations to operate independently within the same Polaris deployment.
 
 ### Key Characteristics
 
 **Isolation:** Each realm encapsulates its own set of resources, ensuring that operations, policies in one realm do not affect others.
 
-**Authentication Context:** When configuring Polaris, principals credentials are associated with a specific realm. This allows for the separation of security concerns across different realms.
+**Authentication Context:** When configuring Polaris, principals' credentials are associated with a specific realm. This allows for the separation of security concerns across different realms.
 
-**Configuration Scope:** Realm identifiers are used in various configurations, such as connection strings feature configurations, etc.
+**Configuration Scope:** Realm identifiers are used in various configurations, such as connection strings, feature configurations, etc.
 
 An example of this is:
 

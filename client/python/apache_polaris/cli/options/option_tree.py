@@ -121,7 +121,7 @@ class OptionTree:
         Argument(
             Arguments.CATALOG_AUTHENTICATION_TYPE,
             str,
-            "Authentication type [OAUTH, BEARER, SIGV4, IMPLICIT]",
+            "Authentication type [OAUTH, BEARER, GCP, SIGV4, IMPLICIT]",
             lower=True,
             choices=[at.value for at in AuthenticationType],
             group="External Catalog Federation: General Options",
@@ -236,6 +236,11 @@ class OptionTree:
                             choices=[st.value for st in StorageType],
                         ),
                         Argument(
+                            Arguments.STORAGE_NAME,
+                            str,
+                            "An optional name referencing a server-side storage configuration",
+                        ),
+                        Argument(
                             Arguments.DEFAULT_BASE_LOCATION,
                             str,
                             "(Required) Default base location for the catalog",
@@ -286,6 +291,20 @@ class OptionTree:
                             Arguments.KMS_KEY_ALLOWED,
                             str,
                             Hints.S3_KMS_KEY_ALLOWED,
+                            allow_repeats=True,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
+                            Arguments.KMS_KEY_ENCRYPTION,
+                            str,
+                            Hints.S3_KMS_KEY_ENCRYPTION,
+                            allow_repeats=True,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
+                            Arguments.KMS_KEY_DECRYPTION,
+                            str,
+                            Hints.S3_KMS_KEY_DECRYPTION,
                             allow_repeats=True,
                             group="AWS S3 Storage Options",
                         ),
@@ -382,6 +401,11 @@ class OptionTree:
                     hint="Update properties of a catalog",
                     args=[
                         Argument(
+                            Arguments.STORAGE_NAME,
+                            str,
+                            "A new storage name referencing a server-side storage configuration",
+                        ),
+                        Argument(
                             Arguments.DEFAULT_BASE_LOCATION,
                             str,
                             "A new default base location for the catalog",
@@ -396,6 +420,18 @@ class OptionTree:
                             Arguments.REGION,
                             str,
                             Hints.S3_REGION,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
+                            Arguments.STS_UNAVAILABLE,
+                            bool,
+                            Hints.S3_STS_UNAVAILABLE,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
+                            Arguments.KMS_UNAVAILABLE,
+                            bool,
+                            Hints.S3_KMS_UNAVAILABLE,
                             group="AWS S3 Storage Options",
                         ),
                         Argument(
@@ -968,6 +1004,27 @@ class OptionTree:
                     input_metavar="NAMESPACE",
                 ),
                 Option(
+                    Subcommands.UPDATE,
+                    hint="Update properties of a namespace",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(
+                            Arguments.SET_PROPERTY,
+                            str,
+                            Hints.SET_PROPERTY,
+                            allow_repeats=True,
+                        ),
+                        Argument(
+                            Arguments.REMOVE_PROPERTY,
+                            str,
+                            Hints.REMOVE_PROPERTY,
+                            allow_repeats=True,
+                        ),
+                    ],
+                    input_name=Arguments.NAMESPACE,
+                    input_metavar="NAMESPACE",
+                ),
+                Option(
                     Subcommands.SUMMARIZE,
                     hint="Display a summary for a namespace",
                     args=[Argument(Arguments.CATALOG, str, Hints.CATALOG)],
@@ -1178,7 +1235,17 @@ class OptionTree:
                     input_name=Arguments.SETUP_CONFIG,
                     input_metavar="SETUP_CONFIG_FILE",
                 ),
-                Option(Subcommands.EXPORT, hint="Export current configuration"),
+                Option(
+                    Subcommands.EXPORT,
+                    hint="Export current configuration",
+                    args=[
+                        Argument(
+                            Arguments.INCLUDE_TABLES_AND_VIEWS,
+                            bool,
+                            "Also export tables and views of internal catalogs",
+                        )
+                    ],
+                ),
             ],
         )
 
@@ -1226,6 +1293,121 @@ class OptionTree:
                     input_name=Arguments.TABLE,
                     input_metavar="TABLE_NAME",
                 ),
+                Option(
+                    Subcommands.REGISTER,
+                    hint="Register a table to catalog by its metadata location",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                        Argument(
+                            Arguments.METADATA_LOCATION,
+                            str,
+                            Hints.METADATA_LOCATION,
+                        ),
+                        Argument(Arguments.OVERWRITE, bool, Hints.OVERWRITE),
+                    ],
+                    input_name=Arguments.TABLE,
+                    input_metavar="TABLE_NAME",
+                ),
+            ],
+        )
+
+    @staticmethod
+    def _views_option() -> Option:
+        return Option(
+            Commands.VIEWS,
+            hint="manage views",
+            children=[
+                Option(
+                    Subcommands.LIST,
+                    hint="List views",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                ),
+                Option(
+                    Subcommands.GET,
+                    hint="Retrieve metadata for a view",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.VIEW,
+                    input_metavar="VIEW_NAME",
+                ),
+                Option(
+                    Subcommands.SUMMARIZE,
+                    hint="Display a summary for a view",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.VIEW,
+                    input_metavar="VIEW_NAME",
+                ),
+                Option(
+                    Subcommands.DELETE,
+                    hint="Drop a view from catalog",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.VIEW,
+                    input_metavar="VIEW_NAME",
+                ),
+                Option(
+                    Subcommands.REGISTER,
+                    hint="Register a view to catalog by its metadata location",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                        Argument(
+                            Arguments.METADATA_LOCATION,
+                            str,
+                            Hints.METADATA_LOCATION,
+                        ),
+                    ],
+                    input_name=Arguments.VIEW,
+                    input_metavar="VIEW_NAME",
+                ),
+            ],
+        )
+
+    @staticmethod
+    def _generic_tables_option() -> Option:
+        return Option(
+            Commands.GENERIC_TABLES,
+            hint="manage generic tables",
+            children=[
+                Option(
+                    Subcommands.LIST,
+                    hint="List generic tables",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                ),
+                Option(
+                    Subcommands.GET,
+                    hint="Retrieve metadata for a generic table",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.GENERIC_TABLE,
+                    input_metavar="GENERIC_TABLE_NAME",
+                ),
+                Option(
+                    Subcommands.DELETE,
+                    hint="Drop a generic table from catalog",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.GENERIC_TABLE,
+                    input_metavar="GENERIC_TABLE_NAME",
+                ),
             ],
         )
 
@@ -1270,6 +1452,8 @@ class OptionTree:
             OptionTree._policies_option(),
             OptionTree._setup_option(),
             OptionTree._tables_option(),
+            OptionTree._views_option(),
+            OptionTree._generic_tables_option(),
             OptionTree._find_option(),
             OptionTree._repl_option(),
         ]

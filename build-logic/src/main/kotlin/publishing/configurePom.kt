@@ -43,107 +43,117 @@ import org.gradle.api.publish.maven.MavenPublication
  * must be exactly the same when built by a release manager and by someone else to verify the built
  * artifact(s).
  */
-internal fun configurePom(project: Project, mavenPublication: MavenPublication, task: Task) =
-  mavenPublication.run {
-    pom {
-      if (project != project.rootProject) {
-        // Add the license to every pom to make it easier for downstream projects to retrieve the
-        // license.
-        licenses {
-          license {
-            name.set("Apache-2.0") // SPDX identifier
+internal data class ParentPomCoordinates(
+  val groupId: String,
+  val artifactId: String,
+  val version: String,
+)
+
+internal fun configurePom(
+  project: Project,
+  parentPomCoordinates: ParentPomCoordinates?,
+  mavenPublication: MavenPublication,
+  task: Task,
+) = mavenPublication.run {
+  pom {
+    if (parentPomCoordinates != null) {
+      // Non-root Gradle projects.
+
+      // Add the license to every pom to make it easier for downstream projects to retrieve the
+      // license.
+      licenses {
+        license {
+          name.set("Apache-2.0") // SPDX identifier
+        }
+      }
+
+      withXml {
+        val projectNode = asNode()
+
+        val parentNode = projectNode.appendNode("parent")
+        // Guarantee that the <parent> element is at a deterministic location.
+        // This is important for reproducible builds!
+        projectNode.remove(parentNode)
+        for ((index, any) in projectNode.children().withIndex()) {
+          if (any is Node) {
+            val qName = any.name() as QName
+            if (qName.localPart == "groupId") {
+              // In theory, we could also replace the groupId element, as the group ID is
+              // currently the same.
+              // But this would break once another group ID is built.
+              projectNode.children().add(index, parentNode)
+              break
+            }
           }
         }
 
-        val parent = project.parent!!
-        val parentGroup = parent.group
-        val parentName = parent.name
-        val parentVersion = parent.version
+        // Add GAV to <parent> element
+        parentNode.appendNode("groupId", parentPomCoordinates.groupId)
+        parentNode.appendNode("artifactId", parentPomCoordinates.artifactId)
+        parentNode.appendNode("version", parentPomCoordinates.version)
 
-        withXml {
-          val projectNode = asNode()
+        verifyMandatoryDependencyVersions(projectNode)
+      }
+    } else {
+      // Root Gradle projects.
 
-          val parentNode = projectNode.appendNode("parent")
-          // Guarantee that the <parent> element is at a deterministic location.
-          // This is important for reproducible builds!
-          projectNode.remove(parentNode)
-          for ((index, any) in projectNode.children().withIndex()) {
-            if (any is Node) {
-              val qName = any.name() as QName
-              if (qName.localPart == "groupId") {
-                // In theory, we could also replace the groupId element, as the group ID is
-                // currently the same.
-                // But this would break once another group ID is built.
-                projectNode.children().add(index, parentNode)
-                break
-              }
+      val mavenPom = this
+      val effectiveAsfProject = project.provider { EffectiveAsfProject.forProject(project) }
+      val projectVersion = project.version.toString()
+
+      task.doFirst {
+        mavenPom.run {
+          val prj = effectiveAsfProject.get()
+          val asfProjectId = prj.asfProject.apacheId
+
+          organization {
+            name.set("The Apache Software Foundation")
+            url.set("https://www.apache.org/")
+          }
+          licenses {
+            license {
+              name.set("Apache-2.0") // SPDX identifier
+              url.set(prj.asfProject.licenseUrl)
             }
           }
-          // Add GAV to <parent> element
-          parentNode.appendNode("groupId", parentGroup)
-          parentNode.appendNode("artifactId", parentName)
-          parentNode.appendNode("version", parentVersion)
-
-          verifyMandatoryDependencyVersions(projectNode)
-        }
-      } else {
-        val mavenPom = this
-        val effectiveAsfProject = project.provider { EffectiveAsfProject.forProject(project) }
-        val projectVersion = project.version.toString()
-
-        task.doFirst {
-          mavenPom.run {
-            val prj = effectiveAsfProject.get()
-            val asfProjectId = prj.asfProject.apacheId
-
-            organization {
-              name.set("The Apache Software Foundation")
-              url.set("https://www.apache.org/")
-            }
-            licenses {
-              license {
-                name.set("Apache-2.0") // SPDX identifier
-                url.set(prj.asfProject.licenseUrl)
-              }
-            }
-            mailingLists {
-              prj.publishingHelperExtension.mailingLists
-                .get()
-                .map { id -> prj.mailingList(id) }
-                .forEach { ml ->
-                  mailingList {
-                    name.set(ml.name())
-                    subscribe.set(ml.subscribe())
-                    unsubscribe.set(ml.unsubscribe())
-                    post.set(ml.post())
-                    archive.set(ml.archive())
-                  }
+          mailingLists {
+            prj.publishingHelperExtension.mailingLists
+              .get()
+              .map { id -> prj.mailingList(id) }
+              .forEach { ml ->
+                mailingList {
+                  name.set(ml.name())
+                  subscribe.set(ml.subscribe())
+                  unsubscribe.set(ml.unsubscribe())
+                  post.set(ml.post())
+                  archive.set(ml.archive())
                 }
-            }
-
-            scm {
-              val codeRepoString: String = prj.codeRepoUrl().get()
-              connection.set("scm:git:$codeRepoString")
-              developerConnection.set("scm:git:$codeRepoString")
-              url.set("$codeRepoString/tree/main")
-              if (!projectVersion.endsWith("-SNAPSHOT")) {
-                val tagPrefix: String = prj.tagPrefix().get()
-                tag.set("$tagPrefix-$projectVersion")
               }
-            }
-            issueManagement { url.set(prj.issueTracker()) }
-
-            name.set(prj.fullName())
-            description.set(prj.description())
-            url.set(prj.projectUrl())
-            inceptionYear.set(prj.asfProject.inceptionYear.toString())
-
-            developers { developer { url.set("https://$asfProjectId.apache.org/community/") } }
           }
+
+          scm {
+            val codeRepoString: String = prj.codeRepoUrl().get()
+            connection.set("scm:git:$codeRepoString")
+            developerConnection.set("scm:git:$codeRepoString")
+            url.set("$codeRepoString/tree/main")
+            if (!projectVersion.endsWith("-SNAPSHOT")) {
+              val tagPrefix: String = prj.tagPrefix().get()
+              tag.set("$tagPrefix-$projectVersion")
+            }
+          }
+          issueManagement { url.set(prj.issueTracker()) }
+
+          name.set(prj.fullName())
+          description.set(prj.description())
+          url.set(prj.projectUrl())
+          inceptionYear.set(prj.asfProject.inceptionYear.toString())
+
+          developers { developer { url.set("https://$asfProjectId.apache.org/community/") } }
         }
       }
     }
   }
+}
 
 /**
  * Verifies that the generated `pom.xml` for `<dependencies>` in `<dependencyManagement>` all have

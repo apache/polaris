@@ -24,6 +24,7 @@ import jakarta.inject.Inject;
 import java.util.Map;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.jspecify.annotations.NonNull;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
@@ -34,8 +35,8 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
   private final FileIOFactory defaultFileIOFactory;
 
   @Inject
-  public WasbTranslatingFileIOFactory() {
-    defaultFileIOFactory = new DefaultFileIOFactory();
+  public WasbTranslatingFileIOFactory(S3AccessConfig s3AccessConfig) {
+    defaultFileIOFactory = new DefaultFileIOFactory(s3AccessConfig);
   }
 
   @Override
@@ -43,7 +44,7 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
       @NonNull StorageAccessConfig accessConfig,
       @NonNull String ioImplClassName,
       @NonNull Map<String, String> properties) {
-    return new WasbTranslatingFileIO(
+    return WasbTranslatingFileIO.wrap(
         defaultFileIOFactory.loadFileIO(accessConfig, ioImplClassName, properties));
   }
 }

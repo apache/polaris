@@ -21,9 +21,12 @@ package org.apache.polaris.core.connection.hive;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.aws.AwsClientProperties;
+import org.apache.iceberg.aws.s3.S3FileIOProperties;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HiveConnectionConfigInfo;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
@@ -42,6 +45,20 @@ import org.jspecify.annotations.Nullable;
  */
 public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
 
+  /**
+   * Connection properties forwarded to the Iceberg {@code HiveCatalog}: catalog client settings and
+   * non-secret FileIO client settings. Keys that select implementations or carry credentials are
+   * deliberately not forwarded. The FileIO keys only take effect when the catalog is configured to
+   * use {@code S3FileIO} via the catalog-level {@code io-impl} property.
+   */
+  static final List<String> ALLOWED_PROPERTIES =
+      List.of(
+          CatalogProperties.CLIENT_POOL_SIZE,
+          "list-all-tables",
+          S3FileIOProperties.ENDPOINT,
+          S3FileIOProperties.PATH_STYLE_ACCESS,
+          AwsClientProperties.CLIENT_REGION);
+
   private final String warehouse;
 
   public HiveConnectionConfigInfoDpo(
@@ -50,8 +67,11 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
           @Nullable AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "warehouse", required = false) @Nullable String warehouse,
       @JsonProperty(value = "serviceIdentity", required = false)
-          @Nullable ServiceIdentityInfoDpo serviceIdentity) {
-    super(ConnectionType.HIVE.getCode(), uri, authenticationParameters, serviceIdentity);
+          @Nullable ServiceIdentityInfoDpo serviceIdentity,
+      @JsonProperty(value = "properties", required = false)
+          @Nullable Map<String, String> properties) {
+    super(
+        ConnectionType.HIVE.getCode(), uri, authenticationParameters, serviceIdentity, properties);
     this.warehouse = warehouse;
   }
 
@@ -66,6 +86,7 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
         .add("uri", getUri())
         .add("warehouse", getWarehouse())
         .add("authenticationParameters", getAuthenticationParameters().toString())
+        .add("properties", getProperties())
         .toString();
   }
 
@@ -81,6 +102,11 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
       // Add authentication-specific metadata (non-credential properties)
       properties.putAll(
           getAuthenticationParameters().asIcebergCatalogProperties(polarisCredentialManager));
+    }
+    // Same order as the other connection types: allow-listed properties after the authentication
+    // metadata, and credentials last.
+    copyAllowedProperties(properties, ALLOWED_PROPERTIES);
+    if (getAuthenticationParameters() != null) {
       // Add connection credentials from Polaris credential manager
       ConnectionCredentials connectionCredentials =
           polarisCredentialManager.getConnectionCredentials(this);
@@ -93,7 +119,7 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
   public ConnectionConfigInfoDpo withServiceIdentity(
       @NonNull ServiceIdentityInfoDpo serviceIdentityInfo) {
     return new HiveConnectionConfigInfoDpo(
-        getUri(), getAuthenticationParameters(), warehouse, serviceIdentityInfo);
+        getUri(), getAuthenticationParameters(), warehouse, serviceIdentityInfo, getProperties());
   }
 
   @Override
@@ -111,6 +137,7 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
                     serviceIdentityInfoDpo ->
                         serviceIdentityInfoDpo.asServiceIdentityInfoModel(serviceIdentityProvider))
                 .orElse(null))
+        .setProperties(getProperties())
         .build();
   }
 }

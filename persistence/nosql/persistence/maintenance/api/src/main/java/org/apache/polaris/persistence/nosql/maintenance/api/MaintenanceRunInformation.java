@@ -20,8 +20,6 @@ package org.apache.polaris.persistence.nosql.maintenance.api;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -34,6 +32,8 @@ import org.apache.polaris.persistence.nosql.maintenance.spi.ObjTypeRetainedIdent
 import org.apache.polaris.persistence.nosql.maintenance.spi.PerRealmRetainedIdentifier;
 import org.apache.polaris.persistence.nosql.maintenance.spi.RetainedCollector;
 import org.immutables.value.Value;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 @PolarisImmutable
 @JsonSerialize(as = ImmutableMaintenanceRunInformation.class)

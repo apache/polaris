@@ -18,9 +18,6 @@
  */
 package org.apache.polaris.service.exception;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -35,7 +32,6 @@ import jakarta.ws.rs.ext.Provider;
 import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
 import org.apache.iceberg.rest.responses.ErrorResponse;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,12 +42,6 @@ public class IcebergJsonProcessingExceptionMapper
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IcebergJsonProcessingExceptionMapper.class);
-
-  @JsonInclude(Include.NON_NULL)
-  public record ErrorMessage(
-      @JsonProperty("code") int code,
-      @JsonProperty("message") @Nullable String message,
-      @JsonProperty("details") @Nullable String details) {}
 
   @Override
   public Response toResponse(JsonProcessingException exception) {
@@ -68,9 +58,15 @@ public class IcebergJsonProcessingExceptionMapper
               Locale.ROOT,
               "There was an error processing your request. It has been logged (ID %016x).",
               id);
-      return Response.status(Status.INTERNAL_SERVER_ERROR.getStatusCode())
+      ErrorResponse icebergErrorResponse =
+          ErrorResponse.builder()
+              .responseCode(Status.INTERNAL_SERVER_ERROR.getStatusCode())
+              .withType(exception.getClass().getSimpleName())
+              .withMessage(message)
+              .build();
+      return Response.status(Status.INTERNAL_SERVER_ERROR)
           .type(MediaType.APPLICATION_JSON_TYPE)
-          .entity(new ErrorMessage(500, message, null))
+          .entity(icebergErrorResponse)
           .build();
     }
 

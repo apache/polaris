@@ -24,4 +24,3 @@ import sys
 class GenerateClientsHook(BuildHookInterface):
     def initialize(self, version, build_data):
         subprocess.check_call([sys.executable, "generate_clients.py"])
-

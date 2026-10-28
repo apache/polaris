@@ -18,36 +18,71 @@
  */
 package org.apache.polaris.core.auth;
 
+import java.util.EnumSet;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.Set;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Request-scoped authorization state shared across authorization phases.
+ * Authorization state shared across authorization phases for one resolved view.
  *
- * <p>Used to carry authorization-specific data, such as a {@link PolarisResolutionManifest} created
- * by the caller and populated by the authorizer.
+ * <p>Used to carry authorization-specific data for the current resolution flow, such as a {@link
+ * PolarisResolutionManifest} created by the caller and populated by the authorizer.
  */
 public class AuthorizationState {
-  private final AtomicReference<PolarisResolutionManifest> resolutionManifest =
-      new AtomicReference<>();
+  private final PolarisResolutionManifest resolutionManifest;
+  private final EnumSet<Resolvable> selections = EnumSet.noneOf(Resolvable.class);
+  private boolean selectAll;
 
-  /** Returns the request-scoped resolution manifest used for authorization. */
-  @NonNull
-  public PolarisResolutionManifest getResolutionManifest() {
-    PolarisResolutionManifest manifest = resolutionManifest.get();
-    if (manifest == null) {
-      throw new IllegalStateException("AuthorizationState resolution manifest is not set");
-    }
-    return manifest;
+  public AuthorizationState(@NonNull PolarisResolutionManifest resolutionManifest) {
+    this.resolutionManifest = Objects.requireNonNull(resolutionManifest, "resolutionManifest");
   }
 
-  /** Sets the request-scoped resolution manifest used for authorization. */
-  public void setResolutionManifest(@NonNull PolarisResolutionManifest resolutionManifest) {
-    Objects.requireNonNull(resolutionManifest, "resolutionManifest");
-    if (!this.resolutionManifest.compareAndSet(null, resolutionManifest)) {
-      throw new IllegalStateException("AuthorizationState resolution manifest already set");
+  /** Returns the resolution manifest used for the current authorization flow. */
+  @NonNull
+  public PolarisResolutionManifest getResolutionManifest() {
+    return resolutionManifest;
+  }
+
+  /**
+   * Records the specified {@link Resolvable} for later use in {@link #resolve()}.
+   *
+   * <p>If no {@link Resolvable} values are selected, or {@link #selectAll()} is invoked, the {@link
+   * #resolve()} method will delegate to {@link PolarisResolutionManifest#resolveAll()}.
+   *
+   * @see #selectAll()
+   */
+  public void select(@NonNull Resolvable resolvable) {
+    selections.add(resolvable);
+  }
+
+  /**
+   * Instructs the {@link #resolve()} method to delegate to {@link
+   * PolarisResolutionManifest#resolveAll()} regardless of what specific {@link #select(Resolvable)
+   * selectors} were recorded before.
+   */
+  public void selectAll() {
+    selectAll = true;
+  }
+
+  /**
+   * Performs entity resolution in the {@link PolarisResolutionManifest} embedded in this class
+   * according to the current {@link #select(Resolvable) selectors}.
+   *
+   * <p>If {@link #selectAll()} has been invoked, this method will delegate to {@link
+   * PolarisResolutionManifest#resolveAll()}.
+   *
+   * <p>Otherwise, if some {@link #select(Resolvable) selectors} have been set, this method will
+   * delegate to {@link PolarisResolutionManifest#resolveSelections(Set)}, otherwise it will
+   * delegate to {@link PolarisResolutionManifest#resolveAll()}.
+   */
+  public void resolve() {
+    if (selectAll || selections.isEmpty()) {
+      resolutionManifest.resolveAll();
+    } else {
+      resolutionManifest.resolveSelections(selections);
     }
   }
 }

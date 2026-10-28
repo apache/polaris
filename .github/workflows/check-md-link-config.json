@@ -13,6 +13,12 @@
     },
     { 
       "pattern": "https://kubernetes.io/"
+    },
+    {
+      "pattern": "https://github.com/apache/polaris/settings/secrets"
+    },
+    {
+      "pattern": "https://github.com/apache/polaris-tools/settings/secrets"
     }
   ]
 }

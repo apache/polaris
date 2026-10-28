@@ -111,7 +111,7 @@ Each catalog role may have multiple [privileges](#privilege) granted to it, and 
 
 ## Policy
 
-Polaris policy is a set of rules governing actions on specified resources under predefined conditions. Polaris support policy for Iceberg table compaction, snapshot expiry, row-level access control, and custom policy definitions.
+Polaris policy is a set of rules governing actions on specified resources under predefined conditions. Polaris supports policies for Iceberg table compaction, snapshot expiry, row-level access control, and custom policy definitions.
 
 Policy names may only contain letters (`A–Z`, `a–z`), digits (`0–9`), hyphens (`-`), and underscores (`_`). Names that do not match this pattern are rejected with HTTP 400.
 

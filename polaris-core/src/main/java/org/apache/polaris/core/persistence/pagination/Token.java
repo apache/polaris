@@ -21,8 +21,8 @@ package org.apache.polaris.core.persistence.pagination;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.databind.annotation.JsonTypeIdResolver;
 import org.immutables.value.Value;
+import tools.jackson.databind.annotation.JsonTypeIdResolver;
 
 /**
  * Token base interface.

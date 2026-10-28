@@ -18,20 +18,29 @@
  */
 package org.apache.polaris.service.task;
 
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * {@link FileCleanupTaskHandler} responsible for cleaning up files in table tasks. Handles retries
- * for file deletions and skips files that are already missing. Subclasses must implement
- * task-specific logic.
+ * Abstract base class for handling file cleanup tasks within Apache Polaris.
+ *
+ * <p>This class is for performing asynchronous file deletions with retry logic.
+ *
+ * <p>Subclasses must implement {@link #canHandleTask(TaskEntity)} and {@link
+ * #handleTask(TaskEntity, CallContext)} to define task-specific handling logic.
  */
 public abstract class FileCleanupTaskHandler implements TaskHandler {
 
@@ -39,20 +48,75 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
   public static final int FILE_DELETION_RETRY_MILLIS = 100;
   public final TaskFileIOSupplier fileIOSupplier;
   public final ExecutorService executorService;
+  private final Duration fileDeletionTimeout;
   private static final Logger LOGGER = LoggerFactory.getLogger(FileCleanupTaskHandler.class);
 
   public FileCleanupTaskHandler(
-      TaskFileIOSupplier fileIOSupplier, ExecutorService executorService) {
+      TaskFileIOSupplier fileIOSupplier,
+      ExecutorService executorService,
+      Duration fileDeletionTimeout) {
     this.fileIOSupplier = fileIOSupplier;
     this.executorService = executorService;
+    this.fileDeletionTimeout = fileDeletionTimeout;
+  }
+
+  /**
+   * Blocks until the given deletion stage completes, bounded by the configured {@link
+   * TaskHandlerConfiguration#fileDeletionTimeout()}. On timeout the wait is abandoned and a {@link
+   * FileDeletionTimeoutException} is thrown; this is a terminal failure that releases the
+   * task-executor thread without triggering an in-process retry against the still-stalled endpoint.
+   * A zero or negative timeout waits indefinitely, preserving the previous behavior.
+   *
+   * @param deletion the aggregate deletion stage to await
+   * @param description human-readable description of the work, used in the timeout message
+   */
+  protected void awaitCompletion(CompletableFuture<Void> deletion, String description) {
+    try {
+      if (fileDeletionTimeout.isZero() || fileDeletionTimeout.isNegative()) {
+        deletion.get();
+      } else {
+        deletion.get(fileDeletionTimeout.toMillis(), TimeUnit.MILLISECONDS);
+      }
+    } catch (TimeoutException e) {
+      // Only the wait is abandoned: the in-flight deletes keep running on the deletion executor
+      // and cannot be interrupted (CompletableFuture.cancel ignores mayInterruptIfRunning and does
+      // not propagate to the upstream runAsync tasks). Releasing this task-executor thread is the
+      // goal. A timeout is terminal for this execution rather than retried in-process, because an
+      // immediate retry would only stack more deletions onto the same stalled endpoint; the deletes
+      // are idempotent, so re-running the task later is safe.
+      throw new FileDeletionTimeoutException(
+          "Timed out after " + fileDeletionTimeout + " waiting for " + description, e);
+    } catch (ExecutionException e) {
+      throw new RuntimeException("Failed while waiting for " + description, e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("Interrupted while waiting for " + description, e);
+    }
   }
 
   @Override
   public abstract boolean canHandleTask(TaskEntity task);
 
+  /**
+   * Handles the provided task. A normal return indicates success and the task entity will be
+   * dropped; throwing indicates failure and triggers the task retry path.
+   */
   @Override
-  public abstract boolean handleTask(TaskEntity task, CallContext callContext);
+  public abstract void handleTask(TaskEntity task, CallContext callContext);
 
+  /**
+   * Attempts to delete a single file with retry logic. If the file does not exist, it logs a
+   * message and does not retry. If an error occurs, it retries up to {@link #MAX_ATTEMPTS} times
+   * before failing.
+   *
+   * @param tableId The identifier of the table associated with the file.
+   * @param fileIO The {@link FileIO} instance used for file operations.
+   * @param baseFile An optional base file associated with the file being deleted (can be null).
+   * @param file The path of the file to be deleted.
+   * @param e The exception from the previous attempt, if any.
+   * @param attempt The current retry attempt count.
+   * @return A {@link CompletableFuture} representing the asynchronous deletion operation.
+   */
   public CompletableFuture<Void> tryDelete(
       TableIdentifier tableId,
       FileIO fileIO,
@@ -63,9 +127,9 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
     if (e != null && attempt <= MAX_ATTEMPTS) {
       LOGGER
           .atWarn()
-          .addKeyValue("file", file)
-          .addKeyValue("attempt", attempt)
-          .addKeyValue("error", e.getMessage())
+          .addKeyValue(StructuredLogKeys.FILE, file)
+          .addKeyValue(StructuredLogKeys.ATTEMPT, attempt)
+          .addKeyValue(StructuredLogKeys.ERROR, e.getMessage())
           .log("Error encountered attempting to delete file");
     }
     if (attempt > MAX_ATTEMPTS && e != null) {
@@ -73,19 +137,20 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
     }
     return CompletableFuture.runAsync(
             () -> {
-              // totally normal for a file to already be missing, e.g. a data file
-              // may be in multiple manifests. There's a possibility we check the
-              // file's existence, but then it is deleted before we have a chance to
-              // send the delete request. In such a case, we <i>should</i> retry
-              // and find
-              if (TaskUtils.exists(file, fileIO)) {
+              // deleteFile is idempotent on cloud object stores (S3 DeleteObject, etc.).
+              // It is totally normal for a data file to already be missing (e.g. present
+              // in multiple manifests across snapshots). We call delete directly.
+              // Some FileIO impls (e.g. InMemory) throw NotFound on missing; we treat that
+              // as success (already deleted).
+              try {
                 fileIO.deleteFile(file);
-              } else {
+              } catch (NotFoundException nfe) {
+                // already gone (e.g. InMemoryFileIO or race)
                 LOGGER
-                    .atInfo()
-                    .addKeyValue("file", file)
-                    .addKeyValue("baseFile", baseFile != null ? baseFile : "")
-                    .addKeyValue("tableId", tableId)
+                    .atDebug()
+                    .addKeyValue(StructuredLogKeys.FILE, file)
+                    .addKeyValue(StructuredLogKeys.BASE_FILE, baseFile != null ? baseFile : "")
+                    .addKeyValue(StructuredLogKeys.TABLE_ID, tableId)
                     .log("table file cleanup task scheduled, but data file doesn't exist");
               }
             },
@@ -94,11 +159,60 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
             newEx -> {
               LOGGER
                   .atWarn()
-                  .addKeyValue("file", file)
-                  .addKeyValue("tableIdentifier", tableId)
-                  .addKeyValue("baseFile", baseFile != null ? baseFile : "")
-                  .log("Exception caught deleting data file", newEx);
+                  .addKeyValue(StructuredLogKeys.FILE, file)
+                  .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableId)
+                  .addKeyValue(StructuredLogKeys.BASE_FILE, baseFile != null ? baseFile : "")
+                  .log("Exception caught deleting data file {}", newEx);
               return tryDelete(tableId, fileIO, baseFile, file, newEx, attempt + 1);
+            },
+            CompletableFuture.delayedExecutor(
+                FILE_DELETION_RETRY_MILLIS, TimeUnit.MILLISECONDS, executorService));
+  }
+
+  /**
+   * Attempts to delete multiple files in a batch operation with retry logic. If an error occurs, it
+   * retries up to {@link #MAX_ATTEMPTS} times before failing.
+   *
+   * @param tableId The identifier of the table associated with the files.
+   * @param fileIO The {@link FileIO} instance used for file operations.
+   * @param files The list of file paths to be deleted.
+   * @param type The type of files being deleted (e.g., data files, metadata files).
+   * @param isConcurrent Whether the deletion should be performed concurrently.
+   * @param e The exception from the previous attempt, if any.
+   * @param attempt The current retry attempt count.
+   * @return A {@link CompletableFuture} representing the asynchronous batch deletion operation.
+   */
+  public CompletableFuture<Void> tryDelete(
+      TableIdentifier tableId,
+      FileIO fileIO,
+      Iterable<String> files,
+      String type,
+      Boolean isConcurrent,
+      Throwable e,
+      int attempt) {
+    if (e != null && attempt <= MAX_ATTEMPTS) {
+      LOGGER
+          .atWarn()
+          .addKeyValue(StructuredLogKeys.FILES, files)
+          .addKeyValue(StructuredLogKeys.ATTEMPT, attempt)
+          .addKeyValue(StructuredLogKeys.ERROR, e.getMessage())
+          .addKeyValue(StructuredLogKeys.TYPE, type)
+          .log("Error encountered attempting to delete files");
+    }
+    if (attempt > MAX_ATTEMPTS && e != null) {
+      return CompletableFuture.failedFuture(e);
+    }
+    return CompletableFuture.runAsync(
+            () -> CatalogUtil.deleteFiles(fileIO, files, type, isConcurrent), executorService)
+        .exceptionallyComposeAsync(
+            newEx -> {
+              LOGGER
+                  .atWarn()
+                  .addKeyValue(StructuredLogKeys.FILES, files)
+                  .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableId)
+                  .addKeyValue(StructuredLogKeys.TYPE, type)
+                  .log("Exception caught deleting data files {}", newEx);
+              return tryDelete(tableId, fileIO, files, type, isConcurrent, newEx, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
                 FILE_DELETION_RETRY_MILLIS, TimeUnit.MILLISECONDS, executorService));

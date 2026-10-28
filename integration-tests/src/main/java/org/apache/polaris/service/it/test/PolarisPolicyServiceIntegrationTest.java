@@ -75,6 +75,7 @@ import org.apache.polaris.service.types.ApplicablePolicy;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
+import org.apache.polaris.service.types.ListPoliciesResponse;
 import org.apache.polaris.service.types.Policy;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -112,6 +113,7 @@ public class PolarisPolicyServiceIntegrationTest {
   private static final String NS1_NAME = NS1.level(0);
   private static final String INVALID_NAMESPACE = "INVALID_NAMESPACE";
   private static final String INVALID_POLICY = "INVALID_POLICY";
+  private static final String INVALID_POLICY_TYPE = "system.no-such-policy-type";
   private static final String INVALID_TABLE = "INVALID_TABLE";
   private static final String INVALID_NAMESPACE_MSG =
       "Namespace does not exist: " + INVALID_NAMESPACE;
@@ -133,7 +135,7 @@ public class PolarisPolicyServiceIntegrationTest {
   private static final Map<String, String> DEFAULT_CATALOG_PROPERTIES =
       Map.of(
           "polaris.config.allow.unstructured.table.location", "true",
-          "polaris.config.allow.external.table.location", "true");
+          "polaris.config.allow.external.metadata.file.location", "true");
 
   @BeforeAll
   public static void setup(
@@ -170,7 +172,7 @@ public class PolarisPolicyServiceIntegrationTest {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of(catalogBaseLocation))
             .build();
 
     CatalogProperties.Builder catalogPropsBuilder = CatalogProperties.builder(catalogBaseLocation);
@@ -194,7 +196,7 @@ public class PolarisPolicyServiceIntegrationTest {
             .setStorageConfigInfo(
                 s3BucketBase.getScheme().equals("file")
                     ? new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://"), null)
+                        StorageConfigInfo.StorageTypeEnum.FILE, List.of(catalogBaseLocation), null)
                     : awsConfigModel)
             .build();
 
@@ -449,6 +451,35 @@ public class PolarisPolicyServiceIntegrationTest {
   }
 
   @Test
+  public void testDetachPolicyWithoutMapping() {
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
+    // The policy and the target both exist, but the policy was never attached to the target.
+    var namespaceTarget =
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(NS1.levels()));
+
+    DetachPolicyRequest request = DetachPolicyRequest.builder().setTarget(namespaceTarget).build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy-name}/mappings",
+                Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy-name", NS1_P1.name()))
+            .post(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains("NoSuchMappingException")
+          .contains("The given mapping between policy");
+    }
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
   public void testDropPolicy() {
     restCatalog.createNamespace(NS1);
     policyApi.createPolicy(
@@ -538,6 +569,39 @@ public class PolarisPolicyServiceIntegrationTest {
   }
 
   @Test
+  public void testUpdatePolicyWithoutCurrentPolicyVersion() {
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
+
+    UpdatePolicyRequest request =
+        UpdatePolicyRequest.builder()
+            .setContent("{\"enable\":false}")
+            .setDescription("updated test policy")
+            .build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
+                Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy", NS1_P1.name()))
+            .put(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains("current-policy-version is required to update a policy");
+    }
+
+    Policy policy = policyApi.loadPolicy(currentCatalogName, NS1_P1);
+    Assertions.assertThat(policy.getVersion()).isEqualTo(0);
+    Assertions.assertThat(policy.getContent()).isEqualTo(EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT);
+
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
   public void testListPolicies() {
     restCatalog.createNamespace(NS1);
     policyApi.createPolicy(
@@ -565,6 +629,132 @@ public class PolarisPolicyServiceIntegrationTest {
 
     policyApi.dropPolicy(currentCatalogName, NS1_P1);
     policyApi.dropPolicy(currentCatalogName, NS1_P2);
+  }
+
+  @Test
+  public void testPaginatedListPolicy() {
+    String prefix = "testPaginatedListPolicy";
+    Namespace namespace = Namespace.of(prefix);
+    restCatalog.createNamespace(namespace);
+    for (int i = 0; i < 30; i++) {
+      policyApi.createPolicy(
+          currentCatalogName,
+          new PolicyIdentifier(namespace, prefix + "data" + i),
+          PredefinedPolicyTypes.DATA_COMPACTION,
+          EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+          "test policy");
+      policyApi.createPolicy(
+          currentCatalogName,
+          new PolicyIdentifier(namespace, prefix + "metadata" + i),
+          PredefinedPolicyTypes.METADATA_COMPACTION,
+          EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+          "test policy");
+    }
+
+    try {
+      assertThat(policyApi.listPolicies(currentCatalogName, namespace)).hasSize(60);
+      for (var pageSize : List.of(1, 2, 3, 9, 10, 11, 19, 20, 21, 25, 2000)) {
+        int total = 0;
+        String pageToken = null;
+        do {
+          ListPoliciesResponse response =
+              policyApi.listPolicies(
+                  currentCatalogName, namespace, pageToken, String.valueOf(pageSize));
+          assertThat(response.getIdentifiers().size()).isLessThanOrEqualTo(pageSize);
+          total += response.getIdentifiers().size();
+          pageToken = response.getNextPageToken();
+        } while (pageToken != null);
+        assertThat(total).as("Total paginated results for pageSize = " + pageSize).isEqualTo(60);
+      }
+      for (var pageSize : List.of(5, 10, 2000)) {
+        int total = 0;
+        String pageToken = null;
+        do {
+          ListPoliciesResponse response =
+              policyApi.listPolicies(
+                  currentCatalogName,
+                  namespace,
+                  PredefinedPolicyTypes.METADATA_COMPACTION,
+                  pageToken,
+                  String.valueOf(pageSize));
+          assertThat(response.getIdentifiers().size()).isLessThanOrEqualTo(pageSize);
+          total += response.getIdentifiers().size();
+          pageToken = response.getNextPageToken();
+        } while (pageToken != null);
+        assertThat(total)
+            .as("Total filtered paginated results for pageSize = " + pageSize)
+            .isEqualTo(30);
+      }
+    } finally {
+      policyApi.purge(currentCatalogName, namespace);
+    }
+  }
+
+  @Test
+  public void testListPoliciesWithUnknownPolicyType() {
+    restCatalog.createNamespace(NS1);
+    try {
+      policyApi.createPolicy(
+          currentCatalogName,
+          NS1_P1,
+          PredefinedPolicyTypes.DATA_COMPACTION,
+          EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+          "test policy");
+
+      // An unknown policy type must be rejected instead of being silently dropped, which would
+      // return every policy in the namespace as if the filter had matched them.
+      try (Response res =
+          policyApi
+              .request(
+                  "polaris/v1/{cat}/namespaces/{ns}/policies",
+                  Map.of("cat", currentCatalogName, "ns", NS1_NAME),
+                  Map.of("policyType", INVALID_POLICY_TYPE))
+              .get()) {
+        Assertions.assertThat(res.getStatus())
+            .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        Assertions.assertThat(res.readEntity(String.class)).contains(INVALID_POLICY_TYPE);
+      }
+    } finally {
+      policyApi.purge(currentCatalogName, NS1);
+    }
+  }
+
+  @Test
+  public void testGetApplicablePoliciesWithUnknownPolicyType() {
+    restCatalog.createNamespace(NS1);
+    try {
+      policyApi.createPolicy(
+          currentCatalogName,
+          NS1_P1,
+          PredefinedPolicyTypes.DATA_COMPACTION,
+          EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+          "test policy");
+      // Attach the policy so that it is applicable to the namespace. Without this the endpoint
+      // returns an empty list regardless of the filter, and the test could not tell a rejected
+      // request from one that matched nothing.
+      PolicyAttachmentTarget namespaceTarget =
+          PolicyAttachmentTarget.builder()
+              .setType(PolicyAttachmentTarget.TypeEnum.NAMESPACE)
+              .setPath(Arrays.asList(NS1.levels()))
+              .build();
+      policyApi.attachPolicy(currentCatalogName, NS1_P1, namespaceTarget, Map.of());
+
+      try (Response res =
+          policyApi
+              .request(
+                  "polaris/v1/{cat}/applicable-policies",
+                  Map.of("cat", currentCatalogName),
+                  Map.of("namespace", NS1_NAME, "policyType", INVALID_POLICY_TYPE))
+              .get()) {
+        Assertions.assertThat(res.getStatus())
+            .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        Assertions.assertThat(res.readEntity(String.class)).contains(INVALID_POLICY_TYPE);
+      }
+    } finally {
+      // The policy is attached, so purge cannot remove it: purge drops without detach-all and the
+      // policy comes back as in-use. Drop it with detach-all, as the attach tests above do.
+      policyApi.dropPolicy(currentCatalogName, NS1_P1, true);
+    }
   }
 
   @Test

@@ -50,6 +50,8 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -57,12 +59,19 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
+import org.apache.polaris.core.policy.exceptions.NoSuchMappingException;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
@@ -73,8 +82,9 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.admin.PolarisAdminServiceTestSupport;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -92,6 +102,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -115,6 +127,7 @@ public abstract class AbstractPolicyCatalogTest {
   private static final PolicyIdentifier POLICY2 = new PolicyIdentifier(NS, "p2");
   private static final PolicyIdentifier POLICY3 = new PolicyIdentifier(NS, "p3");
   private static final PolicyIdentifier POLICY4 = new PolicyIdentifier(NS, "p4");
+  private static final PolicyIdentifier POLICY5 = new PolicyIdentifier(NS, "p5");
   private static final PolicyAttachmentTarget POLICY_ATTACH_TARGET_NS =
       new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(NS.levels()));
   private static final PolicyAttachmentTarget POLICY_ATTACH_TARGET_TBL =
@@ -137,7 +150,7 @@ public abstract class AbstractPolicyCatalogTest {
   @Inject PolarisPrincipalHolder polarisPrincipalHolder;
 
   private PolicyCatalog policyCatalog;
-  private IcebergCatalog icebergCatalog;
+  private LocalIcebergCatalog icebergCatalog;
   private AwsStorageConfigInfo storageConfigModel;
   private String realmName;
   private PolarisCallContext polarisContext;
@@ -171,14 +184,21 @@ public abstract class AbstractPolicyCatalogTest {
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
+    authenticatedRoot =
+        PolarisPrincipal.of(
+            rootPrincipal.getName(),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, rootPrincipal)
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
+            Set.of());
     polarisPrincipalHolder.set(authenticatedRoot);
 
-    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
+    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl();
     ReservedProperties reservedProperties = ReservedProperties.NONE;
 
     adminService =
-        new PolarisAdminService(
+        PolarisAdminServiceTestSupport.newAdminService(
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -204,11 +224,12 @@ public abstract class AbstractPolicyCatalogTest {
                     .setName(CATALOG_NAME)
                     .setDefaultBaseLocation(storageLocation)
                     .addProperty(
-                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                        FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(),
+                        "true")
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")
-                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel)
                     .build()
                     .asCatalog(serviceIdentityProvider)));
 
@@ -244,7 +265,7 @@ public abstract class AbstractPolicyCatalogTest {
 
     this.policyCatalog = new PolicyCatalog(metaStoreManager, polarisContext, passthroughView);
     this.icebergCatalog =
-        new IcebergCatalog(
+        new LocalIcebergCatalog(
             diagServices,
             resolverFactory,
             metaStoreManager,
@@ -351,6 +372,54 @@ public abstract class AbstractPolicyCatalogTest {
   }
 
   @Test
+  public void testPaginatedListPolicies() {
+    icebergCatalog.createNamespace(NS);
+    for (int i = 1; i <= 5; i++) {
+      policyCatalog.createPolicy(
+          new PolicyIdentifier(NS, "p" + i),
+          i == 5 ? METADATA_COMPACTION.getName() : DATA_COMPACTION.getName(),
+          "test",
+          "{\"enable\": false}");
+    }
+
+    // List without pagination
+    assertThat(policyCatalog.listPolicies(NS, null, PageToken.readEverything()).items()).hasSize(5);
+
+    // List with a limit
+    Page<PolicyIdentifier> result1 = policyCatalog.listPolicies(NS, null, PageToken.fromLimit(2));
+    assertThat(result1.items()).hasSize(2);
+    assertThat(result1.encodedResponseToken()).isNotNull().isNotEmpty();
+
+    // List using previous token
+    Page<PolicyIdentifier> result2 = policyCatalog.listPolicies(NS, null, nextRequest(result1));
+    assertThat(result2.items()).hasSize(2);
+    assertThat(result2.encodedResponseToken()).isNotNull().isNotEmpty();
+
+    // List using the final token
+    Page<PolicyIdentifier> result3 = policyCatalog.listPolicies(NS, null, nextRequest(result2));
+    assertThat(result3.items()).hasSize(1);
+    assertThat(result3.encodedResponseToken()).isNull();
+
+    // Combined filter + pagination: should only page over the 4 DATA_COMPACTION policies
+    // (2 full pages, so the second page is the final one)
+    Page<PolicyIdentifier> filtered1 =
+        policyCatalog.listPolicies(NS, DATA_COMPACTION, PageToken.fromLimit(2));
+    assertThat(filtered1.items()).hasSize(2);
+    assertThat(filtered1.encodedResponseToken()).isNotNull().isNotEmpty();
+
+    Page<PolicyIdentifier> filtered2 =
+        policyCatalog.listPolicies(NS, DATA_COMPACTION, nextRequest(filtered1));
+    assertThat(filtered2.items()).hasSize(2);
+    assertThat(filtered2.encodedResponseToken()).isNull();
+    assertThat(filtered1.items()).doesNotContain(POLICY5);
+    assertThat(filtered2.items()).doesNotContain(POLICY5);
+  }
+
+  private static PageToken nextRequest(Page<?> previousPage) {
+    return PageToken.build(previousPage.encodedResponseToken(), null, -1, () -> true);
+  }
+
+  @Test
   public void testLoadPolicy() {
     icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(
@@ -410,6 +479,31 @@ public abstract class AbstractPolicyCatalogTest {
   }
 
   @Test
+  public void testUpdatePolicyLosingConcurrentUpdateIsRetryableConflict() {
+    icebergCatalog.createNamespace(NS);
+    policyCatalog.createPolicy(
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+
+    // Simulate another writer winning the compare-and-swap on the policy entity.
+    PolarisMetaStoreManager concurrentlyModified = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(
+            new EntityResult(
+                BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, "simulated"))
+        .when(concurrentlyModified)
+        .updateEntityPropertiesIfNotChanged(Mockito.any(), Mockito.any(), Mockito.any());
+
+    PolicyCatalog catalog =
+        new PolicyCatalog(
+            concurrentlyModified,
+            polarisContext,
+            new PolarisPassthroughResolutionView(
+                resolutionManifestFactory, authenticatedRoot, CATALOG_NAME));
+
+    assertThatThrownBy(() -> catalog.updatePolicy(POLICY1, "updated", "{\"enable\": true}", 0))
+        .isInstanceOf(CommitConflictException.class);
+  }
+
+  @Test
   public void testUpdatePolicyWithInvalidContent() {
     icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(
@@ -437,6 +531,37 @@ public abstract class AbstractPolicyCatalogTest {
     policyCatalog.dropPolicy(POLICY1, false);
     assertThatThrownBy(() -> policyCatalog.loadPolicy(POLICY1))
         .isInstanceOf(NoSuchPolicyException.class);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "ENTITY_NOT_FOUND, false",
+    "ENTITY_NOT_FOUND, true",
+    "CATALOG_PATH_CANNOT_BE_RESOLVED, false",
+    "CATALOG_PATH_CANNOT_BE_RESOLVED, true"
+  })
+  public void testDropPolicyDisappearsAfterResolution(
+      BaseResult.ReturnStatus status, boolean detachAll) {
+    icebergCatalog.createNamespace(NS);
+    policyCatalog.createPolicy(
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+
+    // Resolve the existing policy normally, then simulate a concurrent deletion at persistence.
+    PolarisMetaStoreManager concurrentlyDeleted = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(new DropEntityResult(status, "simulated"))
+        .when(concurrentlyDeleted)
+        .dropEntityIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.eq(detachAll));
+    PolicyCatalog catalog =
+        new PolicyCatalog(
+            concurrentlyDeleted,
+            polarisContext,
+            new PolarisPassthroughResolutionView(
+                resolutionManifestFactory, authenticatedRoot, CATALOG_NAME));
+
+    assertThatThrownBy(() -> catalog.dropPolicy(POLICY1, detachAll))
+        .isInstanceOf(NoSuchPolicyException.class)
+        .hasMessage("Policy does not exist: %s", POLICY1);
   }
 
   @Test
@@ -507,6 +632,20 @@ public abstract class AbstractPolicyCatalogTest {
     assertThat(policyCatalog.getApplicablePolicies(NS, null, null).size()).isEqualTo(1);
     policyCatalog.detachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS);
     assertThat(policyCatalog.getApplicablePolicies(NS, null, null).size()).isEqualTo(0);
+  }
+
+  @Test
+  public void testDetachPolicyWithoutMapping() {
+    icebergCatalog.createNamespace(NS);
+    policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+
+    // The policy and the target both exist, but the policy was never attached to the target.
+    assertThatThrownBy(() -> policyCatalog.detachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS))
+        .isInstanceOf(NoSuchMappingException.class)
+        .hasMessage(
+            String.format(
+                "The given mapping between policy %s and %s does not exist",
+                POLICY1, CATALOG_NAME + "." + String.join(".", NS.levels())));
   }
 
   @Test

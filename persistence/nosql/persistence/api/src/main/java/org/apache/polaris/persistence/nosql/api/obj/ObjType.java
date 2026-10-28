@@ -20,16 +20,15 @@ package org.apache.polaris.persistence.nosql.api.obj;
 
 import static org.apache.polaris.persistence.nosql.api.obj.ObjTypes.objTypeById;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import java.io.IOException;
 import java.util.function.LongSupplier;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 @JsonSerialize(using = ObjType.ObjTypeSerializer.class)
 @JsonDeserialize(using = ObjType.ObjTypeDeserializer.class)
@@ -77,18 +76,18 @@ public interface ObjType {
   long CACHE_UNLIMITED = -1L;
   long NOT_CACHED = 0L;
 
-  class ObjTypeSerializer extends JsonSerializer<ObjType> {
+  class ObjTypeSerializer extends ValueSerializer<ObjType> {
     @Override
-    public void serialize(ObjType value, JsonGenerator gen, SerializerProvider provider)
-        throws IOException {
+    public void serialize(
+        ObjType value, JsonGenerator gen, SerializationContext serializationContext) {
       gen.writeString(value.id());
     }
   }
 
-  class ObjTypeDeserializer extends JsonDeserializer<ObjType> {
+  class ObjTypeDeserializer extends ValueDeserializer<ObjType> {
     @Override
-    public ObjType deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-      return objTypeById(p.getText());
+    public ObjType deserialize(JsonParser p, DeserializationContext ctxt) {
+      return objTypeById(p.getString());
     }
   }
 }

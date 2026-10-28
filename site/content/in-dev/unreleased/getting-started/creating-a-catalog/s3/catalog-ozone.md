@@ -23,7 +23,7 @@ type: docs
 weight: 150
 ---
 
-When creating a catalog based on [Apache Ozone](https://ozone.apache.org/) storage it is important to 
+When creating a catalog based on [Apache Ozone](https://ozone.apache.org/) storage, it is important to 
 configure the `endpoint` property to point to your own storage cluster. If the `endpoint` property is
 not set, Polaris will attempt to contact AWS storage services (which is certain to fail in this case).
 
@@ -62,7 +62,7 @@ polaris \
 In more complex deployments it may be necessary to configure different endpoints for S3 requests
 and for STS (AssumeRole) requests. This can be achieved via the `--sts-endpoint` CLI option.
 
-Additionally, the `--endpoint-internal` CLI option cane be used to set the S3 endpoint for use by
+Additionally, the `--endpoint-internal` CLI option can be used to set the S3 endpoint for use by
 the Polaris Server itself, if it needs to be different from the endpoint used by clients / engines.
 
 A usable Apache Ozone example for `docker-compose` is available in the Polaris source code under the

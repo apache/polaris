@@ -271,6 +271,14 @@ record PrivilegeSetImpl(Privileges privileges, byte[] bytes) implements Privileg
     return (byte) (1 << (id & 7));
   }
 
+  static long[] toLongArray(byte[] bytes) {
+    var longs = new long[(bytes.length + Long.BYTES - 1) / Long.BYTES];
+    for (var i = 0; i < bytes.length; i++) {
+      longs[i / Long.BYTES] |= (long) (bytes[i] & 0xFF) << ((i % Long.BYTES) * Byte.SIZE);
+    }
+    return longs;
+  }
+
   static PrivilegeSetBuilder builder(Privileges privileges) {
     return new PrivilegeSetBuilderImpl(privileges);
   }
@@ -310,8 +318,7 @@ record PrivilegeSetImpl(Privileges privileges, byte[] bytes) implements Privileg
           (privilegeSet instanceof PrivilegeSetImpl privilegeSetImpl)
               ? privilegeSetImpl.bytes
               : privilegeSet.toByteArray();
-      // TODO `valueOf(byte[])` is way more expensive than `valueOf(long[])`
-      bitSet.or(BitSet.valueOf(bytes));
+      bitSet.or(BitSet.valueOf(toLongArray(bytes)));
       return this;
     }
 
@@ -346,8 +353,7 @@ record PrivilegeSetImpl(Privileges privileges, byte[] bytes) implements Privileg
           (privilegeSet instanceof PrivilegeSetImpl privilegeSetImpl)
               ? privilegeSetImpl.bytes
               : privilegeSet.toByteArray();
-      // TODO `valueOf(byte[])` is way more expensive than `valueOf(long[])`
-      bitSet.andNot(BitSet.valueOf(bytes));
+      bitSet.andNot(BitSet.valueOf(toLongArray(bytes)));
       return this;
     }
 

@@ -36,10 +36,13 @@ import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
+import org.apache.polaris.service.auth.CredentialMode;
+import org.apache.polaris.service.auth.external.OidcConfiguration;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.context.DefaultRealmContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
@@ -47,6 +50,7 @@ import org.apache.polaris.service.context.TestRealmContextResolver;
 import org.apache.polaris.service.credentials.connection.AuthType;
 import org.apache.polaris.service.metrics.MetricsConfiguration;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
 import org.slf4j.Logger;
@@ -57,6 +61,15 @@ import org.slf4j.event.Level;
 public class ProductionReadinessChecks {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ProductionReadinessChecks.class);
+
+  private static final String REFLECTION_FREE_SERIALIZERS_PROPERTY =
+      "quarkus.rest.jackson.optimization.enable-reflection-free-serializers";
+
+  /**
+   * Key of the deprecated {@code ADD_TRAILING_SLASH_TO_LOCATION} feature flag, kept only to warn
+   * operators whose configuration still sets it.
+   */
+  private static final String ADD_TRAILING_SLASH_TO_LOCATION_KEY = "ADD_TRAILING_SLASH_TO_LOCATION";
 
   /**
    * A warning sign ⚠ {@code 26A0} with variant selector {@code FE0F}. The sign is preceded by a
@@ -99,7 +112,7 @@ public class ProductionReadinessChecks {
       LOGGER
           .makeLoggingEventBuilder(hasSevere ? Level.ERROR : Level.WARN)
           .log(
-              "Refer to https://polaris.apache.org/in-dev/unreleased/configuring-polaris-for-production for more information.");
+              "Refer to https://polaris.apache.org/in-dev/unreleased/configuration/configuring-polaris-for-production/ for more information.");
 
       if (hasSevere) {
         if (!config.ignoreSevereIssues()) {
@@ -190,6 +203,137 @@ public class ProductionReadinessChecks {
   }
 
   @Produces
+  public ProductionReadinessCheck checkExternalPrincipals(
+      AuthenticationConfiguration configuration) {
+    List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
+    configuration
+        .realms()
+        .forEach(
+            (realm, config) -> {
+              if (config.credentialMode() == CredentialMode.EXTERNAL
+                  && config.type() == AuthenticationType.INTERNAL) {
+                errors.add(
+                    Error.ofSevere(
+                        "Setting principal mode to EXTERNAL when the authentication type is INTERNAL is not allowed.",
+                        "polaris.authentication.%scredential-mode"
+                            .formatted(authRealmSegment(realm))));
+              }
+            });
+    return ProductionReadinessCheck.of(errors);
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkExternalPrincipalsAuthorizer(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizationConfiguration authorizationConfiguration) {
+    List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
+    if (authorizationConfiguration.type().equals("internal")) {
+      authenticationConfiguration
+          .realms()
+          .forEach(
+              (realm, config) -> {
+                if (config.credentialMode() == CredentialMode.EXTERNAL) {
+                  errors.add(
+                      Error.ofSevere(
+                          "Setting principal mode to EXTERNAL when the authorizer is the default (internal) is not allowed.",
+                          "polaris.authentication.%scredential-mode"
+                              .formatted(authRealmSegment(realm))));
+                }
+              });
+    }
+    return ProductionReadinessCheck.of(errors);
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkOidcPrincipalMapping(
+      AuthenticationConfiguration authConfig, OidcConfiguration oidcConfig) {
+    // Only validate OIDC claim mapping when at least one realm actually uses OIDC (i.e. auth type
+    // is EXTERNAL or MIXED). A purely INTERNAL realm never activates the OIDC augmentor.
+    boolean anyOidc =
+        authConfig.realms().values().stream()
+            .anyMatch(
+                r ->
+                    r.type() == AuthenticationType.EXTERNAL
+                        || r.type() == AuthenticationType.MIXED);
+    if (!anyOidc) {
+      return ProductionReadinessCheck.OK;
+    }
+    boolean anyExternal =
+        authConfig.realms().values().stream()
+            .anyMatch(
+                r ->
+                    (r.type() == AuthenticationType.EXTERNAL
+                            || r.type() == AuthenticationType.MIXED)
+                        && r.credentialMode() == CredentialMode.EXTERNAL);
+    boolean anyInternal =
+        authConfig.realms().values().stream()
+            .anyMatch(
+                r ->
+                    (r.type() == AuthenticationType.EXTERNAL
+                            || r.type() == AuthenticationType.MIXED)
+                        && r.credentialMode() != CredentialMode.EXTERNAL);
+    List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
+    oidcConfig
+        .tenants()
+        .forEach(
+            (tenantId, tenant) -> {
+              if (!"default".equals(tenant.principalMapper().type())) {
+                return;
+              }
+              var pm = tenant.principalMapper();
+              String propPrefix = oidcTenantPropPrefix(tenantId);
+              // Named tenants are only activated at runtime by the tenant resolver; a named tenant
+              // that is never resolved is harmless. Downgrade its findings to warnings so that a
+              // partially-configured named tenant does not block startup.
+              boolean isDefault = OidcConfiguration.DEFAULT_TENANT_KEY.equals(tenantId);
+              if (anyExternal) {
+                if (pm.nameClaimPath().isEmpty()) {
+                  errors.add(
+                      isDefault
+                          ? Error.ofSevere(
+                              "name-claim-path must be configured when credential-mode is EXTERNAL,"
+                                  + " since external principals are identified exclusively by name.",
+                              propPrefix + ".name-claim-path")
+                          : Error.of(
+                              "name-claim-path should be configured when credential-mode is EXTERNAL,"
+                                  + " since external principals are identified exclusively by name."
+                                  + " Requests resolved to this tenant will be rejected.",
+                              propPrefix + ".name-claim-path"));
+                }
+                if (pm.idClaimPath().isPresent()) {
+                  errors.add(
+                      Error.of(
+                          "id-claim-path is ignored when credential-mode is EXTERNAL and should be"
+                              + " removed to avoid confusion.",
+                          propPrefix + ".id-claim-path"));
+                }
+              }
+              if (anyInternal) {
+                if (pm.nameClaimPath().isEmpty() && pm.idClaimPath().isEmpty()) {
+                  errors.add(
+                      isDefault
+                          ? Error.ofSevere(
+                              "Either name-claim-path or id-claim-path must be configured so that"
+                                  + " internal principals can be resolved.",
+                              propPrefix + ".name-claim-path")
+                          : Error.of(
+                              "Either name-claim-path or id-claim-path should be configured so that"
+                                  + " internal principals can be resolved."
+                                  + " Requests resolved to this tenant will be rejected.",
+                              propPrefix + ".name-claim-path"));
+                }
+              }
+            });
+    return ProductionReadinessCheck.of(errors);
+  }
+
+  private static String oidcTenantPropPrefix(String tenantId) {
+    return OidcConfiguration.DEFAULT_TENANT_KEY.equals(tenantId)
+        ? "polaris.oidc.principal-mapper"
+        : "polaris.oidc." + tenantId + ".principal-mapper";
+  }
+
+  @Produces
   public ProductionReadinessCheck checkMetastore(MetaStoreManagerFactory factory) {
     if (factory instanceof InMemoryPolarisMetaStoreManagerFactory) {
       return ProductionReadinessCheck.of(
@@ -217,6 +361,18 @@ public class ProductionReadinessChecks {
                 "The realm context resolver is configured to map requests without a realm header to the default realm.",
                 "polaris.realm-context.require-header"));
       }
+    }
+    return ProductionReadinessCheck.OK;
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkReflectionFreeSerializers(Config config) {
+    ConfigValue configValue = config.getConfigValue(REFLECTION_FREE_SERIALIZERS_PROPERTY);
+    if (Boolean.parseBoolean(configValue.getValue())) {
+      return ProductionReadinessCheck.of(
+          Error.ofSevere(
+              "Quarkus REST Jackson reflection-free serializers must be disabled because Polaris REST JSON handling relies on registered ObjectMapper customizations for Iceberg request and response models.",
+              REFLECTION_FREE_SERIALIZERS_PROPERTY));
     }
     return ProductionReadinessCheck.OK;
   }
@@ -292,6 +448,80 @@ public class ProductionReadinessChecks {
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
   }
 
+  /**
+   * Every explicit name in {@code SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}, in the defaults (or
+   * the flag's code default when the defaults do not set it) and in each realm override, must be
+   * installed in this server. A server without an {@code STS} mechanism is a severe issue, because
+   * every catalog that leaves {@code credentialVendingMechanism} empty selects it. A
+   * listed-but-uninstalled mechanism is not severe: the mechanism is refused at catalog create and
+   * update, and whenever a credential is vended for a catalog that selects it. Apart from a missing
+   * {@code STS}, only the registry's own constructor (a bean with no {@code @Identifier}, or two
+   * beans sharing one) aborts startup.
+   */
+  @Produces
+  public ProductionReadinessCheck checkS3CredentialVendingMechanisms(
+      FeaturesConfiguration featureConfiguration, S3CredentialVendingMechanisms mechanisms) {
+    var flag = FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS;
+    var mapper = JsonMapper.builder().build();
+    var errors = new ArrayList<Error>();
+    if (!mechanisms.isAvailable(S3CredentialVendingMechanism.STS)) {
+      errors.add(
+          Error.ofSevere(
+              format(
+                  "No S3 credential vending mechanism carries the STS identifier; catalogs "
+                      + "that leave credentialVendingMechanism empty cannot vend credentials. "
+                      + "Available: %s",
+                  mechanisms.availableIds()),
+              "S3CredentialVendingMechanism @Identifier(\"STS\")"));
+    }
+    @SuppressWarnings("unchecked")
+    var defaults =
+        (List<String>)
+            featureConfiguration
+                .parseDefaults(mapper)
+                .getOrDefault(flag.key(), flag.defaultValue());
+    defaults.forEach(
+        name ->
+            checkMechanismAvailable(
+                name, format("polaris.features.\"%s\"", flag.key()), mechanisms, errors));
+    featureConfiguration
+        .parseRealmOverrides(mapper)
+        .forEach(
+            (realmId, overrides) -> {
+              @SuppressWarnings("unchecked")
+              var names = (List<String>) overrides.getOrDefault(flag.key(), List.of());
+              names.forEach(
+                  name ->
+                      checkMechanismAvailable(
+                          name,
+                          format(
+                              "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                              realmId, flag.key()),
+                          mechanisms,
+                          errors));
+            });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  private static void checkMechanismAvailable(
+      String name,
+      String offendingProperty,
+      S3CredentialVendingMechanisms mechanisms,
+      List<Error> errors) {
+    if (!mechanisms.isAvailable(name)) {
+      List<String> available = new ArrayList<>(mechanisms.availableIds());
+      errors.add(
+          Error.of(
+              format(
+                  "S3 credential vending mechanism '%s' listed in %s is not available in this "
+                      + "server; catalogs that select it are refused at use. Available: %s",
+                  name, offendingProperty, available),
+              offendingProperty));
+    }
+  }
+
   @Produces
   public ProductionReadinessCheck checkSkipCredentialSubscopingIndirection(
       FeaturesConfiguration featureConfiguration) {
@@ -351,6 +581,130 @@ public class ProductionReadinessChecks {
                             realmId, optimizedSiblingCheck.key())));
               }
             });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkAddTrailingSlashToLocation(
+      FeaturesConfiguration featureConfiguration) {
+    var message =
+        "ADD_TRAILING_SLASH_TO_LOCATION is deprecated and ignored. Polaris always adds a "
+            + "trailing slash to table and namespace base locations. Remove this setting.";
+    var errors = new ArrayList<Error>();
+    if ("false"
+        .equalsIgnoreCase(
+            featureConfiguration.defaults().get(ADD_TRAILING_SLASH_TO_LOCATION_KEY))) {
+      errors.add(
+          Error.of(message, format("polaris.features.\"%s\"", ADD_TRAILING_SLASH_TO_LOCATION_KEY)));
+    }
+    featureConfiguration
+        .realmOverrides()
+        .forEach(
+            (realmId, overrides) -> {
+              if ("false"
+                  .equalsIgnoreCase(
+                      overrides.overrides().get(ADD_TRAILING_SLASH_TO_LOCATION_KEY))) {
+                errors.add(
+                    Error.of(
+                        message,
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, ADD_TRAILING_SLASH_TO_LOCATION_KEY)));
+              }
+            });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkGcsPrincipalAttribution(
+      FeaturesConfiguration featureConfiguration) {
+    var enabled = FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_ENABLED;
+    var audience = FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE;
+    var issuer = FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER;
+    var keyFile = FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE;
+
+    var defaults = featureConfiguration.defaults();
+    var errors = new ArrayList<Error>();
+
+    boolean defaultEnabled = Boolean.parseBoolean(defaults.get(enabled.key()));
+    String defaultAudience = defaults.getOrDefault(audience.key(), "");
+    String defaultIssuer = defaults.getOrDefault(issuer.key(), "");
+    String defaultKeyFile = defaults.getOrDefault(keyFile.key(), "");
+
+    if (defaultEnabled) {
+      if (defaultAudience.isEmpty()) {
+        errors.add(
+            Error.of(
+                "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE is not set.",
+                format("polaris.features.\"%s\"", audience.key())));
+      }
+      if (defaultIssuer.isEmpty()) {
+        errors.add(
+            Error.of(
+                "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER is not set.",
+                format("polaris.features.\"%s\"", issuer.key())));
+      }
+      if (defaultKeyFile.isEmpty()) {
+        errors.add(
+            Error.of(
+                "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE is not set.",
+                format("polaris.features.\"%s\"", keyFile.key())));
+      }
+    }
+
+    featureConfiguration
+        .realmOverrides()
+        .forEach(
+            (realmId, realmOverrides) -> {
+              var overrides = realmOverrides.overrides();
+              boolean realmEnabled =
+                  Boolean.parseBoolean(
+                      overrides.containsKey(enabled.key())
+                          ? overrides.get(enabled.key())
+                          : defaults.get(enabled.key()));
+              if (!realmEnabled) {
+                return;
+              }
+              String effectiveAudience =
+                  overrides.containsKey(audience.key())
+                      ? overrides.get(audience.key())
+                      : defaultAudience;
+              String effectiveIssuer =
+                  overrides.containsKey(issuer.key()) ? overrides.get(issuer.key()) : defaultIssuer;
+              String effectiveKeyFile =
+                  overrides.containsKey(keyFile.key())
+                      ? overrides.get(keyFile.key())
+                      : defaultKeyFile;
+              if (effectiveAudience.isEmpty()) {
+                errors.add(
+                    Error.of(
+                        "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE is not set.",
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, audience.key())));
+              }
+              if (effectiveIssuer.isEmpty()) {
+                errors.add(
+                    Error.of(
+                        "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER is not set.",
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, issuer.key())));
+              }
+              if (effectiveKeyFile.isEmpty()) {
+                errors.add(
+                    Error.of(
+                        "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE is not set.",
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, keyFile.key())));
+              }
+            });
+
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));

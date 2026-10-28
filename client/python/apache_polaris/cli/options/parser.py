@@ -20,7 +20,7 @@ import argparse
 from typing import List, Optional, Dict, Any, Union
 
 from apache_polaris import __version__
-from apache_polaris.cli.constants import Arguments, DEFAULT_HEADER
+from apache_polaris.cli.constants import Arguments, Hints
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.options.option_tree import OptionTree, Option, Argument
 
@@ -41,7 +41,21 @@ class Parser(object):
         Argument(Arguments.HOST, str, hint="Polaris server hostname"),
         Argument(Arguments.PORT, int, hint="Polaris server port"),
         Argument(
-            Arguments.BASE_URL, str, hint="Complete base URL (overrides host/port)"
+            Arguments.SCHEME,
+            str,
+            hint="URL scheme for host/port (default: http)",
+            choices=["http", "https"],
+            lower=True,
+        ),
+        Argument(
+            Arguments.BASE_URL,
+            str,
+            hint="Complete base URL (overrides host/port/scheme)",
+        ),
+        Argument(
+            Arguments.CATALOG_URL,
+            str,
+            hint="Base URL for the Iceberg REST Catalog (IRC) API. Use when your --base-url or deployment maps directly to the catalog root (no /api/catalog appended).",
         ),
         Argument(Arguments.CLIENT_ID, str, hint="OAuth client ID"),
         Argument(
@@ -64,11 +78,21 @@ class Parser(object):
             Arguments.HEADER,
             str,
             hint="Context header name (default: Polaris-Realm)",
-            default=DEFAULT_HEADER,
         ),
         Argument(Arguments.PROFILE, str, hint="Polaris profile name"),
         Argument(Arguments.PROXY, str, hint="Proxy URL"),
+        Argument(
+            Arguments.SSL_CA_CERT,
+            str,
+            hint="Path to a PEM file of CA certificates used to verify the server",
+        ),
+        Argument(
+            Arguments.INSECURE,
+            bool,
+            hint="Disable TLS certificate verification (not recommended)",
+        ),
         Argument(Arguments.DEBUG, bool, hint="Enable debug mode"),
+        Argument(Arguments.PAGE_SIZE, int, hint=Hints.PAGE_SIZE),
     ]
 
     @staticmethod

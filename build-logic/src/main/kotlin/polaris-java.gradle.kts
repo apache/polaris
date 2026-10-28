@@ -17,15 +17,18 @@
  * under the License.
  */
 
-import asf.AsfProject.Companion.unsafeCast
 import java.util.Properties
 import kotlin.jvm.java
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.file.FileCollection
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.services.BuildService
+import org.gradle.api.services.BuildServiceParameters
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
+import org.gradle.jvm.tasks.Jar
 import org.gradle.kotlin.dsl.named
 import org.gradle.process.CommandLineArgumentProvider
 import org.kordamp.gradle.plugin.jandex.JandexExtension
@@ -38,6 +41,7 @@ plugins {
   `java-test-fixtures`
   `jvm-test-suite`
   checkstyle
+  id("polaris-base")
   id("polaris-spotless")
   id("polaris-reproducible")
   id("jacoco-report-aggregation")
@@ -69,39 +73,63 @@ checkstyle {
       .orElseThrow { GradleException("checkstyle version not found in libs.versions.toml") }
       .requiredVersion
   toolVersion = checkstyleVersion
-  configFile = rootProject.file("codestyle/checkstyle.xml")
+  configFile = layout.settingsDirectory.file("codestyle/checkstyle.xml").asFile
   isIgnoreFailures = false
   maxErrors = 0
   maxWarnings = 0
 }
 
-// Ensure Checkstyle runs after jandex to avoid task dependency issues
-tasks.withType<Checkstyle>().configureEach { tasks.findByName("jandex")?.let { mustRunAfter(it) } }
+tasks.withType<Checkstyle>().configureEach {
+  if (noSourceCheckProjects.contains(project.path)) {
+    enabled = false
+  } else {
+    // Ensure Checkstyle runs after jandex to avoid task dependency issues
+    tasks.findByName("jandex")?.let { mustRunAfter(it) }
+  }
+}
 
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(
-    listOf("-Xlint:unchecked", "-Xlint:deprecation", "-XDaddTypeAnnotationsToSymbol=true")
+    listOf("-Xlint:unchecked", "-Xlint:deprecation", "-XDaddTypeAnnotationsToSymbol=true"),
   )
   options.errorprone.disableAllWarnings = true
   options.errorprone.disableWarningsInGeneratedCode = true
   options.errorprone.excludedPaths =
     ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated(-openapi)?/.*"
-  val errorproneRules = rootProject.projectDir.resolve("codestyle/errorprone-rules.properties")
+  val errorproneRules = layout.settingsDirectory.file("codestyle/errorprone-rules.properties")
   inputs.file(errorproneRules).withPathSensitivity(PathSensitivity.RELATIVE)
-  options.errorprone.checks.putAll(provider { memoizedErrorproneRules(errorproneRules) })
+  options.errorprone.checks.putAll(
+    provider {
+      val service =
+        project.gradle.sharedServices.registerIfAbsent(
+          "errorProneConfig",
+          ErrorProneConfigService::class.java,
+        ) {
+          parameters.configFile = errorproneRules
+        }
+      service.get().errorproneConfig
+    },
+  )
 }
 
-private fun memoizedErrorproneRules(rulesFile: File): Map<String, CheckSeverity> =
-  rulesFile.reader().use {
-    val rules = Properties()
-    rules.load(it)
-    rules
-      .mapKeys { e -> (e.key as String).trim() }
-      .mapValues { e -> (e.value as String).trim() }
-      .filter { e -> e.key.isNotEmpty() && e.value.isNotEmpty() }
-      .mapValues { e -> CheckSeverity.valueOf(e.value) }
-      .toMap()
+abstract class ErrorProneConfigService : BuildService<ErrorProneConfigService.Parameters> {
+  interface Parameters : BuildServiceParameters {
+    val configFile: RegularFileProperty
   }
+
+  val errorproneConfig: Map<String, CheckSeverity> by lazy {
+    parameters.configFile.get().asFile.reader().use {
+      val rules = Properties()
+      rules.load(it)
+      rules
+        .mapKeys { e -> (e.key as String).trim() }
+        .mapValues { e -> (e.value as String).trim() }
+        .filter { e -> e.key.isNotEmpty() && e.value.isNotEmpty() }
+        .mapValues { e -> CheckSeverity.valueOf(e.value) }
+        .toMap()
+    }
+  }
+}
 
 tasks.register("compileAll") {
   group = "build"
@@ -128,6 +156,13 @@ testing {
         implementation(testFixtures(project()))
         if (!plugins.hasPlugin("io.quarkus")) {
           implementation(requiredLib("logback-classic"))
+          // Exclude spurious SLF4J providers from all non-Quarkus test suites to prevent
+          // dual SLF4J provider warnings when dependencies such as polaris-runtime-test-common
+          // or Spark (which bundles log4j-slf4j2-impl) are on the classpath.
+          configurations.named(sources.implementationConfigurationName) {
+            exclude(group = "org.jboss.slf4j", module = "slf4j-jboss-logmanager")
+            exclude(group = "org.apache.logging.log4j", module = "log4j-slf4j2-impl")
+          }
         }
         implementation(requiredLib("assertj-core"))
         implementation(requiredLib("mockito-core"))
@@ -136,7 +171,7 @@ testing {
       // Special handling for test-suites with names containing `manualtest`, which are intended to
       // be run on demand rather than implicitly via `check`.
       if (!name.lowercase().contains("manualtest")) {
-        targets.all {
+        targets.configureEach {
           if (testTask.name != "test") {
             testTask.configure { shouldRunAfter("test") }
             tasks.named("check").configure { dependsOn(testTask) }
@@ -187,16 +222,12 @@ tasks.withType<Jar>().configureEach {
 
   if (!project.file("src/main/no-license-notice-marker").exists()) {
     if (!project.file("src/main/resources/META-INF/LICENSE").exists()) {
-      from(rootProject.rootDir) {
-        include("gradle/jar-licenses/LICENSE").eachFile { path = "META-INF/$sourceName" }
-      }
+      from(rootProject.file("gradle/jar-licenses/LICENSE")) { into("META-INF") }
     } else if (name == "javadocJar") {
       from("src/main/resources") { include("META-INF/LICENSE") }
     }
     if (!project.file("src/main/resources/META-INF/NOTICE").exists()) {
-      from(rootProject.rootDir) {
-        include("gradle/jar-licenses/NOTICE").eachFile { path = "META-INF/$sourceName" }
-      }
+      from(rootProject.file("gradle/jar-licenses/NOTICE")) { into("META-INF") }
     } else if (name == "javadocJar") {
       from("src/main/resources") { include("META-INF/NOTICE") }
     }
@@ -270,21 +301,37 @@ class BannedDependencies(
   }
 
   fun applyTo(configurations: ConfigurationContainer) {
-    configurations.all { applyTo(this) }
+    configurations.configureEach { applyTo(this) }
   }
 }
 
 fun bannedDependencies(): BannedDependencies {
-  return if (rootProject.extra.has("bannedDependencies")) {
-    unsafeCast(rootProject.extra["bannedDependencies"]) as BannedDependencies
-  } else {
-    val bannedDependencies =
-      BannedDependencies(
-        BannedDependency.parseList(rootProject.file("gradle/banned-dependencies.txt")),
-        BannedDependency.parseList(rootProject.file("gradle/banned-quarkus-prod-dependencies.txt")),
+  val service =
+    gradle.sharedServices.registerIfAbsent(
+      "bannedDependencies",
+      BannedDependenciesService::class.java,
+    ) {
+      parameters.globallyBannedFile.set(
+        layout.settingsDirectory.file("gradle/banned-dependencies.txt"),
       )
-    rootProject.extra["bannedDependencies"] = bannedDependencies
-    bannedDependencies
+      parameters.quarkusProdBannedFile.set(
+        layout.settingsDirectory.file("gradle/banned-quarkus-prod-dependencies.txt"),
+      )
+    }
+  return service.get().bannedDependencies
+}
+
+abstract class BannedDependenciesService : BuildService<BannedDependenciesService.Parameters> {
+  interface Parameters : BuildServiceParameters {
+    val globallyBannedFile: RegularFileProperty
+    val quarkusProdBannedFile: RegularFileProperty
+  }
+
+  val bannedDependencies: BannedDependencies by lazy {
+    BannedDependencies(
+      BannedDependency.parseList(parameters.globallyBannedFile.asFile.get()),
+      BannedDependency.parseList(parameters.quarkusProdBannedFile.asFile.get()),
+    )
   }
 }
 
@@ -321,7 +368,7 @@ tasks.withType<Test>().configureEach {
   val constraintName =
     if (isTestTask) "testParallelismConstraint" else "intTestParallelismConstraint"
   usesService(gradle.sharedServices.registrations.named(constraintName).get().service)
-  if (project.hasProperty("noIntegrationTests") && !isTestTask) {
+  if (providers.gradleProperty("noIntegrationTests").isPresent && !isTestTask) {
     enabled = false
   }
 }

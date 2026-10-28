@@ -31,6 +31,8 @@ public class AzureLocationTest {
     Assertions.assertThat(azureLocation.getContainer()).isEqualTo("container");
     Assertions.assertThat(azureLocation.getStorageAccount()).isEqualTo("storageaccount");
     Assertions.assertThat(azureLocation.getEndpoint()).isEqualTo("blob.core.windows.net");
+    Assertions.assertThat(azureLocation.getStorageDnsName())
+        .isEqualTo("storageaccount.blob.core.windows.net");
     Assertions.assertThat(azureLocation.getFilePath()).isEqualTo("myfile");
   }
 
@@ -68,6 +70,23 @@ public class AzureLocationTest {
 
     Assertions.assertThat(location.isChildOf(parentLocation)).isTrue();
     Assertions.assertThat(location.isChildOf(parentLocationTrailingSlash)).isTrue();
+  }
+
+  @Test
+  public void testLocationComparisonsWithEmptyPathSegment() {
+    StorageLocation root = AzureLocation.of("abfss://container@acc.dfs.core.windows.net/");
+    StorageLocation emptySegment = AzureLocation.of("abfss://container@acc.dfs.core.windows.net//");
+    StorageLocation location =
+        AzureLocation.of("abfss://container@acc.dfs.core.windows.net/some_file/metadata");
+    StorageLocation locationUnderEmptySegment =
+        AzureLocation.of("abfss://container@acc.dfs.core.windows.net//some_file/metadata");
+
+    Assertions.assertThat(emptySegment.isChildOf(root)).isTrue();
+    Assertions.assertThat(root.isChildOf(emptySegment)).isFalse();
+    Assertions.assertThat(location.isChildOf(emptySegment)).isFalse();
+    Assertions.assertThat(locationUnderEmptySegment.isChildOf(emptySegment)).isTrue();
+    Assertions.assertThat(locationUnderEmptySegment.isChildOf(location)).isFalse();
+    Assertions.assertThat(location.isChildOf(locationUnderEmptySegment)).isFalse();
   }
 
   @Test

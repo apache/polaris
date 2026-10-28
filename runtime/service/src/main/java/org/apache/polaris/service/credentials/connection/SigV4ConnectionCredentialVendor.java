@@ -26,6 +26,7 @@ import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
@@ -110,7 +111,6 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
     StsClient stsClient = getStsClient(sigv4Params);
 
     // Build the AssumeRole request with Polaris's credentials
-    // TODO: Generate service-level scoping policy to restrict permissions
     AssumeRoleRequest.Builder requestBuilder =
         AssumeRoleRequest.builder()
             .roleArn(sigv4Params.getRoleArn())
@@ -118,6 +118,11 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
                 Optional.ofNullable(sigv4Params.getRoleSessionName())
                     .orElse(DEFAULT_ROLE_SESSION_NAME))
             .externalId(sigv4Params.getExternalId());
+
+    // Attach user-provided session policy to restrict assumed role permissions (PoLP)
+    if (StringUtils.isNotEmpty(sigv4Params.getSessionPolicy())) {
+      requestBuilder.policy(sigv4Params.getSessionPolicy());
+    }
 
     // Configure the request to use Polaris's service identity credentials
     requestBuilder.overrideConfiguration(

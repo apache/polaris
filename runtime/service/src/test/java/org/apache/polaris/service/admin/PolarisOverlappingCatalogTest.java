@@ -67,26 +67,30 @@ public class PolarisOverlappingCatalogTest {
       boolean isExternal,
       List<String> allowedLocations) {
     String uuid = UUID.randomUUID().toString();
+    String fullBaseLocation =
+        String.format(s3Scheme + "://bucket/%s/%s", prefix, defaultBaseLocation);
+    // Include the default-base-location in the allowed-locations list. The test cases below
+    // exercise OVERLAP detection across catalogs, not base-within-allowed validation; the
+    // updated validation (which requires base within allowed when allowed is explicitly set)
+    // would otherwise reject catalogs whose base differs from their allowed-locations entries.
+    List<String> effectiveAllowedLocations = new ArrayList<>();
+    effectiveAllowedLocations.add(fullBaseLocation);
+    allowedLocations.stream()
+        .map(l -> String.format(s3Scheme + "://bucket/%s/%s", prefix, l))
+        .forEach(effectiveAllowedLocations::add);
     StorageConfigInfo config =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(
-                allowedLocations.stream()
-                    .map(
-                        l -> {
-                          return String.format(s3Scheme + "://bucket/%s/%s", prefix, l);
-                        })
-                    .toList())
+            .setAllowedLocations(effectiveAllowedLocations)
             .build();
     Catalog catalog =
         new Catalog(
             isExternal ? Catalog.TypeEnum.EXTERNAL : Catalog.TypeEnum.INTERNAL,
             String.format("overlap_catalog_%s", uuid),
-            new CatalogProperties(
-                String.format(s3Scheme + "://bucket/%s/%s", prefix, defaultBaseLocation)),
+            new CatalogProperties(fullBaseLocation),
             System.currentTimeMillis(),
             System.currentTimeMillis(),
             1,

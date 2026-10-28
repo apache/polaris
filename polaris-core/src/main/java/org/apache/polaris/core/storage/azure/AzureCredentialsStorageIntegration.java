@@ -56,6 +56,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CachingStorageIntegration;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -77,6 +78,11 @@ public class AzureCredentialsStorageIntegration
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AzureCredentialsStorageIntegration.class);
 
+  // Microsoft's Java user-delegation SAS example backdates the key start time to account for
+  // clock skew. See
+  // https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-user-delegation-sas-create-java.
+  private static final long SAS_CLOCK_SKEW_BUFFER_SECONDS = Duration.ofMinutes(5).toSeconds();
+
   final DefaultAzureCredential defaultAzureCredential;
 
   public AzureCredentialsStorageIntegration(
@@ -96,11 +102,21 @@ public class AzureCredentialsStorageIntegration
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
-      @NonNull List<LocationGrant> grants,
-      @NonNull Optional<String> refreshEndpoint,
-      @NonNull CredentialVendingContext context) {
-    return buildCacheKey(
-        allowList(grants), readLocations(grants), writeLocations(grants), refreshEndpoint, context);
+      @NonNull List<LocationGrant> grants, @NonNull CredentialVendingContext context) {
+    return buildCacheKey(allowList(grants), readLocations(grants), writeLocations(grants), context);
+  }
+
+  @Override
+  protected StorageAccessConfig addExtraProperties(
+      @NonNull StorageAccessConfig accessConfig, @NonNull Optional<String> refreshEndpoint) {
+    return refreshEndpoint
+        .map(
+            endpoint ->
+                withExtraProperty(
+                    accessConfig,
+                    StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT,
+                    endpoint))
+        .orElse(accessConfig);
   }
 
   private static boolean allowList(List<LocationGrant> grants) {
@@ -128,7 +144,6 @@ public class AzureCredentialsStorageIntegration
       boolean allowList,
       @NonNull Set<String> locations,
       @NonNull Set<String> writeLocations,
-      @NonNull Optional<String> refreshEndpoint,
       @NonNull CredentialVendingContext context) {
     return AzureStorageCredentialCacheKey.of(
         context.realm().orElse(""),
@@ -136,7 +151,6 @@ public class AzureCredentialsStorageIntegration
         allowList,
         locations,
         writeLocations,
-        refreshEndpoint,
         defaultAzureCredential,
         realmConfig());
   }
@@ -149,8 +163,6 @@ public class AzureCredentialsStorageIntegration
     boolean allowList = key.allowedListAction();
     Set<String> locations = key.allowedReadLocations();
     Set<String> writeLocations = key.allowedWriteLocations();
-    Optional<String> refreshEndpoint = key.refreshCredentialsEndpoint();
-
     String loc =
         !writeLocations.isEmpty()
             ? writeLocations.stream().findAny().orElse(null)
@@ -162,7 +174,7 @@ public class AzureCredentialsStorageIntegration
     AzureLocation location = new AzureLocation(loc);
     validateAccountAndContainer(location, locations, writeLocations);
 
-    String storageDnsName = location.getStorageAccount() + "." + location.getEndpoint();
+    String storageDnsName = location.getStorageDnsName();
     String filePath = location.getFilePath();
 
     BlobSasPermission blobSasPermission = new BlobSasPermission();
@@ -188,35 +200,35 @@ public class AzureCredentialsStorageIntegration
     }
 
     Instant start = Instant.now();
-    OffsetDateTime expiry =
-        OffsetDateTime.ofInstant(
-            start.plusSeconds(3600), ZoneOffset.UTC); // 1 hr to sync with AWS and GCP Access token
 
     AccessToken accessToken =
         getAccessToken(defaultAzureCredential, realmConfig, azureStorageConfig.getTenantId());
-    // Get user delegation key.
-    // Set the new generated user delegation key expiry to 7 days and minute 1 min
-    // Azure strictly requires the end time to be <= 7 days from the current time, -1 min to avoid
-    // clock skew between the client and server,
-    OffsetDateTime startTime = start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
+    // Backdate the user delegation key start time by five minutes, following Microsoft's Java
+    // user-delegation SAS example, to prevent authorization failures caused by clock skew.
+    // Microsoft's general SAS guidance recommends a 15-minute backdate for an explicit SAS start
+    // time; Polaris does not set a SAS start time, and this buffer applies only to the key. The
+    // key is limited to Azure's seven-day validity window, with a one-minute end-time margin.
+    Instant clockSkewAdjustedStart = getClockSkewAdjustedStart(start);
+    OffsetDateTime startTime =
+        clockSkewAdjustedStart.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
     int intendedDurationSeconds = realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     OffsetDateTime intendedEndTime =
         start.plusSeconds(intendedDurationSeconds).atOffset(ZoneOffset.UTC);
     OffsetDateTime maxAllowedEndTime =
-        start.plus(Period.ofDays(7)).minusSeconds(60).atOffset(ZoneOffset.UTC);
+        clockSkewAdjustedStart.plus(Period.ofDays(7)).minusSeconds(60).atOffset(ZoneOffset.UTC);
     OffsetDateTime sanitizedEndTime =
         intendedEndTime.isBefore(maxAllowedEndTime) ? intendedEndTime : maxAllowedEndTime;
 
     LOGGER
         .atDebug()
-        .addKeyValue("allowedListAction", allowList)
-        .addKeyValue("locations", locations)
-        .addKeyValue("writeLocations", writeLocations)
-        .addKeyValue("location", loc)
-        .addKeyValue("storageAccount", location.getStorageAccount())
-        .addKeyValue("endpoint", location.getEndpoint())
-        .addKeyValue("container", location.getContainer())
-        .addKeyValue("filePath", filePath)
+        .addKeyValue(StructuredLogKeys.ALLOWED_LIST_ACTION, allowList)
+        .addKeyValue(StructuredLogKeys.LOCATIONS, locations)
+        .addKeyValue(StructuredLogKeys.WRITE_LOCATIONS, writeLocations)
+        .addKeyValue(StructuredLogKeys.LOCATION, loc)
+        .addKeyValue(StructuredLogKeys.STORAGE_ACCOUNT, location.getStorageAccount())
+        .addKeyValue(StructuredLogKeys.ENDPOINT, location.getEndpoint())
+        .addKeyValue(StructuredLogKeys.CONTAINER, location.getContainer())
+        .addKeyValue(StructuredLogKeys.FILE_PATH, filePath)
         .log("Subscope Azure SAS");
     String sasToken;
     if (location.getEndpoint().equalsIgnoreCase(AzureLocation.BLOB_ENDPOINT)) {
@@ -224,7 +236,7 @@ public class AzureCredentialsStorageIntegration
           getBlobUserDelegationSas(
               startTime,
               sanitizedEndTime,
-              expiry,
+              sanitizedEndTime,
               storageDnsName,
               location.getContainer(),
               blobSasPermission,
@@ -244,7 +256,7 @@ public class AzureCredentialsStorageIntegration
           getAdlsUserDelegationSas(
               startTime,
               sanitizedEndTime,
-              expiry,
+              sanitizedEndTime,
               storageDnsName,
               location.getContainer(),
               pathSasPermission,
@@ -255,51 +267,60 @@ public class AzureCredentialsStorageIntegration
           String.format("Endpoint %s not supported", location.getEndpoint()));
     }
 
-    return toAccessConfig(sasToken, storageDnsName, sanitizedEndTime.toInstant(), refreshEndpoint);
+    return toAccessConfig(sasToken, location, sanitizedEndTime.toInstant());
+  }
+
+  @VisibleForTesting
+  static Instant getClockSkewAdjustedStart(Instant start) {
+    return start.minusSeconds(SAS_CLOCK_SKEW_BUFFER_SECONDS);
   }
 
   @VisibleForTesting
   static StorageAccessConfig toAccessConfig(
-      String sasToken,
-      String storageDnsName,
-      Instant expiresAt,
-      Optional<String> refreshCredentialsEndpoint) {
+      String sasToken, AzureLocation location, Instant expiresAt) {
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
-    handleAzureCredential(accessConfig, sasToken, storageDnsName, expiresAt);
-    accessConfig.put(
-        StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt.toEpochMilli()));
-    refreshCredentialsEndpoint.ifPresent(
-        endpoint -> {
-          accessConfig.put(StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
-        });
+    handleAzureCredential(accessConfig, sasToken, location, expiresAt);
+    accessConfig.expiresAt(expiresAt);
     return accessConfig.build();
   }
 
   private static void handleAzureCredential(
-      StorageAccessConfig.Builder config, String sasToken, String host, Instant expiresAt) {
-    config.putCredential(StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + host, sasToken);
+      StorageAccessConfig.Builder config,
+      String sasToken,
+      AzureLocation location,
+      Instant expiresAt) {
+    String storageDnsName = location.getStorageDnsName();
+    String accountName = location.getStorageAccount();
+
     config.putCredential(
-        StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS_PREFIX.getPropertyName() + host,
+        StorageAccessProperty.AZURE_SAS_TOKEN_ACCOUNT_HOST.getPropertyName() + "." + storageDnsName,
+        sasToken);
+    config.putCredential(
+        StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS.getPropertyName()
+            + "."
+            + storageDnsName,
         String.valueOf(expiresAt.toEpochMilli()));
 
-    // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint
-    if (host.endsWith(AzureLocation.ADLS_ENDPOINT)) {
-      int suffixIndex = host.lastIndexOf(AzureLocation.ADLS_ENDPOINT) - 1;
-      if (suffixIndex > 0) {
-        String withSuffixStripped = host.substring(0, suffixIndex);
-        config.putCredential(
-            StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + withSuffixStripped, sasToken);
-      }
+    // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint.
+    // Use accountName (from location) for the stripped variant.
+    if (location.isAdls()) {
+      config.putCredential(
+          StorageAccessProperty.AZURE_SAS_TOKEN_ACCOUNT_NAME.getPropertyName() + "." + accountName,
+          sasToken);
     }
 
-    if (host.endsWith(AzureLocation.BLOB_ENDPOINT)) {
-      int suffixIndex = host.lastIndexOf(AzureLocation.BLOB_ENDPOINT) - 1;
-      if (suffixIndex > 0) {
-        String withSuffixStripped = host.substring(0, suffixIndex);
-        config.putCredential(
-            StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + withSuffixStripped, sasToken);
-      }
+    if (location.isBlob()) {
+      config.putCredential(
+          StorageAccessProperty.AZURE_SAS_TOKEN_ACCOUNT_NAME.getPropertyName() + "." + accountName,
+          sasToken);
     }
+
+    // PyIceberg and other clients need bare adls.sas-token and adls.account-name for compatibility
+    // with adlfs/fsspec (and similar libraries). The bare keys are emitted in addition to the
+    // suffixed variants used by Spark.
+    // See https://github.com/apache/polaris/issues/418
+    config.putCredential(StorageAccessProperty.AZURE_SAS_TOKEN_BARE.getPropertyName(), sasToken);
+    config.putCredential(StorageAccessProperty.AZURE_ACCOUNT_NAME.getPropertyName(), accountName);
   }
 
   private static String getBlobUserDelegationSas(

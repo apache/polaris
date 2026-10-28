@@ -22,11 +22,15 @@ from pydantic import StrictStr
 from typing import Dict, Optional, List, cast
 
 from apache_polaris.cli.command import Command
-from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.command.utils import get_catalog_api_client, paginate
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from apache_polaris.cli.options.option_tree import Argument
-from apache_polaris.sdk.catalog import IcebergCatalogAPI, CreateNamespaceRequest
+from apache_polaris.sdk.catalog import (
+    IcebergCatalogAPI,
+    CreateNamespaceRequest,
+    UpdateNamespacePropertiesRequest,
+)
 from apache_polaris.sdk.management import PolarisDefaultApi
 from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
 
@@ -42,6 +46,7 @@ class NamespacesCommand(Command):
         * polaris namespaces create --catalog my_schema my_namespace
         * polaris namespaces list --catalog my_catalog
         * polaris namespaces delete --catalog my_catalog my_namespace.inner
+        * polaris namespaces update --catalog my_catalog my_namespace --set-property k=v --remove-property old
     """
 
     namespaces_subcommand: str
@@ -50,10 +55,15 @@ class NamespacesCommand(Command):
     parent: Optional[List[StrictStr]] = None
     location: Optional[str] = None
     properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
+    set_properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
+    remove_properties: Optional[List[str]] = None
+    page_size: Optional[int] = None
 
     def __post_init__(self) -> None:
         if self.properties is None:
             self.properties = {}
+        if self.set_properties is None:
+            self.set_properties = {}
 
     def validate(self) -> None:
         if not self.catalog:
@@ -64,12 +74,20 @@ class NamespacesCommand(Command):
             Subcommands.CREATE,
             Subcommands.DELETE,
             Subcommands.GET,
+            Subcommands.UPDATE,
             Subcommands.SUMMARIZE,
         }:
             if not self.namespace:
                 raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.NAMESPACE)}"
                 )
+        if self.namespaces_subcommand == Subcommands.UPDATE and not (
+            self.set_properties or self.remove_properties
+        ):
+            raise CliError(
+                f"At least one of {Argument.to_flag_name(Arguments.SET_PROPERTY)} or "
+                f"{Argument.to_flag_name(Arguments.REMOVE_PROPERTY)} is required"
+            )
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api_client = get_catalog_api_client(api)
@@ -90,14 +108,15 @@ class NamespacesCommand(Command):
                 prefix=catalog_name, create_namespace_request=request
             )
         elif self.namespaces_subcommand == Subcommands.LIST:
-            if self.parent:
-                result = catalog_api.list_namespaces(
-                    prefix=catalog_name, parent=UNIT_SEPARATOR.join(self.parent)
-                )
-            else:
-                result = catalog_api.list_namespaces(prefix=catalog_name)
-            for namespace_item in result.namespaces:
-                print(json.dumps({"namespace": ".".join(namespace_item)}))
+            parent = UNIT_SEPARATOR.join(self.parent) if self.parent else None
+            for resp in paginate(
+                catalog_api.list_namespaces,
+                page_size=self.page_size,
+                prefix=catalog_name,
+                parent=parent,
+            ):
+                for namespace_item in resp.namespaces or []:
+                    print(json.dumps({"namespace": ".".join(namespace_item)}))
         elif self.namespaces_subcommand == Subcommands.DELETE:
             catalog_api.drop_namespace(
                 prefix=catalog_name,
@@ -109,6 +128,16 @@ class NamespacesCommand(Command):
                     prefix=catalog_name,
                     namespace=UNIT_SEPARATOR.join(namespace),
                 ).to_json()
+            )
+        elif self.namespaces_subcommand == Subcommands.UPDATE:
+            request = UpdateNamespacePropertiesRequest(
+                updates=self.set_properties,
+                removals=self.remove_properties or [],
+            )
+            catalog_api.update_properties(
+                prefix=catalog_name,
+                namespace=UNIT_SEPARATOR.join(namespace),
+                update_namespace_properties_request=request,
             )
         elif self.namespaces_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(catalog_api)
@@ -127,21 +156,36 @@ class NamespacesCommand(Command):
         print(f"  {'Level:':<30} {len(namespace)}")
         if len(namespace) > 1:
             print(f"  {'Parent:':<30} {'.'.join(namespace[:-1])}")
-        sub_ns = (
-            catalog_api.list_namespaces(prefix=catalog_name, parent=ns_str).namespaces
-            or []
+        sub_ns_count = sum(
+            len(resp.namespaces or [])
+            for resp in paginate(
+                catalog_api.list_namespaces,
+                page_size=self.page_size,
+                prefix=catalog_name,
+                parent=ns_str,
+            )
         )
-        print(f"  {'Sub-namespaces:':<30} {len(sub_ns)}")
-        tables = (
-            catalog_api.list_tables(prefix=catalog_name, namespace=ns_str).identifiers
-            or []
+        tables_count = sum(
+            len(resp.identifiers or [])
+            for resp in paginate(
+                catalog_api.list_tables,
+                page_size=self.page_size,
+                prefix=catalog_name,
+                namespace=ns_str,
+            )
         )
-        print(f"  {'Tables:':<30} {len(tables)}")
-        views = (
-            catalog_api.list_views(prefix=catalog_name, namespace=ns_str).identifiers
-            or []
+        views_count = sum(
+            len(resp.identifiers or [])
+            for resp in paginate(
+                catalog_api.list_views,
+                page_size=self.page_size,
+                prefix=catalog_name,
+                namespace=ns_str,
+            )
         )
-        print(f"  {'Views:':<30} {len(views)}")
+        print(f"  {'Sub-namespaces:':<30} {sub_ns_count}")
+        print(f"  {'Tables:':<30} {tables_count}")
+        print(f"  {'Views:':<30} {views_count}")
 
         # Effective policies
         policy_api = PolicyAPI(catalog_api.api_client)

@@ -21,8 +21,10 @@ package org.apache.polaris.persistence.nosql.impl.commits;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -31,13 +33,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.polaris.persistence.nosql.api.Persistence;
+import org.apache.polaris.persistence.nosql.api.PersistenceParams;
 import org.apache.polaris.persistence.nosql.api.commit.CommitException;
+import org.apache.polaris.persistence.nosql.api.commit.RetryConfig;
+import org.apache.polaris.persistence.nosql.api.commit.RetryTimeoutException;
 import org.apache.polaris.persistence.nosql.api.exceptions.ReferenceNotFoundException;
+import org.apache.polaris.persistence.nosql.api.exceptions.UnknownOperationResultException;
 import org.apache.polaris.persistence.nosql.api.obj.AnotherTestObj;
 import org.apache.polaris.persistence.nosql.api.obj.CommitTestObj;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.VersionedTestObj;
+import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.apache.polaris.persistence.nosql.testextension.PersistenceTestExtension;
 import org.apache.polaris.persistence.nosql.testextension.PolarisPersistence;
 import org.assertj.core.api.SoftAssertions;
@@ -46,9 +53,16 @@ import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @ExtendWith({PersistenceTestExtension.class, SoftAssertionsExtension.class})
 public abstract class BaseTestCommitterImpl {
+  private static final PersistenceParams ONE_RETRY_PARAMS =
+      PersistenceParams.BuildablePersistenceParams.builder()
+          .retryConfig(RetryConfig.BuildableRetryConfig.builder().retries(1).build())
+          .build();
+
   @InjectSoftAssertions protected SoftAssertions soft;
 
   @PolarisPersistence(fastRetries = true)
@@ -285,6 +299,256 @@ public abstract class BaseTestCommitterImpl {
                 objRef(anotherObj1.withNumParts(1)),
                 objRef(anotherObj2.withNumParts(1))))
         .containsExactly(anotherObj1.withNumParts(1), anotherObj2.withNumParts(1));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"1, false", "2, false", "1, true", "2, true"})
+  public void unknownObjectWriteRetriesReusedObjects(
+      int failedWrites, boolean reuseHead, TestInfo testInfo) throws Exception {
+    var referenceName = testInfo.getTestMethod().orElseThrow().getName();
+    var child = AnotherTestObj.builder().id(persistence.generateId()).text("child").build();
+    var secondChild =
+        AnotherTestObj.builder().id(persistence.generateId()).text("second child").build();
+    var reusedHead =
+        CommitTestObj.builder()
+            .id(persistence.generateId())
+            .seq(1)
+            .tail(new long[0])
+            .text("reused head")
+            .build();
+    var writeAttempts = new AtomicInteger();
+    var pointerUpdates = new AtomicInteger();
+    var batches = new ArrayList<List<ObjRef>>();
+
+    persistence.createReference(referenceName, Optional.empty());
+
+    var partiallyFailingPersistence =
+        new DelegatingPersistence(persistence) {
+          @Override
+          @SafeVarargs
+          public final <T extends Obj> T[] writeMany(Class<T> clazz, T... objs) {
+            batches.add(Arrays.stream(objs).map(ObjRef::objRef).toList());
+            if (writeAttempts.incrementAndGet() <= failedWrites) {
+              // Persist the head, but leave the child unwritten.
+              delegate.write(objs[objs.length - 1], clazz);
+              throw new UnknownOperationResultException(
+                  new RuntimeException("simulated partial object write"));
+            }
+            return delegate.writeMany(clazz, objs);
+          }
+
+          @Override
+          public Optional<Reference> updateReferencePointer(
+              Reference reference, ObjRef newPointer) {
+            pointerUpdates.incrementAndGet();
+            soft.assertThat(persistence.fetch(objRef(child.withNumParts(1)), AnotherTestObj.class))
+                .isEqualTo(child.withNumParts(1));
+            soft.assertThat(
+                    persistence.fetch(objRef(secondChild.withNumParts(1)), AnotherTestObj.class))
+                .isEqualTo(secondChild.withNumParts(1));
+            return delegate.updateReferencePointer(reference, newPointer);
+          }
+        };
+
+    var committer =
+        new CommitterImpl<>(
+            partiallyFailingPersistence, referenceName, CommitTestObj.class, CommitTestObj.class);
+    var result =
+        committer.commit(
+            (state, refObjSupplier) -> {
+              var refObj = refObjSupplier.get();
+              state.writeIfNew("child", child);
+              if (writeAttempts.get() > 0) {
+                state.writeIfNew("second child", secondChild);
+              }
+              if (reuseHead) {
+                return Optional.of(reusedHead);
+              }
+              return Optional.of(
+                  CommitTestObj.builder()
+                      .id(persistence.generateId())
+                      .seq(refObj.map(CommitTestObj::seq).orElse(0L) + 1)
+                      .tail(new long[0])
+                      .text("result-" + writeAttempts.get())
+                      .build());
+            });
+
+    soft.assertThat(writeAttempts).hasValue(failedWrites + 1);
+    soft.assertThat(pointerUpdates).hasValue(1);
+    soft.assertThat(batches)
+        .allSatisfy(
+            batch -> soft.assertThat(batch).contains(objRef(child)).doesNotHaveDuplicates());
+    soft.assertThat(result)
+        .get()
+        .extracting(CommitTestObj::text)
+        .isEqualTo(reuseHead ? "reused head" : "result-" + failedWrites);
+    soft.assertThat(persistence.fetchReferenceHead(referenceName, CommitTestObj.class))
+        .isEqualTo(result);
+  }
+
+  @Test
+  public void unknownPointerUpdateRetainsPublishedObjects(TestInfo testInfo) {
+    var initialObj =
+        persistence.write(
+            CommitTestObj.builder()
+                .id(persistence.generateId())
+                .text("initial")
+                .seq(1)
+                .tail(new long[0])
+                .build(),
+            CommitTestObj.class);
+    var referenceName = testInfo.getTestMethod().orElseThrow().getName();
+    var child = AnotherTestObj.builder().id(persistence.generateId()).text("child").build();
+    var updateAttempts = new AtomicInteger();
+
+    persistence.createReference(referenceName, Optional.of(objRef(initialObj)));
+
+    var unknownResultPersistence =
+        new DelegatingPersistence(persistence) {
+          @Override
+          public Optional<Reference> updateReferencePointer(
+              Reference reference, ObjRef newPointer) {
+            if (updateAttempts.incrementAndGet() == 1) {
+              return Optional.empty();
+            }
+            delegate.updateReferencePointer(reference, newPointer);
+            throw new UnknownOperationResultException(
+                new RuntimeException("simulated unknown operation result"));
+          }
+
+          @Override
+          public PersistenceParams params() {
+            return ONE_RETRY_PARAMS;
+          }
+        };
+
+    var committer =
+        new CommitterImpl<>(
+            unknownResultPersistence, referenceName, CommitTestObj.class, String.class);
+    soft.assertThatThrownBy(
+            () ->
+                committer.commit(
+                    (state, refObjSupplier) -> {
+                      state.writeIfNew("child", child);
+                      return state.commitResult(
+                          "result", CommitTestObj.builder().text("result"), refObjSupplier.get());
+                    }))
+        .isInstanceOf(RetryTimeoutException.class);
+
+    soft.assertThat(updateAttempts).hasValue(2);
+    soft.assertThat(persistence.fetchReferenceHead(referenceName, CommitTestObj.class))
+        .get()
+        .extracting(CommitTestObj::text)
+        .isEqualTo("result");
+    soft.assertThat(persistence.fetch(objRef(child.withNumParts(1)), AnotherTestObj.class))
+        .isEqualTo(child.withNumParts(1));
+  }
+
+  @Test
+  public void cleanupFailureDoesNotMaskCommitFailure(TestInfo testInfo) {
+    var initialObj =
+        persistence.write(
+            CommitTestObj.builder()
+                .id(persistence.generateId())
+                .text("initial")
+                .seq(1)
+                .tail(new long[0])
+                .build(),
+            CommitTestObj.class);
+    var referenceName = testInfo.getTestMethod().orElseThrow().getName();
+    var cleanupFailure = new RuntimeException("simulated cleanup failure");
+
+    persistence.createReference(referenceName, Optional.of(objRef(initialObj)));
+
+    var failingCleanupPersistence =
+        new DelegatingPersistence(persistence) {
+          @Override
+          public Optional<Reference> updateReferencePointer(
+              Reference reference, ObjRef newPointer) {
+            return Optional.empty();
+          }
+
+          @Override
+          public void deleteMany(ObjRef... ids) {
+            throw cleanupFailure;
+          }
+
+          @Override
+          public PersistenceParams params() {
+            return ONE_RETRY_PARAMS;
+          }
+        };
+
+    var committer =
+        new CommitterImpl<>(
+            failingCleanupPersistence, referenceName, CommitTestObj.class, String.class);
+    soft.assertThatThrownBy(
+            () ->
+                committer.commit(
+                    (state, refObjSupplier) ->
+                        state.commitResult(
+                            "result",
+                            CommitTestObj.builder().text("result"),
+                            refObjSupplier.get())))
+        .isInstanceOfSatisfying(
+            RetryTimeoutException.class,
+            e -> soft.assertThat(e.getSuppressed()).containsExactly(cleanupFailure));
+  }
+
+  @Test
+  public void cleanupFailureDoesNotMaskSuccessfulCommit(TestInfo testInfo) throws Exception {
+    var initialObj =
+        persistence.write(
+            CommitTestObj.builder()
+                .id(persistence.generateId())
+                .text("initial")
+                .seq(1)
+                .tail(new long[0])
+                .build(),
+            CommitTestObj.class);
+    var referenceName = testInfo.getTestMethod().orElseThrow().getName();
+    var cleanupFailure = new RuntimeException("simulated cleanup failure");
+    var updateAttempts = new AtomicInteger();
+
+    persistence.createReference(referenceName, Optional.of(objRef(initialObj)));
+
+    var failingCleanupPersistence =
+        new DelegatingPersistence(persistence) {
+          @Override
+          public Optional<Reference> updateReferencePointer(
+              Reference reference, ObjRef newPointer) {
+            if (updateAttempts.incrementAndGet() == 1) {
+              return Optional.empty();
+            }
+            return delegate.updateReferencePointer(reference, newPointer);
+          }
+
+          @Override
+          public void deleteMany(ObjRef... ids) {
+            throw cleanupFailure;
+          }
+
+          @Override
+          public PersistenceParams params() {
+            return ONE_RETRY_PARAMS;
+          }
+        };
+
+    var committer =
+        new CommitterImpl<>(
+            failingCleanupPersistence, referenceName, CommitTestObj.class, String.class);
+    soft.assertThat(
+            committer.commit(
+                (state, refObjSupplier) ->
+                    state.commitResult(
+                        "result", CommitTestObj.builder().text("result"), refObjSupplier.get())))
+        .contains("result");
+
+    soft.assertThat(updateAttempts).hasValue(2);
+    soft.assertThat(persistence.fetchReferenceHead(referenceName, CommitTestObj.class))
+        .get()
+        .extracting(CommitTestObj::text)
+        .isEqualTo("result");
   }
 
   @Test

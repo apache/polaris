@@ -21,7 +21,8 @@ package org.apache.polaris.service.it.nosql;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
 import org.apache.polaris.service.it.test.PolarisManagementServiceIntegrationTest;
+import org.apache.polaris.test.commons.NoSqlInMemoryProfile;
 
 @QuarkusIntegrationTest
-@TestProfile(value = NoSqlTesting.PersistenceInMemoryProfile.class)
+@TestProfile(value = NoSqlInMemoryProfile.class)
 public class NoSqlManagementServiceIT extends PolarisManagementServiceIntegrationTest {}

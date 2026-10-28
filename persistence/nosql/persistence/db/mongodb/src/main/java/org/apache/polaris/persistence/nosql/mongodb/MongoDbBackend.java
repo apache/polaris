@@ -51,8 +51,13 @@ import com.mongodb.MongoException;
 import com.mongodb.MongoExecutionTimeoutException;
 import com.mongodb.MongoInterruptedException;
 import com.mongodb.MongoServerUnavailableException;
+import com.mongodb.MongoSocketClosedException;
+import com.mongodb.MongoSocketReadException;
 import com.mongodb.MongoSocketReadTimeoutException;
+import com.mongodb.MongoSocketWriteException;
+import com.mongodb.MongoSocketWriteTimeoutException;
 import com.mongodb.MongoTimeoutException;
+import com.mongodb.MongoWriteConcernException;
 import com.mongodb.MongoWriteException;
 import com.mongodb.WriteError;
 import com.mongodb.bulk.BulkWriteError;
@@ -340,7 +345,7 @@ final class MongoDbBackend implements Backend {
     try {
       refs().insertMany(docs, new InsertManyOptions().ordered(false));
     } catch (MongoBulkWriteException e) {
-      if (e.getWriteErrors().stream().anyMatch(we -> we.getCategory() != DUPLICATE_KEY)) {
+      if (isBulkWriteFailure(e)) {
         throw unhandledException(e);
       }
     } catch (RuntimeException e) {
@@ -617,14 +622,24 @@ final class MongoDbBackend implements Backend {
     if (e instanceof MongoInterruptedException
         || e instanceof MongoTimeoutException
         || e instanceof MongoServerUnavailableException
+        || e instanceof MongoSocketClosedException
+        || e instanceof MongoSocketReadException
         || e instanceof MongoSocketReadTimeoutException
+        || e instanceof MongoSocketWriteException
+        || e instanceof MongoSocketWriteTimeoutException
         || e instanceof MongoExecutionTimeoutException) {
+      return new UnknownOperationResultException(e);
+    }
+    if (e instanceof MongoWriteConcernException) {
       return new UnknownOperationResultException(e);
     }
     if (e instanceof MongoWriteException mongoWriteException) {
       return handleMongoWriteException(mongoWriteException);
     }
     if (e instanceof MongoBulkWriteException specific) {
+      if (specific.getWriteConcernError() != null) {
+        return new UnknownOperationResultException(e);
+      }
       for (BulkWriteError error : specific.getWriteErrors()) {
         switch (error.getCategory()) {
           case EXECUTION_TIMEOUT:
@@ -636,6 +651,16 @@ final class MongoDbBackend implements Backend {
       }
     }
     return e;
+  }
+
+  /**
+   * Whether a bulk write failed for a reason other than documents that already exist. A
+   * write-concern error means the writes may or may not have been applied, so it must be reported
+   * rather than treated like a duplicate key.
+   */
+  static boolean isBulkWriteFailure(MongoBulkWriteException e) {
+    return e.getWriteConcernError() != null
+        || e.getWriteErrors().stream().anyMatch(we -> we.getCategory() != DUPLICATE_KEY);
   }
 
   static RuntimeException handleMongoWriteException(MongoWriteException e) {

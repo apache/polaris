@@ -19,10 +19,10 @@
 package org.apache.polaris.persistence.nosql.api.obj;
 
 import com.fasterxml.jackson.annotation.JacksonInject;
-import com.fasterxml.jackson.databind.InjectableValues;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
 import org.jspecify.annotations.NonNull;
+import tools.jackson.databind.InjectableValues;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectReader;
 
 public final class ObjSerializationHelper {
   private ObjSerializationHelper() {}

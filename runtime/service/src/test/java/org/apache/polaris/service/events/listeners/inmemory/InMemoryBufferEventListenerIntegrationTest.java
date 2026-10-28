@@ -20,6 +20,10 @@
 package org.apache.polaris.service.events.listeners.inmemory;
 
 import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.CONVERTER;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SAMPLED_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SPAN_ID_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_FLAGS_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_ID_KEY;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -27,7 +31,6 @@ import static org.awaitility.Awaitility.await;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -41,7 +44,8 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
@@ -57,7 +61,8 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.entity.PolarisEvent;
+import org.apache.polaris.core.entity.EventEntity;
+import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
@@ -72,30 +77,9 @@ import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@TestProfile(InMemoryBufferEventListenerIntegrationTest.Profile.class)
+@TestProfile(Profiles.InMemoryBufferEventListenerIntegrationProfile.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
 class InMemoryBufferEventListenerIntegrationTest {
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .put("polaris.persistence.type", "relational-jdbc")
-          .put("polaris.persistence.auto-bootstrap-types", "relational-jdbc")
-          .put("quarkus.datasource.db-kind", "h2")
-          .put("quarkus.otel.sdk.disabled", "false")
-          .put(
-              "quarkus.datasource.jdbc.url",
-              "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE")
-          .put("polaris.event-listener.type", "persistence-in-memory-buffer")
-          .put("polaris.event-listener.persistence-in-memory-buffer.buffer-time", "100ms")
-          .put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true")
-          .put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\",\"S3\"]")
-          .put("polaris.readiness.ignore-severe-issues", "true")
-          .build();
-    }
-  }
 
   private RestApi managementApi;
   private PolarisApiEndpoints endpoints;
@@ -126,7 +110,7 @@ class InMemoryBufferEventListenerIntegrationTest {
         PolarisCatalog.builder()
             .setName(catalogName)
             .setType(Catalog.TypeEnum.INTERNAL)
-            .setProperties(CatalogProperties.builder("file:///tmp/").build())
+            .setProperties(CatalogProperties.builder(baseLocation.toString()).build())
             .setStorageConfigInfo(
                 FileStorageConfigInfo.builder()
                     .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
@@ -169,53 +153,64 @@ class InMemoryBufferEventListenerIntegrationTest {
           .create();
     }
 
-    String query =
-        "SELECT * FROM polaris_schema.events WHERE realm_id = '"
-            + realm
-            + "' ORDER BY timestamp_ms";
+    try (Response response = managementApi.request("v1/principals").get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
 
-    List<PolarisEvent> events =
+    String query = "SELECT * FROM events WHERE realm_id = '" + realm + "' ORDER BY timestamp_ms";
+
+    List<EventEntity> events =
         await()
             .atMost(Duration.ofSeconds(10))
             .until(
                 () -> {
-                  ImmutableList.Builder<PolarisEvent> e = ImmutableList.builder();
+                  ImmutableList.Builder<EventEntity> e = ImmutableList.builder();
                   try (Connection connection = dataSource.get().getConnection();
                       Statement statement = connection.createStatement();
                       ResultSet rs = statement.executeQuery(query)) {
                     while (rs.next()) {
-                      PolarisEvent event = CONVERTER.fromResultSet(rs);
+                      EventEntity event = CONVERTER.fromResultSet(rs);
                       e.add(event);
                     }
                   }
                   return e.build();
                 },
-                e -> e.size() >= 2);
+                e ->
+                    e.stream()
+                        .map(EventEntity::getEventType)
+                        .collect(Collectors.toSet())
+                        .containsAll(
+                            Set.of(
+                                "AFTER_CREATE_CATALOG",
+                                "AFTER_CREATE_TABLE",
+                                "AFTER_LIST_PRINCIPALS")));
 
-    PolarisEvent e1 =
+    EventEntity e1 =
         events.stream()
             .filter(e -> e.getEventType().equals("AFTER_CREATE_CATALOG"))
             .findFirst()
             .orElseThrow();
     assertThat(e1.getCatalogId()).isEqualTo(catalogName);
-    assertThat(e1.getResourceType()).isEqualTo(PolarisEvent.ResourceType.CATALOG);
+    assertThat(e1.getResourceType()).isEqualTo(EventEntity.ResourceType.CATALOG);
     assertThat(e1.getResourceIdentifier()).isEqualTo(catalogName);
     assertThat(e1.getEventType()).isEqualTo("AFTER_CREATE_CATALOG");
     assertThat(e1.getPrincipalName()).isEqualTo("root");
     assertThat(e1.getRequestId()).isEqualTo("12345");
     assertThat(e1.getAdditionalPropertiesAsMap())
-        .containsEntry("otel.trace_flags", "03") // trace-was-sampled + random-trace-id
-        .containsEntry("otel.sampled", "true")
-        .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
-        .hasEntrySatisfying("otel.span_id", value -> assertThat(value).matches("[0-9a-f]{16}"));
+        .containsEntry(OPEN_TELEMETRY_TRACE_FLAGS_KEY, "03") // trace-was-sampled + random-trace-id
+        .containsEntry(OPEN_TELEMETRY_SAMPLED_KEY, "true")
+        .hasEntrySatisfying(
+            OPEN_TELEMETRY_TRACE_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{32}"))
+        .hasEntrySatisfying(
+            OPEN_TELEMETRY_SPAN_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{16}"));
 
-    PolarisEvent e2 =
+    EventEntity e2 =
         events.stream()
             .filter(e -> e.getEventType().equals("AFTER_CREATE_TABLE"))
             .findFirst()
             .orElseThrow();
     assertThat(e2.getCatalogId()).isEqualTo(catalogName);
-    assertThat(e2.getResourceType()).isEqualTo(PolarisEvent.ResourceType.TABLE);
+    assertThat(e2.getResourceType()).isEqualTo(EventEntity.ResourceType.TABLE);
     assertThat(e2.getResourceIdentifier()).isEqualTo("db1.t1");
     assertThat(e2.getEventType()).isEqualTo("AFTER_CREATE_TABLE");
     assertThat(e2.getPrincipalName()).isEqualTo("root");
@@ -224,9 +219,20 @@ class InMemoryBufferEventListenerIntegrationTest {
         .containsEntry("catalog_name", catalogName)
         .containsEntry("table_name", "t1")
         .containsKey("namespace")
-        .containsEntry("otel.trace_flags", "03") // trace-was-sampled + random-trace-id
-        .containsEntry("otel.sampled", "true")
-        .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
-        .hasEntrySatisfying("otel.span_id", value -> assertThat(value).matches("[0-9a-f]{16}"));
+        .containsEntry(OPEN_TELEMETRY_TRACE_FLAGS_KEY, "03") // trace-was-sampled + random-trace-id
+        .containsEntry(OPEN_TELEMETRY_SAMPLED_KEY, "true")
+        .hasEntrySatisfying(
+            OPEN_TELEMETRY_TRACE_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{32}"))
+        .hasEntrySatisfying(
+            OPEN_TELEMETRY_SPAN_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{16}"));
+
+    EventEntity e3 =
+        events.stream()
+            .filter(e -> e.getEventType().equals("AFTER_LIST_PRINCIPALS"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(e3.getCatalogId()).isNull();
+    assertThat(e3.getResourceType()).isEqualTo(EventEntity.ResourceType.REALM);
+    assertThat(e3.getResourceIdentifier()).isEqualTo("AFTER_LIST_PRINCIPALS");
   }
 }

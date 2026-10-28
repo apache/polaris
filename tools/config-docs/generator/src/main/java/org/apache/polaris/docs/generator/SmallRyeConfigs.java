@@ -20,6 +20,8 @@ import static java.util.Objects.requireNonNull;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.ConfigMappingInterface;
+import io.smallrye.config.ConfigMappingLoader;
+import io.smallrye.config.ConfigMappingLoader.GeneratedConfigClass;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.HashMap;
@@ -76,6 +78,17 @@ public class SmallRyeConfigs {
     return requireNonNull(elem, "Could not find type '" + typeName + "'");
   }
 
+  private static ConfigMappingInterface getConfigMappingInterface(Class<?> clazz) {
+    for (GeneratedConfigClass generatedConfigClass :
+        ConfigMappingLoader.getGeneratedConfigClasses(clazz)) {
+      if (generatedConfigClass instanceof ConfigMappingInterface configMappingInterface
+          && configMappingInterface.getParent().equals(clazz)) {
+        return configMappingInterface;
+      }
+    }
+    return null;
+  }
+
   public SmallRyeConfigMappingInfo getConfigMappingInfo(Class<?> type) {
     var typeName = type.getName();
     // Normalize the type name to use '.' instead of '$' for inner classes
@@ -126,7 +139,7 @@ public class SmallRyeConfigs {
 
               clazz = loadClass(binaryName);
               try {
-                configMappingInterface = ConfigMappingInterface.getConfigurationInterface(clazz);
+                configMappingInterface = getConfigMappingInterface(clazz);
               } catch (RuntimeException ex) {
                 throw new RuntimeException("Failed to process mapped " + clazz, ex);
               }
@@ -139,7 +152,7 @@ public class SmallRyeConfigs {
               }
               clazz = loadClass(binaryName);
               try {
-                configMappingInterface = ConfigMappingInterface.getConfigurationInterface(clazz);
+                configMappingInterface = getConfigMappingInterface(clazz);
               } catch (RuntimeException ex) {
                 throw new RuntimeException("Failed to process implicitly added " + clazz, ex);
               }

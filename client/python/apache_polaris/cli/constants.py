@@ -65,6 +65,7 @@ class AuthenticationType(Enum):
 
     OAUTH = "oauth"
     BEARER = "bearer"
+    GCP = "gcp"
     SIGV4 = "sigv4"
     IMPLICIT = "implicit"
 
@@ -110,6 +111,8 @@ class Commands:
     POLICIES = "policies"
     SETUP = "setup"
     TABLES = "tables"
+    VIEWS = "views"
+    GENERIC_TABLES = "generic-tables"
     FIND = "find"
     REPL = "repl"
 
@@ -139,6 +142,7 @@ class Subcommands:
     APPLY = "apply"
     EXPORT = "export"
     SUMMARIZE = "summarize"
+    REGISTER = "register"
 
 
 class Actions:
@@ -163,6 +167,7 @@ class Arguments:
     TYPE = "type"
     DEFAULT_BASE_LOCATION = "default_base_location"
     STORAGE_TYPE = "storage_type"
+    STORAGE_NAME = "storage_name"
     ALLOWED_LOCATION = "allowed_location"
     ROLE_ARN = "role_arn"
     EXTERNAL_ID = "external_id"
@@ -184,6 +189,7 @@ class Arguments:
     NAMESPACE = "namespace"
     TABLE = "table"
     VIEW = "view"
+    GENERIC_TABLE = "generic-table"
     CASCADE = "cascade"
     CLIENT_SECRET = "client_secret"
     NEW_CLIENT_ID = "new_client_id"
@@ -191,12 +197,16 @@ class Arguments:
     ACCESS_TOKEN = "access_token"
     HOST = "host"
     PORT = "port"
+    SCHEME = "scheme"
     BASE_URL = "base_url"
+    CATALOG_URL = "catalog_url"
     PARENT = "parent"
     LOCATION = "location"
     REGION = "region"
     PROFILE = "profile"
     PROXY = "proxy"
+    SSL_CA_CERT = "ssl_ca_cert"
+    INSECURE = "insecure"
     DEBUG = "debug"
     HADOOP_WAREHOUSE = "hadoop_warehouse"
     HIVE_WAREHOUSE = "hive_warehouse"
@@ -208,6 +218,8 @@ class Arguments:
     KMS_UNAVAILABLE = "no_kms"
     KMS_KEY_CURRENT = "current_kms_key"
     KMS_KEY_ALLOWED = "allowed_kms_key"
+    KMS_KEY_ENCRYPTION = "encryption_key"
+    KMS_KEY_DECRYPTION = "decryption_key"
     PATH_STYLE_ACCESS = "path_style_access"
     CATALOG_CONNECTION_TYPE = "catalog_connection_type"
     CATALOG_AUTHENTICATION_TYPE = "catalog_authentication_type"
@@ -236,9 +248,13 @@ class Arguments:
     ATTACHMENT_PATH = "attachment_path"
     SETUP_CONFIG = "setup_config"
     DRY_RUN = "dry_run"
+    INCLUDE_TABLES_AND_VIEWS = "include_tables_and_views"
     REALM = "realm"
     HEADER = "header"
     IDENTIFIER = "identifier"
+    PAGE_SIZE = "page_size"
+    METADATA_LOCATION = "metadata_location"
+    OVERWRITE = "overwrite"
 
 
 class Hints:
@@ -272,6 +288,11 @@ class Hints:
         " no action is taken for the specified key. Multiple can be provided by specifying"
         " this option more than once"
     )
+    PAGE_SIZE = (
+        "Upper bound on the number of entries returned per API request where pagination is supported."
+        " Requires the server-side LIST_PAGINATION_ENABLED feature flag."
+        " If not set, fetches all results in a single API request."
+    )
 
     # Entities Hints
     CATALOG = "The name of a catalog"
@@ -281,6 +302,10 @@ class Hints:
     NAMESPACE = "A period-delimited namespace"
     TABLE = "The name of a table"
     VIEW = "The name of a view"
+
+    # Tables/Views Registration Hints
+    METADATA_LOCATION = "The absolute location of the Iceberg metadata file"
+    OVERWRITE = "Overwrite an existing table at the same identifier if the table is already registered"
 
     # Storage Hints
     ## S3
@@ -298,8 +323,10 @@ class Hints:
         "Indicates that Polaris should not use KMS (e.g. if KMS is not available)"
     )
     S3_PATH_STYLE_ACCESS = "Whether to use path-style-access for S3"
-    S3_KMS_KEY_CURRENT = "The AWS KMS key ARN to be used for encrypting new S3 data"
-    S3_KMS_KEY_ALLOWED = "AWS KMS key ARN(s) that this catalog and its clients are allowed to use for reading S3 data (zero or more)"
+    S3_KMS_KEY_CURRENT = "Deprecated. Use --encryption-key instead"
+    S3_KMS_KEY_ALLOWED = "Deprecated. Use --encryption-key instead"
+    S3_KMS_KEY_ENCRYPTION = "AWS KMS key identifier(s) that this catalog and its clients may use to encrypt S3 data; these keys are also granted decryption permissions (zero or more)"
+    S3_KMS_KEY_DECRYPTION = "AWS KMS key identifier(s) that this catalog and its clients may use to decrypt S3 data (zero or more)"
     ## Azure
     AZURE_TENANT_ID = "(Required) A tenant ID to use when connecting to Azure Storage"
     AZURE_MULTI_TENANT_APP_NAME = "The app name to use when connecting to Azure Storage"
@@ -358,6 +385,7 @@ HEADER_ENV = "HEADER"
 DEFAULT_HEADER = "Polaris-Realm"
 DEFAULT_HOSTNAME = "localhost"
 DEFAULT_PORT = 8181
+DEFAULT_SCHEME = "http"
 CONFIG_DIR = (os.environ.get("POLARIS_HOME") or "").strip() or os.path.expanduser(
     "~/.polaris"
 )

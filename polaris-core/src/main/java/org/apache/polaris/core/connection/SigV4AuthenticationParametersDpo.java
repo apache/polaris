@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.iceberg.aws.AwsProperties;
 import org.apache.iceberg.rest.auth.AuthProperties;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
@@ -57,18 +58,24 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
   @JsonProperty(value = "signingName")
   private final String signingName;
 
+  // An optional IAM session policy (JSON) attached to the STS AssumeRole request
+  @JsonProperty(value = "sessionPolicy")
+  private final String sessionPolicy;
+
   public SigV4AuthenticationParametersDpo(
       @JsonProperty(value = "roleArn", required = true) String roleArn,
       @JsonProperty(value = "roleSessionName", required = false) String roleSessionName,
       @JsonProperty(value = "externalId", required = false) String externalId,
       @JsonProperty(value = "signingRegion", required = true) String signingRegion,
-      @JsonProperty(value = "signingName", required = false) String signingName) {
+      @JsonProperty(value = "signingName", required = false) String signingName,
+      @JsonProperty(value = "sessionPolicy", required = false) String sessionPolicy) {
     super(AuthenticationType.SIGV4.getCode());
     this.roleArn = roleArn;
     this.roleSessionName = roleSessionName;
     this.externalId = externalId;
     this.signingRegion = signingRegion;
     this.signingName = signingName;
+    this.sessionPolicy = sessionPolicy;
   }
 
   public @NonNull String getRoleArn() {
@@ -89,6 +96,10 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
 
   public @Nullable String getSigningName() {
     return signingName;
+  }
+
+  public @Nullable String getSessionPolicy() {
+    return sessionPolicy;
   }
 
   @NonNull
@@ -114,6 +125,7 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
         .setExternalId(getExternalId())
         .setSigningRegion(getSigningRegion())
         .setSigningName(getSigningName())
+        .setSessionPolicy(getSessionPolicy())
         .build();
   }
 
@@ -126,6 +138,7 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
         .add("externalId", getExternalId())
         .add("signingRegion", getSigningRegion())
         .add("signingName", getSigningName())
+        .add("hasSessionPolicy", StringUtils.isNotEmpty(getSessionPolicy()))
         .toString();
   }
 }

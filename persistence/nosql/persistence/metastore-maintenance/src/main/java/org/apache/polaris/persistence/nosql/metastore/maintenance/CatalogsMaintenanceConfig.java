@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.persistence.nosql.metastore.maintenance;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /**
  * No SQL persistence implementation of Polaris stores a history of changes per kind of object

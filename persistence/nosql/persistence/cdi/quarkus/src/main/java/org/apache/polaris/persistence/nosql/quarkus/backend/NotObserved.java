@@ -33,4 +33,4 @@ import java.lang.annotation.Target;
 @Retention(RUNTIME)
 @Documented
 @Qualifier
-public @interface NotObserved {}
+@interface NotObserved {}

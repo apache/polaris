@@ -59,6 +59,13 @@ gradle/wrapper/gradle-wrapper-*.sha256
 .classpath
 .env
 
+# Buildship (Eclipse/jdt.ls) import artifacts, generated per Gradle module
+.settings/
+bin/
+
+# Kotlin language server database
+kls_database.db
+
 # IntelliJ
 .idea/
 *.iml
@@ -69,6 +76,8 @@ gradle/wrapper/gradle-wrapper-*.sha256
 /.gradle
 /build-logic/.gradle
 /build-logic/.kotlin
+/gradle/server-test-runner/.gradle
+/gradle/server-test-runner/.kotlin
 **/build/
 !src/**/build/
 
@@ -110,6 +119,8 @@ venv
 # to override default properties for local development.
 # And then use `./gradlew run -Dquarkus.profile=local` to run Polaris with dev profile.
 application-local.properties
+
+/.env
 
 # AI / Agentic Development Tools
 .agents/

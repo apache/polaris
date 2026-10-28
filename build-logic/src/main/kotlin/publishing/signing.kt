@@ -24,7 +24,9 @@ import org.gradle.api.tasks.TaskProvider
 import org.gradle.internal.extensions.stdlib.capitalized
 import org.gradle.plugins.signing.SigningExtension
 
-fun Project.isSigningEnabled(): Boolean = hasProperty("release") || hasProperty("signArtifacts")
+fun Project.isSigningEnabled(): Boolean =
+  providers.gradleProperty("release").isPresent ||
+    providers.gradleProperty("signArtifacts").isPresent
 
 /**
  * Convenience function to sign all output files of the given task.
