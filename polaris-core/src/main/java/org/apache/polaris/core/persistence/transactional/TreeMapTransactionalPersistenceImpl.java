@@ -711,7 +711,8 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
           continue;
         }
         if (containsEntity || containedByEntity) {
-          return new LocationOverlapResult.Overlap(maybeSiblingLocationWithoutScheme.toString());
+          return new LocationOverlapResult.Overlap(
+              siblingEntity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION));
         }
       }
     }

@@ -79,7 +79,9 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
     var other = new LocationBasedTestEntity(buildNamespace(catalog, existing.getId() + 1));
     var conflict =
         metaStoreManager.hasOverlappingSiblings(callContext, other, allowedContainerIds, null);
-    assertThat(conflict).isInstanceOf(LocationOverlapResult.Overlap.class);
+    // The conflicting location is the location of the existing entity, as it is stored.
+    assertThat(conflict)
+        .isEqualTo(new LocationOverlapResult.Overlap("s3://bucket/warehouse/existing/"));
 
     // The persisted entity itself, e.g. when renamed, is not a conflict.
     var self = new LocationBasedTestEntity(buildNamespace(catalog, existing.getId()));
