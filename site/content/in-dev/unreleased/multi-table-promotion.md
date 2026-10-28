@@ -122,8 +122,9 @@ POST /api/catalog/v1/lake/transactions/commit
 }
 ```
 
-Readers now see the new state of every table. If another writer changed `main` of any of the
-tables after you read it, the commit fails with `409 Conflict` and none of the tables change.
+The commit changes every table or none of them: a reader that loads a table after it sees the new
+state of that table. If another writer changed `main` of any of the tables after you read it, the
+commit fails with `409 Conflict` and none of the tables change.
 
 Only move `main` forward: the branch should have been created from the snapshot `main` still
 points to, so the new snapshot of `main` contains everything that was in the old one. If `main`
@@ -137,7 +138,7 @@ cleans up as usual.
 
 ## What this does not cover
 
-These limits come from Iceberg table branches:
+These limits come from Iceberg table branches and from loading tables one at a time:
 
 * **Schema changes are table-wide.** A schema change made while writing to the branch becomes the
   table's current schema for readers of `main` too, before the branch is promoted.
@@ -145,6 +146,9 @@ These limits come from Iceberg table branches:
   "on the branch".
 * **The client keeps track of the tables.** Polaris doesn't know which tables belong to a branch;
   finding them means loading each table.
+* **Reads across tables aren't pinned to one point.** Readers still load each table separately, so
+  a reader that loads `orders` before the promotion and `items` after it sees a mix of old and new
+  data.
 
 ## Notes
 

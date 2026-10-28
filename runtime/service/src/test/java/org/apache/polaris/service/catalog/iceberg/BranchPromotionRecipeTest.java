@@ -37,6 +37,7 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -114,7 +115,7 @@ public class BranchPromotionRecipeTest {
                     new MetadataUpdate.AddSnapshot(snapshot(moved, concurrent, bases.get(1))),
                     setRef("main", concurrent)))));
 
-    assertThatThrownBy(() -> promote(bases, heads)).isNotNull();
+    assertThatThrownBy(() -> promote(bases, heads)).isInstanceOf(CommitFailedException.class);
 
     assertThat(load(TABLES.get(0)).ref("main").snapshotId()).isEqualTo(bases.get(0));
     assertThat(load(moved).ref("main").snapshotId()).isEqualTo(concurrent);
@@ -139,7 +140,7 @@ public class BranchPromotionRecipeTest {
       changes.add(
           UpdateTableRequest.create(
               TableIdentifier.of(NAMESPACE, TABLES.get(i)),
-              List.of(),
+              List.of(new UpdateRequirement.AssertRefSnapshotID("main", bases.get(i))),
               List.of(setRef(BRANCH, bases.get(i)))));
     }
     commit(changes);
