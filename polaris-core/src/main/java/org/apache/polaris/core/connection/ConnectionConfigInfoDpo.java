@@ -183,7 +183,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     try {
       URI uriObj = URI.create(uri);
       if (connectionTypeCode == ConnectionType.HIVE.getCode()
-          && "thrift".equals(uriObj.getScheme())) {
+          && "thrift".equalsIgnoreCase(uriObj.getScheme())) {
         // Hive metastore runs a thrift server.
         return;
       }
