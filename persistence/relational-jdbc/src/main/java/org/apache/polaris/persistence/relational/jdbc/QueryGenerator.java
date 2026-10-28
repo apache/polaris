@@ -19,6 +19,7 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -384,7 +385,7 @@ public class QueryGenerator {
    */
   @VisibleForTesting
   public static PreparedQuery generateOverlapQuery(
-      String realmId, long catalogId, String baseLocation) {
+      String realmId, long catalogId, String baseLocation, @Nullable StorageLocation scope) {
     StorageLocation baseStorageLocation = StorageLocation.of(baseLocation);
     String locationWithoutScheme = baseStorageLocation.withoutScheme();
 
@@ -393,10 +394,7 @@ public class QueryGenerator {
 
     // Normalize by stripping any trailing slash so the scan below only emits meaningful prefixes.
     // The slash-terminated form is re-added as the last prefix term below.
-    String normalizedLocation = locationWithoutScheme;
-    if (normalizedLocation.endsWith("/")) {
-      normalizedLocation = normalizedLocation.substring(0, normalizedLocation.length() - 1);
-    }
+    String normalizedLocation = stripTrailingSlash(locationWithoutScheme);
 
     Set<String> prefixTerms = new LinkedHashSet<>();
     for (int i = 0; i < normalizedLocation.length(); i++) {
@@ -409,6 +407,33 @@ public class QueryGenerator {
     }
     prefixTerms.add(normalizedLocation);
     prefixTerms.add(normalizedLocation + "/");
+
+    // The location whose descendants are matched by the LIKE condition below.
+    String descendantsRoot = locationWithoutScheme;
+
+    if (scope != null) {
+      // Only the entities located inside the scope, i.e. at exactly the scope or below it, can
+      // match.
+      if (baseStorageLocation.isChildOf(scope)) {
+        // All the descendants of the location are inside the scope, but only some of its ancestors.
+        // The prefixes are compared as plain strings, like the stored locations are by the query.
+        String scopePrefix = StorageLocation.ensureTrailingSlash(scope.withoutScheme());
+        prefixTerms.removeIf(
+            prefix -> !StorageLocation.ensureTrailingSlash(prefix).startsWith(scopePrefix));
+      } else {
+        // Only the descendants of the scope can match, and no ancestor of the location can.
+        Preconditions.checkArgument(
+            scope.isChildOf(baseStorageLocation),
+            "The scope %s and the location %s are not nested",
+            scope,
+            baseLocation);
+        String normalizedScope = stripTrailingSlash(scope.withoutScheme());
+        prefixTerms.clear();
+        prefixTerms.add(normalizedScope);
+        prefixTerms.add(normalizedScope + "/");
+        descendantsRoot = normalizedScope;
+      }
+    }
 
     for (String prefix : prefixTerms) {
       // Skip only "/", which can never be a meaningful storage location. "//" is kept: in
@@ -430,8 +455,7 @@ public class QueryGenerator {
     // (the caller's precise re-check still filters those) and a literal \ could hide true
     // descendants.
     conditions.add("location_without_scheme LIKE ? ESCAPE '\\'");
-    parameters.add(
-        escapeLikePattern(StorageLocation.ensureTrailingSlash(locationWithoutScheme)) + "%");
+    parameters.add(escapeLikePattern(StorageLocation.ensureTrailingSlash(descendantsRoot)) + "%");
 
     String locationClause = String.join(" OR ", conditions);
     String clause = " WHERE realm_id = ? AND catalog_id = ? AND (" + locationClause + ")";
@@ -447,6 +471,14 @@ public class QueryGenerator {
         generateSelectQuery(
             ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, where.sql(), null);
     return new PreparedQuery(query.sql(), where.parameters());
+  }
+
+  /**
+   * Strips a single trailing slash, if any. Unlike stripping all of them, this keeps the bare
+   * scheme roots, which are persisted as {@code //} or {@code ///}, meaningful.
+   */
+  private static String stripTrailingSlash(String location) {
+    return location.endsWith("/") ? location.substring(0, location.length() - 1) : location;
   }
 
   /**

@@ -133,7 +133,7 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(
-                callContext, candidateNamespace, Set.of(catalog.getId())))
+                callContext, candidateNamespace, Set.of(catalog.getId()), null))
         .isEqualTo(new LocationOverlapResult.Overlap("s3://bucket/warehouse/existing/"));
 
     TestLocationBasedEntity nonOverlappingNamespace =
@@ -146,7 +146,7 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(
-                callContext, nonOverlappingNamespace, Set.of(catalog.getId())))
+                callContext, nonOverlappingNamespace, Set.of(catalog.getId()), null))
         .isEqualTo(new LocationOverlapResult.NoOverlap());
 
     // The persisted entity itself, e.g. when renamed, does not conflict with its own location.
@@ -157,7 +157,7 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(
-                callContext, renamedNamespace, Set.of(catalog.getId())))
+                callContext, renamedNamespace, Set.of(catalog.getId()), null))
         .isEqualTo(new LocationOverlapResult.NoOverlap());
   }
 

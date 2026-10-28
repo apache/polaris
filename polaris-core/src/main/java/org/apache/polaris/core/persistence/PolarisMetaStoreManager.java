@@ -53,6 +53,7 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -477,8 +478,11 @@ public interface PolarisMetaStoreManager
    * @param allowedContainerIds the ids of the namespaces (and catalog) that may contain the
    *     entity's location without being reported as conflicts. This is normally the ids of the
    *     entity's parent path: the catalog and each parent namespace, not including the entity
-   *     itself. When an existing entity is being moved, callers may also include the ids of its
-   *     current parents, since it is still located under them.
+   *     itself.
+   * @param scope if not null, only the entities whose base location is inside this location (or
+   *     equal to it) are considered; the others are ignored. This is meant for an existing entity
+   *     that is moved, e.g. renamed, into another namespace: it keeps its location, so its
+   *     relationship with the entities outside of the destination namespace does not change.
    * @return {@link LocationOverlapResult.Overlap} with the base location of a conflicting entity,
    *     {@link LocationOverlapResult.NoOverlap} if there is no conflict, and {@link
    *     LocationOverlapResult.Unsupported} if the metastore doesn't support this operation
@@ -487,7 +491,8 @@ public interface PolarisMetaStoreManager
       LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
-          @NonNull Set<Long> allowedContainerIds) {
+          @NonNull Set<Long> allowedContainerIds,
+          @Nullable StorageLocation scope) {
     return new LocationOverlapResult.Unsupported();
   }
 

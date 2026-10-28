@@ -1211,10 +1211,22 @@ public class IcebergAllowedLocationTest {
   }
 
   @ParameterizedTest
-  @CsvSource({"true,t", "false,t", "true,child", "false,child"})
+  @CsvSource({
+    "true,t,true",
+    "false,t,true",
+    "true,child,true",
+    "false,child,true",
+    "true,t,false",
+    "false,t,false",
+    "true,child,false",
+    "false,child,false"
+  })
   void testRenameTableIntoAncestorNamespaceRequiresLocationOverlap(
-      boolean allowOverlap, String destinationName, @TempDir Path tmpDir) {
-    var services = getRenameTestServices(false);
+      boolean allowOverlap,
+      String destinationName,
+      boolean optimizedSiblingCheck,
+      @TempDir Path tmpDir) {
+    var services = getRenameTestServices(optimizedSiblingCheck);
     var catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
     createCatalog(
         services,
@@ -1315,6 +1327,67 @@ public class IcebergAllowedLocationTest {
     TableIdentifier renamed = TableIdentifier.of("dst", "v");
     renameView(services, TableIdentifier.of("src", "v"), renamed);
     newHandler(services).viewExists(renamed);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testRepeatedRenamesWithUnstructuredLocations(
+      boolean optimizedSiblingCheck, @TempDir Path tmpDir) {
+    var services = getRenameTestServices(optimizedSiblingCheck);
+    var catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    createCatalog(
+        services,
+        Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"),
+        catalogLocation,
+        List.of(catalogLocation));
+    createRenameNamespaces(services);
+    assertThat(createNamespaceStatus(services, "third", null))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+    createTable(services, "src", "t", null);
+
+    // The table's data stays under the "src" namespace, whichever namespace it is renamed into.
+    TableIdentifier inDst = TableIdentifier.of("dst", "t");
+    renameTable(services, TableIdentifier.of("src", "t"), inDst);
+    newHandler(services).tableExists(inDst);
+
+    TableIdentifier inThird = TableIdentifier.of("third", "t");
+    renameTable(services, inDst, inThird);
+    newHandler(services).tableExists(inThird);
+
+    TableIdentifier backInSrc = TableIdentifier.of("src", "t");
+    renameTable(services, inThird, backInSrc);
+    newHandler(services).tableExists(backInSrc);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testRenameViewIntoAncestorNamespaceRejectsOverlappingSibling(
+      boolean optimizedSiblingCheck, @TempDir Path tmpDir) {
+    var services = getRenameTestServices(optimizedSiblingCheck);
+    var catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    Namespace parent = Namespace.of("parent");
+    Namespace child = Namespace.of("parent", "child");
+    for (Namespace ns : List.of(parent, child)) {
+      newHandler(services)
+          .createNamespace(CreateNamespaceRequest.builder().withNamespace(ns).build());
+    }
+    newHandler(services)
+        .createView(
+            child,
+            ImmutableCreateViewRequest.builder()
+                .name("v")
+                .schema(SCHEMA)
+                .viewVersion(VIEW_VERSION)
+                .build());
+    TableIdentifier source = TableIdentifier.of(child, "v");
+
+    // The view's location is under the parent namespace, but also under the child namespace, which
+    // becomes the view's sibling.
+    assertThatThrownBy(() -> renameView(services, source, TableIdentifier.of(parent, "v")))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+    newHandler(services).viewExists(source);
   }
 
   @Test

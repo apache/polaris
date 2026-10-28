@@ -76,6 +76,7 @@ import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -1805,9 +1806,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
-          @NonNull Set<Long> allowedContainerIds) {
+          @NonNull Set<Long> allowedContainerIds,
+          @Nullable StorageLocation scope) {
     BasePersistence ms = callContext.getMetaStore();
-    return ms.hasOverlappingSiblings(callContext, entity, allowedContainerIds);
+    return ms.hasOverlappingSiblings(callContext, entity, allowedContainerIds, scope);
   }
 
   @Override

@@ -57,6 +57,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -369,7 +370,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
-          @NonNull Set<Long> allowedContainerIds) {
+          @NonNull Set<Long> allowedContainerIds,
+          @Nullable StorageLocation scope) {
     throw illegalMethodError("hasOverlappingSiblings");
   }
 

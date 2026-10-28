@@ -797,15 +797,26 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
-          @NonNull Set<Long> allowedContainerIds) {
+          @NonNull Set<Long> allowedContainerIds,
+          @Nullable StorageLocation scope) {
     if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count()
         > MAX_LOCATION_COMPONENTS) {
       return new LocationOverlapResult.Unsupported();
     }
 
+    StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
+
+    if (scope != null) {
+      // Only the entities located inside the scope are considered: if the scope and the entity's
+      // location are not nested, there is none that can overlap the location.
+      if (!entityLocation.isChildOf(scope) && !scope.isChildOf(entityLocation)) {
+        return new LocationOverlapResult.NoOverlap();
+      }
+    }
+
     PreparedQuery query =
         QueryGenerator.generateOverlapQuery(
-            realmId, entity.getCatalogId(), entity.getBaseLocation());
+            realmId, entity.getCatalogId(), entity.getBaseLocation(), scope);
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity());
       if (results.isEmpty()) {
@@ -815,7 +826,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       // of the entity's location. The entity's own parent namespaces may match the ancestor terms:
       // they always do when locations follow the namespace tree, as default locations do. Such an
       // ancestor is not a sibling.
-      StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
       for (PolarisBaseEntity result : results) {
         if (result.getId() == entity.getId()) {
           continue;

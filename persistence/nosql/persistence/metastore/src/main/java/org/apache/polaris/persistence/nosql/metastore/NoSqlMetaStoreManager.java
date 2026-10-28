@@ -77,6 +77,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.nosql.metastore.mutation.GrantsMutation;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
 import org.jspecify.annotations.NonNull;
@@ -497,9 +498,10 @@ record NoSqlMetaStoreManager(
       LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
-          @NonNull Set<Long> allowedContainerIds) {
+          @NonNull Set<Long> allowedContainerIds,
+          @Nullable StorageLocation scope) {
     return ms(callContext)
-        .hasOverlappingSiblings(entity, allowedContainerIds)
+        .hasOverlappingSiblings(entity, allowedContainerIds, scope)
         .<LocationOverlapResult>map(LocationOverlapResult.Overlap::new)
         .orElseGet(LocationOverlapResult.NoOverlap::new);
   }

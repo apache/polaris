@@ -630,7 +630,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   <T extends PolarisEntity & LocationBasedEntity> Optional<String> hasOverlappingSiblings(
-      T entity, Set<Long> allowedContainerIds) {
+      T entity, Set<Long> allowedContainerIds, @Nullable StorageLocation scope) {
     var baseLocation = entity.getBaseLocation();
     if (baseLocation == null) {
       return Optional.empty();
@@ -641,11 +641,35 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
     // The entity's own parent namespaces may contain its location: they always do when locations
     // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
-    return hasOverlappingSiblings(catalogId, checkLocation, allowedContainerIds, entity.getId());
+    return hasOverlappingSiblings(
+        catalogId, checkLocation, allowedContainerIds, entity.getId(), scope);
   }
 
   Optional<String> hasOverlappingSiblings(
-      long catalogId, String checkLocation, Set<Long> ancestorIds, long entityId) {
+      long catalogId,
+      String checkLocation,
+      Set<Long> ancestorIds,
+      long entityId,
+      @Nullable StorageLocation scope) {
+    var locationIdentifier = identifierFromLocationString(checkLocation);
+    var scopeIdentifier =
+        scope == null ? null : identifierFromLocationString(scope.withoutScheme());
+
+    // With a scope, only the entities located inside the scope are considered. The candidates are
+    // the descendants of the location (including an entity at exactly the location) and its
+    // ancestors:
+    // - If the location is inside the scope, all its descendants are inside the scope, but only
+    //   the ancestors that are at least as deep as the scope are.
+    // - If the scope is inside the location, only the descendants of the scope can match, and no
+    //   ancestor can: it would be shallower than the scope.
+    // - Otherwise, nothing can match.
+    var locationInsideScope =
+        scopeIdentifier == null || locationIdentifier.startsWith(scopeIdentifier);
+    if (!locationInsideScope && !scopeIdentifier.startsWith(locationIdentifier)) {
+      return Optional.empty();
+    }
+    var scanIdentifier = locationInsideScope ? locationIdentifier : scopeIdentifier;
+
     return memoizedIndexedAccess
         .catalogContent(catalogId)
         .refObj()
@@ -661,18 +685,15 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               var byName =
                   catalogStateObj.nameToObjRef().indexForRead(persistence, OBJ_REF_SERIALIZER);
 
-              var locationIdentifier = identifierFromLocationString(checkLocation);
-              var locationIndexKey = locationIdentifier.toIndexKey();
-
               // Check for children and exact matches first using forward iteration (preserves
               // existing test expectations on which conflicting location is reported).
               // Also iterate fully in case early entries are filtered out.
-              var iter = locationsIndex.iterator(locationIndexKey, null, false);
+              var iter = locationsIndex.iterator(scanIdentifier.toIndexKey(), null, false);
               while (iter.hasNext()) {
                 var elem = iter.next();
                 var elemKey = elem.key();
                 var elemIdentifier = indexKeyToIdentifier(elemKey);
-                if (!elemIdentifier.startsWith(locationIdentifier)) {
+                if (!elemIdentifier.startsWith(scanIdentifier)) {
                   break; // No more matches due to ordering
                 }
 
@@ -702,7 +723,11 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
               // Check for parent (prefix) overlaps. These have shorter keys and are missed by
               // forward iteration starting at the full target key.
-              for (int i = 1; i <= locationIdentifier.length(); i++) {
+              var firstPrefixLength =
+                  locationInsideScope
+                      ? scopeIdentifier == null ? 1 : Math.max(1, scopeIdentifier.length())
+                      : locationIdentifier.length() + 1;
+              for (int i = firstPrefixLength; i <= locationIdentifier.length(); i++) {
                 var prefixElements = locationIdentifier.elements().subList(0, i);
                 var prefix = ContentIdentifier.identifier(prefixElements);
                 var prefixKey = prefix.toIndexKey();

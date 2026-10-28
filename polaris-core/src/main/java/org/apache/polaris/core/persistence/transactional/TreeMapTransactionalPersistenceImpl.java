@@ -677,11 +677,15 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
           T entity,
-          @NonNull Set<Long> allowedContainerIds) {
+          @NonNull Set<Long> allowedContainerIds,
+          @Nullable StorageLocation scope) {
     // TODO we could optimize this full scan
     StorageLocation entityLocationWithoutScheme =
         StorageLocation.of(StorageLocation.of(entity.getBaseLocation()).withoutScheme());
     List<PolarisBaseEntity> allEntities = this.store.getSliceEntities().readRange("");
+
+    StorageLocation scopeWithoutScheme =
+        scope == null ? null : StorageLocation.of(scope.withoutScheme());
 
     // The entity's own parent namespaces may contain its location: they always do when locations
     // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
@@ -692,6 +696,10 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       Optional<StorageLocation> maybeSiblingLocationWithoutScheme =
           getEntityLocationWithoutScheme(siblingEntity).map(StorageLocation::of);
       if (maybeSiblingLocationWithoutScheme.isPresent()) {
+        if (scopeWithoutScheme != null
+            && !maybeSiblingLocationWithoutScheme.get().isChildOf(scopeWithoutScheme)) {
+          continue;
+        }
         boolean containsEntity =
             entityLocationWithoutScheme.isChildOf(maybeSiblingLocationWithoutScheme.get());
         boolean containedByEntity =
