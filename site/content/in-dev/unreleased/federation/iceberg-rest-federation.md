@@ -105,10 +105,18 @@ Connection config properties (URI and authentication) take precedence if the sam
 ### Custom HTTP headers
 
 Properties prefixed with `header.` add an HTTP header to every request sent to the remote catalog.
+These can be specified as connection properties or catalog properties (connection properties take precedence).
 For example, BigLake requires a billing project on each request:
 
 ```bash
 polaris catalogs update analytics_rest \
+    --set-property header.x-goog-user-project=my-gcp-project
+```
+
+Or configure custom headers directly on the connection:
+
+```bash
+polaris connections update my_rest_connection \
     --set-property header.x-goog-user-project=my-gcp-project
 ```
 

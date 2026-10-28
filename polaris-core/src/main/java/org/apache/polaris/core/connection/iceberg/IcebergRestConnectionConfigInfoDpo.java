@@ -21,7 +21,6 @@ package org.apache.polaris.core.connection.iceberg;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.iceberg.CatalogProperties;
@@ -44,7 +43,7 @@ import org.jspecify.annotations.Nullable;
 public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
     implements IcebergCatalogPropertiesProvider {
 
-  private static final List<String> ALLOWED_PROPERTIES = List.of("header.x-goog-user-project");
+  private static final String HEADER_PREFIX = "header.";
 
   private final String remoteCatalogName;
 
@@ -86,7 +85,13 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
     // Add authentication-specific metadata (non-credential properties)
     properties.putAll(getAuthenticationParameters().asIcebergCatalogProperties(credentialManager));
 
-    copyAllowedProperties(properties, ALLOWED_PROPERTIES);
+    getProperties()
+        .forEach(
+            (key, value) -> {
+              if (key.startsWith(HEADER_PREFIX)) {
+                properties.put(key, value);
+              }
+            });
 
     // Add connection credentials from Polaris credential manager
     ConnectionCredentials connectionCredentials = credentialManager.getConnectionCredentials(this);

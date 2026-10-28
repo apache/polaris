@@ -58,6 +58,28 @@ class IcebergRestConnectionConfigInfoDpoTest {
     assertThat(properties).containsEntry(expectedKey, expectedValue);
   }
 
+  @Test
+  void testForwardArbitraryHeaderProperties() {
+    IcebergRestConnectionConfigInfoDpo dpo =
+        createDpo(
+            Map.of(
+                "header.x-goog-user-project", "my-project",
+                "header.x-custom-request-id", "req-12345",
+                "header.x-tenant-id", "tenant-a",
+                "unrelated.property", "ignored-value"));
+    PolarisCredentialManager mockCredentialManager = mock(PolarisCredentialManager.class);
+    ConnectionCredentials mockCredentials = mock(ConnectionCredentials.class);
+    when(mockCredentials.credentials()).thenReturn(Map.of());
+    when(mockCredentialManager.getConnectionCredentials(dpo)).thenReturn(mockCredentials);
+
+    Map<String, String> properties = dpo.asIcebergCatalogProperties(mockCredentialManager);
+    assertThat(properties)
+        .containsEntry("header.x-goog-user-project", "my-project")
+        .containsEntry("header.x-custom-request-id", "req-12345")
+        .containsEntry("header.x-tenant-id", "tenant-a")
+        .doesNotContainKey("unrelated.property");
+  }
+
   private static @NonNull IcebergRestConnectionConfigInfoDpo createDpo(
       Map<String, String> additionalHeaders) {
     return new IcebergRestConnectionConfigInfoDpo(
