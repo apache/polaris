@@ -3132,13 +3132,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                 .build();
       } else {
         // If the notification timestamp is out-of-order, we should not update the table
-        if (entity.getLastAdmittedNotificationTimestamp().isPresent()
-            && request.getPayload().getTimestamp()
-                <= entity.getLastAdmittedNotificationTimestamp().get()) {
-          throw new AlreadyExistsException(
-              "A notification with a newer timestamp has been processed for table %s",
-              tableIdentifier);
-        }
+        rejectOutOfOrderNotification(tableIdentifier, entity, request.getPayload().getTimestamp());
         existingLocation = entity.getMetadataLocation();
         entity =
             new IcebergTableLikeEntity.Builder(entity)
@@ -3222,6 +3216,15 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     return null;
   }
 
+  private static void rejectOutOfOrderNotification(
+      TableIdentifier tableIdentifier, IcebergTableLikeEntity entity, long notificationTimestamp) {
+    if (entity.getLastAdmittedNotificationTimestamp().isPresent()
+        && notificationTimestamp <= entity.getLastAdmittedNotificationTimestamp().get()) {
+      throw new AlreadyExistsException(
+          "A notification with a newer timestamp has been processed for table %s", tableIdentifier);
+    }
+  }
+
   private static final int MAX_NOTIFICATION_UPDATE_ATTEMPTS = 3;
 
   private void updateTableLikeForNotification(
@@ -3256,19 +3259,21 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                     entity.getCatalogId(),
                     entity.getId(),
                     PolarisEntityType.TABLE_LIKE);
+        if (reloadResult.getReturnStatus() == BaseResult.ReturnStatus.ENTITY_NOT_FOUND) {
+          throw notFoundExceptionForTableLikeEntity(
+              tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
+        }
         if (!reloadResult.isSuccess()) {
           throw e;
         }
         IcebergTableLikeEntity freshEntity = IcebergTableLikeEntity.of(reloadResult.getEntity());
-        if (freshEntity == null) {
+        // A concurrent rename keeps the entity id, so the reloaded entity may now be a different
+        // table identifier whose location this notification was not validated against.
+        if (freshEntity.getParentId() != entity.getParentId()
+            || !freshEntity.getName().equals(entity.getName())) {
           throw e;
         }
-        if (freshEntity.getLastAdmittedNotificationTimestamp().isPresent()
-            && notificationTimestamp <= freshEntity.getLastAdmittedNotificationTimestamp().get()) {
-          throw new AlreadyExistsException(
-              "A notification with a newer timestamp has been processed for table %s",
-              tableIdentifier);
-        }
+        rejectOutOfOrderNotification(tableIdentifier, freshEntity, notificationTimestamp);
         entity =
             new IcebergTableLikeEntity.Builder(freshEntity)
                 .setMetadataLocation(newLocation)
