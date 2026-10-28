@@ -723,10 +723,13 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
               // Check for parent (prefix) overlaps. These have shorter keys and are missed by
               // forward iteration starting at the full target key.
+              if (!locationInsideScope) {
+                // Location is outside the scope: no ancestor could be inside it,
+                // so skip prefix checks.
+                return Optional.empty();
+              }
               var firstPrefixLength =
-                  locationInsideScope
-                      ? scopeIdentifier == null ? 1 : Math.max(1, scopeIdentifier.length())
-                      : locationIdentifier.length() + 1;
+                  scopeIdentifier == null ? 1 : Math.max(1, scopeIdentifier.length());
               for (int i = firstPrefixLength; i <= locationIdentifier.length(); i++) {
                 var prefixElements = locationIdentifier.elements().subList(0, i);
                 var prefix = ContentIdentifier.identifier(prefixElements);
