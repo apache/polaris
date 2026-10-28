@@ -105,6 +105,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
   lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners
   (webhook / Kafka / CloudWatch) can adopt this in follow-ups.
+- SigV4 catalog federation can now sign with static keys from a named server-side AWS credential
+  (`polaris.storage.aws.<storage-name>.access-key` / `.secret-key`), referenced by `storageName`
+  in `SigV4AuthenticationParameters`. This makes SigV4-compatible catalogs that are not AWS
+  reachable, since they have no IAM role to assume and no AWS STS endpoint. It requires
+  `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` to be enabled. `roleArn` is therefore no longer required in
+  the management API spec; exactly one of `roleArn` or `storageName` must be set, and
+  `roleSessionName` / `externalId` / `sessionPolicy` are rejected together with `storageName`.
 - Python CLI: added `register` support for both `tables` and `views` commands
 - Python CLI: `setup export` and `setup apply` now support both Iceberg tables and views as register entries.
 - Python CLI: added `namespaces update` to set and remove namespace properties
