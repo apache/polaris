@@ -42,6 +42,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -52,6 +53,7 @@ import org.apache.hc.core5.http.HttpException;
 import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.HttpEntities;
 import org.apache.hc.core5.http.message.BasicClassicHttpResponse;
+import org.apache.polaris.core.auth.AuthorizationBatchRequest;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -813,6 +815,98 @@ public class OpaPolarisAuthorizerTest {
             """);
     assertThat(root.path("input").path("resource").path("targets").get(0))
         .isEqualTo(expectedTarget);
+  }
+
+  @Test
+  void entityVisibilityCheckSendsFullResourceForRemoteOnlyTable() throws Exception {
+    // The manifest has no local entity for the table, as for a remote-only table of a federated
+    // catalog. OPA builds its input from the securable, so the full table path is still sent.
+    List<String> capturedRequestBodies = new ArrayList<>();
+    OpaPolarisAuthorizer authorizer = capturingOpaAuthorizer(capturedRequestBodies, body -> true);
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1")),
+            List.of(remoteOnlyTableIntent("remote_table")));
+
+    AuthorizationDecision decision =
+        authorizer.authorize(
+            new AuthorizationState(mock(PolarisResolutionManifest.class)), request);
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode root = mapper.readTree(capturedRequestBodies.get(0));
+
+    assertThat(decision.isAllowed()).isTrue();
+    assertThat(root.path("input").path("action").asText()).isEqualTo("LIST_TABLES_ENTITY");
+    JsonNode expectedTarget =
+        mapper.readTree(
+            """
+            {
+              "type": "TABLE_LIKE",
+              "name": "remote_table",
+              "parents": [
+                {"type": "CATALOG", "name": "federated_catalog", "parents": []},
+                {"type": "NAMESPACE", "name": "ns1", "parents": []}
+              ]
+            }
+            """);
+    assertThat(root.path("input").path("resource").path("targets").get(0))
+        .isEqualTo(expectedTarget);
+  }
+
+  @Test
+  void entityVisibilityCheckFollowsOpaDecisionForEachRemoteOnlyCandidate() {
+    List<String> capturedRequestBodies = new ArrayList<>();
+    OpaPolarisAuthorizer authorizer =
+        capturingOpaAuthorizer(
+            capturedRequestBodies, body -> body.contains("\"name\":\"remote_table1\""));
+    AuthorizationBatchRequest batch =
+        new AuthorizationBatchRequest(
+            PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1")),
+            List.of(
+                remoteOnlyTableIntent("remote_table1"), remoteOnlyTableIntent("remote_table2")));
+
+    List<AuthorizationDecision> decisions =
+        authorizer.authorize(new AuthorizationState(mock(PolarisResolutionManifest.class)), batch);
+
+    assertThat(decisions).extracting(AuthorizationDecision::isAllowed).containsExactly(true, false);
+    assertThat(capturedRequestBodies).hasSize(2);
+  }
+
+  private static AuthorizationIntent remoteOnlyTableIntent(String tableName) {
+    return new SingleTargetAuthorizationIntent(
+        PolarisAuthorizableOperation.LIST_TABLES_ENTITY,
+        PolarisSecurable.of(
+            new PathSegment(PolarisEntityType.CATALOG, "federated_catalog"),
+            new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
+            new PathSegment(PolarisEntityType.TABLE_LIKE, tableName)));
+  }
+
+  /**
+   * An OPA authorizer whose HTTP call is replaced: each request body is recorded, and the response
+   * allows the request only if its body satisfies {@code allowIfBody}.
+   */
+  private static OpaPolarisAuthorizer capturingOpaAuthorizer(
+      List<String> capturedRequestBodies, Predicate<String> allowIfBody) {
+    return new OpaPolarisAuthorizer(
+        URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
+        mock(CloseableHttpClient.class),
+        JsonMapper.builder().build(),
+        null,
+        null,
+        "test-realm") {
+      @Override
+      <T> T httpClientExecute(
+          ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
+          throws HttpException, IOException {
+        String body =
+            new String(request.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
+        capturedRequestBodies.add(body);
+        @SuppressWarnings("resource")
+        ClassicHttpResponse response = new BasicClassicHttpResponse(200);
+        response.setEntity(
+            HttpEntities.create("{\"result\":{\"allow\":" + allowIfBody.test(body) + "}}"));
+        return responseHandler.handleResponse(response);
+      }
+    };
   }
 
   @Test

@@ -2449,9 +2449,20 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
    * catalog's connection config, sets {@code isFederated}, and derives the namespace and view
    * catalog roles itself.
    */
-  @SuppressWarnings("unchecked")
   private IcebergCatalogHandler newFederatedHandlerWithEntityLevelFiltering(
       Predicate<String> denyIfLeafName) {
+    return ImmutableIcebergCatalogHandler.builder()
+        .from(newFederatedHandler())
+        .authorizer(leafNameDenyingAuthorizer(denyIfLeafName))
+        .build();
+  }
+
+  /**
+   * Returns a handler for {@code FEDERATED_CATALOG_NAME}, backed by {@link
+   * #federatedRemoteCatalog()}, with the real {@link PolarisAuthorizerImpl}.
+   */
+  @SuppressWarnings("unchecked")
+  private IcebergCatalogHandler newFederatedHandler() {
     FederatedCatalogFactory catalogFactory = Mockito.mock(FederatedCatalogFactory.class);
     Mockito.when(catalogFactory.createCatalog(Mockito.any(), Mockito.any(), Mockito.any()))
         .thenReturn(federatedRemoteCatalog());
@@ -2469,7 +2480,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             FEDERATED_CATALOG_NAME, filteringTestPrincipal());
     return ImmutableIcebergCatalogHandler.builder()
         .from(base)
-        .authorizer(leafNameDenyingAuthorizer(denyIfLeafName))
         .federatedCatalogFactories(catalogFactories)
         .build();
   }
@@ -2708,6 +2718,49 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     Assertions.assertThatThrownBy(
             () -> newHandler().listTables(Namespace.of("does_not_exist"), null, null))
         .isInstanceOf(NoSuchNamespaceException.class);
+  }
+
+  // ─── Entity-level filtering on a federated catalog under real RBAC ───────
+  //
+  // FEDERATED_CATALOG_NAME has no local namespaces or tables: every entity listed below exists
+  // only in the remote catalog. RBAC evaluates a remote-only entity against its deepest local
+  // ancestor, so it is visible only through a grant on that ancestor, or through its own grant,
+  // which creates a synthetic local entity for it (sub-catalog RBAC is enabled on the catalog).
+
+  /** Without any grant, every remote-only table is hidden. */
+  @Test
+  public void testEntityLevelListFilteringHidesRemoteOnlyFederatedTablesWithoutGrants() {
+    enableEntityLevelListFiltering(FEDERATED_CATALOG_NAME);
+
+    Assertions.assertThat(newFederatedHandler().listTables(NS1A, null, 10).identifiers()).isEmpty();
+  }
+
+  /**
+   * A table-level grant creates a synthetic entity for that table only, so it becomes visible while
+   * its remote-only siblings stay hidden.
+   */
+  @Test
+  public void testEntityLevelListFilteringShowsFederatedTableGrantedThroughSyntheticEntity() {
+    enableEntityLevelListFiltering(FEDERATED_CATALOG_NAME);
+    assertSuccess(
+        adminService.grantPrivilegeOnTableToRole(
+            FEDERATED_CATALOG_NAME,
+            CATALOG_ROLE1,
+            FEDERATED_ONLY_TABLE,
+            PolarisPrivilege.TABLE_READ_PROPERTIES));
+
+    Assertions.assertThat(newFederatedHandler().listTables(NS1A, null, 10).identifiers())
+        .containsExactly(FEDERATED_ONLY_TABLE);
+  }
+
+  /** A caller holding TABLE_LIST on the catalog sees every remote table, unfiltered. */
+  @Test
+  public void testEntityLevelListFilteringDoesNotFilterFederatedTablesForListHolder() {
+    enableEntityLevelListFiltering(FEDERATED_CATALOG_NAME);
+    grantListOnCatalog(FEDERATED_CATALOG_NAME);
+
+    Assertions.assertThat(newFederatedHandler().listTables(NS1A, null, 10).identifiers())
+        .containsExactlyInAnyOrder(TABLE_NS1A_1, TABLE_NS1A_2, FEDERATED_ONLY_TABLE);
   }
 
   // ─── Entity-level filtering prepares inputs through the authorizer ───────

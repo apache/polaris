@@ -29,11 +29,16 @@ import org.apache.polaris.core.auth.AuthorizationIntentResolver;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.NonRBACResolutionSemantics;
+import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisSecurable;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.Resolvable;
@@ -118,6 +123,17 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
     try {
       AuthorizationIntentResolver.ResolvedIntent resolvedIntent =
           AuthorizationIntentResolver.resolve(resolutionManifest, intent, prependRootContainer);
+      // Ranger builds the resource from the resolved local entities. For a remote-only entity of a
+      // federated catalog, the resolved path stops at its deepest local parent, so Ranger would
+      // evaluate the parent instead of the entity itself. Until the resource can be derived from
+      // the intent, deny entity-level list visibility checks that cannot reach their target.
+      if (isEntityVisibilityCheck(intent.operation())
+          && intent instanceof SingleTargetAuthorizationIntent singleTargetIntent
+          && !reachesTarget(resolvedIntent.targets().get(0), singleTargetIntent.target())) {
+        return AuthorizationDecision.deny(
+            String.format(
+                RANGER_AUTH_FAILED_ERROR, polarisPrincipal.getName(), intent.operation().name()));
+      }
       authorizeRangerOrThrow(
           polarisPrincipal,
           resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
@@ -128,6 +144,24 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
     } catch (ForbiddenException e) {
       return AuthorizationDecision.deny(e.getMessage());
     }
+  }
+
+  private static boolean isEntityVisibilityCheck(PolarisAuthorizableOperation operation) {
+    return operation == PolarisAuthorizableOperation.LIST_NAMESPACES_ENTITY
+        || operation == PolarisAuthorizableOperation.LIST_TABLES_ENTITY
+        || operation == PolarisAuthorizableOperation.LIST_VIEWS_ENTITY;
+  }
+
+  /** Whether {@code resolved} is the full path of {@code target}, ignoring the root container. */
+  private static boolean reachesTarget(
+      PolarisResolvedPathWrapper resolved, PolarisSecurable target) {
+    List<String> resolvedNames =
+        resolved.getRawFullPath().stream()
+            .filter(entity -> entity.getType() != PolarisEntityType.ROOT)
+            .map(PolarisEntity::getName)
+            .toList();
+    List<String> targetNames = target.getPathSegments().stream().map(PathSegment::name).toList();
+    return resolvedNames.equals(targetNames);
   }
 
   private void authorizeRangerOrThrow(
