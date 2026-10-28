@@ -125,6 +125,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   accounts for them. Entities with many grants weigh more, which can lead to more evictions than before
   with the same configured value. The description of `ENTITY_CACHE_WEIGHER_TARGET` now documents that
   its weights approximate bytes.
+- Semantic-model create and update requests now validate the `semantic_model` body against the
+  bundled Apache Ossie JSON Schema for the declared spec version (currently `0.2.0.dev0`) and
+  reject it with `400 Bad Request` when it does not conform. For example, a model without a
+  non-empty `datasets` array, or with an unsupported `version`, is now rejected. Bodies larger than
+  the new `SEMANTIC_MODEL_MAX_DOCUMENT_BYTES` limit (default 1 MiB) are also rejected. Existing
+  stored models can still be loaded, but updating them requires a conforming document.
 
 ### Deprecations
 

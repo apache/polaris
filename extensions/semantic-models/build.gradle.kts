@@ -64,6 +64,8 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
 
+  implementation(libs.json.schema.validator)
+
   compileOnly(libs.microprofile.fault.tolerance.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
 

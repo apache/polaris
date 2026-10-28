@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Splitter;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -71,6 +73,8 @@ import org.slf4j.LoggerFactory;
 public class SemanticModelCatalog {
   private static final Logger LOGGER = LoggerFactory.getLogger(SemanticModelCatalog.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final SemanticDocumentValidator DOCUMENT_VALIDATOR =
+      DefaultSemanticDocumentValidator.INSTANCE;
 
   /**
    * Separator between the namespace path and the name in an Ossie {@code dataset.source}, per the
@@ -280,25 +284,38 @@ public class SemanticModelCatalog {
   }
 
   /**
-   * Parses the Ossie document and returns the {@code semantic_model} body. Currently only checks
-   * that the required body is present and well-formed JSON; full schema validation is deferred to a
-   * {@link SemanticDocumentValidator} implementation.
+   * Parses the Ossie document, validates it against the Ossie schema, and returns the {@code
+   * semantic_model} body. The size limit is checked before parsing so oversized bodies are never
+   * parsed.
    *
    * @return the parsed {@code semantic_model} node
-   * @throws BadRequestException if the body is missing/blank or not valid JSON
+   * @throws BadRequestException if the body is missing/blank, too large, not valid JSON, or does
+   *     not conform to the Ossie schema
    */
   private JsonNode validateDocument(SemanticModelDocument document) {
     String body = document.getSemanticModel();
     if (body == null || body.isBlank()) {
       throw new BadRequestException("Semantic model document must not be empty");
     }
+    long maxBytes =
+        callContext
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.SEMANTIC_MODEL_MAX_DOCUMENT_BYTES);
+    long bodyBytes = body.getBytes(StandardCharsets.UTF_8).length;
+    if (bodyBytes > maxBytes) {
+      throw new BadRequestException(
+          "Field 'semantic_model' exceeds the maximum allowed size of %d bytes (got %d bytes)",
+          maxBytes, bodyBytes);
+    }
+    JsonNode semanticModel;
     try {
-      // TODO: delegate full Ossie JSON-schema validation to SemanticDocumentValidator.
-      return MAPPER.readTree(body);
+      semanticModel = MAPPER.readTree(body);
     } catch (JsonProcessingException e) {
       throw new BadRequestException(
           "Field 'semantic_model' is not valid JSON: %s", e.getOriginalMessage());
     }
+    DOCUMENT_VALIDATOR.validate(document, semanticModel);
+    return semanticModel;
   }
 
   /**
@@ -311,10 +328,6 @@ public class SemanticModelCatalog {
    * {@code TABLE_LIKE} entity, fails with 400 and a JSON-Pointer to the offending dataset.
    */
   private void resolveAndValidateSources(JsonNode semanticModel) {
-    if (!semanticModel.isObject()) {
-      throw new BadRequestException("Field 'semantic_model' must be a JSON object");
-    }
-
     JsonNode datasets = semanticModel.get("datasets");
     if (datasets == null) {
       return;
