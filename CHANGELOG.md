@@ -296,6 +296,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
 - Iceberg REST: creating a namespace with a request that omits `namespace` now returns
   `400 Bad Request` instead of `500 Internal Server Error`.
+- Iceberg metrics reporting no longer fails the client request when persistence fails. A failed
+  write is logged and the report dropped (previously this could surface as HTTP 500 on
+  `POST .../metrics`). Dropped reports increment `polaris.metrics.reports.dropped` (tags
+  `reporter`, `reason`). `MetricsReportEnvelope` now carries a nullable table entity so log-only /
+  no-op reporters still receive passthrough reports; the persisting reporter drops at DEBUG when
+  the leaf is missing or not `TABLE_LIKE`, so a bogus `table_id` is never written.
 
 ### Commits
 
@@ -456,12 +462,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Fixed a false-negative in the JDBC optimized location-overlap check (`OPTIMIZED_SIBLING_CHECK`). Ancestor locations stored in `location_without_scheme` without a trailing slash were not matched by the generated ancestor equality terms, allowing nested table/namespace locations to be created under existing prefixes. The query now emits both slash-terminated and non-slash-terminated prefix terms and uses a slash-terminated `LIKE` pattern for descendant matching.
 - Python CLI `setup` now preserves the Azure `hierarchical` storage flag during apply and export
 - Python CLI `setup apply --dry-run` now reports already-existing namespaces as skipped instead of proposed creations.
-- Iceberg metrics reporting no longer fails the client request when persistence fails. A failed
-  write is logged and the report dropped (previously this could surface as HTTP 500 on
-  `POST .../metrics`). Dropped reports increment `polaris.metrics.reports.dropped` (tags
-  `reporter`, `reason`). `MetricsReportEnvelope` now carries a nullable table entity so log-only /
-  no-op reporters still receive passthrough reports; the persisting reporter drops at DEBUG when
-  the leaf is missing or not `TABLE_LIKE`, so a bogus `table_id` is never written.
 - Fixed policy detach on the relational JDBC backend silently doing nothing when the mapping's `parameters` changed in between. The delete's `WHERE` clause included the non-key `parameters` column, so a re-attach landing between the detach's lookup and its delete made the delete match zero rows while detach still reported success, leaving the policy attached. The delete is now keyed on the mapping's identity columns, matching the table's primary key and the transactional backend's behavior.
 - Relational JDBC: the `idx_locations` index used by the optimized sibling check now matches the
   query that reads it. On Postgres and CockroachDB the index led with `parent_id`, while the overlap

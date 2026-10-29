@@ -84,7 +84,7 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
     PolarisEntity tableEntity = envelope.tableEntity();
     if (tableEntity == null || tableEntity.getType() != PolarisEntityType.TABLE_LIKE) {
       LOGGER.debug(
-          "Dropping {} metrics for {}.{}; resolved leaf is missing or not TABLE_LIKE",
+          "Dropping {} metrics for {}.{}; resolved leaf is missing or not TABLE_LIKE (reason=unresolved_leaf)",
           envelope.metricType(),
           envelope.catalogName(),
           envelope.table());
@@ -127,7 +127,7 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
           // Metrics reporting is best-effort telemetry; a persistence failure must not fail the
           // client request that produced the report.
           LOGGER.warn(
-              "Failed to persist scan metrics for {}.{}; dropping the report",
+              "Failed to persist scan metrics for {}.{}; dropping the report (reason=persistence_failure)",
               envelope.catalogName(),
               envelope.table(),
               e);
@@ -156,7 +156,7 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
           // Metrics reporting is best-effort telemetry; a persistence failure must not fail the
           // client request that produced the report.
           LOGGER.warn(
-              "Failed to persist commit metrics for {}.{}; dropping the report",
+              "Failed to persist commit metrics for {}.{}; dropping the report (reason=persistence_failure)",
               envelope.catalogName(),
               envelope.table(),
               e);

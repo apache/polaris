@@ -184,7 +184,8 @@ class PersistingMetricsReporterTest {
             event -> {
               assertThat(event.getLevel()).isEqualTo(Level.WARN);
               assertThat(event.getFormattedMessage())
-                  .contains("Failed to persist scan metrics for catalog.ns.t");
+                  .contains("Failed to persist scan metrics for catalog.ns.t")
+                  .contains("reason=persistence_failure");
               assertThat(event.getThrowableProxy()).isNotNull();
             });
     assertThat(
@@ -201,7 +202,9 @@ class PersistingMetricsReporterTest {
 
   @Test
   void commitReportPersistenceFailureDoesNotPropagate() {
-    assertThatCode(() -> newReporter(FAILING_PERSISTENCE).reportMetric(commitEnvelope()))
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    assertThatCode(
+            () -> newReporter(FAILING_PERSISTENCE, meterRegistry).reportMetric(commitEnvelope()))
         .doesNotThrowAnyException();
 
     assertThat(logAppender.list)
@@ -209,9 +212,20 @@ class PersistingMetricsReporterTest {
             event -> {
               assertThat(event.getLevel()).isEqualTo(Level.WARN);
               assertThat(event.getFormattedMessage())
-                  .contains("Failed to persist commit metrics for catalog.ns.t");
+                  .contains("Failed to persist commit metrics for catalog.ns.t")
+                  .contains("reason=persistence_failure");
               assertThat(event.getThrowableProxy()).isNotNull();
             });
+    assertThat(
+            meterRegistry
+                .counter(
+                    PersistingMetricsReporter.DROPPED_REPORTS_METRIC,
+                    "reporter",
+                    "persisting",
+                    "reason",
+                    "persistence_failure")
+                .count())
+        .isEqualTo(1.0);
   }
 
   @Test
