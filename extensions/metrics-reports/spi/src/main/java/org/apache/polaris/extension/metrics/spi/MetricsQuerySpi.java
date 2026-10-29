@@ -20,7 +20,9 @@ package org.apache.polaris.extension.metrics.spi;
 
 import com.google.common.annotations.Beta;
 import java.util.List;
+import java.util.Set;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -41,49 +43,35 @@ import org.jspecify.annotations.Nullable;
 @Beta
 public interface MetricsQuerySpi {
 
-  /** Discriminates which kind of metrics report {@link #listReports} should query. */
+  /** Discriminates which kinds of metrics reports {@link #listReports} should query. */
   enum MetricType {
     SCAN,
     COMMIT
   }
 
   /**
-   * Result of {@link #listReports}, pairing the requested {@link MetricType} with the page of
-   * records of the matching record type so callers can switch exhaustively without casting.
+   * Selects the reports of one table, optionally restricted to a single snapshot.
+   *
+   * @param tableId internal table entity ID
+   * @param snapshotId snapshot to match, or {@code null} to match reports of every snapshot
    */
-  sealed interface QueryResult permits ScanResult, CommitResult {
-    MetricType metricType();
-  }
-
-  record ScanResult(Page<ScanMetricsRecord> reports) implements QueryResult {
-    @Override
-    public MetricType metricType() {
-      return MetricType.SCAN;
-    }
-  }
-
-  record CommitResult(Page<CommitMetricsRecord> reports) implements QueryResult {
-    @Override
-    public MetricType metricType() {
-      return MetricType.COMMIT;
-    }
-  }
+  record TableSelector(long tableId, @Nullable Long snapshotId) {}
 
   /**
-   * Lists persisted metrics reports of the given {@link MetricType} for the given tables, applying
-   * the supplied filters and returning at most one page of results merged across all requested
-   * tables.
+   * Lists persisted metrics reports of the given {@link MetricType}s matching any of the given
+   * table selectors, applying the supplied filters and returning at most one page of results merged
+   * across all requested types and tables, ordered by timestamp descending.
    *
-   * <p>The returned {@link QueryResult#metricType()} must equal {@code metricType}: {@code SCAN}
-   * must yield a {@link ScanResult} and {@code COMMIT} must yield a {@link CommitResult}.
+   * <p>Selectors are combined with OR semantics, and a report matched by more than one selector is
+   * returned only once. Each item of the returned page is a {@link ScanMetricsRecord} for {@link
+   * MetricType#SCAN} or a {@link CommitMetricsRecord} for {@link MetricType#COMMIT}.
    *
-   * @param tableIds internal table entity IDs to query, all belonging to {@code catalogId}
+   * @param tables table selectors, all referring to tables belonging to {@code catalogId}
    */
-  QueryResult listReports(
-      @NonNull MetricType metricType,
+  Page<MetricsRecordIdentity> listReports(
+      @NonNull Set<MetricType> metricTypes,
       long catalogId,
-      @NonNull List<Long> tableIds,
-      @Nullable Long snapshotId,
+      @NonNull List<TableSelector> tables,
       @Nullable Long timestampFrom,
       @Nullable Long timestampTo,
       @NonNull PageToken pageToken);
