@@ -33,10 +33,10 @@ Polaris requires both IAM roles and [Hierarchical Namespace (HNS)](https://docs.
 
 ## Skipping credential downscoping
 
-For self-managed client-side storage access or emulator deployments that must not
-downscope GCS credentials, set
-`skipCredentialDownscoping: true` on the catalog storage configuration. Polaris then skips
-GCS credential vending for that catalog, the same way S3 `stsUnavailable: true` skips STS.
+For self-managed client-side storage access or emulator deployments that
+must not downscope GCS credentials, set `skipCredentialDownscoping: true`
+on the catalog storage configuration. Polaris then skips GCS credential
+vending for that catalog, the same way S3 `stsUnavailable: true` skips STS.
 Unset or `false` keeps downscoping enabled.
 
 A client that still sends `X-Iceberg-Access-Delegation: vended-credentials` gets `400 Bad Request`;
