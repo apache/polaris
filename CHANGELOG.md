@@ -140,6 +140,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- The Iceberg REST `/config` response now advertises the
+  `GET /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials` endpoint, which Polaris
+  already served. Clients that check advertised endpoints before refreshing vended credentials can
+  now use it.
 - Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
   the packaged chart, so `helm test` ran no tests.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from

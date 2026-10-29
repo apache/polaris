@@ -48,6 +48,7 @@ public class GetConfigTest {
     ConfigResponse configResponse = getConfig(Map.of("ENABLE_GENERIC_TABLES", enableGenericTable));
 
     assertThat(configResponse.endpoints()).contains(PolicyEndpoints.V1_CREATE_POLICY);
+    assertThat(configResponse.endpoints()).contains(Endpoint.V1_TABLE_CREDENTIALS);
     assertEndpointOrder(configResponse, enableGenericTable);
     assertGenericTableEndpoints(configResponse, enableGenericTable);
   }
