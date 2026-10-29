@@ -24,12 +24,15 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
+import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -101,87 +104,85 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
   }
 
   @Override
-  public QueryResult listReports(
-      @NonNull MetricType metricType,
+  public Page<MetricsRecordIdentity> listReports(
+      @NonNull Set<MetricType> metricTypes,
       long catalogId,
-      @NonNull List<Long> tableIds,
-      @Nullable Long snapshotId,
+      @NonNull List<TableSelector> tables,
       @Nullable Long timestampFrom,
       @Nullable Long timestampTo,
       @NonNull PageToken pageToken) {
     String realmId = realmContext.getRealmIdentifier();
-    String scope =
-        scopeKey(realmId, metricType, catalogId, tableIds, snapshotId, timestampFrom, timestampTo);
+    String scope = scopeKey(realmId, metricTypes, catalogId, tables, timestampFrom, timestampTo);
+    // Each table is queried with the same keyset cursor and limit; the rows are then merged in the
+    // same (timestamp_ms DESC, report_id DESC) order and trimmed to one page.
+    List<MetricsRecordIdentity> rows = new ArrayList<>();
     try {
-      if (metricType == MetricType.COMMIT) {
+      if (metricTypes.contains(MetricType.SCAN)) {
+        PreparedQuery query =
+            buildMetricsQuery(
+                ModelScanMetricsReport.TABLE_NAME,
+                realmId,
+                catalogId,
+                tables,
+                timestampFrom,
+                timestampTo,
+                pageToken,
+                scope);
+        datasourceOperations.executeSelect(query, ModelScanMetricsReport.CONVERTER).stream()
+            .map(ModelScanMetricsReport::toRecord)
+            .forEach(rows::add);
+      }
+      if (metricTypes.contains(MetricType.COMMIT)) {
         PreparedQuery query =
             buildMetricsQuery(
                 ModelCommitMetricsReport.TABLE_NAME,
                 realmId,
                 catalogId,
-                tableIds,
-                snapshotId,
+                tables,
                 timestampFrom,
                 timestampTo,
                 pageToken,
                 scope);
-        List<ModelCommitMetricsReport> rows =
-            datasourceOperations.executeSelect(query, ModelCommitMetricsReport.CONVERTER);
-        return new CommitResult(
-            Page.mapped(
-                pageToken,
-                rows.stream().map(ModelCommitMetricsReport::toRecord),
-                Function.<CommitMetricsRecord>identity(),
-                last -> MetricsReportToken.fromRecord(last, scope)));
+        datasourceOperations.executeSelect(query, ModelCommitMetricsReport.CONVERTER).stream()
+            .map(ModelCommitMetricsReport::toRecord)
+            .forEach(rows::add);
       }
-
-      PreparedQuery query =
-          buildMetricsQuery(
-              ModelScanMetricsReport.TABLE_NAME,
-              realmId,
-              catalogId,
-              tableIds,
-              snapshotId,
-              timestampFrom,
-              timestampTo,
-              pageToken,
-              scope);
-      List<ModelScanMetricsReport> rows =
-          datasourceOperations.executeSelect(query, ModelScanMetricsReport.CONVERTER);
-      return new ScanResult(
-          Page.mapped(
-              pageToken,
-              rows.stream().map(ModelScanMetricsReport::toRecord),
-              Function.<ScanMetricsRecord>identity(),
-              last -> MetricsReportToken.fromRecord(last, scope)));
     } catch (SQLException e) {
       throw new RuntimeException("Failed to list metrics reports: " + e.getMessage(), e);
     }
+    rows.sort(
+        Comparator.comparing(MetricsRecordIdentity::timestamp)
+            .thenComparing(MetricsRecordIdentity::reportId)
+            .reversed());
+    return Page.mapped(
+        pageToken,
+        rows.stream(),
+        Function.identity(),
+        last -> MetricsReportToken.fromRecord(last, scope));
   }
 
   /**
-   * Builds a stable fingerprint of the query scope (realm, metric type, catalog, tables, and
-   * filters). Used to reject a pagination cursor that was produced by a different query, including
-   * one issued against a different realm.
+   * Builds a stable fingerprint of the query scope (realm, metric types, catalog, table selectors,
+   * and filters). Used to reject a pagination cursor that was produced by a different query,
+   * including one issued against a different realm.
    */
   private static String scopeKey(
       String realmId,
-      MetricType metricType,
+      Set<MetricType> metricTypes,
       long catalogId,
-      List<Long> tableIds,
-      @Nullable Long snapshotId,
+      List<TableSelector> tables,
       @Nullable Long timestampFrom,
       @Nullable Long timestampTo) {
-    List<Long> sortedTableIds = tableIds.stream().sorted().collect(Collectors.toList());
+    List<String> sortedTypes = metricTypes.stream().map(Enum::name).sorted().toList();
+    List<String> sortedTables =
+        tables.stream().map(t -> t.tableId() + ":" + t.snapshotId()).distinct().sorted().toList();
     return realmId
         + "|"
-        + metricType
+        + sortedTypes
         + "|"
         + catalogId
         + "|"
-        + sortedTableIds
-        + "|"
-        + snapshotId
+        + sortedTables
         + "|"
         + timestampFrom
         + "|"
@@ -199,8 +200,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
       String tableName,
       String realmId,
       long catalogId,
-      List<Long> tableIds,
-      @Nullable Long snapshotId,
+      List<TableSelector> tables,
       @Nullable Long timestampFrom,
       @Nullable Long timestampTo,
       PageToken pageToken,
@@ -208,18 +208,22 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
     StringBuilder sql = new StringBuilder("SELECT * FROM ");
     // Unqualified, like the INSERTs: the schema is selected by the datasource (currentSchema).
     sql.append(tableName);
-    sql.append(" WHERE realm_id = ? AND catalog_id = ? AND table_id IN (");
-    sql.append(tableIds.stream().map(id -> "?").collect(Collectors.joining(", ")));
+    sql.append(" WHERE realm_id = ? AND catalog_id = ? AND (");
+    sql.append(
+        tables.stream()
+            .map(
+                t -> t.snapshotId() == null ? "table_id = ?" : "(table_id = ? AND snapshot_id = ?)")
+            .collect(Collectors.joining(" OR ")));
     sql.append(")");
 
     List<Object> params = new ArrayList<>();
     params.add(realmId);
     params.add(catalogId);
-    params.addAll(tableIds);
-
-    if (snapshotId != null) {
-      sql.append(" AND snapshot_id = ?");
-      params.add(snapshotId);
+    for (TableSelector table : tables) {
+      params.add(table.tableId());
+      if (table.snapshotId() != null) {
+        params.add(table.snapshotId());
+      }
     }
     if (timestampFrom != null) {
       sql.append(" AND timestamp_ms >= ?");
