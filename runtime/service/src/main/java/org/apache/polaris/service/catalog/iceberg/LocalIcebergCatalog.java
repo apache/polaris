@@ -119,6 +119,7 @@ import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -915,9 +916,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     // Compare normalized (slash-terminated) locations so that merely normalizing a legacy
     // slash-less location does not count as a move. Otherwise an unrelated property update on a
     // namespace stored before Polaris always appended a slash would flip locationChanged to true
-    // and run the overlap check against the namespace's own still-persisted slash-less row (which
-    // the optimized sibling check does not exclude), wrongly rejecting the update. A genuine move
-    // still differs after normalization and is validated.
+    // and run the overlap check against the namespace's own still-persisted slash-less row,
+    // wrongly rejecting the update. A genuine move still differs after normalization and is
+    // validated.
     boolean locationChanged =
         !Objects.equal(
             StorageLocation.ensureTrailingSlash(NamespaceEntity.of(entity).getBaseLocation()),
@@ -1429,6 +1430,20 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       List<PolarisEntity> resolvedNamespace,
       String location,
       PolarisEntity entity) {
+    validateNoLocationOverlap(catalog, identifier, resolvedNamespace, location, entity, null);
+  }
+
+  /**
+   * @param searchRoot if not null, only the entities located at or below this location are
+   *     considered by the optimized sibling check
+   */
+  private void validateNoLocationOverlap(
+      CatalogEntity catalog,
+      TableIdentifier identifier,
+      List<PolarisEntity> resolvedNamespace,
+      String location,
+      PolarisEntity entity,
+      @Nullable StorageLocation searchRoot) {
     boolean validateViewOverlap =
         realmConfig.getConfig(BehaviorChangeConfiguration.VALIDATE_VIEW_LOCATION_OVERLAP);
 
@@ -1439,11 +1454,18 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
 
       // Create a fake IcebergTableLikeEntity to check for overlap, since no real entity
-      // has been created yet.
+      // has been created yet. If the table or view already exists, the fake entity carries its id,
+      // so that the check does not conflict with the entity's own persisted location. When the
+      // leaf is not a table-like entity, it is the parent namespace or catalog, which must not be
+      // ignored.
       var lastNamespace = resolvedNamespace.getLast();
       IcebergTableLikeEntity virtualEntity =
           IcebergTableLikeEntity.of(
               new PolarisEntity.Builder()
+                  .setId(
+                      entity.getType() == PolarisEntityType.TABLE_LIKE
+                          ? entity.getId()
+                          : PolarisEntityConstants.getNullId())
                   .setName(identifier.name())
                   .setType(PolarisEntityType.TABLE_LIKE)
                   .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
@@ -1452,7 +1474,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
                   .build());
 
-      validateNoLocationOverlap(virtualEntity, resolvedNamespace);
+      validateNoLocationOverlap(virtualEntity, resolvedNamespace, searchRoot);
     }
   }
 
@@ -1529,25 +1551,31 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
    */
   private <T extends PolarisEntity & LocationBasedEntity> void validateNoLocationOverlap(
       T entity, List<PolarisEntity> parentPath) {
+    validateNoLocationOverlap(entity, parentPath, null);
+  }
+
+  private <T extends PolarisEntity & LocationBasedEntity> void validateNoLocationOverlap(
+      T entity, List<PolarisEntity> parentPath, @Nullable StorageLocation searchRoot) {
 
     String location = entity.getBaseLocation();
     String name = entity.getName();
 
     // Attempt to directly query for siblings
-    boolean useOptimizedSiblingCheck =
-        realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
-    if (useOptimizedSiblingCheck) {
-      Optional<Optional<String>> directSiblingCheckResult =
-          getMetaStoreManager()
-              .hasOverlappingSiblings(
-                  getCurrentPolarisContext(), PolarisEntity.toCoreList(parentPath), entity);
-      if (directSiblingCheckResult.isPresent()) {
-        if (directSiblingCheckResult.get().isPresent()) {
-          throw new org.apache.iceberg.exceptions.ForbiddenException(
-              "Unable to create entity at location '%s' because it conflicts with existing table or namespace at %s",
-              location, directSiblingCheckResult.get().get());
-        } else {
+    if (realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK)) {
+      // The entity's own parents may contain its location without being reported.
+      Set<Long> parentPathIds =
+          parentPath.stream().map(PolarisEntity::getId).collect(Collectors.toSet());
+      switch (getMetaStoreManager()
+          .hasOverlappingSiblings(getCurrentPolarisContext(), entity, parentPathIds, searchRoot)) {
+        case LocationOverlapResult.Overlap overlap ->
+            throw new ForbiddenException(
+                "Unable to create entity at location '%s' because it conflicts with existing table or namespace at %s",
+                location, overlap.conflictingLocation());
+        case LocationOverlapResult.NoOverlap ignored -> {
           return;
+        }
+        case LocationOverlapResult.Unsupported ignored -> {
+          // Continue with list-based overlap validation below.
         }
       }
     }
@@ -2787,6 +2815,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       }
       newCatalogPath = resolvedNewParentEntities.getRawFullPath();
 
+      validateLocationsForRenamedTableLike(
+          subType,
+          from,
+          to,
+          IcebergTableLikeEntity.of(leafEntity),
+          resolvedEntities,
+          resolvedNewParentEntities);
+
       // the "to" table has a new parent and a new name / namespace path
       toEntity =
           new IcebergTableLikeEntity.Builder(IcebergTableLikeEntity.of(leafEntity))
@@ -2878,6 +2914,58 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                 PolarisEntity.toCoreList(newCatalogPath),
                 new IcebergTableLikeEntity.Builder(returnedEntity).setTableIdentifier(to).build());
       }
+    }
+  }
+
+  /**
+   * A table-like moved to another namespace keeps its locations, so they must satisfy the location
+   * rules that creating it in the new namespace would enforce.
+   */
+  private void validateLocationsForRenamedTableLike(
+      PolarisEntitySubType subType,
+      TableIdentifier from,
+      TableIdentifier to,
+      IcebergTableLikeEntity entity,
+      PolarisResolvedPathWrapper resolvedEntities,
+      PolarisResolvedPathWrapper resolvedNewParent) {
+    Set<String> locations;
+    if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
+      // Views do not persist their base location: it only exists in the view metadata.
+      String metadataLocation = entity.getMetadataLocation();
+      FileIO fileIO =
+          loadFileIOForTableLike(
+              from,
+              Set.of(metadataLocation.substring(0, metadataLocation.lastIndexOf("/"))),
+              resolvedEntities,
+              new HashMap<>(tableDefaultProperties),
+              Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+      locations = Set.of(ViewMetadataParser.read(fileIO, metadataLocation).location());
+    } else {
+      locations =
+          StorageUtil.getLocationsUsedByTable(
+              entity.getBaseLocation(), entity.getInternalPropertiesAsMap());
+    }
+    Set<String> locationsToValidate = new HashSet<>(locations);
+    if (entity.getMetadataLocation() != null) {
+      locationsToValidate.add(entity.getMetadataLocation());
+    }
+    validateLocationsForTableLike(to, locationsToValidate, resolvedNewParent);
+
+    // A rename does not change the entity's locations, so its relationship with entities outside
+    // the destination namespace does not change either: the optimized sibling check, which
+    // searches the whole catalog, must only consider the entities inside the destination location.
+    // Otherwise, it would report the namespaces that already contain the entity's locations, e.g.
+    // its previous parents.
+    StorageLocation destinationLocation =
+        StorageLocation.of(resolveLocationForPath(diagnostics, resolvedNewParent.getRawFullPath()));
+    for (String location : locations) {
+      validateNoLocationOverlap(
+          catalogEntity,
+          to,
+          resolvedNewParent.getRawFullPath(),
+          location,
+          entity,
+          destinationLocation);
     }
   }
 

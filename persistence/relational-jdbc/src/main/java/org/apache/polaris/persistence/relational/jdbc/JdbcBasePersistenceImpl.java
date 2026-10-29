@@ -57,6 +57,7 @@ import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
@@ -793,32 +794,43 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
-      Optional<Optional<String>> hasOverlappingSiblings(
+      LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> parentPath,
-          T entity) {
+          T entity,
+          @NonNull Set<Long> parentPathIds,
+          @Nullable StorageLocation searchRoot) {
     if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count()
         > MAX_LOCATION_COMPONENTS) {
-      return Optional.empty();
+      return new LocationOverlapResult.Unsupported();
+    }
+
+    StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
+
+    if (searchRoot != null) {
+      // Only the entities located inside the search root are considered: if the search root and the
+      // entity's
+      // location are not nested, there is none that can overlap the location.
+      if (!entityLocation.isChildOf(searchRoot) && !searchRoot.isChildOf(entityLocation)) {
+        return new LocationOverlapResult.NoOverlap();
+      }
     }
 
     PreparedQuery query =
         QueryGenerator.generateOverlapQuery(
-            realmId, entity.getCatalogId(), entity.getBaseLocation());
+            realmId, entity.getCatalogId(), entity.getBaseLocation(), searchRoot);
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity());
       if (results.isEmpty()) {
-        return Optional.of(Optional.empty());
+        return new LocationOverlapResult.NoOverlap();
       }
       // The query matches every entity whose location is an ancestor of, equal to, or a descendant
       // of the entity's location. The entity's own parent namespaces may match the ancestor terms:
       // they always do when locations follow the namespace tree, as default locations do. Such an
       // ancestor is not a sibling.
-      Set<Long> ancestorIds =
-          parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
-
-      StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
       for (PolarisBaseEntity result : results) {
+        if (result.getId() == entity.getId()) {
+          continue;
+        }
         // JDBC materializes persisted rows as PolarisBaseEntity. Resolve the sibling location
         // via PolarisEntityUtils instead of casting to LocationBasedEntity.
         Optional<StorageLocation> resultLocation =
@@ -832,14 +844,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         boolean containsEntity = entityLocation.isChildOf(resultLocation.get());
         boolean containedByEntity = resultLocation.get().isChildOf(entityLocation);
         // An ancestor may contain the entity, but the entity may not sit at exactly its location.
-        if (containsEntity && !containedByEntity && ancestorIds.contains(result.getId())) {
+        if (containsEntity && !containedByEntity && parentPathIds.contains(result.getId())) {
           continue;
         }
         if (containsEntity || containedByEntity) {
-          return Optional.of(Optional.of(resultLocation.get().toString()));
+          return new LocationOverlapResult.Overlap(resultLocation.get().toString());
         }
       }
-      return Optional.of(Optional.empty());
+      return new LocationOverlapResult.NoOverlap();
     } catch (SQLException e) {
       LOGGER.error(
           "Failed to retrieve location overlap for location {} due to {}",

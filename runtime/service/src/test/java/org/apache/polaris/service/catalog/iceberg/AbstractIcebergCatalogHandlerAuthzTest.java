@@ -27,6 +27,7 @@ import java.lang.annotation.Annotation;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -79,6 +80,7 @@ import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
@@ -1340,8 +1342,26 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .createTests();
   }
 
+  /**
+   * A table or view renamed into another namespace keeps its location, outside the destination
+   * namespace, which is only allowed with unstructured table locations.
+   */
+  private void allowUnstructuredTableLocations() {
+    CatalogEntity catalog = newRootAdminService().getCatalog(CATALOG_NAME);
+    Map<String, String> properties = new HashMap<>(catalog.getPropertiesAsMap());
+    properties.put(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true");
+    newRootAdminService()
+        .updateCatalog(
+            CATALOG_NAME,
+            UpdateCatalogRequest.builder()
+                .setCurrentEntityVersion(catalog.getEntityVersion())
+                .setProperties(properties)
+                .build());
+  }
+
   @TestFactory
   Stream<DynamicNode> testRenameTablePrivileges() {
+    allowUnstructuredTableLocations();
     final TableIdentifier srcTable = TABLE_NS1_1;
     final TableIdentifier dstTable = TableIdentifier.of(NS1AA, "newtable");
     final RenameTableRequest rename1 =
@@ -1361,6 +1381,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
   @Test
   public void testRenameTablePrivilegesOnWrongSourceOrDestination() {
+    allowUnstructuredTableLocations();
     final TableIdentifier srcTable = TABLE_NS2_1;
     final TableIdentifier dstTable = TableIdentifier.of(NS1AA, "newtable");
     final RenameTableRequest rename1 =
@@ -1622,6 +1643,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
   @TestFactory
   Stream<DynamicNode> testRenameViewPrivileges() {
+    allowUnstructuredTableLocations();
     final TableIdentifier srcView = VIEW_NS1_1;
     final TableIdentifier dstView = TableIdentifier.of(NS1AA, "newview");
     final RenameTableRequest rename1 =
@@ -1641,6 +1663,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
   @Test
   public void testRenameViewPrivilegesOnWrongSourceOrDestination() {
+    allowUnstructuredTableLocations();
     final TableIdentifier srcView = VIEW_NS2_1;
     final TableIdentifier dstView = TableIdentifier.of(NS1AA, "newview");
     final RenameTableRequest rename1 =

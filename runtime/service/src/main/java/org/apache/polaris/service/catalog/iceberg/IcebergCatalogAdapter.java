@@ -140,6 +140,7 @@ public class IcebergCatalogAdapter
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    createNamespaceRequest.validate();
     validateIcebergProperties(realmConfig, createNamespaceRequest.properties());
     EntityNameValidator.validateNamespace(createNamespaceRequest.namespace());
     return withCatalog(

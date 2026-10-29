@@ -98,10 +98,20 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The event attribute `EventAttributes.ACCESS_DELEGATION_MODE` (`String`) has been replaced with
   `EventAttributes.ACCESS_DELEGATION_MODES` (`List<String>`). Accordingly, the OpenTelemetry event
   listener now emits `polaris.access_delegation_modes` instead of `polaris.access_delegation_mode`.
+- Table and view renames now validate locations against the destination namespace. Existing tables
+  also validate their namespace location during commits and credential vending. With
+  `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false` (default), operations involving locations outside the
+  namespace now return HTTP 403. Catalogs that enable unstructured locations remain subject to
+  catalog allowlists and configured overlap checks.
 
 ### New Features
 
+- Shared CloudEvents 1.0 JSON mapper for Polaris events (`CloudEventsEventJsonMapper` next to
+  the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
+  lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners
+  (webhook / Kafka / CloudWatch) can adopt this in follow-ups.
 - Python CLI: added `register` support for both `tables` and `views` commands
+- Python CLI: `setup export` and `setup apply` now support both Iceberg tables and views as register entries.
 - Python CLI: added `namespaces update` to set and remove namespace properties
 - NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
@@ -111,8 +121,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Azure credential vending now maps MSAL authentication failures using their HTTP status codes,
   including the existing `401` to `403` and `404` to `400` mappings.
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
-  take the entity's resolved parent path, so implementations exclude the entity's own ancestors
-  without re-reading the parent chain from the metastore.
+  take the ids of the entity's catalog and parent namespaces, so implementations exclude them
+  without re-reading the parent chain from the metastore, and return a `LocationOverlapResult`. They
+  also take an optional search root: when set, only the entities located at or below it are
+  considered, which allows renamed entities to be checked against the destination namespace only.
+  Implementations must also ignore the entity itself, identified by its id, so that an already
+  persisted entity does not conflict with its own location.
 - Apache Iceberg has been upgraded to 1.12.0. The Java REST client now encodes spaces in namespace
   and table names as `%20` instead of `+` (apache/iceberg#15989). Polaris decodes path segments
   per RFC 3986 and has always treated `+` as a literal character, so the server behaves the same for
@@ -126,6 +140,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
+  the packaged chart, so `helm test` ran no tests.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - Maintenance policy content now rejects non-boolean values for the `enable` field again. The
@@ -175,6 +191,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Catalog federation: `connectionConfigInfo.properties` is now persisted and returned for `HADOOP`
   and `HIVE` connection configurations. It was previously accepted by the management API but
   silently dropped, so `GET /catalogs/{name}` never showed it.
+- Catalog federation: `connectionConfigInfo.properties` is now applied when Polaris initializes
+  the Iceberg client for `HADOOP` and `HIVE` catalogs. As for `ICEBERG_REST`, only an explicit
+  allow-list is forwarded: `suppress-permission-error` (Hadoop), `clients` and `list-all-tables`
+  (Hive), plus the non-secret FileIO settings `s3.endpoint`,
+  `s3.path-style-access` and `client.region` for both. Other keys are stored but ignored.
 - Semantic models: a `datasets` field that is not a JSON array now returns `400 Bad Request`
   instead of being silently skipped, which bypassed every `dataset.source` check.
 - Conditional `loadTable` (`If-None-Match` → HTTP 304) no longer attaches a null
@@ -200,6 +221,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Ranger authorizer: a table or policy under a nested namespace is no longer mapped to the wrong
   Ranger resource. Namespace levels now occupy a single namespace resource instead of one each,
   so a policy written for the nested namespace matches.
+- Updating a policy without `current-policy-version` now returns `400 Bad Request` naming the
+  missing field, instead of `500 Internal Server Error`. The field is used for the policy's
+  optimistic version check, so a request without it is rejected and the policy is unchanged.
 - Ranger authorizer: `table-data-write` now confers `table-properties-write`, as the built-in
   authorizer already does. Without it, a Ranger policy granting only `table-data-write` was
   refused operations the same grant allows under the built-in authorizer. Existing deployments
@@ -266,6 +290,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The Ranger authorizer no longer fails with `NoClassDefFoundError: javax/ws/rs/core/Cookie` when
   using `RangerAdminRESTClient` as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
+- Iceberg REST: creating a namespace with a request that omits `namespace` now returns
+  `400 Bad Request` instead of `500 Internal Server Error`.
 
 ### Commits
 

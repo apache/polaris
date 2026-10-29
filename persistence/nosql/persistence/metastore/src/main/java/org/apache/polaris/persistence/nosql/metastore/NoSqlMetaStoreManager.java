@@ -30,6 +30,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -50,6 +51,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.RenameEntityUtil;
@@ -75,6 +77,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.nosql.metastore.mutation.GrantsMutation;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
 import org.jspecify.annotations.NonNull;
@@ -492,11 +495,15 @@ record NoSqlMetaStoreManager(
 
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
-      Optional<Optional<String>> hasOverlappingSiblings(
+      LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> parentPath,
-          T entity) {
-    return Optional.of(ms(callContext).hasOverlappingSiblings(parentPath, entity));
+          T entity,
+          @NonNull Set<Long> parentPathIds,
+          @Nullable StorageLocation searchRoot) {
+    return ms(callContext)
+        .hasOverlappingSiblings(entity, parentPathIds, searchRoot)
+        .<LocationOverlapResult>map(LocationOverlapResult.Overlap::new)
+        .orElseGet(LocationOverlapResult.NoOverlap::new);
   }
 
   @NonNull

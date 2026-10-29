@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthBootstrapUtil;
@@ -52,6 +53,7 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -468,22 +470,27 @@ public interface PolarisMetaStoreManager
    * Check whether the base location of the specified IcebergTableLikeEntity / NamespaceEntity
    * overlaps the base location of another table, view, or namespace in the same catalog. The check
    * is not limited to entities under the same parent; see {@link
-   * BasePersistence#hasOverlappingSiblings} for the exact semantics.
+   * BasePersistence#hasOverlappingSiblings} for the exact semantics. Implementations should avoid
+   * checking the entity against itself in case of updates or renames.
    *
    * @param callContext the polaris call context
-   * @param parentPath the entity's resolved parent path: the catalog first, then each parent
-   *     namespace, not including the entity itself
    * @param entity the entity whose base location to check
-   * @return Optional.of(Optional.of(location)) with the base location of a conflicting entity,
-   *     Optional.of(Optional.empty()) if there is no conflict, and Optional.empty() if the
-   *     metastore doesn't support this operation
+   * @param parentPathIds IDs of the entity's catalog and parent namespaces. A parent whose location
+   *     strictly contains the entity's location is not a conflict. An exact location match is still
+   *     a conflict.
+   * @param searchRoot root location to search for overlapping entities, or null to search the whole
+   *     catalog. Only entities located at or below this path are checked.
+   * @return {@link LocationOverlapResult.Overlap} with the base location of a conflicting entity,
+   *     {@link LocationOverlapResult.NoOverlap} if there is no conflict, and {@link
+   *     LocationOverlapResult.Unsupported} if the metastore doesn't support this operation
    */
   default <T extends PolarisEntity & LocationBasedEntity>
-      Optional<Optional<String>> hasOverlappingSiblings(
+      LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> parentPath,
-          T entity) {
-    return Optional.empty();
+          T entity,
+          @NonNull Set<Long> parentPathIds,
+          @Nullable StorageLocation searchRoot) {
+    return new LocationOverlapResult.Unsupported();
   }
 
   /**

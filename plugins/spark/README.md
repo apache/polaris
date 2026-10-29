@@ -25,9 +25,9 @@ This directory contains the Polaris Spark plugins. The plugins are built for spe
 
 The Polaris Spark plugin provides a SparkCatalog class, which communicates with the Polaris
 REST endpoints, and provides implementations for Apache Spark's
-- [TableCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java)
-- [ViewCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java)
-- [SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java)
+- [TableCatalog](https://github.com/apache/spark/blob/v3.5.9/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java)
+- [ViewCatalog](https://github.com/apache/spark/blob/v3.5.9/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java)
+- [SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.9/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java)
 
 The plugin provides support for Spark 3.5 (Scala version 2.12 and 2.13) and Spark 4.0 (Scala version 2.13).
 
