@@ -1753,6 +1753,43 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     return result;
   }
 
+  /**
+   * Rejects table metadata whose locations differ from the ones recorded on the entity by the last
+   * commit, so that the locations used for the table are always the validated ones.
+   */
+  private static void validateLocationsMatchEntity(
+      TableIdentifier identifier, IcebergTableLikeEntity entity, TableMetadata metadata) {
+    String storedLocation = entity.getBaseLocation();
+    if (storedLocation != null
+        && !StorageLocation.of(storedLocation)
+            .isSameLocation(StorageLocation.of(metadata.location()))) {
+      throw new ForbiddenException(
+          "Location %s in the metadata of table %s does not match its stored location %s",
+          metadata.location(), identifier, storedLocation);
+    }
+    // Entities written before the write paths were recorded (Polaris < 1.3.0) have no LOCATION
+    // internal property; for them, an absent write path property means "unknown" rather than
+    // "unset": do not reject the metadata in such cases.
+    Map<String, String> internalProperties = entity.getInternalPropertiesAsMap();
+    if (internalProperties.containsKey(IcebergTableLikeEntity.LOCATION)) {
+      for (String key :
+          List.of(
+              IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+              IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)) {
+        Optional<StorageLocation> stored =
+            Optional.ofNullable(internalProperties.get(key)).map(StorageLocation::of);
+        Optional<StorageLocation> actual =
+            Optional.ofNullable(metadata.properties().get(key)).map(StorageLocation::of);
+        if (stored.isEmpty() != actual.isEmpty()
+            || (stored.isPresent() && !stored.get().isSameLocation(actual.get()))) {
+          throw new ForbiddenException(
+              "Property %s in the metadata of table %s does not match its stored value",
+              key, identifier);
+        }
+      }
+    }
+  }
+
   private class PolarisIcebergCatalogTableBuilder
       extends BaseMetastoreViewCatalog.BaseMetastoreViewCatalogTableBuilder {
     private final TableIdentifier identifier;
@@ -1960,38 +1997,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                       .put(EventAttributes.CATALOG_NAME, catalogName)
                       .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)
                       .build()));
-        }
-      }
-    }
-
-    /**
-     * Rejects table metadata whose locations differ from the ones recorded on the entity by the
-     * last commit, so that the locations used for the table are always the validated ones.
-     */
-    private static void validateLocationsMatchEntity(
-        TableIdentifier identifier, IcebergTableLikeEntity entity, TableMetadata metadata) {
-      String storedLocation = entity.getBaseLocation();
-      if (storedLocation != null
-          && !StorageLocation.of(storedLocation)
-              .isSameLocation(StorageLocation.of(metadata.location()))) {
-        throw new ForbiddenException(
-            "Location %s in the metadata of table %s does not match its stored location %s",
-            metadata.location(), identifier, storedLocation);
-      }
-      // Entities written before the write paths were recorded (Polaris < 1.3.0) have no LOCATION
-      // internal property; for them, an absent write path property means "unknown" rather than
-      // "unset": do not reject the metadata in such cases.
-      Map<String, String> internalProperties = entity.getInternalPropertiesAsMap();
-      if (internalProperties.containsKey(IcebergTableLikeEntity.LOCATION)) {
-        for (String key :
-            List.of(
-                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
-                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)) {
-          if (!Objects.equal(internalProperties.get(key), metadata.properties().get(key))) {
-            throw new ForbiddenException(
-                "Property %s in the metadata of table %s does not match its stored value",
-                key, identifier);
-          }
         }
       }
     }
