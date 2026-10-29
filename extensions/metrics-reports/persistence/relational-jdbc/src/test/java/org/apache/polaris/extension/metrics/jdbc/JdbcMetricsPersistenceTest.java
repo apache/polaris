@@ -25,11 +25,14 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.extension.metrics.spi.MetricsQuerySpi;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
@@ -238,30 +241,30 @@ class JdbcMetricsPersistenceTest {
     persistence.writeScanReport(scan);
     persistence.writeCommitReport(commit);
 
-    MetricsQuerySpi.QueryResult scans =
+    List<MetricsQuerySpi.TableSelector> table =
+        List.of(new MetricsQuerySpi.TableSelector(2L, null));
+    Page<MetricsRecordIdentity> scans =
         persistence.listReports(
-            MetricsQuerySpi.MetricType.SCAN,
+            Set.of(MetricsQuerySpi.MetricType.SCAN),
             1L,
-            List.of(2L),
-            null,
+            table,
             null,
             null,
             PageToken.fromLimit(10));
-    MetricsQuerySpi.QueryResult commits =
+    Page<MetricsRecordIdentity> commits =
         persistence.listReports(
-            MetricsQuerySpi.MetricType.COMMIT,
+            Set.of(MetricsQuerySpi.MetricType.COMMIT),
             1L,
-            List.of(2L),
-            null,
+            table,
             null,
             null,
             PageToken.fromLimit(10));
 
-    assertThat(((MetricsQuerySpi.ScanResult) scans).reports().items())
-        .extracting(ScanMetricsRecord::reportId)
+    assertThat(scans.items())
+        .extracting(MetricsRecordIdentity::reportId)
         .containsExactly(scan.reportId());
-    assertThat(((MetricsQuerySpi.CommitResult) commits).reports().items())
-        .extracting(CommitMetricsRecord::reportId)
+    assertThat(commits.items())
+        .extracting(MetricsRecordIdentity::reportId)
         .containsExactly(commit.reportId());
   }
 
