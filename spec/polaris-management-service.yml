@@ -1246,9 +1246,9 @@ components:
                 if set to `true`, instructs Polaris Servers to skip generating Azure SAS tokens
                 when obtaining credentials for accessing data and metadata files within the
                 related catalog. Setting this property to `true` effectively disables vending
-                storage credentials to clients. This setting is intended for non-cloud or
-                emulator deployments that use local Azure credentials. Unset or `false` keeps
-                SAS vending enabled.
+                storage credentials to clients. This setting is intended for self-managed
+                client-side storage access or emulator deployments that use local Azure
+                credentials. Unset or `false` keeps SAS vending enabled.
           required:
             - tenantId
 
@@ -1268,9 +1268,9 @@ components:
                 if set to `true`, instructs Polaris Servers to skip GCS credential downscoping
                 when obtaining credentials for accessing data and metadata files within the
                 related catalog. Setting this property to `true` effectively disables vending
-                storage credentials to clients. This setting is intended for non-cloud or
-                emulator deployments that use local GCS credentials. Unset or `false` keeps
-                downscoping enabled.
+                storage credentials to clients. This setting is intended for self-managed
+                client-side storage access or emulator deployments that use local GCS
+                credentials. Unset or `false` keeps downscoping enabled.
 
     FileStorageConfigInfo:
       type: object
