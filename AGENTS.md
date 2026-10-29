@@ -130,6 +130,10 @@ Module names map to directory paths via `gradle/projects.main.properties`. See
 **Formatter:** Google Java Format via Spotless. `./gradlew format` applies it.
 Do not manually adjust the formatter's output.
 
+**Value types:** Prefer Java records for new simple value types. Keep required
+validation and defensive copies explicit. Convert existing types only when there
+is a concrete benefit. [DISCIPLINE]
+
 **Imports:** Use import statements. Never inline fully-qualified class names.
 [DISCIPLINE]
 
