@@ -972,7 +972,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       storageAccessConfig = StorageAccessConfig.builder().build();
     }
 
-    Map<String, String> credentialConfig = credentialConfigForVending(storageAccessConfig);
+    Map<String, String> credentialConfig = new HashMap<>(storageAccessConfig.extraProperties());
+    credentialConfig.putAll(storageAccessConfig.credentials());
     ImmutableLoadCredentialsResponse.Builder responseBuilder =
         ImmutableLoadCredentialsResponse.builder();
 
@@ -1280,7 +1281,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   actions,
                   vendingCredentials ? refreshCredentialsEndpoint : Optional.empty(),
                   resolvedStoragePath);
-      Map<String, String> credentialConfig = credentialConfigForVending(storageAccessConfig);
+      Map<String, String> credentialConfig = new HashMap<>(storageAccessConfig.extraProperties());
+      // Keep client access configuration at the top level for compatibility with older clients.
       responseBuilder.addAllConfig(storageAccessConfig.extraProperties());
       if (vendingCredentials) {
         if (storageAccessConfig.credentials().isEmpty()) {
@@ -1291,28 +1293,19 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               "Credential vending was requested for table %s, but no credentials are available",
               tableIdentifier);
         }
-        if (!credentialConfig.isEmpty()) {
-          // Keep credentials and storage configuration at the top level for compatibility with
-          // older clients, while also associating the complete client access configuration with
-          // the matching credential prefix.
-          responseBuilder.addAllConfig(storageAccessConfig.credentials());
-          responseBuilder.addCredential(
-              ImmutableCredential.builder()
-                  .prefix(tableMetadata.location())
-                  .config(credentialConfig)
-                  .build());
-        }
+        responseBuilder.addAllConfig(storageAccessConfig.credentials());
+        credentialConfig.putAll(storageAccessConfig.credentials());
+      }
+      if (!credentialConfig.isEmpty()) {
+        responseBuilder.addCredential(
+            ImmutableCredential.builder()
+                .prefix(tableMetadata.location())
+                .config(credentialConfig)
+                .build());
       }
     }
 
     return responseBuilder;
-  }
-
-  private static Map<String, String> credentialConfigForVending(
-      StorageAccessConfig storageAccessConfig) {
-    Map<String, String> scopedCredentials = new HashMap<>(storageAccessConfig.extraProperties());
-    scopedCredentials.putAll(storageAccessConfig.credentials());
-    return scopedCredentials;
   }
 
   private void validateTableLocations(
