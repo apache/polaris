@@ -19,7 +19,7 @@
 
 ---
 paths:
-  /polaris/v1/catalogs:
+  /polaris/discovery/v1/catalogs:
     get:
       tags:
         - Catalog Discovery API
@@ -33,15 +33,15 @@ paths:
         Each entry's name is the value a client passes as `warehouse` to the configuration endpoint
         (`/v1/config`).
 
-        Which catalogs are listed is decided by the service's authorization. The list is the batch
-        form of the configuration endpoint: it includes only catalogs the caller could configure one
-        at a time, and an entry never carries more than that endpoint returns for the same catalog.
+        The list is the batch form of the configuration endpoint: it includes exactly the catalogs
+        for which the caller is authorized to call `getConfig`, and an entry never carries more than
+        that endpoint returns for the same catalog.
         In this version an entry is the catalog's name only. Storage configuration and other
         administrative details are never included. Administrators use the management API's
         `listCatalogs` for the full model.
       parameters:
-        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
-        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
+        - $ref: '#/components/parameters/pageToken'
+        - $ref: '#/components/parameters/pageSize'
       responses:
         200:
           $ref: '#/components/responses/ListAccessibleCatalogsResponse'
@@ -57,6 +57,26 @@ paths:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
 components:
+  parameters:
+    pageToken:
+      name: pageToken
+      in: query
+      required: false
+      description: The continuation token returned with the previous page. Absent for the first page
+      schema:
+        type: string
+
+    pageSize:
+      name: pageSize
+      in: query
+      required: false
+      description:
+        Maximum number of items to return, at least 1. If absent, or larger than the service's
+        maximum, the service's maximum is used
+      schema:
+        type: integer
+        minimum: 1
+
   schemas:
     AccessibleCatalog:
       type: object
@@ -74,7 +94,8 @@ components:
         - catalogs
       properties:
         next-page-token:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+          type: string
+          description: The token for the next page, passed as pageToken. Absent on the last page
         catalogs:
           type: array
           uniqueItems: true

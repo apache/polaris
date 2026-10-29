@@ -188,8 +188,8 @@ paths:
   # Polaris Catalog Discovery API #
   #################################
 
-  /polaris/v1/catalogs:
-    $ref: './polaris-catalog-apis/catalog-discovery-api.yaml#/paths/~1polaris~1v1~1catalogs'
+  /polaris/discovery/v1/catalogs:
+    $ref: './polaris-catalog-apis/catalog-discovery-api.yaml#/paths/~1polaris~1discovery~1v1~1catalogs'
 
 
 components:
