@@ -131,6 +131,7 @@ Module names map to directory paths via `gradle/projects.main.properties`. See
 Do not manually adjust the formatter's output.
 
 **Value types:** Prefer Java records for new simple value types instead of Immutables.
+[DISCIPLINE]
 
 **Imports:** Use import statements. Never inline fully-qualified class names.
 [DISCIPLINE]
