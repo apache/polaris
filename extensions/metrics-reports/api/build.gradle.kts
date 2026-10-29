@@ -30,8 +30,7 @@ val metricsModels =
       "QueryMetricsRequest",
       "ListMetricsResponse",
       "MetricsReport",
-      "MetricsRequest",
-      "TableRef",
+      "CatalogObject",
     )
     .joinToString(",")
 

@@ -28,9 +28,12 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -49,14 +52,15 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.metrics.api.model.CatalogObject;
 import org.apache.polaris.core.metrics.api.model.ListMetricsResponse;
 import org.apache.polaris.core.metrics.api.model.MetricsReport;
-import org.apache.polaris.core.metrics.api.model.MetricsRequest;
 import org.apache.polaris.core.metrics.api.model.QueryMetricsRequest;
-import org.apache.polaris.core.metrics.api.model.TableRef;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -81,6 +85,10 @@ import org.jspecify.annotations.NonNull;
 @Beta
 @RequestScoped
 public class MetricsReportsService implements PolarisCatalogMetricsReportsApiService {
+
+  private static final String METRIC_TYPE_SCAN = "iceberg-scan";
+  private static final String METRIC_TYPE_COMMIT = "iceberg-commit";
+  private static final String OBJECT_TYPE_ICEBERG_TABLE = "iceberg-table";
 
   private final PolarisAuthorizer authorizer;
   private final PolarisPrincipal polarisPrincipal;
@@ -113,33 +121,65 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
 
-    List<TableRef> tableRefs = request.getTables();
-    if (tableRefs == null || tableRefs.isEmpty()) {
-      throw new IllegalArgumentException("tables must not be empty");
+    if (request.getObjects() == null || request.getObjects().isEmpty()) {
+      throw new IllegalArgumentException("objects must not be empty");
     }
-    if (request.getSnapshotId() != null && tableRefs.size() != 1) {
-      throw new IllegalArgumentException(
-          "snapshotId can only be used when exactly one table is requested, since snapshot IDs "
-              + "are scoped to a single table");
+    if (request.getMetricTypes() == null || request.getMetricTypes().isEmpty()) {
+      throw new IllegalArgumentException("metricTypes must not be empty");
     }
 
-    List<TableIdentifier> identifiers =
-        tableRefs.stream()
-            .map(
-                ref ->
-                    TableIdentifier.of(
-                        Namespace.of(ref.getNamespace().toArray(new String[0])), ref.getName()))
-            .toList();
+    // Unsupported metric types and object types yield no reports.
+    Set<MetricsQuerySpi.MetricType> types = EnumSet.noneOf(MetricsQuerySpi.MetricType.class);
+    for (String metricType : request.getMetricTypes()) {
+      switch (metricType) {
+        case METRIC_TYPE_SCAN -> types.add(MetricsQuerySpi.MetricType.SCAN);
+        case METRIC_TYPE_COMMIT -> types.add(MetricsQuerySpi.MetricType.COMMIT);
+        default -> {}
+      }
+    }
 
-    ResolvedTables resolved = resolveAndAuthorizeTableMetrics(catalogName, identifiers);
+    // Snapshot IDs requested per table; an empty set means every snapshot, so an entry without a
+    // snapshot ID takes precedence over entries of the same table with one.
+    Map<TableIdentifier, Set<Long>> snapshotsByTable = new LinkedHashMap<>();
+    for (CatalogObject object : request.getObjects()) {
+      if (!OBJECT_TYPE_ICEBERG_TABLE.equals(object.getType())) {
+        continue;
+      }
+      TableIdentifier identifier = toTableIdentifier(object.getIdentifier());
+      Set<Long> snapshots = snapshotsByTable.get(identifier);
+      if (object.getSnapshotId() == null) {
+        snapshotsByTable.put(identifier, Set.of());
+      } else if (snapshots == null) {
+        snapshotsByTable.put(identifier, new LinkedHashSet<>(List.of(object.getSnapshotId())));
+      } else if (!snapshots.isEmpty()) {
+        snapshots.add(object.getSnapshotId());
+      }
+    }
+    if (snapshotsByTable.isEmpty()) {
+      return toResponse(null, List.of());
+    }
+
+    ResolvedTables resolved =
+        resolveAndAuthorizeTableMetrics(catalogName, List.copyOf(snapshotsByTable.keySet()));
+    if (types.isEmpty()) {
+      return toResponse(null, List.of());
+    }
     CatalogEntity catalogEntity = resolved.catalogEntity();
     Map<Long, TableIdentifier> tableIdToIdentifier = resolved.tableIdToIdentifier();
 
-    MetricsQuerySpi.MetricType type =
-        switch (request.getMetricType()) {
-          case SCAN -> MetricsQuerySpi.MetricType.SCAN;
-          case COMMIT -> MetricsQuerySpi.MetricType.COMMIT;
-        };
+    List<MetricsQuerySpi.TableSelector> selectors = new ArrayList<>();
+    tableIdToIdentifier.forEach(
+        (tableId, identifier) -> {
+          Set<Long> snapshots = snapshotsByTable.get(identifier);
+          if (snapshots.isEmpty()) {
+            selectors.add(new MetricsQuerySpi.TableSelector(tableId, null));
+          } else {
+            snapshots.forEach(
+                snapshotId ->
+                    selectors.add(new MetricsQuerySpi.TableSelector(tableId, snapshotId)));
+          }
+        });
+
     int maxPageSize =
         realmConfig.getConfig(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity);
     PageToken pt =
@@ -151,44 +191,46 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
                 realmConfig.getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED, catalogEntity));
     MetricsQuerySpi provider = queryProvider.get();
 
-    MetricsQuerySpi.QueryResult result =
+    Page<MetricsRecordIdentity> page =
         provider.listReports(
-            type,
+            types,
             catalogEntity.getId(),
-            new ArrayList<>(tableIdToIdentifier.keySet()),
-            request.getSnapshotId(),
+            selectors,
             request.getTimestampFrom(),
             request.getTimestampTo(),
             pt);
 
-    String nextPageToken =
-        switch (result) {
-          case MetricsQuerySpi.ScanResult scan -> scan.reports().encodedResponseToken();
-          case MetricsQuerySpi.CommitResult commit -> commit.reports().encodedResponseToken();
-        };
+    String nextPageToken = page.encodedResponseToken();
     if (request.getPageToken() == null && request.getPageSize() == null && nextPageToken != null) {
       throw new BadRequestException(
           "Metrics do not fit the maximum page size of %s; supply a pageToken to paginate",
           maxPageSize);
     }
 
-    Preconditions.checkState(
-        result.metricType() == type, "Provider returned %s for %s", result.metricType(), type);
+    return toResponse(
+        nextPageToken,
+        page.items().stream()
+            .map(
+                r ->
+                    switch (r) {
+                      case ScanMetricsRecord scan ->
+                          toScanReport(scan, tableIdToIdentifier.get(scan.tableId()));
+                      case CommitMetricsRecord commit ->
+                          toCommitReport(commit, tableIdToIdentifier.get(commit.tableId()));
+                      default ->
+                          throw new IllegalStateException(
+                              "Provider returned unsupported record type " + r.getClass());
+                    })
+            .toList());
+  }
 
-    return switch (result) {
-      case MetricsQuerySpi.ScanResult scan ->
-          toResponse(
-              scan.reports().encodedResponseToken(),
-              scan.reports().items().stream()
-                  .map(r -> toScanReport(r, tableIdToIdentifier.get(r.tableId())))
-                  .toList());
-      case MetricsQuerySpi.CommitResult commit ->
-          toResponse(
-              commit.reports().encodedResponseToken(),
-              commit.reports().items().stream()
-                  .map(r -> toCommitReport(r, tableIdToIdentifier.get(r.tableId())))
-                  .toList());
-    };
+  private static TableIdentifier toTableIdentifier(List<String> identifier) {
+    if (identifier.isEmpty()) {
+      throw new IllegalArgumentException("object identifier must not be empty");
+    }
+    return TableIdentifier.of(
+        Namespace.of(identifier.subList(0, identifier.size() - 1).toArray(new String[0])),
+        identifier.getLast());
   }
 
   private static Response toResponse(String nextPageToken, List<MetricsReport> reports) {
@@ -283,7 +325,7 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
     payload.put("data", data);
 
     return toReport(
-        MetricsReport.MetricTypeEnum.SCAN,
+        METRIC_TYPE_SCAN,
         identifier,
         r.timestamp().toEpochMilli(),
         r.snapshotId().orElse(null),
@@ -322,7 +364,7 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
     payload.put("data", data);
 
     return toReport(
-        MetricsReport.MetricTypeEnum.COMMIT,
+        METRIC_TYPE_COMMIT,
         identifier,
         r.timestamp().toEpochMilli(),
         r.snapshotId(),
@@ -333,7 +375,7 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
   }
 
   private static MetricsReport toReport(
-      MetricsReport.MetricTypeEnum metricType,
+      String metricType,
       TableIdentifier identifier,
       long timestampMs,
       Long snapshotId,
@@ -341,15 +383,20 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
       String otelTraceId,
       String otelSpanId,
       Map<String, Object> payload) {
-    MetricsRequest request =
-        (requestId != null || otelTraceId != null || otelSpanId != null)
-            ? new MetricsRequest(requestId, otelTraceId, otelSpanId)
-            : null;
+    if (requestId != null || otelTraceId != null || otelSpanId != null) {
+      Map<String, Object> request = new LinkedHashMap<>();
+      request.put("request-id", requestId);
+      request.put("otel-trace-id", otelTraceId);
+      request.put("otel-span-id", otelSpanId);
+      payload.put("request", request);
+    }
     return new MetricsReport(
-        metricType, toTableRef(identifier), timestampMs, snapshotId, request, payload);
+        metricType, toCatalogObject(identifier, snapshotId), timestampMs, payload);
   }
 
-  private static TableRef toTableRef(TableIdentifier identifier) {
-    return new TableRef(Arrays.asList(identifier.namespace().levels()), identifier.name());
+  private static CatalogObject toCatalogObject(TableIdentifier identifier, Long snapshotId) {
+    List<String> levels = new ArrayList<>(Arrays.asList(identifier.namespace().levels()));
+    levels.add(identifier.name());
+    return new CatalogObject(levels, OBJECT_TYPE_ICEBERG_TABLE, snapshotId);
   }
 }

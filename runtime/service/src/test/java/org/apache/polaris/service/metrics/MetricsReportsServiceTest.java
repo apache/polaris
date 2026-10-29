@@ -20,19 +20,26 @@ package org.apache.polaris.service.metrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NotFoundException;
@@ -46,12 +53,13 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.metrics.api.model.CatalogObject;
 import org.apache.polaris.core.metrics.api.model.ListMetricsResponse;
 import org.apache.polaris.core.metrics.api.model.MetricsReport;
 import org.apache.polaris.core.metrics.api.model.QueryMetricsRequest;
-import org.apache.polaris.core.metrics.api.model.TableRef;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -64,6 +72,8 @@ import org.apache.polaris.extension.metrics.spi.MetricsQuerySpi;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Unit tests for {@link MetricsReportsService}.
@@ -77,6 +87,9 @@ class MetricsReportsServiceTest {
   private static final String CATALOG = "test-catalog";
   private static final List<String> NAMESPACE = List.of("db", "schema");
   private static final String TABLE = "events";
+  private static final String OTHER_TABLE = "other-table";
+  private static final String SCAN = "iceberg-scan";
+  private static final String COMMIT = "iceberg-commit";
 
   private PolarisAuthorizer authorizer;
   private PolarisResolutionManifest manifest;
@@ -117,6 +130,18 @@ class MetricsReportsServiceTest {
     when(manifest.getResolvedPath(
             any(ResolvedPathKey.class), eq(PolarisEntitySubType.ICEBERG_TABLE), eq(true)))
         .thenReturn(tableWrapper);
+    PolarisResolvedPathWrapper otherTableWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisEntity otherLeafEntity = mock(PolarisEntity.class);
+    when(otherLeafEntity.getId()).thenReturn(43L);
+    when(otherTableWrapper.getRawLeafEntity()).thenReturn(otherLeafEntity);
+    when(manifest.getResolvedPath(
+            eq(
+                ResolvedPathKey.ofTableLike(
+                    TableIdentifier.of(
+                        Namespace.of(NAMESPACE.toArray(new String[0])), OTHER_TABLE))),
+            eq(PolarisEntitySubType.ICEBERG_TABLE),
+            eq(true)))
+        .thenReturn(otherTableWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
     when(factory.createResolutionManifest(eq(principal), eq(CATALOG))).thenReturn(manifest);
     when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
@@ -125,24 +150,8 @@ class MetricsReportsServiceTest {
     // empty pages, mirroring the @DefaultBean NoOpMetricsQuery in
     // polaris-extensions-metrics-reports.
     MetricsQuerySpi noOp = mock(MetricsQuerySpi.class);
-    when(noOp.listReports(
-            eq(MetricsQuerySpi.MetricType.SCAN),
-            anyLong(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(PageToken.class)))
-        .thenReturn(new MetricsQuerySpi.ScanResult(Page.fromItems(List.of())));
-    when(noOp.listReports(
-            eq(MetricsQuerySpi.MetricType.COMMIT),
-            anyLong(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(PageToken.class)))
-        .thenReturn(new MetricsQuerySpi.CommitResult(Page.fromItems(List.of())));
+    when(noOp.listReports(any(), anyLong(), any(), any(), any(), any(PageToken.class)))
+        .thenReturn(Page.fromItems(List.of()));
     @SuppressWarnings("unchecked")
     Instance<MetricsQuerySpi> noOpProvider = mock(Instance.class);
     when(noOpProvider.get()).thenReturn(noOp);
@@ -162,18 +171,37 @@ class MetricsReportsServiceTest {
 
   private static QueryMetricsRequest requestFor(
       String metricType, List<String> namespace, String table) {
-    return new QueryMetricsRequest(
-        "scan".equals(metricType)
-            ? QueryMetricsRequest.MetricTypeEnum.SCAN
-            : QueryMetricsRequest.MetricTypeEnum.COMMIT,
-        List.of(new TableRef(namespace, table)));
+    return new QueryMetricsRequest(List.of(metricType), List.of(object(namespace, table, null)));
+  }
+
+  private static CatalogObject object(List<String> namespace, String table, Long snapshotId) {
+    List<String> identifier = new ArrayList<>(namespace);
+    identifier.add(table);
+    return new CatalogObject(identifier, null, snapshotId);
+  }
+
+  private List<MetricsQuerySpi.TableSelector> querySelectors(List<CatalogObject> objects) {
+    MetricsQuerySpi backend = mock(MetricsQuerySpi.class);
+    List<List<MetricsQuerySpi.TableSelector>> captured = new ArrayList<>();
+    when(backend.listReports(any(), anyLong(), any(), any(), any(), any(PageToken.class)))
+        .thenAnswer(
+            invocation -> {
+              captured.add(invocation.getArgument(2));
+              return Page.fromItems(List.of());
+            });
+    when(queryProvider.get()).thenReturn(backend);
+
+    service.queryTableMetrics(
+        CATALOG, new QueryMetricsRequest(List.of(SCAN), objects), realmContext, securityContext);
+    assertThat(captured).hasSize(1);
+    return captured.getFirst();
   }
 
   @Test
   void authorizedRequestWithNoBackendReturnsEmptyPage() {
     Response response =
         service.queryTableMetrics(
-            CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext);
+            CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext);
 
     // With the no-op default query provider, the read path succeeds with an empty result set.
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -186,7 +214,7 @@ class MetricsReportsServiceTest {
     assertThatThrownBy(
             () ->
                 service.queryTableMetrics(
-                    CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext))
+                    CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext))
         .isInstanceOf(ForbiddenException.class);
   }
 
@@ -199,7 +227,7 @@ class MetricsReportsServiceTest {
     assertThatThrownBy(
             () ->
                 service.queryTableMetrics(
-                    CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext))
+                    CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining(TABLE);
   }
@@ -211,7 +239,7 @@ class MetricsReportsServiceTest {
     assertThatThrownBy(
             () ->
                 service.queryTableMetrics(
-                    CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext))
+                    CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining(CATALOG);
   }
@@ -224,37 +252,67 @@ class MetricsReportsServiceTest {
     assertThatThrownBy(
             () ->
                 service.queryTableMetrics(
-                    CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext))
+                    CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext))
         .isInstanceOf(NotFoundException.class);
   }
 
   @Test
-  void emptyTablesThrowsIllegalArgumentException() {
-    QueryMetricsRequest request =
-        new QueryMetricsRequest(QueryMetricsRequest.MetricTypeEnum.SCAN, List.of());
+  void emptyObjectsThrowsIllegalArgumentException() {
+    QueryMetricsRequest request = new QueryMetricsRequest(List.of(SCAN), List.of());
 
     assertThatThrownBy(
             () -> service.queryTableMetrics(CATALOG, request, realmContext, securityContext))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("tables");
+        .hasMessageContaining("objects");
   }
 
   @Test
-  void snapshotIdWithMultipleTablesThrowsIllegalArgumentException() {
-    QueryMetricsRequest request =
-        new QueryMetricsRequest(
-            QueryMetricsRequest.MetricTypeEnum.SCAN,
-            List.of(new TableRef(NAMESPACE, TABLE), new TableRef(NAMESPACE, "other-table")),
-            null,
-            null,
-            123L,
-            null,
-            null);
+  void tableSnapshotPairsArePreservedAsSelectors() {
+    List<MetricsQuerySpi.TableSelector> selectors =
+        querySelectors(
+            List.of(
+                object(NAMESPACE, TABLE, 1L),
+                object(NAMESPACE, TABLE, 3L),
+                object(NAMESPACE, OTHER_TABLE, 2L),
+                object(NAMESPACE, TABLE, 1L)));
 
-    assertThatThrownBy(
-            () -> service.queryTableMetrics(CATALOG, request, realmContext, securityContext))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("snapshotId");
+    assertThat(selectors)
+        .containsExactly(
+            new MetricsQuerySpi.TableSelector(42L, 1L),
+            new MetricsQuerySpi.TableSelector(42L, 3L),
+            new MetricsQuerySpi.TableSelector(43L, 2L));
+  }
+
+  @Test
+  void entryWithoutSnapshotIdTakesPrecedence() {
+    List<MetricsQuerySpi.TableSelector> selectors =
+        querySelectors(
+            List.of(
+                object(NAMESPACE, TABLE, 1L),
+                object(NAMESPACE, TABLE, null),
+                object(NAMESPACE, TABLE, 3L)));
+
+    assertThat(selectors).containsExactly(new MetricsQuerySpi.TableSelector(42L, null));
+  }
+
+  static Stream<QueryMetricsRequest> unsupportedRequests() {
+    return Stream.of(
+        new QueryMetricsRequest(List.of("x-custom"), List.of(object(NAMESPACE, TABLE, null))),
+        new QueryMetricsRequest(
+            List.of(SCAN),
+            List.of(new CatalogObject(List.of("db", "schema", TABLE), "iceberg-view", null))));
+  }
+
+  @ParameterizedTest
+  @MethodSource("unsupportedRequests")
+  void unsupportedMetricOrObjectTypeYieldsNoReports(QueryMetricsRequest request) {
+    MetricsQuerySpi provider = queryProvider.get();
+
+    Response response = service.queryTableMetrics(CATALOG, request, realmContext, securityContext);
+
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    assertThat(((ListMetricsResponse) response.getEntity()).getReports()).isEmpty();
+    verify(provider, never()).listReports(any(), anyLong(), any(), any(), any(), any());
   }
 
   @Test
@@ -263,8 +321,8 @@ class MetricsReportsServiceTest {
         service.queryTableMetrics(
             CATALOG,
             new QueryMetricsRequest(
-                QueryMetricsRequest.MetricTypeEnum.SCAN,
-                List.of(new TableRef(NAMESPACE, TABLE), new TableRef(NAMESPACE, "other-table"))),
+                List.of(SCAN),
+                List.of(object(NAMESPACE, TABLE, null), object(NAMESPACE, OTHER_TABLE, null))),
             realmContext,
             securityContext);
 
@@ -306,32 +364,33 @@ class MetricsReportsServiceTest {
             .build();
     MetricsQuerySpi backend = mock(MetricsQuerySpi.class);
     when(backend.listReports(
-            eq(MetricsQuerySpi.MetricType.SCAN),
+            eq(Set.of(MetricsQuerySpi.MetricType.SCAN)),
             eq(7L),
-            eq(List.of(42L)),
-            any(),
+            eq(List.of(new MetricsQuerySpi.TableSelector(42L, null))),
             any(),
             any(),
             any(PageToken.class)))
-        .thenReturn(new MetricsQuerySpi.ScanResult(Page.fromItems(List.of(record))));
+        .thenReturn(Page.<MetricsRecordIdentity>fromItems(List.of(record)));
     when(queryProvider.get()).thenReturn(backend);
 
     Response response =
         service.queryTableMetrics(
-            CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext);
+            CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext);
 
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     List<MetricsReport> reports = ((ListMetricsResponse) response.getEntity()).getReports();
     assertThat(reports).hasSize(1);
     MetricsReport report = reports.getFirst();
-    assertThat(report.getMetricType()).isEqualTo(MetricsReport.MetricTypeEnum.SCAN);
-    assertThat(report.getTable()).isEqualTo(new TableRef(NAMESPACE, TABLE));
+    assertThat(report.getMetricType()).isEqualTo(SCAN);
+    assertThat(report.getObject())
+        .isEqualTo(new CatalogObject(List.of("db", "schema", TABLE), "iceberg-table", 99L));
     assertThat(report.getTimestampMs()).isEqualTo(1_000L);
-    assertThat(report.getSnapshotId()).isEqualTo(99L);
-    assertThat(report.getRequest().getRequestId()).isEqualTo("req-1");
     assertThat(report.getPayload())
         .containsEntry("type", "iceberg.metrics.scan")
         .containsEntry("version", 1);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> requestContext = (Map<String, Object>) report.getPayload().get("request");
+    assertThat(requestContext).containsEntry("request-id", "req-1");
     @SuppressWarnings("unchecked")
     Map<String, Object> data = (Map<String, Object>) report.getPayload().get("data");
     assertThat(data)
@@ -342,7 +401,7 @@ class MetricsReportsServiceTest {
         .containsEntry("total-planning-duration-ms", 15L);
     // The payload is a projection of the persisted record: record metadata is not included.
     assertThat(data).doesNotContainKey("custom-key");
-    assertThat(report.getPayload()).containsOnlyKeys("type", "version", "data");
+    assertThat(report.getPayload()).containsOnlyKeys("type", "version", "data", "request");
   }
 
   @Test
@@ -377,28 +436,27 @@ class MetricsReportsServiceTest {
             .build();
     MetricsQuerySpi backend = mock(MetricsQuerySpi.class);
     when(backend.listReports(
-            eq(MetricsQuerySpi.MetricType.COMMIT),
+            eq(Set.of(MetricsQuerySpi.MetricType.COMMIT)),
             eq(7L),
-            eq(List.of(42L)),
-            any(),
+            eq(List.of(new MetricsQuerySpi.TableSelector(42L, null))),
             any(),
             any(),
             any(PageToken.class)))
-        .thenReturn(new MetricsQuerySpi.CommitResult(Page.fromItems(List.of(record))));
+        .thenReturn(Page.<MetricsRecordIdentity>fromItems(List.of(record)));
     when(queryProvider.get()).thenReturn(backend);
 
     Response response =
         service.queryTableMetrics(
-            CATALOG, requestFor("commit", NAMESPACE, TABLE), realmContext, securityContext);
+            CATALOG, requestFor(COMMIT, NAMESPACE, TABLE), realmContext, securityContext);
 
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     List<MetricsReport> reports = ((ListMetricsResponse) response.getEntity()).getReports();
     assertThat(reports).hasSize(1);
     MetricsReport report = reports.getFirst();
-    assertThat(report.getMetricType()).isEqualTo(MetricsReport.MetricTypeEnum.COMMIT);
+    assertThat(report.getMetricType()).isEqualTo(COMMIT);
     assertThat(report.getTimestampMs()).isEqualTo(2_000L);
-    assertThat(report.getSnapshotId()).isEqualTo(100L);
-    assertThat(report.getRequest()).isNull();
+    assertThat(report.getObject().getSnapshotId()).isEqualTo(100L);
+    assertThat(report.getPayload()).doesNotContainKey("request");
     assertThat(report.getPayload()).containsEntry("type", "iceberg.metrics.commit");
     @SuppressWarnings("unchecked")
     Map<String, Object> data = (Map<String, Object>) report.getPayload().get("data");
@@ -411,29 +469,53 @@ class MetricsReportsServiceTest {
   }
 
   @Test
+  void multipleMetricTypesReturnMixedReportsInProviderOrder() {
+    MetricsQuerySpi backend = mock(MetricsQuerySpi.class);
+    ScanMetricsRecord scan = mock(ScanMetricsRecord.class);
+    when(scan.tableId()).thenReturn(42L);
+    when(scan.timestamp()).thenReturn(Instant.ofEpochMilli(2_000L));
+    CommitMetricsRecord commit = mock(CommitMetricsRecord.class);
+    when(commit.tableId()).thenReturn(42L);
+    when(commit.timestamp()).thenReturn(Instant.ofEpochMilli(1_000L));
+    when(backend.listReports(
+            eq(Set.of(MetricsQuerySpi.MetricType.SCAN, MetricsQuerySpi.MetricType.COMMIT)),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(PageToken.class)))
+        .thenReturn(Page.<MetricsRecordIdentity>fromItems(List.of(scan, commit)));
+    when(queryProvider.get()).thenReturn(backend);
+
+    Response response =
+        service.queryTableMetrics(
+            CATALOG,
+            new QueryMetricsRequest(List.of(SCAN, COMMIT), List.of(object(NAMESPACE, TABLE, null))),
+            realmContext,
+            securityContext);
+
+    assertThat(((ListMetricsResponse) response.getEntity()).getReports())
+        .extracting(MetricsReport::getMetricType, MetricsReport::getTimestampMs)
+        .containsExactly(tuple(SCAN, 2_000L), tuple(COMMIT, 1_000L));
+  }
+
+  @Test
   void unpaginatedRequestExceedingMaxPageSizeIsRejected() {
     when(realmConfig.getConfig(
             eq(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE), any(CatalogEntity.class)))
         .thenReturn(1);
     @SuppressWarnings("unchecked")
-    Page<ScanMetricsRecord> overflowing = mock(Page.class);
+    Page<MetricsRecordIdentity> overflowing = mock(Page.class);
     when(overflowing.items()).thenReturn(List.of());
     when(overflowing.encodedResponseToken()).thenReturn("next");
     MetricsQuerySpi provider = queryProvider.get();
-    when(provider.listReports(
-            eq(MetricsQuerySpi.MetricType.SCAN),
-            anyLong(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(PageToken.class)))
-        .thenReturn(new MetricsQuerySpi.ScanResult(overflowing));
+    when(provider.listReports(any(), anyLong(), any(), any(), any(), any(PageToken.class)))
+        .thenReturn(overflowing);
 
     assertThatThrownBy(
             () ->
                 service.queryTableMetrics(
-                    CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext))
+                    CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("maximum page size");
   }
@@ -443,7 +525,7 @@ class MetricsReportsServiceTest {
     Response response =
         service.queryTableMetrics(
             CATALOG,
-            requestFor("scan", List.of("db", "schema"), TABLE),
+            requestFor(SCAN, List.of("db", "schema"), TABLE),
             realmContext,
             securityContext);
 
