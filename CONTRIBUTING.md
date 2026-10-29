@@ -141,9 +141,6 @@ The Apache Polaris build currently requires Java 21 or later. There are a few to
 To ensure smooth collaboration and to maintain a high-quality codebase, please adhere to the following guidelines when make code contributions:
 
 * Follow the existing code style and conventions used.
-* Prefer Java records for new simple value types. Keep required validation and
-  defensive copies explicit. Convert existing types only when there is a concrete
-  benefit.
 * Write clear, concise, and well-documented code. This includes providing inline comments when necessary.
 * Keep your changes focused and granular. Separate unrelated changes into multiple pull requests.
 * Write unit tests for your code changes, whenever applicable, and make sure the existing tests pass successfully.
