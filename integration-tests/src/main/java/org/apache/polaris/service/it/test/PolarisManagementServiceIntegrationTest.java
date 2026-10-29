@@ -469,9 +469,13 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testCreateExternalCatalogWithInvalidConnectionConfigReturnsBadRequest() {
+    // S3 storage is accepted by every test profile; the connection config is what is under test
     String storage =
-        "\"storageConfigInfo\":{\"storageType\":\"FILE\",\"allowedLocations\":[\"file:///tmp/polaris/\"]}";
-    String properties = "\"properties\":{\"default-base-location\":\"file:///tmp/polaris/ext\"}";
+        "\"storageConfigInfo\":{\"storageType\":\"S3\","
+            + "\"roleArn\":\"arn:aws:iam::123456789012:role/my-role\","
+            + "\"allowedLocations\":[\"s3://my-bucket/path/to/data\"]}";
+    String properties =
+        "\"properties\":{\"default-base-location\":\"s3://my-bucket/path/to/data\"}";
 
     // authenticationParameters omitted: the spec only requires connectionType
     String withoutAuthentication =
@@ -504,7 +508,7 @@ public class PolarisManagementServiceIntegrationTest {
             + ","
             + storage
             + ",\"connectionConfigInfo\":{\"connectionType\":\"HADOOP\","
-            + "\"uri\":\"file:///tmp/polaris/ext\",\"warehouse\":\"file:///tmp/polaris/ext\","
+            + "\"uri\":\"http://localhost:8182/\",\"warehouse\":\"s3://my-bucket/path/to/data\","
             + "\"authenticationParameters\":{\"authenticationType\":\"IMPLICIT\"}}}}";
     try (Response response =
         managementApi.request("v1/catalogs").post(Entity.json(unsupportedConnectionType))) {
