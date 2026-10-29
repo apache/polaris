@@ -3342,6 +3342,74 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testPurgeTaskFallsBackToMetadataLocationsForEntityWithoutLocationProperty() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+
+    catalog.createNamespace(NS);
+    String dataLocation =
+        "%s/legacy-data/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    String metadataLocation =
+        "%s/legacy-metadata/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    catalog
+        .buildTable(TABLE, SCHEMA)
+        .withProperty(TableProperties.WRITE_DATA_LOCATION, dataLocation)
+        .withProperty(TableProperties.WRITE_METADATA_LOCATION, metadataLocation)
+        .create();
+
+    // Simulate a table created before Polaris 1.3.0: no LOCATION nor write paths on the entity
+    EntityResult namespaceResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            NS.toString());
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, namespaceResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            TABLE.name());
+    IcebergTableLikeEntity entity = IcebergTableLikeEntity.of(tableResult.getEntity());
+    Map<String, String> legacyInternalProperties =
+        new HashMap<>(entity.getInternalPropertiesAsMap());
+    legacyInternalProperties.remove(IcebergTableLikeEntity.LOCATION);
+    legacyInternalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY);
+    legacyInternalProperties.remove(
+        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
+    assertThat(
+            metaStoreManager
+                .updateEntityPropertiesIfNotChanged(
+                    polarisContext,
+                    List.of(catalogEntity, namespaceResult.getEntity()),
+                    new IcebergTableLikeEntity.Builder(entity)
+                        .setInternalProperties(legacyInternalProperties)
+                        .build())
+                .isSuccess())
+        .isTrue();
+
+    assertThat(catalog.dropTable(TABLE, true)).isTrue();
+
+    List<PolarisBaseEntity> tasks =
+        metaStoreManager
+            .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+            .getEntities();
+    assertThat(tasks).hasSize(1);
+    assertThat(
+            TaskUtils.storageLocations(
+                TaskEntity.of(tasks.getFirst()).getInternalPropertiesAsMap()))
+        .contains(dataLocation, metadataLocation);
+  }
+
+  @Test
   public void testPurgeRejectedForTableWithMetadataLocationDifferentFromEntity() {
     catalog.createNamespace(NS);
     Table table = catalog.buildTable(TABLE, SCHEMA).create();
@@ -3400,6 +3468,43 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     table.newFastAppend().appendFile(FILE_B).commit();
 
     assertThat(metadataFileExists(v1Location)).isFalse();
+  }
+
+  @Test
+  public void testRemovedMetadataFilesOutsideRecordedLocationsAreKeptAfterCommit() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+
+    catalog.createNamespace(NS);
+    String oldMetadataPath =
+        "%s/old-metadata/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    String newMetadataPath =
+        "%s/new-metadata/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    Table table =
+        catalog
+            .buildTable(TABLE, SCHEMA)
+            .withProperties(
+                ImmutableMap.of(
+                    TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED, "true",
+                    TableProperties.METADATA_PREVIOUS_VERSIONS_MAX, "1",
+                    TableProperties.WRITE_METADATA_LOCATION, oldMetadataPath))
+            .create();
+    String v1Location = ((BaseTable) table).operations().current().metadataFileLocation();
+    assertThat(v1Location).startsWith(oldMetadataPath);
+
+    // Moves the metadata path: the old path is no longer recorded on the entity after this commit
+    table.updateProperties().set(TableProperties.WRITE_METADATA_LOCATION, newMetadataPath).commit();
+    table.newFastAppend().appendFile(FILE_A).commit();
+    table.newFastAppend().appendFile(FILE_B).commit();
+
+    // v1 is no longer referenced by the table, but it is outside the recorded locations
+    assertThat(metadataFileExists(v1Location)).isTrue();
   }
 
   @Test

@@ -572,6 +572,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     validateLocationsMatchEntity(identifier, entity, metadata);
     Map<String, String> storedProperties = entity.getInternalPropertiesAsMap();
+    if (!storedProperties.containsKey(IcebergTableLikeEntity.LOCATION)) {
+      // Entities written before the write paths were recorded (Polaris < 1.3.0) don't have them;
+      // fall back to the write paths of the metadata, which validation does not check either.
+      storedProperties = metadata.properties();
+    }
     return StorageUtil.getLocationsUsedByTable(storedLocation, storedProperties);
   }
 
@@ -1784,6 +1789,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     if (storedLocation != null
         && !StorageLocation.of(storedLocation)
             .isSameLocation(StorageLocation.of(metadata.location()))) {
+      LOGGER.debug(
+          "Location mismatch for table {}: metadata has {}, entity has {}",
+          identifier,
+          metadata.location(),
+          storedLocation);
       throw new ForbiddenException(
           "Location %s in the metadata of table %s does not match its stored location %s",
           metadata.location(), identifier, storedLocation);
@@ -1803,6 +1813,12 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             Optional.ofNullable(metadata.properties().get(key)).map(StorageLocation::of);
         if (stored.isEmpty() != actual.isEmpty()
             || (stored.isPresent() && !stored.get().isSameLocation(actual.get()))) {
+          LOGGER.debug(
+              "Property {} mismatch for table {}: metadata has {}, entity has {}",
+              key,
+              identifier,
+              actual.map(StorageLocation::toString).orElse(null),
+              stored.map(StorageLocation::toString).orElse(null));
           throw new ForbiddenException(
               "Property %s in the metadata of table %s does not match its stored value",
               key, identifier);
@@ -1857,6 +1873,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     private final boolean makeMetadataCurrentOnCommit;
 
     private FileIO tableFileIO;
+
+    // Locations recorded on the entity before the last doCommit(), used to bound metadata cleanup
+    private Set<String> storedTableLocations = Set.of();
 
     BasePolarisTableOperations(
         FileIO defaultFileIO,
@@ -1917,7 +1936,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       }
 
       long start = System.currentTimeMillis();
-      Set<String> storedTableLocations = doCommit(base, metadata);
+      doCommit(base, metadata);
       deleteRemovedMetadataFiles.accept(
           new MetadataFileCleanup(io(), base, metadata, storedTableLocations));
       requestRefresh();
@@ -2049,7 +2068,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       return internalProperties;
     }
 
-    public Set<String> doCommit(TableMetadata base, TableMetadata metadata) {
+    public void doCommit(TableMetadata base, TableMetadata metadata) {
       LOGGER.debug(
           "doCommit for table {} with metadataBefore {}, metadataAfter {}",
           tableIdentifier,
@@ -2135,7 +2154,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               resolvedTableEntities == null ? null : resolvedTableEntities.getRawLeafEntity());
       String existingLocation =
           existingEntity == null ? null : existingEntity.getMetadataLocation();
-      Set<String> storedTableLocations =
+      storedTableLocations =
           existingEntity == null
               ? Set.of()
               : StorageUtil.getLocationsUsedByTable(
@@ -2207,7 +2226,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           currentMetadataLocation = newLocation;
         }
         writeSucceeded = true;
-        return storedTableLocations;
       } finally {
         if (!writeSucceeded && writeResult.written()) {
           IcebergCatalogHandler.cleanupWrittenMetadataFiles(

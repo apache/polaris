@@ -97,12 +97,12 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
   }
 
   /**
-   * Returns whether {@code file} is under one of the table locations recorded in the task. Files
-   * outside the table locations are skipped instead of deleted.
+   * Returns whether {@code file} is under one of {@code tableLocations}, the table locations
+   * recorded in the task (see {@link TaskUtils#storageLocations}). Files outside the table
+   * locations are skipped instead of deleted.
    */
   protected static boolean isUnderTableLocation(
-      TaskEntity task, TableIdentifier tableId, String file) {
-    Set<String> tableLocations = TaskUtils.storageLocations(task.getInternalPropertiesAsMap());
+      Set<String> tableLocations, TableIdentifier tableId, String file) {
     StorageLocation fileLocation = StorageLocation.of(file);
     if (tableLocations.stream().anyMatch(l -> fileLocation.isChildOf(StorageLocation.of(l)))) {
       return true;
