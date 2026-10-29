@@ -325,9 +325,9 @@ catalog = load_catalog(
 
 It is possible to use `load_catalog` function by providing an authorization token directly. This method is useful when using an external identity provider (e.g. Google Identity).
 
-### Connecting with OLake
+### Connecting with OLake Go
 
-[OLake](https://github.com/datazip-inc/olake) is an open-source tool that replicates operational databases such as
+[OLake Go](https://olake.io/docs) is an open-source tool that replicates operational databases such as
 PostgreSQL, MySQL and MongoDB, including ongoing changes, into Iceberg tables. It connects to Polaris through the
 Iceberg REST API with the same principal credentials used above:
 
@@ -342,6 +342,7 @@ Iceberg REST API with the same principal credentials used above:
     "oauth2_uri": "http://localhost:8181/api/catalog/v1/oauth/tokens",
     "credential": "<USER_CLIENT_ID>:<USER_CLIENT_SECRET>",
     "scope": "PRINCIPAL_ROLE:ALL",
+    "aws_region": "us-west-2",
     "rest_access_delegation": "vended-credentials"
   }
 }
@@ -349,7 +350,10 @@ Iceberg REST API with the same principal credentials used above:
 
 `iceberg_s3_path` carries the Polaris catalog name and is sent as the REST `warehouse` parameter.
 `rest_access_delegation` requests vended storage credentials from Polaris, like the `X-Iceberg-Access-Delegation` header in the Spark example.
-See the [OLake Polaris configuration](https://olake.io/docs/writers/iceberg/catalog/rest?rest-catalog=polaris) for all options.
+See the [OLake Go Polaris configuration](https://olake.io/docs/writers/iceberg/catalog/rest?rest-catalog=polaris&rest-auth-type=oauth2) for all options.
+
+OLake Go usually runs in a container, where `localhost` does not reach Polaris. In that case, replace `localhost:8181`
+with a hostname the container can reach, for example the name of the Polaris container on the same Docker network.
 
 ### Connecting Using REST APIs
 
@@ -376,7 +380,7 @@ curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "
 * Visit [Using Polaris with telemetry tools]({{% relref "telemetry-tools" %}}).
 * Visit [Configuring Polaris for Production]({{% relref "../../configuration/configuring-polaris-for-production" %}}).
 * A Getting Started experience for using Spark with Jupyter Notebooks is documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).
-* A Getting Started experience for loading data from PostgreSQL with OLake is documented [here](/guides/olake/).
+* A Getting Started experience for loading data from PostgreSQL with OLake Go is documented [here](/guides/olake/).
 * To shut down a locally-deployed Polaris server and clean up all related Docker containers, run the command listed below. Cloud Deployments have their respective termination commands on their Deployment page, while Polaris running on Gradle will terminate when the Gradle process terminates.
 ```shell
 docker compose -p polaris \
