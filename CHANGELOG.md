@@ -103,6 +103,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false` (default), operations involving locations outside the
   namespace now return HTTP 403. Catalogs that enable unstructured locations remain subject to
   catalog allowlists and configured overlap checks.
+  Changing the effective value of `ALLOW_UNSTRUCTURED_TABLE_LOCATION` (or of the catalog property
+  `polaris.config.allow.unstructured.table.location`) from `true` to `false` does not validate or
+  move existing tables and views. For example, a table renamed into another namespace while
+  unstructured locations were enabled keeps its files under the old namespace, and once they are
+  disabled, commits and credential vending for it return HTTP 403. Operators should check existing
+  locations before or after disabling unstructured locations; see "Disabling Unstructured Table
+  Locations" in the configuration documentation.
 
 ### New Features
 
