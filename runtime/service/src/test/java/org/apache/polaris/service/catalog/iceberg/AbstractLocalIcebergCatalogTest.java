@@ -2987,6 +2987,35 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         .hasMessageContaining("conflict_table");
   }
 
+  @Test
+  public void testCommitRetriesConcurrentModificationAtFinalTransaction() {
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    LocalIcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(NS);
+    }
+    catalog.buildTable(TABLE, SCHEMA).create();
+    TableOperations ops = ((BaseTable) catalog.loadTable(TABLE)).operations();
+
+    // Lose the final compare-and-set once, as when another commit lands after the earlier
+    // metadata location check.
+    doReturn(new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
+        .doCallRealMethod()
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+
+    UpdateTableRequest request =
+        new UpdateTableRequest(
+            List.of(), List.of(new MetadataUpdate.SetProperties(Map.of("test-key", "test-value"))));
+    new CatalogHandlerUtils(5, false).commit(ops, request);
+
+    assertThat(catalog.loadTable(TABLE).properties()).containsEntry("test-key", "test-value");
+  }
+
   static Stream<Arguments> renameFailureStatuses() {
     return Stream.of(
         // Transient conflict: entity present but concurrently modified -> 503, retryable.

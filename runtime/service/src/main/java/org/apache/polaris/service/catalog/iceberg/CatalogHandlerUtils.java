@@ -91,6 +91,7 @@ import org.apache.iceberg.view.ViewRepresentation;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -401,7 +402,8 @@ public class CatalogHandlerUtils {
               COMMIT_MAX_RETRY_WAIT_MS_DEFAULT,
               COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT,
               2.0 /* exponential */)
-          .onlyRetryOn(CommitFailedException.class)
+          // CommitConflictException: the final compare-and-set lost to a concurrent commit
+          .onlyRetryOn(CommitFailedException.class, CommitConflictException.class)
           .run(
               taskOps -> {
                 TableMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
@@ -758,7 +760,8 @@ public class CatalogHandlerUtils {
               COMMIT_MAX_RETRY_WAIT_MS_DEFAULT,
               COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT,
               2.0 /* exponential */)
-          .onlyRetryOn(CommitFailedException.class)
+          // CommitConflictException: the final compare-and-set lost to a concurrent commit
+          .onlyRetryOn(CommitFailedException.class, CommitConflictException.class)
           .run(
               taskOps -> {
                 ViewMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
