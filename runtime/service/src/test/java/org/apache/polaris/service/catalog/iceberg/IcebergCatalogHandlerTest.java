@@ -315,6 +315,7 @@ class IcebergCatalogHandlerTest {
     StorageAccessConfig storageAccessConfig =
         StorageAccessConfig.builder()
             .putCredential("fake.access.key", "AKIAFAKE")
+            .putExtraProperty("fake.access.key", "extra-property-access-key")
             .putExtraProperty(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-west-1")
             .putExtraProperty(
                 StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), "https://s3.example.com")
