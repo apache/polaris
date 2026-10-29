@@ -1255,14 +1255,14 @@ public class OpaPolarisAuthorizerTest {
   @Test
   void serializesContextProperties() throws Exception {
     JsonNode context =
-        authorizeAndCaptureContext(Map.of("org", "example-org", "my_key", "a", "myKey", "b"));
+        authorizeAndCaptureContext(Map.of("group", "example-group", "my_key", "a", "myKey", "b"));
 
     JsonNode properties = context.path("properties");
     assertThat(properties.isObject()).isTrue();
     assertThat(properties.properties())
         .extracting(Map.Entry::getKey)
-        .containsExactlyInAnyOrder("org", "my_key", "myKey");
-    assertThat(properties.path("org").asText()).isEqualTo("example-org");
+        .containsExactlyInAnyOrder("group", "my_key", "myKey");
+    assertThat(properties.path("group").asText()).isEqualTo("example-group");
     assertThat(properties.path("my_key").asText()).isEqualTo("a");
     assertThat(properties.path("myKey").asText()).isEqualTo("b");
   }

@@ -266,7 +266,7 @@ public class OpaPolarisAuthorizerFactoryTest {
                       "http://localhost:"
                           + server.getAddress().getPort()
                           + "/v1/data/polaris/allow"))
-              .contextProperties(Map.of("org", "example-org", "tier", "qa"))
+              .contextProperties(Map.of("group", "example-group", "tier", "qa"))
               .auth(
                   ImmutableAuthenticationConfig.builder()
                       .type(OpaAuthorizationConfig.AuthenticationType.NONE)
@@ -309,7 +309,7 @@ public class OpaPolarisAuthorizerFactoryTest {
                 .path("input")
                 .path("context")
                 .path("properties");
-        assertThat(properties.path("org").asText()).isEqualTo("example-org");
+        assertThat(properties.path("group").asText()).isEqualTo("example-group");
         assertThat(properties.path("tier").asText()).isEqualTo("qa");
         assertThat(properties.size()).isEqualTo(2);
         factory.cleanup();

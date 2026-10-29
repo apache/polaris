@@ -127,25 +127,72 @@ Restart the Polaris service to apply the configuration.
 
 ### Context Properties
 
-Operators can attach static key/value pairs to every OPA input under `context.properties`. Use
-them for values that identify the Polaris deployment, such as an organization or environment
-name, so that a policy shared by several deployments can tell them apart.
+A common setup is several Polaris deployments, for example one per environment (`qa`, `prod`),
+all authorized by the same set of OPA policies. Each deployment needs its own rules, so for every
+request OPA must know which deployment it came from in order to look up the right ones. The OPA
+input describes who is making the request, what they are doing, and on which resource, but not
+which deployment sent it.
+
+Context properties provide this. You set fixed key/value pairs in each deployment's Polaris
+configuration, and Polaris adds them to every OPA request under `input.context.properties`:
 
 ```properties
-polaris.authorization.opa.context-properties.org=example-org
+polaris.authorization.opa.context-properties.group=example-group
 polaris.authorization.opa.context-properties.tier=qa
-# Keys containing dots must be quoted
-polaris.authorization.opa.context-properties."my.key"=value
 ```
 
-The values are read once at startup and passed through verbatim. When none are configured,
-`context.properties` is an empty object.
+With this configuration, every request sent to OPA contains:
 
-When setting these through environment variables, keys are lowercased, and a key containing `_`
-cannot be expressed: `POLARIS_AUTHORIZATION_OPA_CONTEXT_PROPERTIES_TIER=qa` sets `tier`, but
-`POLARIS_AUTHORIZATION_OPA_CONTEXT_PROPERTIES_MY_KEY` is ignored. Define keys with mixed case or
-punctuation in `application.properties`; an environment variable can then override the value of a
-key defined there.
+```json
+"context": {
+  "request_id": "...",
+  "realm": "...",
+  "properties": {
+    "group": "example-group",
+    "tier": "qa"
+  }
+}
+```
+
+The policies can then use these values to select the rules for the deployment that sent the
+request. For example, with policy data that holds the grants of each deployment:
+
+```json
+{
+  "grants": {
+    "example-group/qa": [
+      {"role": "DATA_ENGINEER", "actions": ["LOAD_TABLE_WITH_READ_DELEGATION", "DROP_TABLE_WITHOUT_PURGE"]}
+    ],
+    "example-group/prod": [
+      {"role": "DATA_ENGINEER", "actions": ["LOAD_TABLE_WITH_READ_DELEGATION"]}
+    ]
+  }
+}
+```
+
+the same policy allows data engineers to drop tables in `qa` but not in `prod`:
+
+```rego
+deployment := sprintf("%s/%s", [input.context.properties.group, input.context.properties.tier])
+
+allow if {
+    some grant in data.grants[deployment]
+    grant.role in input.actor.roles
+    input.action in grant.actions
+}
+```
+
+The same approach works for identifiers that must be unique across deployments, for example
+combining the properties with the catalog name of a table request
+(`input.resource.targets[0].parents[0].name`).
+
+The values are read once at startup and are the same for every request. Polaris does not
+interpret them. When none are configured, `input.context.properties` is an empty object.
+
+Use lowercase alphanumeric keys (such as `group` or `tier`). Other keys may not map cleanly when
+set through environment variables; see
+[Configuring Polaris]({{% relref "../../configuration/configuring-polaris" %}}). With the Helm
+chart, set these under `advancedConfig`.
 
 {{< alert warning >}}
 Context properties are sent to OPA in plaintext and appear in OPA decision logs. Do not use them
@@ -238,7 +285,7 @@ Polaris sends the following input structure to OPA:
     "request_id": "uuid",
     "realm": "POLARIS",
     "properties": {
-      "org": "example-org",
+      "group": "example-group",
       "tier": "qa"
     }
   }
