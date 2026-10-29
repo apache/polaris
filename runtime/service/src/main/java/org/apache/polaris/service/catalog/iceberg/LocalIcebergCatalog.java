@@ -578,11 +578,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   @Override
   public boolean dropTable(TableIdentifier tableIdentifier, boolean purge) {
     TableOperations ops = newTableOps(tableIdentifier);
-    TableMetadata metadata = ops.current();
 
-    boolean triggerCleanup = purge && metadata != null;
+    boolean triggerCleanup = purge && ops.current() != null;
     Set<String> storageLocations =
-        triggerCleanup ? storedTableLocationsForPurge(tableIdentifier, metadata) : Set.of();
+        triggerCleanup ? storedTableLocationsForPurge(tableIdentifier, ops.current()) : Set.of();
 
     Optional<PolarisEntity> storageInfoEntity =
         PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
