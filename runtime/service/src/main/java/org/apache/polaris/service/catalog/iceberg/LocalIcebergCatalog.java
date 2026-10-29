@@ -1489,6 +1489,18 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         leafEntity.getType() == PolarisEntityType.TABLE_LIKE
             ? resolvedStoragePath.getRawParentPath()
             : resolvedStoragePath.getRawFullPath();
+    if (leafEntity.getType() != PolarisEntityType.TABLE_LIKE) {
+      // Right after a create or register, the storage path resolved before the operation ends at
+      // the namespace. Look up the persisted table, so that its ID is used and the check does not
+      // conflict with the table's own persisted location.
+      PolarisResolvedPathWrapper persisted =
+          resolvedEntityView.getPassthroughResolvedPath(
+              ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE);
+      if (persisted != null
+          && persisted.getRawLeafEntity().getType() == PolarisEntityType.TABLE_LIKE) {
+        leafEntity = persisted.getRawLeafEntity();
+      }
+    }
     for (String location : tableLocations) {
       try {
         StorageLocation storageLocation = StorageLocation.of(location);

@@ -38,6 +38,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
+import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -144,6 +145,14 @@ public class IcebergCredentialVendingLocationOverlapTest {
   }
 
   private void createTable(TableIdentifier identifier, String location, String writeDataPath) {
+    createTable(identifier, location, writeDataPath, EnumSet.noneOf(AccessDelegationMode.class));
+  }
+
+  private void createTable(
+      TableIdentifier identifier,
+      String location,
+      String writeDataPath,
+      EnumSet<AccessDelegationMode> delegationModes) {
     CreateTableRequest.Builder request =
         CreateTableRequest.builder()
             .withName(identifier.name())
@@ -152,12 +161,7 @@ public class IcebergCredentialVendingLocationOverlapTest {
     if (writeDataPath != null) {
       request.setProperty(TableProperties.WRITE_DATA_LOCATION, writeDataPath);
     }
-    handler()
-        .createTableDirect(
-            NAMESPACE,
-            request.build(),
-            EnumSet.noneOf(AccessDelegationMode.class),
-            Optional.empty());
+    handler().createTableDirect(NAMESPACE, request.build(), delegationModes, Optional.empty());
   }
 
   private String tableLocation(String path) {
@@ -174,7 +178,7 @@ public class IcebergCredentialVendingLocationOverlapTest {
 
     assertThatThrownBy(() -> handler().loadCredentials(T1, Optional.empty()))
         .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("overlap another table or namespace");
+        .hasMessageContaining("overlaps another table or namespace");
     assertThatThrownBy(
             () ->
                 handler()
@@ -185,7 +189,7 @@ public class IcebergCredentialVendingLocationOverlapTest {
                         EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
                         Optional.empty()))
         .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("overlap another table or namespace");
+        .hasMessageContaining("overlaps another table or namespace");
 
     // Loading the table without credentials, and vending credentials for the other table, still
     // work.
@@ -223,6 +227,42 @@ public class IcebergCredentialVendingLocationOverlapTest {
     createTable(T2, null, null);
 
     assertThatCode(() -> handler().loadCredentials(T1, Optional.empty()))
+        .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testCreateAndRegisterWithCredentialsForWritePathContainingOwnLocation(
+      boolean optimizedSiblingCheck) {
+    setUp(optimizedSiblingCheck);
+    disallowTableLocationOverlap();
+    EnumSet<AccessDelegationMode> vended = EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS);
+
+    // The write path contains the table's own location, but no other table or namespace. The new
+    // table must not conflict with itself.
+    assertThatCode(() -> createTable(T1, tableLocation("dir/t1"), tableLocation("dir"), vended))
+        .doesNotThrowAnyException();
+
+    String metadataLocation =
+        handler()
+            .loadTable(
+                T1, "all", null, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty())
+            .orElseThrow()
+            .tableMetadata()
+            .metadataFileLocation();
+    handler().dropTableWithoutPurge(T1);
+
+    assertThatCode(
+            () ->
+                handler()
+                    .registerTable(
+                        NAMESPACE,
+                        ImmutableRegisterTableRequest.builder()
+                            .name(T1.name())
+                            .metadataLocation(metadataLocation)
+                            .build(),
+                        vended,
+                        Optional.empty()))
         .doesNotThrowAnyException();
   }
 }

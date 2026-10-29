@@ -105,11 +105,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   catalog allowlists and configured overlap checks.
 - With `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false`, creating or registering a table whose
   `write.data.path` or `write.metadata.path` lies outside the table's own location now fails with
-  403 Forbidden. Such tables could be created before, but loading them or vending credentials for
-  them already failed.
-- Unless `ALLOW_TABLE_LOCATION_OVERLAP` is enabled, a table or namespace can no longer be created
-  at a location that overlaps the `write.data.path` or `write.metadata.path` of an existing sibling
-  table, and sibling tables can no longer share such a path.
+  403 Forbidden, except in `EXTERNAL` catalogs. Such tables could be created before, but loading
+  them or vending credentials for them already failed.
+- Unless `ALLOW_TABLE_LOCATION_OVERLAP` is enabled, a table can no longer be created at a location
+  that overlaps the `write.data.path` or `write.metadata.path` of an existing sibling table, and
+  sibling tables can no longer share such a path. A namespace can no longer be created at such a
+  location unless `ALLOW_NAMESPACE_LOCATION_OVERLAP` is enabled.
 - With `OPTIMIZED_SIBLING_CHECK` enabled, Polaris now also lists siblings after the indexed
   overlap check when `ALLOW_UNSTRUCTURED_TABLE_LOCATION` is enabled or the catalog is external, to
   check sibling tables' `write.data.path` and `write.metadata.path`. Validation may take longer in
@@ -117,7 +118,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   limited to siblings under the same parent.
 - With `ALLOW_UNSTRUCTURED_TABLE_LOCATION=true`, and in `EXTERNAL` catalogs, credentials are no
   longer vended for a table whose `write.data.path` or `write.metadata.path` lies outside its own
-  location and overlaps another table or namespace. Such requests fail with 403 Forbidden.
+  location and overlaps another table or namespace. Such requests fail with 403 Forbidden. This
+  check does not apply when `ALLOW_TABLE_LOCATION_OVERLAP` is enabled, and it only applies to
+  catalogs served by `LocalIcebergCatalog`, not to federated catalogs.
 
 ### New Features
 
