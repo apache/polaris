@@ -630,7 +630,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   <T extends PolarisEntity & LocationBasedEntity> Optional<String> hasOverlappingSiblings(
-      List<PolarisEntityCore> parentPath, T entity) {
+      T entity, Set<Long> parentPathIds, @Nullable StorageLocation searchRoot) {
     var baseLocation = entity.getBaseLocation();
     if (baseLocation == null) {
       return Optional.empty();
@@ -641,13 +641,38 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
     // The entity's own parent namespaces may contain its location: they always do when locations
     // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
-    var ancestorIds = parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
-
-    return hasOverlappingSiblings(catalogId, checkLocation, ancestorIds);
+    return hasOverlappingSiblings(
+        catalogId, checkLocation, parentPathIds, entity.getId(), searchRoot);
   }
 
   Optional<String> hasOverlappingSiblings(
-      long catalogId, String checkLocation, Set<Long> ancestorIds) {
+      long catalogId,
+      String checkLocation,
+      Set<Long> ancestorIds,
+      long entityId,
+      @Nullable StorageLocation searchRoot) {
+    var locationIdentifier = identifierFromLocationString(checkLocation);
+    var searchRootIdentifier =
+        searchRoot == null ? null : identifierFromLocationString(searchRoot.withoutScheme());
+
+    // With a search root, only the entities located inside the search root are considered. The
+    // candidates are
+    // the descendants of the location (including an entity at exactly the location) and its
+    // ancestors:
+    // - If the location is inside the search root, all its descendants are inside the search root,
+    // but only
+    //   the ancestors that are at least as deep as the search root are.
+    // - If the search root is inside the location, only the descendants of the search root can
+    // match, and no
+    //   ancestor can: it would be shallower than the search root.
+    // - Otherwise, nothing can match.
+    var locationInsideSearchRoot =
+        searchRootIdentifier == null || locationIdentifier.startsWith(searchRootIdentifier);
+    if (!locationInsideSearchRoot && !searchRootIdentifier.startsWith(locationIdentifier)) {
+      return Optional.empty();
+    }
+    var scanIdentifier = locationInsideSearchRoot ? locationIdentifier : searchRootIdentifier;
+
     return memoizedIndexedAccess
         .catalogContent(catalogId)
         .refObj()
@@ -663,23 +688,21 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               var byName =
                   catalogStateObj.nameToObjRef().indexForRead(persistence, OBJ_REF_SERIALIZER);
 
-              var locationIdentifier = identifierFromLocationString(checkLocation);
-              var locationIndexKey = locationIdentifier.toIndexKey();
-
               // Check for children and exact matches first using forward iteration (preserves
               // existing test expectations on which conflicting location is reported).
               // Also iterate fully in case early entries are filtered out.
-              var iter = locationsIndex.iterator(locationIndexKey, null, false);
+              var iter = locationsIndex.iterator(scanIdentifier.toIndexKey(), null, false);
               while (iter.hasNext()) {
                 var elem = iter.next();
                 var elemKey = elem.key();
                 var elemIdentifier = indexKeyToIdentifier(elemKey);
-                if (!elemIdentifier.startsWith(locationIdentifier)) {
+                if (!elemIdentifier.startsWith(scanIdentifier)) {
                   break; // No more matches due to ordering
                 }
 
                 var conflicting =
                     elem.value().entityIds().stream()
+                        .filter(id -> id != entityId)
                         .map(IndexKey::key)
                         .map(byId::get)
                         .filter(Objects::nonNull)
@@ -703,7 +726,14 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
               // Check for parent (prefix) overlaps. These have shorter keys and are missed by
               // forward iteration starting at the full target key.
-              for (int i = 1; i <= locationIdentifier.length(); i++) {
+              if (!locationInsideSearchRoot) {
+                // Location is outside the search root: no ancestor could be inside it,
+                // so skip prefix checks.
+                return Optional.empty();
+              }
+              var firstPrefixLength =
+                  searchRootIdentifier == null ? 1 : Math.max(1, searchRootIdentifier.length());
+              for (int i = firstPrefixLength; i <= locationIdentifier.length(); i++) {
                 var prefixElements = locationIdentifier.elements().subList(0, i);
                 var prefix = ContentIdentifier.identifier(prefixElements);
                 var prefixKey = prefix.toIndexKey();
@@ -715,6 +745,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                   var strictPrefix = i < locationIdentifier.length();
                   var conflicting =
                       entry.entityIds().stream()
+                          .filter(id -> id != entityId)
                           .filter(id -> !strictPrefix || !ancestorIds.contains(id))
                           .map(IndexKey::key)
                           .map(byId::get)

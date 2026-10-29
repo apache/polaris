@@ -70,13 +70,20 @@ tests:
             helm.sh/chart: polaris-1.2.3
   - it: should set service custom labels
     set:
-      service.labels:
+      managementService.labels:
         foo: bar
     asserts:
       - isSubset:
           path: metadata.labels
           content:
             foo: bar
+  - it: should not set main service custom labels
+    set:
+      service.labels:
+        foo: bar
+    asserts:
+      - notExists:
+          path: metadata.labels.foo
 
   # metadata.annotations
   - it: should not set service annotations by default

@@ -1056,23 +1056,28 @@ components:
         roleArn:
           type: string
           description: The aws IAM role arn assumed by polaris userArn when signing requests
-          example: "arn:aws:iam::123456789001:role/role-that-has-remote-catalog-access"
+          examples:
+            - "arn:aws:iam::123456789001:role/role-that-has-remote-catalog-access"
         roleSessionName:
           type: string
           description: The role session name to be used by the SigV4 protocol for signing requests
-          example: "polaris-remote-catalog-access"
+          examples:
+            - "polaris-remote-catalog-access"
         externalId:
           type: string
           description: An optional external id used to establish a trust relationship with AWS in the trust policy
-          example: "external-id-1234"
+          examples:
+             - "external-id-1234"
         signingRegion:
           type: string
           description: Region to be used by the SigV4 protocol for signing requests
-          example: "us-west-2"
+          examples:
+            - "us-west-2"
         signingName:
           type: string
           description: The service name to be used by the SigV4 protocol for signing requests, the default signing name is "execute-api" is if not provided
-          example: "glue"
+          examples:
+            - "glue"
         sessionPolicy:
           type: string
           description: >-
@@ -1080,7 +1085,8 @@ components:
             This policy intersects with the IAM role's permissions to further restrict
             the vended credentials. When omitted, no session policy is applied and the
             credentials inherit the full permissions of the assumed role.
-          example: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["glue:*","s3:GetObject","s3:ListBucket"],"Resource":"*"}]}'
+          examples:
+            - '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["glue:*","s3:GetObject","s3:ListBucket"],"Resource":"*"}]}'
       required:
         - roleArn
         - signingRegion
@@ -1108,7 +1114,8 @@ components:
           type: array
           items:
             type: string
-          example: "For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/]"
+          examples:
+            - "For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/]"
         storageName:
           type: string
           description: An optional name referencing a server-side storage configuration
@@ -1132,54 +1139,63 @@ components:
             roleArn:
               type: string
               description: the aws role arn that grants privileges on the S3 buckets
-              example: "arn:aws:iam::123456789001:principal/abc1-b-self1234"
+              examples:
+                - "arn:aws:iam::123456789001:principal/abc1-b-self1234"
             externalId:
               type: string
               description: an optional external id used to establish a trust relationship with AWS in the trust policy
             userArn:
               type: string
               description: the aws user arn used to assume the aws role
-              example: "arn:aws:iam::123456789001:user/abc1-b-self1234"
+              examples:
+                - "arn:aws:iam::123456789001:user/abc1-b-self1234"
             currentKmsKey:
               type: string
               deprecated: true
               description: Deprecated. Use encryptionKeys instead. The AWS KMS key ARN used to encrypt and decrypt S3 data.
-              example: "arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"
+              examples:
+                - "arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"
             allowedKmsKeys:
               type: array
               deprecated: true
               description: Deprecated. Use encryptionKeys instead. The list of KMS keys that this catalog and its clients may use to encrypt and decrypt S3 data.
               items:
                 type: string
-              example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
+              examples:
+                - ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
             encryptionKeys:
               type: array
               description: A list of KMS keys that can be used to encrypt S3 data. These keys are also granted decryption permissions.
               items:
                 type: string
-              example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
+              examples:
+                - ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
             decryptionKeys:
               type: array
               description: A list of KMS keys that can be used to decrypt S3 data. Keeping this list separate from encryptionKeys is recommended, though overlapping keys are allowed.
               items:
                 type: string
-              example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
+              examples:
+                - ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
             region:
               type: string
               description: the aws region where data is stored
-              example: "us-east-2"
+              examples:
+                - "us-east-2"
             endpoint:
               type: string
               description: >-
                 endpoint for S3 requests (optional). Clients always see this value (if it is set). Polaris Servers
                 may be configured to use a different endpoint URI via the `endpointInternal` property.
-              example: "https://s3.example.com:1234"
+              examples:
+                - "https://s3.example.com:1234"
             stsEndpoint:
               type: string
               description: >-
                 endpoint for STS requests made by the Polaris Server (optional). If not set, defaults to
                 'endpointInternal' (which in turn defaults to `endpoint`).
-              example: "https://sts.example.com:1234"
+              examples:
+                - "https://sts.example.com:1234"
             stsUnavailable:
               type: boolean
               description: >-
@@ -1193,12 +1209,14 @@ components:
                 endpoint for S3 requests made by the Polaris Server (optional). If set, Polaris Service will use
                 this value instead of `endpoint`. If not set, defaults to `endpoint`. Iceberg REST API clients never
                 see this value.
-              example: "https://s3.internal.example.com:1234"
+              examples:
+                - "https://s3.internal.example.com:1234"
             pathStyleAccess:
               type: boolean
               description: >- 
                 Whether S3 requests to files in this catalog should use 'path-style addressing for buckets'.
-              example: true
+              examples:
+                - true
               default: false
             kmsUnavailable:
               type: boolean
@@ -1206,7 +1224,8 @@ components:
                 if set to `true`, instructs Polaris Servers to avoid adding KMS key policies.
             credentialVendingMechanism:
               type: string
-              example: "STS"
+              examples:
+                - "STS"
               description: |
                 How Polaris vends subscoped storage credentials for this catalog. Leave the field empty
                 to use the server's default mechanism, which is STS in Apache Polaris.
@@ -1285,7 +1304,8 @@ components:
         iamArn:
           type: string
           description: The ARN of the IAM user or IAM role Polaris uses to assume roles and then access external resources.
-          example: "arn:aws:iam::111122223333:user/polaris-service-user"
+          examples:
+            - "arn:aws:iam::111122223333:user/polaris-service-user"
       required:
         - iamArn
 

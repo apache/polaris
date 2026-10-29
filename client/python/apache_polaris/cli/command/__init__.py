@@ -227,6 +227,9 @@ class Command(ABC):
                 subcommand,
                 setup_config=options_get(Arguments.SETUP_CONFIG),
                 dry_run=options_get(Arguments.DRY_RUN),
+                include_tables_and_views=options_get(
+                    Arguments.INCLUDE_TABLES_AND_VIEWS
+                ),
                 page_size=options_get(Arguments.PAGE_SIZE),
             )
         elif options.command == Commands.TABLES:

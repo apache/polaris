@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -45,6 +46,7 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -174,6 +176,9 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+                    .addProperty(
+                        BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION.catalogConfig(),
+                        "true")
                     .setStorageConfigurationInfo(realmConfig, storageConfigModel)
                     .build()
                     .asCatalog(serviceIdentityProvider)));
@@ -386,6 +391,81 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
                     .createNamespace(
                         intruder,
                         Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, childLocation)))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+  }
+
+  @Test
+  public void testTableAndNamespaceWithSameNameAreOverlaps() {
+    // A table and a namespace may share a name, and both default to the same location under their
+    // parent namespace. Neither may be created once the other exists.
+    Namespace parent = Namespace.of("overlap-same-name-parent");
+    catalog().createNamespace(parent);
+
+    // Namespace first, then a table with the same name.
+    catalog().createNamespace(Namespace.of("overlap-same-name-parent", "ns-first"));
+    assertThatThrownBy(
+            () -> catalog().buildTable(TableIdentifier.of(parent, "ns-first"), SCHEMA).create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+
+    // Table first, then a namespace with the same name.
+    catalog().buildTable(TableIdentifier.of(parent, "table-first"), SCHEMA).create();
+    assertThatThrownBy(
+            () ->
+                catalog().createNamespace(Namespace.of("overlap-same-name-parent", "table-first")))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+  }
+
+  @Test
+  public void testMovingNamespaceUnderItsOldLocationIsNotOverlap() {
+    // A namespace whose location is updated must not conflict with its own persisted location, so
+    // moving it to a subpath of its old location is allowed.
+    Namespace ns = Namespace.of("overlap-move-namespace");
+    String oldLocation = STORAGE_LOCATION + "/overlap-move-namespace-old";
+    catalog().createNamespace(ns, Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, oldLocation));
+
+    String newLocation = oldLocation + "/moved";
+    assertThatCode(
+            () ->
+                catalog()
+                    .setProperties(
+                        ns, Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, newLocation)))
+        .doesNotThrowAnyException();
+
+    // Other namespaces still conflict with the new location.
+    Namespace conflicting = Namespace.of("overlap-move-namespace-conflicting");
+    assertThatThrownBy(
+            () ->
+                catalog()
+                    .createNamespace(
+                        conflicting,
+                        Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, newLocation)))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+  }
+
+  @Test
+  public void testMovingTableUnderItsOldLocationIsNotOverlap() {
+    // Same as above for a table whose location is updated by a commit.
+    Namespace ns = Namespace.of("overlap-move-table-ns");
+    catalog().createNamespace(ns);
+    TableIdentifier identifier = TableIdentifier.of(ns, "t");
+    String oldLocation = STORAGE_LOCATION + "/overlap-move-table-old";
+    Table table = catalog().buildTable(identifier, SCHEMA).withLocation(oldLocation).create();
+
+    String newLocation = oldLocation + "/moved";
+    assertThatCode(() -> table.updateLocation().setLocation(newLocation).commit())
+        .doesNotThrowAnyException();
+
+    // Other tables still conflict with the new location.
+    assertThatThrownBy(
+            () ->
+                catalog()
+                    .buildTable(TableIdentifier.of(ns, "conflicting"), SCHEMA)
+                    .withLocation(newLocation)
+                    .create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }

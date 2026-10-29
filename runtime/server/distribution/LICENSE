@@ -2002,7 +2002,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 This product bundles AWS EventStream Java.
 
-* Maven group:artifact IDs: software.amazon.eventstream:eventstream
+* Maven group:artifact IDs: software.amazon.awssdk:eventstream
 
 Project URL: https://github.com/awslabs/aws-eventstream-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -2395,6 +2395,15 @@ This product bundles JAXB API library.
 * Maven group:artifact IDs: javax.xml.bind:jaxb-api
 
 Home page: https://javaee.github.io/jaxb-v2/
+License: CDDL 1.1 - https://glassfish.java.net/public/CDDL+GPL_1_1.html
+
+--------------------------------------------------------------------------------
+
+This product bundles JAX-RS API library.
+
+* Maven group:artifact IDs: javax.ws.rs:jsr311-api
+
+Home page: https://github.com/jax-rs
 License: CDDL 1.1 - https://glassfish.java.net/public/CDDL+GPL_1_1.html
 
 --------------------------------------------------------------------------------
