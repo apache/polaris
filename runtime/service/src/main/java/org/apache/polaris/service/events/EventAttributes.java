@@ -59,9 +59,11 @@ import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
+import org.apache.polaris.service.types.CreateDirectoryRequest;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
+import org.apache.polaris.service.types.Directory;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.GetApplicablePoliciesResponse;
 import org.apache.polaris.service.types.LoadPolicyResponse;
@@ -205,6 +207,12 @@ public final class EventAttributes {
       new AttributeKey<>("generic_table");
   public static final AttributeKey<CreateGenericTableRequest> CREATE_GENERIC_TABLE_REQUEST =
       new AttributeKey<>("create_generic_table_request");
+
+  // Directory attributes
+  public static final AttributeKey<String> DIRECTORY_NAME = new AttributeKey<>("directory_name");
+  public static final AttributeKey<Directory> DIRECTORY = new AttributeKey<>("directory");
+  public static final AttributeKey<CreateDirectoryRequest> CREATE_DIRECTORY_REQUEST =
+      new AttributeKey<>("create_directory_request");
 
   // Policy attributes
   public static final AttributeKey<String> POLICY_NAME = new AttributeKey<>("policy_name");

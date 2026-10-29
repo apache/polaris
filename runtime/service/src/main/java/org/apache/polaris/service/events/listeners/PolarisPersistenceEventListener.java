@@ -80,7 +80,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
    */
   private static ResourceType resolveResourceType(PolarisEventType eventType) {
     return switch (eventType.category()) {
-      case TABLE, GENERIC_TABLE -> ResourceType.TABLE;
+      case TABLE, GENERIC_TABLE, DIRECTORY -> ResourceType.TABLE;
       case VIEW -> ResourceType.VIEW;
       case NAMESPACE -> ResourceType.NAMESPACE;
       case CATALOG -> ResourceType.CATALOG;
