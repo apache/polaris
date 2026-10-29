@@ -3434,6 +3434,57 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testRefreshAcceptsAnyLocationForEntityWithoutRecordedLocations() throws IOException {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    removeRecordedLocations(TABLE);
+    rewriteCurrentMetadata(table, json -> json.put("location", "s3://other-bucket"));
+
+    assertThat(catalog.loadTable(TABLE).location()).isEqualTo("s3://other-bucket");
+  }
+
+  @Test
+  public void testNotificationRecordsMovedTableLocation() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    String suffix = UUID.randomUUID().toString();
+    String location1 = String.format("s3://my-bucket/path/to/data/table1_%s", suffix);
+    String location2 = String.format("s3://my-bucket/path/to/data/table2_%s", suffix);
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+    @SuppressWarnings("resource")
+    LocalIcebergCatalog catalog = catalog();
+    TableIdentifier table = TableIdentifier.of(Namespace.of("parent"), "my_table");
+
+    String uuid = null;
+    for (String location : List.of(location1, location2)) {
+      String metadataLocation = location + "/metadata/v1.metadata.json";
+      TableMetadata metadata =
+          TableMetadata.newTableMetadata(
+              SCHEMA, PartitionSpec.unpartitioned(), location, ImmutableMap.of());
+      fileIO.addFile(metadataLocation, TableMetadataParser.toJson(metadata).getBytes(UTF_8));
+
+      NotificationRequest request = new NotificationRequest();
+      request.setNotificationType(uuid == null ? NotificationType.CREATE : NotificationType.UPDATE);
+      TableUpdateNotification update = new TableUpdateNotification();
+      update.setMetadataLocation(metadataLocation);
+      update.setTableName(table.name());
+      update.setTableUuid(metadata.uuid());
+      update.setTimestamp(uuid == null ? 230950845L : 230950846L);
+      request.setPayload(update);
+      catalog.sendNotification(table, request);
+      uuid = metadata.uuid();
+
+      assertThat(readTableEntity(table).getBaseLocation()).isEqualTo(location + "/");
+      assertThat(catalog.loadTable(table).location()).isEqualTo(location);
+    }
+  }
+
+  @Test
   public void testFirstCommitRecordsLocationsOfEntityWithoutRecordedLocations() {
     catalog.createNamespace(NS);
     catalog.buildTable(TABLE, SCHEMA).create();
