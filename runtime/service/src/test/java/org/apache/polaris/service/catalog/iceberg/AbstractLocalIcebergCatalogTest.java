@@ -1482,6 +1482,66 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testNotificationRecordsWritePathTransitions() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    String tableLocation =
+        String.format("s3://my-bucket/path/to/data/my_table_%s/", UUID.randomUUID());
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+    @SuppressWarnings("resource")
+    LocalIcebergCatalog catalog = catalog();
+    TableIdentifier table = TableIdentifier.of(Namespace.of("parent"), "my_table");
+
+    String dataKey = IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY;
+    String metadataKey = IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY;
+    String dataPath1 = tableLocation + "data1";
+    String metadataPath1 = tableLocation + "metadata1";
+    String dataPath2 = tableLocation + "data2";
+    String metadataPath2 = tableLocation + "metadata2";
+
+    // set (CREATE), replace (UPDATE), then remove (UPDATE) both write paths
+    List<Map<String, String>> versions =
+        List.of(
+            Map.of(dataKey, dataPath1, metadataKey, metadataPath1),
+            Map.of(dataKey, dataPath2, metadataKey, metadataPath2),
+            Map.of());
+    for (int i = 0; i < versions.size(); i++) {
+      Map<String, String> properties = versions.get(i);
+      String metadataLocation = tableLocation + "metadata/v" + (i + 1) + ".metadata.json";
+      TableMetadata metadata =
+          TableMetadata.newTableMetadata(
+              SCHEMA, PartitionSpec.unpartitioned(), tableLocation, properties);
+      fileIO.addFile(metadataLocation, TableMetadataParser.toJson(metadata).getBytes(UTF_8));
+
+      NotificationRequest request = new NotificationRequest();
+      request.setNotificationType(i == 0 ? NotificationType.CREATE : NotificationType.UPDATE);
+      TableUpdateNotification update = new TableUpdateNotification();
+      update.setMetadataLocation(metadataLocation);
+      update.setTableName(table.name());
+      update.setTableUuid(metadata.uuid());
+      update.setTimestamp(230950845L + i);
+      request.setPayload(update);
+      catalog.sendNotification(table, request);
+
+      Map<String, String> recorded = readTableEntity(table).getInternalPropertiesAsMap();
+      Assertions.assertThat(recorded)
+          .containsEntry(IcebergTableLikeEntity.LOCATION, metadata.location());
+      if (properties.isEmpty()) {
+        Assertions.assertThat(recorded).doesNotContainKeys(dataKey, metadataKey);
+      } else {
+        Assertions.assertThat(recorded).containsAllEntriesOf(properties);
+      }
+      // the refresh checks the metadata file against the recorded locations
+      Assertions.assertThat(catalog.loadTable(table).properties()).containsAllEntriesOf(properties);
+    }
+  }
+
+  @Test
   public void testUpdateNotificationCreateTableWithLocalFilePrefix() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
