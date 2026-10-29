@@ -400,10 +400,11 @@ class IcebergCatalogHandlerTest {
   void tableWithoutDelegationOnlyExposesClientAccessProperties(
       String operation, boolean withExtraProperties) {
     Catalog catalog = mock(Catalog.class);
+    BaseTable table = baseTable();
     if (operation.equals("load")) {
-      when(catalog.loadTable(TABLE2)).thenReturn(baseTable());
+      when(catalog.loadTable(TABLE2)).thenReturn(table);
     } else {
-      when(catalog.registerTable(TABLE2, TABLE_LOCATION, false)).thenReturn(baseTable());
+      when(catalog.registerTable(TABLE2, TABLE_LOCATION, false)).thenReturn(table);
     }
     when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
     EnumSet<AccessDelegationMode> noDelegation = EnumSet.noneOf(AccessDelegationMode.class);
