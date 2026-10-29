@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION;
+import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION;
 import static org.apache.polaris.core.config.FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;
@@ -82,6 +84,8 @@ public class IcebergCredentialVendingLocationOverlapTest {
                     List.of("FILE"),
                     ALLOW_UNSTRUCTURED_TABLE_LOCATION.key(),
                     "true",
+                    ALLOW_NAMESPACE_LOCATION_OVERLAP.key(),
+                    "true",
                     OPTIMIZED_SIBLING_CHECK.key(),
                     String.valueOf(optimizedSiblingCheck)))
             .build();
@@ -93,7 +97,12 @@ public class IcebergCredentialVendingLocationOverlapTest {
             CATALOG,
             CatalogProperties.builder()
                 .setDefaultBaseLocation(catalogLocation)
-                .putAll(Map.of(ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(), "true"))
+                .putAll(
+                    Map.of(
+                        ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
+                        "true",
+                        ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(),
+                        "true"))
                 .build(),
             System.currentTimeMillis(),
             System.currentTimeMillis(),
@@ -130,7 +139,9 @@ public class IcebergCredentialVendingLocationOverlapTest {
                     "default-base-location",
                     catalogLocation,
                     ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
-                    "false"))
+                    "false",
+                    ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(),
+                    "true"))
             .build();
     try (Response response =
         services
@@ -146,6 +157,20 @@ public class IcebergCredentialVendingLocationOverlapTest {
 
   private void createTable(TableIdentifier identifier, String location, String writeDataPath) {
     createTable(identifier, location, writeDataPath, EnumSet.noneOf(AccessDelegationMode.class));
+  }
+
+  private void createTableWithProperty(
+      TableIdentifier identifier, String property, String writePath) {
+    handler()
+        .createTableDirect(
+            NAMESPACE,
+            CreateTableRequest.builder()
+                .withName(identifier.name())
+                .withSchema(SCHEMA)
+                .setProperty(property, writePath)
+                .build(),
+            EnumSet.noneOf(AccessDelegationMode.class),
+            Optional.empty());
   }
 
   private void createTable(
@@ -205,6 +230,37 @@ public class IcebergCredentialVendingLocationOverlapTest {
         .doesNotThrowAnyException();
     assertThatCode(() -> handler().loadCredentials(T2, Optional.empty()))
         .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {TableProperties.WRITE_DATA_LOCATION, TableProperties.WRITE_METADATA_LOCATION})
+  void testCredentialsNotVendedForWritePathOverlappingLaterCreatedNamespace(String property) {
+    setUp(true);
+    createTableWithProperty(T1, property, tableLocation("child/data"));
+    // The namespace is created after the table, at a location covered by the table's write path.
+    handler()
+        .createNamespace(
+            CreateNamespaceRequest.builder().withNamespace(Namespace.of("ns", "child")).build());
+    disallowTableLocationOverlap();
+
+    assertThatThrownBy(() -> handler().loadCredentials(T1, Optional.empty()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("overlaps another table or namespace");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {TableProperties.WRITE_DATA_LOCATION, TableProperties.WRITE_METADATA_LOCATION})
+  void testCredentialsNotVendedForWritePathOverlappingSiblingForProperty(String property) {
+    setUp(true);
+    createTableWithProperty(T1, property, tableLocation("t2"));
+    createTable(T2, null, null);
+    disallowTableLocationOverlap();
+
+    assertThatThrownBy(() -> handler().loadCredentials(T1, Optional.empty()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("overlaps another table or namespace");
   }
 
   @ParameterizedTest
