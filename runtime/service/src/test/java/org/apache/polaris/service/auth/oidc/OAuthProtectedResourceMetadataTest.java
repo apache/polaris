@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.oidc;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.restassured.path.json.JsonPath;
 import java.util.Map;
@@ -31,40 +31,39 @@ import org.junit.jupiter.api.Test;
 /**
  * Verifies that enabling {@code quarkus.oidc.resource-metadata.enabled} causes Polaris to serve the
  * OAuth 2.0 Protected Resource Metadata endpoint ({@code /.well-known/oauth-protected-resource} per
- * RFC 9728). The endpoint lets catalog clients auto-discover the authorization server URL from the
- * catalog URI without requiring explicit configuration.
+ * RFC 9728), advertising the authorization server backing the WireMock-issued OIDC tenant used by
+ * {@link AbstractOidcAuthTest}.
+ *
+ * <p>This is purely a discovery document: Quarkus 3.40 does not add a {@code resource_metadata}
+ * hint to {@code WWW-Authenticate} challenges on unauthenticated requests (verified against the
+ * {@code quarkus-oidc}/{@code quarkus-vertx-http} 3.40.1.1 bytecode -- no such string exists), so
+ * there is nothing to assert there.
+ *
+ * <p>See {@link OAuthProtectedResourceMetadataDisabledTest} for the disabled-by-default case.
  */
 @QuarkusTest
-@TestProfile(OAuthProtectedResourceMetadataTest.ResourceMetadataProfile.class)
-class OAuthProtectedResourceMetadataTest {
-
-  static final String AUTH_SERVER_URL = "https://auth.example.com/realms/polaris";
+@TestProfile(OAuthProtectedResourceMetadataTest.Profile.class)
+class OAuthProtectedResourceMetadataTest extends AbstractOidcAuthTest {
 
   // The catalog resource URI that clients would use to derive the well-known path.
   // RFC 9728: GET /.well-known/oauth-protected-resource<path> where <path> is the
   // path component of the resource URI.
   static final String CATALOG_RESOURCE = "https://catalog.example.com/api/catalog";
 
-  public static class ResourceMetadataProfile implements QuarkusTestProfile {
+  public static class Profile extends AbstractOidcAuthTest.Profile {
+
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.ofEntries(
-          // Enable the OIDC tenant so the ResourceMetadataHandler registers the route.
-          Map.entry("quarkus.oidc.tenant-enabled", "true"),
-          // Disable OIDC discovery so Quarkus does not attempt to contact the auth server
-          // at startup. The well-known endpoint is public and requires no JWT validation.
-          Map.entry("quarkus.oidc.discovery-enabled", "false"),
-          Map.entry("quarkus.oidc.auth-server-url", "https://auth.example.com/realms/polaris"),
-          // Required by Quarkus when discovery is disabled; not called by the test since
-          // /.well-known/oauth-protected-resource is unauthenticated.
-          Map.entry("quarkus.oidc.jwks-path", "protocol/openid-connect/certs"),
-          // Defer JWKS loading to first authenticated request so startup does not attempt to
-          // fetch JWKS from the test auth-server-url. Without this the tenant stays "not ready"
-          // and ResourceMetadataHandler never registers the route.
-          Map.entry("quarkus.oidc.jwks.resolve-early", "false"),
-          Map.entry("quarkus.oidc.resource-metadata.enabled", "true"),
-          Map.entry("quarkus.oidc.resource-metadata.resource", CATALOG_RESOURCE),
-          Map.entry("quarkus.oidc.resource-metadata.authorization-server", AUTH_SERVER_URL));
+      ImmutableMap.Builder<String, String> config = ImmutableMap.builder();
+      config.putAll(super.getConfigOverrides());
+      config.put("quarkus.oidc.resource-metadata.enabled", "true");
+      config.put("quarkus.oidc.resource-metadata.resource", CATALOG_RESOURCE);
+      // Same real issuer the WireMock OIDC tenant is configured against (see
+      // AbstractOidcAuthTest.Profile), so the assertion below is checking that the real
+      // authorization server is correctly advertised, not a value we invented for the test.
+      config.put(
+          "quarkus.oidc.resource-metadata.authorization-server", "${keycloak.url}/realms/quarkus");
+      return config.build();
     }
   }
 
@@ -85,6 +84,8 @@ class OAuthProtectedResourceMetadataTest {
     JsonPath json = JsonPath.from(body);
     assertThat(json.getString("resource")).isEqualTo(CATALOG_RESOURCE);
     assertThat(json.getList("authorization_servers", String.class))
-        .containsExactly(AUTH_SERVER_URL);
+        .hasSize(1)
+        .first()
+        .satisfies(issuer -> assertThat(issuer).asString().endsWith("/realms/quarkus"));
   }
 }
