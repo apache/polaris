@@ -395,6 +395,61 @@ class IcebergCatalogHandlerTest {
                             StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-west-1")));
   }
 
+  @ParameterizedTest
+  @CsvSource({"load, true", "register, true", "load, false", "register, false"})
+  void tableWithoutDelegationOnlyExposesClientAccessProperties(
+      String operation, boolean withExtraProperties) {
+    Catalog catalog = mock(Catalog.class);
+    if (operation.equals("load")) {
+      when(catalog.loadTable(TABLE2)).thenReturn(baseTable());
+    } else {
+      when(catalog.registerTable(TABLE2, TABLE_LOCATION, false)).thenReturn(baseTable());
+    }
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    EnumSet<AccessDelegationMode> noDelegation = EnumSet.noneOf(AccessDelegationMode.class);
+    when(accessDelegationModeResolver.resolve(eq(noDelegation), any()))
+        .thenReturn(Optional.empty());
+
+    Map<String, String> extraProperties =
+        withExtraProperties
+            ? Map.of(
+                StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-west-1",
+                StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), "https://s3.example.com")
+            : Map.of();
+    StorageAccessConfig.Builder storageAccessConfigBuilder =
+        StorageAccessConfig.builder()
+            .putCredential("fake.access.key", "AKIAFAKE")
+            .putCredential("fake.secret.key", "fakeSecret")
+            .putInternalProperty("internal.endpoint", "https://internal.example.com")
+            .putInternalProperty(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "internal");
+    extraProperties.forEach(storageAccessConfigBuilder::putExtraProperty);
+    when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
+        .thenReturn(storageAccessConfigBuilder.build());
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    LoadTableResponse response =
+        operation.equals("load")
+            ? handler.loadTable(TABLE2, "all", null, noDelegation, Optional.empty()).orElseThrow()
+            : handler.registerTable(
+                NS1, registerTableRequest(false), noDelegation, Optional.empty());
+
+    assertThat(response.config()).isEqualTo(extraProperties);
+    if (withExtraProperties) {
+      assertThat(response.credentials())
+          .singleElement()
+          .satisfies(
+              credential -> {
+                assertThat(credential.prefix()).isEqualTo(TABLE_LOCATION);
+                assertThat(credential.config()).isEqualTo(extraProperties);
+              });
+    } else {
+      assertThat(response.credentials()).isEmpty();
+    }
+    assertVendedActions();
+  }
+
   @Test
   void registerTableStillRejectsMissingVendedCredentialsWhenSupported() {
     mockRegisterTableCatalog(false);
