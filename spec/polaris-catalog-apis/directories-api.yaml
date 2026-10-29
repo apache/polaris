@@ -338,7 +338,7 @@ components:
             Storage configurations required to access the directory, encompassing both credentials and other necessary
             settings for storage access, such as the client region for S3.
           items:
-            $ref: './generic-tables-api.yaml#/components/schemas/StorageAccessConfig'
+            $ref: './common-schemas.yaml#/components/schemas/StorageAccessConfig'
 
     ScanDirectoryResponse:
       description: Result of a directory scan.

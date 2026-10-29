@@ -29,9 +29,11 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogPrivilege;
@@ -213,5 +215,22 @@ public class PolarisDirectoryServiceIntegrationTest {
     }
     assertThat(directoryApi.listDirectories(catalogName, NS)).containsExactly(IMAGES);
     directoryApi.dropDirectory(catalogName, IMAGES);
+  }
+
+  @Test
+  public void testCreateOverlappingSiblingTableIsForbidden() {
+    TableIdentifier table = TableIdentifier.of(NS, "sibling");
+    String tableLocation =
+        restCatalog
+            .buildTable(
+                table, new Schema(Types.NestedField.required(1, "id", Types.LongType.get())))
+            .create()
+            .location();
+
+    try (Response response = directoryApi.tryCreateDirectory(catalogName, IMAGES, tableLocation)) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
+    }
+    assertThat(directoryApi.listDirectories(catalogName, NS)).isEmpty();
+    restCatalog.dropTable(table);
   }
 }

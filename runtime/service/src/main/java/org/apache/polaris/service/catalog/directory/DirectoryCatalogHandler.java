@@ -63,6 +63,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
+import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.spi.DirectoryScanService;
@@ -281,6 +282,11 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
     // The base location is read with vended credentials: it must be within the allowed locations
     CatalogUtils.validateLocationsForTableLike(
         realmConfig(), identifier, Set.of(baseLocation), resolvedParent);
+    // The scan exposes the names and sizes of the objects under the base location: it must not
+    // overlap the location of a sibling table, view, directory or namespace
+    ((LocalIcebergCatalog) icebergCatalog)
+        .validateNoDirectoryLocationOverlap(
+            identifier, baseLocation, resolvedParent.getRawFullPath());
 
     DirectoryScanner.validateFilters(parseJsonArray(filterInclude), parseJsonArray(filterExclude));
     TableIdentifier tableId = inventoryTableIdentifier(identifier);
