@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.CompletableFuture;
@@ -67,16 +68,22 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
     ManifestCleanupTask cleanupTask = task.readData(ManifestCleanupTask.class);
     TableIdentifier tableId = cleanupTask.tableId();
     ManifestFile manifestFile = TaskUtils.decodeManifestFileData(cleanupTask.manifestFileData());
-    if (!isUnderTableLocation(task, tableId, manifestFile.path())) {
+    Set<String> tableLocations = TaskUtils.storageLocations(task.getInternalPropertiesAsMap());
+    // The manifest comes from untrusted table metadata: if it is outside the table locations, skip
+    // it along with all the data files it lists, even those that are within the table locations.
+    if (!isUnderTableLocation(tableLocations, tableId, manifestFile.path())) {
       return;
     }
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task, tableId)) {
-      cleanUpManifestFile(task, manifestFile, authorizedFileIO, tableId);
+      cleanUpManifestFile(tableLocations, manifestFile, authorizedFileIO, tableId);
     }
   }
 
   private void cleanUpManifestFile(
-      TaskEntity task, ManifestFile manifestFile, FileIO fileIO, TableIdentifier tableId) {
+      Set<String> tableLocations,
+      ManifestFile manifestFile,
+      FileIO fileIO,
+      TableIdentifier tableId) {
     // if the file doesn't exist, we assume that another task execution was successful, but
     // failed to drop the task entity. Log a warning and return success
     if (!TaskUtils.exists(manifestFile.path(), fileIO)) {
@@ -95,7 +102,7 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
                   Spliterators.spliteratorUnknownSize(reader.iterator(), Spliterator.IMMUTABLE),
                   false)
               .map(ContentFile::location)
-              .filter(location -> isUnderTableLocation(task, tableId, location))
+              .filter(location -> isUnderTableLocation(tableLocations, tableId, location))
               .map(location -> tryDelete(tableId, fileIO, manifestFile.path(), location, null, 1))
               .toList();
       LOGGER.debug(
