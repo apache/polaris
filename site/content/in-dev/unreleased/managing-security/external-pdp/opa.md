@@ -125,6 +125,33 @@ Restart the Polaris service to apply the configuration.
 | `polaris.authorization.opa.http.trust-store-path` | No | - | Path to the trust store containing CA certificates |
 | `polaris.authorization.opa.http.trust-store-password` | No | - | Password for the trust store |
 
+### Context Properties
+
+Operators can attach static key/value pairs to every OPA input under `context.properties`. Use
+them for values that identify the Polaris deployment, such as an organization or environment
+name, so that a policy shared by several deployments can tell them apart.
+
+```properties
+polaris.authorization.opa.context-properties.org=example-org
+polaris.authorization.opa.context-properties.tier=qa
+# Keys containing dots must be quoted
+polaris.authorization.opa.context-properties."my.key"=value
+```
+
+The values are read once at startup and passed through verbatim. When none are configured,
+`context.properties` is an empty object.
+
+When setting these through environment variables, keys are lowercased, and a key containing `_`
+cannot be expressed: `POLARIS_AUTHORIZATION_OPA_CONTEXT_PROPERTIES_TIER=qa` sets `tier`, but
+`POLARIS_AUTHORIZATION_OPA_CONTEXT_PROPERTIES_MY_KEY` is ignored. Define keys with mixed case or
+punctuation in `application.properties`; an environment variable can then override the value of a
+key defined there.
+
+{{< alert warning >}}
+Context properties are sent to OPA in plaintext and appear in OPA decision logs. Do not use them
+for credentials or other secrets.
+{{< /alert >}}
+
 ### Authentication Configuration
 
 OPA integration supports two authentication modes:
@@ -208,7 +235,12 @@ Polaris sends the following input structure to OPA:
     "secondaries": []
   },
   "context": {
-    "request_id": "uuid"
+    "request_id": "uuid",
+    "realm": "POLARIS",
+    "properties": {
+      "org": "example-org",
+      "tier": "qa"
+    }
   }
 }
 ```
@@ -266,6 +298,8 @@ Each parent object has:
 | Field | Type | Description |
 |-------|------|-------------|
 | `request_id` | string | UUID for correlating requests with logs |
+| `realm` | string | Realm identifier, allowing policies to scope decisions by realm |
+| `properties` | object | Operator-defined static string properties from `polaris.authorization.opa.context-properties.*`; empty object when none are configured |
 
 ### Policy Example
 

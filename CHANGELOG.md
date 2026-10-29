@@ -115,6 +115,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added `namespaces update` to set and remove namespace properties
 - NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
+- OPA: operator-defined static properties configured via `polaris.authorization.opa.context-properties.*` are now sent to OPA under `input.context.properties`
 
 ### Changes
 
