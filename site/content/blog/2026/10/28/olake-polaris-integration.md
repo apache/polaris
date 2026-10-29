@@ -28,10 +28,10 @@ Most guides for Apache Polaris start with a query engine: create a catalog, open
 In practice, much of the data that lands in an Iceberg lakehouse comes from operational databases such as PostgreSQL,
 MySQL or MongoDB, and it keeps changing after the first load.
 
-This post shows how to keep such tables in sync with [OLake Go](https://olake.io/docs), and how Polaris features
-apply to a writer that is not a query engine: principals and grants, the Iceberg REST commit protocol, and table
-maintenance policies. OLake Go is an open-source, Apache-2.0 licensed EL (Extract–Load) tool that replicates
+[OLake Go](https://olake.io/docs) is an open-source, Apache-2.0 licensed EL (Extract–Load) tool that replicates
 operational databases into Apache Iceberg tables, with incremental sync, change data capture (CDC) and resumable syncs.
+This post shows how to keep such tables in sync with OLake Go, and how Polaris features apply to a writer that is not
+a query engine: principals and grants, the Iceberg REST commit protocol, and table maintenance policies.
 
 ## Architecture
 
@@ -50,7 +50,7 @@ Query engines see the new data after each commit, through the same catalog and t
 
 ## Connecting OLake Go to Polaris
 
-OLake Go uses the standard Iceberg REST client, so the configuration mirrors that of any engine:
+OLake Go uses the standard Iceberg REST client, so its configuration looks like that of any other Iceberg client:
 
 ```json
 {

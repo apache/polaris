@@ -33,18 +33,19 @@ menus:
 ---
 
 This getting started guide shows how to load data from an operational database into Iceberg tables managed by Apache Polaris.
+
 [OLake Go](https://olake.io/docs) is an open-source EL (Extract–Load) tool that replicates operational databases into
-Apache Iceberg tables, with incremental sync, change data capture (CDC) and resumable syncs.
-In this guide, OLake Go replicates PostgreSQL tables, including ongoing changes captured through logical replication,
-and creates and updates the matching Iceberg tables in Polaris through the Iceberg REST API. Trino then queries
-those tables through the same Polaris catalog. The Polaris side of the setup is the same for the other
-[supported sources](https://olake.io/docs/connectors/overview), such as MySQL and MongoDB; only the database's CDC
-setup, the source configuration and the connector image change.
+Apache Iceberg tables, with incremental sync, change data capture (CDC) and resumable syncs. In this guide, it replicates
+a PostgreSQL table, including ongoing changes captured through logical replication, and creates and updates the matching
+Iceberg table in Polaris through the Iceberg REST API. Trino then queries that table through the same Polaris catalog.
+
+For other [supported sources](https://olake.io/docs/connectors/overview), such as MySQL and MongoDB, the Polaris side of
+the setup stays the same; only the database's CDC setup, the source configuration and the connector image change.
 
 The setup reuses the RustFS and Trino `docker-compose` files and starts the following services:
 * `rustfs` — S3-compatible object storage for Iceberg data files
 * `polaris` — Apache Polaris running with an in-memory metastore
-* `polaris-setup` — bootstraps the `quickstart_catalog` catalog and its grants
+* `polaris-setup` — bootstraps `quickstart_catalog` and its grants
 * `trino` — Trino configured with an Iceberg connector pointing at Polaris
 
 PostgreSQL and OLake Go run as standalone containers on the same Docker network.
@@ -82,7 +83,7 @@ exit 0
 
 ## Start PostgreSQL
 
-Start PostgreSQL with logical replication enabled, which OLake Go needs for change data capture (CDC).
+Start PostgreSQL with logical replication enabled; OLake Go needs it for change data capture (CDC).
 The [OLake Go PostgreSQL CDC setup](https://olake.io/docs/connectors/postgres/setup/generic) describes the requirements:
 
 ```shell
@@ -140,7 +141,7 @@ cat > olake-config/source.json <<'EOF'
 EOF
 ```
 
-The destination configuration points at the `quickstart_catalog` catalog in Polaris. All options are described in the
+The destination configuration points at `quickstart_catalog` in Polaris. All options are described in the
 [OLake Go Polaris catalog documentation](https://olake.io/docs/writers/iceberg/catalog/rest?rest-catalog=polaris&rest-auth-type=oauth2):
 
 ```shell
@@ -164,15 +165,15 @@ EOF
 
 | Property | Value | Description |
 |---|---|---|
-| `catalog_type` | `polaris` | Connect to Polaris as an Iceberg REST catalog |
+| `catalog_type` | `polaris` | Catalog type; Polaris is accessed as an Iceberg REST catalog |
 | `rest_catalog_url` | `http://polaris:8181/api/catalog` | Polaris REST catalog endpoint |
 | `iceberg_s3_path` | `quickstart_catalog` | Polaris catalog name, sent as the REST `warehouse` |
-| `rest_auth_type` | `oauth2` | Authenticate with the OAuth2 client credentials flow |
+| `rest_auth_type` | `oauth2` | Authentication with the OAuth2 client credentials flow |
 | `oauth2_uri` | `http://polaris:8181/api/catalog/v1/oauth/tokens` | Polaris token endpoint |
 | `credential` | `root:s3cr3t` | OAuth2 client credentials, as `client_id:client_secret` |
-| `scope` | `PRINCIPAL_ROLE:ALL` | Activates all principal roles of the client |
+| `scope` | `PRINCIPAL_ROLE:ALL` | Principal roles to activate; `ALL` activates every role of the client |
 | `aws_region` | `us-west-2` | Region of the catalog's storage, as configured by `polaris-setup` |
-| `rest_access_delegation` | `vended-credentials` | Use credentials vended by Polaris to access object storage, instead of static S3 credentials |
+| `rest_access_delegation` | `vended-credentials` | Storage access through credentials vended by Polaris, instead of static S3 keys |
 
 Note: `s3cr3t` is the client secret of the `root` principal, defined in the `rustfs/docker-compose.yml` file.
       Outside a local setup, create a dedicated Polaris principal for OLake Go, granted a catalog role with
@@ -208,7 +209,7 @@ docker exec -it $(docker ps -q --filter name=trino) trino
 
 If the `trino>` prompt does not appear immediately, press Enter.
 
-OLake Go writes the table to the `postgres_shop_public` namespace, derived from the source type, database and schema.
+OLake Go writes the table to the `postgres_shop_public` namespace, named after the source type, database and schema.
 It also creates a `test_olake` namespace while checking that it can write to the catalog.
 
 ```sql

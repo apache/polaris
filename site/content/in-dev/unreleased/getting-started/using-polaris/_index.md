@@ -349,11 +349,12 @@ and resumable syncs. It connects to Polaris through the Iceberg REST API with th
 ```
 
 `iceberg_s3_path` carries the Polaris catalog name and is sent as the REST `warehouse` parameter.
-`rest_access_delegation` requests vended storage credentials from Polaris, like the `X-Iceberg-Access-Delegation` header in the Spark example.
+`rest_access_delegation` requests vended storage credentials from Polaris, the equivalent of the `X-Iceberg-Access-Delegation` header in the Spark example.
 See the [OLake Go Polaris configuration](https://olake.io/docs/writers/iceberg/catalog/rest?rest-catalog=polaris&rest-auth-type=oauth2) for all options.
 
-OLake Go usually runs in a container, where `localhost` does not reach Polaris. In that case, replace `localhost:8181`
-with a hostname the container can reach, for example the name of the Polaris container on the same Docker network.
+OLake Go usually runs in a container, where `localhost` refers to the container itself rather than to Polaris.
+Replace `localhost:8181` with a hostname the container can reach, such as the name of the Polaris container on the
+same Docker network.
 
 ### Connecting Using REST APIs
 
