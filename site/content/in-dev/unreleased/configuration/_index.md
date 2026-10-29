@@ -29,4 +29,5 @@ This section covers how to configure Apache Polaris.
 - [Configuration Reference]({{% ref "configuration-reference.md" %}}) - A comprehensive reference of all Polaris configuration options.
 - [Production Configuration]({{% ref "configuring-polaris-for-production" %}}) - Tips and best practices for deploying Polaris in production environments.
 - [Storage Layout]({{% ref "storage-layout.md" %}}) - Where Polaris places namespaces, tables, and views in storage, and the settings that change this layout.
+- [Disabling Unstructured Table Locations]({{% ref "disabling-unstructured-table-locations.md" %}}) - Impact of disabling `ALLOW_UNSTRUCTURED_TABLE_LOCATION` on existing tables and views.
 
