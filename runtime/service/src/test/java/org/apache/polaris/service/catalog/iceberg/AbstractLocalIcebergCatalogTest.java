@@ -34,6 +34,8 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.azure.core.exception.HttpResponseException;
@@ -60,6 +62,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -3014,6 +3017,78 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     new CatalogHandlerUtils(5, false).commit(ops, request);
 
     assertThat(catalog.loadTable(TABLE).properties()).containsEntry("test-key", "test-value");
+  }
+
+  @Test
+  public void testCommitConflictAtFinalTransactionExhaustsRetries() {
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    LocalIcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(NS);
+    }
+    catalog.buildTable(TABLE, SCHEMA).create();
+    TableOperations ops = ((BaseTable) catalog.loadTable(TABLE)).operations();
+
+    // Lose every final compare-and-set: one attempt plus two retries, then 409.
+    doReturn(new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+
+    UpdateTableRequest request =
+        new UpdateTableRequest(
+            List.of(), List.of(new MetadataUpdate.SetProperties(Map.of("test-key", "test-value"))));
+    assertThatThrownBy(() -> new CatalogHandlerUtils(2, false).commit(ops, request))
+        .isInstanceOf(CommitConflictException.class);
+    verify(spyMetaStore, times(3)).updateEntityPropertiesIfNotChanged(any(), any(), any());
+  }
+
+  @Test
+  public void testRequirementFailureAfterFinalTransactionConflictIsNotRetried() {
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    LocalIcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(NS);
+    }
+    catalog.buildTable(TABLE, SCHEMA).create();
+    TableOperations ops = ((BaseTable) catalog.loadTable(TABLE)).operations();
+    int baseSchemaId = ops.current().currentSchemaId();
+
+    // The first compare-and-set loses to a concurrent schema change, so the retry finds the
+    // request's schema requirement false and must reject it without further attempts.
+    AtomicInteger calls = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              if (calls.getAndIncrement() == 0) {
+                catalog
+                    .loadTable(TABLE)
+                    .updateSchema()
+                    .addColumn("concurrent", Types.LongType.get())
+                    .commit();
+                return new EntityResult(
+                    BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
+              }
+              return invocation.callRealMethod();
+            })
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+
+    UpdateTableRequest request =
+        new UpdateTableRequest(
+            List.of(new UpdateRequirement.AssertCurrentSchemaID(baseSchemaId)),
+            List.of(new MetadataUpdate.SetProperties(Map.of("test-key", "test-value"))));
+    assertThatThrownBy(() -> new CatalogHandlerUtils(5, false).commit(ops, request))
+        .isInstanceOf(CommitFailedException.class);
+    // The lost compare-and-set and the concurrent schema change; no retry reached the metastore.
+    assertThat(calls).hasValue(2);
+    assertThat(catalog.loadTable(TABLE).properties()).doesNotContainKey("test-key");
   }
 
   static Stream<Arguments> renameFailureStatuses() {
