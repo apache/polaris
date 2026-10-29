@@ -28,22 +28,23 @@ Most guides for Apache Polaris start with a query engine: create a catalog, open
 In practice, much of the data that lands in an Iceberg lakehouse comes from operational databases such as PostgreSQL,
 MySQL or MongoDB, and it keeps changing after the first load.
 
-This post shows how to keep such tables in sync with [OLake Go](https://olake.io/docs), an Apache-2.0
-licensed replication tool, and how Polaris features apply to a writer that is not a query engine:
-principals and grants, the Iceberg REST commit protocol, and table maintenance policies.
+This post shows how to keep such tables in sync with [OLake Go](https://olake.io/docs), and how Polaris features
+apply to a writer that is not a query engine: principals and grants, the Iceberg REST commit protocol, and table
+maintenance policies. OLake Go is an open-source, Apache-2.0 licensed EL (Extract–Load) tool that replicates
+operational databases into Apache Iceberg tables, with incremental sync, change data capture (CDC) and resumable syncs.
 
 ## Architecture
 
 ```
-PostgreSQL ──(logical replication)──> OLake Go ──(Iceberg REST)──> Polaris
+Database ──(change data capture)────> OLake Go ──(Iceberg REST)──> Polaris
                                          │                            │
                                          └───── data files ──> S3 <───┘
                                                                 ▲
                                          Trino / Spark ─────────┘ (via Polaris)
 ```
 
-OLake Go reads a full snapshot of each selected table, then follows the database change log. For PostgreSQL, that is
-logical replication with the `pgoutput` plugin (see the [PostgreSQL CDC setup](https://olake.io/docs/connectors/postgres/setup/generic)).
+OLake Go reads a full snapshot of each selected table, then follows the database change log: logical replication on
+PostgreSQL, the binlog on MySQL or the oplog on MongoDB (see the [supported sources](https://olake.io/docs/connectors/overview)).
 It writes Parquet data and delete files to object storage and commits them to Polaris through the Iceberg REST API.
 Query engines see the new data after each commit, through the same catalog and the same access controls.
 

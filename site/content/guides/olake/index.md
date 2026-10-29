@@ -33,9 +33,13 @@ menus:
 ---
 
 This getting started guide shows how to load data from an operational database into Iceberg tables managed by Apache Polaris.
-[OLake Go](https://olake.io/docs) replicates PostgreSQL tables, including ongoing changes captured through logical replication
-(CDC), and creates and updates the matching Iceberg tables in Polaris through the Iceberg REST API. Trino then queries
-those tables through the same Polaris catalog.
+[OLake Go](https://olake.io/docs) is an open-source EL (Extract–Load) tool that replicates operational databases into
+Apache Iceberg tables, with incremental sync, change data capture (CDC) and resumable syncs.
+In this guide, OLake Go replicates PostgreSQL tables, including ongoing changes captured through logical replication,
+and creates and updates the matching Iceberg tables in Polaris through the Iceberg REST API. Trino then queries
+those tables through the same Polaris catalog. The Polaris side of the setup is the same for the other
+[supported sources](https://olake.io/docs/connectors/overview), such as MySQL and MongoDB; only the database's CDC
+setup, the source configuration and the connector image change.
 
 The setup reuses the RustFS and Trino `docker-compose` files and starts the following services:
 * `rustfs` — S3-compatible object storage for Iceberg data files

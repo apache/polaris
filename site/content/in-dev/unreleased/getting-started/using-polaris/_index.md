@@ -327,9 +327,9 @@ It is possible to use `load_catalog` function by providing an authorization toke
 
 ### Connecting with OLake Go
 
-[OLake Go](https://olake.io/docs) is an open-source tool that replicates operational databases such as
-PostgreSQL, MySQL and MongoDB, including ongoing changes, into Iceberg tables. It connects to Polaris through the
-Iceberg REST API with the same principal credentials used above:
+[OLake Go](https://olake.io/docs) is an open-source EL (Extract–Load) tool that replicates operational databases
+such as PostgreSQL, MySQL and MongoDB into Apache Iceberg tables, with incremental sync, change data capture (CDC)
+and resumable syncs. It connects to Polaris through the Iceberg REST API with the same principal credentials used above:
 
 ```json
 {
@@ -380,7 +380,7 @@ curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "
 * Visit [Using Polaris with telemetry tools]({{% relref "telemetry-tools" %}}).
 * Visit [Configuring Polaris for Production]({{% relref "../../configuration/configuring-polaris-for-production" %}}).
 * A Getting Started experience for using Spark with Jupyter Notebooks is documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).
-* A Getting Started experience for loading data from PostgreSQL with OLake Go is documented [here](/guides/olake/).
+* A Getting Started experience for loading data from an operational database with OLake Go is documented [here](/guides/olake/).
 * To shut down a locally-deployed Polaris server and clean up all related Docker containers, run the command listed below. Cloud Deployments have their respective termination commands on their Deployment page, while Polaris running on Gradle will terminate when the Gradle process terminates.
 ```shell
 docker compose -p polaris \
