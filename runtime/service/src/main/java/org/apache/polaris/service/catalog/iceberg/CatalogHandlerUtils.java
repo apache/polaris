@@ -402,7 +402,9 @@ public class CatalogHandlerUtils {
               COMMIT_MAX_RETRY_WAIT_MS_DEFAULT,
               COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT,
               2.0 /* exponential */)
-          // CommitConflictException: the final compare-and-set lost to a concurrent commit
+          // CommitConflictException: the final compare-and-set lost to a concurrent commit.
+          // validateNoLocationOverlap also throws it when sibling entities cannot be resolved,
+          // which only happens when a commit changes the location; that is retried too.
           .onlyRetryOn(CommitFailedException.class, CommitConflictException.class)
           .run(taskOps -> {
             TableMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
@@ -758,7 +760,9 @@ public class CatalogHandlerUtils {
               COMMIT_MAX_RETRY_WAIT_MS_DEFAULT,
               COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT,
               2.0 /* exponential */)
-          // CommitConflictException: the final compare-and-set lost to a concurrent commit
+          // CommitConflictException: the final compare-and-set lost to a concurrent commit.
+          // validateNoLocationOverlap also throws it when sibling entities cannot be resolved,
+          // which only happens when a commit changes the location; that is retried too.
           .onlyRetryOn(CommitFailedException.class, CommitConflictException.class)
           .run(taskOps -> {
             ViewMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
