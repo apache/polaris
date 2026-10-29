@@ -202,12 +202,15 @@ public class PolarisServiceImpl
             .map(s -> s.toUpperCase(Locale.ROOT))
             .toList();
     if (!supportedConnectionTypes.contains(connectionType)) {
-      throw new IllegalStateException("Unsupported connection type: " + connectionType);
+      throw new IllegalArgumentException("Unsupported connection type: " + connectionType);
     }
   }
 
   private void validateAuthenticationParameters(AuthenticationParameters authenticationParameters) {
-
+    if (authenticationParameters == null) {
+      throw new IllegalArgumentException(
+          "authenticationParameters is required for an external catalog");
+    }
     String authenticationType = authenticationParameters.getAuthenticationType().name();
     List<String> supportedAuthenticationTypes =
         realmConfig
@@ -216,7 +219,7 @@ public class PolarisServiceImpl
             .map(s -> s.toUpperCase(Locale.ROOT))
             .toList();
     if (!supportedAuthenticationTypes.contains(authenticationType)) {
-      throw new IllegalStateException("Unsupported authentication type: " + authenticationType);
+      throw new IllegalArgumentException("Unsupported authentication type: " + authenticationType);
     }
   }
 

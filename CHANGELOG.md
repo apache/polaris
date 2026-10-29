@@ -144,6 +144,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `GET /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials` endpoint, which Polaris
   already served. Clients that check advertised endpoints before refreshing vended credentials can
   now use it.
+- Creating an external catalog whose `connectionConfigInfo` has no `authenticationParameters`, or
+  uses a connection or authentication type outside the realm's allow-list, now fails with
+  `400 Bad Request` instead of `500 Internal Server Error`.
 - Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
   the packaged chart, so `helm test` ran no tests.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
