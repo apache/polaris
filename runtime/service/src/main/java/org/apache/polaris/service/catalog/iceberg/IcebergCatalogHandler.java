@@ -1281,6 +1281,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   vendingCredentials ? refreshCredentialsEndpoint : Optional.empty(),
                   resolvedStoragePath);
       Map<String, String> credentialConfig = credentialConfigForVending(storageAccessConfig);
+      responseBuilder.addAllConfig(storageAccessConfig.extraProperties());
       if (vendingCredentials) {
         if (storageAccessConfig.credentials().isEmpty()) {
           Boolean skipCredIndirection =
@@ -1302,7 +1303,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   .build());
         }
       }
-      responseBuilder.addAllConfig(storageAccessConfig.extraProperties());
     }
 
     return responseBuilder;
