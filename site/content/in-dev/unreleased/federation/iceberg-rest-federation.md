@@ -113,11 +113,18 @@ polaris catalogs update analytics_rest \
     --set-property header.x-goog-user-project=my-gcp-project
 ```
 
-Or configure custom headers directly on the connection:
+Custom headers can also be configured directly on the connection config via `connectionConfigInfo.properties` in the Management API:
 
-```bash
-polaris connections update my_rest_connection \
-    --set-property header.x-goog-user-project=my-gcp-project
+```json
+{
+  "connectionConfigInfo": {
+    "connectionType": "ICEBERG_REST",
+    "uri": "https://remote-polaris.example.com/catalog/v1",
+    "properties": {
+      "header.x-goog-user-project": "my-gcp-project"
+    }
+  }
+}
 ```
 
 The warning in Outbound HTTP settings applies: headers set this way are visible to catalog clients

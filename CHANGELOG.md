@@ -113,6 +113,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
+- Iceberg REST connection configs now forward all `header.*` properties to the remote REST catalog client rather than filtering to an allowlist, allowing custom connection-level headers while preserving connection-over-catalog precedence.
 - Azure credential vending now maps MSAL authentication failures using their HTTP status codes,
   including the existing `401` to `403` and `404` to `400` mappings.
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now

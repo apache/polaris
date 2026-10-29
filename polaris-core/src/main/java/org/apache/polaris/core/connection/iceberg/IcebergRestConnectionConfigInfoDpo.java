@@ -85,6 +85,8 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
     // Add authentication-specific metadata (non-credential properties)
     properties.putAll(getAuthenticationParameters().asIcebergCatalogProperties(credentialManager));
 
+    // Forward all custom HTTP header properties to the remote Iceberg REST client (e.g.
+    // billing projects, tenant headers, tracing headers).
     getProperties()
         .forEach(
             (key, value) -> {
