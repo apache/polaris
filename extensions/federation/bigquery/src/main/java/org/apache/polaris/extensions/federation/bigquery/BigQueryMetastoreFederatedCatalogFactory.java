@@ -24,7 +24,6 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.gcp.bigquery.BigQueryMetastoreCatalog;
 import org.apache.iceberg.rest.RESTUtil;
-import org.apache.polaris.core.catalog.DirectoryCatalog;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
@@ -87,14 +86,5 @@ public class BigQueryMetastoreFederatedCatalogFactory implements FederatedCatalo
       Map<String, String> catalogProperties) {
     throw new UnsupportedOperationException(
         "Generic table federation to BigQuery Metastore is not supported.");
-  }
-
-  @Override
-  public DirectoryCatalog createDirectoryCatalog(
-      ConnectionConfigInfoDpo connectionConfig,
-      PolarisCredentialManager polarisCredentialManager,
-      Map<String, String> catalogProperties) {
-    throw new UnsupportedOperationException(
-        "Directory federation to BigQuery Metastore is not supported.");
   }
 }

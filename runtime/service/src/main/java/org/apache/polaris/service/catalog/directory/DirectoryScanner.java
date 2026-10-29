@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.OverwriteFiles;
 import org.apache.iceberg.Table;
@@ -42,6 +43,7 @@ import org.apache.iceberg.io.FileInfo;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.SupportsPrefixOperations;
 import org.apache.iceberg.parquet.Parquet;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,8 +78,13 @@ final class DirectoryScanner {
     List<Pattern> excludePatterns = compile(exclude);
 
     List<Record> records = new ArrayList<>();
+    String inventoryLocation = StorageLocation.ensureTrailingSlash(table.location());
     for (FileInfo file : prefixIO.listPrefix(baseLocation)) {
       String uri = file.location();
+      // The inventory table may live under the base location: do not index its own files
+      if (uri.startsWith(inventoryLocation)) {
+        continue;
+      }
       if (matches(uri, includePatterns, excludePatterns)) {
         Record record = GenericRecord.create(table.schema());
         record.setField("file_uri", uri);
@@ -133,6 +140,16 @@ final class DirectoryScanner {
       table.io().deleteFile(location);
     } catch (RuntimeException e) {
       LOGGER.warn("Failed to delete the orphan inventory file {}", location, e);
+    }
+  }
+
+  /** Rejects filters that are not valid regular expressions. */
+  static void validateFilters(List<String> include, List<String> exclude) {
+    try {
+      compile(include);
+      compile(exclude);
+    } catch (PatternSyntaxException e) {
+      throw new IllegalArgumentException("Invalid directory filter: " + e.getMessage(), e);
     }
   }
 

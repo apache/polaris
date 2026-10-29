@@ -24,6 +24,10 @@ weight: 450
 
 ## Overview
 
+{{< alert important >}}
+Directories are in beta. Please use it with caution and report any issue if encountered.
+{{< /alert >}}
+
 Directories make objects (including unstructured data like images, videos, documents, and other objects) discoverable alongside
 structured Iceberg tables within a Polaris catalog. 
 A directory points to a base location/prefix on an object store and automatically tracks the objects it contains by maintaining 
@@ -40,6 +44,11 @@ A directory has two main parts:
    how to authenticate, which objects to include, and how often to re-scan. The configuration "lives" in a namespace.
 2. **Directory table** — an Iceberg table serving as the inventory of all objects contained in the directory, one row per object discovered during a scan.
    The directory table is named after the configuration, with the `__inventory` suffix (for example `product-images__inventory`), because a directory and a table cannot share a name in a namespace.
+
+{{< alert warning >}}
+The directory table is managed by Polaris. Dropping it, or writing to it through the Iceberg REST API, breaks the directory:
+the next scan fails or the inventory no longer reflects the objects of the directory. Use the directories API to scan or drop a directory.
+{{< /alert >}}
 
 Polaris provides a simple synchronous scan endpoint but does not schedule scans. External services (e.g. directory table scanning service) can also read the directory configuration through the REST API,
 walk the object store, and write the results into the directory table.

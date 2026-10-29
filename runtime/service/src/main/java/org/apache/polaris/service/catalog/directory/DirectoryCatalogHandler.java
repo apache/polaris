@@ -36,7 +36,6 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.types.Types;
@@ -54,6 +53,8 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.table.DirectoryEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -246,12 +247,18 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
     this.icebergCatalog = localCatalogFactory().createCatalog(this.resolutionManifest);
   }
 
-  public ListDirectoriesResponse listDirectories(Namespace parent) {
+  public ListDirectoriesResponse listDirectories(
+      Namespace parent, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
+    PageToken pageRequest =
+        PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
+    Page<TableIdentifier> page = directoryCatalog.listDirectories(parent, pageRequest);
+    rejectIncompleteListing(pageToken, pageSize, page.encodedResponseToken());
     return ListDirectoriesResponse.builder()
-        .setIdentifiers(new LinkedHashSet<>(directoryCatalog.listDirectories(parent)))
+        .setIdentifiers(new LinkedHashSet<>(page.items()))
+        .setNextPageToken(page.encodedResponseToken())
         .build();
   }
 
@@ -275,12 +282,8 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
     CatalogUtils.validateLocationsForTableLike(
         realmConfig(), identifier, Set.of(baseLocation), resolvedParent);
 
-    // Check that the inventory table name does not collide with an existing entity
+    DirectoryScanner.validateFilters(parseJsonArray(filterInclude), parseJsonArray(filterExclude));
     TableIdentifier tableId = inventoryTableIdentifier(identifier);
-    if (this.icebergCatalog.tableExists(tableId)) {
-      throw new AlreadyExistsException(
-          "Cannot create directory %s: associated table %s already exists", identifier, tableId);
-    }
 
     DirectoryEntity createdEntity =
         this.directoryCatalog.createDirectory(
@@ -320,22 +323,17 @@ public abstract class DirectoryCatalogHandler extends CatalogHandler {
   public boolean dropDirectory(TableIdentifier identifier) {
     this.inventoryTable = inventoryTableIdentifier(identifier);
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.DIRECTORY, identifier);
 
     // Verify the directory exists before attempting to drop the associated table
     this.directoryCatalog.loadDirectory(identifier);
 
     // Drop the associated inventory table first — if this fails the directory entity is still
-    // intact
-    // and the operation can be retried.
+    // intact and the operation can be retried.
     TableIdentifier tableId = inventoryTableIdentifier(identifier);
-    try {
-      this.icebergCatalog.dropTable(tableId, false);
-      LOGGER.debug("Dropped associated Iceberg table {} for directory {}", tableId, identifier);
-    } catch (Exception e) {
-      LOGGER.error("Failed to drop associated Iceberg table for directory {}", identifier, e);
-      throw e;
-    }
+    this.icebergCatalog.dropTable(tableId, false);
+    LOGGER.debug("Dropped associated Iceberg table {} for directory {}", tableId, identifier);
 
     return this.directoryCatalog.dropDirectory(identifier);
   }

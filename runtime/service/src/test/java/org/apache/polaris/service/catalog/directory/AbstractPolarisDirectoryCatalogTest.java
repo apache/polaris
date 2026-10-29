@@ -55,6 +55,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.table.DirectoryEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -400,7 +401,8 @@ public abstract class AbstractPolarisDirectoryCatalogTest {
           TableIdentifier.of("ns", "d" + i), "s3://bucket/path" + i, null, null, null, Map.of());
     }
 
-    List<TableIdentifier> listResult = directoryCatalog.listDirectories(namespace);
+    List<TableIdentifier> listResult =
+        directoryCatalog.listDirectories(namespace, PageToken.readEverything()).items();
 
     Assertions.assertThat(listResult.size()).isEqualTo(10);
     Assertions.assertThat(listResult.stream().map(TableIdentifier::toString).toList())
@@ -422,14 +424,17 @@ public abstract class AbstractPolarisDirectoryCatalogTest {
     }
 
     Assertions.assertThat(icebergCatalog.listTables(namespace).size()).isEqualTo(10);
-    Assertions.assertThat(directoryCatalog.listDirectories(namespace)).isEmpty();
+    Assertions.assertThat(
+            directoryCatalog.listDirectories(namespace, PageToken.readEverything()).items())
+        .isEmpty();
   }
 
   @Test
   public void testListDirectoriesNoNamespace() {
     Namespace namespace = Namespace.of("ns");
 
-    Assertions.assertThatCode(() -> directoryCatalog.listDirectories(namespace))
+    Assertions.assertThatCode(
+            () -> directoryCatalog.listDirectories(namespace, PageToken.readEverything()))
         .hasMessageContaining("Namespace");
   }
 
@@ -490,7 +495,9 @@ public abstract class AbstractPolarisDirectoryCatalogTest {
           TableIdentifier.of("ns", "d" + i), "s3://bucket/path" + i, null, null, null, Map.of());
     }
 
-    Assertions.assertThat(directoryCatalog.listDirectories(namespace).size()).isEqualTo(10);
+    Assertions.assertThat(
+            directoryCatalog.listDirectories(namespace, PageToken.readEverything()).items().size())
+        .isEqualTo(10);
     Assertions.assertThat(icebergCatalog.listTables(namespace).size()).isEqualTo(10);
   }
 }

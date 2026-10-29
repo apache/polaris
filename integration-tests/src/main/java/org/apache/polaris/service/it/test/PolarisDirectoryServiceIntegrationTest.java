@@ -182,4 +182,36 @@ public class PolarisDirectoryServiceIntegrationTest {
     assertThat(directoryApi.listDirectories(catalogName, NS)).isEmpty();
     assertThat(restCatalog.tableExists(IMAGES_INVENTORY)).isFalse();
   }
+
+  @Test
+  public void testReadOnlyPrincipalCannotScanOrDrop() throws IOException {
+    URI baseLocation = catalogBaseLocation.resolve("images/");
+    Files.createDirectories(Path.of(baseLocation));
+    directoryApi.createDirectory(catalogName, IMAGES, baseLocation.toString(), Map.of());
+
+    String readerRole = "directory-reader-" + UUID.randomUUID();
+    PrincipalWithCredentials reader =
+        managementApi.createPrincipalWithRole(
+            "directory-reader-user-" + UUID.randomUUID(), readerRole);
+    String readerCatalogRole = "directory_reader_catalog_role";
+    managementApi.createCatalogRole(catalogName, readerCatalogRole);
+    managementApi.addGrant(
+        catalogName,
+        readerCatalogRole,
+        new CatalogGrant(CatalogPrivilege.TABLE_READ_PROPERTIES, GrantResource.TypeEnum.CATALOG));
+    managementApi.grantCatalogRoleToPrincipalRole(
+        readerRole, catalogName, managementApi.getCatalogRole(catalogName, readerCatalogRole));
+    DirectoryApi readerApi = client.directoryApi(client.obtainToken(reader));
+
+    assertThat(readerApi.getDirectory(catalogName, IMAGES).getBaseLocation())
+        .isEqualTo(baseLocation.toString());
+    try (Response response = readerApi.tryScanDirectory(catalogName, IMAGES)) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
+    }
+    try (Response response = readerApi.tryDropDirectory(catalogName, IMAGES)) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
+    }
+    assertThat(directoryApi.listDirectories(catalogName, NS)).containsExactly(IMAGES);
+    directoryApi.dropDirectory(catalogName, IMAGES);
+  }
 }

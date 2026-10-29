@@ -39,6 +39,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
@@ -175,7 +176,7 @@ public class PolarisDirectoryCatalog implements DirectoryCatalog {
   }
 
   @Override
-  public List<TableIdentifier> listDirectories(Namespace namespace) {
+  public Page<TableIdentifier> listDirectories(Namespace namespace, PageToken pageToken) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(namespace));
     if (resolvedEntities == null) {
@@ -183,16 +184,15 @@ public class PolarisDirectoryCatalog implements DirectoryCatalog {
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
-    List<PolarisEntity.NameAndId> entities =
-        PolarisEntity.toNameAndIdList(
-            this.metaStoreManager
-                .listEntities(
-                    this.callContext.getPolarisCallContext(),
-                    PolarisEntity.toCoreList(catalogPath),
-                    PolarisEntityType.TABLE_LIKE,
-                    PolarisEntitySubType.DIRECTORY,
-                    PageToken.readEverything())
-                .getEntities());
-    return PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities);
+    Namespace parentNamespace = PolarisCatalogHelpers.parentNamespace(catalogPath);
+    return this.metaStoreManager
+        .listEntities(
+            this.callContext.getPolarisCallContext(),
+            PolarisEntity.toCoreList(catalogPath),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.DIRECTORY,
+            pageToken)
+        .getPage()
+        .map(record -> TableIdentifier.of(parentNamespace, record.getName()));
   }
 }

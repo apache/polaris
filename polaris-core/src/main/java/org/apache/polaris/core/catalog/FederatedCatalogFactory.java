@@ -74,9 +74,12 @@ public interface FederatedCatalogFactory {
    *     passed through to the underlying catalog
    * @return the initialized catalog
    * @throws IllegalStateException if the connection configuration is invalid
+   * @throws UnsupportedOperationException if directory federation is not supported
    */
-  DirectoryCatalog createDirectoryCatalog(
+  default DirectoryCatalog createDirectoryCatalog(
       ConnectionConfigInfoDpo connectionConfig,
       PolarisCredentialManager polarisCredentialManager,
-      Map<String, String> catalogProperties);
+      Map<String, String> catalogProperties) {
+    throw new UnsupportedOperationException("Directory federation is not supported.");
+  }
 }

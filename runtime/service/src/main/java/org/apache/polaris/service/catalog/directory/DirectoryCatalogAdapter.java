@@ -142,7 +142,9 @@ public class DirectoryCatalogAdapter implements PolarisCatalogDirectoryApiServic
     DirectoryCatalogHandler handler = newHandler(securityContext, prefix);
     ListDirectoriesResponse response =
         handler.listDirectories(
-            NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR));
+            NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR),
+            pageToken,
+            pageSize);
     return Response.ok(response).build();
   }
 

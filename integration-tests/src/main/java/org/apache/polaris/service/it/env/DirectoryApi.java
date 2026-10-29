@@ -131,4 +131,24 @@ public class DirectoryApi extends PolarisRestApi {
       return res.readEntity(ScanDirectoryResponse.class).getFileCount();
     }
   }
+
+  /** Same as {@link #scanDirectory}, but returns the raw response, which the caller closes. */
+  public Response tryScanDirectory(String catalog, TableIdentifier id) {
+    String ns =
+        NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    return request(
+            "polaris/v1/{cat}/namespaces/{ns}/directories/{directory}/scan",
+            Map.of("cat", catalog, "directory", id.name(), "ns", ns))
+        .post(Entity.json(""));
+  }
+
+  /** Same as {@link #dropDirectory}, but returns the raw response, which the caller closes. */
+  public Response tryDropDirectory(String catalog, TableIdentifier id) {
+    String ns =
+        NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    return request(
+            "polaris/v1/{cat}/namespaces/{ns}/directories/{directory}",
+            Map.of("cat", catalog, "directory", id.name(), "ns", ns))
+        .delete();
+  }
 }

@@ -18,11 +18,12 @@
  */
 package org.apache.polaris.core.catalog;
 
-import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.entity.table.DirectoryEntity;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 
 /** A catalog for managing {@link DirectoryEntity} instances */
 public interface DirectoryCatalog {
@@ -46,5 +47,5 @@ public interface DirectoryCatalog {
   boolean dropDirectory(TableIdentifier tableIdentifier);
 
   /** List all directories under a specific namespace */
-  List<TableIdentifier> listDirectories(Namespace namespace);
+  Page<TableIdentifier> listDirectories(Namespace namespace, PageToken pageToken);
 }
