@@ -126,8 +126,8 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
       // Ranger builds the resource from the resolved local entities. For a remote-only entity of a
       // federated catalog, the resolved path stops at its deepest local parent, so Ranger would
       // evaluate the parent instead of the entity itself. Until the resource can be derived from
-      // the intent, deny entity-level list visibility checks that cannot reach their target.
-      if (isEntityVisibilityCheck(intent.operation())
+      // the intent, deny entity list operations whose resolved path does not reach the target.
+      if (isEntityListOperation(intent.operation())
           && intent instanceof SingleTargetAuthorizationIntent singleTargetIntent
           && !reachesTarget(resolvedIntent.targets().get(0), singleTargetIntent.target())) {
         return AuthorizationDecision.deny(
@@ -146,10 +146,10 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
     }
   }
 
-  private static boolean isEntityVisibilityCheck(PolarisAuthorizableOperation operation) {
-    return operation == PolarisAuthorizableOperation.LIST_NAMESPACES_ENTITY
-        || operation == PolarisAuthorizableOperation.LIST_TABLES_ENTITY
-        || operation == PolarisAuthorizableOperation.LIST_VIEWS_ENTITY;
+  private static boolean isEntityListOperation(PolarisAuthorizableOperation operation) {
+    return operation == PolarisAuthorizableOperation.LIST_NAMESPACE
+        || operation == PolarisAuthorizableOperation.LIST_TABLE
+        || operation == PolarisAuthorizableOperation.LIST_VIEW;
   }
 
   /** Whether {@code resolved} is the full path of {@code target}, ignoring the root container. */

@@ -28,7 +28,7 @@ public enum PolarisAuthorizableOperation {
    * namespace independently of the parent-level permission. The built-in RBAC authorizer maps it to
    * {@code NAMESPACE_READ_PROPERTIES}.
    */
-  LIST_NAMESPACES_ENTITY,
+  LIST_NAMESPACE,
   CREATE_NAMESPACE,
   LOAD_NAMESPACE_METADATA,
   NAMESPACE_EXISTS,
@@ -41,7 +41,7 @@ public enum PolarisAuthorizableOperation {
    * from LIST_TABLES so that authorizers can decide access to each table independently of the
    * parent-level permission. The built-in RBAC authorizer maps it to {@code TABLE_READ_PROPERTIES}.
    */
-  LIST_TABLES_ENTITY,
+  LIST_TABLE,
   CREATE_TABLE_DIRECT,
   CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
   CREATE_TABLE_STAGED,
@@ -69,7 +69,7 @@ public enum PolarisAuthorizableOperation {
    * from LIST_VIEWS so that authorizers can decide access to each view independently of the
    * parent-level permission. The built-in RBAC authorizer maps it to {@code VIEW_READ_PROPERTIES}.
    */
-  LIST_VIEWS_ENTITY,
+  LIST_VIEW,
   CREATE_VIEW,
   REGISTER_VIEW,
   LOAD_VIEW,

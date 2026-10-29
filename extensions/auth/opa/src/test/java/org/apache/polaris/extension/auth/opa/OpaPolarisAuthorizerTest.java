@@ -835,7 +835,7 @@ public class OpaPolarisAuthorizerTest {
     JsonNode root = mapper.readTree(capturedRequestBodies.get(0));
 
     assertThat(decision.isAllowed()).isTrue();
-    assertThat(root.path("input").path("action").asText()).isEqualTo("LIST_TABLES_ENTITY");
+    assertThat(root.path("input").path("action").asText()).isEqualTo("LIST_TABLE");
     JsonNode expectedTarget =
         mapper.readTree(
             """
@@ -873,7 +873,7 @@ public class OpaPolarisAuthorizerTest {
 
   private static AuthorizationIntent remoteOnlyTableIntent(String tableName) {
     return new SingleTargetAuthorizationIntent(
-        PolarisAuthorizableOperation.LIST_TABLES_ENTITY,
+        PolarisAuthorizableOperation.LIST_TABLE,
         PolarisSecurable.of(
             new PathSegment(PolarisEntityType.CATALOG, "federated_catalog"),
             new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),

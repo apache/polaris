@@ -308,17 +308,16 @@ public class RangerPolarisAuthorizerTest {
       PolarisPrincipal.of("alice", AttributeMap.EMPTY, Collections.emptySet());
 
   /** A remote-only child of {@code catalog.ns}: the manifest resolves only up to {@code ns}. */
-  static Stream<Arguments> remoteOnlyEntityVisibilityChecks() {
+  static Stream<Arguments> entityListOperations() {
     return Stream.of(
-        Arguments.of(
-            PolarisAuthorizableOperation.LIST_NAMESPACES_ENTITY, PolarisEntityType.NAMESPACE),
-        Arguments.of(PolarisAuthorizableOperation.LIST_TABLES_ENTITY, PolarisEntityType.TABLE_LIKE),
-        Arguments.of(PolarisAuthorizableOperation.LIST_VIEWS_ENTITY, PolarisEntityType.TABLE_LIKE));
+        Arguments.of(PolarisAuthorizableOperation.LIST_NAMESPACE, PolarisEntityType.NAMESPACE),
+        Arguments.of(PolarisAuthorizableOperation.LIST_TABLE, PolarisEntityType.TABLE_LIKE),
+        Arguments.of(PolarisAuthorizableOperation.LIST_VIEW, PolarisEntityType.TABLE_LIKE));
   }
 
   @ParameterizedTest
-  @MethodSource("remoteOnlyEntityVisibilityChecks")
-  void entityVisibilityCheckDeniesRemoteOnlyEntity(
+  @MethodSource("entityListOperations")
+  void entityListOperationDeniesRemoteOnlyEntity(
       PolarisAuthorizableOperation operation, PolarisEntityType leafType) throws Exception {
     RangerEmbeddedAuthorizer embeddedAuthorizer = allowingEmbeddedAuthorizer();
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
@@ -340,7 +339,7 @@ public class RangerPolarisAuthorizerTest {
   }
 
   @Test
-  void entityVisibilityCheckUsesRangerForLocalEntity() throws Exception {
+  void entityListOperationUsesRangerForLocalEntity() throws Exception {
     RangerEmbeddedAuthorizer embeddedAuthorizer = mock(RangerEmbeddedAuthorizer.class);
     when(embeddedAuthorizer.authorize(any(RangerMultiAuthzRequest.class)))
         .thenReturn(rangerResult(RangerAuthzResult.AccessDecision.ALLOW))
@@ -353,7 +352,7 @@ public class RangerPolarisAuthorizerTest {
             ALICE,
             List.of(
                 entityIntent(
-                    PolarisAuthorizableOperation.LIST_TABLES_ENTITY,
+                    PolarisAuthorizableOperation.LIST_TABLE,
                     "ns",
                     PolarisEntityType.TABLE_LIKE,
                     "table")));
@@ -368,13 +367,13 @@ public class RangerPolarisAuthorizerTest {
         ArgumentCaptor.forClass(RangerMultiAuthzRequest.class);
     verify(embeddedAuthorizer, times(2)).authorize(requestCaptor.capture());
     RangerMultiAuthzRequest rangerRequest = requestCaptor.getValue();
-    assertThat(rangerRequest.getAccesses().get(0).getAction()).isEqualTo("LIST_TABLES_ENTITY");
+    assertThat(rangerRequest.getAccesses().get(0).getAction()).isEqualTo("LIST_TABLE");
     assertThat(rangerRequest.getAccesses().get(0).getResource().getName())
         .isEqualTo("table:POLARIS/catalog/ns/table");
   }
 
   @Test
-  void entityVisibilityCheckComparesFullPathNotLeafName() throws Exception {
+  void entityListOperationComparesFullPathNotLeafName() throws Exception {
     // The table "sales" is remote-only, but its parent namespace is also called "sales": the
     // partial path ends in an entity with the same name as the target's leaf.
     RangerEmbeddedAuthorizer embeddedAuthorizer = allowingEmbeddedAuthorizer();
@@ -392,7 +391,7 @@ public class RangerPolarisAuthorizerTest {
                     ALICE,
                     List.of(
                         entityIntent(
-                            PolarisAuthorizableOperation.LIST_TABLES_ENTITY,
+                            PolarisAuthorizableOperation.LIST_TABLE,
                             "sales",
                             PolarisEntityType.TABLE_LIKE,
                             "sales"))));
@@ -402,7 +401,7 @@ public class RangerPolarisAuthorizerTest {
   }
 
   @Test
-  void nonVisibilityOperationKeepsPartialPathBehaviour() throws Exception {
+  void nonEntityListOperationKeepsPartialPathBehaviour() throws Exception {
     // Only the entity-level list checks are denied for a partial path; other operations are
     // still evaluated by Ranger against the deepest resolved entity.
     RangerEmbeddedAuthorizer embeddedAuthorizer = allowingEmbeddedAuthorizer();
@@ -447,12 +446,12 @@ public class RangerPolarisAuthorizerTest {
                     ALICE,
                     List.of(
                         entityIntent(
-                            PolarisAuthorizableOperation.LIST_TABLES_ENTITY,
+                            PolarisAuthorizableOperation.LIST_TABLE,
                             "ns",
                             PolarisEntityType.TABLE_LIKE,
                             "local"),
                         entityIntent(
-                            PolarisAuthorizableOperation.LIST_TABLES_ENTITY,
+                            PolarisAuthorizableOperation.LIST_TABLE,
                             "ns",
                             PolarisEntityType.TABLE_LIKE,
                             "remote"))));

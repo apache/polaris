@@ -1994,9 +1994,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   private static PolarisAuthorizableOperation entityVisibilityOperation(
       PolarisAuthorizableOperation listOperation) {
     return switch (listOperation) {
-      case LIST_NAMESPACES -> PolarisAuthorizableOperation.LIST_NAMESPACES_ENTITY;
-      case LIST_TABLES -> PolarisAuthorizableOperation.LIST_TABLES_ENTITY;
-      case LIST_VIEWS -> PolarisAuthorizableOperation.LIST_VIEWS_ENTITY;
+      case LIST_NAMESPACES -> PolarisAuthorizableOperation.LIST_NAMESPACE;
+      case LIST_TABLES -> PolarisAuthorizableOperation.LIST_TABLE;
+      case LIST_VIEWS -> PolarisAuthorizableOperation.LIST_VIEW;
       default ->
           throw new IllegalArgumentException("Not a filterable list operation: " + listOperation);
     };

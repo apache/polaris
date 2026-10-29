@@ -2788,8 +2788,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
               AuthorizationState authzState, AuthorizationRequest request) {
             if (request.intents().stream()
                 .allMatch(
-                    intent ->
-                        intent.operation() == PolarisAuthorizableOperation.LIST_TABLES_ENTITY)) {
+                    intent -> intent.operation() == PolarisAuthorizableOperation.LIST_TABLE)) {
               entityResolveRequests.add(request);
             }
             super.resolveAuthorizationInputs(authzState, request);
@@ -2825,8 +2824,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
               AuthorizationState authzState, AuthorizationRequest request) {
             if (request.intents().stream()
                 .noneMatch(
-                    intent ->
-                        intent.operation() == PolarisAuthorizableOperation.LIST_TABLES_ENTITY)) {
+                    intent -> intent.operation() == PolarisAuthorizableOperation.LIST_TABLE)) {
               super.resolveAuthorizationInputs(authzState, request);
             }
           }
