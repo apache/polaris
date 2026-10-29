@@ -443,14 +443,14 @@ public class StorageCredentialCacheTest {
   }
 
   @Test
-  public void testRefreshBufferEvictsNearExpiryCredentials() {
-    // Credentials expire in 120 seconds from now.
-    // With a 300-second refresh buffer, effective TTL = 120s - 300s = -180s -> clamped to 0.
-    // The entry must be absent immediately after load. getOrLoad() will also retry the load
-    // once internally (see isUnderRefreshBuffer in StorageCredentialCache), but this loader
-    // always returns the same near-expiry value, so the retry can't produce a better result --
-    // it's still correctly evicted. testGetOrLoadRetriesWhenFreshLoadIsUnderBuffer below covers
-    // the case where a retry DOES have a fresher credential available.
+  public void testGetOrLoadThrowsWhenPersistentlyUnderBuffer() {
+    // Credentials expire in 120 seconds from now. With a 300-second refresh buffer, that's
+    // under the buffer on every load. getOrLoad() retries once internally (see
+    // isUnderRefreshBuffer in StorageCredentialCache), but this loader always returns the same
+    // near-expiry value, so the retry can't produce a better result -- the buffer can never be
+    // satisfied, and getOrLoad() must say so rather than silently handing back a credential that
+    // violates its own documented contract. See testGetOrLoadRetriesWhenFreshLoadIsUnderBuffer
+    // below for the case where the retry DOES have a fresher credential available.
     long expiresAt = System.currentTimeMillis() + 120_000;
     StorageAccessConfig nearExpiryConfig =
         StorageAccessConfig.builder()
@@ -458,6 +458,7 @@ public class StorageCredentialCacheTest {
             .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
             .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(expiresAt))
             .build();
+    AtomicInteger loadCount = new AtomicInteger();
 
     // RealmConfig with STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS = 300
     RealmConfig realmConfigWithBuffer =
@@ -477,9 +478,17 @@ public class StorageCredentialCacheTest {
             Set.of(),
             Optional.empty(),
             realmConfigWithBuffer,
-            () -> nearExpiryConfig);
+            () -> {
+              loadCount.incrementAndGet();
+              return nearExpiryConfig;
+            });
 
-    storageCredentialCache.getOrLoad(key);
+    Assertions.assertThatThrownBy(() -> storageCredentialCache.getOrLoad(key))
+        .isInstanceOf(UnprocessableEntityException.class)
+        .hasMessageContaining("refresh buffer");
+    // Exactly the initial load plus one retry -- no hot-looping against a provider that can't
+    // clear its own configured buffer.
+    Assertions.assertThat(loadCount.get()).isEqualTo(2);
     Assertions.assertThat(storageCredentialCache.getIfPresent(key)).isNull();
   }
 

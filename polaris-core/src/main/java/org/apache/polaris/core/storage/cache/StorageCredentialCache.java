@@ -25,6 +25,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -112,9 +113,14 @@ public class StorageCredentialCache {
    * credential provider issuing a short-lived token), in which case Caffeine's {@code expireAfter}
    * would give it a zero TTL but still hand it back on this same call. To honor the "clients always
    * receive credentials with at least this much validity left" contract, such an entry is discarded
-   * and reloaded once, bypassing the stale copy. If the reload is still under the buffer, it's
-   * returned anyway (with a warning) rather than retried indefinitely -- a provider that can't
-   * clear its own configured buffer is a configuration problem, not something to hot-loop against.
+   * and reloaded once, bypassing the stale copy.
+   *
+   * <p>If the reload is <em>still</em> under the buffer, the contract cannot be honored at all, so
+   * this throws rather than silently handing back an under-buffer credential -- a provider that
+   * can't clear its own configured buffer after a fresh fetch is a configuration problem the caller
+   * needs to see, not something to mask with a log line. It is not retried a third time: a provider
+   * issuing credentials shorter than the configured buffer will keep doing so, and hot-looping
+   * against it doesn't help.
    */
   public StorageAccessConfig getOrLoad(StorageCredentialCacheKey key) {
     StorageCredentialCacheEntry entry = cache.get(key);
@@ -122,15 +128,12 @@ public class StorageCredentialCache {
       cache.invalidate(key);
       entry = cache.get(key);
       if (isUnderRefreshBuffer(entry)) {
-        LOGGER
-            .atWarn()
-            .log(
-                "Reloaded storage credential is still within its configured refresh buffer "
-                    + "({} ms remaining, buffer {} ms) -- returning it anyway. The underlying "
-                    + "credential provider may be issuing credentials shorter than the "
-                    + "configured buffer.",
-                entry.getExpirationTime() - System.currentTimeMillis(),
-                entry.refreshBufferMs());
+        throw new UnprocessableEntityException(
+            "Storage credential provider returned a credential with only %d ms of validity left, "
+                + "which is still under the configured refresh buffer of %d ms, even after a "
+                + "reload. The credential provider may be issuing credentials shorter than "
+                + "STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.",
+            entry.getExpirationTime() - System.currentTimeMillis(), entry.refreshBufferMs());
       }
     }
     return entry.toAccessConfig();
