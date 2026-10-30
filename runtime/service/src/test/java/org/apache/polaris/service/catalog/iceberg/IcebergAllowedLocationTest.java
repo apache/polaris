@@ -860,7 +860,8 @@ public class IcebergAllowedLocationTest {
             1725487592064L,
             1725487592064L,
             1,
-            config);
+            config,
+            null);
     try (Response response =
         services
             .catalogsApi()
