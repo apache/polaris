@@ -113,23 +113,30 @@ polaris catalogs update analytics_rest \
     --set-property header.x-goog-user-project=my-gcp-project
 ```
 
-Custom headers can also be configured directly on the connection config via `connectionConfigInfo.properties` in the Management API:
+Headers set as catalog properties are exposed to catalog clients through `/config`.
+Use connection properties or the connection's authentication parameters for any internal or sensitive headers.
+
+Custom headers can also be configured directly on the connection config via `connectionConfigInfo.properties` in the Management API. Because connection properties are internal and never returned through `/config` to catalog clients, setting headers on the connection is preferred:
 
 ```json
 {
   "connectionConfigInfo": {
     "connectionType": "ICEBERG_REST",
     "uri": "https://remote-polaris.example.com/catalog/v1",
+    "remoteCatalogName": "remote_catalog",
     "properties": {
       "header.x-goog-user-project": "my-gcp-project"
+    },
+    "authenticationParameters": {
+      "authType": "BEARER",
+      "bearerToken": "sample-token"
     }
   }
 }
 ```
+*(Only relevant fields shown)*
 
-The warning in Outbound HTTP settings applies: headers set this way are visible to catalog clients
-through `/config`, so use the connection's authentication parameters for credentials, never a
-`header.Authorization` property.
+Connection `properties` are stored as plain text. Do not set `header.Authorization` directly in properties; credentials must always be configured through `authenticationParameters` so they are securely stored and managed by the credentials manager.
 
 ## Operational notes
 
