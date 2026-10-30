@@ -940,20 +940,22 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       storageAccessConfig = StorageAccessConfig.builder().build();
     }
 
-    Map<String, String> credentialConfig = storageAccessConfig.credentials();
+    Map<String, String> credentialConfig = new HashMap<>(storageAccessConfig.extraProperties());
+    credentialConfig.putAll(storageAccessConfig.credentials());
     ImmutableLoadCredentialsResponse.Builder responseBuilder =
         ImmutableLoadCredentialsResponse.builder();
 
-    if (!credentialConfig.isEmpty()) {
-      responseBuilder.addCredentials(
-          ImmutableCredential.builder().prefix(baseLocation).config(credentialConfig).build());
-    } else {
+    if (storageAccessConfig.credentials().isEmpty()) {
       Boolean skipCredIndirection =
           realmConfig().getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
       Preconditions.checkArgument(
           !storageAccessConfig.supportsCredentialVending() || skipCredIndirection,
           "Credential vending was requested for table %s, but no credentials are available",
           tableIdentifier);
+    }
+    if (!credentialConfig.isEmpty()) {
+      responseBuilder.addCredentials(
+          ImmutableCredential.builder().prefix(baseLocation).config(credentialConfig).build());
     }
 
     return responseBuilder.build();
@@ -1238,16 +1240,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   actions,
                   refreshCredentialsEndpoint,
                   resolvedStoragePath);
-      Map<String, String> credentialConfig = storageAccessConfig.credentials();
+      Map<String, String> credentialConfig = new HashMap<>(storageAccessConfig.extraProperties());
+      // Keep client access configuration at the top level for compatibility with older clients.
+      responseBuilder.addAllConfig(storageAccessConfig.extraProperties());
       if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))) {
-        if (!credentialConfig.isEmpty()) {
-          responseBuilder.addAllConfig(credentialConfig);
-          responseBuilder.addCredential(
-              ImmutableCredential.builder()
-                  .prefix(tableMetadata.location())
-                  .config(credentialConfig)
-                  .build());
-        } else {
+        if (storageAccessConfig.credentials().isEmpty()) {
           Boolean skipCredIndirection =
               realmConfig().getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
           Preconditions.checkArgument(
@@ -1255,8 +1252,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               "Credential vending was requested for table %s, but no credentials are available",
               tableIdentifier);
         }
+        responseBuilder.addAllConfig(storageAccessConfig.credentials());
+        credentialConfig.putAll(storageAccessConfig.credentials());
       }
-      responseBuilder.addAllConfig(storageAccessConfig.extraProperties());
+      if (!credentialConfig.isEmpty()) {
+        responseBuilder.addCredential(
+            ImmutableCredential.builder()
+                .prefix(tableMetadata.location())
+                .config(credentialConfig)
+                .build());
+      }
     }
 
     return responseBuilder;
