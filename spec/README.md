@@ -38,6 +38,9 @@ Apache Polaris provides the following OpenAPI specifications:
     - [polaris-catalog-apis](polaris-catalog-apis) - This folder contains the specifications for Apache
       Polaris-specific Catalog APIs:
 
+        - [catalog-discovery-api.yaml](polaris-catalog-apis/catalog-discovery-api.yaml) - Contains the specification
+          for the Catalog Discovery API, which lists the catalogs a caller can access.
+
         - [generic-tables-api.yaml](polaris-catalog-apis/generic-tables-api.yaml) - Contains the specification for
           the Generic Tables API.
 

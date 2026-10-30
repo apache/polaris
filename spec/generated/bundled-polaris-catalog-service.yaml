@@ -2277,6 +2277,42 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/discovery/v1/catalogs:
+    get:
+      tags:
+        - Catalog Discovery API
+      summary: List the catalogs the caller can access
+      operationId: listAccessibleCatalogs
+      description: |
+        **Beta:** The catalog discovery API is under active development and may change in a
+        backward-incompatible way.
+
+        Lists the catalogs the caller can access, so that a client can find out what to configure.
+        Each entry's name is the value a client passes as `warehouse` to the configuration endpoint
+        (`/v1/config`).
+
+        The list is the batch form of the configuration endpoint: it includes exactly the catalogs
+        for which the caller is authorized to call `getConfig`, and an entry never carries more than
+        that endpoint returns for the same catalog.
+        In this version an entry is the catalog's name only. Storage configuration and other
+        administrative details are never included. Administrators use the management API's
+        `listCatalogs` for the full model.
+      parameters:
+        - $ref: '#/components/parameters/pageToken'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListAccessibleCatalogsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
 components:
   securitySchemes:
     OAuth2:
@@ -5237,6 +5273,28 @@ components:
           $ref: '#/components/schemas/SemanticModelDocument'
         entity-version:
           $ref: '#/components/schemas/EntityVersion'
+    AccessibleCatalog:
+      type: object
+      description: A catalog the caller can access
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: The catalog's name, as passed to the configuration endpoint's `warehouse` parameter
+    ListAccessibleCatalogsResponse:
+      type: object
+      required:
+        - catalogs
+      properties:
+        next-page-token:
+          type: string
+          description: The token for the next page, passed as pageToken. Absent on the last page
+        catalogs:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/AccessibleCatalog'
   responses:
     BadRequestErrorResponse:
       description: Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server's middleware.
@@ -5517,6 +5575,16 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadSemanticModelResponse'
+    ListAccessibleCatalogsResponse:
+      description: A page of the catalogs the caller can access
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListAccessibleCatalogsResponse'
+          example:
+            catalogs:
+              - name: sales
+              - name: marketing
   examples:
     NoSuchWarehouseError:
       summary: The requested warehouse does not exist
@@ -5891,6 +5959,21 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/SemanticModelName'
+    pageToken:
+      name: pageToken
+      in: query
+      required: false
+      description: The continuation token returned with the previous page. Absent for the first page
+      schema:
+        type: string
+    pageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: Maximum number of items to return, at least 1. If absent, or larger than the service's maximum, the service's maximum is used
+      schema:
+        type: integer
+        minimum: 1
   headers:
     etag:
       name: ETag
