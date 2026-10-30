@@ -49,7 +49,9 @@ dependencies {
     exclude(group = "org.glassfish.hk2.external")
     exclude(group = "org.glassfish.jaxb")
     exclude(group = "org.eclipse.jetty")
+    exclude(group = "com.fasterxml.woodstox")
   }
+  implementation("com.fasterxml.woodstox:woodstox-core:6.7.0")
   implementation(libs.hadoop.client.api)
   implementation(libs.hadoop.client.runtime)
 

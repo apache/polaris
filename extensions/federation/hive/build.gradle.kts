@@ -54,7 +54,11 @@ dependencies {
     exclude("com.sun.jersey", "jersey-server")
     exclude("com.sun.jersey", "jersey-servlet")
     exclude("io.dropwizard.metrics", "metrics-core")
+    exclude(group = "org.eclipse.jetty")
+    exclude(group = "org.eclipse.jetty.websocket")
+    exclude(group = "com.fasterxml.woodstox")
   }
+  implementation("com.fasterxml.woodstox:woodstox-core:6.7.0")
 
   // CDI dependencies for runtime discovery
   implementation(libs.jakarta.enterprise.cdi.api)
