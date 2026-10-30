@@ -21,6 +21,7 @@ package org.apache.polaris.core.storage;
 import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
@@ -143,6 +144,34 @@ class StorageLocationValidatorTest {
     assertThat(result)
         .hasSize(1)
         .hasEntrySatisfying("s3://bucket/path/to", map -> assertValidationResult(map, false));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "s3://bucket",
+        "s3a://bucket",
+        "s3://bucket/data",
+        "gs://bucket",
+        "gs://bucket/data",
+        "abfss://container@acct.dfs.core.windows.net",
+        "abfss://container@acct.dfs.core.windows.net/data"
+      })
+  public void testValidateAllowedLocationsWithEmptyTrailingPathSegment(String base) {
+    RealmConfig realmConfig = new RealmConfigImpl(EMPTY_CONFIG, REALM_CONTEXT);
+    String allowedLocation = base + "//";
+    String locationOutside = base + "/path/to/table";
+    String locationInside = base + "//path/to/table";
+    Map<String, Map<PolarisStorageActions, StorageLocationValidator.ValidationResult>> result =
+        StorageLocationValidator.validateAllowedLocations(
+            realmConfig,
+            List.of(allowedLocation),
+            Set.of(PolarisStorageActions.READ),
+            Set.of(locationOutside, locationInside));
+    assertThat(result)
+        .hasSize(2)
+        .hasEntrySatisfying(locationOutside, val -> assertValidationResult(val, false))
+        .hasEntrySatisfying(locationInside, val -> assertValidationResult(val, true));
   }
 
   private void assertValidationResult(

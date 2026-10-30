@@ -37,7 +37,6 @@ dependencies = [
     "python-dateutil>=2.8.2",
     "pydantic>=2.14.0,<2.15.0",
     "typing-extensions>=4.7.1",
-    "boto3~=1.43.1",
     "PyYAML>=6.0.3",
     "prettytable>=3.17.0",
 ]
@@ -55,11 +54,11 @@ dev = [
     "pytest-cov>= 2.8.1",
     "flake8>= 4.0.0",
     "types-python-dateutil>= 2.8.19.14",
-    "mypy>=2.4, <=2.4.0",
+    "mypy>=2.4, <=2.4.1",
     "pyiceberg==0.12.0",
+    "boto3~=1.43.1",
     "pre-commit==4.7.0",
-    # 7.12.0 is the latest version to use due to OpenAPI spec version we are using
-    "openapi-generator-cli==7.12.0",
+    "openapi-generator-cli==7.26.0",
     "pip-licenses-cli==4.1.0",
 ]
 
@@ -85,8 +84,7 @@ exclude = ["**/.keep"]
 path = "hatch_build.py"
 
 [build-system]
-# 7.12.0 is the latest version to use due to OpenAPI spec version we are using
-requires = ["hatchling", "openapi-generator-cli==7.12.0"]
+requires = ["hatchling", "openapi-generator-cli==7.26.0"]
 build-backend = "hatchling.build"
 
 [tool.uv]

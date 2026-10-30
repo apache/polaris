@@ -93,14 +93,14 @@ val generatedOpenApiSrcDir = project.layout.buildDirectory.dir("generated-openap
 openApiGenerate {
   // The OpenAPI generator does NOT resolve relative paths correctly against the Gradle project
   // directory
-  inputSpec = provider { specsDir.file("polaris-catalog-service.yaml").asFile.absolutePath }
+  inputSpec = specsDir.file("generated/bundled-polaris-catalog-service.yaml")
   generatorName = "jaxrs-resteasy"
-  outputDir = provider { generatedDir.get().asFile.absolutePath }
+  outputDir = generatedDir
   apiPackage = "org.apache.polaris.service.catalog.api"
   modelPackage = "org.apache.polaris.service.types"
-  ignoreFileOverride.set(provider { rootDir.file(".openapi-generator-ignore").asFile.absolutePath })
+  ignoreFileOverride = rootDir.file(".openapi-generator-ignore")
   removeOperationIdPrefix.set(true)
-  templateDir.set(provider { templatesDir.asFile.absolutePath })
+  templateDir = templatesDir
   globalProperties.put("apis", "GenericTableApi,PolicyApi")
   globalProperties.put("models", models)
   globalProperties.put("apiDocs", "false")

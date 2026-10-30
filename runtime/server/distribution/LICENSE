@@ -1219,9 +1219,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 This product bundles Swagger.
 
 * Maven group:artifact IDs: io.swagger:swagger-annotations
-* Maven group:artifact IDs: io.swagger:swagger-core
-* Maven group:artifact IDs: io.swagger:swagger-jaxrs
-* Maven group:artifact IDs: io.swagger:swagger-models
 
 Project URL: https://github.com/swagger-api/swagger-core
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1730,15 +1727,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This product bundles Javassist.
-
-* Maven group:artifact IDs: org.javassist:javassist
-
-Project URL: http://www.javassist.org/
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles JBoss (logmanager, transaction, narayana).
 
 * Maven group:artifact IDs: org.jboss:jboss-transaction-spi
@@ -1858,15 +1846,6 @@ License: MIT License
 | Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so.
 | 
 | THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
---------------------------------------------------------------------------------
-
-This product bundles Reflections.
-
-* Maven group:artifact IDs: org.reflections:reflections
-
-Project URL: http://github.com/ronmamo/reflections
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
@@ -2023,7 +2002,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 This product bundles AWS EventStream Java.
 
-* Maven group:artifact IDs: software.amazon.eventstream:eventstream
+* Maven group:artifact IDs: software.amazon.awssdk:eventstream
 
 Project URL: https://github.com/awslabs/aws-eventstream-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -2416,6 +2395,15 @@ This product bundles JAXB API library.
 * Maven group:artifact IDs: javax.xml.bind:jaxb-api
 
 Home page: https://javaee.github.io/jaxb-v2/
+License: CDDL 1.1 - https://glassfish.java.net/public/CDDL+GPL_1_1.html
+
+--------------------------------------------------------------------------------
+
+This product bundles JAX-RS API library.
+
+* Maven group:artifact IDs: javax.ws.rs:jsr311-api
+
+Home page: https://github.com/jax-rs
 License: CDDL 1.1 - https://glassfish.java.net/public/CDDL+GPL_1_1.html
 
 --------------------------------------------------------------------------------

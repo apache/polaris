@@ -154,6 +154,32 @@ public class MaintenancePolicyContentTest {
         .hasMessageContaining("Invalid policy");
   }
 
+  @ParameterizedTest
+  @MethodSource("policyTypes")
+  void testEnableRejectsNonBooleanValues(PredefinedPolicyTypes policyTypes) {
+    var parser = getParser(policyTypes);
+    // The strict boolean deserializer accepts only JSON true/false (and the lowercase string
+    // forms). Anything else Jackson would otherwise leniently coerce - a differently cased string,
+    // or the numbers 1 and 0 - must be rejected.
+    for (var enableValue : new String[] {"\"TRUE\"", "\"False\"", "\"yes\"", "1", "0"}) {
+      var invalidPolicy = "{\"enable\": " + enableValue + "}";
+      assertThatThrownBy(() -> parser.apply(invalidPolicy))
+          .as("enable=%s must be rejected", enableValue)
+          .isInstanceOf(InvalidPolicyException.class)
+          .hasMessageContaining("Invalid policy");
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("policyTypes")
+  void testEnableAcceptsBooleansAndLowercaseStrings(PredefinedPolicyTypes policyTypes) {
+    var parser = getParser(policyTypes);
+    assertThat(parser.apply("{\"enable\": true}").enabled()).isTrue();
+    assertThat(parser.apply("{\"enable\": false}").enabled()).isFalse();
+    assertThat(parser.apply("{\"enable\": \"true\"}").enabled()).isTrue();
+    assertThat(parser.apply("{\"enable\": \"false\"}").enabled()).isFalse();
+  }
+
   @Test
   public void testValidOrphanFileRemovalPolicyContent() {
     assertThat(

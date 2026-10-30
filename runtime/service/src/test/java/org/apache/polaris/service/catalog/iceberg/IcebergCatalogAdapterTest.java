@@ -33,6 +33,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.inmemory.InMemoryCatalog;
+import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
@@ -55,6 +56,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 public class IcebergCatalogAdapterTest {
@@ -299,6 +301,33 @@ public class IcebergCatalogAdapterTest {
     ObjectMapper mapper = new ObjectMapper();
     new PolarisIcebergObjectMapperCustomizer("1M").customize(mapper);
     return mapper.readValue(json, RenameTableRequest.class);
+  }
+
+  @ParameterizedTest(name = "create namespace {0} -> 400")
+  @ValueSource(strings = {"{}", "{\"namespace\":null}", "{\"properties\":{\"owner\":\"alice\"}}"})
+  void testCreateNamespaceRejectsMissingNamespace(String json) throws IOException {
+    CreateNamespaceRequest request = createNamespaceRequest(json);
+    Assertions.assertThat(request.namespace()).isNull();
+    Assertions.assertThatThrownBy(
+            () ->
+                catalogAdapter.createNamespace(
+                    FEDERATED_CATALOG_NAME,
+                    request,
+                    null,
+                    testServices.realmContext(),
+                    testServices.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("namespace");
+  }
+
+  /**
+   * Deserializes a create-namespace request the same way the server does. This is the only way to
+   * obtain a request whose {@code namespace} is null, since the builder rejects a null namespace.
+   */
+  private static CreateNamespaceRequest createNamespaceRequest(String json) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    new PolarisIcebergObjectMapperCustomizer("1M").customize(mapper);
+    return mapper.readValue(json, CreateNamespaceRequest.class);
   }
 
   /**

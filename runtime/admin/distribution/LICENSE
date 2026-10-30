@@ -475,7 +475,6 @@ This product bundles Jackson.
 * Maven group:artifact IDs: com.fasterxml.jackson.core:jackson-databind
 * Maven group:artifact IDs: com.fasterxml.jackson.dataformat:jackson-dataformat-smile
 * Maven group:artifact IDs: com.fasterxml.jackson.dataformat:jackson-dataformat-xml
-* Maven group:artifact IDs: com.fasterxml.jackson.dataformat:jackson-dataformat-yaml
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-guava
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jdk8
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jsr310
@@ -1106,9 +1105,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 This product bundles Swagger.
 
 * Maven group:artifact IDs: io.swagger:swagger-annotations
-* Maven group:artifact IDs: io.swagger:swagger-core
-* Maven group:artifact IDs: io.swagger:swagger-jaxrs
-* Maven group:artifact IDs: io.swagger:swagger-models
 
 Project URL: https://github.com/swagger-api/swagger-core
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1127,15 +1123,6 @@ This product bundles VertX.
 
 Project URL: https://vertx.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This product bundles Jakarta Activation API.
-
-* Maven group:artifact IDs: jakarta.activation:jakarta.activation-api
-
-Project URL: https://github.com/jakartaee/jaf-api
-License: Eclipse Distribution License 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
 
 --------------------------------------------------------------------------------
 
@@ -1244,15 +1231,6 @@ This product bundles Jakarta RESTful Web Services.
 
 Project URL: https://github.com/eclipse-ee4j/jaxrs-api
 License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
-
---------------------------------------------------------------------------------
-
-This product bundles Jakarta JAXB API.
-
-* Maven group:artifact IDs: jakarta.xml.bind:jakarta.xml.bind-api
-
-Project URL: https://github.com/jakartaee/jaxb-api
-License: Eclipse Distribution License 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
 
 --------------------------------------------------------------------------------
 
@@ -1486,15 +1464,6 @@ License: BSD 2-Clause
 
 --------------------------------------------------------------------------------
 
-This product bundles Javassist.
-
-* Maven group:artifact IDs: org.javassist:javassist
-
-Project URL: http://www.javassist.org/
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles JBoss (logmanager, transaction, narayana).
 
 * Maven group:artifact IDs: org.jboss:jboss-transaction-spi
@@ -1617,15 +1586,6 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-This product bundles Reflections.
-
-* Maven group:artifact IDs: org.reflections:reflections
-
-Project URL: http://github.com/ronmamo/reflections
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles RoaringBitmap.
 
 * Maven group:artifact IDs: org.roaringbitmap:RoaringBitmap
@@ -1703,15 +1663,6 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-This product bundles SnakeYAML.
-
-* Maven group:artifact IDs: org.yaml:snakeyaml
-
-Project URL: https://bitbucket.org/snakeyaml/snakeyaml
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles AWS SDK for Java.
 
 * Maven group:artifact IDs: software.amazon.awssdk:annotations
@@ -1759,7 +1710,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 This product bundles AWS EventStream Java.
 
-* Maven group:artifact IDs: software.amazon.eventstream:eventstream
+* Maven group:artifact IDs: software.amazon.awssdk:eventstream
 
 Project URL: https://github.com/awslabs/aws-eventstream-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt

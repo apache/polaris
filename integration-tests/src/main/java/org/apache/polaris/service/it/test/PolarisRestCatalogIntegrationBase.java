@@ -331,7 +331,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
             .build();
 
     createPolarisCatalog(catalog);
-    managementApi.makeAdmin(principalRoleName, catalog);
+    makeAdmin(principalRoleName, catalog);
 
     ImmutableMap.Builder<String, String> restCatalogConfigBuilder = ImmutableMap.builder();
 
@@ -356,6 +356,10 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
     restCatalogConfig = restCatalogConfigBuilder.buildKeepingLast();
     restCatalog = initCatalog(currentCatalogName, Map.of());
+  }
+
+  protected void makeAdmin(String principalRoleName, Catalog catalog) {
+    managementApi.makeAdmin(principalRoleName, catalog);
   }
 
   /**
