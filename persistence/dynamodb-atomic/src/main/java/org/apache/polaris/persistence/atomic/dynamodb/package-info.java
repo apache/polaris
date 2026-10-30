@@ -28,8 +28,5 @@
  *
  * <p>The backend is fully optional and opt-in: deployments that do not select it are unaffected,
  * and no new dependency is imposed on users or downstream projects that do not enable it.
- *
- * <p>The implementation lands incrementally across a series of pull requests; this initial module
- * provides the skeleton and build wiring only.
  */
 package org.apache.polaris.persistence.atomic.dynamodb;
