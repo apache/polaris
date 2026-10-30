@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
+import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -340,6 +341,30 @@ public class StorageConfigurationTest {
     assertThat(accessToken.getTokenValue()).isEqualTo(TEST_GCP_TOKEN);
     assertThat(accessToken.getExpirationTime())
         .isEqualTo(clock.instant().plus(Duration.ofMinutes(20)));
+  }
+
+  @Test
+  public void testGcpStaticTokenCredentialsRefreshRestampsExpiry() throws IOException {
+    Instant start = Instant.parse("2026-01-01T00:00:00Z");
+    Clock clock = mock(Clock.class);
+    when(clock.instant()).thenReturn(start, start.plus(Duration.ofHours(1)));
+
+    Supplier<GoogleCredentials> supplier =
+        configWithAwsCredentialsAndGcpToken().gcpCredentialsSupplier(clock);
+    GoogleCredentials credentials = supplier.get();
+
+    Instant firstExpiry = credentials.getAccessToken().getExpirationTime().toInstant();
+    assertThat(firstExpiry).isEqualTo(start.plus(TEST_TOKEN_LIFESPAN));
+
+    // A plain GoogleCredentials.create(token) would throw here because it cannot refresh; the
+    // configured-token credential re-stamps the expiry instead (#2253).
+    credentials.refresh();
+
+    AccessToken refreshed = credentials.getAccessToken();
+    assertThat(refreshed.getTokenValue()).isEqualTo(TEST_GCP_TOKEN);
+    assertThat(refreshed.getExpirationTime().toInstant())
+        .isEqualTo(start.plus(Duration.ofHours(1)).plus(TEST_TOKEN_LIFESPAN))
+        .isAfter(firstExpiry);
   }
 
   @Test

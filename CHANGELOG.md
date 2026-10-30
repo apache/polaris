@@ -148,6 +148,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   now use it.
 - Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
   the packaged chart, so `helm test` ran no tests.
+- A statically configured GCP access token (`polaris.storage.gcp.token`) no longer gets stuck with
+  a single expiry stamped at first use. The token was wrapped in a credential that could not
+  refresh, so once its one-time expiry elapsed, server-side GCS access failed until the next
+  restart. The credential now re-stamps the token's expiry on every refresh so it stops throwing.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - Maintenance policy content now rejects non-boolean values for the `enable` field again. The
