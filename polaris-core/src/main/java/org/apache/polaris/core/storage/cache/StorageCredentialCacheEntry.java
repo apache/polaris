@@ -25,9 +25,10 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
  * A storage credential cached entry.
  *
  * @param storageAccessConfig The scoped creds map that is fetched from a creds vending service
+ * @param refreshBufferMs Milliseconds before expiry at which the entry is considered stale
  */
 public record StorageCredentialCacheEntry(
-    StorageAccessConfig storageAccessConfig, long maxCacheDurationMs) {
+    StorageAccessConfig storageAccessConfig, long maxCacheDurationMs, long refreshBufferMs) {
 
   /** Get the expiration time in millisecond for the cached entry */
   public long getExpirationTime() {

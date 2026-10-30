@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
@@ -39,6 +40,8 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class StorageCredentialCacheTest {
   private final RealmContext realmContext = () -> "testRealm";
@@ -439,6 +442,210 @@ public class StorageCredentialCacheTest {
               .build());
     }
     return res;
+  }
+
+  /**
+   * A RealmConfig reporting {@code bufferSeconds} for STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.
+   */
+  private RealmConfig realmConfigWithBuffer(int bufferSeconds) {
+    return new RealmConfigImpl(
+        (rc, name) ->
+            FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.key().equals(name)
+                ? bufferSeconds
+                : null,
+        realmContext);
+  }
+
+  @Test
+  public void testGetOrLoadThrowsWhenPersistentlyUnderBuffer() {
+    // Credentials expire in 120 seconds from now. With a 300-second refresh buffer, that's
+    // under the buffer on every load. getOrLoad() retries once internally (see
+    // isUnderRefreshBuffer in StorageCredentialCache), but this loader always returns the same
+    // near-expiry value, so the retry can't produce a better result -- the buffer can never be
+    // satisfied, and getOrLoad() must say so rather than silently handing back a credential that
+    // violates its own documented contract. See testGetOrLoadRetriesWhenFreshLoadIsUnderBuffer
+    // below for the case where the retry DOES have a fresher credential available.
+    long expiresAt = System.currentTimeMillis() + 120_000;
+    StorageAccessConfig nearExpiryConfig =
+        StorageAccessConfig.builder()
+            .put(StorageAccessProperty.AWS_KEY_ID, "key")
+            .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
+            .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(expiresAt))
+            .build();
+    AtomicInteger loadCount = new AtomicInteger();
+
+    StorageCredentialCacheKey key =
+        new TestKey(
+            realmContext.getRealmIdentifier(),
+            "bufferConfig",
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of(),
+            Optional.empty(),
+            realmConfigWithBuffer(300),
+            () -> {
+              loadCount.incrementAndGet();
+              return nearExpiryConfig;
+            });
+
+    Assertions.assertThatThrownBy(() -> storageCredentialCache.getOrLoad(key))
+        .isInstanceOf(UnprocessableEntityException.class)
+        .hasMessageContaining("refresh buffer");
+    // Exactly the initial load plus one retry -- no hot-looping against a provider that can't
+    // clear its own configured buffer.
+    Assertions.assertThat(loadCount.get()).isEqualTo(2);
+    Assertions.assertThat(storageCredentialCache.getIfPresent(key)).isNull();
+  }
+
+  @Test
+  public void testRefreshBufferZeroKeepsEntryInCache() {
+    // Credentials expire in 120 seconds from now.
+    // With buffer = 0 (default), effective TTL = 120s / 2 = 60s > 0 -> entry is kept in cache.
+    long expiresAt = System.currentTimeMillis() + 120_000;
+    StorageAccessConfig config =
+        StorageAccessConfig.builder()
+            .put(StorageAccessProperty.AWS_KEY_ID, "key")
+            .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
+            .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(expiresAt))
+            .build();
+
+    StorageCredentialCacheKey key =
+        buildKey(
+            "bufferZeroConfig",
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of(),
+            Optional.empty(),
+            () -> config);
+
+    storageCredentialCache.getOrLoad(key);
+    Assertions.assertThat(storageCredentialCache.getIfPresent(key)).isNotNull();
+  }
+
+  @Test
+  public void testRefreshBufferHappyPathCachesWithEffectiveTtl() {
+    // Credentials expire in 3600 seconds. With a 300-second buffer, effective TTL is ~3300s --
+    // comfortably positive, so the entry is loaded and stays cached (unlike the near-expiry case
+    // above, where the buffer consumes the entire remaining lifetime).
+    long expiresAt = System.currentTimeMillis() + 3600_000;
+    StorageAccessConfig config =
+        StorageAccessConfig.builder()
+            .put(StorageAccessProperty.AWS_KEY_ID, "key")
+            .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
+            .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(expiresAt))
+            .build();
+
+    StorageCredentialCacheKey key =
+        new TestKey(
+            realmContext.getRealmIdentifier(),
+            "bufferHappyPathConfig",
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of(),
+            Optional.empty(),
+            realmConfigWithBuffer(300),
+            () -> config);
+
+    StorageAccessConfig result = storageCredentialCache.getOrLoad(key);
+    Assertions.assertThat(result).isEqualTo(config);
+    Assertions.assertThat(storageCredentialCache.getIfPresent(key)).isNotNull();
+  }
+
+  @Test
+  public void testGetOrLoadRetriesWhenFreshLoadIsUnderBuffer() {
+    // First load is near-expiry (violates the 300s buffer); second load (from the internal
+    // retry) is comfortably fresh. getOrLoad() must return the SECOND value, not the first --
+    // proving the buffer guarantee is enforced on the initial load, not just on cache hits.
+    long nearExpiryAt = System.currentTimeMillis() + 120_000;
+    long freshAt = System.currentTimeMillis() + 3600_000;
+    StorageAccessConfig nearExpiryConfig =
+        StorageAccessConfig.builder()
+            .put(StorageAccessProperty.AWS_KEY_ID, "key-stale")
+            .put(StorageAccessProperty.AWS_SECRET_KEY, "secret-stale")
+            .put(
+                StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(nearExpiryAt))
+            .build();
+    StorageAccessConfig freshConfig =
+        StorageAccessConfig.builder()
+            .put(StorageAccessProperty.AWS_KEY_ID, "key-fresh")
+            .put(StorageAccessProperty.AWS_SECRET_KEY, "secret-fresh")
+            .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(freshAt))
+            .build();
+    List<StorageAccessConfig> configs = List.of(nearExpiryConfig, freshConfig);
+    AtomicInteger loadCount = new AtomicInteger();
+
+    StorageCredentialCacheKey key =
+        new TestKey(
+            realmContext.getRealmIdentifier(),
+            "bufferRetryConfig",
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of(),
+            Optional.empty(),
+            realmConfigWithBuffer(300),
+            () -> configs.get(loadCount.getAndIncrement()));
+
+    StorageAccessConfig result = storageCredentialCache.getOrLoad(key);
+    Assertions.assertThat(result).isEqualTo(freshConfig);
+    Assertions.assertThat(loadCount.get()).isEqualTo(2);
+  }
+
+  @ParameterizedTest
+  // -1 is rejected as negative; 3600 is rejected because it's not less than the default
+  // STORAGE_CREDENTIAL_DURATION_SECONDS of 3600 (1 hour) -- same rejection path as a buffer
+  // greater than the credential duration.
+  @ValueSource(ints = {-1, 3600})
+  public void testRefreshBufferRejectsOutOfRangeValue(int bufferSeconds) {
+    StorageCredentialCacheKey key =
+        new TestKey(
+            realmContext.getRealmIdentifier(),
+            "bufferOutOfRangeConfig-" + bufferSeconds,
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of(),
+            Optional.empty(),
+            realmConfigWithBuffer(bufferSeconds),
+            () ->
+                StorageAccessConfig.builder()
+                    .put(StorageAccessProperty.AWS_KEY_ID, "key")
+                    .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
+                    .build());
+
+    Assertions.assertThatThrownBy(() -> storageCredentialCache.getOrLoad(key))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.key());
+  }
+
+  @Test
+  public void testRefreshBufferWithNoExpiresAtIsNeverUnderBuffer() {
+    // No expiresAt set at all (StorageCredentialCacheEntry.getExpirationTime() falls back to
+    // Long.MAX_VALUE) -- a positive buffer must not misfire against a credential that doesn't
+    // expire. The entry should load normally, without retrying or throwing, and stay cached.
+    StorageAccessConfig noExpiryConfig =
+        StorageAccessConfig.builder()
+            .put(StorageAccessProperty.AWS_KEY_ID, "key")
+            .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
+            .build();
+    AtomicInteger loadCount = new AtomicInteger();
+
+    StorageCredentialCacheKey key =
+        new TestKey(
+            realmContext.getRealmIdentifier(),
+            "bufferNoExpiresAtConfig",
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of(),
+            Optional.empty(),
+            realmConfigWithBuffer(300),
+            () -> {
+              loadCount.incrementAndGet();
+              return noExpiryConfig;
+            });
+
+    StorageAccessConfig result = storageCredentialCache.getOrLoad(key);
+    Assertions.assertThat(result).isEqualTo(noExpiryConfig);
+    Assertions.assertThat(loadCount.get()).isEqualTo(1);
+    Assertions.assertThat(storageCredentialCache.getIfPresent(key)).isNotNull();
   }
 
   private static List<String> getStorageConfigStrings() {
