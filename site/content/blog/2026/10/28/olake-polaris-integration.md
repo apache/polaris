@@ -19,7 +19,7 @@
 #
 title: "Loading Operational Databases into Apache Polaris with OLake Go"
 date: 2026-10-28
-author: OLake Go
+author: Gauri
 ---
 
 ## Introduction
