@@ -53,6 +53,22 @@ dependencies {
   implementation(libs.hadoop.client.api)
   implementation(libs.hadoop.client.runtime)
 
+  constraints {
+    implementation(libs.apache.httpcore5) {
+      because(
+        "httpcore5 5.4.3 (pinned by the Quarkus BOM and Iceberg's httpclient5) is below the 5.4.4" +
+          " fix boundary for CVE-2026-54399 and CVE-2026-54428; drop once both resolve >= 5.4.4",
+      )
+    }
+    implementation(libs.apache.httpcore5.h2) {
+      because(
+        "httpcore5-h2 5.4.3 (pinned by the Quarkus BOM and Iceberg's httpclient5) is below the" +
+          " 5.4.4 fix boundary for CVE-2026-54399 and CVE-2026-54428; drop once both resolve" +
+          " >= 5.4.4",
+      )
+    }
+  }
+
   // CDI dependencies for runtime discovery
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.smallrye.common.annotation)
