@@ -19,7 +19,7 @@
 #
 title: BigQuery Metastore Federation
 type: docs
-weight: 706
+weight: 707
 ---
 
 Polaris can federate catalog operations to a BigQuery Metastore catalog. This lets BigQuery Metastore
