@@ -972,6 +972,24 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     Map<String, String> updatedProperties = new HashMap<>(entity.getPropertiesAsMap());
     properties.forEach(updatedProperties::remove);
 
+    String storedLocation =
+        entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+    if (properties.contains(PolarisEntityConstants.ENTITY_BASE_LOCATION)
+        && storedLocation != null) {
+      String derivedLocation =
+          resolveLocationForPath(diagnostics, resolvedEntities.getRawParentPath())
+              + "/"
+              + namespace.level(namespace.length() - 1);
+      if (!StorageLocation.of(storedLocation).isSameLocation(StorageLocation.of(derivedLocation))) {
+        throw new BadRequestException(
+            "Cannot remove the '%s' property of namespace %s, because it would move the namespace from '%s' to '%s'",
+            PolarisEntityConstants.ENTITY_BASE_LOCATION,
+            namespace,
+            storedLocation,
+            derivedLocation);
+      }
+    }
+
     PolarisEntity updatedEntity =
         new PolarisEntity.Builder(entity).setProperties(updatedProperties).build();
 

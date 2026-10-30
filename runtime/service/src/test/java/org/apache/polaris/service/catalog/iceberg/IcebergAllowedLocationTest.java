@@ -58,6 +58,7 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -69,6 +70,7 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.GetNamespaceResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -945,6 +947,121 @@ public class IcebergAllowedLocationTest {
                     services, child + sep + "other", catalogLocation + "elsewhere"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("has a custom location");
+  }
+
+  /**
+   * Removing the stored location does not leave the namespace without one, it falls back to the
+   * default location derived from the namespace name. The removal is rejected when that would move
+   * the namespace and allowed when it already sits at that default. The check does not read
+   * ALLOW_NAMESPACE_CUSTOM_LOCATION, which is enabled below only to store a custom location.
+   */
+  @Test
+  void testNamespaceLocationRemoval(@TempDir Path tmpDir) {
+    String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
+
+    TestServices lenient = testServices(true);
+    createCatalog(lenient, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNestedNamespace(lenient, namespace, null);
+    String defaultLocation = loadNestedNamespaceProperties(lenient, namespace).get("location");
+    updateNestedNamespaceProperties(
+        lenient, namespace, Map.of("location", catalogLocation + "elsewhere"));
+    String customLocation = loadNestedNamespaceProperties(lenient, namespace).get("location");
+
+    assertThatThrownBy(() -> removeNestedNamespaceProperties(lenient, namespace, "location"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("would move the namespace");
+    assertThat(loadNestedNamespaceProperties(lenient, namespace))
+        .containsEntry("location", customLocation);
+
+    // Moving the namespace back has to be stated through a property update, which is where it is
+    // validated, and the removal that was rejected is then allowed.
+    updateNestedNamespaceProperties(lenient, namespace, Map.of("location", defaultLocation));
+    removeNestedNamespaceProperties(lenient, namespace, "location");
+    assertThat(loadNestedNamespaceProperties(lenient, namespace)).doesNotContainKey("location");
+
+    // The same location spelled with a single-slash file scheme is not a move either.
+    updateNestedNamespaceProperties(
+        lenient, namespace, Map.of("location", defaultLocation.replace("file:///", "file:/")));
+    removeNestedNamespaceProperties(lenient, namespace, "location");
+    assertThat(loadNestedNamespaceProperties(lenient, namespace)).doesNotContainKey("location");
+
+    TestServices strict = testServices(false);
+    createCatalog(strict, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNestedNamespace(strict, namespace, null);
+    String tableLocationBefore = createTableLocation(strict, namespace, "tbl1");
+
+    removeNestedNamespaceProperties(strict, namespace, "location");
+
+    assertThat(loadNestedNamespaceProperties(strict, namespace)).doesNotContainKey("location");
+    assertThat(createTableLocation(strict, namespace, "tbl2"))
+        .isEqualTo(tableLocationBefore.replace("tbl1", "tbl2"));
+
+    // The property is gone now, so removing it again resolves the same location either way.
+    removeNestedNamespaceProperties(strict, namespace, "location");
+  }
+
+  /**
+   * A namespace below another namespace derives its default location from its parent rather than
+   * from the catalog. Removing its stored location is rejected when that would move the namespace
+   * and allowed when it already sits at that derived location.
+   */
+  @Test
+  void testNestedNamespaceLocationRemoval(@TempDir Path tmpDir) {
+    String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
+    String child = namespace + NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR + "child";
+
+    TestServices strict = testServices(false);
+    createCatalog(strict, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNestedNamespace(strict, namespace, null);
+    createNestedNamespace(strict, child, null);
+    String tableLocationBefore = createTableLocation(strict, child, "tbl1");
+
+    removeNestedNamespaceProperties(strict, child, "location");
+
+    assertThat(loadNestedNamespaceProperties(strict, child)).doesNotContainKey("location");
+    assertThat(createTableLocation(strict, child, "tbl2"))
+        .isEqualTo(tableLocationBefore.replace("tbl1", "tbl2"));
+
+    TestServices lenient = testServices(true);
+    createCatalog(lenient, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNestedNamespace(lenient, namespace, null);
+    createNestedNamespace(lenient, child, catalogLocation + "elsewhere");
+    String customLocation = loadNestedNamespaceProperties(lenient, child).get("location");
+
+    assertThatThrownBy(() -> removeNestedNamespaceProperties(lenient, child, "location"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("would move the namespace");
+    assertThat(loadNestedNamespaceProperties(lenient, child))
+        .containsEntry("location", customLocation);
+  }
+
+  private TestServices testServices(boolean allowCustomNamespaceLocation) {
+    Map<String, Object> config = new HashMap<>();
+    config.put("ALLOW_INSECURE_STORAGE_TYPES", "true");
+    config.put("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("FILE"));
+    if (allowCustomNamespaceLocation) {
+      config.put("ALLOW_NAMESPACE_CUSTOM_LOCATION", "true");
+    }
+    return TestServices.builder().config(config).build();
+  }
+
+  private String createTableLocation(TestServices services, String nsPath, String tableName) {
+    CreateTableRequest request =
+        CreateTableRequest.builder().withName(tableName).withSchema(SCHEMA).build();
+    try (Response response =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                nsPath,
+                request,
+                null,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return response.readEntity(LoadTableResponse.class).tableMetadata().location();
+    }
   }
 
   private void createNestedNamespace(TestServices services, String nsPath, String location) {
