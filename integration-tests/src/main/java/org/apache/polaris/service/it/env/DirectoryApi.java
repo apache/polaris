@@ -34,6 +34,7 @@ import org.apache.polaris.service.types.CreateDirectoryRequest;
 import org.apache.polaris.service.types.Directory;
 import org.apache.polaris.service.types.ListDirectoriesResponse;
 import org.apache.polaris.service.types.LoadDirectoryResponse;
+import org.apache.polaris.service.types.ScanDirectoryResponse;
 
 /**
  * A simple, non-exhaustive set of helper methods for accessing the directories REST API
@@ -117,7 +118,21 @@ public class DirectoryApi extends PolarisRestApi {
                     .build()));
   }
 
-  /** Scans the directory and returns the raw response, which the caller closes. */
+  /** Scans the directory and returns the number of objects recorded in its inventory table. */
+  public long scanDirectory(String catalog, TableIdentifier id) {
+    String ns =
+        NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    try (Response res =
+        request(
+                "polaris/v1/{cat}/namespaces/{ns}/directories/{directory}/scan",
+                Map.of("cat", catalog, "directory", id.name(), "ns", ns))
+            .post(Entity.json(""))) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return res.readEntity(ScanDirectoryResponse.class).getFileCount();
+    }
+  }
+
+  /** Same as {@link #scanDirectory}, but returns the raw response, which the caller closes. */
   public Response tryScanDirectory(String catalog, TableIdentifier id) {
     String ns =
         NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);

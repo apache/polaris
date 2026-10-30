@@ -60,8 +60,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * End-to-end test of the directories REST API on a file based catalog: the whole create, load and
- * drop flow goes through the REST layer, including authorization and location validation.
+ * End-to-end test of the directories REST API on a file based catalog: the whole create, scan, load
+ * and drop flow goes through the REST layer, including authorization and location validation.
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisDirectoryServiceIntegrationTest {
@@ -150,9 +150,12 @@ public class PolarisDirectoryServiceIntegrationTest {
   }
 
   @Test
-  public void testCreateLoadAndDrop() throws IOException {
+  public void testCreateScanLoadAndDrop() throws IOException {
     URI baseLocation = catalogBaseLocation.resolve("images/");
-    Files.createDirectories(Path.of(baseLocation));
+    Path baseDir = Path.of(baseLocation);
+    Files.createDirectories(baseDir);
+    Files.writeString(baseDir.resolve("a.jpg"), "a");
+    Files.writeString(baseDir.resolve("b.png"), "bb");
 
     directoryApi.createDirectory(catalogName, IMAGES, baseLocation.toString(), Map.of());
 
@@ -161,6 +164,9 @@ public class PolarisDirectoryServiceIntegrationTest {
         .isEqualTo(baseLocation.toString());
     // The inventory table cannot share the name of the directory
     assertThat(restCatalog.tableExists(IMAGES_INVENTORY)).isTrue();
+
+    assertThat(directoryApi.scanDirectory(catalogName, IMAGES)).isEqualTo(2L);
+    assertThat(restCatalog.loadTable(IMAGES_INVENTORY).currentSnapshot()).isNotNull();
 
     directoryApi.dropDirectory(catalogName, IMAGES);
     assertThat(directoryApi.listDirectories(catalogName, NS)).isEmpty();

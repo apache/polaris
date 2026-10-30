@@ -26,10 +26,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.service.catalog.spi.DirectoryScanService;
 
-/**
- * Rejects the scan: Polaris does not provide a scan implementation yet. Provide a {@link
- * DirectoryScanService} CDI bean to replace this one.
- */
+/** Lists the objects under the base location and replaces the content of the inventory table. */
 @ApplicationScoped
 @DefaultBean
 public class DefaultDirectoryScanService implements DirectoryScanService {
@@ -42,6 +39,6 @@ public class DefaultDirectoryScanService implements DirectoryScanService {
       String baseLocation,
       List<String> include,
       List<String> exclude) {
-    throw new UnsupportedOperationException("No directory scan service is available");
+    return DirectoryScanner.scan(table, sourceIO, baseLocation, include, exclude);
   }
 }
