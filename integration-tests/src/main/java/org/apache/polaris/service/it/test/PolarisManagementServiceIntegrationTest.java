@@ -33,6 +33,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.time.Duration;
@@ -464,6 +465,25 @@ public class PolarisManagementServiceIntegrationTest {
       assertThat(updatedCatalog.getProperties().toMap())
           .isEqualTo(Map.of("default-base-location", "s3://bucket/path/to/data", "foo", "bar"));
       assertThat(updatedCatalog.getEntityVersion()).isGreaterThan(0);
+    }
+  }
+
+  @Test
+  public void testRequestBodyErrorsReturnErrorDetails() {
+    String principalPath = "v1/principals/" + client.newEntityName("body-error-principal");
+    // The message permutations are covered by ExceptionMapperTest; this only checks that both
+    // runtime paths reach the Polaris mappers: a body that does not match the model is raised
+    // directly by Jackson, while malformed JSON arrives wrapped by the Quarkus body reader.
+    assertBadRequestWithMessage(
+        principalPath, "{\"properties\": {}}", "missing required property 'currentEntityVersion'");
+    assertBadRequestWithMessage(principalPath, "{\"currentEntityVersion\": 1, ", "Invalid JSON: ");
+  }
+
+  private static void assertBadRequestWithMessage(String path, String body, String message) {
+    try (Response response =
+        managementApi.request(path).put(Entity.entity(body, MediaType.APPLICATION_JSON))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertThat(response.readEntity(ErrorResponse.class).message()).contains(message);
     }
   }
 

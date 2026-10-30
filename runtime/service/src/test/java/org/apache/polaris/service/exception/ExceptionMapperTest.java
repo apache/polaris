@@ -19,6 +19,7 @@
 package org.apache.polaris.service.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.assertArg;
 import static org.mockito.Mockito.reset;
@@ -27,10 +28,16 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonLocation;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.ForbiddenException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import java.io.IOException;
@@ -39,6 +46,8 @@ import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.rest.responses.ErrorResponseParser;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
+import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
@@ -141,6 +150,98 @@ public class ExceptionMapperTest {
             new PolarisServiceUnavailableException(retryAfterSeconds, "transient conflict"));
     assertThat(response.getStatus()).isEqualTo(503);
     assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo(expectedHeader);
+  }
+
+  @Test
+  public void testMismatchedInputUsesIcebergErrorEnvelopeWithDetail() {
+    IcebergMismatchedInputExceptionMapper mapper = new IcebergMismatchedInputExceptionMapper();
+    MismatchedInputException exception =
+        MismatchedInputException.from(
+            (JsonParser) null, Integer.class, "Missing required creator property 'version'");
+
+    Response response = mapper.toResponse(exception);
+
+    assertThat(response.getStatus()).isEqualTo(400);
+    assertThat(response.getMediaType()).isEqualTo(MediaType.APPLICATION_JSON_TYPE);
+    ErrorResponse parsed = (ErrorResponse) response.getEntity();
+    assertThat(parsed.code()).isEqualTo(400);
+    assertThat(parsed.type()).isEqualTo(MismatchedInputException.class.getSimpleName());
+    assertThat(parsed.message()).isEqualTo("Invalid value: missing required property 'version'");
+  }
+
+  @ParameterizedTest
+  @MethodSource("requestBodyErrors")
+  public void testRequestBodyErrorMessagesNameTheProblemWithoutInternalTypeNames(
+      String json, Class<?> target, String expectedMessage) {
+    JsonProcessingException exception =
+        catchThrowableOfType(
+            JsonProcessingException.class, () -> new ObjectMapper().readValue(json, target));
+    Response response = new IcebergJsonProcessingExceptionMapper().toResponse(exception);
+
+    assertThat(response.getStatus()).isEqualTo(400);
+    assertThat(((ErrorResponse) response.getEntity()).message())
+        .startsWith(expectedMessage)
+        .doesNotContain("org.apache", "java.lang", "`");
+  }
+
+  static Stream<Arguments> requestBodyErrors() {
+    return Stream.of(
+        Arguments.of(
+            "{\"properties\": {}}",
+            UpdatePrincipalRequest.class,
+            "Invalid value: missing required property 'currentEntityVersion'"),
+        Arguments.of(
+            "{\"currentEntityVersion\": \"abc\", \"properties\": {}}",
+            UpdatePrincipalRequest.class,
+            "Invalid value for property 'currentEntityVersion'"),
+        Arguments.of(
+            "{\"catalog\": {\"type\": \"INTERNAL\", \"name\": \"x\","
+                + " \"properties\": {\"default-base-location\": \"s3://b/x\"},"
+                + " \"storageConfigInfo\": {\"storageType\": \"NOPE\"}}}",
+            CreateCatalogRequest.class,
+            "Invalid value: unknown type id 'NOPE' for property"),
+        Arguments.of(
+            "{\"currentEntityVersion\": 1, ", UpdatePrincipalRequest.class, "Invalid JSON: "));
+  }
+
+  @Test
+  public void testWebApplicationExceptionWithJsonCauseButOtherStatusIsNotUnwrapped() {
+    IcebergExceptionMapper mapper = new IcebergExceptionMapper();
+    JsonParseException cause = new JsonParseException((JsonParser) null, "Unexpected end-of-input");
+
+    Response response =
+        mapper.toResponse(
+            new WebApplicationException(cause, Response.Status.INTERNAL_SERVER_ERROR));
+
+    assertThat(response.getStatus()).isEqualTo(500);
+    ErrorResponse parsed = (ErrorResponse) response.getEntity();
+    assertThat(parsed.type()).isEqualTo(WebApplicationException.class.getSimpleName());
+    assertThat(parsed.message()).doesNotContain("Unexpected end-of-input");
+  }
+
+  @Test
+  public void testWebApplicationExceptionWrappingJsonParseFailureReportsDetail() {
+    IcebergExceptionMapper mapper = new IcebergExceptionMapper();
+    JsonParseException cause = new JsonParseException((JsonParser) null, "Unexpected end-of-input");
+
+    Response response =
+        mapper.toResponse(new WebApplicationException(cause, Response.Status.BAD_REQUEST));
+
+    assertThat(response.getStatus()).isEqualTo(400);
+    ErrorResponse parsed = (ErrorResponse) response.getEntity();
+    assertThat(parsed.type()).isEqualTo(JsonParseException.class.getSimpleName());
+    assertThat(parsed.message()).isEqualTo("Invalid JSON: Unexpected end-of-input");
+  }
+
+  @Test
+  public void testWebApplicationExceptionWithoutJsonCauseIsMappedAsBefore() {
+    IcebergExceptionMapper mapper = new IcebergExceptionMapper();
+
+    Response response = mapper.toResponse(new WebApplicationException(Response.Status.CONFLICT));
+
+    assertThat(response.getStatus()).isEqualTo(409);
+    assertThat(((ErrorResponse) response.getEntity()).type())
+        .isEqualTo(WebApplicationException.class.getSimpleName());
   }
 
   @Test
