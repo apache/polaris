@@ -18,9 +18,14 @@
  */
 package org.apache.polaris.core.storage;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
@@ -69,13 +74,16 @@ public class StorageUtil {
   /** Given a baseLocation and entity (table?) properties, extracts the relevant locations */
   public static @NonNull Set<String> getLocationsUsedByTable(
       String baseLocation, Map<String, String> properties) {
-    Set<String> locations = new HashSet<>();
-    locations.add(baseLocation);
-    locations.add(properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY));
-    locations.add(
-        properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
-    locations.remove(null);
-    return removeRedundantLocations(locations);
+    // The base location goes first so that it wins over equivalent locations.
+    List<String> candidates = new ArrayList<>();
+    candidates.add(baseLocation);
+    Stream.of(
+            properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
+            properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
+        .sorted(Comparator.nullsLast(Comparator.naturalOrder()))
+        .forEach(candidates::add);
+    candidates.removeIf(Objects::isNull);
+    return removeRedundantLocations(candidates);
   }
 
   /** Given a ViewMetadata, extracts the locations where the view's [meta]data might be found. */
@@ -83,31 +91,21 @@ public class StorageUtil {
     return Set.of(viewMetadata.location());
   }
 
-  /** Removes "redundant" locations, so {/a/b/, /a/b/c, /a/b/d} will be reduced to just {/a/b/} */
-  private static @NonNull Set<String> removeRedundantLocations(Set<String> locationStrings) {
-    HashSet<String> result = new HashSet<>(locationStrings);
-
-    for (String potentialParent : locationStrings) {
-      StorageLocation potentialParentLocation = StorageLocation.of(potentialParent);
-      for (String potentialChild : locationStrings) {
-        if (!potentialParent.equals(potentialChild)) {
-          StorageLocation potentialChildLocation = StorageLocation.of(potentialChild);
-          if (potentialChildLocation.isChildOf(potentialParentLocation)) {
-            // When two raw strings denote the same physical location (for example they differ
-            // only in scheme like abfss:// vs abfs://, or only in a trailing slash), each is a
-            // child of the other. Removing both would wrongly leave the set empty, breaking
-            // credential vending. Keep a single deterministic representative instead of dropping
-            // both; which one survives does not matter because credential integrations strip the
-            // scheme before building their IAM/SAS scope.
-            if (potentialParentLocation.isSameLocation(potentialChildLocation)
-                && potentialParent.compareTo(potentialChild) < 0) {
-              continue;
-            }
-            result.remove(potentialChild);
-          }
-        }
+  /**
+   * Removes "redundant" locations, so {/a/b/, /a/b/c, /a/b/d} will be reduced to just {/a/b/}.
+   *
+   * <p>Candidates are considered in order. When several candidates denote the same location (for
+   * example, they differ only in scheme or trailing slash), the first one wins.
+   */
+  private static @NonNull Set<String> removeRedundantLocations(List<String> candidates) {
+    Map<String, StorageLocation> kept = new HashMap<>();
+    for (String candidate : candidates) {
+      StorageLocation location = StorageLocation.of(candidate);
+      if (kept.values().stream().noneMatch(location::isChildOf)) {
+        kept.values().removeIf(k -> k.isChildOf(location));
+        kept.put(candidate, location);
       }
     }
-    return result;
+    return Set.copyOf(kept.keySet());
   }
 }

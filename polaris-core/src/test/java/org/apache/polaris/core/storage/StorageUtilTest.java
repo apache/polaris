@@ -111,26 +111,26 @@ public class StorageUtilTest {
   @Test
   public void getLocationsUsedByTableKeepsOneWhenLocationsDifferOnlyByScheme() {
     // abfss:// (secure) and abfs:// (non-secure) denote the same Azure location, so each is a
-    // child of the other. Exactly one must survive rather than both being dropped.
+    // child of the other. The base location must survive rather than both being dropped.
     Assertions.assertThat(
             StorageUtil.getLocationsUsedByTable(
                 "abfss://container@account.dfs.core.windows.net/table",
                 Map.of(
                     IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
                     "abfs://container@account.dfs.core.windows.net/table")))
-        .hasSize(1);
+        .containsExactly("abfss://container@account.dfs.core.windows.net/table");
   }
 
   @Test
   public void getLocationsUsedByTableKeepsOneWhenLocationsDifferOnlyByTrailingSlash() {
     // s3://bucket/table and s3://bucket/table/ denote the same location, so each is a child of
-    // the other. Exactly one must survive rather than both being dropped.
+    // the other. The base location must survive rather than both being dropped.
     Assertions.assertThat(
             StorageUtil.getLocationsUsedByTable(
                 "s3://bucket/table",
                 Map.of(
                     IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
                     "s3://bucket/table/")))
-        .hasSize(1);
+        .containsExactly("s3://bucket/table");
   }
 }
