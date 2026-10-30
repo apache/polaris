@@ -3133,12 +3133,20 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
 
+    Map<String, String> cleanupProperties = storageProperties;
+    if (purge) {
+      // Cleanup tasks vend storage credentials outside of a catalog request, so they need the
+      // catalog name for the credential vending context (e.g. STS session tags).
+      cleanupProperties = new HashMap<>(storageProperties);
+      cleanupProperties.put(PolarisTaskConstants.CATALOG_NAME, catalogName);
+    }
+
     return getMetaStoreManager()
         .dropEntityIfExists(
             getCurrentPolarisContext(),
             PolarisEntity.toCoreList(catalogPath),
             leafEntity,
-            storageProperties,
+            cleanupProperties,
             purge);
   }
 

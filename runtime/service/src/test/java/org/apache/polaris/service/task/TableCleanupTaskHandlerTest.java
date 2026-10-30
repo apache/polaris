@@ -46,6 +46,7 @@ import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -110,6 +111,7 @@ class TableCleanupTaskHandlerTest {
                     .setCatalogId(1)
                     .setCreateTimestamp(100)
                     .build())
+            .addInternalProperty(PolarisTaskConstants.CATALOG_NAME, "my_catalog")
             .build();
     task = addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
@@ -126,6 +128,12 @@ class TableCleanupTaskHandlerTest {
                 assertThat(taskEntity)
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
+                    .returns(
+                        "my_catalog",
+                        entity ->
+                            entity
+                                .getInternalPropertiesAsMap()
+                                .get(PolarisTaskConstants.CATALOG_NAME))
                     .returns(AsyncTaskType.MANIFEST_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
                         ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
@@ -137,6 +145,12 @@ class TableCleanupTaskHandlerTest {
                 assertThat(taskEntity)
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
+                    .returns(
+                        "my_catalog",
+                        entity ->
+                            entity
+                                .getInternalPropertiesAsMap()
+                                .get(PolarisTaskConstants.CATALOG_NAME))
                     .returns(AsyncTaskType.BATCH_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
                         new BatchFileCleanupTaskHandler.BatchFileCleanupTask(

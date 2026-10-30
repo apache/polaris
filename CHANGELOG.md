@@ -298,6 +298,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
 - Iceberg REST: creating a namespace with a request that omits `namespace` now returns
   `400 Bad Request` instead of `500 Internal Server Error`.
+- The cleanup tasks scheduled by a drop with purge now vend STS credentials with the dropped table's
+  or view's catalog, namespace and table in the session tags and role session name
+  (`SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL`, `SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL`).
+  Previously the task's name was used as the catalog and table, and the namespace was missing.
+  Cleanup tasks scheduled before upgrading don't carry the catalog name, so they use `unknown` as
+  the catalog session tag and leave the catalog out of the role session name.
 
 ### Commits
 

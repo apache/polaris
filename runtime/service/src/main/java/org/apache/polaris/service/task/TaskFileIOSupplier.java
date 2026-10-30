@@ -60,9 +60,11 @@ public class TaskFileIOSupplier {
         new ResolvedPolarisEntity(task, List.of(), List.of());
     PolarisResolvedPathWrapper resolvedPath =
         new PolarisResolvedPathWrapper(List.of(resolvedTaskEntity));
+    Optional<String> catalogName =
+        Optional.ofNullable(properties.get(PolarisTaskConstants.CATALOG_NAME));
     StorageAccessConfig storageAccessConfig =
-        accessConfigProvider.getStorageAccessConfig(
-            identifier, locations, storageActions, Optional.empty(), resolvedPath);
+        accessConfigProvider.getStorageAccessConfigForTask(
+            catalogName, identifier, locations, storageActions, resolvedPath);
 
     String ioImpl =
         properties.getOrDefault(
