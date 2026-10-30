@@ -34,6 +34,8 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
@@ -87,6 +89,7 @@ class SemanticModelCatalogTest {
   private PolarisMetaStoreManager metaStoreManager;
   private ResolutionManifestFactory resolutionManifestFactory;
   private PolarisResolutionManifest sourceManifest;
+  private RealmConfig realmConfig;
   private SemanticModelCatalog catalog;
 
   private PolarisEntity catalogEntity;
@@ -102,6 +105,9 @@ class SemanticModelCatalogTest {
     CallContext callContext = mock(CallContext.class);
     PolarisCallContext polarisCallContext = mock(PolarisCallContext.class);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
+    realmConfig = mock(RealmConfig.class);
+    when(callContext.getRealmConfig()).thenReturn(realmConfig);
+    stubMaxDocumentBytes(FeatureConfiguration.SEMANTIC_MODEL_MAX_DOCUMENT_BYTES.defaultValue());
 
     catalogEntity = entity(PolarisEntityType.CATALOG, CATALOG_ID, "cat", 0L);
     namespaceEntity = entity(PolarisEntityType.NAMESPACE, 2L, "sales", CATALOG_ID);
@@ -115,6 +121,11 @@ class SemanticModelCatalogTest {
     catalog =
         new SemanticModelCatalog(
             metaStoreManager, callContext, view, resolutionManifestFactory, principal);
+  }
+
+  private void stubMaxDocumentBytes(long maxBytes) {
+    when(realmConfig.getConfig(FeatureConfiguration.SEMANTIC_MODEL_MAX_DOCUMENT_BYTES))
+        .thenReturn(maxBytes);
   }
 
   private SemanticModelDocument doc(String semanticModelJson) {
@@ -179,6 +190,23 @@ class SemanticModelCatalogTest {
   }
 
   @Test
+  void createRejectsOversizeDocumentBeforeParsing() {
+    stubMaxDocumentBytes(16);
+    // Malformed JSON over the limit: the size error proves the body was never parsed.
+    String oversizeMalformed = "{\"name\":\"this body is not closed";
+    assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(oversizeMalformed)))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("exceeds the maximum allowed size of 16 bytes");
+  }
+
+  @Test
+  void createRejectsMalformedJson() {
+    assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc("{\"name\":")))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("is not valid JSON");
+  }
+
+  @Test
   void createRejectsArrayDocument() {
     assertThatThrownBy(
             () -> catalog.createSemanticModel(IDENTIFIER, doc("[" + VALID_MODEL_JSON + "]")))
@@ -193,19 +221,16 @@ class SemanticModelCatalogTest {
     String objectDatasets = "{\"name\":\"m\",\"datasets\":{\"d\":{\"source\":\"does.not.exist\"}}}";
     assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(objectDatasets)))
         .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("'semantic_model.datasets' must be a JSON array");
+        .hasMessageContaining("does not conform to Apache Ossie schema")
+        .hasMessageContaining("/semantic_model/datasets: object found, array expected");
   }
 
   @Test
-  void createAcceptsModelWithoutDatasets() {
-    when(metaStoreManager.generateNewEntityId(any())).thenReturn(new GenerateEntityIdResult(10L));
-    when(metaStoreManager.createEntityIfNotExists(any(), any(), any()))
-        .thenAnswer(SemanticModelCatalogTest::echoPersistedEntity);
-
+  void createRejectsModelWithoutDatasets() {
     String noDatasets = "{\"name\":\"m\"}";
-
-    assertThatCode(() -> catalog.createSemanticModel(IDENTIFIER, doc(noDatasets)))
-        .doesNotThrowAnyException();
+    assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(noDatasets)))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("/semantic_model: required property 'datasets' not found");
   }
 
   @Test
@@ -213,8 +238,7 @@ class SemanticModelCatalogTest {
     String noSource = "{\"name\":\"m\",\"datasets\":[{\"name\":\"d\"}]}";
     assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(noSource)))
         .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("/semantic_model/datasets/0/source")
-        .hasMessageContaining("must define a string 'source'");
+        .hasMessageContaining("/semantic_model/datasets/0: required property 'source' not found");
   }
 
   @Test
@@ -272,12 +296,12 @@ class SemanticModelCatalogTest {
 
   @Test
   void updateRejectsObjectFormDatasets() {
-    // update shares resolveAndValidateSources with create, so the shape is rejected there too.
+    // update shares validateDocument with create, so the shape is rejected there too.
     stubExistingModel(3);
     String objectDatasets = "{\"name\":\"m\",\"datasets\":{\"d\":{\"source\":\"does.not.exist\"}}}";
     assertThatThrownBy(() -> catalog.updateSemanticModel(IDENTIFIER, doc(objectDatasets), "3"))
         .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("'semantic_model.datasets' must be a JSON array");
+        .hasMessageContaining("/semantic_model/datasets: object found, array expected");
   }
 
   @Test

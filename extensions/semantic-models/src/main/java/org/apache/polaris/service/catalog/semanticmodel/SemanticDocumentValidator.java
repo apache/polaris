@@ -18,23 +18,26 @@
  */
 package org.apache.polaris.service.catalog.semanticmodel;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.polaris.service.catalog.semanticmodel.types.SemanticModelDocument;
 
 /**
  * Contract for validating an Apache Ossie semantic-model document at write time.
  *
- * <p>Only the interface ships in this phase. The concrete implementation (schema validation against
- * the bundled Ossie JSON Schema, size caps, etc.) is tracked by <a
- * href="https://github.com/apache/polaris/issues/4522">apache/polaris#4522</a>. Implementations are
- * expected to signal an invalid document by throwing an exception that maps to HTTP 400 (e.g.
- * {@link org.apache.iceberg.exceptions.BadRequestException}) with field-level detail.
+ * <p>Implementations are expected to signal an invalid document by throwing an exception that maps
+ * to HTTP 400 (e.g. {@link org.apache.iceberg.exceptions.BadRequestException}) with field-level
+ * detail.
  */
 public interface SemanticDocumentValidator {
 
   /**
    * Validates the given Ossie document, throwing on failure.
    *
-   * @param document the document to validate (its {@code version} and {@code semantic_model} body)
+   * <p>The caller has already rejected empty, oversized, and malformed {@code semantic_model}
+   * bodies, so implementations receive the body pre-parsed and must not mutate it.
+   *
+   * @param document the request document, whose {@code version} selects the Ossie spec version
+   * @param semanticModel the parsed {@code semantic_model} body
    */
-  void validate(SemanticModelDocument document);
+  void validate(SemanticModelDocument document, JsonNode semanticModel);
 }

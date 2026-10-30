@@ -576,6 +576,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false) // beta feature, keep it off by default
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Long> SEMANTIC_MODEL_MAX_DOCUMENT_BYTES =
+      PolarisConfiguration.<Long>builder()
+          .key("SEMANTIC_MODEL_MAX_DOCUMENT_BYTES")
+          .description(
+              "Maximum allowed size in bytes of the serialized semantic_model JSON string on create "
+                  + "and update. Documents larger than this limit are rejected with HTTP 400.")
+          .defaultValue(1_048_576L) // 1 MiB
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ENABLE_OPENLINEAGE_INGEST =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_OPENLINEAGE_INGEST")
