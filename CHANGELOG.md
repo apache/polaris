@@ -112,11 +112,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
-- `StorageUtil.removeRedundantLocations` no longer drops every location when two of them denote
-  the same place but differ only in scheme (for example `abfss://` vs `abfs://`) or a trailing
-  slash. Such locations are mutual children, so the previous logic removed both and left the set
-  empty, which broke credential vending (no allowed read/write locations). It now keeps a single
-  deterministic representative.
+- Credential vending no longer ends up with no allowed read/write locations when a table's data
+  or metadata path matches its base location except for the scheme (for example `abfss://` vs
+  `abfs://`) or a trailing slash. Such locations are mutual children, so the previous logic dropped
+  both and left the set empty. The base location is now kept as the surviving representative.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - The H2 relational JDBC init script no longer overwrites the recorded schema version. It now seeds
