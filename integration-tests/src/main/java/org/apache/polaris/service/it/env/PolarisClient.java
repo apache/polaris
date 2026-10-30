@@ -123,6 +123,10 @@ public final class PolarisClient implements AutoCloseable {
     return new GenericTableApi(client, endpoints, authToken, endpoints.catalogApiEndpoint());
   }
 
+  public DirectoryApi directoryApi(String authToken) {
+    return new DirectoryApi(client, endpoints, authToken, endpoints.catalogApiEndpoint());
+  }
+
   public PolicyApi policyApi(String authToken) {
     return new PolicyApi(client, endpoints, authToken, endpoints.catalogApiEndpoint());
   }
