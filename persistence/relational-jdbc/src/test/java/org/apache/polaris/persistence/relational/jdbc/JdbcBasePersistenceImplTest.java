@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.RealmContext;
@@ -49,6 +50,8 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
+import org.apache.polaris.core.persistence.PersistenceWriteNotStartedException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -57,6 +60,8 @@ import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -183,6 +188,41 @@ class JdbcBasePersistenceImplTest {
     assertThatExceptionOfType(RetryOnConcurrencyException.class)
         .isThrownBy(() -> basePersistence.writeEntity(callCtx, entity, true, null))
         .withMessageContaining("not visible");
+  }
+
+  @ParameterizedTest
+  @MethodSource("entityWriteFailures")
+  void writeEntityMapsSqlFailureByCommitPhase(
+      SQLException failure, Class<? extends RuntimeException> expectedType) throws SQLException {
+    DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
+    when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.H2);
+    doThrow(failure)
+        .when(datasourceOperations)
+        .executeUpdate(any(QueryGenerator.PreparedQuery.class));
+    doCallRealMethod().when(datasourceOperations).isWriteNotStartedFailure(any(SQLException.class));
+    doCallRealMethod().when(datasourceOperations).isAmbiguousCommitOutcome(any(SQLException.class));
+    TestPersistence tp = newTestPersistence(datasourceOperations);
+
+    PolarisBaseEntity original = newTestEntity(101L, "e1", 1, 1);
+    PolarisBaseEntity updated = newTestEntity(101L, "e1", 2, 1);
+
+    assertThatCode(() -> tp.impl().writeEntity(tp.callCtx(), updated, false, original))
+        .isExactlyInstanceOf(expectedType)
+        .hasCause(failure);
+  }
+
+  static Stream<Arguments> entityWriteFailures() {
+    return Stream.of(
+        // Connection lost after commit() was sent: the write may have been applied.
+        Arguments.of(
+            new SQLException("connection lost", "08006"),
+            PersistenceCommitStateUnknownException.class),
+        // Connection could not be acquired, so nothing was sent.
+        Arguments.of(
+            new WriteNotStartedException(new SQLException("connection refused", "08001")),
+            PersistenceWriteNotStartedException.class),
+        // Deterministic failure: neither ambiguous nor a pre-write failure.
+        Arguments.of(new SQLException("not null violation", "23502"), RuntimeException.class));
   }
 
   @Test
