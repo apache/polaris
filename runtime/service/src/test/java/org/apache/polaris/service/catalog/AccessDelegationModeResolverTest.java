@@ -175,6 +175,17 @@ class AccessDelegationModeResolverTest {
   }
 
   @Test
+  void resolveBothModes_withAzureSkipSasTokenGeneration_returnsRemoteSigning() {
+    mockSkipCredentialSubscopingConfig(false);
+    CatalogEntity catalogEntity = createCatalogWithAzureConfig(true);
+
+    Optional<AccessDelegationMode> result =
+        resolver.resolve(EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING), catalogEntity);
+
+    assertThat(result).hasValue(REMOTE_SIGNING);
+  }
+
+  @Test
   void resolveBothModes_withGcpStorageConfig_returnsVendedCredentials() {
     mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithGcpConfig();
@@ -185,6 +196,17 @@ class AccessDelegationModeResolverTest {
 
     // GCP uses service accounts, assumes credential vending is available
     assertThat(result).hasValue(VENDED_CREDENTIALS);
+  }
+
+  @Test
+  void resolveBothModes_withGcpSkipCredentialDownscoping_returnsRemoteSigning() {
+    mockSkipCredentialSubscopingConfig(false);
+    CatalogEntity catalogEntity = createCatalogWithGcpConfig(true);
+
+    Optional<AccessDelegationMode> result =
+        resolver.resolve(EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING), catalogEntity);
+
+    assertThat(result).hasValue(REMOTE_SIGNING);
   }
 
   @Test
@@ -330,10 +352,15 @@ class AccessDelegationModeResolverTest {
   }
 
   private CatalogEntity createCatalogWithAzureConfig() {
+    return createCatalogWithAzureConfig(false);
+  }
+
+  private CatalogEntity createCatalogWithAzureConfig(boolean skipSasTokenGeneration) {
     AzureStorageConfigurationInfo azureConfig =
         AzureStorageConfigurationInfo.builder()
             .tenantId("test-tenant-id")
             .addAllowedLocation("abfss://container@account.dfs.core.windows.net/")
+            .skipSasTokenGeneration(skipSasTokenGeneration)
             .build();
 
     return new CatalogEntity.Builder()
@@ -345,10 +372,15 @@ class AccessDelegationModeResolverTest {
   }
 
   private CatalogEntity createCatalogWithGcpConfig() {
+    return createCatalogWithGcpConfig(false);
+  }
+
+  private CatalogEntity createCatalogWithGcpConfig(boolean skipCredentialDownscoping) {
     GcpStorageConfigurationInfo gcpConfig =
         GcpStorageConfigurationInfo.builder()
             .gcpServiceAccount("test@project.iam.gserviceaccount.com")
             .addAllowedLocation("gs://test-bucket/")
+            .skipCredentialDownscoping(skipCredentialDownscoping)
             .build();
 
     return new CatalogEntity.Builder()

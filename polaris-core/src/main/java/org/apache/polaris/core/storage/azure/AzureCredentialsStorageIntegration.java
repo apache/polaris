@@ -157,8 +157,11 @@ public class AzureCredentialsStorageIntegration
 
   /** Mint a fresh {@link StorageAccessConfig} for the given Azure cache key. */
   static StorageAccessConfig compute(AzureStorageCredentialCacheKey key) {
-    RealmConfig realmConfig = key.realmConfig();
     AzureStorageConfigurationInfo azureStorageConfig = key.storageConfig();
+    if (Boolean.TRUE.equals(azureStorageConfig.getSkipSasTokenGeneration())) {
+      return StorageAccessConfig.builder().build();
+    }
+    RealmConfig realmConfig = key.realmConfig();
     DefaultAzureCredential defaultAzureCredential = key.defaultAzureCredential();
     boolean allowList = key.allowedListAction();
     Set<String> locations = key.allowedReadLocations();

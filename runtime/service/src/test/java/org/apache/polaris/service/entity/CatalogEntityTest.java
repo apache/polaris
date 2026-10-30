@@ -642,7 +642,14 @@ public class CatalogEntityTest {
         Arguments.of(b.setStorageName("my-storage").build()),
         Arguments.of(b.setCredentialVendingMechanism("STS").build()),
         Arguments.of(a.build()),
-        Arguments.of(a.setHierarchical(true).build()));
+        Arguments.of(a.setHierarchical(true).build()),
+        Arguments.of(a.setSkipSasTokenGeneration(true).build()),
+        Arguments.of(
+            GcpStorageConfigInfo.builder()
+                .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+                .setAllowedLocations(List.of("gs://example-bucket/"))
+                .setSkipCredentialDownscoping(true)
+                .build()));
   }
 
   @Test
@@ -654,6 +661,20 @@ public class CatalogEntityTest {
 
     b.setHierarchical(true);
     assertThat(MAPPER.writeValueAsString(b.build())).contains("hierarchical");
+
+    assertThat(MAPPER.writeValueAsString(b.build())).doesNotContain("skipSasTokenGeneration");
+    b.setSkipSasTokenGeneration(true);
+    assertThat(MAPPER.writeValueAsString(b.build())).contains("skipSasTokenGeneration");
+  }
+
+  @Test
+  public void testGcpConfigJsonPropertiesPresence() {
+    GcpStorageConfigInfo.Builder b =
+        GcpStorageConfigInfo.builder().setStorageType(StorageConfigInfo.StorageTypeEnum.GCS);
+    assertThat(MAPPER.writeValueAsString(b.build())).contains("storageType");
+    assertThat(MAPPER.writeValueAsString(b.build())).doesNotContain("skipCredentialDownscoping");
+    b.setSkipCredentialDownscoping(true);
+    assertThat(MAPPER.writeValueAsString(b.build())).contains("skipCredentialDownscoping");
   }
 
   @ParameterizedTest(name = "[{index}] base={1} within allowed={0}")

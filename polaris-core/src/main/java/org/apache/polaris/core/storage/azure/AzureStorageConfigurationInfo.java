@@ -65,6 +65,14 @@ public abstract class AzureStorageConfigurationInfo extends PolarisStorageConfig
   @Nullable
   public abstract Boolean isHierarchical();
 
+  /**
+   * When {@code true}, skip Azure SAS token generation and do not vend storage credentials. Unset
+   * or {@code false} keeps SAS vending enabled. Catalog-level equivalent of S3 {@code
+   * stsUnavailable}.
+   */
+  @Nullable
+  public abstract Boolean getSkipSasTokenGeneration();
+
   @Override
   public void validatePrefixForStorageType(String loc) {
     AzureLocation location = new AzureLocation(loc);

@@ -1259,6 +1259,15 @@ components:
                 in the storage container (in most cases the table's base location). This flag should be set only
                 if hierarchical namespace is enabled in the Azure storage account. Using this feature with 
                 non-hierarchical storage will lead to storage authorization errors in runtime in most cases.
+            skipSasTokenGeneration:
+              type: boolean
+              description: >-
+                if set to `true`, instructs Polaris Servers to skip generating Azure SAS tokens
+                when obtaining credentials for accessing data and metadata files within the
+                related catalog. Setting this property to `true` effectively disables vending
+                storage credentials to clients. This setting is intended for self-managed
+                client-side storage access or emulator deployments that use local Azure
+                credentials. Unset or `false` keeps SAS vending enabled.
           required:
             - tenantId
 
@@ -1272,6 +1281,15 @@ components:
             gcsServiceAccount:
               type: string
               description: a Google cloud storage service account
+            skipCredentialDownscoping:
+              type: boolean
+              description: >-
+                if set to `true`, instructs Polaris Servers to skip GCS credential downscoping
+                when obtaining credentials for accessing data and metadata files within the
+                related catalog. Setting this property to `true` effectively disables vending
+                storage credentials to clients. This setting is intended for self-managed
+                client-side storage access or emulator deployments that use local GCS
+                credentials. Unset or `false` keeps downscoping enabled.
 
     FileStorageConfigInfo:
       type: object

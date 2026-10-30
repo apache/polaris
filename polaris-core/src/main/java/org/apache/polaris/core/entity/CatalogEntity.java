@@ -155,6 +155,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setAllowedLocations(azureConfig.getAllowedLocations())
             .setStorageName(azureConfig.getStorageName())
             .setHierarchical(azureConfig.isHierarchical())
+            .setSkipSasTokenGeneration(azureConfig.getSkipSasTokenGeneration())
             .build();
       }
       if (configInfo instanceof GcpStorageConfigurationInfo gcpConfigModel) {
@@ -163,6 +164,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
             .setAllowedLocations(gcpConfigModel.getAllowedLocations())
             .setStorageName(gcpConfigModel.getStorageName())
+            .setSkipCredentialDownscoping(gcpConfigModel.getSkipCredentialDownscoping())
             .build();
       }
       if (configInfo instanceof FileStorageConfigurationInfo fileConfigModel) {
@@ -377,6 +379,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .multiTenantAppName(azureConfigModel.getMultiTenantAppName())
                     .consentUrl(azureConfigModel.getConsentUrl())
                     .hierarchical(azureConfigModel.getHierarchical())
+                    .skipSasTokenGeneration(azureConfigModel.getSkipSasTokenGeneration())
                     .build();
             break;
           case GCS:
@@ -386,6 +389,8 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .storageName(storageConfigModel.getStorageName())
                     .gcpServiceAccount(
                         ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount())
+                    .skipCredentialDownscoping(
+                        ((GcpStorageConfigInfo) storageConfigModel).getSkipCredentialDownscoping())
                     .build();
             break;
           case FILE:
