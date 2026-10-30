@@ -27,6 +27,7 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
@@ -63,7 +64,7 @@ public class CatalogUtils {
    * @param identifier the table identifier (for error messages)
    * @param locations the set of locations to validate (base location + write.data.path +
    *     write.metadata.path)
-   * @param resolvedStorageEntity the resolved path wrapper containing storage configuration
+   * @param entityPath the entity path containing storage configuration
    * @throws ForbiddenException if any location is outside the allowed locations or if file
    *     locations are not allowed
    */
@@ -71,10 +72,9 @@ public class CatalogUtils {
       RealmConfig realmConfig,
       TableIdentifier identifier,
       Set<String> locations,
-      PolarisResolvedPathWrapper resolvedStorageEntity) {
+      List<PolarisEntity> entityPath) {
 
-    PolarisStorageConfigurationInfo.forEntityPath(
-            realmConfig, resolvedStorageEntity.getRawFullPath())
+    PolarisStorageConfigurationInfo.forEntityPath(realmConfig, entityPath)
         .ifPresentOrElse(
             restrictions -> restrictions.validate(realmConfig, identifier, locations),
             () -> {
