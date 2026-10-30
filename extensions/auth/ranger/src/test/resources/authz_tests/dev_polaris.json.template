@@ -216,6 +216,27 @@
           ],
           "users": [ "datawriter1" ] }
       ]
+    },
+    {
+      "id": 9, "name": "table:POLARIS/catalog1/namespace1/table1 (fine-grained update grants only)",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "catalog1" ] },
+        "namespace": { "values": [ "namespace1" ] },
+        "table":     { "values": [ "table1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "table-uuid-assign" }
+          ],
+          "users": [ "uuidassigner1" ] },
+        {
+          "accesses": [
+            { "type": "table-structure-manage" }
+          ],
+          "users": [ "structuremanager1" ] }
+      ]
     }
   ]
 }
