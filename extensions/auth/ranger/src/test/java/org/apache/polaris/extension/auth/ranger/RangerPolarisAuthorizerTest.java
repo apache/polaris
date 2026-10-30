@@ -27,8 +27,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,7 +46,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.auth.AuthorizationBatchRequest;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -74,6 +80,9 @@ import org.apache.ranger.authz.model.RangerMultiAuthzResult;
 import org.apache.ranger.authz.util.RangerResourceNameParser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.DatabindException;
@@ -291,6 +300,218 @@ public class RangerPolarisAuthorizerTest {
     assertThat(decision.isAllowed()).isFalse();
     assertThat(decision.getMessage().orElseThrow())
         .contains("Principal 'alice' is not authorized for op 'GET_CATALOG'");
+  }
+
+  // ─── Entity-level list filtering on federated catalogs ─────────────────────
+
+  private static final PolarisPrincipal ALICE =
+      PolarisPrincipal.of("alice", AttributeMap.EMPTY, Collections.emptySet());
+
+  /** A remote-only child of {@code catalog.ns}: the manifest resolves only up to {@code ns}. */
+  static Stream<Arguments> entityListOperations() {
+    return Stream.of(
+        Arguments.of(PolarisAuthorizableOperation.LIST_NAMESPACE, PolarisEntityType.NAMESPACE),
+        Arguments.of(PolarisAuthorizableOperation.LIST_TABLE, PolarisEntityType.TABLE_LIKE),
+        Arguments.of(PolarisAuthorizableOperation.LIST_VIEW, PolarisEntityType.TABLE_LIKE));
+  }
+
+  @ParameterizedTest
+  @MethodSource("entityListOperations")
+  void entityListOperationDeniesRemoteOnlyEntity(
+      PolarisAuthorizableOperation operation, PolarisEntityType leafType) throws Exception {
+    RangerEmbeddedAuthorizer embeddedAuthorizer = allowingEmbeddedAuthorizer();
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    when(manifest.getResolvedPath(
+            eq(ResolvedPathKey.of(List.of("ns", "remote"), leafType)), anyBoolean()))
+        .thenReturn(namespacePath("ns"));
+
+    AuthorizationDecision decision =
+        newMockedAuthorizer(embeddedAuthorizer)
+            .authorize(
+                new AuthorizationState(manifest),
+                new AuthorizationRequest(
+                    ALICE, List.of(entityIntent(operation, "ns", leafType, "remote"))));
+
+    assertThat(decision.isAllowed()).isFalse();
+    assertThat(decision.getMessage().orElseThrow())
+        .contains("Principal 'alice' is not authorized for op '" + operation.name() + "'");
+    verify(embeddedAuthorizer, never()).authorize(any(RangerMultiAuthzRequest.class));
+  }
+
+  @Test
+  void entityListOperationUsesRangerForLocalEntity() throws Exception {
+    RangerEmbeddedAuthorizer embeddedAuthorizer = mock(RangerEmbeddedAuthorizer.class);
+    when(embeddedAuthorizer.authorize(any(RangerMultiAuthzRequest.class)))
+        .thenReturn(rangerResult(RangerAuthzResult.AccessDecision.ALLOW))
+        .thenReturn(rangerResult(RangerAuthzResult.AccessDecision.DENY));
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    stubTablePath(manifest, "ns", "table");
+    RangerPolarisAuthorizer authorizer = newMockedAuthorizer(embeddedAuthorizer);
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            ALICE,
+            List.of(
+                entityIntent(
+                    PolarisAuthorizableOperation.LIST_TABLE,
+                    "ns",
+                    PolarisEntityType.TABLE_LIKE,
+                    "table")));
+
+    // The decision is Ranger's: first allowed, then denied by policy.
+    assertThat(authorizer.authorize(new AuthorizationState(manifest), request).isAllowed())
+        .isTrue();
+    assertThat(authorizer.authorize(new AuthorizationState(manifest), request).isAllowed())
+        .isFalse();
+
+    ArgumentCaptor<RangerMultiAuthzRequest> requestCaptor =
+        ArgumentCaptor.forClass(RangerMultiAuthzRequest.class);
+    verify(embeddedAuthorizer, times(2)).authorize(requestCaptor.capture());
+    RangerMultiAuthzRequest rangerRequest = requestCaptor.getValue();
+    assertThat(rangerRequest.getAccesses().get(0).getAction()).isEqualTo("LIST_TABLE");
+    assertThat(rangerRequest.getAccesses().get(0).getResource().getName())
+        .isEqualTo("table:POLARIS/catalog/ns/table");
+  }
+
+  @Test
+  void entityListOperationComparesFullPathNotLeafName() throws Exception {
+    // The table "sales" is remote-only, but its parent namespace is also called "sales": the
+    // partial path ends in an entity with the same name as the target's leaf.
+    RangerEmbeddedAuthorizer embeddedAuthorizer = allowingEmbeddedAuthorizer();
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    when(manifest.getResolvedPath(
+            eq(ResolvedPathKey.of(List.of("sales", "sales"), PolarisEntityType.TABLE_LIKE)),
+            anyBoolean()))
+        .thenReturn(namespacePath("sales"));
+
+    AuthorizationDecision decision =
+        newMockedAuthorizer(embeddedAuthorizer)
+            .authorize(
+                new AuthorizationState(manifest),
+                new AuthorizationRequest(
+                    ALICE,
+                    List.of(
+                        entityIntent(
+                            PolarisAuthorizableOperation.LIST_TABLE,
+                            "sales",
+                            PolarisEntityType.TABLE_LIKE,
+                            "sales"))));
+
+    assertThat(decision.isAllowed()).isFalse();
+    verify(embeddedAuthorizer, never()).authorize(any(RangerMultiAuthzRequest.class));
+  }
+
+  @Test
+  void nonEntityListOperationKeepsPartialPathBehaviour() throws Exception {
+    // Only the entity-level list checks are denied for a partial path; other operations are
+    // still evaluated by Ranger against the deepest resolved entity.
+    RangerEmbeddedAuthorizer embeddedAuthorizer = allowingEmbeddedAuthorizer();
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    when(manifest.getResolvedPath(
+            eq(ResolvedPathKey.of(List.of("ns", "remote"), PolarisEntityType.TABLE_LIKE)),
+            anyBoolean()))
+        .thenReturn(namespacePath("ns"));
+
+    AuthorizationDecision decision =
+        newMockedAuthorizer(embeddedAuthorizer)
+            .authorize(
+                new AuthorizationState(manifest),
+                new AuthorizationRequest(
+                    ALICE,
+                    List.of(
+                        entityIntent(
+                            PolarisAuthorizableOperation.LOAD_TABLE,
+                            "ns",
+                            PolarisEntityType.TABLE_LIKE,
+                            "remote"))));
+
+    assertThat(decision.isAllowed()).isTrue();
+    verify(embeddedAuthorizer).authorize(any(RangerMultiAuthzRequest.class));
+  }
+
+  @Test
+  void batchDeniesOnlyRemoteOnlyCandidates() throws Exception {
+    RangerEmbeddedAuthorizer embeddedAuthorizer = allowingEmbeddedAuthorizer();
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    stubTablePath(manifest, "ns", "local");
+    when(manifest.getResolvedPath(
+            eq(ResolvedPathKey.of(List.of("ns", "remote"), PolarisEntityType.TABLE_LIKE)),
+            anyBoolean()))
+        .thenReturn(namespacePath("ns"));
+
+    List<AuthorizationDecision> decisions =
+        newMockedAuthorizer(embeddedAuthorizer)
+            .authorize(
+                new AuthorizationState(manifest),
+                new AuthorizationBatchRequest(
+                    ALICE,
+                    List.of(
+                        entityIntent(
+                            PolarisAuthorizableOperation.LIST_TABLE,
+                            "ns",
+                            PolarisEntityType.TABLE_LIKE,
+                            "local"),
+                        entityIntent(
+                            PolarisAuthorizableOperation.LIST_TABLE,
+                            "ns",
+                            PolarisEntityType.TABLE_LIKE,
+                            "remote"))));
+
+    assertThat(decisions).extracting(AuthorizationDecision::isAllowed).containsExactly(true, false);
+  }
+
+  private static RangerEmbeddedAuthorizer allowingEmbeddedAuthorizer() throws Exception {
+    RangerEmbeddedAuthorizer embeddedAuthorizer = mock(RangerEmbeddedAuthorizer.class);
+    when(embeddedAuthorizer.authorize(any(RangerMultiAuthzRequest.class)))
+        .thenReturn(rangerResult(RangerAuthzResult.AccessDecision.ALLOW));
+    return embeddedAuthorizer;
+  }
+
+  private static RangerPolarisAuthorizer newMockedAuthorizer(
+      RangerEmbeddedAuthorizer embeddedAuthorizer) {
+    RangerPolarisAuthorizer authorizer =
+        new RangerPolarisAuthorizer(embeddedAuthorizer, "dev_polaris");
+    authorizer.setRealmContext(createRealmContext());
+    return authorizer;
+  }
+
+  private static AuthorizationIntent entityIntent(
+      PolarisAuthorizableOperation operation,
+      String namespace,
+      PolarisEntityType leafType,
+      String leafName) {
+    return new SingleTargetAuthorizationIntent(
+        operation,
+        PolarisSecurable.of(
+            new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+            new PathSegment(PolarisEntityType.NAMESPACE, namespace),
+            new PathSegment(leafType, leafName)));
+  }
+
+  private static PolarisResolvedPathWrapper namespacePath(String namespace) {
+    return resolvedPath(
+        PolarisEntityType.ROOT,
+        "root",
+        PolarisEntityType.CATALOG,
+        "catalog",
+        PolarisEntityType.NAMESPACE,
+        namespace);
+  }
+
+  private static void stubTablePath(
+      PolarisResolutionManifest manifest, String namespace, String table) {
+    when(manifest.getResolvedPath(
+            eq(ResolvedPathKey.of(List.of(namespace, table), PolarisEntityType.TABLE_LIKE)),
+            anyBoolean()))
+        .thenReturn(
+            resolvedPath(
+                PolarisEntityType.ROOT,
+                "root",
+                PolarisEntityType.CATALOG,
+                "catalog",
+                PolarisEntityType.NAMESPACE,
+                namespace,
+                PolarisEntityType.TABLE_LIKE,
+                table));
   }
 
   private void runTests(PolarisAuthorizer authorizer, String testFilename) throws Exception {

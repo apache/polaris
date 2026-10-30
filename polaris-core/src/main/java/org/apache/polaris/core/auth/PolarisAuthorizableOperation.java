@@ -21,12 +21,27 @@ package org.apache.polaris.core.auth;
 /** Intent-level Polaris operations that can be authorized. */
 public enum PolarisAuthorizableOperation {
   LIST_NAMESPACES,
+  /**
+   * Checked for each namespace when listNamespaces filters its results for a caller who lacks
+   * {@link #LIST_NAMESPACES} on the parent namespace or catalog: a namespace is returned only if
+   * this check passes. Separate from LIST_NAMESPACES so that authorizers can decide access to each
+   * namespace independently of the parent-level permission. The built-in RBAC authorizer maps it to
+   * {@code NAMESPACE_READ_PROPERTIES}.
+   */
+  LIST_NAMESPACE,
   CREATE_NAMESPACE,
   LOAD_NAMESPACE_METADATA,
   NAMESPACE_EXISTS,
   DROP_NAMESPACE,
   UPDATE_NAMESPACE_PROPERTIES,
   LIST_TABLES,
+  /**
+   * Checked for each table when listTables filters its results for a caller who lacks {@link
+   * #LIST_TABLES} on the parent namespace: a table is returned only if this check passes. Separate
+   * from LIST_TABLES so that authorizers can decide access to each table independently of the
+   * parent-level permission. The built-in RBAC authorizer maps it to {@code TABLE_READ_PROPERTIES}.
+   */
+  LIST_TABLE,
   CREATE_TABLE_DIRECT,
   CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
   CREATE_TABLE_STAGED,
@@ -48,6 +63,13 @@ public enum PolarisAuthorizableOperation {
   RENAME_TABLE,
   COMMIT_TRANSACTION,
   LIST_VIEWS,
+  /**
+   * Checked for each view when listViews filters its results for a caller who lacks {@link
+   * #LIST_VIEWS} on the parent namespace: a view is returned only if this check passes. Separate
+   * from LIST_VIEWS so that authorizers can decide access to each view independently of the
+   * parent-level permission. The built-in RBAC authorizer maps it to {@code VIEW_READ_PROPERTIES}.
+   */
+  LIST_VIEW,
   CREATE_VIEW,
   REGISTER_VIEW,
   LOAD_VIEW,
