@@ -40,6 +40,8 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class StorageCredentialCacheTest {
   private final RealmContext realmContext = () -> "testRealm";
@@ -442,6 +444,18 @@ public class StorageCredentialCacheTest {
     return res;
   }
 
+  /**
+   * A RealmConfig reporting {@code bufferSeconds} for STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.
+   */
+  private RealmConfig realmConfigWithBuffer(int bufferSeconds) {
+    return new RealmConfigImpl(
+        (rc, name) ->
+            FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.key().equals(name)
+                ? bufferSeconds
+                : null,
+        realmContext);
+  }
+
   @Test
   public void testGetOrLoadThrowsWhenPersistentlyUnderBuffer() {
     // Credentials expire in 120 seconds from now. With a 300-second refresh buffer, that's
@@ -460,15 +474,6 @@ public class StorageCredentialCacheTest {
             .build();
     AtomicInteger loadCount = new AtomicInteger();
 
-    // RealmConfig with STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS = 300
-    RealmConfig realmConfigWithBuffer =
-        new RealmConfigImpl(
-            (rc, name) ->
-                FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.key().equals(name)
-                    ? 300
-                    : null,
-            realmContext);
-
     StorageCredentialCacheKey key =
         new TestKey(
             realmContext.getRealmIdentifier(),
@@ -477,7 +482,7 @@ public class StorageCredentialCacheTest {
             Set.of("s3://bucket/path"),
             Set.of(),
             Optional.empty(),
-            realmConfigWithBuffer,
+            realmConfigWithBuffer(300),
             () -> {
               loadCount.incrementAndGet();
               return nearExpiryConfig;
@@ -530,14 +535,6 @@ public class StorageCredentialCacheTest {
             .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(expiresAt))
             .build();
 
-    RealmConfig realmConfigWithBuffer =
-        new RealmConfigImpl(
-            (rc, name) ->
-                FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.key().equals(name)
-                    ? 300
-                    : null,
-            realmContext);
-
     StorageCredentialCacheKey key =
         new TestKey(
             realmContext.getRealmIdentifier(),
@@ -546,7 +543,7 @@ public class StorageCredentialCacheTest {
             Set.of("s3://bucket/path"),
             Set.of(),
             Optional.empty(),
-            realmConfigWithBuffer,
+            realmConfigWithBuffer(300),
             () -> config);
 
     StorageAccessConfig result = storageCredentialCache.getOrLoad(key);
@@ -577,14 +574,6 @@ public class StorageCredentialCacheTest {
     List<StorageAccessConfig> configs = List.of(nearExpiryConfig, freshConfig);
     AtomicInteger loadCount = new AtomicInteger();
 
-    RealmConfig realmConfigWithBuffer =
-        new RealmConfigImpl(
-            (rc, name) ->
-                FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.key().equals(name)
-                    ? 300
-                    : null,
-            realmContext);
-
     StorageCredentialCacheKey key =
         new TestKey(
             realmContext.getRealmIdentifier(),
@@ -593,7 +582,7 @@ public class StorageCredentialCacheTest {
             Set.of("s3://bucket/path"),
             Set.of(),
             Optional.empty(),
-            realmConfigWithBuffer,
+            realmConfigWithBuffer(300),
             () -> configs.get(loadCount.getAndIncrement()));
 
     StorageAccessConfig result = storageCredentialCache.getOrLoad(key);
@@ -601,25 +590,21 @@ public class StorageCredentialCacheTest {
     Assertions.assertThat(loadCount.get()).isEqualTo(2);
   }
 
-  @Test
-  public void testRefreshBufferRejectsNegativeValue() {
-    RealmConfig realmConfigWithNegativeBuffer =
-        new RealmConfigImpl(
-            (rc, name) ->
-                FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.key().equals(name)
-                    ? -1
-                    : null,
-            realmContext);
-
+  @ParameterizedTest
+  // -1 is rejected as negative; 3600 is rejected because it's not less than the default
+  // STORAGE_CREDENTIAL_DURATION_SECONDS of 3600 (1 hour) -- same rejection path as a buffer
+  // greater than the credential duration.
+  @ValueSource(ints = {-1, 3600})
+  public void testRefreshBufferRejectsOutOfRangeValue(int bufferSeconds) {
     StorageCredentialCacheKey key =
         new TestKey(
             realmContext.getRealmIdentifier(),
-            "bufferNegativeConfig",
+            "bufferOutOfRangeConfig-" + bufferSeconds,
             true,
             Set.of("s3://bucket/path"),
             Set.of(),
             Optional.empty(),
-            realmConfigWithNegativeBuffer,
+            realmConfigWithBuffer(bufferSeconds),
             () ->
                 StorageAccessConfig.builder()
                     .put(StorageAccessProperty.AWS_KEY_ID, "key")
@@ -632,35 +617,35 @@ public class StorageCredentialCacheTest {
   }
 
   @Test
-  public void testRefreshBufferRejectsValueAtOrAboveCredentialDuration() {
-    // Default STORAGE_CREDENTIAL_DURATION_SECONDS is 3600 (1 hour); a buffer equal to it must
-    // be rejected the same way a buffer greater than it would be.
-    RealmConfig realmConfigWithTooLargeBuffer =
-        new RealmConfigImpl(
-            (rc, name) ->
-                FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.key().equals(name)
-                    ? 3600
-                    : null,
-            realmContext);
+  public void testRefreshBufferWithNoExpiresAtIsNeverUnderBuffer() {
+    // No expiresAt set at all (StorageCredentialCacheEntry.getExpirationTime() falls back to
+    // Long.MAX_VALUE) -- a positive buffer must not misfire against a credential that doesn't
+    // expire. The entry should load normally, without retrying or throwing, and stay cached.
+    StorageAccessConfig noExpiryConfig =
+        StorageAccessConfig.builder()
+            .put(StorageAccessProperty.AWS_KEY_ID, "key")
+            .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
+            .build();
+    AtomicInteger loadCount = new AtomicInteger();
 
     StorageCredentialCacheKey key =
         new TestKey(
             realmContext.getRealmIdentifier(),
-            "bufferTooLargeConfig",
+            "bufferNoExpiresAtConfig",
             true,
             Set.of("s3://bucket/path"),
             Set.of(),
             Optional.empty(),
-            realmConfigWithTooLargeBuffer,
-            () ->
-                StorageAccessConfig.builder()
-                    .put(StorageAccessProperty.AWS_KEY_ID, "key")
-                    .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
-                    .build());
+            realmConfigWithBuffer(300),
+            () -> {
+              loadCount.incrementAndGet();
+              return noExpiryConfig;
+            });
 
-    Assertions.assertThatThrownBy(() -> storageCredentialCache.getOrLoad(key))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining(FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.key());
+    StorageAccessConfig result = storageCredentialCache.getOrLoad(key);
+    Assertions.assertThat(result).isEqualTo(noExpiryConfig);
+    Assertions.assertThat(loadCount.get()).isEqualTo(1);
+    Assertions.assertThat(storageCredentialCache.getIfPresent(key)).isNotNull();
   }
 
   private static List<String> getStorageConfigStrings() {
