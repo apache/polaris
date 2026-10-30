@@ -133,8 +133,9 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 
 {{< alert warning >}}
 Table and view properties are readable metadata. Principals with
-`TABLE_READ_PROPERTIES` / `TABLE_FULL_METADATA` or `VIEW_READ_PROPERTIES` /
-`VIEW_FULL_METADATA` can read them. Do not store passwords, tokens, access
+`TABLE_READ_PROPERTIES` / `TABLE_FULL_METADATA`, `TABLE_MANAGE_STRUCTURE` or any
+fine-grained table update privilege (such as `TABLE_SET_PROPERTIES`), or
+`VIEW_READ_PROPERTIES` / `VIEW_FULL_METADATA` can read them. Do not store passwords, tokens, access
 keys, or other secrets in table or view properties.
 {{< /alert >}}
 

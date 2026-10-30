@@ -138,7 +138,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `TABLE_MANAGE_STRUCTURE` and the fine-grained table update privileges (such as
   `TABLE_ASSIGN_UUID`, `TABLE_ADD_SCHEMA` or `TABLE_SET_PROPERTIES`) now subsume
   `TABLE_READ_PROPERTIES`, consistent with `TABLE_WRITE_PROPERTIES`, because a table update returns
-  the full table metadata. Roles holding only one of these privileges can now also load the table.
+  the full table metadata. Roles holding only one of these privileges can now also load the table,
+  get the applicable policies on the table, and load the table as a generic table, since all of these
+  operations require `TABLE_READ_PROPERTIES`.
   In the Ranger service definition, the corresponding access types (`table-structure-manage`,
   `table-uuid-assign`, etc.) now imply `table-properties-read`; the service definition must be
   re-imported into Ranger for this to take effect.
