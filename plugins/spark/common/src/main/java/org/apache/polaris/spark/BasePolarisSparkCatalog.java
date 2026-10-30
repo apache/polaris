@@ -26,7 +26,6 @@ import java.util.stream.Stream;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
-import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.iceberg.util.Tasks;
 import org.apache.polaris.spark.utils.DeltaHelper;
@@ -123,10 +122,8 @@ public abstract class BasePolarisSparkCatalog
     this.icebergsSparkCatalog.initialize(name, resolvedOptions);
 
     // initialize the polaris spark catalog
-    OAuth2Util.AuthSession catalogAuth =
-        PolarisCatalogUtils.getAuthSession(this.icebergsSparkCatalog);
     PolarisRESTCatalog restCatalog = new PolarisRESTCatalog();
-    restCatalog.initialize(options, catalogAuth);
+    restCatalog.initialize(name, options);
     this.polarisSparkCatalog = new PolarisSparkCatalog(restCatalog, createCatalogUtils());
     this.polarisSparkCatalog.initialize(name, resolvedOptions);
   }

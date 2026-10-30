@@ -40,7 +40,9 @@ import org.apache.iceberg.rest.ErrorHandlers;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.ResourcePaths;
-import org.apache.iceberg.rest.auth.OAuth2Util;
+import org.apache.iceberg.rest.auth.AuthManager;
+import org.apache.iceberg.rest.auth.AuthManagers;
+import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.iceberg.util.PropertyUtil;
@@ -65,7 +67,7 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
   private RESTClient restClient = null;
   private CloseableGroup closeables = null;
   private Set<Endpoint> endpoints;
-  private OAuth2Util.AuthSession catalogAuth = null;
+  private AuthSession catalogAuth = null;
   private PolarisResourcePaths pathGenerator = null;
   private Integer pageSize = null;
 
@@ -81,7 +83,7 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
     this.clientBuilder = clientBuilder;
   }
 
-  public void initialize(Map<String, String> unresolved, OAuth2Util.AuthSession catalogAuth) {
+  public void initialize(String name, Map<String, String> unresolved) {
     Preconditions.checkArgument(unresolved != null, "Invalid configuration: null");
 
     // Resolve any configuration that is supplied by environment variables.
@@ -90,12 +92,16 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
     // entity ("key", "envValue").
     Map<String, String> props = EnvironmentUtil.resolveAll(unresolved);
 
-    // TODO: switch to use authManager once iceberg dependency is updated to 1.9.0
-    this.catalogAuth = catalogAuth;
+    this.closeables = new CloseableGroup();
+    this.closeables.setSuppressCloseFailure(true);
+
+    AuthManager authManager = AuthManagers.loadAuthManager(name, props);
+    this.closeables.addCloseable(authManager);
 
     ConfigResponse config;
-    try (RESTClient initClient = clientBuilder.apply(props).withAuthSession(catalogAuth)) {
-      config = fetchConfig(initClient, catalogAuth.headers(), props);
+    try (RESTClient initClient = clientBuilder.apply(props);
+        AuthSession initSession = authManager.initSession(initClient, props)) {
+      config = fetchConfig(initClient.withAuthSession(initSession), props);
     } catch (IOException e) {
       throw new UncheckedIOException("Failed to close HTTP client", e);
     }
@@ -109,21 +115,20 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
     }
 
     this.pathGenerator = PolarisResourcePaths.forCatalogProperties(mergedProps);
-    this.restClient = clientBuilder.apply(mergedProps).withAuthSession(catalogAuth);
+    this.restClient = clientBuilder.apply(mergedProps);
+    this.closeables.addCloseable(this.restClient);
+
+    this.catalogAuth = authManager.catalogSession(restClient, mergedProps);
+    this.closeables.addCloseable(this.catalogAuth);
 
     this.pageSize = PropertyUtil.propertyAsNullableInt(mergedProps, REST_PAGE_SIZE);
     if (pageSize != null) {
       Preconditions.checkArgument(
           pageSize > 0, "Invalid value for %s, must be a positive integer", REST_PAGE_SIZE);
     }
-
-    this.closeables = new CloseableGroup();
-    this.closeables.addCloseable(this.restClient);
-    this.closeables.setSuppressCloseFailure(true);
   }
 
-  protected static ConfigResponse fetchConfig(
-      RESTClient client, Map<String, String> headers, Map<String, String> properties) {
+  protected static ConfigResponse fetchConfig(RESTClient client, Map<String, String> properties) {
     // send the client's warehouse location to the service to keep in sync
     // this is needed for cases where the warehouse is configured at client side,
     // and used by Polaris server as catalog name.
@@ -139,7 +144,7 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
             ResourcePaths.config(),
             queryParams.build(),
             ConfigResponse.class,
-            headers,
+            Map.of(),
             ErrorHandlers.defaultErrorHandler());
     configResponse.validate();
     return configResponse;
