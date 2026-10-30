@@ -235,6 +235,9 @@ boundary model and should only be enabled for specific interoperability or migra
 changes how overlap detection is performed and should only be enabled when the required index and
 backfill state is known to be correct.
 
+See [Storage Layout]({{% ref "../storage-layout.md" %}}) for how these flags change where tables
+are stored, and how they interact with each other.
+
 ### Polaris Server Header
 
 Polaris can emit an informational `Server` HTTP response header using Quarkus' built-in header
