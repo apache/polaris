@@ -26,3 +26,18 @@ extensions.getByType<CopiedCodeCheckerExtension>().apply {
   addDefaultContentTypes()
   licenseFile.convention(layout.settingsDirectory.file("LICENSE"))
 }
+
+configurations.configureEach {
+  resolutionStrategy.eachDependency {
+    if (
+      requested.group == "org.apache.httpcomponents.core5" &&
+        (requested.name == "httpcore5" || requested.name == "httpcore5-h2")
+    ) {
+      useVersion("5.4.4")
+      because(
+        "Maintenance update: httpcore5/httpcore5-h2 5.4.3 (pinned by httpclient5 5.4.x)" +
+          " is below the 5.4.4 fix boundary for CVE-2026-54399 and CVE-2026-54428",
+      )
+    }
+  }
+}
