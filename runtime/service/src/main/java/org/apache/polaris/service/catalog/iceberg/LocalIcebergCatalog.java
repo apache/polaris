@@ -2956,16 +2956,32 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     // searches the whole catalog, must only consider the entities inside the destination location.
     // Otherwise, it would report the namespaces that already contain the entity's locations, e.g.
     // its previous parents.
-    StorageLocation destinationLocation =
-        StorageLocation.of(resolveLocationForPath(diagnostics, resolvedNewParent.getRawFullPath()));
-    for (String location : locations) {
-      validateNoLocationOverlap(
-          catalogEntity,
-          to,
-          resolvedNewParent.getRawFullPath(),
-          location,
-          entity,
-          destinationLocation);
+    // The exception is a previous parent that is a direct child of the destination namespace: it
+    // becomes a sibling of the entity, and its location may lie outside the destination location.
+    List<StorageLocation> searchRoots = new ArrayList<>();
+    searchRoots.add(
+        StorageLocation.of(
+            resolveLocationForPath(diagnostics, resolvedNewParent.getRawFullPath())));
+    List<PolarisEntity> oldPath = resolvedEntities.getRawFullPath();
+    long newParentId = resolvedNewParent.getRawLeafEntity().getId();
+    // Skip the catalog (first) and the entity itself (last): the rest are its previous parents.
+    for (int i = 1; i < oldPath.size() - 1; i++) {
+      // If any old segment's parent is the new parent, then that segment was the former parent,
+      // and is now a sibling of the entity. Its location must be included as a search root.
+      if (oldPath.get(i).getParentId() == newParentId) {
+        // The location is resolved from the path that ends with it.
+        List<PolarisEntity> pathToFormerParent = oldPath.subList(0, i + 1);
+        searchRoots.add(
+            StorageLocation.of(resolveLocationForPath(diagnostics, pathToFormerParent)));
+        // Parents form a chain, so at most one of them is a direct child of the destination.
+        break;
+      }
+    }
+    for (StorageLocation searchRoot : searchRoots) {
+      for (String location : locations) {
+        validateNoLocationOverlap(
+            catalogEntity, to, resolvedNewParent.getRawFullPath(), location, entity, searchRoot);
+      }
     }
   }
 

@@ -1361,6 +1361,59 @@ public class IcebergAllowedLocationTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
+  void testRenameTableIntoAncestorNamespaceWithCustomLocationRejectsOverlappingSibling(
+      boolean optimizedSiblingCheck, @TempDir Path tmpDir) {
+    var services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE"),
+                    "ALLOW_NAMESPACE_CUSTOM_LOCATION",
+                    "true",
+                    OPTIMIZED_SIBLING_CHECK.key(),
+                    String.valueOf(optimizedSiblingCheck)))
+            .build();
+    var catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    createCatalog(
+        services,
+        Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"),
+        catalogLocation,
+        List.of(catalogLocation));
+    Namespace parent = Namespace.of("parent");
+    Namespace child = Namespace.of("parent", "child");
+    newHandler(services)
+        .createNamespace(CreateNamespaceRequest.builder().withNamespace(parent).build());
+    // The child namespace is located outside its parent's location.
+    newHandler(services)
+        .createNamespace(
+            CreateNamespaceRequest.builder()
+                .withNamespace(child)
+                .setProperties(
+                    new HashMap<>(Map.of("location", catalogLocation + "/elsewhere/child")))
+                .build());
+    // The table's location is under the child namespace: .../elsewhere/child/t.
+    newHandler(services)
+        .createTableDirect(
+            child,
+            CreateTableRequest.builder().withName("t").withSchema(SCHEMA).build(),
+            EnumSet.noneOf(AccessDelegationMode.class),
+            Optional.empty());
+    TableIdentifier source = TableIdentifier.of(child, "t");
+
+    // Move the table under namespace parent. Namespace child becomes the table's sibling.
+    // The overlap check should detect that the table location (.../elsewhere/child/t)
+    // now conflicts with namespace child's location (.../elsewhere/child).
+    assertThatThrownBy(() -> renameTable(services, source, TableIdentifier.of(parent, "t")))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+    newHandler(services).tableExists(source);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
   void testRenameViewIntoAncestorNamespaceRejectsOverlappingSibling(
       boolean optimizedSiblingCheck, @TempDir Path tmpDir) {
     var services = getRenameTestServices(optimizedSiblingCheck);
