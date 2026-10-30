@@ -645,6 +645,39 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return null;
   }
 
+  /**
+   * Returns a description of how {@code update} changes the set of locations a table uses, or
+   * {@code null} if it leaves them unchanged. {@code SetLocation} is the explicit form, but {@code
+   * LocalIcebergCatalog} also treats a change to a write-path property as a location change, so
+   * both have to be reported here: the overlap validation that the caller cannot run inside a
+   * transaction is keyed off the same notion of "the locations changed".
+   */
+  private static String locationChangingUpdate(
+      TableMetadata currentMetadata, MetadataUpdate update) {
+    if (update instanceof MetadataUpdate.SetLocation setLocation) {
+      return currentMetadata.location().equals(setLocation.location())
+          ? null
+          : String.format("SetLocation with new location '%s'", setLocation.location());
+    }
+    if (update instanceof MetadataUpdate.SetProperties setProperties) {
+      for (String key : CLIENT_LOCATION_PROPERTY_KEYS) {
+        String requested = setProperties.updated().get(key);
+        if (requested != null && !requested.equals(currentMetadata.properties().get(key))) {
+          return String.format("a change to the '%s' property", key);
+        }
+      }
+    }
+    if (update instanceof MetadataUpdate.RemoveProperties removeProperties) {
+      for (String key : CLIENT_LOCATION_PROPERTY_KEYS) {
+        if (removeProperties.removed().contains(key)
+            && currentMetadata.properties().containsKey(key)) {
+          return String.format("a removal of the '%s' property", key);
+        }
+      }
+    }
+    return null;
+  }
+
   private TableMetadata stageTableCreateHelper(Namespace namespace, CreateTableRequest request) {
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     if (baseCatalog.tableExists(ident)) {
@@ -1547,15 +1580,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               // support validation within a single multi-table transaction as well, but
               // will need to update the TransactionWorkspaceMetaStoreManager to better
               // expose the concept of being able to read uncommitted updates.
-              if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
-                if (!currentMetadata.location().equals(setLocation.location())
-                    && !realmConfig()
-                        .getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
-                  throw new BadRequestException(
-                      "Unsupported operation: commitTransaction containing SetLocation"
-                          + " for table '%s' and new location '%s'",
-                      change.identifier(), ((MetadataUpdate.SetLocation) singleUpdate).location());
-                }
+              String locationChange = locationChangingUpdate(currentMetadata, singleUpdate);
+              if (locationChange != null
+                  && !realmConfig()
+                      .getConfig(
+                          FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP,
+                          getResolvedCatalogEntity())) {
+                throw new BadRequestException(
+                    "Unsupported operation: commitTransaction containing %s for table '%s'",
+                    locationChange, change.identifier());
               }
 
               // Apply updates to builder
