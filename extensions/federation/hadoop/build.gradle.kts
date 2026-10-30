@@ -53,6 +53,21 @@ dependencies {
   implementation(libs.hadoop.client.api)
   implementation(libs.hadoop.client.runtime)
 
+  constraints {
+    implementation(libs.commons.compress) {
+      because(
+        "commons-compress 1.26.1 (pinned by Hadoop 3.5.0) is below the 1.27.0 fix boundary" +
+          " for CVE-2024-25710 and CVE-2024-26308",
+      )
+    }
+    implementation(libs.commons.configuration2) {
+      because(
+        "commons-configuration2 2.10.1 (pinned by Hadoop 3.5.0) is below the 2.15.0 fix" +
+          " boundary for CVE-2026-45205",
+      )
+    }
+  }
+
   // CDI dependencies for runtime discovery
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.smallrye.common.annotation)
