@@ -30,12 +30,13 @@ extensions.getByType<CopiedCodeCheckerExtension>().apply {
 configurations.configureEach {
   resolutionStrategy.eachDependency {
     if (
-      requested.group == "org.eclipse.jetty" || requested.group == "org.eclipse.jetty.websocket"
+      (requested.group == "org.eclipse.jetty" || requested.group == "org.eclipse.jetty.websocket") &&
+        requested.version?.startsWith("9.") == true
     ) {
       useVersion("9.4.58.v20250814")
       because(
-        "Maintenance update: hive-metastore 3.1.3 transitively pins jetty 9.3.19.v20170502;" +
-          " 9.4.58.v20250814 is the latest 9.4.x release and addresses CVE-2024-13009",
+        "Build-wide Jetty 9.x pin: align transitive Jetty 9.x dependencies (e.g. from hive-metastore, ranger)" +
+          " to 9.4.58.v20250814 to address CVE-2024-13009",
       )
     }
   }
