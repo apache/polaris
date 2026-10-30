@@ -20,7 +20,6 @@ name = "apache-polaris"
 version = "1.9.0"
 source = { editable = "." }
 dependencies = [
-    { name = "boto3" },
     { name = "prettytable" },
     { name = "pydantic" },
     { name = "python-dateutil" },
@@ -31,6 +30,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "boto3" },
     { name = "flake8" },
     { name = "mypy" },
     { name = "openapi-generator-cli" },
@@ -44,7 +44,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "boto3", specifier = "~=1.43.1" },
     { name = "prettytable", specifier = ">=3.17.0" },
     { name = "pydantic", specifier = ">=2.14.0,<2.15.0" },
     { name = "python-dateutil", specifier = ">=2.8.2" },
@@ -55,6 +54,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "boto3", specifier = "~=1.43.1" },
     { name = "flake8", specifier = ">=4.0.0" },
     { name = "mypy", specifier = ">=2.4,<=2.4.1" },
     { name = "openapi-generator-cli", specifier = "==7.26.0" },
