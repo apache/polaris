@@ -62,6 +62,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `Expect: 100-continue` by default. Set `polaris.storage.expect-continue-enabled=true`
   to preserve the previous behavior. Iceberg S3 clients continue to use Apache HttpClient 4
   and retain their existing default.
+- The `apache-polaris` Python package no longer depends on `boto3`, which it never used. Environments
+  that relied on it being installed transitively must now install `boto3` explicitly.
 - Relational JDBC: The per-schema-version runtime fallback has been removed. The migration to schema
   v6 is now **required** before starting this version of Polaris. The first request to any realm
   whose recorded schema version does not match what the binary expects will fail fast with a clear
