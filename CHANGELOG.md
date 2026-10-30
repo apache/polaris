@@ -19,7 +19,7 @@
 
 # Apache Polaris Changelog
 
-This changelog is used to give users and contributors condensed information about the contents of Polaris releases. 
+This changelog is used to give users and contributors condensed information about the contents of Polaris releases.
 Entries are grouped in sections like _Highlights_ or _Upgrade notes_, the provided sections can be adjusted
 as necessary. Empty sections will not end up in the release notes. Contributors are encouraged to incorporate
 CHANGELOG updates into their PRs when appropriate. Reviewers should be mindful of the impact of PRs and
@@ -29,10 +29,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Highlights
 
-- Polaris now fully supports "external" principals, that is, principals that are not backed by an 
+- Polaris now fully supports "external" principals, that is, principals that are not backed by an
   entity in Polaris metastore. By enabling external principals, either globally or per-realm,
-  Polaris now skips the principal entity metastore lookup. This means that synchronizing principals 
-  between an external IDP and Polaris is not necessary anymore. To enable external principals, 
+  Polaris now skips the principal entity metastore lookup. This means that synchronizing principals
+  between an external IDP and Polaris is not necessary anymore. To enable external principals,
   set the `polaris.authentication.credential-mode` option to `external`. Note: external principals
   are not compatible with internal authentication and internal authorization; you must configure an
   external IDP and an external PDP, such as OPA or Ranger.
@@ -81,13 +81,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   a positive `LIST_PAGINATION_MAX_PAGE_SIZE` is configured and the result does not fit, in which
   case it is rejected rather than truncated. To keep the previous behavior, set
   `LIST_PAGINATION_ENABLED=false` or the catalog property `polaris.config.list-pagination-enabled=false`.
-- The `PolarisPrincipal` interface has evolved. The `getAttributes()` method now returns 
+- The `PolarisPrincipal` interface has evolved. The `getAttributes()` method now returns
   `org.apache.polaris.core.collection.ImmutableAttributeMap`. The attribute keys were moved to a
   new `org.apache.polaris.core.auth.PolarisPrincipalAttributes` class.
 - Relational JDBC: Per-version schema scripts (`schema-v1.sql` through `schema-v5.sql`) have been
   replaced by a single `schema.sql` that is safe to run on every startup. Per-version runtime
   compatibility fallbacks and the `SCHEMA_VERSION_FALL_BACK_ON_DNE` configuration key have been
-  removed. Operators must ensure their database is at the right schema version before upgrading to 
+  removed. Operators must ensure their database is at the right schema version before upgrading to
   this version.
 - `PolarisAuthorizer` implementations should resolve entities with respect to selectors recorded
   in `AuthorizationState`. Implementations that used to call `PolarisResolutionManifest.resolveAll()`
@@ -107,9 +107,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `polaris.config.allow.unstructured.table.location`) from `true` to `false` does not validate or
   move existing tables and views. For example, a table renamed into another namespace while
   unstructured locations were enabled keeps its files under the old namespace, and once they are
-  disabled, commits and credential vending for it return HTTP 403. Operators should check existing
-  locations before or after disabling unstructured locations; see "Disabling Unstructured Table
-  Locations" in the configuration documentation.
+  disabled, commits and credential vending for it return HTTP 403. Catalogs that used
+  `DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED` have the same problem for every table created
+  under the prefixed layout. If the prefix flag stays on, new creates without a location fail with
+  `IllegalStateException`. Operators should check existing locations before or after disabling
+  unstructured locations, and turn off the prefix flag together with unstructured locations when
+  applicable; see "Disabling Unstructured Table Locations" in the configuration documentation.
 
 ### New Features
 
@@ -527,7 +530,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   attribute keys are defined as constants on the interface:
 
   - `PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY`: holds the `PrincipalEntity`;
-  - `PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY`: holds a boolean indicating if the 
+  - `PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY`: holds a boolean indicating if the
     `PRINCIPAL_ROLE:ALL` pseudo-role is present;
   - `PolarisPrincipal.JWT_ATTRIBUTE_KEY`: holds the raw JWT string.
 
@@ -535,7 +538,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   now accepts a Quarkus `SecurityIdentity` instead of a `PolarisCredential`, and throws
   `AuthenticationFailedException` (mapped to HTTP 401) instead of Iceberg's
   `NotAuthorizedException`.
-- Polaris does not include the `expiration-time` property anymore when vending credentials. This 
+- Polaris does not include the `expiration-time` property anymore when vending credentials. This
   property is not consumed by any known client and duplicates the properties specific to each
   storage provider, such as `s3.session-token-expires-at-ms` for S3.
 
@@ -590,7 +593,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
-- Event listeners are now executed on a dedicated executor. **This executor does not propagate the original request's CDI context**; listeners that were improperly relying on that should instead manage their own CDI request scope from now on. Furthermore, two new configuration options were introduced to configure the executor: 
+- Event listeners are now executed on a dedicated executor. **This executor does not propagate the original request's CDI context**; listeners that were improperly relying on that should instead manage their own CDI request scope from now on. Furthermore, two new configuration options were introduced to configure the executor:
   - `polaris.event-listener.executor.pool-size` configures the thread pool size.
   - `polaris.event-listener.executor.queue-size` configures the queue size for pending events when all threads are busy.
 
@@ -674,7 +677,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Upgrade notes
 
 - The custom token-bucket based rate limiter has been replaced with Guava's rate limiter implementation.
-- The Helm chart now includes a JSON schema file for easy validation of values files. Because types 
+- The Helm chart now includes a JSON schema file for easy validation of values files. Because types
   are now validated, existing values files may need to be updated to match the new schema.
 
 ### Breaking changes
@@ -757,7 +760,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Changes
 
 - `client.region` is no longer considered a "credential" property (related to Iceberg REST Catalog API).
-- Relaxed the requirements for S3 storage's ARN to allow Polaris to connect to more non-AWS S3 storage appliances. 
+- Relaxed the requirements for S3 storage's ARN to allow Polaris to connect to more non-AWS S3 storage appliances.
 - Added checksum to helm deployment so that it will restart when the configmap has changed.
 - Generic Table is no longer in beta and is generally-available.
 - Added Windows support for Python client.
@@ -786,7 +789,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
-- The following APIs will now return the newly-created objects as part of the successful 201 response: createCatalog, createPrincipalRole, createCatalogRole. 
+- The following APIs will now return the newly-created objects as part of the successful 201 response: createCatalog, createPrincipalRole, createCatalogRole.
 
 ### Deprecations
 
@@ -856,7 +859,7 @@ Apache Polaris 1.1.0-incubating was released on September 19th, 2025.
       ON CONFLICT (version_key) DO UPDATE
                               SET version_value = EXCLUDED.version_value;
       COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
-    
+
     ALTER TABLE polaris_schema.entities ADD COLUMN IF NOT EXISTS location_without_scheme TEXT;
     ```
     - Please don't enable [OPTIMIZED_SIBLING_CHECK](https://github.com/apache/polaris/blob/740993963cb41c2c1b4638be5e04dd00f1263c98/polaris-core/src/main/java/org/apache/polaris/core/config/FeatureConfiguration.java#L346) feature configuration, once the above SQL statements are run. As it may lead to incorrect behavior, due to missing data for location_without_scheme column.
@@ -876,28 +879,28 @@ Apache Polaris 1.0.1-incubating was released on August 16th, 2025. It’s a main
 Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
 
 - **Highlights**
-  - First release ready for real-world workloads after the public beta 0.9.0 
-  - **Binary distribution** – first release with single downloadable .tgz or .zip artifact. 
-  - **Helm Chart** – debut of an official Helm chart for seamless Kubernetes deployment 
+  - First release ready for real-world workloads after the public beta 0.9.0
+  - **Binary distribution** – first release with single downloadable .tgz or .zip artifact.
+  - **Helm Chart** – debut of an official Helm chart for seamless Kubernetes deployment
 - **New features & enhancements**
-  - **Policy Store** — persistence with schema evolution, built‑in TMS policies (Data compaction, Snapshot expiry, etc) and REST CRUD endpoints 
-  - **Postgres JDBC persistence** — native JDBC backend with robust support for concurrent changes. 
-  - **Rollback Compaction on Conflicts** - makes Polaris smarter, to revert the compaction commits in case of crunch to let the writers who are actually adding or removing the data to the table succeed. In a sense treating compaction as always a lower priority process. 
-  - **Enhanced runtime** — new runtime powered by Quarkus delivers out‑of‑the‑box Kubernetes readiness, quick startup, OIDC integration, and many other benefits. Polaris server and admin tool are now using Quarkus as a runtime framework. 
-  - **HTTP caching via ETag** — the loadTable endpoint supports ETag, reducing bandwidth and improving perceived latency 
-  - **Support for external identity providers (IdP)** — Polaris can now be its own IdP, delegate to an external IdP, or both 
-  - **Snapshot filtering** – clients can choose to load only referenced snapshots 
-  - **Catalog Federation (experimental)** – federate requests to an external Iceberg REST or Hadoop Catalog 
-  - **Generic Tables (experimental)** — serve multiple table formats besides Iceberg tables; initial Spark 3.5 plugin supports Delta Lake 
+  - **Policy Store** — persistence with schema evolution, built‑in TMS policies (Data compaction, Snapshot expiry, etc) and REST CRUD endpoints
+  - **Postgres JDBC persistence** — native JDBC backend with robust support for concurrent changes.
+  - **Rollback Compaction on Conflicts** - makes Polaris smarter, to revert the compaction commits in case of crunch to let the writers who are actually adding or removing the data to the table succeed. In a sense treating compaction as always a lower priority process.
+  - **Enhanced runtime** — new runtime powered by Quarkus delivers out‑of‑the‑box Kubernetes readiness, quick startup, OIDC integration, and many other benefits. Polaris server and admin tool are now using Quarkus as a runtime framework.
+  - **HTTP caching via ETag** — the loadTable endpoint supports ETag, reducing bandwidth and improving perceived latency
+  - **Support for external identity providers (IdP)** — Polaris can now be its own IdP, delegate to an external IdP, or both
+  - **Snapshot filtering** – clients can choose to load only referenced snapshots
+  - **Catalog Federation (experimental)** – federate requests to an external Iceberg REST or Hadoop Catalog
+  - **Generic Tables (experimental)** — serve multiple table formats besides Iceberg tables; initial Spark 3.5 plugin supports Delta Lake
   - **Event Listener framework (experimental)** — subscribe to catalog events (AfterTableCommitedEvent, BeforeViewCommitedEvent, etc)
 - **Notable bug fixes**
-  - **CLI and Python Client improvements** – Support for new features, CLI repair, changes to the update subcommand, and various fixes 
-  - **Safe configurations** – Catalog-level Polaris configurations follow a strict naming convention to avoid name clashes with user-provided configuration entries. Legacy Polaris configuration names are still supported in 1.0 to allow existing deployments to migrate without rush. 
-  - **TableOperations optimizations** – Changes to BasePolarisTableOperations result in less traffic to object storage during commits 
-  - **Bounded entity cache** – The entity cache is now more memory-aware and less likely to lead to OOMs 
-  - **Bootstrapping fixes** – Users can more easily bootstrap a new realm. Root credentials can be provided by the user or generated by Polaris (and returned to the user). 
+  - **CLI and Python Client improvements** – Support for new features, CLI repair, changes to the update subcommand, and various fixes
+  - **Safe configurations** – Catalog-level Polaris configurations follow a strict naming convention to avoid name clashes with user-provided configuration entries. Legacy Polaris configuration names are still supported in 1.0 to allow existing deployments to migrate without rush.
+  - **TableOperations optimizations** – Changes to BasePolarisTableOperations result in less traffic to object storage during commits
+  - **Bounded entity cache** – The entity cache is now more memory-aware and less likely to lead to OOMs
+  - **Bootstrapping fixes** – Users can more easily bootstrap a new realm. Root credentials can be provided by the user or generated by Polaris (and returned to the user).
 - **Breaking changes**
-  - **Server Configuration** – The format used to configure the Polaris service in 0.9 has changed with the migration to Quarkus and changes to configurations 
+  - **Server Configuration** – The format used to configure the Polaris service in 0.9 has changed with the migration to Quarkus and changes to configurations
   - **Bootstrap Flow** – The bootstrap flow used in 0.9 has changed with the migration to Quarkus and the new admin tool
 
 ## [0.9.0-incubating]

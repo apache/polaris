@@ -29,8 +29,11 @@ their namespace, in addition to the catalog's allowed locations. The realm featu
 and the catalog property `polaris.config.allow.unstructured.table.location` remove that
 requirement when set to `true`.
 
-This page describes what happens to existing tables and views when the effective value of this
+This page describes what happens to **Iceberg** tables and views when the effective value of this
 setting changes from `true` to `false`, and how to find and fix locations that no longer comply.
+[Generic tables]({{% ref "../generic-table.md" %}}) are only checked when they are created with an
+explicit base location. They are not validated on load or drop the way Iceberg tables are on commit
+and credential vending.
 
 ## What is checked
 
@@ -50,6 +53,25 @@ A failed check returns HTTP 403 (`ForbiddenException`). Listing tables and loadi
 vended credentials are not affected.
 
 These checks do not apply to external catalogs, which always allow unstructured locations.
+
+## Interaction with object storage prefix for table locations
+
+[`DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED`]({{% ref "configuration-reference.md" %}}#polarisfeaturesdefault_location_object_storage_prefix_enabled)
+(the catalog property `polaris.config.default-table-location-object-storage-prefix.enabled`)
+places new Iceberg tables and views under the catalog's `default-base-location` with a hash prefix,
+not under their namespace location. That layout requires unstructured locations to be enabled.
+
+If you disable unstructured locations while the prefix flag stays enabled:
+
+- Every existing Iceberg table or view created under the prefix layout sits outside its namespace.
+  Commits and credential vending for those entities start failing with HTTP 403.
+- New Iceberg tables or views created without a client-supplied location fail at create time with
+  `IllegalStateException`, not HTTP 403, because Polaris refuses to generate a prefixed location
+  without unstructured locations.
+
+Turn off the prefix flag before or at the same time as disabling unstructured locations. Disabling
+only unstructured locations leaves every prefixed table incompatible and blocks new default-location
+creates while the prefix flag remains on.
 
 ## Changing the setting does not validate existing entities
 
@@ -102,7 +124,10 @@ Polaris does not report incompatible entities. To find them, compare for each ta
   `s3://bucket/warehouse/a/b`.
 
 Typical sources of incompatible locations are tables renamed across namespaces, tables created with
-an explicit location, and tables registered or migrated from another catalog.
+an explicit location, tables registered or migrated from another catalog, and Iceberg tables or
+views created while
+[`DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED`]({{% ref "configuration-reference.md" %}}#polarisfeaturesdefault_location_object_storage_prefix_enabled)
+was enabled (every such table sits outside its namespace).
 
 To fix an incompatible table or view:
 
@@ -111,6 +136,9 @@ To fix an incompatible table or view:
   statement, and drop the old table.
 - Keep unstructured locations enabled for the catalog that needs them, by setting the catalog
   property to `true`.
+- If the catalog uses the object storage prefix for default table locations, disable
+  `polaris.config.default-table-location-object-storage-prefix.enabled` (or move tables off the
+  prefixed layout) before or together with turning unstructured locations off.
 
 If operations start failing with HTTP 403 after the change, setting the catalog property back to
 `true` restores the previous behavior while you fix the affected entities.
