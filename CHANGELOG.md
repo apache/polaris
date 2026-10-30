@@ -105,8 +105,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   catalog allowlists and configured overlap checks.
 - With `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false`, creating or registering a table whose
   `write.data.path` or `write.metadata.path` lies outside the table's own location now fails with
-  403 Forbidden, except in `EXTERNAL` catalogs. Such tables could be created before, but loading
-  them or vending credentials for them already failed.
+  403 Forbidden. Such tables could be created before, but loading them or vending credentials for
+  them already failed.
 - Unless `ALLOW_TABLE_LOCATION_OVERLAP` is enabled, a table can no longer be created at a location
   that overlaps the `write.data.path` or `write.metadata.path` of an existing sibling table, and
   sibling tables can no longer share such a path. A namespace can no longer be created at such a
