@@ -19,6 +19,7 @@
 package org.apache.polaris.core.connection.hive;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -30,6 +31,8 @@ import org.apache.polaris.core.connection.ImplicitAuthenticationParametersDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class HiveConnectionConfigInfoDpoTest {
 
@@ -82,6 +85,34 @@ class HiveConnectionConfigInfoDpoTest {
     Map<String, String> properties = dpo.asIcebergCatalogProperties(mockCredentialManager(dpo));
 
     assertThat(properties).containsEntry(CatalogProperties.URI, dpo.getUri());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"thrift://hms:9083", "THRIFT://hms:9083", "Thrift://hms:9083"})
+  void testThriftSchemeIsAcceptedCaseInsensitively(String uri) {
+    HiveConnectionConfigInfoDpo dpo =
+        new HiveConnectionConfigInfoDpo(
+            uri,
+            new ImplicitAuthenticationParametersDpo(),
+            "s3://bucket/warehouse",
+            null,
+            Map.of());
+
+    assertThat(dpo.getUri()).isEqualTo(uri);
+  }
+
+  @Test
+  void testUriWithoutSchemeIsRejectedAsInvalid() {
+    assertThatThrownBy(
+            () ->
+                new HiveConnectionConfigInfoDpo(
+                    "hms-host/metastore",
+                    new ImplicitAuthenticationParametersDpo(),
+                    "s3://bucket/warehouse",
+                    null,
+                    Map.of()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid remote URI: hms-host/metastore");
   }
 
   private static PolarisCredentialManager mockCredentialManager(HiveConnectionConfigInfoDpo dpo) {
