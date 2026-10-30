@@ -26,3 +26,17 @@ extensions.getByType<CopiedCodeCheckerExtension>().apply {
   addDefaultContentTypes()
   licenseFile.convention(layout.settingsDirectory.file("LICENSE"))
 }
+
+configurations.configureEach {
+  resolutionStrategy.eachDependency {
+    if (
+      requested.group == "org.eclipse.jetty" || requested.group == "org.eclipse.jetty.websocket"
+    ) {
+      useVersion("9.4.58.v20250814")
+      because(
+        "Maintenance update: hive-metastore 3.1.3 transitively pins jetty 9.3.19.v20170502;" +
+          " 9.4.58.v20250814 is the latest 9.4.x release and addresses CVE-2024-13009",
+      )
+    }
+  }
+}
