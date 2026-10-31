@@ -97,18 +97,18 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
   void updateRequiresMatchingVersions() {
     PolarisBaseEntity v1 = entity(10L, PARENT, "sales", 1);
     persistence.writeEntity(callCtx, v1, false, null);
-    PolarisBaseEntity v2 = withVersion(v1, 2, 1, Map.of("k", "v"));
+    PolarisBaseEntity v2 = withVersion(v1, 2, 2, Map.of("k", "v"));
     persistence.writeEntity(callCtx, v2, false, v1);
 
     // v1 is now stale: both a stale entityVersion and a stale grantRecordsVersion are rejected.
     assertThatThrownBy(
             () -> persistence.writeEntity(callCtx, withVersion(v1, 3, 1, Map.of()), false, v1))
         .isInstanceOf(RetryOnConcurrencyException.class);
-    PolarisBaseEntity staleGrants = withVersion(v2, 2, 0, Map.of());
+    PolarisBaseEntity staleGrants = withVersion(v2, 2, 1, Map.of());
     assertThatThrownBy(
             () ->
                 persistence.writeEntity(
-                    callCtx, withVersion(v2, 3, 1, Map.of()), false, staleGrants))
+                    callCtx, withVersion(v2, 3, 2, Map.of()), false, staleGrants))
         .isInstanceOf(RetryOnConcurrencyException.class);
 
     assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isEqualTo(v2);
