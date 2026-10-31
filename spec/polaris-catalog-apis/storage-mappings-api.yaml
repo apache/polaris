@@ -36,15 +36,17 @@ paths:
         qualified name uses a given storage configuration (see StorageMappingTarget). Storage
         configurations are managed through the Polaris management API.
 
-        Without `namespace`, the mappings of the whole catalog are listed; with it, only the mappings
-        of namespaces and tables directly inside that namespace. With `storageConfigurationName`, only
-        the mappings to that storage configuration are listed.
+        Mappings are listed one level at a time, like namespaces: with `namespace`, the mappings of the
+        namespaces and tables directly inside it; without it, the mappings of the top-level
+        namespaces. This requires NAMESPACE_READ_PROPERTIES on `namespace`, or CATALOG_READ_PROPERTIES
+        on the catalog without it.
+
+        With `storageConfigurationName` instead, all the mappings to that storage configuration are
+        listed, at any level of the catalog. This answers which names use a storage configuration,
+        for example before deleting it, and requires CATALOG_MANAGE_METADATA on the catalog.
+        Setting both `namespace` and `storageConfigurationName` is a bad request (400).
 
         Results are paginated. A client follows `next-page-token` until it is null or absent.
-
-        Requires NAMESPACE_READ_PROPERTIES on `namespace`, or CATALOG_READ_PROPERTIES without it.
-        With `storageConfigurationName`, also requires STORAGE_CONFIGURATION_READ on that storage
-        configuration.
       parameters:
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
@@ -120,6 +122,9 @@ paths:
           storage configuration the table uses;
         - otherwise, a table with a mapping of its own takes it along to the new name, and a table
           without one can't be renamed into a namespace that uses a different storage configuration.
+
+        For the same reason, a view can't be renamed into a namespace that uses a different storage
+        configuration.
 
         Storage configurations are compared by identity, not by content: two storage configurations,
         or a storage configuration and the catalog's own `storageConfigInfo`, are always different.
