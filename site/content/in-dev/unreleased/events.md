@@ -17,22 +17,23 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Auditing with Events
+title: Events
 type: docs
-weight: 400
+weight: 455
 ---
 
-Operators who use Polaris events as an audit trail need to know which actions are
-attributable, which are not recorded at all, and where records can be lost. This
-page describes that for current Polaris: what events record, the gaps in
-coverage, the limits of event delivery, and how to correlate events with other
-logs. It documents current behavior and does not prescribe a compliance
-architecture.
+Polaris emits structured events for catalog and management operations and can
+forward them to external systems through listeners. This page describes what
+events record, how to configure listeners, how events are delivered, and how to
+correlate events with other logs.
 
 {{< alert warning >}}
-Polaris is not a security information and event management (SIEM) system. Retention,
-access control, tamper evidence, and querying of audit records are properties of
-the system that receives the events, not of Polaris.
+Polaris events are not a complete audit trail. They do not record authorization
+denials or authentication failures, and delivery is asynchronous and
+best-effort. See [What is not recorded](#what-is-not-recorded) and
+[Delivery guarantees](#delivery-guarantees) before using events for auditing.
+Retention, access control, tamper evidence, and querying of records are
+properties of the system that receives the events, not of Polaris.
 {{< /alert >}}
 
 ## What is recorded
@@ -79,7 +80,7 @@ deployment uses.
 * **Authentication failures.** Requests rejected during authentication are not
   dispatched as events.
 * **Decisions made by external authorizers.** If an
-  [external policy decision point]({{< relref "external-pdp" >}}) is configured,
+  [external policy decision point]({{< relref "managing-security/external-pdp" >}}) is configured,
   its decision logs are produced by that system, not by Polaris.
 
 HTTP access logs are not a substitute. They do not reliably include the
@@ -101,7 +102,7 @@ listener receives all events.
 | OpenTelemetry | `opentelemetry` | OpenTelemetry log records |
 
 Event types excluded by these filters, such as credential vending or grant
-changes, are not delivered to that listener. See the [configuration reference]({{% ref "../configuration/configuration-reference#events" %}})
+changes, are not delivered to that listener. See the [configuration reference]({{% ref "configuration/configuration-reference#events" %}})
 for all listener settings.
 
 ### The `events` table
@@ -157,7 +158,7 @@ storage credentials, the cloud provider's access logs record the data access.
   principal appears in Cloud Storage Data Access logs. It requires additional
   Workload Identity Federation settings.
 
-See the [feature flags reference]({{% ref "../configuration/configuration-reference#polarisfeatures" %}})
+See the [feature flags reference]({{% ref "configuration/configuration-reference#polarisfeatures" %}})
 for the options and requirements of each flag.
 
 ## Correlating with request IDs
@@ -179,5 +180,5 @@ For example, to investigate a denied request:
    request shows the same pattern, for example a missing table or a commit
    conflict, so the server log line from step 2 is what confirms a denial.
 
-See [Telemetry]({{% ref "../telemetry#mdc-logging" %}})
+See [Telemetry]({{% ref "telemetry#mdc-logging" %}})
 for the log format and MDC keys.

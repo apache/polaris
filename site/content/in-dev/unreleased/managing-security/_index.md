@@ -25,4 +25,3 @@ weight: 550
 * [Access Control]({{< relref "access-control" >}})
 * [Authentication and Identity Providers]({{< relref "external-idp" >}})
 * [External Policy Decision Point]({{< relref "external-pdp" >}}) (PDP), including Open-Policy-Agent (OPA)
-* [Auditing with Events]({{< relref "auditing" >}})
