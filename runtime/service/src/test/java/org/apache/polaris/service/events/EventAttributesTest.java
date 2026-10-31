@@ -48,9 +48,11 @@ import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
+import org.apache.polaris.service.types.CreateDirectoryRequest;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
+import org.apache.polaris.service.types.Directory;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.GetApplicablePoliciesResponse;
 import org.apache.polaris.service.types.LoadPolicyResponse;
@@ -95,6 +97,8 @@ class EventAttributesTest {
           CommitViewRequest.class,
           GenericTable.class,
           CreateGenericTableRequest.class,
+          Directory.class,
+          CreateDirectoryRequest.class,
           CreatePolicyRequest.class,
           UpdatePolicyRequest.class,
           LoadPolicyResponse.class,
