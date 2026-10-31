@@ -142,6 +142,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Credential vending no longer ends up with no allowed read/write locations when a table's data
+  or metadata path matches its base location except for the scheme (for example `abfss://` vs
+  `abfs://`) or a trailing slash. Such locations are mutual children, so the previous logic dropped
+  both and left the set empty. The base location is now kept as the surviving representative.
 - The Iceberg REST `/config` response now advertises the
   `GET /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials` endpoint, which Polaris
   already served. Clients that check advertised endpoints before refreshing vended credentials can
