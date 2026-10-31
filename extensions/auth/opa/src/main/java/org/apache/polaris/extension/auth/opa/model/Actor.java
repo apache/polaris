@@ -23,7 +23,9 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
+import java.util.Map;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 /**
  * Represents the actor (principal) making an authorization request.
@@ -40,4 +42,13 @@ public interface Actor {
 
   /** The list of roles associated with the principal. */
   List<String> roles();
+
+  /**
+   * Provenance-namespaced principal attributes projected after authentication ({@code
+   * polaris.auth.*}, {@code polaris.system.*}, {@code polaris.user.*}).
+   */
+  @Value.Default
+  default Map<String, String> attributes() {
+    return Map.of();
+  }
 }
