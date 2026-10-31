@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import java.util.Map;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
@@ -44,4 +45,12 @@ public interface Context {
    * names exist across different realms (multi-realm deployments using a shared OPA policy).
    */
   String realm();
+
+  /**
+   * Operator-defined static properties from the Polaris configuration.
+   *
+   * <p>Always present; empty when nothing is configured. Keys and values are passed through
+   * verbatim and are not interpreted by Polaris.
+   */
+  Map<String, String> properties();
 }
