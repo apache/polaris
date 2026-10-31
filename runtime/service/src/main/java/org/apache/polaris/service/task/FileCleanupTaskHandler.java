@@ -19,6 +19,7 @@
 package org.apache.polaris.service.task;
 
 import java.time.Duration;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -31,6 +32,7 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,6 +94,25 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
       Thread.currentThread().interrupt();
       throw new RuntimeException("Interrupted while waiting for " + description, e);
     }
+  }
+
+  /**
+   * Returns whether {@code file} is under one of {@code tableLocations}, the table locations
+   * recorded in the task (see {@link TaskUtils#storageLocations}). Files outside the table
+   * locations are skipped instead of deleted.
+   */
+  protected static boolean isUnderTableLocation(
+      Set<String> tableLocations, TableIdentifier tableId, String file) {
+    StorageLocation fileLocation = StorageLocation.of(file);
+    if (tableLocations.stream().anyMatch(l -> fileLocation.isChildOf(StorageLocation.of(l)))) {
+      return true;
+    }
+    LOGGER
+        .atWarn()
+        .addKeyValue(StructuredLogKeys.FILE, file)
+        .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableId)
+        .log("Not deleting file outside of the table locations {}", tableLocations);
+    return false;
   }
 
   @Override

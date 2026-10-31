@@ -21,6 +21,7 @@ package org.apache.polaris.service.task;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
@@ -58,7 +59,11 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
   public void handleTask(TaskEntity task, CallContext callContext) {
     BatchFileCleanupTask cleanupTask = task.readData(BatchFileCleanupTask.class);
     TableIdentifier tableId = cleanupTask.tableId();
-    List<String> batchFiles = cleanupTask.batchFiles();
+    Set<String> tableLocations = TaskUtils.storageLocations(task.getInternalPropertiesAsMap());
+    List<String> batchFiles =
+        cleanupTask.batchFiles().stream()
+            .filter(file -> isUnderTableLocation(tableLocations, tableId, file))
+            .toList();
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task, tableId)) {
       Map<Boolean, List<String>> partitionedFiles =
           batchFiles.stream()

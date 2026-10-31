@@ -68,6 +68,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   v6 is now **required** before starting this version of Polaris. The first request to any realm
   whose recorded schema version does not match what the binary expects will fail fast with a clear
   error message. See the [Relational JDBC metastore documentation] for the full upgrade path.
+- Purging a table, and deleting metadata files after a commit
+  (`write.metadata.delete-after-commit.enabled`), no longer delete files located outside the
+  table's location. Such files are left in place and a warning is logged.
+- Purging a table now fails with a 400 error if the table entity has no recorded location, and with
+  a 403 error if the locations in the table metadata don't match the ones recorded on the entity.
+  For tables created before 1.3.0, custom `write.data.path` and `write.metadata.path` locations are
+  taken from the table metadata, since they were not recorded on the entity.
 
 [Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 

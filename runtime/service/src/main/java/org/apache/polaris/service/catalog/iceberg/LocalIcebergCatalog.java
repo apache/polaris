@@ -55,7 +55,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.LocationProviders;
 import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Schema;
@@ -153,6 +152,7 @@ import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.idempotency.EntityIdempotency;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.task.TaskExecutor;
+import org.apache.polaris.service.task.TaskUtils;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.jspecify.annotations.NonNull;
@@ -214,12 +214,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   private final IdempotencyRequestContext idempotencyRequestContext;
 
   private Consumer<MetadataFileCleanup> deleteRemovedMetadataFiles =
-      LocalIcebergCatalog::defaultDeleteRemovedMetadataFiles;
-
-  private static void defaultDeleteRemovedMetadataFiles(MetadataFileCleanup cleanup) {
-    CatalogUtil.deleteRemovedMetadataFiles(
-        cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
-  }
+      MetadataFileCleanup::deleteRemovedMetadataFiles;
 
   /**
    * @param callContext the current CallContext
@@ -349,7 +344,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       PolarisMetaStoreManager newMetaStoreManager, Consumer<MetadataFileCleanup> deleteLogic) {
     this.metaStoreManager = newMetaStoreManager;
     this.deleteRemovedMetadataFiles =
-        deleteLogic != null ? deleteLogic : LocalIcebergCatalog::defaultDeleteRemovedMetadataFiles;
+        deleteLogic != null ? deleteLogic : MetadataFileCleanup::deleteRemovedMetadataFiles;
   }
 
   @Override
@@ -556,15 +551,42 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     return tableIdentifier.name();
   }
 
+  /**
+   * Returns the locations recorded on the table entity (its base location and, if set, its custom
+   * data and metadata locations), which bound the files deleted when the table is purged. Purging
+   * is rejected if the entity records no location, or if any of the locations in {@code metadata}
+   * differs from the recorded one.
+   */
+  private Set<String> storedTableLocationsForPurge(
+      TableIdentifier identifier, TableMetadata metadata) {
+    PolarisResolvedPathWrapper resolvedTable =
+        resolvedEntityView.getResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_TABLE);
+    IcebergTableLikeEntity entity =
+        resolvedTable == null ? null : IcebergTableLikeEntity.of(resolvedTable.getRawLeafEntity());
+    String storedLocation = entity == null ? null : entity.getBaseLocation();
+    if (storedLocation == null) {
+      throw new BadRequestException(
+          "Cannot purge table %s because its location is not recorded; drop it without purge",
+          identifier);
+    }
+    validateLocationsMatchEntity(identifier, entity, metadata);
+    Map<String, String> storedProperties = entity.getInternalPropertiesAsMap();
+    if (!storedProperties.containsKey(IcebergTableLikeEntity.LOCATION)) {
+      // Entities written before the write paths were recorded (Polaris < 1.3.0) don't have them;
+      // fall back to the write paths of the metadata, which validation does not check either.
+      storedProperties = metadata.properties();
+    }
+    return StorageUtil.getLocationsUsedByTable(storedLocation, storedProperties);
+  }
+
   @Override
   public boolean dropTable(TableIdentifier tableIdentifier, boolean purge) {
     TableOperations ops = newTableOps(tableIdentifier);
-    TableMetadata lastMetadata;
-    if (purge && ops.current() != null) {
-      lastMetadata = ops.current();
-    } else {
-      lastMetadata = null;
-    }
+
+    boolean triggerCleanup = purge && ops.current() != null;
+    Set<String> storageLocations =
+        triggerCleanup ? storedTableLocationsForPurge(tableIdentifier, ops.current()) : Set.of();
 
     Optional<PolarisEntity> storageInfoEntity =
         PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
@@ -579,7 +601,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             .map(PolarisEntity::getInternalPropertiesAsMap)
             .map(
                 properties -> {
-                  if (lastMetadata == null) {
+                  if (!triggerCleanup) {
                     return Map.<String, String>of();
                   }
                   Map<String, String> clone = new HashMap<>();
@@ -590,7 +612,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   // internals, io-impl, and the storage location.
                   clone.put(CatalogProperties.FILE_IO_IMPL, ioImplClassName);
                   clone.putAll(properties);
-                  clone.put(PolarisTaskConstants.STORAGE_LOCATION, lastMetadata.location());
+                  clone.put(
+                      PolarisTaskConstants.STORAGE_LOCATIONS,
+                      TaskUtils.encodeStorageLocations(storageLocations));
                   return clone;
                 })
             .orElse(Map.of());
@@ -623,7 +647,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
 
-    if (purge && lastMetadata != null && dropEntityResult.getCleanupTaskId() != null) {
+    if (triggerCleanup && dropEntityResult.getCleanupTaskId() != null) {
       LOGGER.info(
           "Scheduled cleanup task {} for table {}",
           dropEntityResult.getCleanupTaskId(),
@@ -1184,7 +1208,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                 storageHierarchy);
 
         storageInfoEntity.map(PolarisEntity::getInternalPropertiesAsMap).ifPresent(clone::putAll);
-        clone.put(PolarisTaskConstants.STORAGE_LOCATION, lastMetadata.location());
+        clone.put(
+            PolarisTaskConstants.STORAGE_LOCATIONS,
+            TaskUtils.encodeStorageLocations(Set.of(lastMetadata.location())));
 
         storageProperties = clone;
       }
@@ -1753,6 +1779,54 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     return result;
   }
 
+  /**
+   * Rejects table metadata whose locations differ from the ones recorded on the entity by the last
+   * commit, so that the locations used for the table are always the validated ones.
+   */
+  private static void validateLocationsMatchEntity(
+      TableIdentifier identifier, IcebergTableLikeEntity entity, TableMetadata metadata) {
+    String storedLocation = entity.getBaseLocation();
+    if (storedLocation != null
+        && !StorageLocation.of(storedLocation)
+            .isSameLocation(StorageLocation.of(metadata.location()))) {
+      LOGGER.debug(
+          "Location mismatch for table {}: metadata has {}, entity has {}",
+          identifier,
+          metadata.location(),
+          storedLocation);
+      throw new ForbiddenException(
+          "Location %s in the metadata of table %s does not match its stored location %s",
+          metadata.location(), identifier, storedLocation);
+    }
+    // Entities written before the write paths were recorded (Polaris < 1.3.0) have no LOCATION
+    // internal property; for them, an absent write path property means "unknown" rather than
+    // "unset": do not reject the metadata in such cases.
+    Map<String, String> internalProperties = entity.getInternalPropertiesAsMap();
+    if (internalProperties.containsKey(IcebergTableLikeEntity.LOCATION)) {
+      for (String key :
+          List.of(
+              IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+              IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)) {
+        Optional<StorageLocation> stored =
+            Optional.ofNullable(internalProperties.get(key)).map(StorageLocation::of);
+        Optional<StorageLocation> actual =
+            Optional.ofNullable(metadata.properties().get(key)).map(StorageLocation::of);
+        if (stored.isEmpty() != actual.isEmpty()
+            || (stored.isPresent() && !stored.get().isSameLocation(actual.get()))) {
+          LOGGER.debug(
+              "Property {} mismatch for table {}: metadata has {}, entity has {}",
+              key,
+              identifier,
+              actual.map(StorageLocation::toString).orElse(null),
+              stored.map(StorageLocation::toString).orElse(null));
+          throw new ForbiddenException(
+              "Property %s in the metadata of table %s does not match its stored value",
+              key, identifier);
+        }
+      }
+    }
+  }
+
   private class PolarisIcebergCatalogTableBuilder
       extends BaseMetastoreViewCatalog.BaseMetastoreViewCatalogTableBuilder {
     private final TableIdentifier identifier;
@@ -1799,6 +1873,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     private final boolean makeMetadataCurrentOnCommit;
 
     private FileIO tableFileIO;
+
+    // Locations recorded on the entity before the last doCommit(), used to bound metadata cleanup
+    private Set<String> storedTableLocations = Set.of();
 
     BasePolarisTableOperations(
         FileIO defaultFileIO,
@@ -1860,7 +1937,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
       long start = System.currentTimeMillis();
       doCommit(base, metadata);
-      deleteRemovedMetadataFiles.accept(new MetadataFileCleanup(io(), base, metadata));
+      deleteRemovedMetadataFiles.accept(
+          new MetadataFileCleanup(io(), base, metadata, storedTableLocations));
       requestRefresh();
 
       LOGGER.info(
@@ -2076,6 +2154,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               resolvedTableEntities == null ? null : resolvedTableEntities.getRawLeafEntity());
       String existingLocation =
           existingEntity == null ? null : existingEntity.getMetadataLocation();
+      storedTableLocations =
+          existingEntity == null
+              ? Set.of()
+              : StorageUtil.getLocationsUsedByTable(
+                  existingEntity.getBaseLocation(), existingEntity.getInternalPropertiesAsMap());
       String oldLocation = base == null ? null : base.metadataFileLocation();
       if (!Objects.equal(existingLocation, oldLocation)) {
         if (null == base) {

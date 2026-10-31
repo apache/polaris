@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.task;
 
+import static org.apache.polaris.service.task.TaskTestUtils.TASK_LOCATION;
 import static org.apache.polaris.service.task.TaskTestUtils.addTaskLocation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -30,7 +31,10 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -51,6 +55,8 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -100,25 +106,39 @@ public class BatchFileCleanupTaskHandlerTest {
     long snapshotId1 = 100L;
     ManifestFile manifestFile1 =
         TaskTestUtils.manifestFile(
-            fileIO, "manifest1.avro", snapshotId1, "dataFile1.parquet", "dataFile2.parquet");
+            fileIO,
+            TASK_LOCATION + "manifest1.avro",
+            snapshotId1,
+            TASK_LOCATION + "dataFile1.parquet",
+            TASK_LOCATION + "dataFile2.parquet");
     ManifestFile manifestFile2 =
         TaskTestUtils.manifestFile(
-            fileIO, "manifest2.avro", snapshotId1, "dataFile3.parquet", "dataFile4.parquet");
+            fileIO,
+            TASK_LOCATION + "manifest2.avro",
+            snapshotId1,
+            TASK_LOCATION + "dataFile3.parquet",
+            TASK_LOCATION + "dataFile4.parquet");
     Snapshot snapshot =
         TaskTestUtils.newSnapshot(
-            fileIO, "manifestList.avro", 1, snapshotId1, 99L, manifestFile1, manifestFile2);
+            fileIO,
+            TASK_LOCATION + "manifestList.avro",
+            1,
+            snapshotId1,
+            99L,
+            manifestFile1,
+            manifestFile2);
     StatisticsFile statisticsFile1 =
         TaskTestUtils.writeStatsFile(
             snapshot.snapshotId(),
             snapshot.sequenceNumber(),
-            "/metadata/" + UUID.randomUUID() + ".stats",
+            TASK_LOCATION + "metadata/" + UUID.randomUUID() + ".stats",
             fileIO);
     PartitionStatisticsFile partitionStatisticsFile1 =
         TaskTestUtils.writePartitionStatsFile(
             snapshot.snapshotId(),
-            "/metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
+            TASK_LOCATION + "metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
             fileIO);
-    String firstMetadataFile = "v1-295495059.metadata.json";
+    String firstMetadataFile = TASK_LOCATION + "v1-295495059.metadata.json";
     TableMetadata firstMetadata =
         TaskTestUtils.writeTableMetadata(
             fileIO,
@@ -130,11 +150,14 @@ public class BatchFileCleanupTaskHandlerTest {
 
     ManifestFile manifestFile3 =
         TaskTestUtils.manifestFile(
-            fileIO, "manifest3.avro", snapshot.snapshotId() + 1, "dataFile5.parquet");
+            fileIO,
+            TASK_LOCATION + "manifest3.avro",
+            snapshot.snapshotId() + 1,
+            TASK_LOCATION + "dataFile5.parquet");
     Snapshot snapshot2 =
         TaskTestUtils.newSnapshot(
             fileIO,
-            "manifestList2.avro",
+            TASK_LOCATION + "manifestList2.avro",
             snapshot.sequenceNumber() + 1,
             snapshot.snapshotId() + 1,
             snapshot.snapshotId(),
@@ -144,14 +167,14 @@ public class BatchFileCleanupTaskHandlerTest {
         TaskTestUtils.writeStatsFile(
             snapshot2.snapshotId(),
             snapshot2.sequenceNumber(),
-            "/metadata/" + UUID.randomUUID() + ".stats",
+            TASK_LOCATION + "metadata/" + UUID.randomUUID() + ".stats",
             fileIO);
     PartitionStatisticsFile partitionStatisticsFile2 =
         TaskTestUtils.writePartitionStatsFile(
             snapshot2.snapshotId(),
-            "/metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
+            TASK_LOCATION + "metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
             fileIO);
-    String secondMetadataFile = "v1-295495060.metadata.json";
+    String secondMetadataFile = TASK_LOCATION + "v1-295495060.metadata.json";
     TableMetadata secondMetadata =
         TaskTestUtils.writeTableMetadata(
             fileIO,
@@ -204,15 +227,20 @@ public class BatchFileCleanupTaskHandlerTest {
     long snapshotId = 100L;
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
-            fileIO, "manifest1.avro", snapshotId, "dataFile1.parquet", "dataFile2.parquet");
+            fileIO,
+            TASK_LOCATION + "manifest1.avro",
+            snapshotId,
+            TASK_LOCATION + "dataFile1.parquet",
+            TASK_LOCATION + "dataFile2.parquet");
     TestSnapshot snapshot =
-        TaskTestUtils.newSnapshot(fileIO, "manifestList.avro", 1, snapshotId, 99L, manifestFile);
-    String metadataFile = "v1-49494949.metadata.json";
+        TaskTestUtils.newSnapshot(
+            fileIO, TASK_LOCATION + "manifestList.avro", 1, snapshotId, 99L, manifestFile);
+    String metadataFile = TASK_LOCATION + "v1-49494949.metadata.json";
     StatisticsFile statisticsFile =
         TaskTestUtils.writeStatsFile(
             snapshot.snapshotId(),
             snapshot.sequenceNumber(),
-            "/metadata/" + UUID.randomUUID() + ".stats",
+            TASK_LOCATION + "metadata/" + UUID.randomUUID() + ".stats",
             fileIO);
     TaskTestUtils.writeTableMetadata(fileIO, metadataFile, List.of(statisticsFile), snapshot);
 
@@ -238,9 +266,9 @@ public class BatchFileCleanupTaskHandlerTest {
 
   @Test
   public void testExistenceCheckIsPerformedOncePerFile() {
-    String presentFile1 = "s3://bucket/present1";
-    String presentFile2 = "s3://bucket/present2";
-    String missingFile = "s3://bucket/missing";
+    String presentFile1 = TASK_LOCATION + "present1";
+    String presentFile2 = TASK_LOCATION + "present2";
+    String missingFile = TASK_LOCATION + "missing";
 
     InputFile presentInput = Mockito.mock(InputFile.class);
     Mockito.when(presentInput.exists()).thenReturn(true);
@@ -264,8 +292,10 @@ public class BatchFileCleanupTaskHandlerTest {
                     BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
             .setName(UUID.randomUUID().toString())
             .build();
+    TaskEntity taskWithLocation = addTaskLocation(task);
 
-    assertThatCode(() -> handler.handleTask(task, polarisCallContext)).doesNotThrowAnyException();
+    assertThatCode(() -> handler.handleTask(taskWithLocation, polarisCallContext))
+        .doesNotThrowAnyException();
 
     // Each file must have been checked exactly once by the pre-delete scan.
     Mockito.verify(fileIO, Mockito.times(1)).newInputFile(presentFile1);
@@ -308,15 +338,20 @@ public class BatchFileCleanupTaskHandlerTest {
     long snapshotId = 100L;
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
-            fileIO, "manifest1.avro", snapshotId, "dataFile1.parquet", "dataFile2.parquet");
+            fileIO,
+            TASK_LOCATION + "manifest1.avro",
+            snapshotId,
+            TASK_LOCATION + "dataFile1.parquet",
+            TASK_LOCATION + "dataFile2.parquet");
     TestSnapshot snapshot =
-        TaskTestUtils.newSnapshot(fileIO, "manifestList.avro", 1, snapshotId, 99L, manifestFile);
-    String metadataFile = "v1-49494949.metadata.json";
+        TaskTestUtils.newSnapshot(
+            fileIO, TASK_LOCATION + "manifestList.avro", 1, snapshotId, 99L, manifestFile);
+    String metadataFile = TASK_LOCATION + "v1-49494949.metadata.json";
     StatisticsFile statisticsFile =
         TaskTestUtils.writeStatsFile(
             snapshot.snapshotId(),
             snapshot.sequenceNumber(),
-            "/metadata/" + UUID.randomUUID() + ".stats",
+            TASK_LOCATION + "metadata/" + UUID.randomUUID() + ".stats",
             fileIO);
     TaskTestUtils.writeTableMetadata(fileIO, metadataFile, List.of(statisticsFile), snapshot);
     assertThat(TaskUtils.exists(statisticsFile.path(), fileIO)).isTrue();
@@ -349,5 +384,81 @@ public class BatchFileCleanupTaskHandlerTest {
 
     // Check if the file was successfully deleted after retries
     assertThat(TaskUtils.exists(statisticsFile.path(), fileIO)).isFalse();
+  }
+
+  @Test
+  public void testFileOutsideTableLocationIsNotDeleted() {
+    InMemoryFileIO fileIO =
+        new InMemoryFileIO() {
+          @Override
+          public void close() {
+            // no-op
+          }
+        };
+    String insideFile = TASK_LOCATION + "metadata/v1.metadata.json";
+    String outsideFile = "file:///other-table/metadata/v1.metadata.json";
+    fileIO.addFile(insideFile, new byte[] {1});
+    fileIO.addFile(outsideFile, new byte[] {1});
+    BatchFileCleanupTaskHandler handler = newBatchFileCleanupTaskHandler(fileIO);
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
+    TaskEntity task =
+        addTaskLocation(
+            new TaskEntity.Builder()
+                .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
+                .withData(
+                    new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
+                        tableIdentifier,
+                        List.of(insideFile, outsideFile),
+                        BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
+                .setName(UUID.randomUUID().toString())
+                .build());
+
+    handler.handleTask(task, polarisCallContext);
+
+    assertThat(TaskUtils.exists(insideFile, fileIO)).isFalse();
+    assertThat(TaskUtils.exists(outsideFile, fileIO)).isTrue();
+  }
+
+  @Test
+  public void testFileUnderAnyRecordedTableLocationIsDeleted() {
+    InMemoryFileIO fileIO =
+        new InMemoryFileIO() {
+          @Override
+          public void close() {
+            // no-op
+          }
+        };
+    String insideFile = TASK_LOCATION + "metadata/v1.metadata.json";
+    String customDataLocation = "file:///custom-data/";
+    String customLocationFile = customDataLocation + "data1.parquet";
+    String outsideFile = "file:///other-table/data2.parquet";
+    fileIO.addFile(insideFile, new byte[] {1});
+    fileIO.addFile(customLocationFile, new byte[] {1});
+    fileIO.addFile(outsideFile, new byte[] {1});
+    BatchFileCleanupTaskHandler handler = newBatchFileCleanupTaskHandler(fileIO);
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
+    TaskEntity task =
+        new TaskEntity.Builder()
+            .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
+            .withData(
+                new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
+                    tableIdentifier,
+                    List.of(insideFile, customLocationFile, outsideFile),
+                    BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
+            .setName(UUID.randomUUID().toString())
+            .build();
+    Map<String, String> properties = new HashMap<>(task.getInternalPropertiesAsMap());
+    properties.put(
+        PolarisTaskConstants.STORAGE_LOCATIONS,
+        TaskUtils.encodeStorageLocations(Set.of(TASK_LOCATION, customDataLocation)));
+    TaskEntity taskWithLocations =
+        TaskEntity.of(
+            new PolarisBaseEntity.Builder(task).internalPropertiesAsMap(properties).build());
+
+    handler.handleTask(taskWithLocations, polarisCallContext);
+
+    assertThat(TaskUtils.exists(insideFile, fileIO)).isFalse();
+    assertThat(TaskUtils.exists(customLocationFile, fileIO)).isFalse();
+    assertThat(TaskUtils.exists(outsideFile, fileIO)).isTrue();
   }
 }
