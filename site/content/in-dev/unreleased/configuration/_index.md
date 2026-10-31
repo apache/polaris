@@ -28,5 +28,5 @@ This section covers how to configure Apache Polaris.
 - [Configuring Polaris]({{% ref "configuring-polaris.md" %}}) - Learn how to configure Polaris using environment variables, configuration files, and other mechanisms.
 - [Configuration Reference]({{% ref "configuration-reference.md" %}}) - A comprehensive reference of all Polaris configuration options.
 - [Production Configuration]({{% ref "configuring-polaris-for-production" %}}) - Tips and best practices for deploying Polaris in production environments.
-- [Disabling Unstructured Table Locations]({{% ref "disabling-unstructured-table-locations.md" %}}) - Impact of disabling `ALLOW_UNSTRUCTURED_TABLE_LOCATION` on existing tables and views.
+- [Structured and Unstructured Table Locations]({{% ref "structured-and-unstructured-table-locations.md" %}}) - Where Iceberg tables and views may be located, and the impact of switching between the two modes on existing tables and views.
 

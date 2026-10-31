@@ -112,7 +112,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   under the prefixed layout. If the prefix flag stays on, new creates without a location fail with
   `IllegalStateException`. Operators should check existing locations before or after disabling
   unstructured locations, and turn off the prefix flag together with unstructured locations when
-  applicable; see "Disabling Unstructured Table Locations" in the configuration documentation.
+  applicable; see "Structured and Unstructured Table Locations" in the configuration documentation.
 
 ### New Features
 
