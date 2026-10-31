@@ -1267,6 +1267,8 @@ components:
             configuration. The interpretation of this name depends on specific runtime components that
             are included in a server to support interacting with storage systems. Standard Apache Polaris
             servers use this name for finding base S3 and STS credentials.
+
+
             Note: this name is optional and unrelated to the name of a storage configuration
             (StorageConfiguration.name).
       required:
@@ -1732,7 +1734,13 @@ components:
 
         A storage configuration is immutable: there is no update operation. To change settings,
         create a new storage configuration and use it for new namespaces and tables. Existing
-        namespaces and tables keep the storage configuration they were created with.
+        namespaces and tables keep the storage configuration they were created with. This does not
+        apply to the catalog's own `storageConfigInfo`, which can still be changed with updateCatalog;
+        namespaces and tables that use it follow those changes, as before.
+
+        Polaris does not check that the cloud identity of a storage configuration (for example an AWS
+        IAM role) can access its locations. Changes made in the cloud provider to that identity or to
+        its permissions take effect without any change in Polaris.
 
         Privileges:
         - STORAGE_CONFIGURATION_CREATE and STORAGE_CONFIGURATION_LIST on the catalog allow creating
@@ -1757,9 +1765,11 @@ components:
         baseLocation:
           type: string
           description: >-
-            Optional. Must be inside one of `storageConfigInfo.allowedLocations`. Namespaces and tables
-            created on this storage configuration without an explicit location are placed under it.
-            Without it, they must be created with an explicit location.
+            Optional. Must be inside one of `storageConfigInfo.allowedLocations`. A namespace or table
+            whose own storage mapping names this storage configuration, and that is created without an
+            explicit location, is placed under it. Without it, such a namespace or table must be
+            created with an explicit location. Namespaces and tables inside a mapped namespace are
+            placed under that namespace's location, as before.
         createTimestamp:
           type: integer
           format: "int64"
