@@ -3123,13 +3123,15 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                         Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
                 lastMetadata = TableMetadataParser.read(tableFileIO, metadataLocation);
               } catch (RuntimeException e) {
+                // Keep the entity. Dropping it here would free the name and orphan the files,
+                // and a later pass would have nothing left to retry.
                 LOGGER.warn(
-                    "Unable to read metadata at {} for expired soft-deleted table {}, skipping"
-                        + " data purge",
+                    "Unable to read metadata at {} for expired soft-deleted table {}, leaving it"
+                        + " in place so expiry can retry",
                     metadataLocation,
                     identifier,
                     e);
-                purgeEntity = false;
+                continue;
               }
             } else {
               purgeEntity = false;

@@ -45,6 +45,7 @@ import io.quarkus.test.junit.QuarkusMock;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
@@ -2224,6 +2225,31 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
 
     Assertions.assertThat(refreshedCatalog.listTables(NS)).doesNotContain(TABLE);
+  }
+
+  @Test
+  public void testSoftDeleteExpireKeepsEntityWhenMetadataCannotBeRead() throws IOException {
+    LocalIcebergCatalog softCatalog = newSoftDeleteCatalog("PT0S", true);
+    softCatalog.createNamespace(NS);
+    Table table = softCatalog.buildTable(TABLE, SCHEMA).create();
+    String metadataLocation = ((BaseTable) table).operations().current().metadataFileLocation();
+    byte[] metadata;
+    try (InputStream in = new InMemoryFileIO().newInputFile(metadataLocation).newStream()) {
+      metadata = in.readAllBytes();
+    }
+
+    Assertions.assertThat(softCatalog.dropTable(TABLE, false)).isTrue();
+    new InMemoryFileIO().deleteFile(metadataLocation);
+
+    // Expiry runs on list. The metadata read fails, so the held entity must stay.
+    Assertions.assertThat(softCatalog.listTables(NS)).doesNotContain(TABLE);
+    Assertions.assertThatThrownBy(() -> softCatalog.buildTable(TABLE, SCHEMA).create())
+        .isInstanceOf(AlreadyExistsException.class);
+
+    new InMemoryFileIO().addFile(metadataLocation, metadata);
+    Table recreated = softCatalog.buildTable(TABLE, SCHEMA).create();
+    Assertions.assertThat(recreated).isNotNull();
+    Assertions.assertThat(softCatalog.tableExists(TABLE)).isTrue();
   }
 
   @Test
