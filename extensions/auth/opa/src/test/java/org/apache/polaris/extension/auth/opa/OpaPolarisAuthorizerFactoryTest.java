@@ -289,18 +289,15 @@ public class OpaPolarisAuthorizerFactoryTest {
 
         PolarisPrincipal principal =
             PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
-        assertThatNoException()
-            .isThrownBy(
-                () ->
-                    authorizer
-                        .authorize(
-                            new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                            new AuthorizationRequest(
-                                principal,
-                                List.of(
-                                    new TargetlessAuthorizationIntent(
-                                        PolarisAuthorizableOperation.GET_CATALOG))))
-                        .throwIfDenied());
+        authorizer
+            .authorize(
+                new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                new AuthorizationRequest(
+                    principal,
+                    List.of(
+                        new TargetlessAuthorizationIntent(
+                            PolarisAuthorizableOperation.GET_CATALOG))))
+            .throwIfDenied();
 
         ObjectMapper mapper = JsonMapper.builder().build();
         JsonNode properties =

@@ -1311,7 +1311,7 @@ public class OpaPolarisAuthorizerTest {
       AuthorizationRequest request = requestWithCatalogTarget(principal);
       AuthorizationState authzState = new AuthorizationState(mock(PolarisResolutionManifest.class));
 
-      assertThatNoException().isThrownBy(() -> authorizer.authorize(authzState, request));
+      authorizer.authorize(authzState, request).throwIfDenied();
 
       return JsonMapper.builder()
           .build()
