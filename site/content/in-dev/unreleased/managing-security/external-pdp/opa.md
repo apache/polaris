@@ -170,9 +170,16 @@ request. For example, with policy data that holds the grants of each deployment:
 }
 ```
 
-the same policy allows data engineers to drop tables in `qa` but not in `prod`:
+the following complete policy allows data engineers to drop tables in `qa` but not in `prod`:
 
 ```rego
+package polaris.authz
+
+import future.keywords.if
+import future.keywords.in
+
+default allow := false
+
 deployment := sprintf("%s/%s", [input.context.properties.group, input.context.properties.tier])
 
 allow if {
@@ -181,6 +188,10 @@ allow if {
     input.action in grant.actions
 }
 ```
+
+To add this to an existing policy, such as the one in [Policy Example](#policy-example), copy only
+the `deployment` and `allow` rules. That policy already declares `default allow := false`, and a
+package can declare it only once.
 
 The same approach works for identifiers that must be unique across deployments, for example
 combining the properties with the catalog name of a table request
