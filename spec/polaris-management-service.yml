@@ -1755,9 +1755,8 @@ components:
           NAMESPACE_ATTACH_STORAGE_CONFIGURATION and NAMESPACE_DETACH_STORAGE_CONFIGURATION on the
           parent namespace (CATALOG_ATTACH_STORAGE_CONFIGURATION and
           CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog for a top-level namespace), as for
-          policies. They do not allow
-          reading or deleting the storage configuration, and creating a storage configuration does
-          not allow using it.
+          policies. They do not allow reading or deleting the storage configuration, and creating a
+          storage configuration does not allow using it.
         - STORAGE_CONFIGURATION_MANAGE_GRANTS_ON_SECURABLE on a storage configuration allows
           managing the grants on it.
       properties:
