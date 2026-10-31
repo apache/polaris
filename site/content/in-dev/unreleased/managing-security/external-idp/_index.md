@@ -140,6 +140,22 @@ quarkus.oidc.oidc-tenant1.application-type=service
 
 When using multiple OIDC tenants, it's your responsibility to configure tenant resolution appropriately. See the [Quarkus OpenID Connect Multitenancy Guide](https://quarkus.io/guides/security-openid-connect-multitenancy#tenant-resolution).  
 
+### OAuth 2.0 Protected Resource Metadata (RFC 9728)
+
+Independently of tenant configuration, once a tenant is enabled you can optionally advertise its authorization server via the OAuth 2.0 Protected Resource Metadata endpoint (`/.well-known/oauth-protected-resource`, [RFC 9728](https://www.rfc-editor.org/rfc/rfc9728)):
+
+```properties
+quarkus.oidc.resource-metadata.enabled=true
+quarkus.oidc.resource-metadata.resource=https://catalog.example.com/api/catalog
+quarkus.oidc.resource-metadata.authorization-server=https://auth.example.com/realms/polaris
+```
+
+This is server-side metadata only: Polaris publishes the document, but a client has to already support RFC 9728 discovery to use it. The Iceberg REST client does not do this today, and most clients currently don't either -- enabling this setting does not by itself change how existing Iceberg/Spark clients authenticate against Polaris. It benefits clients and tooling that are (or become) RFC 9728-aware.
+
+`quarkus.oidc.resource-metadata.resource` accepts a single value per OIDC tenant. Polaris serves two distinct resources, `/api/catalog` (covering the Iceberg REST, Policy, and Generic Tables APIs) and `/api/management` -- only the former is covered by this metadata document; the management API is not currently advertised.
+
+This applies to the default single-tenant configuration. When using named OIDC tenants, resource metadata is configured per-tenant under `quarkus.oidc.<tenant-name>.resource-metadata.*`.
+
 ### Principal Mapping 
 
 While OIDC tenant resolution is entirely delegated to Quarkus, Polaris requires additional configuration to extract the Polaris principal and its roles from the credentials generated and validated by Quarkus. This part of the authentication process is configured with Polaris-specific properties that map JWT claims to Polaris principal fields: 
