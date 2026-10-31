@@ -2351,26 +2351,36 @@ paths:
 
         Map the fully qualified name of a namespace or table to a storage configuration. The target
         must not exist yet; its parent namespace must exist. When a namespace or table is later
-        created under that name, through the Iceberg REST API or the Polaris API, it is created on the
-        mapped storage configuration:
+        created under that name, through the Iceberg REST API (including a staged create and
+        `registerTable`) or the Polaris API, it is created on the mapped storage configuration:
         - its location is checked against that storage configuration's `allowedLocations`;
         - without an explicit location, it is placed under that storage configuration's
           `baseLocation`;
-        - its storage credentials come from that storage configuration.
+        - Polaris uses that storage configuration for all access to its storage, including the
+          credentials it vends.
 
-        Namespaces and tables created inside a mapped namespace use the same storage configuration
-        unless they have a mapping of their own.
+        For a staged create, the mapping that counts is the one in place when the create is
+        committed.
+
+        Namespaces, tables and views created inside a mapped namespace use its storage configuration
+        unless they have a mapping of their own. Only namespaces and Iceberg tables can have a
+        mapping of their own.
 
         A storage mapping is never changed while its target exists: it can't be created for an
-        existing namespace or table, and it can't be removed from one. An existing namespace or table
-        therefore always uses the storage configuration it was created with. When a table with a
-        mapping is renamed, its mapping is renamed with it; the rename is refused if the new name is
-        mapped to a different storage configuration. A table without a mapping can't be renamed into a
-        namespace that uses a different storage configuration.
+        existing namespace or table, and it can't be removed from one. Together with the rename rules
+        below, this means that a namespace or table created on a storage configuration keeps using it
+        for as long as it exists. A rename keeps a table on the storage configuration it uses:
+        - if the new name has a storage mapping, the rename is refused unless that mapping names the
+          storage configuration the table uses;
+        - otherwise, a table with a mapping of its own takes it along to the new name, and a table
+          without one can't be renamed into a namespace that uses a different storage configuration.
+
+        Storage configurations are compared by identity, not by content: two storage configurations,
+        or a storage configuration and the catalog's own `storageConfigInfo`, are always different.
 
         A storage mapping stays when its namespace or table is dropped, so a namespace or table created
         again under the same name uses the same storage configuration. Dropping a namespace removes the
-        mappings of the names inside it.
+        mappings of the names directly inside it.
 
         Requires STORAGE_CONFIGURATION_ATTACH on the storage configuration, and
         NAMESPACE_MANAGE_STORAGE_MAPPINGS on the parent namespace (CATALOG_MANAGE_STORAGE_MAPPINGS on
@@ -2475,10 +2485,11 @@ paths:
         The call maps the namespace name to the storage configuration, as `createStorageMapping` does,
         then creates the namespace as the Iceberg REST `createNamespace` operation would. If the name
         is already mapped to this storage configuration, the existing mapping is used. If the namespace
-        is not created, a mapping created by this call is removed.
+        is not created, the server removes a mapping created by this call. This is best effort: after
+        a server failure the mapping can remain, and `listStorageMappings` shows it.
 
-        Requires the privileges of `createStorageMapping` and those of the Iceberg REST
-        `createNamespace` operation.
+        Requires the privileges of `createStorageMapping`, even when the existing mapping is used, and
+        those of the Iceberg REST `createNamespace` operation.
       requestBody:
         required: true
         content:
@@ -2531,11 +2542,13 @@ paths:
         The call maps the table name to the storage configuration, as `createStorageMapping` does,
         then creates the table as the Iceberg REST `createTable` operation would. If the name is
         already mapped to this storage configuration, the existing mapping is used. If the table is not
-        created, a mapping created by this call is removed. With `stage-create`, the mapping is kept,
-        so that the commit that creates the table uses the storage configuration.
+        created, the server removes a mapping created by this call. This is best effort: after a
+        server failure the mapping can remain, and `listStorageMappings` shows it. With
+        `stage-create`, the mapping is kept, so that the commit that creates the table uses the
+        storage configuration.
 
-        Requires the privileges of `createStorageMapping` and those of the Iceberg REST `createTable`
-        operation.
+        Requires the privileges of `createStorageMapping`, even when the existing mapping is used, and
+        those of the Iceberg REST `createTable` operation.
       parameters:
         - $ref: '#/components/parameters/data-access'
       requestBody:
@@ -5554,12 +5567,14 @@ components:
             type: string
           description: |
             The fully qualified name of the target, from the top-level namespace down to the target
-            itself. For a table, the last element is the table name.
+            itself. For a table, the last element is the table name, so the path has at least two
+            elements.
           example:
             - finance
             - ledger
     StorageMapping:
       type: object
+      description: A storage mapping from the fully qualified name of a namespace or table to a storage configuration.
       required:
         - target
         - storage-configuration-name
