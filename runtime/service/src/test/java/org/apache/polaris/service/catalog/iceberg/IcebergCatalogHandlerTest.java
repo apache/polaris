@@ -60,6 +60,7 @@ import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.rest.credentials.Credential;
+import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
@@ -1014,5 +1015,73 @@ class IcebergCatalogHandlerTest {
     ArgumentCaptor<PageToken> pageTokenCaptor = ArgumentCaptor.forClass(PageToken.class);
     verify(catalog).listTables(eq(NS1), pageTokenCaptor.capture());
     assertThat(pageTokenCaptor.getValue().pageSize()).hasValue(expectedPageSize);
+  }
+
+  /**
+   * A staged create only needs the default location, which the catalog can supply directly. Going
+   * through a create transaction to read the location back costs an extra passthrough resolution of
+   * the table path and discards everything else it builds.
+   */
+  @Test
+  void createTableStagedDerivesDefaultLocationWithoutBuildingATransaction() {
+    String defaultLocation = "s3://fake-bucket/tables/table2";
+
+    LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+    when(icebergCatalog.defaultWarehouseLocation(TABLE2)).thenReturn(defaultLocation);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    LoadTableResponse response =
+        handler.createTableStaged(
+            TABLE2.namespace(),
+            CreateTableRequest.builder()
+                .withName(TABLE2.name())
+                .withSchema(
+                    new Schema(Types.NestedField.required(1, "id", Types.IntegerType.get())))
+                .build(),
+            EnumSet.noneOf(AccessDelegationMode.class),
+            Optional.empty());
+
+    verify(icebergCatalog, never()).buildTable(any(), any());
+    assertThat(response.tableMetadata().location()).isEqualTo(defaultLocation);
+  }
+
+  /**
+   * A staged create that carries a client-specified location must still run it through the
+   * catalog's transform, so the table inherits any location override the catalog applies.
+   */
+  @Test
+  void createTableStagedTransformsAClientSpecifiedLocation() {
+    String requestedLocation = "s3://fake-bucket/requested/table2";
+    String transformedLocation = "s3://fake-bucket/transformed/table2";
+
+    LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+    when(realmConfig.getConfig(
+            eq(FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION), eq(catalogEntity)))
+        .thenReturn(true);
+    when(icebergCatalog.transformTableLikeLocation(TABLE2, requestedLocation))
+        .thenReturn(transformedLocation);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    LoadTableResponse response =
+        handler.createTableStaged(
+            TABLE2.namespace(),
+            CreateTableRequest.builder()
+                .withName(TABLE2.name())
+                .withLocation(requestedLocation)
+                .withSchema(
+                    new Schema(Types.NestedField.required(1, "id", Types.IntegerType.get())))
+                .build(),
+            EnumSet.noneOf(AccessDelegationMode.class),
+            Optional.empty());
+
+    verify(icebergCatalog, never()).buildTable(any(), any());
+    verify(icebergCatalog, never()).defaultWarehouseLocation(any());
+    assertThat(response.tableMetadata().location()).isEqualTo(transformedLocation);
   }
 }
