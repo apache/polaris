@@ -2277,6 +2277,55 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/v1/{prefix}/metrics:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+    post:
+      tags:
+        - Metrics Reports API
+      summary: Query metrics reports for one or more catalog objects
+      operationId: queryTableMetrics
+      description: |
+        **Experimental / Beta:** The Metrics Reports API is experimental and may change in a
+        backward-incompatible way in any future release. It should not be used in production
+        environments.
+
+        Returns persisted metrics for the catalog objects listed in the request body. All requested
+        objects must belong to the catalog identified by `prefix`.
+
+        Requires the TABLE_READ_METRICS privilege on every requested table.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryMetricsRequest'
+      responses:
+        '200':
+          description: Paginated list of metrics reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetricsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The catalog, namespace, or table does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                TableNotFound:
+                  $ref: '#/components/examples/NoSuchTableError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
 components:
   securitySchemes:
     OAuth2:
@@ -5237,6 +5286,102 @@ components:
           $ref: '#/components/schemas/SemanticModelDocument'
         entity-version:
           $ref: '#/components/schemas/EntityVersion'
+    MetricType:
+      type: string
+      description: |
+        Identifies the type of a metrics report. Standard types currently defined by this specification are `iceberg-scan` and `iceberg-commit`. Additional standard types may be introduced in future versions.
+        Implementation-specific types SHOULD use an `x-` prefix followed by an implementation namespace, for example, `x-my-metric`, to avoid collisions with standard types. This is a naming convention, not a schema constraint.
+    CatalogObject:
+      type: object
+      description: |
+        Identifies a catalog object and, optionally, one of its snapshots. The identifier, type and snapshot ID of an entry must match together.
+      required:
+        - identifier
+      properties:
+        identifier:
+          $ref: '#/components/schemas/CatalogObjectIdentifier'
+        type:
+          type: string
+          default: iceberg-table
+          description: |
+            The catalog object type. Combined with identifier, identifies the exact catalog object. Defaults to `iceberg-table` when omitted. Currently, only `iceberg-table` is supported; entries with unsupported values are ignored.
+        snapshotId:
+          type: integer
+          format: int64
+          description: |
+            Optional snapshot filter for this object. If omitted, no snapshot filter is applied.
+    QueryMetricsRequest:
+      type: object
+      required:
+        - metricTypes
+        - objects
+      properties:
+        metricTypes:
+          type: array
+          minItems: 1
+          description: |
+            Types of metrics to retrieve. Reports of any of the listed types are returned. Unsupported types yield no reports.
+          items:
+            $ref: '#/components/schemas/MetricType'
+        objects:
+          type: array
+          minItems: 1
+          description: |
+            Catalog objects to query, all belonging to the catalog identified by prefix in the path. Entries are combined with OR semantics. Omitting `snapshotId` on an entry applies no snapshot filter; the other query filters still apply. If the same object appears both with and without a snapshot ID, the entry without a snapshot ID takes precedence. Overlapping entries do not duplicate reports.
+          items:
+            $ref: '#/components/schemas/CatalogObject'
+        pageToken:
+          $ref: '#/components/schemas/PageToken'
+        pageSize:
+          type: integer
+          minimum: 1
+          description: |
+            Maximum number of results to return per page. When pagination is requested and this field is omitted, the server selects the page size.
+        timestampFrom:
+          type: integer
+          format: int64
+          description: Inclusive lower bound on report timestamp (Unix epoch milliseconds)
+        timestampTo:
+          type: integer
+          format: int64
+          description: Exclusive upper bound on report timestamp (Unix epoch milliseconds)
+    MetricsReport:
+      type: object
+      description: |
+        Envelope for a single persisted metrics report. The `payload` is an opaque JSON object so fields can be added without requiring a change to this API's schema.
+      required:
+        - metricType
+        - object
+        - timestampMs
+        - payload
+      properties:
+        metricType:
+          $ref: '#/components/schemas/MetricType'
+        object:
+          $ref: '#/components/schemas/CatalogObject'
+        timestampMs:
+          type: integer
+          format: int64
+          description: Server-side timestamp when the report was received (Unix epoch milliseconds)
+        payload:
+          type: object
+          additionalProperties: true
+          description: |
+            Opaque metrics report payload, e.g. `{"type": "iceberg.metrics.scan", "version": 1, "data": {...}}`. The payload is a projection reconstructed from the persisted metrics record, not the original report as received: `data` contains only the metric fields the persistence backend stores, and fields of the original report that are not persisted (e.g. custom metrics or report metadata) are not returned. Clients must not assume every field of the original Iceberg report is present. When available, request correlation identifiers are returned under `request` (`request-id`, `otel-trace-id`, `otel-span-id`).
+    ListMetricsResponse:
+      type: object
+      required:
+        - reports
+      properties:
+        nextPageToken:
+          type: string
+          nullable: true
+          description: |
+            Opaque cursor for fetching the next page. Null or absent when no further pages exist.
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricsReport'
   responses:
     BadRequestErrorResponse:
       description: Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server's middleware.
