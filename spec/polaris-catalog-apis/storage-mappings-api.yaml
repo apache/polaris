@@ -129,8 +129,10 @@ paths:
         mappings of the names directly inside it.
 
         Requires STORAGE_CONFIGURATION_ATTACH on the storage configuration, and
-        NAMESPACE_MANAGE_STORAGE_MAPPINGS on the parent namespace (CATALOG_MANAGE_STORAGE_MAPPINGS on
-        the catalog for a top-level namespace).
+        NAMESPACE_ATTACH_STORAGE_CONFIGURATION on the parent namespace
+        (CATALOG_ATTACH_STORAGE_CONFIGURATION on the catalog for a top-level namespace), as attaching a
+        policy requires POLICY_ATTACH and NAMESPACE_ATTACH_POLICY. The privilege is checked on the
+        parent because the target does not exist yet.
       requestBody:
         required: true
         content:
@@ -182,9 +184,10 @@ paths:
         A namespace or table created under the name afterwards uses the storage configuration of its
         parent.
 
-        Requires STORAGE_CONFIGURATION_ATTACH on the mapped storage configuration, and
-        NAMESPACE_MANAGE_STORAGE_MAPPINGS on the parent namespace (CATALOG_MANAGE_STORAGE_MAPPINGS on
-        the catalog for a top-level namespace).
+        Requires STORAGE_CONFIGURATION_DETACH on the mapped storage configuration, and
+        NAMESPACE_DETACH_STORAGE_CONFIGURATION on the parent namespace
+        (CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog for a top-level namespace), as detaching
+        a policy requires POLICY_DETACH and NAMESPACE_DETACH_POLICY.
       requestBody:
         required: true
         content:
@@ -231,8 +234,10 @@ paths:
         **Beta:** The storage mapping API is under active development and may change in a
         backward-incompatible way.
 
-        Create a namespace on the given storage configuration in one call. The request body and the
-        response are those of the Iceberg REST `createNamespace` operation.
+        Create a namespace on the given storage configuration in one call. The request body, the
+        `Idempotency-Key` header and the response are those of the Iceberg REST `createNamespace`
+        operation. A request replayed with the same `Idempotency-Key` has no additional effects, on
+        the namespace or on the storage mapping.
 
         The call maps the namespace name to the storage configuration, as `createStorageMapping` does,
         then creates the namespace as the Iceberg REST `createNamespace` operation would. If the name
@@ -242,6 +247,8 @@ paths:
 
         Requires the privileges of `createStorageMapping`, even when the existing mapping is used, and
         those of the Iceberg REST `createNamespace` operation.
+      parameters:
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/idempotency-key'
       requestBody:
         required: true
         content:
@@ -292,8 +299,9 @@ paths:
         backward-incompatible way.
 
         Create a table on the given storage configuration in one call. The request body, the
-        `X-Iceberg-Access-Delegation` header and the response are those of the Iceberg REST
-        `createTable` operation, including `stage-create`.
+        `X-Iceberg-Access-Delegation` and `Idempotency-Key` headers and the response are those of the
+        Iceberg REST `createTable` operation, including `stage-create`. A request replayed with the
+        same `Idempotency-Key` has no additional effects, on the table or on the storage mapping.
 
         The call maps the table name to the storage configuration, as `createStorageMapping` does,
         then creates the table as the Iceberg REST `createTable` operation would. If the name is
@@ -307,6 +315,7 @@ paths:
         those of the Iceberg REST `createTable` operation.
       parameters:
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/data-access'
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/idempotency-key'
       requestBody:
         required: true
         content:

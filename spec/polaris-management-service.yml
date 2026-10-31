@@ -126,7 +126,9 @@ paths:
 
     delete:
       operationId: deleteCatalog
-      description: Delete an existing catalog. The catalog must be empty.
+      description: >-
+        Delete an existing catalog. The catalog must be empty. Its storage configurations and storage
+        mappings are deleted with it.
       responses:
         204:
           description: "Success, no content"
@@ -935,7 +937,7 @@ paths:
         backward-incompatible way.
 
         Delete a storage configuration. The deletion is refused while any storage mapping references
-        the storage configuration. A storage mapping can only be removed while its namespace or table
+        the storage configuration. Deleting the catalog deletes its storage configurations. A storage mapping can only be removed while its namespace or table
         does not exist, so a storage configuration used by existing namespaces or tables can only be
         deleted after they are dropped.
 
@@ -1747,9 +1749,13 @@ components:
           and listing storage configurations.
         - STORAGE_CONFIGURATION_READ and STORAGE_CONFIGURATION_DROP on a storage configuration allow
           reading and deleting it. STORAGE_CONFIGURATION_FULL_METADATA includes both.
-        - STORAGE_CONFIGURATION_ATTACH on a storage configuration allows using it in storage
-          mappings. It does not allow reading or deleting it, and creating a storage configuration
-          does not allow using it.
+        - STORAGE_CONFIGURATION_ATTACH and STORAGE_CONFIGURATION_DETACH on a storage configuration
+          allow creating and removing storage mappings to it, together with
+          NAMESPACE_ATTACH_STORAGE_CONFIGURATION and NAMESPACE_DETACH_STORAGE_CONFIGURATION on the
+          parent namespace (CATALOG_ATTACH_STORAGE_CONFIGURATION and
+          CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog), as for policies. They do not allow
+          reading or deleting the storage configuration, and creating a storage configuration does
+          not allow using it.
         - STORAGE_CONFIGURATION_MANAGE_GRANTS_ON_SECURABLE on a storage configuration allows
           managing the grants on it.
       properties:
