@@ -133,4 +133,17 @@ public class StorageUtilTest {
                     "s3://bucket/table/")))
         .containsExactly("s3://bucket/table");
   }
+
+  @Test
+  public void getLocationsUsedByTableDeduplicatesEquivalentMetadataLocation() {
+    // Same as above but via the metadata-location key: it denotes the same place as the base
+    // location (differing only by a trailing slash), so only the base location survives.
+    Assertions.assertThat(
+            StorageUtil.getLocationsUsedByTable(
+                "s3://bucket/table",
+                Map.of(
+                    IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                    "s3://bucket/table/")))
+        .containsExactly("s3://bucket/table");
+  }
 }
