@@ -911,6 +911,8 @@ components:
       type: object
       description: A connection configuration representing a remote catalog service. IMPORTANT - Specifying a
         ConnectionConfigInfo in an ExternalCatalog is currently an experimental API and is subject to change.
+        The authenticationParameters field is required when creating an external catalog; a request
+        without it is rejected with HTTP 400.
       properties:
         connectionType:
           type: string
