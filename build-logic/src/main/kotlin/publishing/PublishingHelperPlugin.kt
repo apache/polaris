@@ -161,9 +161,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
               artifact(testFixturesJavadocJar)
             }
 
-            tasks.named("generatePomFileForMavenPublication").configure {
-              configurePom(project, project.parentPomCoordinates(), mavenPublication, this)
-            }
+            configurePom(project, project.parentPomCoordinates(), mavenPublication)
           }
         }
       }
