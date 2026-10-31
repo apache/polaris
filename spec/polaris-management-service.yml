@@ -937,9 +937,10 @@ paths:
         backward-incompatible way.
 
         Delete a storage configuration. The deletion is refused while any storage mapping references
-        the storage configuration. Deleting the catalog deletes its storage configurations. A storage mapping can only be removed while its namespace or table
+        the storage configuration. A storage mapping can only be removed while its namespace or table
         does not exist, so a storage configuration used by existing namespaces or tables can only be
-        deleted after they are dropped.
+        deleted after they are dropped and their storage mappings are removed. Deleting the catalog
+        deletes its storage configurations.
 
         Requires STORAGE_CONFIGURATION_DROP on the storage configuration.
       responses:
@@ -1753,7 +1754,8 @@ components:
           allow creating and removing storage mappings to it, together with
           NAMESPACE_ATTACH_STORAGE_CONFIGURATION and NAMESPACE_DETACH_STORAGE_CONFIGURATION on the
           parent namespace (CATALOG_ATTACH_STORAGE_CONFIGURATION and
-          CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog), as for policies. They do not allow
+          CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog for a top-level namespace), as for
+          policies. They do not allow
           reading or deleting the storage configuration, and creating a storage configuration does
           not allow using it.
         - STORAGE_CONFIGURATION_MANAGE_GRANTS_ON_SECURABLE on a storage configuration allows

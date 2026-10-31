@@ -2364,9 +2364,9 @@ paths:
         For a staged create, the mapping that counts is the one in place when the create is
         committed.
 
-        Namespaces, tables and views created inside a mapped namespace use its storage configuration
-        unless they have a mapping of their own. Only namespaces and Iceberg tables can have a
-        mapping of their own.
+        Namespaces, Iceberg tables, views and generic tables created inside a mapped namespace use its
+        storage configuration unless they have a mapping of their own. Only namespaces and Iceberg
+        tables can have a mapping of their own.
 
         A storage mapping is never changed while its target exists: it can't be created for an
         existing namespace or table, and it can't be removed from one. Together with the rename rules
@@ -2374,11 +2374,15 @@ paths:
         for as long as it exists. A rename keeps a table on the storage configuration it uses:
         - if the new name has a storage mapping, the rename is refused unless that mapping names the
           storage configuration the table uses;
-        - otherwise, a table with a mapping of its own takes it along to the new name, and a table
-          without one can't be renamed into a namespace that uses a different storage configuration.
+        - otherwise, a table without a mapping of its own can't be renamed into a namespace that uses
+          a different storage configuration.
 
         For the same reason, a view can't be renamed into a namespace that uses a different storage
         configuration.
+
+        A table with a mapping of its own takes it along: after the rename, the new name is mapped and
+        the old name is not. Moving a mapping this way does not require the privileges needed to
+        create or remove one.
 
         Storage configurations are compared by identity, not by content: two storage configurations,
         or a storage configuration and the catalog's own `storageConfigInfo`, are always different.
