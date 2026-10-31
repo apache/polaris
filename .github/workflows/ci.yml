@@ -196,7 +196,7 @@ jobs:
       - name: Set up Node 24
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '26'
       - name: Renovate Configuration Validation
         run: npx --yes --package renovate renovate-config-validator --strict --no-global .github/renovate.json5
       - name: Verify bundled OpenAPI spec is up to date
