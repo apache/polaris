@@ -2277,6 +2277,298 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/v1/{prefix}/storage-mappings:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+    get:
+      tags:
+        - Storage Mapping API
+      summary: List storage mappings
+      operationId: listStorageMappings
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        List storage mappings. A storage mapping says that the namespace or table with a given fully
+        qualified name uses a given storage configuration (see StorageMappingTarget). Storage
+        configurations are managed through the Polaris management API.
+
+        Without `namespace`, the mappings of the whole catalog are listed; with it, only the mappings
+        of namespaces and tables directly inside that namespace. With `storageConfigurationName`, only
+        the mappings to that storage configuration are listed.
+
+        Results are paginated. A client follows `next-page-token` until it is null or absent.
+
+        Requires NAMESPACE_READ_PROPERTIES on `namespace`, or CATALOG_READ_PROPERTIES without it.
+        With `storageConfigurationName`, also requires STORAGE_CONFIGURATION_READ on that storage
+        configuration.
+      parameters:
+        - $ref: '#/components/parameters/page-token'
+        - $ref: '#/components/parameters/page-size'
+        - name: namespace
+          in: query
+          required: false
+          description: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+          schema:
+            type: string
+          examples:
+            singlepart_namespace:
+              value: accounting
+            multipart_namespace:
+              value: accounting%1Ftax
+        - name: storageConfigurationName
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/StorageConfigurationName'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListStorageMappingsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The namespace or the storage configuration does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+    post:
+      tags:
+        - Storage Mapping API
+      summary: Create a storage mapping
+      operationId: createStorageMapping
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        Map the fully qualified name of a namespace or table to a storage configuration. The target
+        must not exist yet; its parent namespace must exist. When a namespace or table is later
+        created under that name, through the Iceberg REST API or the Polaris API, it is created on the
+        mapped storage configuration:
+        - its location is checked against that storage configuration's `allowedLocations`;
+        - without an explicit location, it is placed under that storage configuration's
+          `baseLocation`;
+        - its storage credentials come from that storage configuration.
+
+        Namespaces and tables created inside a mapped namespace use the same storage configuration
+        unless they have a mapping of their own.
+
+        A storage mapping is never changed while its target exists: it can't be created for an
+        existing namespace or table, and it can't be removed from one. An existing namespace or table
+        therefore always uses the storage configuration it was created with. When a table with a
+        mapping is renamed, its mapping is renamed with it; the rename is refused if the new name is
+        mapped to a different storage configuration. A table without a mapping can't be renamed into a
+        namespace that uses a different storage configuration.
+
+        A storage mapping stays when its namespace or table is dropped, so a namespace or table created
+        again under the same name uses the same storage configuration. Dropping a namespace removes the
+        mappings of the names inside it.
+
+        Requires STORAGE_CONFIGURATION_ATTACH on the storage configuration, and
+        NAMESPACE_MANAGE_STORAGE_MAPPINGS on the parent namespace (CATALOG_MANAGE_STORAGE_MAPPINGS on
+        the catalog for a top-level namespace).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStorageMappingRequest'
+      responses:
+        '204':
+          description: Success, no content
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The parent namespace or the storage configuration does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+        '409':
+          description: Conflict - The target namespace or table already exists, or a storage mapping already exists for the target
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/v1/{prefix}/storage-mappings/remove:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+    post:
+      tags:
+        - Storage Mapping API
+      summary: Remove a storage mapping
+      operationId: removeStorageMapping
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        Remove the storage mapping of a namespace or table. The target must not exist; drop it first.
+        A namespace or table created under the name afterwards uses the storage configuration of its
+        parent.
+
+        Requires STORAGE_CONFIGURATION_ATTACH on the mapped storage configuration, and
+        NAMESPACE_MANAGE_STORAGE_MAPPINGS on the parent namespace (CATALOG_MANAGE_STORAGE_MAPPINGS on
+        the catalog for a top-level namespace).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveStorageMappingRequest'
+      responses:
+        '204':
+          description: Success, no content
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - No storage mapping exists for the target
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+        '409':
+          description: Conflict - The target namespace or table exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/v1/{prefix}/storage-configurations/{storage-configuration-name}/namespaces:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/storage-configuration-name'
+    post:
+      tags:
+        - Storage Mapping API
+      summary: Create a namespace on a storage configuration
+      operationId: createNamespaceOnStorageConfiguration
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        Create a namespace on the given storage configuration in one call. The request body and the
+        response are those of the Iceberg REST `createNamespace` operation.
+
+        The call maps the namespace name to the storage configuration, as `createStorageMapping` does,
+        then creates the namespace as the Iceberg REST `createNamespace` operation would. If the name
+        is already mapped to this storage configuration, the existing mapping is used. If the namespace
+        is not created, a mapping created by this call is removed.
+
+        Requires the privileges of `createStorageMapping` and those of the Iceberg REST
+        `createNamespace` operation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNamespaceRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/CreateNamespaceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The parent namespace or the storage configuration does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+        '409':
+          description: Conflict - The namespace already exists, or its name is mapped to a different storage configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/v1/{prefix}/storage-configurations/{storage-configuration-name}/namespaces/{namespace}/tables:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/storage-configuration-name'
+      - $ref: '#/components/parameters/namespace'
+    post:
+      tags:
+        - Storage Mapping API
+      summary: Create a table on a storage configuration
+      operationId: createTableOnStorageConfiguration
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        Create a table on the given storage configuration in one call. The request body, the
+        `X-Iceberg-Access-Delegation` header and the response are those of the Iceberg REST
+        `createTable` operation, including `stage-create`.
+
+        The call maps the table name to the storage configuration, as `createStorageMapping` does,
+        then creates the table as the Iceberg REST `createTable` operation would. If the name is
+        already mapped to this storage configuration, the existing mapping is used. If the table is not
+        created, a mapping created by this call is removed. With `stage-create`, the mapping is kept,
+        so that the commit that creates the table uses the storage configuration.
+
+        Requires the privileges of `createStorageMapping` and those of the Iceberg REST `createTable`
+        operation.
+      parameters:
+        - $ref: '#/components/parameters/data-access'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTableRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/CreateTableResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The namespace or the storage configuration does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+        '409':
+          description: Conflict - The identifier already exists as a table or view, or the table name is mapped to a different storage configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
 components:
   securitySchemes:
     OAuth2:
@@ -5237,6 +5529,77 @@ components:
           $ref: '#/components/schemas/SemanticModelDocument'
         entity-version:
           $ref: '#/components/schemas/EntityVersion'
+    StorageConfigurationName:
+      type: string
+      description: The name of a storage configuration in the catalog. Case sensitive.
+      pattern: ^[a-zA-Z0-9_-]{1,128}$
+      example: finance
+    StorageMappingTarget:
+      type: object
+      description: The namespace or table a storage mapping applies to.
+      required:
+        - type
+        - path
+      properties:
+        type:
+          type: string
+          enum:
+            - namespace
+            - table
+          example: table
+        path:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: |
+            The fully qualified name of the target, from the top-level namespace down to the target
+            itself. For a table, the last element is the table name.
+          example:
+            - finance
+            - ledger
+    StorageMapping:
+      type: object
+      required:
+        - target
+        - storage-configuration-name
+        - target-exists
+      properties:
+        target:
+          $ref: '#/components/schemas/StorageMappingTarget'
+        storage-configuration-name:
+          $ref: '#/components/schemas/StorageConfigurationName'
+        target-exists:
+          type: boolean
+          description: Whether the target namespace or table currently exists.
+    ListStorageMappingsResponse:
+      type: object
+      required:
+        - storage-mappings
+      properties:
+        next-page-token:
+          $ref: '#/components/schemas/PageToken'
+        storage-mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/StorageMapping'
+    CreateStorageMappingRequest:
+      type: object
+      required:
+        - target
+        - storage-configuration-name
+      properties:
+        target:
+          $ref: '#/components/schemas/StorageMappingTarget'
+        storage-configuration-name:
+          $ref: '#/components/schemas/StorageConfigurationName'
+    RemoveStorageMappingRequest:
+      type: object
+      required:
+        - target
+      properties:
+        target:
+          $ref: '#/components/schemas/StorageMappingTarget'
   responses:
     BadRequestErrorResponse:
       description: Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server's middleware.
@@ -5517,6 +5880,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadSemanticModelResponse'
+    ListStorageMappingsResponse:
+      description: A page of storage mappings
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListStorageMappingsResponse'
   examples:
     NoSuchWarehouseError:
       summary: The requested warehouse does not exist
@@ -5891,6 +6260,12 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/SemanticModelName'
+    storage-configuration-name:
+      name: storage-configuration-name
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/StorageConfigurationName'
   headers:
     etag:
       name: ETag
