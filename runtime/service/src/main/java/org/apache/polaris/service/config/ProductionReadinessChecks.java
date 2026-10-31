@@ -528,12 +528,9 @@ public class ProductionReadinessChecks {
     var flag = FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION;
     var message =
         "ENFORCE_CATALOG_CONFIG_AUTHORIZATION is disabled. Iceberg REST GET /v1/config is not "
-            + "authorization-gated and catalog properties (defaults) are still returned to any "
-            + "authenticated caller. Before enabling: grant CATALOG_READ_PROPERTIES to clients that "
-            + "need catalog defaults, grant CATALOG_READ_CONFIG (or a catalog-level privilege that "
-            + "subsumes it) for the endpoint gate, and update Ranger/OPA policies for "
-            + "GET_CATALOG_CONFIG / GET_CATALOG_CONFIG_PROPERTIES. The default is expected to flip "
-            + "to true in a subsequent release.";
+            + "authorization-gated. Before enabling: grant CATALOG_READ_CONFIG (or a catalog-level "
+            + "privilege that subsumes it) and update Ranger/OPA policies for GET_CATALOG_CONFIG. "
+            + "The default will not flip until client-facing catalog configuration is defined.";
     var errors = new ArrayList<Error>();
     // Absent or false → warn (default is false). Explicit true → no warning for defaults.
     if (!Boolean.parseBoolean(featureConfiguration.defaults().get(flag.key()))) {

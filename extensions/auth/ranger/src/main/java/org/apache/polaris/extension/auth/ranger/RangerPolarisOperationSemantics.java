@@ -287,10 +287,6 @@ public record RangerPolarisOperationSemantics(
         new RangerPolarisOperationSemantics(
             toSet(CATALOG_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES,
-        new RangerPolarisOperationSemantics(
-            toSet(CATALOG_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.UPDATE_CATALOG,
         new RangerPolarisOperationSemantics(
             toSet(CATALOG_WRITE_PROPERTIES), null, ResolvedPathRooting.ROOT));

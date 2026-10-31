@@ -66,7 +66,6 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_APPL
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_TABLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_CATALOG;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_CATALOG_CONFIG;
-import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_PRINCIPAL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_PRINCIPAL_ROLE;
@@ -354,7 +353,6 @@ record RbacOperationSemantics(
     register(UPDATE_CATALOG, CATALOG_WRITE_PROPERTIES);
     register(DELETE_CATALOG, CATALOG_DROP);
     register(GET_CATALOG_CONFIG, CATALOG_READ_CONFIG);
-    register(GET_CATALOG_CONFIG_PROPERTIES, CATALOG_READ_PROPERTIES);
 
     // Principal operations
     register(LIST_PRINCIPALS, PRINCIPAL_LIST);
