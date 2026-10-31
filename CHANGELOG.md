@@ -298,6 +298,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
 - Iceberg REST: creating a namespace with a request that omits `namespace` now returns
   `400 Bad Request` instead of `500 Internal Server Error`.
+- Iceberg metrics reporting no longer fails the client request when persistence fails. A failed
+  write is logged and the report dropped (previously this could surface as HTTP 500 on
+  `POST .../metrics`). Dropped reports increment `polaris.metrics.reports.dropped` (tags
+  `reporter`, `reason`). `MetricsReportEnvelope` now carries a nullable table entity so log-only /
+  no-op reporters still receive passthrough reports; the persisting reporter drops at DEBUG when
+  the leaf is missing or not `TABLE_LIKE`, so a bogus `table_id` is never written.
 
 ### Commits
 

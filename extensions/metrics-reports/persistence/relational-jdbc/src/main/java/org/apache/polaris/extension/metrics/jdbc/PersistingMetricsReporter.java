@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.extension.metrics.jdbc;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 import io.smallrye.common.annotation.Identifier;
@@ -28,6 +29,8 @@ import org.apache.iceberg.metrics.CommitReport;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RequestIdSupplier;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
@@ -47,6 +50,9 @@ import org.slf4j.LoggerFactory;
  * <p>Converts the Iceberg {@link ScanReport}/{@link CommitReport} carried by the {@link
  * MetricsReportEnvelope} to backend-agnostic SPI records via {@link MetricsRecordConverter}, then
  * delegates to {@link MetricsPersistence} for durable storage.
+ *
+ * <p>Metrics reporting is best-effort telemetry: persistence failures are logged and the report is
+ * dropped. This reporter must never fail the client request that produced the report.
  */
 @RequestScoped
 @Identifier("persisting")
@@ -54,22 +60,39 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PersistingMetricsReporter.class);
 
+  static final String DROPPED_REPORTS_METRIC = "polaris.metrics.reports.dropped";
+
   private final MetricsPersistence metricsPersistence;
   private final Instance<PolarisPrincipal> polarisPrincipal;
   private final Instance<RequestIdSupplier> requestIdSupplier;
+  private final MeterRegistry meterRegistry;
 
   @Inject
   public PersistingMetricsReporter(
       MetricsPersistence metricsPersistence,
       Instance<PolarisPrincipal> polarisPrincipal,
-      Instance<RequestIdSupplier> requestIdSupplier) {
+      Instance<RequestIdSupplier> requestIdSupplier,
+      MeterRegistry meterRegistry) {
     this.metricsPersistence = metricsPersistence;
     this.polarisPrincipal = polarisPrincipal;
     this.requestIdSupplier = requestIdSupplier;
+    this.meterRegistry = meterRegistry;
   }
 
   @Override
   public void reportMetric(@NonNull MetricsReportEnvelope envelope) {
+    PolarisEntity tableEntity = envelope.tableEntity();
+    if (tableEntity == null || tableEntity.getType() != PolarisEntityType.TABLE_LIKE) {
+      LOGGER.debug(
+          "Dropping {} metrics for {}.{}; resolved leaf is missing or not TABLE_LIKE (reason=unresolved_leaf)",
+          envelope.metricType(),
+          envelope.catalogName(),
+          envelope.table());
+      recordDropped("unresolved_leaf");
+      return;
+    }
+    long tableId = tableEntity.getId();
+
     String principalName = resolvePrincipalName();
     String requestId = resolveRequestId();
     String otelTraceId = null;
@@ -86,39 +109,67 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
         ScanMetricsRecord record =
             MetricsRecordConverter.forScanReport((ScanReport) envelope.report())
                 .catalogId(envelope.catalogId())
-                .tableId(envelope.tableId())
+                .tableId(tableId)
                 .timestamp(envelope.receivedTimestamp())
                 .principalName(principalName)
                 .requestId(requestId)
                 .otelTraceId(otelTraceId)
                 .otelSpanId(otelSpanId)
                 .build();
-        metricsPersistence.writeScanReport(record);
-        LOGGER.debug(
-            "Persisted scan metrics for {}.{} (reportId={})",
-            envelope.catalogName(),
-            envelope.table(),
-            record.reportId());
+        try {
+          metricsPersistence.writeScanReport(record);
+          LOGGER.debug(
+              "Persisted scan metrics for {}.{} (reportId={})",
+              envelope.catalogName(),
+              envelope.table(),
+              record.reportId());
+        } catch (Exception e) {
+          // Metrics reporting is best-effort telemetry; a persistence failure must not fail the
+          // client request that produced the report.
+          LOGGER.warn(
+              "Failed to persist scan metrics for {}.{}; dropping the report (reason=persistence_failure)",
+              envelope.catalogName(),
+              envelope.table(),
+              e);
+          recordDropped("persistence_failure");
+        }
       }
       case COMMIT -> {
         CommitMetricsRecord record =
             MetricsRecordConverter.forCommitReport((CommitReport) envelope.report())
                 .catalogId(envelope.catalogId())
-                .tableId(envelope.tableId())
+                .tableId(tableId)
                 .timestamp(envelope.receivedTimestamp())
                 .principalName(principalName)
                 .requestId(requestId)
                 .otelTraceId(otelTraceId)
                 .otelSpanId(otelSpanId)
                 .build();
-        metricsPersistence.writeCommitReport(record);
-        LOGGER.debug(
-            "Persisted commit metrics for {}.{} (reportId={})",
-            envelope.catalogName(),
-            envelope.table(),
-            record.reportId());
+        try {
+          metricsPersistence.writeCommitReport(record);
+          LOGGER.debug(
+              "Persisted commit metrics for {}.{} (reportId={})",
+              envelope.catalogName(),
+              envelope.table(),
+              record.reportId());
+        } catch (Exception e) {
+          // Metrics reporting is best-effort telemetry; a persistence failure must not fail the
+          // client request that produced the report.
+          LOGGER.warn(
+              "Failed to persist commit metrics for {}.{}; dropping the report (reason=persistence_failure)",
+              envelope.catalogName(),
+              envelope.table(),
+              e);
+          recordDropped("persistence_failure");
+        }
       }
     }
+  }
+
+  private void recordDropped(String reason) {
+    meterRegistry
+        .counter(DROPPED_REPORTS_METRIC, "reporter", "persisting", "reason", reason)
+        .increment();
   }
 
   private String resolvePrincipalName() {
