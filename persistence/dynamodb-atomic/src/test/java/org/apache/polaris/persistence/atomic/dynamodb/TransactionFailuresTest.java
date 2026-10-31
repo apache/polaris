@@ -52,6 +52,27 @@ class TransactionFailuresTest {
   }
 
   @Test
+  void conditionAndConflictReasonsCountAsConflicts() {
+    assertThat(
+            TransactionFailures.onlyConflicts(
+                cancelled("None", TransactionFailures.CONDITIONAL_CHECK_FAILED)))
+        .isTrue();
+    assertThat(TransactionFailures.onlyConflicts(cancelled("TransactionConflict", "None")))
+        .isTrue();
+  }
+
+  @Test
+  void otherReasonsAreNotConflicts() {
+    assertThat(
+            TransactionFailures.onlyConflicts(
+                cancelled(TransactionFailures.CONDITIONAL_CHECK_FAILED, "ValidationError")))
+        .isFalse();
+    assertThat(TransactionFailures.onlyConflicts(cancelled("ThrottlingError", "None"))).isFalse();
+    assertThat(TransactionFailures.onlyConflicts(TransactionCanceledException.builder().build()))
+        .isFalse();
+  }
+
+  @Test
   void outOfRangeOrMissingReasonsAreNotConditionFailures() {
     assertThat(
             TransactionFailures.conditionFailedAt(

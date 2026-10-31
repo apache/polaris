@@ -32,8 +32,30 @@ import software.amazon.awssdk.services.dynamodb.model.TransactionCanceledExcepti
 final class TransactionFailures {
 
   static final String CONDITIONAL_CHECK_FAILED = "ConditionalCheckFailed";
+  static final String TRANSACTION_CONFLICT = "TransactionConflict";
+  static final String NONE = "None";
 
   private TransactionFailures() {}
+
+  /**
+   * Whether the transaction was cancelled only by failed conditions or conflicting transactions.
+   * Any other reason (validation, size limits, throttling) is not a concurrency failure.
+   */
+  static boolean onlyConflicts(TransactionCanceledException e) {
+    if (!e.hasCancellationReasons() || e.cancellationReasons().isEmpty()) {
+      return false;
+    }
+    for (CancellationReason reason : e.cancellationReasons()) {
+      String code = reason.code();
+      if (code != null
+          && !NONE.equals(code)
+          && !CONDITIONAL_CHECK_FAILED.equals(code)
+          && !TRANSACTION_CONFLICT.equals(code)) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   /** Whether the action at {@code index} was cancelled because its condition did not hold. */
   static boolean conditionFailedAt(TransactionCanceledException e, int index) {

@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
@@ -79,6 +80,26 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
             persistence.lookupEntityVersions(
                 callCtx, List.of(new PolarisEntityId(CATALOG, sales.getId()))))
         .containsExactly(new PolarisChangeTrackingVersions(1, 1));
+  }
+
+  @Test
+  void batchLookupsSpanChunksAndKeepRequestOrder() {
+    // More ids than one BatchGetItem accepts, with repeats and absent ids mixed in.
+    List<PolarisEntityId> ids = new ArrayList<>();
+    List<PolarisBaseEntity> expected = new ArrayList<>();
+    for (long id = 1; id <= 150; id++) {
+      PolarisBaseEntity e = entity(id, PARENT, "t" + id, 1);
+      persistence.writeEntity(callCtx, e, false, null);
+      ids.add(new PolarisEntityId(CATALOG, id));
+      expected.add(e);
+    }
+    ids.add(new PolarisEntityId(CATALOG, 5L));
+    expected.add(expected.get(4));
+    ids.add(new PolarisEntityId(CATALOG, 999L));
+    expected.add(null);
+
+    assertThat(persistence.lookupEntities(callCtx, ids)).containsExactlyElementsOf(expected);
+    assertThat(persistence.lookupEntityVersions(callCtx, ids)).hasSize(ids.size()).last().isNull();
   }
 
   @Test

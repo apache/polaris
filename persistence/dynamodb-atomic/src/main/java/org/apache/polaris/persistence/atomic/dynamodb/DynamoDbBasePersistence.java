@@ -29,8 +29,10 @@ import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK_N
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.entityPk;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.sentinelPk;
 import static org.apache.polaris.persistence.atomic.dynamodb.TransactionFailures.conditionFailedAt;
+import static org.apache.polaris.persistence.atomic.dynamodb.TransactionFailures.onlyConflicts;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -94,6 +96,11 @@ public class DynamoDbBasePersistence implements BasePersistence {
   /** Upper bound on re-requests of keys DynamoDB returns as unprocessed. */
   private static final int MAX_BATCH_GET_ATTEMPTS = 10;
 
+  /** First wait before re-requesting unprocessed keys; doubles on each attempt, capped. */
+  private static final long BATCH_GET_BASE_BACKOFF_MILLIS = 20;
+
+  private static final long BATCH_GET_MAX_BACKOFF_MILLIS = 1_000;
+
   private static final String VERSIONS_MATCH = "#ev = :ev AND #grv = :grv";
   private static final String KEY_ABSENT = "attribute_not_exists(#pk)";
   private static final String SENTINEL_ABSENT_OR_OWNED = "attribute_not_exists(#pk) OR #id = :id";
@@ -146,6 +153,9 @@ public class DynamoDbBasePersistence implements BasePersistence {
                   putIfAbsent(EntityItem.toItem(realmId, entity)),
                   putIfAbsent(sentinelItem(entity))));
     } catch (TransactionCanceledException e) {
+      if (!onlyConflicts(e)) {
+        throw e;
+      }
       if (conditionFailedAt(e, sentinelIndex)) {
         PolarisBaseEntity existing =
             lookupEntityByName(
@@ -199,6 +209,9 @@ public class DynamoDbBasePersistence implements BasePersistence {
                   deleteSentinelIfOwned(originalEntity),
                   putIfAbsent(sentinelItem(entity))));
     } catch (TransactionCanceledException e) {
+      if (!onlyConflicts(e)) {
+        throw e;
+      }
       if (conditionFailedAt(e, newSentinelIndex)) {
         PolarisBaseEntity existing =
             lookupEntityByName(
@@ -240,6 +253,9 @@ public class DynamoDbBasePersistence implements BasePersistence {
                       .build(),
                   deleteSentinelIfOwned(current)));
     } catch (TransactionCanceledException e) {
+      if (!onlyConflicts(e)) {
+        throw e;
+      }
       throw concurrentModification(e, current);
     }
   }
@@ -283,7 +299,7 @@ public class DynamoDbBasePersistence implements BasePersistence {
   public @NonNull List<PolarisBaseEntity> lookupEntities(
       @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     if (entityIds == null || entityIds.isEmpty()) {
-      return new ArrayList<>();
+      return List.of();
     }
     Map<PolarisEntityId, PolarisBaseEntity> byId = new HashMap<>();
     for (Map<String, AttributeValue> item : batchReadEntities(entityIds, null)) {
@@ -294,14 +310,14 @@ public class DynamoDbBasePersistence implements BasePersistence {
     for (PolarisEntityId id : entityIds) {
       result.add(byId.get(id));
     }
-    return result;
+    return Collections.unmodifiableList(result);
   }
 
   @Override
   public @NonNull List<PolarisChangeTrackingVersions> lookupEntityVersions(
       @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     if (entityIds == null || entityIds.isEmpty()) {
-      return new ArrayList<>();
+      return List.of();
     }
     Map<PolarisEntityId, PolarisChangeTrackingVersions> byId = new HashMap<>();
     for (Map<String, AttributeValue> item : batchReadEntities(entityIds, "#id, #cid, #ev, #grv")) {
@@ -314,7 +330,7 @@ public class DynamoDbBasePersistence implements BasePersistence {
     for (PolarisEntityId id : entityIds) {
       result.add(byId.get(id));
     }
-    return result;
+    return Collections.unmodifiableList(result);
   }
 
   @Override
@@ -470,6 +486,9 @@ public class DynamoDbBasePersistence implements BasePersistence {
           throw new IllegalStateException(
               "BatchGetItem on " + tableName + " left keys unprocessed after retries");
         }
+        if (attempt > 0) {
+          backOff(attempt);
+        }
         Map<String, KeysAndAttributes> requestItems = pending;
         BatchGetItemResponse response = client.batchGetItem(b -> b.requestItems(requestItems));
         items.addAll(response.responses().getOrDefault(tableName, List.of()));
@@ -477,6 +496,17 @@ public class DynamoDbBasePersistence implements BasePersistence {
       }
     }
     return items;
+  }
+
+  private static void backOff(int attempt) {
+    long millis =
+        Math.min(BATCH_GET_MAX_BACKOFF_MILLIS, BATCH_GET_BASE_BACKOFF_MILLIS << (attempt - 1));
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while retrying BatchGetItem", e);
+    }
   }
 
   private Map<String, AttributeValue> sentinelItem(PolarisBaseEntity entity) {
