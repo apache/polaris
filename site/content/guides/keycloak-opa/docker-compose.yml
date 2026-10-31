@@ -71,7 +71,7 @@ services:
       start_period: 10s
 
   polaris-setup:
-    image: alpine/curl:8.22.0
+    image: alpine/curl:8.23.0
     depends_on:
       polaris:
         condition: service_healthy
@@ -129,7 +129,7 @@ services:
   # endpoint from the outside and only completes once OPA is ready to accept queries;
   # Polaris depends on it via "service_completed_successfully" below.
   opa-wait:
-    image: alpine/curl:8.22.0
+    image: alpine/curl:8.23.0
     depends_on:
       opa:
         condition: service_started
