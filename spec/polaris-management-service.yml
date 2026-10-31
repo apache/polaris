@@ -126,7 +126,9 @@ paths:
 
     delete:
       operationId: deleteCatalog
-      description: Delete an existing catalog. The catalog must be empty.
+      description: >-
+        Delete an existing catalog. The catalog must be empty. Its storage configurations and storage
+        mappings are deleted with it.
       responses:
         204:
           description: "Success, no content"
@@ -806,6 +808,150 @@ paths:
         404:
           description: "The catalog or the role does not exist"
 
+  /catalogs/{catalogName}/storage-configurations:
+    parameters:
+      - name: catalogName
+        in: path
+        description: The catalog that holds the storage configurations
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
+    get:
+      operationId: listStorageConfigurations
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        List the storage configurations of a catalog. The catalog's own `storageConfigInfo` is not
+        listed.
+
+        Results are paginated. A client follows `nextPageToken` until it is absent. A server
+        may return fewer results than `pageSize`, and may paginate even when `pageSize` is not set.
+
+        Requires STORAGE_CONFIGURATION_LIST on the catalog.
+      parameters:
+        - name: pageToken
+          in: query
+          required: false
+          description: The `nextPageToken` of the previous response. Omit it to get the first page.
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          required: false
+          description: An upper bound on the number of storage configurations in the response.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        200:
+          description: A page of the storage configurations in this catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfigurations"
+        400:
+          description: "The page token or the page size is invalid"
+        403:
+          description: "The principal is not authorized to list storage configurations"
+        404:
+          description: "The catalog does not exist"
+    post:
+      operationId: createStorageConfiguration
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Create a storage configuration in the catalog. Storage configurations are immutable; see
+        StorageConfiguration.
+
+        Requires STORAGE_CONFIGURATION_CREATE on the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStorageConfigurationRequest"
+      responses:
+        201:
+          description: "Successful response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfiguration"
+        400:
+          description: "The storage configuration is invalid"
+        403:
+          description: "The principal is not authorized to create storage configurations"
+        404:
+          description: "The catalog does not exist"
+        409:
+          description: "A storage configuration with the specified name already exists in the catalog"
+
+  /catalogs/{catalogName}/storage-configurations/{storageConfigurationName}:
+    parameters:
+      - name: catalogName
+        in: path
+        description: The catalog that holds the storage configuration
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
+      - name: storageConfigurationName
+        in: path
+        description: The name of the storage configuration
+        required: true
+        schema:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{1,128}$'
+    get:
+      operationId: getStorageConfiguration
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Get a storage configuration.
+
+        Requires STORAGE_CONFIGURATION_READ on the storage configuration.
+      responses:
+        200:
+          description: The storage configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfiguration"
+        403:
+          description: "The principal is not authorized to read the storage configuration"
+        404:
+          description: "The catalog or the storage configuration does not exist"
+
+    delete:
+      operationId: deleteStorageConfiguration
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Delete a storage configuration. The deletion is refused while any storage mapping references
+        the storage configuration. Deleting the catalog deletes its storage configurations. A storage mapping can only be removed while its namespace or table
+        does not exist, so a storage configuration used by existing namespaces or tables can only be
+        deleted after they are dropped.
+
+        Requires STORAGE_CONFIGURATION_DROP on the storage configuration.
+      responses:
+        204:
+          description: "Success, no content"
+        403:
+          description: "The principal is not authorized to delete the storage configuration"
+        404:
+          description: "The catalog or the storage configuration does not exist"
+        409:
+          description: "A storage mapping references the storage configuration"
+
 components:
   securitySchemes:
     OAuth2:
@@ -1118,7 +1264,15 @@ components:
             - "For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/]"
         storageName:
           type: string
-          description: An optional name referencing a server-side storage configuration
+          description: >-
+            This name is meant for associating StorageConfigInfo objects to deployment-specific
+            configuration. The interpretation of this name depends on specific runtime components that
+            are included in a server to support interacting with storage systems. Standard Apache Polaris
+            servers use this name for finding base S3 and STS credentials.
+
+
+            Note: this name is optional and unrelated to the name of a storage configuration
+            (StorageConfiguration.name).
       required:
         - storageType
       discriminator:
@@ -1549,6 +1703,87 @@ components:
       required:
         - currentEntityVersion
         - properties
+
+    StorageConfigurations:
+      type: object
+      description: A page of storage configurations
+      properties:
+        storageConfigurations:
+          type: array
+          items:
+            $ref: "#/components/schemas/StorageConfiguration"
+        nextPageToken:
+          type: string
+          description: Pass this value as `pageToken` to get the next page. Absent on the last page.
+      required:
+        - storageConfigurations
+
+    CreateStorageConfigurationRequest:
+      type: object
+      description: Request to create a storage configuration
+      properties:
+        storageConfiguration:
+          $ref: "#/components/schemas/StorageConfiguration"
+      required:
+        - storageConfiguration
+
+    StorageConfiguration:
+      type: object
+      description: |
+        A named storage configuration in a catalog. A catalog can hold several, in addition to its own
+        `storageConfigInfo`, which has no name and stays the catalog's default. Namespaces and tables
+        use a storage configuration through storage mappings, defined in the Polaris catalog API.
+
+        A storage configuration is immutable: there is no update operation. To change settings,
+        create a new storage configuration and use it for new namespaces and tables. Existing
+        namespaces and tables keep the storage configuration they were created with. This does not
+        apply to the catalog's own `storageConfigInfo`, which can still be changed with updateCatalog;
+        namespaces and tables that use it follow those changes, as before.
+
+        Polaris does not check that the cloud identity of a storage configuration (for example an AWS
+        IAM role) can access its locations. Changes made in the cloud provider to that identity or to
+        its permissions take effect without any change in Polaris.
+
+        Privileges:
+        - STORAGE_CONFIGURATION_CREATE and STORAGE_CONFIGURATION_LIST on the catalog allow creating
+          and listing storage configurations.
+        - STORAGE_CONFIGURATION_READ and STORAGE_CONFIGURATION_DROP on a storage configuration allow
+          reading and deleting it. STORAGE_CONFIGURATION_FULL_METADATA includes both.
+        - STORAGE_CONFIGURATION_ATTACH and STORAGE_CONFIGURATION_DETACH on a storage configuration
+          allow creating and removing storage mappings to it, together with
+          NAMESPACE_ATTACH_STORAGE_CONFIGURATION and NAMESPACE_DETACH_STORAGE_CONFIGURATION on the
+          parent namespace (CATALOG_ATTACH_STORAGE_CONFIGURATION and
+          CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog), as for policies. They do not allow
+          reading or deleting the storage configuration, and creating a storage configuration does
+          not allow using it.
+        - STORAGE_CONFIGURATION_MANAGE_GRANTS_ON_SECURABLE on a storage configuration allows
+          managing the grants on it.
+      properties:
+        name:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{1,128}$'
+          description: The name of the storage configuration. Unique within the catalog and case sensitive.
+        storageConfigInfo:
+          $ref: "#/components/schemas/StorageConfigInfo"
+          description: >-
+            The storage settings, validated as for a catalog. `allowedLocations` must not be empty;
+            unlike a catalog, a storage configuration has no default base location to fall back on.
+        baseLocation:
+          type: string
+          description: >-
+            Optional. Must be inside one of `storageConfigInfo.allowedLocations`. A namespace or table
+            whose own storage mapping names this storage configuration, and that is created without an
+            explicit location, is placed under it. Without it, such a namespace or table must be
+            created with an explicit location. Namespaces and tables inside a mapped namespace are
+            placed under that namespace's location, as before.
+        createTimestamp:
+          type: integer
+          format: "int64"
+          readOnly: true
+          description: The creation time represented as unix epoch timestamp in milliseconds
+      required:
+        - name
+        - storageConfigInfo
 
     ViewPrivilege:
       type: string
