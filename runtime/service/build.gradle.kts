@@ -60,6 +60,9 @@ dependencies {
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
+  implementation("org.apache.iceberg:iceberg-data")
+  implementation("org.apache.iceberg:iceberg-parquet")
+  implementation(libs.parquet.hadoop)
   implementation("org.apache.iceberg:iceberg-aws")
 
   implementation(platform(libs.quarkus.bom))
