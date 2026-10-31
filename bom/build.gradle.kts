@@ -88,7 +88,6 @@ dependencies {
 
     api(project(":polaris-persistence-nosql-maintenance-api"))
     api(project(":polaris-persistence-nosql-maintenance-impl"))
-    api(project(":polaris-persistence-nosql-maintenance-cel"))
     api(project(":polaris-persistence-nosql-maintenance-spi"))
 
     api(project(":polaris-config-docs-annotations"))
