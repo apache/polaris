@@ -28,55 +28,94 @@ import jakarta.enterprise.inject.Instance.Handle;
 import jakarta.inject.Inject;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.RESTCatalogProperties;
 import org.apache.iceberg.rest.responses.ConfigResponse;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
-import org.apache.polaris.core.persistence.resolver.Resolver;
-import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
+import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.spi.CatalogConfigEndpointContributor;
 import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 
 @RequestScoped
 public class CatalogConfigHandler {
   private final CatalogPrefixParser prefixParser;
-  private final ResolverFactory resolverFactory;
+  private final ResolutionManifestFactory resolutionManifestFactory;
+  private final PolarisAuthorizer authorizer;
   private final Instance<CatalogConfigEndpointContributor> endpointContributors;
   private final IdempotencyConfiguration idempotencyConfiguration;
+  private final RealmConfig realmConfig;
 
   @Inject
   public CatalogConfigHandler(
       CatalogPrefixParser prefixParser,
-      ResolverFactory resolverFactory,
+      ResolutionManifestFactory resolutionManifestFactory,
+      PolarisAuthorizer authorizer,
       @Any Instance<CatalogConfigEndpointContributor> endpointContributors,
-      IdempotencyConfiguration idempotencyConfiguration) {
+      IdempotencyConfiguration idempotencyConfiguration,
+      RealmConfig realmConfig) {
     this.prefixParser = prefixParser;
-    this.resolverFactory = resolverFactory;
+    this.resolutionManifestFactory = resolutionManifestFactory;
+    this.authorizer = authorizer;
     this.endpointContributors = endpointContributors;
     this.idempotencyConfiguration = idempotencyConfiguration;
+    this.realmConfig = realmConfig;
   }
 
   public ConfigResponse getConfig(String catalogName, PolarisPrincipal principal) {
-    Resolver resolver = resolverFactory.createResolver(principal, catalogName);
-    ResolverStatus resolverStatus = resolver.resolveAll();
+    PolarisResolutionManifest resolutionManifest =
+        resolutionManifestFactory.createResolutionManifest(principal, catalogName);
+    resolutionManifest.addTopLevelName(
+        catalogName, PolarisEntityType.CATALOG, false /* isOptional */);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    AuthorizationRequest configAuthzRequest =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.GET_CATALOG_CONFIG,
+                    PolarisSecurableMapper.catalog(catalogName))));
+    authorizer.resolveAuthorizationInputs(authorizationState, configAuthzRequest);
+
+    ResolverStatus resolverStatus = resolutionManifest.getPrimaryResolverStatusOrThrow();
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
       throw new NotFoundException("Unable to find warehouse %s", catalogName);
     }
-    ResolvedPolarisEntity resolvedReferenceCatalog = resolver.getResolvedReferenceCatalog();
-    Map<String, String> properties =
-        PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
+    PolarisBaseEntity catalogEntity =
+        resolutionManifest
+            .getResolvedTopLevelEntity(catalogName, PolarisEntityType.CATALOG)
+            .getResolvedLeafEntity()
+            .getEntity();
+
+    // GET_CATALOG_CONFIG is opt-in via ENFORCE_CATALOG_CONFIG_AUTHORIZATION (default false).
+    // When false, behavior matches the pre-authorization path so upgrades do not 403 bootstrap.
+    // When true, CATALOG_READ_CONFIG is required for the whole endpoint. A 200 still includes
+    // catalog properties (defaults) as it does today.
+    boolean enforceAccessChecks =
+        realmConfig.getConfig(FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION);
+    if (enforceAccessChecks) {
+      authorizer.authorize(authorizationState, configAuthzRequest).throwIfDenied();
+    }
 
     ConfigResponse.Builder builder =
         ConfigResponse.builder()
-            .withDefaults(properties)
             .withOverrides(
                 ImmutableMap.of(
                     "prefix",
@@ -85,7 +124,8 @@ public class CatalogConfigHandler {
                     // always communicate the default namespace separator to clients.
                     RESTCatalogProperties.NAMESPACE_SEPARATOR,
                     NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED))
-            .withEndpoints(ImmutableList.copyOf(supportedEndpoints()));
+            .withEndpoints(ImmutableList.copyOf(supportedEndpoints()))
+            .withDefaults(PolarisEntity.of(catalogEntity).getPropertiesAsMap());
 
     // Advertise Idempotency-Key support to clients. Per the REST spec, presence of this field
     // signals that mutation endpoints honor Idempotency-Key; its value is the reuse window a

@@ -68,6 +68,17 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   v6 is now **required** before starting this version of Polaris. The first request to any realm
   whose recorded schema version does not match what the binary expects will fail fast with a clear
   error message. See the [Relational JDBC metastore documentation] for the full upgrade path.
+- New privilege `CATALOG_READ_CONFIG` (authorizable operation `GET_CATALOG_CONFIG`) is available for
+  the Iceberg REST `GET /v1/config` endpoint. The endpoint hard-gate is **off by default** behind
+  `polaris.features."ENFORCE_CATALOG_CONFIG_AUTHORIZATION"`, so upgrades do not 403 bootstrap. When
+  enabled, callers need `CATALOG_READ_CONFIG` (or a catalog-level content privilege that subsumes
+  it). A 200 still returns catalog properties (`defaults`) as today. Before enabling: grant
+  `CATALOG_READ_CONFIG` and update Ranger/OPA policies for `GET_CATALOG_CONFIG`. Ranger currently
+  maps that operation to the existing `catalog-properties-read` access type — do not enable the flag
+  for Ranger until a dedicated `catalog-config-read` access type exists (or accept that coarse
+  mapping). A production-readiness warning is emitted while the flag remains false. The default will
+  not flip until client-facing catalog configuration is defined. Table- or namespace-scoped grants
+  alone do not satisfy the catalog-path check used for `CATALOG_READ_CONFIG` once enforcement is on.
 
 [Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 
@@ -146,6 +157,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `GET /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials` endpoint, which Polaris
   already served. Clients that check advertised endpoints before refreshing vended credentials can
   now use it.
+- Iceberg REST `GET /v1/config` can optionally require `CATALOG_READ_CONFIG` (operation
+  `GET_CATALOG_CONFIG`). The check is off by default behind
+  `ENFORCE_CATALOG_CONFIG_AUTHORIZATION`; when enabled, unauthorized callers get 403. A 200 still
+  returns catalog properties (`defaults`) as today. Previously any authenticated principal who
+  knew a warehouse name could call the endpoint with no AuthZ.
 - Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
   the packaged chart, so `helm test` ran no tests.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from

@@ -20,12 +20,16 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static jakarta.ws.rs.core.Response.Status.CREATED;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 
 import jakarta.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -34,12 +38,19 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.rest.GenericTableEndpoints;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.policy.PolicyEndpoints;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 public class GetConfigTest {
   @ParameterizedTest
@@ -66,24 +77,169 @@ public class GetConfigTest {
     assertThat(configResponse.idempotencyKeyLifetime()).isNull();
   }
 
+  /**
+   * A mock authorizer that resolves inputs but denies the given operations via {@link
+   * AuthorizationDecision#deny(String)} on the {@code authorize()} SPI.
+   */
+  private static PolarisAuthorizer authorizerDenying(PolarisAuthorizableOperation... deniedOps) {
+    PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
+    Mockito.doAnswer(
+            invocation -> {
+              AuthorizationState authzState = invocation.getArgument(0);
+              authzState.getResolutionManifest().resolveAll();
+              return null;
+            })
+        .when(authorizer)
+        .resolveAuthorizationInputs(any(), any());
+    Mockito.doAnswer(
+            invocation -> {
+              AuthorizationRequest request = invocation.getArgument(1);
+              for (var intent : request.intents()) {
+                for (PolarisAuthorizableOperation denied : deniedOps) {
+                  if (intent.operation() == denied) {
+                    return AuthorizationDecision.deny("test: operation " + denied + " denied");
+                  }
+                }
+              }
+              return AuthorizationDecision.allow();
+            })
+        .when(authorizer)
+        .authorize(any(), any());
+    return authorizer;
+  }
+
+  @Test
+  public void testCatalogPropertiesReturnedWhenAuthorized() {
+    TestServices services = TestServices.builder().config(baseConfig(Map.of())).build();
+    String catalogName = createCatalog(services);
+
+    Response response =
+        services
+            .restConfigurationApi()
+            .getConfig(catalogName, services.realmContext(), services.securityContext());
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
+
+    assertThat(configResponse.defaults()).containsEntry("custom-property", "custom-value");
+  }
+
+  @Test
+  public void testCatalogPropertiesReturnedWhenEnforcementEnabled() {
+    TestServices services =
+        TestServices.builder()
+            .config(baseConfig(Map.of("ENFORCE_CATALOG_CONFIG_AUTHORIZATION", true)))
+            .build();
+    String catalogName = createCatalog(services);
+
+    Response response =
+        services
+            .restConfigurationApi()
+            .getConfig(catalogName, services.realmContext(), services.securityContext());
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
+
+    assertThat(configResponse.defaults()).containsEntry("custom-property", "custom-value");
+  }
+
+  @Test
+  public void testConfigAuthChecksSkippedWhenEnforcementDisabled() {
+    // Default ENFORCE_CATALOG_CONFIG_AUTHORIZATION is false: the endpoint hard-gate does not
+    // run, so denying GET_CATALOG_CONFIG still returns 200 with defaults.
+    TestServices services =
+        TestServices.builder()
+            .config(baseConfig(Map.of()))
+            .authorizer(authorizerDenying(PolarisAuthorizableOperation.GET_CATALOG_CONFIG))
+            .build();
+    String catalogName = createCatalog(services);
+
+    Response response =
+        services
+            .restConfigurationApi()
+            .getConfig(catalogName, services.realmContext(), services.securityContext());
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
+    assertThat(configResponse.overrides()).contains(Map.entry("prefix", catalogName));
+    assertThat(configResponse.defaults()).containsEntry("custom-property", "custom-value");
+  }
+
+  @Test
+  public void testConfigEndpointForbiddenWhenEnforcementEnabledWithoutConfigPrivilege() {
+    TestServices services =
+        TestServices.builder()
+            .config(baseConfig(Map.of("ENFORCE_CATALOG_CONFIG_AUTHORIZATION", true)))
+            .authorizer(authorizerDenying(PolarisAuthorizableOperation.GET_CATALOG_CONFIG))
+            .build();
+    String catalogName = createCatalog(services);
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .restConfigurationApi()
+                    .getConfig(catalogName, services.realmContext(), services.securityContext()))
+        .isInstanceOf(ForbiddenException.class);
+  }
+
+  @Test
+  public void testResolveAuthorizationInputsIncludesConfigIntent() {
+    PolarisAuthorizer authorizer = authorizerDenying();
+    TestServices services =
+        TestServices.builder()
+            .config(baseConfig(Map.of("ENFORCE_CATALOG_CONFIG_AUTHORIZATION", true)))
+            .authorizer(authorizer)
+            .build();
+    String catalogName = createCatalog(services);
+    // createCatalog exercises other AuthZ paths; only assert the getConfig resolve call.
+    Mockito.clearInvocations(authorizer);
+
+    Response response =
+        services
+            .restConfigurationApi()
+            .getConfig(catalogName, services.realmContext(), services.securityContext());
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+
+    ArgumentCaptor<AuthorizationRequest> resolutionRequest =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
+    verify(authorizer).resolveAuthorizationInputs(any(), resolutionRequest.capture());
+    assertThat(resolutionRequest.getValue().intents())
+        .extracting(intent -> intent.operation())
+        .containsExactly(PolarisAuthorizableOperation.GET_CATALOG_CONFIG);
+  }
+
   private static ConfigResponse getConfig(Map<String, Object> extraConfig) {
+    TestServices services = TestServices.builder().config(baseConfig(extraConfig)).build();
+    String catalogName = createCatalog(services);
+
+    Response response =
+        services
+            .restConfigurationApi()
+            .getConfig(catalogName, services.realmContext(), services.securityContext());
+    ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
+
+    assertThat(configResponse.overrides()).contains(Map.entry("prefix", catalogName));
+    return configResponse;
+  }
+
+  private static Map<String, Object> baseConfig(Map<String, Object> extraConfig) {
     Map<String, Object> config = new HashMap<>();
     config.put("ALLOW_INSECURE_STORAGE_TYPES", true);
     config.put("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("FILE", "S3"));
     config.putAll(extraConfig);
+    return config;
+  }
 
-    TestServices services = TestServices.builder().config(config).build();
-
+  private static String createCatalog(TestServices services) {
     FileStorageConfigInfo fileStorage =
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(List.of("file://"))
             .build();
     String catalogName = "test-catalog-" + UUID.randomUUID();
+    CatalogProperties catalogProperties = new CatalogProperties("file:///tmp/path/to/data");
+    catalogProperties.put("custom-property", "custom-value");
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
-            .setProperties(new CatalogProperties("file:///tmp/path/to/data"))
+            .setProperties(catalogProperties)
             .setStorageConfigInfo(fileStorage)
             .build();
 
@@ -95,15 +251,7 @@ public class GetConfigTest {
                 services.realmContext(),
                 services.securityContext());
     assertThat(response.getStatus()).isEqualTo(CREATED.getStatusCode());
-
-    response =
-        services
-            .restConfigurationApi()
-            .getConfig(catalogName, services.realmContext(), services.securityContext());
-    ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
-
-    assertThat(configResponse.overrides()).contains(Map.entry("prefix", catalogName));
-    return configResponse;
+    return catalogName;
   }
 
   private static void assertEndpointOrder(
