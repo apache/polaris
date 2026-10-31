@@ -172,7 +172,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
-- Opt-in Iceberg table soft-delete (default off): when `TABLE_SOFT_DELETE_ENABLED` is true, `DROP TABLE` without purge keeps catalog metadata for a hold period (`TABLE_SOFT_DELETE_HOLD_PERIOD`, default `P7D`), hides the table from Iceberg REST list/load/HEAD, and reserves the identifier until permanent delete. `DROP TABLE PURGE` remains an immediate permanent delete. After the hold, a later list or create in the same namespace permanently removes catalog state; file cleanup is opt-in via `TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE`. INTERNAL catalogs only.
+- Opt-in Iceberg table soft-delete (default off): when `TABLE_SOFT_DELETE_ENABLED` is true, `DROP TABLE` without purge keeps catalog metadata for a hold period (`TABLE_SOFT_DELETE_HOLD_PERIOD`, default `P7D`), hides the table from Iceberg REST list/load/HEAD, and reserves the identifier until permanent delete. `DROP TABLE PURGE` remains an immediate permanent delete. After the hold, a later list, create, or drop-namespace in that namespace permanently removes catalog state; file cleanup is opt-in via `TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE`. If that cleanup cannot read the table metadata, the catalog entry is kept so a later pass can retry. INTERNAL catalogs only.
 - The `X-Iceberg-Access-Delegation` header now accepts `none`, as defined by the Iceberg REST
   specification, meaning the client can operate without delegated access. A request that includes
   `none`, alone or together with other values, is handled like a request without the header: the
