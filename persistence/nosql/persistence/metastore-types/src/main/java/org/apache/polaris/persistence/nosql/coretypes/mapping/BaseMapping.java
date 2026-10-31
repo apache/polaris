@@ -215,7 +215,10 @@ public abstract class BaseMapping<O extends ObjBase, B extends ObjBase.Builder<O
         .stableId(entity.getId())
         .parentStableId(entity.getParentId())
         .createTimestamp(Instant.ofEpochMilli(entity.getCreateTimestamp()))
-        .updateTimestamp(Instant.ofEpochMilli(entity.getLastUpdateTimestamp()));
+        .updateTimestamp(Instant.ofEpochMilli(entity.getLastUpdateTimestamp()))
+        .dropTimestamp(Instant.ofEpochMilli(entity.getDropTimestamp()))
+        .purgeTimestamp(Instant.ofEpochMilli(entity.getPurgeTimestamp()))
+        .toPurgeTimestamp(Instant.ofEpochMilli(entity.getToPurgeTimestamp()));
 
     properties.entrySet().stream()
         .filter(e -> e.getValue() != null)
@@ -279,6 +282,9 @@ public abstract class BaseMapping<O extends ObjBase, B extends ObjBase.Builder<O
         .internalPropertiesAsMap(internalProperties)
         .createTimestamp(o.createTimestamp().toEpochMilli())
         .lastUpdateTimestamp(o.updateTimestamp().toEpochMilli())
+        .dropTimestamp(o.dropTimestamp().toEpochMilli())
+        .purgeTimestamp(o.purgeTimestamp().toEpochMilli())
+        .toPurgeTimestamp(o.toPurgeTimestamp().toEpochMilli())
         .entityVersion(o.entityVersion())
         .build();
   }

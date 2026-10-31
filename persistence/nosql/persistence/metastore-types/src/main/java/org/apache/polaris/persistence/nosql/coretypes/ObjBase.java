@@ -54,6 +54,27 @@ public interface ObjBase extends Obj {
 
   Instant updateTimestamp();
 
+  /** Epoch if the entity has not been dropped. */
+  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  @Value.Default
+  default Instant dropTimestamp() {
+    return Instant.EPOCH;
+  }
+
+  /** Epoch if purge has not completed. */
+  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  @Value.Default
+  default Instant purgeTimestamp() {
+    return Instant.EPOCH;
+  }
+
+  /** Epoch if the entity is not scheduled for delayed purge. */
+  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  @Value.Default
+  default Instant toPurgeTimestamp() {
+    return Instant.EPOCH;
+  }
+
   @JsonInclude(JsonInclude.Include.NON_EMPTY)
   Map<String, String> properties();
 
@@ -82,6 +103,15 @@ public interface ObjBase extends Obj {
 
     @CanIgnoreReturnValue
     B updateTimestamp(Instant updateTimestamp);
+
+    @CanIgnoreReturnValue
+    B dropTimestamp(Instant dropTimestamp);
+
+    @CanIgnoreReturnValue
+    B purgeTimestamp(Instant purgeTimestamp);
+
+    @CanIgnoreReturnValue
+    B toPurgeTimestamp(Instant toPurgeTimestamp);
 
     @CanIgnoreReturnValue
     B putProperty(String key, String value);
