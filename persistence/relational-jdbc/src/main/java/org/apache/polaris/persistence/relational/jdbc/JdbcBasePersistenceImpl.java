@@ -59,7 +59,6 @@ import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
-import org.apache.polaris.core.persistence.PersistenceWriteNotStartedException;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
@@ -272,13 +271,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   }
 
   private RuntimeException wrapEntityWriteFailure(SQLException e, String context) {
-    // Check the not-started phase first: a failure before the mutating call was entered (connection
-    // acquisition, statement preparation, parameter binding, auto-commit setup) is a definite
-    // non-write, even though its SQLSTATE (e.g. class 08) would otherwise look ambiguous.
-    if (datasourceOperations.isWriteNotStartedFailure(e)) {
-      return new PersistenceWriteNotStartedException(
-          String.format("%s due to %s; the write did not start", context, e.getMessage()), e);
-    }
+    // Only a failure inside commit() is ambiguous. Anything earlier is a definite failure, even
+    // when its SQLSTATE (for example class 08) would otherwise look like a lost connection.
     if (datasourceOperations.isAmbiguousCommitOutcome(e)) {
       return new PersistenceCommitStateUnknownException(
           String.format("%s due to %s; commit outcome is unknown", context, e.getMessage()), e);

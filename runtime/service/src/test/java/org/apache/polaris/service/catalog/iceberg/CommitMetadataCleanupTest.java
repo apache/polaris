@@ -58,7 +58,6 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
-import org.apache.polaris.core.persistence.PersistenceWriteNotStartedException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -217,11 +216,6 @@ public class CommitMetadataCleanupTest {
           throw new PersistenceCommitStateUnknownException(
               "boom", new SQLException("Connection reset", "08006"));
         };
-    Answer<Object> writeNotStarted =
-        invocation -> {
-          throw new PersistenceWriteNotStartedException(
-              "write did not start", new SQLException("Connection refused", "08001"));
-        };
     Answer<Object> concurrentModification =
         invocation ->
             new EntityResult(
@@ -229,7 +223,6 @@ public class CommitMetadataCleanupTest {
                 "simulated concurrent modification");
     return Stream.of(
         Arguments.of("commit outcome unknown keeps metadata", commitOutcomeUnknown, false),
-        Arguments.of("write not started cleans up metadata", writeNotStarted, true),
         Arguments.of("concurrent modification cleans up metadata", concurrentModification, true));
   }
 
@@ -282,56 +275,6 @@ public class CommitMetadataCleanupTest {
         .isEqualTo(metadataFilesBefore);
   }
 
-  @Test
-  void cleansUpMetadataWhenWriteNeverStarted(@TempDir Path tempDir) throws Exception {
-    String location = catalogBaseLocation(tempDir);
-    AtomicBoolean shouldFail = new AtomicBoolean(false);
-    TestServices testServices =
-        TestServices.builder()
-            .config(
-                Map.of(
-                    "ALLOW_INSECURE_STORAGE_TYPES",
-                    "true",
-                    "SUPPORTED_CATALOG_STORAGE_TYPES",
-                    List.of("FILE")))
-            .metaStoreManagerDecorator(
-                msm -> {
-                  PolarisMetaStoreManager spy = Mockito.spy(msm);
-                  Mockito.doAnswer(
-                          invocation -> {
-                            if (shouldFail.get()) {
-                              // Simulate: the DB connection could not be acquired, so the write
-                              // never started (a definite non-write).
-                              throw new PersistenceWriteNotStartedException(
-                                  "write did not start",
-                                  new SQLException("Connection refused", "08001"));
-                            }
-                            return invocation.callRealMethod();
-                          })
-                      .when(spy)
-                      .updateEntityPropertiesIfNotChanged(
-                          Mockito.any(), Mockito.any(), Mockito.any());
-                  return spy;
-                })
-            .build();
-
-    createCatalogAndNamespace(testServices, location);
-    String tableName = "write-not-started-cleanup-table";
-    createTable(testServices, tableName, location);
-    TableIdentifier tableId = TableIdentifier.of(NAMESPACE, tableName);
-
-    Set<Path> metadataFilesBefore = metadataFiles(tempDir);
-    shouldFail.set(true);
-
-    assertThatThrownBy(() -> updateTable(testServices, tableId, "value-not-started"))
-        .isInstanceOf(PersistenceWriteNotStartedException.class);
-
-    Set<Path> metadataFilesAfter = metadataFiles(tempDir);
-    assertThat(metadataFilesAfter)
-        .as("Orphan metadata from a definite non-write should be cleaned up")
-        .isEqualTo(metadataFilesBefore);
-  }
-
   @ParameterizedTest
   @MethodSource("cleanupDecisionCases")
   void shouldCleanupMetadataOnCommitFailure(Throwable failure, boolean expectedCleanup) {
@@ -349,12 +292,6 @@ public class CommitMetadataCleanupTest {
             new PersistenceCommitStateUnknownException(
                 "unknown", new SQLException("timeout", "57014")),
             false),
-        // A write that never started (connection could not be acquired) is a definite non-write:
-        // the freshly written metadata is a safe-to-delete orphan.
-        Arguments.of(
-            new PersistenceWriteNotStartedException(
-                "write did not start", new SQLException("Connection refused", "08001")),
-            true),
         Arguments.of(new CommitStateUnknownException(new RuntimeException("db timeout")), false),
         Arguments.of(new CommitFailedException("concurrent metadata location"), true),
         Arguments.of(new CommitConflictException("concurrent entity version"), true),

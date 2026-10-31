@@ -268,7 +268,7 @@ public class DatasourceOperations {
         () -> {
           logQuery(preparedQuery);
           boolean commitStarted = false;
-          try (Connection connection = acquireConnection();
+          try (Connection connection = borrowConnection();
               PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
             List<Object> params = preparedQuery.parameters();
             for (int i = 0; i < params.size(); i++) {
@@ -318,7 +318,7 @@ public class DatasourceOperations {
     return withRetries(
         () -> {
           boolean commitStarted = false;
-          try (Connection connection = acquireConnection();
+          try (Connection connection = borrowConnection();
               PreparedStatement statement = connection.prepareStatement(preparedQueries.sql())) {
             boolean autoCommit = connection.getAutoCommit();
             connection.setAutoCommit(false);
@@ -370,7 +370,7 @@ public class DatasourceOperations {
     withRetries(
         () -> {
           boolean commitStarted = false;
-          try (Connection connection = acquireConnection()) {
+          try (Connection connection = borrowConnection()) {
             boolean autoCommit = connection.getAutoCommit();
             connection.setAutoCommit(false);
             try {
@@ -417,37 +417,20 @@ public class DatasourceOperations {
   }
 
   /**
-   * Whether a SQLException indicates the statement may already have been applied on the server
-   * while the client cannot confirm the outcome (connection loss, timeout, cancellation).
+   * Whether a failure is an ambiguous commit outcome: {@code commit()} was entered and the error
+   * looked like a connection or timeout failure.
    *
    * <p>Callers must not treat these as definite failures for cleanup or safe retry of CAS writes.
+   * The decision is made once, in {@link #classifyByPhase}, which wraps that failure as {@link
+   * AmbiguousCommitOutcomeException}. This method only looks for that marker.
    *
-   * <p>Fuzzy message-substring matching ("broken pipe", "connection is closed", and so on) is
-   * applied only to the top-level exception, so a connection-like message buried in an unrelated
-   * cause cannot turn a known failure into an unknown outcome. {@link #withRetries} embeds the
-   * original message in the top-level wrapper it throws, so a rewrapped failure is still matched.
-   * The precise signals — a timeout/connection subtype or a connection-class SQLSTATE — are honored
-   * anywhere in the cause chain, because the rewrap leaves those visible only on a cause.
-   *
-   * <p>A pre-commit connection or timeout failure is not treated as ambiguous: {@link
-   * #classifyByPhase} re-tags it as a {@link WriteNotStartedException} before this method runs, and
-   * the {@link #isWriteNotStartedFailure} guard below short-circuits to {@code false}.
+   * <p>{@link #withRetries} wraps the terminal failure in a plain {@link SQLException}, so the
+   * marker is on the cause chain rather than the top-level type. A connection or timeout error that
+   * was never marked — anything before {@code commit()} — is a definite failure.
    */
   public boolean isAmbiguousCommitOutcome(SQLException e) {
-    // A definite non-write (nothing sent to the server: connection acquisition, statement
-    // preparation, parameter binding, or auto-commit setup failed) is never an ambiguous outcome,
-    // even though the driver may tag it with a connection-class SQLSTATE that would otherwise match
-    // below. Check this first so classification is independent of call order.
-    if (isWriteNotStartedFailure(e)) {
-      return false;
-    }
-    // Fuzzy message matching only on the top-level exception.
-    if (messageIndicatesAmbiguousOutcome(e)) {
-      return true;
-    }
-    // Precise signals (subtype or SQLSTATE) anywhere in the chain.
     for (Throwable t = e; t != null; t = t.getCause()) {
-      if (t instanceof SQLException && hasAmbiguousOutcomeType((SQLException) t)) {
+      if (t instanceof AmbiguousCommitOutcomeException) {
         return true;
       }
     }
@@ -488,21 +471,6 @@ public class DatasourceOperations {
   }
 
   /**
-   * Whether a failure that happened before the mutating call was entered (connection acquisition,
-   * statement preparation, parameter binding, auto-commit setup) is present in the cause chain.
-   * Such a failure is a definite non-write, so callers can distinguish it from an ambiguous commit
-   * outcome after execution.
-   */
-  public boolean isWriteNotStartedFailure(SQLException e) {
-    for (Throwable t = e; t != null; t = t.getCause()) {
-      if (t instanceof WriteNotStartedException) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
    * Whether the exception message contains any of the given lowercase needles. The message is
    * lowercased once; a null message matches nothing.
    */
@@ -521,14 +489,9 @@ public class DatasourceOperations {
   }
 
   private boolean isRetryable(SQLException e, boolean mutating) {
-    // A definite non-write (the mutating call was never entered) means the write did not happen, so
-    // retrying the whole operation is always safe, even for writes.
-    if (e instanceof WriteNotStartedException) {
-      return true;
-    }
-    // For mutating operations an ambiguous outcome (connection loss, timeout, cancellation) may
-    // mean the commit was already applied, so retrying risks a double-apply or a misreported
-    // result. Reads have no commit outcome to protect, so they stay retryable.
+    // For mutating operations an ambiguous commit() outcome may mean the commit was already
+    // applied, so retrying risks a double-apply or a misreported result. Reads have no commit
+    // outcome to protect, so they stay retryable.
     if (mutating && isAmbiguousCommitOutcome(e)) {
       return false;
     }
@@ -701,39 +664,16 @@ public class DatasourceOperations {
   }
 
   /**
-   * Obtains a connection, tagging any acquisition failure with {@link WriteNotStartedException} so
-   * callers can tell a definite non-write (no statement was sent) apart from an ambiguous outcome
-   * after execution.
-   */
-  private Connection acquireConnection() throws SQLException {
-    try {
-      return borrowConnection();
-    } catch (SQLException e) {
-      throw new WriteNotStartedException(e);
-    }
-  }
-
-  /**
-   * Classifies a failure by execution phase. The ambiguity boundary is {@code commit()}: any
-   * failure that occurs before commit was entered leaves the transaction uncommitted and is
-   * therefore a definite non-write.
-   *
-   * <p>Once {@code commitStarted} is set (immediately before {@code commit()}), or the failure is
-   * already a {@link WriteNotStartedException}, the original exception is returned unchanged so
-   * {@link #isAmbiguousCommitOutcome} can decide the commit outcome.
-   *
-   * <p>For a pre-commit failure, only a connection- or timeout-class error needs to be re-tagged:
-   * it would otherwise be misread as an ambiguous commit outcome, when in fact nothing committed.
-   * It is wrapped as {@link WriteNotStartedException} so it is retried and any orphaned state is
-   * cleaned up. Deterministic pre-commit failures (constraint violations, syntax errors, and so on)
-   * already classify correctly and keep their original type, so higher-level mapping (for example
-   * already-exists detection) and retry behavior are unaffected.
+   * Classifies a failure by execution phase. The only ambiguous point is {@code commit()}: when
+   * {@code commitStarted} is set and the error looks like a connection or timeout failure, it is
+   * wrapped as {@link AmbiguousCommitOutcomeException}. Any earlier failure leaves the transaction
+   * uncommitted and is returned unchanged.
    */
   private static SQLException classifyByPhase(SQLException e, boolean commitStarted) {
-    if (commitStarted || e instanceof WriteNotStartedException) {
+    if (!commitStarted || e instanceof AmbiguousCommitOutcomeException) {
       return e;
     }
-    return indicatesAmbiguousOutcome(e) ? new WriteNotStartedException(e) : e;
+    return indicatesAmbiguousOutcome(e) ? new AmbiguousCommitOutcomeException(e) : e;
   }
 
   /**

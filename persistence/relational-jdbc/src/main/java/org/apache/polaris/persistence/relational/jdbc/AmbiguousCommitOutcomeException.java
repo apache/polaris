@@ -21,14 +21,15 @@ package org.apache.polaris.persistence.relational.jdbc;
 import java.sql.SQLException;
 
 /**
- * Marks a failure that happened before the {@code commit()} boundary was reached — obtaining the
- * connection, preparing the statement, binding parameters, configuring auto-commit, or running a
- * statement whose transaction has not yet committed. Such a failure is a definite non-write: it
- * must not be classified as an ambiguous commit outcome, and the whole operation is safe to retry.
- * The original message, SQLSTATE and vendor code are preserved.
+ * Marks a failure thrown from {@code Connection.commit()} whose outcome cannot be confirmed
+ * (connection loss, timeout, cancellation). The commit may already have been applied. The original
+ * message, SQLSTATE and vendor code are preserved.
+ *
+ * <p>{@code withRetries} wraps the terminal failure in a plain {@link SQLException}, so callers
+ * detect this marker on the cause chain rather than as the top-level type.
  */
-final class WriteNotStartedException extends SQLException {
-  WriteNotStartedException(SQLException cause) {
+final class AmbiguousCommitOutcomeException extends SQLException {
+  AmbiguousCommitOutcomeException(SQLException cause) {
     super(cause.getMessage(), cause.getSQLState(), cause.getErrorCode(), cause);
   }
 }

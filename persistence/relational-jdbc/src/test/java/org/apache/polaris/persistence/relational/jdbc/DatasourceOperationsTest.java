@@ -375,19 +375,18 @@ public class DatasourceOperationsTest {
   }
 
   @Test
-  void isAmbiguousCommitOutcome_classifiesConnectionAndTimeoutFailures() {
-    assertTrue(datasourceOperations.isAmbiguousCommitOutcome(new SQLException("reset", "08006")));
+  void isAmbiguousCommitOutcome_matchesOnlyTheCommitMarker() {
+    // A connection or timeout error is not ambiguous until classifyByPhase marks a commit()
+    // failure. The marker is what higher layers see, including after withRetries wraps it.
+    SQLException connectionFailure = new SQLException("reset", "08006");
+    assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(connectionFailure));
     assertTrue(
-        datasourceOperations.isAmbiguousCommitOutcome(new SQLException("canceled", "57014")));
+        !datasourceOperations.isAmbiguousCommitOutcome(new SQLException("canceled", "57014")));
+    assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(new SQLTimeoutException("timeout")));
+    assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(new SQLException("unique", "23505")));
     assertTrue(
         datasourceOperations.isAmbiguousCommitOutcome(
-            new SQLException("Connection reset by peer")));
-    assertTrue(datasourceOperations.isAmbiguousCommitOutcome(new SQLTimeoutException("timeout")));
-    // Serialization failure is a definite rollback — retryable, not ambiguous commit success.
-    assertTrue(
-        !datasourceOperations.isAmbiguousCommitOutcome(new SQLException("serialization", "40001")));
-    // Constraint violations are definite failures.
-    assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(new SQLException("unique", "23505")));
+            new AmbiguousCommitOutcomeException(connectionFailure)));
   }
 
   @Test
@@ -395,7 +394,9 @@ public class DatasourceOperationsTest {
     when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
     when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(5000L));
     when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(1L));
-    when(mockOperation.execute()).thenThrow(new SQLException("Connection reset", "08006"));
+    when(mockOperation.execute())
+        .thenThrow(
+            new AmbiguousCommitOutcomeException(new SQLException("Connection reset", "08006")));
 
     assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
     verify(mockOperation, times(1)).execute();
@@ -419,73 +420,40 @@ public class DatasourceOperationsTest {
 
   @Test
   void isAmbiguousCommitOutcome_walksCauseChain() {
-    // withRetries rewraps the original SQLException in a generic SQLException on its terminal
-    // throw, so the ambiguous subtype is only reachable through the cause chain.
-    SQLException rewrappedTimeout =
+    // withRetries rewraps the terminal failure in a plain SQLException, so the marker is only
+    // reachable through the cause chain.
+    SQLException rewrapped =
         new SQLException(
-            "Failed after retries", null, 0, new SQLTimeoutException("statement timeout"));
-    assertTrue(datasourceOperations.isAmbiguousCommitOutcome(rewrappedTimeout));
+            "Failed after retries",
+            "08006",
+            0,
+            new AmbiguousCommitOutcomeException(new SQLException("connection reset", "08006")));
+    assertTrue(datasourceOperations.isAmbiguousCommitOutcome(rewrapped));
 
-    // A definite failure in the cause chain must not be misread as ambiguous.
-    SQLException rewrappedConstraint =
-        new SQLException("wrapper", null, 0, new SQLException("unique violation", "23505"));
-    assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(rewrappedConstraint));
-  }
-
-  @Test
-  void isAmbiguousCommitOutcome_ignoresConnectionMessageOnBuriedCause() {
-    // Fuzzy message matching is top-level only: a known failure (constraint violation) whose cause
-    // merely mentions a connection in its message must stay a known failure, not become ambiguous.
-    SQLException deterministicWithConnectionishCause =
-        new SQLException("unique violation", "23505", new SQLException("connection is closed"));
-    assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(deterministicWithConnectionishCause));
-
-    // A precise signal (connection-class SQLSTATE) on a cause is still honored.
-    SQLException deterministicWithConnectionStateCause =
+    // A connection signal that was never marked, even on a cause, is a definite failure.
+    SQLException unmarkedConnection =
         new SQLException("wrapper", null, 0, new SQLException("dropped", "08006"));
-    assertTrue(
-        datasourceOperations.isAmbiguousCommitOutcome(deterministicWithConnectionStateCause));
+    assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(unmarkedConnection));
   }
 
   @Test
-  void executeUpdate_retriesWhenConnectionAcquisitionFails() throws Exception {
+  void executeUpdate_doesNotRetryWhenConnectionAcquisitionFails() throws Exception {
     when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
     when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(5000L));
     when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(1L));
 
     QueryGenerator.PreparedQuery query =
         new QueryGenerator.PreparedQuery("UPDATE users SET active = ?", List.of());
-    // The connection cannot be acquired on the first two attempts, then succeeds. A write whose
-    // statement never ran is a definite non-write, so it must be retried even for a mutating op.
-    when(mockDataSource.getConnection())
-        .thenThrow(new SQLException("Connection refused", "08001"))
-        .thenThrow(new SQLException("Connection refused", "08001"))
-        .thenReturn(mockConnection);
-    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
-    when(mockPreparedStatement.executeUpdate()).thenReturn(1);
-
-    int result = datasourceOperations.executeUpdate(query);
-
-    assertEquals(1, result);
-    verify(mockPreparedStatement, times(1)).executeUpdate();
-  }
-
-  @Test
-  void executeUpdate_connectionAcquisitionFailureIsReportedAsDefiniteNonWrite() throws Exception {
-    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(1));
-    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
-
-    QueryGenerator.PreparedQuery query =
-        new QueryGenerator.PreparedQuery("UPDATE users SET active = ?", List.of());
+    // The connection cannot be acquired. Nothing was committed, but a SQLSTATE is set, so this is
+    // not retried; it is also not an ambiguous commit outcome.
     when(mockDataSource.getConnection()).thenThrow(new SQLException("Connection refused", "08001"));
 
     SQLException thrown =
         assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
 
-    // Even though the underlying SQLSTATE (class 08) would otherwise look ambiguous, a connection
-    // that was never acquired is a definite non-write; callers rely on this to clean up orphans.
-    assertTrue(datasourceOperations.isWriteNotStartedFailure(thrown));
+    // Constructor borrows one connection; the update itself must not try again.
     assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(thrown));
+    verify(mockDataSource, times(2)).getConnection();
   }
 
   @Test
@@ -505,7 +473,6 @@ public class DatasourceOperationsTest {
     SQLException thrown =
         assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
 
-    assertTrue(datasourceOperations.isWriteNotStartedFailure(thrown));
     assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(thrown));
     verify(mockPreparedStatement, times(0)).executeUpdate();
   }
@@ -528,7 +495,6 @@ public class DatasourceOperationsTest {
     SQLException thrown =
         assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
 
-    assertTrue(datasourceOperations.isWriteNotStartedFailure(thrown));
     assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(thrown));
   }
 
@@ -551,7 +517,6 @@ public class DatasourceOperationsTest {
     SQLException thrown =
         assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
 
-    assertTrue(!datasourceOperations.isWriteNotStartedFailure(thrown));
     assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(thrown));
   }
 
@@ -573,7 +538,6 @@ public class DatasourceOperationsTest {
         assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
 
     assertTrue(datasourceOperations.isAmbiguousCommitOutcome(thrown));
-    assertTrue(!datasourceOperations.isWriteNotStartedFailure(thrown));
   }
 
   @Test
@@ -596,7 +560,6 @@ public class DatasourceOperationsTest {
     SQLException thrown =
         assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
 
-    assertTrue(!datasourceOperations.isWriteNotStartedFailure(thrown));
     assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(thrown));
   }
 }

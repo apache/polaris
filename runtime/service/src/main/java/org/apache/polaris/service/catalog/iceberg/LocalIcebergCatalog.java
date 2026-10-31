@@ -122,7 +122,6 @@ import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
-import org.apache.polaris.core.persistence.PersistenceWriteNotStartedException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -1797,13 +1796,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
    * file must be retained so a published pointer cannot dangle.
    *
    * <p>The default is deliberately conservative: a failure that does not prove the write did not
-   * happen is retained rather than cleaned. A dropped connection is surfaced by JDBC as a definite
-   * {@link PersistenceWriteNotStartedException} (cleaned) or an ambiguous {@link
-   * PersistenceCommitStateUnknownException} (retained); any other failure whose commit outcome is
-   * not established — including a plain {@link RuntimeException} from a persistence backend with no
-   * such classification — is retained. The cost is a reclaimable orphaned metadata file after some
-   * deterministic failures; the alternative risk, deleting a file a published pointer references,
-   * is unrecoverable, so we err toward retention.
+   * happen is retained rather than cleaned. JDBC reports an ambiguous {@code commit()} as {@link
+   * PersistenceCommitStateUnknownException} (retained). Any other failure whose commit outcome is
+   * not established — including a plain {@link RuntimeException} from a connection failure before
+   * {@code commit()}, or from a persistence backend with no such classification — is retained. The
+   * cost is a reclaimable orphaned metadata file after some deterministic failures; the alternative
+   * risk, deleting a file a published pointer references, is unrecoverable, so we err toward
+   * retention.
    */
   @VisibleForTesting
   static boolean shouldCleanupMetadataOnCommitFailure(Throwable failure) {
@@ -1813,11 +1812,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     // Never delete metadata when the commit may already have been applied.
     if (failure instanceof PersistenceCommitStateUnknownException) {
       return false;
-    }
-    // A write that never started (e.g. the connection could not be acquired) is a definite
-    // non-write, so the freshly written metadata is a safe-to-delete orphan.
-    if (failure instanceof PersistenceWriteNotStartedException) {
-      return true;
     }
     if (failure instanceof CleanableFailure) {
       return true;
