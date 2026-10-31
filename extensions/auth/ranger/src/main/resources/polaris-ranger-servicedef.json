@@ -94,6 +94,7 @@
           "table-drop",
           "table-data-read",
           "table-data-write",
+          "table-metrics-read",
           "table-properties-read",
           "table-properties-write",
           "table-properties-set",
@@ -437,6 +438,7 @@
       { "itemId": 66, "name": "policy-write",         "label": "Policy Write",         "category": "UPDATE", "impliedGrants": [ "policy-list", "policy-read" ] },
       { "itemId": 67, "name": "policy-attach",        "label": "Policy Attach",        "category": "MANAGE" },
       { "itemId": 68, "name": "policy-detach",        "label": "Policy Detach",        "category": "MANAGE" },
-      { "itemId": 69, "name": "policy-metadata-full", "label": "Policy Metadata Full", "category": "MANAGE", "impliedGrants": [ "policy-create", "policy-drop", "policy-list", "policy-read", "policy-write" ] }
+      { "itemId": 69, "name": "policy-metadata-full", "label": "Policy Metadata Full", "category": "MANAGE", "impliedGrants": [ "policy-create", "policy-drop", "policy-list", "policy-read", "policy-write" ] },
+      { "itemId": 70, "name": "table-metrics-read", "label": "Table Metrics Read", "category": "READ", "impliedGrants": [ "table-list" ] }
     ]
   }
