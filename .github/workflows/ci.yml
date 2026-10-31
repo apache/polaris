@@ -29,7 +29,7 @@ on:
 jobs:
   changes:
     name: Detect Changes
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     outputs:
@@ -118,7 +118,7 @@ jobs:
 
   license-check:
     name: License Header Check
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -150,7 +150,7 @@ jobs:
     name: Gradle Build Checks
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -208,7 +208,7 @@ jobs:
     name: Runtime Service Tests
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -239,7 +239,7 @@ jobs:
     name: Runtime Service Integration Tests
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -268,7 +268,7 @@ jobs:
     name: Admin Tool Tests
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -297,7 +297,7 @@ jobs:
     name: Other Integration Tests
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -336,7 +336,7 @@ jobs:
       needs.changes.outputs.helm == 'true' ||
       needs.changes.outputs.regtests == 'true' ||
       needs.changes.outputs.python_client == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -378,7 +378,7 @@ jobs:
   docker-image-scan:
     name: Polaris Docker Image Scan
     if: github.repository == 'apache/polaris'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs:
       - docker-image-build
     timeout-minutes: 20
@@ -437,7 +437,7 @@ jobs:
 
   helm-tests:
     name: Helm Tests (Helm ${{ matrix.helm-version }} - K8s ${{ matrix.kubernetes-version }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs:
       - changes
       - docker-image-build
@@ -535,7 +535,7 @@ jobs:
 
   python-client:
     name: Polaris Python Client Tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     needs:
@@ -573,7 +573,7 @@ jobs:
 
   regtest:
     name: Regression Tests (${{ matrix.s3-backend }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     needs:
@@ -639,7 +639,7 @@ jobs:
     if: |
       github.repository == 'apache/polaris' &&
       (needs.changes.outputs.backend == 'true' || needs.changes.outputs.docs == 'true')
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -661,7 +661,7 @@ jobs:
     name: "Site Generation"
     needs: changes
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.docs == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -694,7 +694,7 @@ jobs:
   test-site-guides:
     needs: changes
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.docs == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
