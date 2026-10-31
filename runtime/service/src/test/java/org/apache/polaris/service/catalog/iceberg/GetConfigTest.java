@@ -124,12 +124,10 @@ public class GetConfigTest {
   }
 
   @Test
-  public void testCatalogPropertiesHiddenWithoutPropertiesPrivilegeWhenEnforcementEnabled() {
+  public void testCatalogPropertiesReturnedWhenEnforcementEnabled() {
     TestServices services =
         TestServices.builder()
             .config(baseConfig(Map.of("ENFORCE_CATALOG_CONFIG_AUTHORIZATION", true)))
-            .authorizer(
-                authorizerDenying(PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES))
             .build();
     String catalogName = createCatalog(services);
 
@@ -140,24 +138,17 @@ public class GetConfigTest {
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
 
-    // Catalog properties must not be disclosed, but the response still carries the prefix and
-    // endpoints so that REST clients can initialize against the catalog.
-    assertThat(configResponse.defaults()).isEmpty();
-    assertThat(configResponse.overrides()).contains(Map.entry("prefix", catalogName));
-    assertThat(configResponse.endpoints()).isNotEmpty();
+    assertThat(configResponse.defaults()).containsEntry("custom-property", "custom-value");
   }
 
   @Test
   public void testConfigAuthChecksSkippedWhenEnforcementDisabled() {
-    // Default ENFORCE_CATALOG_CONFIG_AUTHORIZATION is false: neither the endpoint hard-gate nor
-    // the properties soft-hide runs, so denying both ops still returns 200 with defaults.
+    // Default ENFORCE_CATALOG_CONFIG_AUTHORIZATION is false: the endpoint hard-gate does not
+    // run, so denying GET_CATALOG_CONFIG still returns 200 with defaults.
     TestServices services =
         TestServices.builder()
             .config(baseConfig(Map.of()))
-            .authorizer(
-                authorizerDenying(
-                    PolarisAuthorizableOperation.GET_CATALOG_CONFIG,
-                    PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES))
+            .authorizer(authorizerDenying(PolarisAuthorizableOperation.GET_CATALOG_CONFIG))
             .build();
     String catalogName = createCatalog(services);
 
@@ -189,7 +180,7 @@ public class GetConfigTest {
   }
 
   @Test
-  public void testResolveAuthorizationInputsIncludesBothConfigIntents() {
+  public void testResolveAuthorizationInputsIncludesConfigIntent() {
     PolarisAuthorizer authorizer = authorizerDenying();
     TestServices services =
         TestServices.builder()
@@ -211,9 +202,7 @@ public class GetConfigTest {
     verify(authorizer).resolveAuthorizationInputs(any(), resolutionRequest.capture());
     assertThat(resolutionRequest.getValue().intents())
         .extracting(intent -> intent.operation())
-        .containsExactly(
-            PolarisAuthorizableOperation.GET_CATALOG_CONFIG,
-            PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES);
+        .containsExactly(PolarisAuthorizableOperation.GET_CATALOG_CONFIG);
   }
 
   private static ConfigResponse getConfig(Map<String, Object> extraConfig) {
