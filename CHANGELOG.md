@@ -137,6 +137,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   accounts for them. Entities with many grants weigh more, which can lead to more evictions than before
   with the same configured value. The description of `ENTITY_CACHE_WEIGHER_TARGET` now documents that
   its weights approximate bytes.
+- The `apache-polaris` Python package now accepts `pydantic` from 2.12 up to, but excluding, 3.0
+  instead of a single minor version, so it can be installed alongside packages that pin `pydantic`.
 
 ### Deprecations
 
