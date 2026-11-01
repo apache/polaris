@@ -109,6 +109,31 @@ public class StorageConfigurationSerializationTest {
     assertThat(configurations.getNextPageToken()).isNull();
   }
 
+  @Test
+  public void testValidationJsonFormat() {
+    StorageConfigurationValidation validation =
+        new StorageConfigurationValidation(
+            List.of(
+                new StorageLocationValidation("s3://finance/", StorageAccessStatus.ACCESSIBLE),
+                StorageLocationValidation.builder("s3://finance/lake/", StorageAccessStatus.DENIED)
+                    .setWrite(StorageAccessStatus.INCONCLUSIVE)
+                    .setMessage("Access denied")
+                    .build()));
+
+    String json = mapper.writeValueAsString(validation);
+
+    assertThat(json)
+        .isEqualTo(
+            "{\"locations\":["
+                + "{\"location\":\"s3://finance/\",\"read\":\"ACCESSIBLE\"},"
+                + "{\"location\":\"s3://finance/lake/\",\"read\":\"DENIED\","
+                + "\"write\":\"INCONCLUSIVE\",\"message\":\"Access denied\"}"
+                + "]}");
+    assertThat(mapper.readValue(json, StorageConfigurationValidation.class))
+        .usingRecursiveComparison()
+        .isEqualTo(validation);
+  }
+
   private static Stream<Arguments> storageConfigurationTestCases() {
     return Stream.of(
         Arguments.of(

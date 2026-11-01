@@ -1035,6 +1035,75 @@ paths:
         409:
           description: "A storage mapping references the storage configuration"
 
+  /catalogs/{catalogName}/storage-configurations/{storageConfigurationName}/validate:
+    parameters:
+      - name: catalogName
+        in: path
+        description: The catalog that holds the storage configuration
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
+      - name: storageConfigurationName
+        in: path
+        description: The name of the storage configuration
+        required: true
+        schema:
+          type: string
+          pattern: '^(?!orphans$)[a-zA-Z0-9_-]{1,128}$'
+    post:
+      operationId: validateStorageConfiguration
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Check that the storage configuration can reach its locations, by calling the cloud provider.
+        Creating a storage configuration doesn't do this, because access is often granted only after
+        the storage configuration exists. Call this operation once access is set up, or whenever access
+        is in doubt.
+
+        Polaris checks every location in `allowedLocations`, and `baseLocation` if it is set. For each
+        one it gets a new session with the cloud identity and credentials of the storage configuration,
+        scoped to that location as for vended credentials, and lists the location. A location with
+        nothing under it yet is ACCESSIBLE if the cloud provider allows the listing. A cached session
+        is never used. With `checkWrite` set to true, Polaris also creates a small object under the
+        location and deletes it. This is off by default because the object is visible in the customer's
+        storage and may trigger bucket notifications. If the object can't be deleted, `write` is DENIED
+        and `message` names the object left behind.
+
+        A failed check is not an error: the response is 200 and reports each location. A storage
+        configuration that fails can be fixed in the cloud provider, or deleted and created again
+        while no storage mapping references it. If `storageName` no longer resolves, every location is
+        DENIED. The check changes nothing in Polaris and its result is not stored. It is not required
+        before creating a storage mapping. It holds only at the time of the call, and only for the
+        checks it ran. Without `checkWrite` it says nothing about write access.
+
+        The response never holds the session or any credentials. FILE storage has no cloud identity
+        and nothing is checked: every location is INCONCLUSIVE.
+
+        Requires STORAGE_CONFIGURATION_VALIDATE on the storage configuration.
+      parameters:
+        - name: checkWrite
+          in: query
+          required: false
+          description: If true, also create and delete a small object under each location.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        200:
+          description: The result for each location, whether or not it can be reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfigurationValidation"
+        403:
+          description: "The principal is not authorized to validate the storage configuration"
+        404:
+          description: "The catalog or the storage configuration does not exist"
+
 components:
   securitySchemes:
     OAuth2:
@@ -1853,22 +1922,24 @@ components:
 
         When a storage configuration is created, Polaris does not check that its cloud identity (for
         example an AWS IAM role) or the credentials selected by `storageConfigInfo.storageName` can
-        access its locations. Changes made in the cloud provider to that identity, to those credentials
-        or to their permissions take effect without any change in Polaris. So do changes to the
-        credentials behind a name in the server's configuration, which is how they are rotated.
+        access its locations. validateStorageConfiguration checks this on request. Changes made in the
+        cloud provider to that identity, to those credentials or to their permissions take effect
+        without any change in Polaris. So do changes to the credentials behind a name in the server's
+        configuration, which is how they are rotated.
 
         Privileges:
         - STORAGE_CONFIGURATION_CREATE and STORAGE_CONFIGURATION_LIST on the catalog allow creating
           and listing storage configurations.
-        - STORAGE_CONFIGURATION_READ and STORAGE_CONFIGURATION_DROP on a storage configuration allow
-          reading and deleting it. STORAGE_CONFIGURATION_FULL_METADATA includes both.
+        - STORAGE_CONFIGURATION_READ, STORAGE_CONFIGURATION_DROP and STORAGE_CONFIGURATION_VALIDATE on
+          a storage configuration allow reading, deleting and validating it.
+          STORAGE_CONFIGURATION_FULL_METADATA includes all three.
         - STORAGE_CONFIGURATION_ATTACH and STORAGE_CONFIGURATION_DETACH on a storage configuration
           allow creating and removing storage mappings to it, together with
           NAMESPACE_ATTACH_STORAGE_CONFIGURATION and NAMESPACE_DETACH_STORAGE_CONFIGURATION on the
           parent namespace (CATALOG_ATTACH_STORAGE_CONFIGURATION and
           CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog for a top-level namespace), as for
-          policies. They do not allow reading or deleting the storage configuration, and creating a
-          storage configuration does not allow using it.
+          policies. They do not allow reading, deleting or validating the storage configuration, and
+          creating a storage configuration does not allow using it.
         - STORAGE_CONFIGURATION_MANAGE_GRANTS_ON_SECURABLE on a storage configuration allows
           managing the grants on it.
       properties:
@@ -1911,6 +1982,52 @@ components:
       required:
         - name
         - storageConfigInfo
+
+    StorageConfigurationValidation:
+      type: object
+      description: The result of validateStorageConfiguration
+      properties:
+        locations:
+          type: array
+          description: One result for each distinct location checked.
+          items:
+            $ref: "#/components/schemas/StorageLocationValidation"
+      required:
+        - locations
+
+    StorageLocationValidation:
+      type: object
+      description: The result of checking one location of a storage configuration
+      properties:
+        location:
+          type: string
+        read:
+          $ref: "#/components/schemas/StorageAccessStatus"
+          description: The result of listing the location.
+        write:
+          $ref: "#/components/schemas/StorageAccessStatus"
+          description: >-
+            The result of creating and deleting an object under the location. Absent unless `checkWrite`
+            is true.
+        message:
+          type: string
+          description: >-
+            Optional. A reason for a person to read, when a check did not pass. Never holds credentials.
+            Don't parse it.
+      required:
+        - location
+        - read
+
+    StorageAccessStatus:
+      type: string
+      description: >-
+        ACCESSIBLE: the cloud provider allowed the access. DENIED: the cloud provider refused the
+        session or the access, or the bucket or container doesn't exist. INCONCLUSIVE: the check gave no answer, for example because the cloud provider couldn't be
+        reached. Check again.
+      enum:
+        - ACCESSIBLE
+        - DENIED
+        - INCONCLUSIVE
 
     ViewPrivilege:
       type: string

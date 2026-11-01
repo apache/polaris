@@ -40,8 +40,9 @@ paths:
         namespaces and tables directly inside it; without it, the mappings of the top-level
         namespaces. This requires NAMESPACE_READ_PROPERTIES on `namespace`, or CATALOG_READ_PROPERTIES
         on the catalog without it.
-        The mappings of tables are left out of a page unless the caller also has TABLE_LIST on
-        `namespace`, so a mapping never shows a table name to a caller who can't list tables.
+        The mappings of namespaces are left out of a page unless the caller also has NAMESPACE_LIST,
+        and the mappings of tables unless the caller also has TABLE_LIST, on `namespace` or on the
+        catalog without it. So this listing never shows a name to a caller who can't list it.
 
         With `storage-configuration-name` instead, all the mappings to that storage configuration are
         listed, at any level of the catalog. This answers which names use a storage configuration,
@@ -288,7 +289,9 @@ paths:
         `namespace` when it is set), and STORAGE_CONFIGURATION_DETACH on each mapped storage
         configuration. CATALOG_MANAGE_METADATA on the catalog includes them. If any is missing the call
         is forbidden and nothing is removed, so the call never removes a mapping the caller could not
-        remove with `removeStorageMapping` (apart from the parent namespace having been dropped).
+        remove with `removeStorageMapping` (apart from the parent namespace having been dropped). The
+        response names the namespaces and tables of those mappings, none of which exist at that moment,
+        even if the caller lacks NAMESPACE_LIST or TABLE_LIST.
       parameters:
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
