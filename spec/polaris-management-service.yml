@@ -883,7 +883,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/StorageConfiguration"
         400:
-          description: "The storage configuration is invalid, or its locations overlap another catalog"
+          description: "The storage configuration is invalid, its locations overlap another catalog, or its `storageName` can't be resolved"
         403:
           description: "The principal is not authorized to create storage configurations"
         404:
@@ -1351,7 +1351,7 @@ components:
             This name is meant for associating StorageConfigInfo objects to deployment-specific
             configuration. The interpretation of this name depends on specific runtime components that
             are included in a server to support interacting with storage systems. Standard Apache Polaris
-            servers use this name for finding base S3 and STS credentials.
+            servers use this name for finding base storage credentials.
 
 
             Note: this name is optional and unrelated to the name of a storage configuration
@@ -1835,9 +1835,23 @@ components:
         STORAGE_CONFIGURATION_CREATE chooses the cloud identity; CATALOG_MANAGE_METADATA on the catalog
         includes it.
 
-        Polaris does not check that the cloud identity of a storage configuration (for example an AWS
-        IAM role) can access its locations. Changes made in the cloud provider to that identity or to
-        its permissions take effect without any change in Polaris.
+        `storageConfigInfo.storageName` selects the server-side credentials Polaris authenticates with
+        for this storage configuration, for any storage type, so several storage configurations can
+        reuse the same credentials by name. These credentials are configured on the server and are
+        never sent through this API. Without `storageName`, Polaris uses the server's default
+        credentials for the `storageType`, not the `storageName` of the catalog's `storageConfigInfo`.
+        Creating a storage configuration fails (400) if the server can't resolve `storageName` to
+        credentials for the `storageType`. If a name stops resolving later, operations that need
+        storage fail; Polaris never falls back to other credentials.
+
+        Every location in `allowedLocations` must match the `storageType` (an `abfss://` location on
+        an S3 storage configuration is a bad request), and the `storageType` must be one the server
+        supports.
+
+        When a storage configuration is created, Polaris does not check that its cloud identity (for
+        example an AWS IAM role) or the credentials selected by `storageConfigInfo.storageName` can
+        access its locations. Changes made in the cloud provider to that identity, to those credentials
+        or to their permissions take effect without any change in Polaris.
 
         Privileges:
         - STORAGE_CONFIGURATION_CREATE and STORAGE_CONFIGURATION_LIST on the catalog allow creating

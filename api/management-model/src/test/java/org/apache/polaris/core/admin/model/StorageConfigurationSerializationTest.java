@@ -118,6 +118,7 @@ public class StorageConfigurationSerializationTest {
                     AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                         .setRoleArn(TEST_ROLE_ARN)
                         .setAllowedLocations(List.of("s3://finance/"))
+                        .setStorageName("shared-aws")
                         .build())
                 .setBaseLocation("s3://finance/lake/")
                 .setCreateTimestamp(1761868800000L)
@@ -129,6 +130,7 @@ public class StorageConfigurationSerializationTest {
                 "archive",
                 AzureStorageConfigInfo.builder("tenant-id", StorageConfigInfo.StorageTypeEnum.AZURE)
                     .setAllowedLocations(List.of("abfss://archive@account.dfs.core.windows.net/"))
+                    .setStorageName("shared-azure")
                     .build())),
         Arguments.of(
             "GCS",
@@ -136,6 +138,7 @@ public class StorageConfigurationSerializationTest {
                 "ml",
                 GcpStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.GCS)
                     .setAllowedLocations(List.of("gs://ml/"))
+                    .setStorageName("shared-gcp")
                     .build())));
   }
 }
