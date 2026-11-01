@@ -128,7 +128,7 @@ Custom headers can also be configured directly on the connection config via `con
       "header.x-goog-user-project": "my-gcp-project"
     },
     "authenticationParameters": {
-      "authType": "BEARER",
+      "authenticationType": "BEARER",
       "bearerToken": "sample-token"
     }
   }
