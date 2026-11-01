@@ -491,6 +491,13 @@ public class GcpCredentialsStorageIntegration
           conditions.add(resourceNameStartsWithExpression(bucket, path));
           // HNS buckets authorize storage.folders.* (from legacyBucketWriter) on folders/<path>.
           conditions.add(folderNameStartsWithExpression(bucket, path));
+          // HNS creates missing parent folders on first write. Match each parent exactly, never by
+          // prefix, so sibling locations under the same parent stay out of scope.
+          for (int i = path.indexOf('/');
+              i >= 0 && i < path.length() - 1;
+              i = path.indexOf('/', i + 1)) {
+            conditions.add(folderNameEqualsExpression(bucket, path.substring(0, i + 1)));
+          }
         });
 
     CredentialAccessBoundary.Builder accessBoundaryBuilder = CredentialAccessBoundary.newBuilder();
@@ -541,6 +548,13 @@ public class GcpCredentialsStorageIntegration
   static String folderNameStartsWithExpression(String bucket, String path) {
     return String.format(
         "resource.name.startsWith('projects/_/buckets/%s/folders/%s')",
+        escapeCelLiteral(bucket), escapeCelLiteral(path));
+  }
+
+  @VisibleForTesting
+  static String folderNameEqualsExpression(String bucket, String path) {
+    return String.format(
+        "resource.name == 'projects/_/buckets/%s/folders/%s'",
         escapeCelLiteral(bucket), escapeCelLiteral(path));
   }
 
