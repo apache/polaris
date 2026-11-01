@@ -2297,15 +2297,17 @@ paths:
         namespaces and tables directly inside it; without it, the mappings of the top-level
         namespaces. This requires NAMESPACE_READ_PROPERTIES on `namespace`, or CATALOG_READ_PROPERTIES
         on the catalog without it.
+        The mappings of tables are left out of a page unless the caller also has TABLE_LIST on
+        `namespace`, so a mapping never shows a table name to a caller who can't list tables.
 
-        With `storageConfigurationName` instead, all the mappings to that storage configuration are
+        With `storage-configuration-name` instead, all the mappings to that storage configuration are
         listed, at any level of the catalog. This answers which names use a storage configuration,
         for example before deleting it, and requires CATALOG_MANAGE_METADATA on the catalog.
-        Setting both `namespace` and `storageConfigurationName` is a bad request (400).
+        Setting both `namespace` and `storage-configuration-name` is a bad request (400).
 
         A mapping whose namespace or table has been dropped keeps being listed, with `target-exists` set
         to false. Listing with `namespace` requires that namespace to exist, so the mappings left behind
-        by a dropped namespace are found with `storageConfigurationName`, or with `dry-run` on
+        by a dropped namespace are found with `storage-configuration-name`, or with `dry-run` on
         `removeOrphanStorageMappings`.
 
         Results are paginated. A client follows `next-page-token` until it is null or absent.
@@ -2323,7 +2325,7 @@ paths:
               value: accounting
             multipart_namespace:
               value: accounting%1Ftax
-        - name: storageConfigurationName
+        - name: storage-configuration-name
           in: query
           required: false
           schema:

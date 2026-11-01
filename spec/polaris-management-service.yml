@@ -1891,8 +1891,12 @@ components:
             Optional. Must be inside one of `storageConfigInfo.allowedLocations`. A namespace or table
             whose own storage mapping names this storage configuration, and that is created without an
             explicit location, is placed under it. Without it, such a namespace or table must be
-            created with an explicit location. Namespaces and tables inside a mapped namespace are
-            placed under that namespace's location, as before.
+            created with an explicit location. A namespace is placed at `baseLocation` plus its full
+            namespace path, and a table with its own mapping at `baseLocation` plus its namespace path
+            and name. These are also the locations the server's rules on custom namespace locations and
+            tables outside their namespace compare with, so a table on its own mapping need not be under
+            its namespace's location. Namespaces and tables inside a mapped namespace are placed under
+            that namespace's location, as before.
         createTimestamp:
           type: integer
           format: "int64"
