@@ -2512,8 +2512,9 @@ paths:
         - an orphan mapping: the namespace or table existed and was dropped (`target-ever-existed` is
           true). Removed by default.
         - a pending mapping: the namespace or table has not existed since the mapping was created
-          (`target-ever-existed` is false). Created ahead of its target with `createStorageMapping`, left by a failed
-          `createNamespaceOnStorageConfiguration` or `createTableOnStorageConfiguration`, or kept for a
+          (`target-ever-existed` is false). Created ahead of its target with `createStorageMapping`,
+          left by a failed `createNamespaceOnStorageConfiguration` or
+          `createTableOnStorageConfiguration`, or kept for a
           staged table create that has not been committed. Removed only with `include-pending`, since
           a pending mapping is usually still wanted.
 
