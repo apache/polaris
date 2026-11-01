@@ -909,9 +909,9 @@ paths:
         backward-incompatible way.
 
         Delete the unreferenced storage configurations of a catalog: those that no storage mapping
-        references, whether or not the namespace or table of the mapping exists. A storage mapping that
-        is orphaned (see removeOrphanStorageMappings in the Polaris catalog API) still references its
-        storage configuration, so remove the orphan storage mappings first. A storage configuration
+        references, whether or not the namespace or table of the mapping exists. An orphan or pending
+        storage mapping still references its storage configuration, so remove those mappings first
+        with removeOrphanStorageMappings in the Polaris catalog API. A storage configuration
         that was just created and not mapped yet is unreferenced too, and is deleted, unless
         `skipNeverReferenced` is true. The catalog's own `storageConfigInfo` is not a storage
         configuration in this sense and is never deleted.
