@@ -100,6 +100,15 @@ public class StorageConfigurationSerializationTest {
                 + "\"nextPageToken\":\"token-1\"}");
   }
 
+  @Test
+  public void testListWithoutNextPageToken() {
+    StorageConfigurations configurations =
+        mapper.readValue("{\"storageConfigurations\":[]}", StorageConfigurations.class);
+
+    assertThat(configurations.getStorageConfigurations()).isEmpty();
+    assertThat(configurations.getNextPageToken()).isNull();
+  }
+
   private static Stream<Arguments> storageConfigurationTestCases() {
     return Stream.of(
         Arguments.of(

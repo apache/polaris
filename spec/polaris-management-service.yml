@@ -891,6 +891,62 @@ paths:
         409:
           description: "A storage configuration with the specified name already exists in the catalog"
 
+  /catalogs/{catalogName}/storage-configurations/orphans:
+    parameters:
+      - name: catalogName
+        in: path
+        description: The catalog that holds the storage configurations
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
+    delete:
+      operationId: deleteOrphanStorageConfigurations
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Delete the unreferenced storage configurations of a catalog: those that no storage mapping
+        references, whether or not the namespace or table of the mapping exists. A storage mapping that
+        is orphaned (see removeOrphanStorageMappings in the Polaris catalog API) still references its
+        storage configuration, so remove the orphan storage mappings first. A storage configuration
+        that was just created and not mapped yet is unreferenced too, and is deleted by this call. The
+        catalog's own `storageConfigInfo` is not a storage configuration in this sense and is never
+        deleted.
+
+        With `dryRun` set to true, nothing is changed. The response lists the storage configurations a
+        call without `dryRun` would delete at that moment. Otherwise they are deleted all together or
+        not at all, and the response lists those deleted. A storage configuration that gets referenced
+        before the deletion took effect is not deleted. The response is not paginated and never has a
+        `nextPageToken`.
+
+        Requires STORAGE_CONFIGURATION_DROP on each storage configuration the call would delete, or
+        CATALOG_MANAGE_METADATA on the catalog. Without it on every one of them the call is forbidden
+        and nothing is deleted.
+      parameters:
+        - name: dryRun
+          in: query
+          required: false
+          description: If true, only list the unreferenced storage configurations and don't delete them.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        200:
+          description: The unreferenced storage configurations, deleted unless `dryRun` is true
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfigurations"
+        400:
+          description: "A parameter is invalid"
+        403:
+          description: "The principal is not authorized to delete all the unreferenced storage configurations"
+        404:
+          description: "The catalog does not exist"
+
   /catalogs/{catalogName}/storage-configurations/{storageConfigurationName}:
     parameters:
       - name: catalogName
@@ -908,7 +964,7 @@ paths:
         required: true
         schema:
           type: string
-          pattern: '^[a-zA-Z0-9_-]{1,128}$'
+          pattern: '^(?!orphans$)[a-zA-Z0-9_-]{1,128}$'
     get:
       operationId: getStorageConfiguration
       description: |
@@ -939,8 +995,10 @@ paths:
         Delete a storage configuration. The deletion is refused while any storage mapping references
         the storage configuration. A storage mapping can only be removed while its namespace or table
         does not exist, so a storage configuration used by existing namespaces or tables can only be
-        deleted after they are dropped and their storage mappings are removed. Deleting the catalog
-        deletes its storage configurations.
+        deleted after they are dropped and their storage mappings are removed. Dropping a namespace or
+        table does not remove its storage mapping; use removeStorageMapping, or
+        removeOrphanStorageMappings in the Polaris catalog API. Deleting the catalog deletes its
+        storage configurations.
 
         Requires STORAGE_CONFIGURATION_DROP on the storage configuration.
       responses:
@@ -1762,8 +1820,10 @@ components:
       properties:
         name:
           type: string
-          pattern: '^[a-zA-Z0-9_-]{1,128}$'
-          description: The name of the storage configuration. Unique within the catalog and case sensitive.
+          pattern: '^(?!orphans$)[a-zA-Z0-9_-]{1,128}$'
+          description: >-
+            The name of the storage configuration. Unique within the catalog and case sensitive.
+            `orphans` is reserved.
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
           description: >-

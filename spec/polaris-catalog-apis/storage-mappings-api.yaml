@@ -46,6 +46,11 @@ paths:
         for example before deleting it, and requires CATALOG_MANAGE_METADATA on the catalog.
         Setting both `namespace` and `storageConfigurationName` is a bad request (400).
 
+        A mapping whose namespace or table has been dropped keeps being listed, with `target-exists` set
+        to false. Listing with `namespace` requires that namespace to exist, so the mappings left behind
+        by a dropped namespace are found with `storageConfigurationName`, or with `dry-run` on
+        `removeOrphanStorageMappings`.
+
         Results are paginated. A client follows `next-page-token` until it is null or absent.
       parameters:
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
@@ -134,8 +139,18 @@ paths:
         or a storage configuration and the catalog's own `storageConfigInfo`, are always different.
 
         A storage mapping stays when its namespace or table is dropped, so a namespace or table created
-        again under the same name uses the same storage configuration. Dropping a namespace removes the
-        mappings of the names directly inside it.
+        again under the same name uses the same storage configuration. Dropping a namespace does NOT
+        remove the mappings inside it. All child mappings inside a dropped namespace remain as orphan
+        mappings (`target-exists` is false) until they are explicitly purged with
+        `removeOrphanStorageMappings`.
+
+        A rename never lets a caller get around the privileges above. It does not change the
+        storage configuration a table uses, so it can't put a table on a storage configuration the
+        caller may not attach. It moves a mapping only along with the table it belongs to, so it can't
+        be used to create a mapping in a parent namespace where the caller lacks
+        NAMESPACE_ATTACH_STORAGE_CONFIGURATION (or CATALOG_ATTACH_STORAGE_CONFIGURATION), or to remove
+        one without the matching DETACH privileges. The caller still needs the privileges of the Iceberg
+        REST `renameTable` operation.
 
         Requires STORAGE_CONFIGURATION_ATTACH on the storage configuration, and
         NAMESPACE_ATTACH_STORAGE_CONFIGURATION on the parent namespace
@@ -191,7 +206,8 @@ paths:
 
         Remove the storage mapping of a namespace or table. The target must not exist; drop it first.
         A namespace or table created under the name afterwards uses the storage configuration of its
-        parent.
+        parent. To remove the mappings left behind by dropped namespaces and tables in bulk, or when the
+        parent namespace has been dropped as well, use `removeOrphanStorageMappings`.
 
         Requires STORAGE_CONFIGURATION_DETACH on the mapped storage configuration, and
         NAMESPACE_DETACH_STORAGE_CONFIGURATION on the parent namespace
@@ -229,6 +245,82 @@ paths:
         5XX:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
+  /polaris/v1/{prefix}/storage-mappings/orphans:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+
+    delete:
+      tags:
+        - Storage Mapping API
+      summary: Remove orphan storage mappings
+      operationId: removeOrphanStorageMappings
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        Remove the orphan storage mappings: those whose namespace or table does not exist
+        (`target-exists` is false). Dropping a namespace or table never removes a storage mapping, so
+        this is the way to clean up the mappings it leaves behind, and those left by a failed
+        `createNamespaceOnStorageConfiguration` or `createTableOnStorageConfiguration`. It also removes
+        a mapping created with `createStorageMapping` whose namespace or table has not been created
+        yet, and the mapping of a staged table create that has not been committed. Use `dry-run` to
+        see what would be removed.
+
+        Without `namespace`, the orphan mappings of the whole catalog are considered. With it, only
+        those below that namespace, at any depth; the namespace must exist (404 otherwise).
+
+        With `dry-run` set to true, nothing is changed. The response lists the mappings a call without
+        `dry-run` would remove at that moment. Otherwise the mappings are removed all together or not
+        at all, and the response lists those removed. A mapping whose namespace or table was created
+        before the removal took effect is not removed, so a call without `dry-run` can remove fewer
+        mappings than the preceding call with it. The response is not paginated and never has a
+        `next-page-token`.
+
+        Requires CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog, or
+        NAMESPACE_DETACH_STORAGE_CONFIGURATION on `namespace` when it is set. It does not also require
+        STORAGE_CONFIGURATION_DETACH on each mapped storage configuration. CATALOG_MANAGE_METADATA
+        allows the call as well.
+      parameters:
+        - name: namespace
+          in: query
+          required: false
+          description:
+            A namespace identifier as a single string, limiting the removal to the orphan mappings below
+            it. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+          schema:
+            type: string
+          examples:
+            singlepart_namespace:
+              value: "accounting"
+            multipart_namespace:
+              value: "accounting%1Ftax"
+        - name: dry-run
+          in: query
+          required: false
+          description: If true, only list the orphan storage mappings and don't remove them.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        200:
+          $ref: '#/components/responses/ListStorageMappingsResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The namespace does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
   /polaris/v1/{prefix}/storage-configurations/{storage-configuration-name}/namespaces:
     parameters:
       - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
@@ -252,7 +344,8 @@ paths:
         then creates the namespace as the Iceberg REST `createNamespace` operation would. If the name
         is already mapped to this storage configuration, the existing mapping is used. If the namespace
         is not created, the server removes a mapping created by this call. This is best effort: after
-        a server failure the mapping can remain, and `listStorageMappings` shows it.
+        a server failure the mapping can remain. It is then an orphan mapping (`target-exists` is
+        false), shown by `listStorageMappings` and removed by `removeOrphanStorageMappings`.
 
         Requires the privileges of `createStorageMapping`, even when the existing mapping is used, and
         those of the Iceberg REST `createNamespace` operation.
@@ -316,9 +409,11 @@ paths:
         then creates the table as the Iceberg REST `createTable` operation would. If the name is
         already mapped to this storage configuration, the existing mapping is used. If the table is not
         created, the server removes a mapping created by this call. This is best effort: after a
-        server failure the mapping can remain, and `listStorageMappings` shows it. With
+        server failure the mapping can remain. It is then an orphan mapping (`target-exists` is false),
+        shown by `listStorageMappings` and removed by `removeOrphanStorageMappings`. With
         `stage-create`, the mapping is kept, so that the commit that creates the table uses the
-        storage configuration.
+        storage configuration; it is an orphan mapping until that commit, and also if the commit never
+        happens.
 
         Requires the privileges of `createStorageMapping`, even when the existing mapping is used, and
         those of the Iceberg REST `createTable` operation.
@@ -372,8 +467,8 @@ components:
 
     StorageConfigurationName:
       type: string
-      description: The name of a storage configuration in the catalog. Case sensitive.
-      pattern: '^[a-zA-Z0-9_-]{1,128}$'
+      description: The name of a storage configuration in the catalog. Case sensitive. `orphans` is reserved.
+      pattern: '^(?!orphans$)[a-zA-Z0-9_-]{1,128}$'
       example: 'finance'
 
     StorageMappingTarget:
