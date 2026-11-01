@@ -2395,8 +2395,8 @@ paths:
         A storage mapping stays when its namespace or table is dropped, so a namespace or table created
         again under the same name uses the same storage configuration. Dropping a namespace does NOT
         remove the mappings inside it. All child mappings inside a dropped namespace remain as orphan
-        mappings (`target-exists` is false) until they are explicitly purged with
-        `removeOrphanStorageMappings`.
+        mappings (`target-exists` is false and `target-ever-existed` is true) until they are
+        explicitly removed with `removeOrphanStorageMappings`.
 
         A rename never lets a caller get around the privileges above. It does not change the
         storage configuration a table uses, so it can't put a table on a storage configuration the
@@ -2506,33 +2506,41 @@ paths:
         **Beta:** The storage mapping API is under active development and may change in a
         backward-incompatible way.
 
-        Remove the orphan storage mappings: those whose namespace or table does not exist
-        (`target-exists` is false). Dropping a namespace or table never removes a storage mapping, so
-        this is the way to clean up the mappings it leaves behind, and those left by a failed
-        `createNamespaceOnStorageConfiguration` or `createTableOnStorageConfiguration`. It also removes
-        a mapping created with `createStorageMapping` whose namespace or table has not been created
-        yet, and the mapping of a staged table create that has not been committed. Use `dry-run` to
-        see what would be removed.
+        Remove the storage mappings that no namespace or table uses any more. Dropping a namespace or
+        table never removes a storage mapping, so this is the way to clean up what it leaves behind.
+        A mapping whose namespace or table does not exist (`target-exists` is false) is either:
+        - an orphan mapping: the namespace or table existed and was dropped (`target-ever-existed` is
+          true). Removed by default.
+        - a pending mapping: the namespace or table has never existed (`target-ever-existed` is
+          false). Created ahead of its target with `createStorageMapping`, left by a failed
+          `createNamespaceOnStorageConfiguration` or `createTableOnStorageConfiguration`, or kept for a
+          staged table create that has not been committed. Removed only with `include-pending`, since
+          a pending mapping is usually still wanted.
 
-        Without `namespace`, the orphan mappings of the whole catalog are considered. With it, only
-        those below that namespace, at any depth; the namespace must exist (404 otherwise).
+        Without `namespace`, the whole catalog is considered. With it, only the mappings below that
+        namespace, at any depth; the namespace must exist (404 otherwise).
 
-        With `dry-run` set to true, nothing is changed. The response lists the mappings a call without
-        `dry-run` would remove at that moment. Otherwise the mappings are removed all together or not
-        at all, and the response lists those removed. A mapping whose namespace or table was created
-        before the removal took effect is not removed, so a call without `dry-run` can remove fewer
-        mappings than the preceding call with it. The response is not paginated and never has a
-        `next-page-token`.
+        With `dry-run` set to true, nothing is changed and the response lists the mappings a call
+        without `dry-run` would remove at that moment. Otherwise a call removes at most one page of
+        them, all together or not at all, and the response lists those removed. The response has a
+        `next-page-token` when more candidates were left: call again, with or without the token, until
+        it is absent. A mapping is removed only if its namespace or table does not exist when the
+        removal takes effect, so a target created concurrently keeps its mapping, and a call can remove
+        fewer mappings than the same call with `dry-run` listed.
 
-        Requires CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog, or
-        NAMESPACE_DETACH_STORAGE_CONFIGURATION on `namespace` when it is set. It does not also require
-        STORAGE_CONFIGURATION_DETACH on each mapped storage configuration. CATALOG_MANAGE_METADATA
-        allows the call as well.
+        Requires, for the mappings it would remove, the privileges of `removeStorageMapping`:
+        CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog (NAMESPACE_DETACH_STORAGE_CONFIGURATION on
+        `namespace` when it is set), and STORAGE_CONFIGURATION_DETACH on each mapped storage
+        configuration. CATALOG_MANAGE_METADATA on the catalog includes them. If any is missing the call
+        is forbidden and nothing is removed, so the call never removes a mapping the caller could not
+        remove with `removeStorageMapping` (apart from the parent namespace having been dropped).
       parameters:
+        - $ref: '#/components/parameters/page-token'
+        - $ref: '#/components/parameters/page-size'
         - name: namespace
           in: query
           required: false
-          description: A namespace identifier as a single string, limiting the removal to the orphan mappings below it. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+          description: A namespace identifier as a single string, limiting the removal to the mappings below it. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
           schema:
             type: string
           examples:
@@ -2543,7 +2551,14 @@ paths:
         - name: dry-run
           in: query
           required: false
-          description: If true, only list the orphan storage mappings and don't remove them.
+          description: If true, only list the storage mappings and don't remove them.
+          schema:
+            type: boolean
+            default: false
+        - name: include-pending
+          in: query
+          required: false
+          description: If true, also remove the pending mappings, those whose target has never existed.
           schema:
             type: boolean
             default: false
@@ -2588,8 +2603,9 @@ paths:
         then creates the namespace as the Iceberg REST `createNamespace` operation would. If the name
         is already mapped to this storage configuration, the existing mapping is used. If the namespace
         is not created, the server removes a mapping created by this call. This is best effort: after
-        a server failure the mapping can remain. It is then an orphan mapping (`target-exists` is
-        false), shown by `listStorageMappings` and removed by `removeOrphanStorageMappings`.
+        a server failure the mapping can remain. It is then a pending mapping (`target-exists` and
+        `target-ever-existed` are false), shown by `listStorageMappings` and removed by
+        `removeOrphanStorageMappings` with `include-pending`.
 
         Requires the privileges of `createStorageMapping`, even when the existing mapping is used, and
         those of the Iceberg REST `createNamespace` operation.
@@ -2649,11 +2665,11 @@ paths:
         then creates the table as the Iceberg REST `createTable` operation would. If the name is
         already mapped to this storage configuration, the existing mapping is used. If the table is not
         created, the server removes a mapping created by this call. This is best effort: after a
-        server failure the mapping can remain. It is then an orphan mapping (`target-exists` is false),
-        shown by `listStorageMappings` and removed by `removeOrphanStorageMappings`. With
-        `stage-create`, the mapping is kept, so that the commit that creates the table uses the
-        storage configuration; it is an orphan mapping until that commit, and also if the commit never
-        happens.
+        server failure the mapping can remain. It is then a pending mapping (`target-exists` and
+        `target-ever-existed` are false), shown by `listStorageMappings` and removed by
+        `removeOrphanStorageMappings` with `include-pending`. With `stage-create`, the mapping is kept,
+        so that the commit that creates the table uses the storage configuration; it is a pending
+        mapping until that commit, and also if the commit never happens.
 
         Requires the privileges of `createStorageMapping`, even when the existing mapping is used, and
         those of the Iceberg REST `createTable` operation.
@@ -5688,6 +5704,7 @@ components:
         - target
         - storage-configuration-name
         - target-exists
+        - target-ever-existed
       properties:
         target:
           $ref: '#/components/schemas/StorageMappingTarget'
@@ -5696,6 +5713,12 @@ components:
         target-exists:
           type: boolean
           description: Whether the target namespace or table currently exists.
+        target-ever-existed:
+          type: boolean
+          description: |
+            Whether the target namespace or table has existed since the mapping was created. False for
+            a mapping created ahead of its target (a pending mapping), true once the target has been
+            created, and it stays true after the target is dropped (an orphan mapping).
     ListStorageMappingsResponse:
       type: object
       required:

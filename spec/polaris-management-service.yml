@@ -912,24 +912,48 @@ paths:
         references, whether or not the namespace or table of the mapping exists. A storage mapping that
         is orphaned (see removeOrphanStorageMappings in the Polaris catalog API) still references its
         storage configuration, so remove the orphan storage mappings first. A storage configuration
-        that was just created and not mapped yet is unreferenced too, and is deleted by this call. The
-        catalog's own `storageConfigInfo` is not a storage configuration in this sense and is never
-        deleted.
+        that was just created and not mapped yet is unreferenced too, and is deleted, unless
+        `skipNeverReferenced` is true. The catalog's own `storageConfigInfo` is not a storage
+        configuration in this sense and is never deleted.
 
-        With `dryRun` set to true, nothing is changed. The response lists the storage configurations a
-        call without `dryRun` would delete at that moment. Otherwise they are deleted all together or
-        not at all, and the response lists those deleted. A storage configuration that gets referenced
-        before the deletion took effect is not deleted. The response is not paginated and never has a
-        `nextPageToken`.
+        With `dryRun` set to true, nothing is changed and the response lists the storage
+        configurations a call without `dryRun` would delete at that moment. Otherwise a call deletes at
+        most one page of them, all together or not at all, and the response lists those deleted. The
+        response has a `nextPageToken` when more candidates were left: call again, with or without the
+        token, until it is absent. A storage configuration that gets referenced before the deletion
+        takes effect is not deleted.
 
-        Requires STORAGE_CONFIGURATION_DROP on each storage configuration the call would delete, or
-        CATALOG_MANAGE_METADATA on the catalog. Without it on every one of them the call is forbidden
-        and nothing is deleted.
+        Requires STORAGE_CONFIGURATION_DROP on each storage configuration the call would delete, which
+        CATALOG_MANAGE_METADATA on the catalog includes. Without it on every one of them the call is
+        forbidden and nothing is deleted. STORAGE_CONFIGURATION_DETACH is not enough: it only allows
+        removing mappings to a storage configuration, not deleting it.
       parameters:
+        - name: pageToken
+          in: query
+          required: false
+          description: The `nextPageToken` of the previous response. Omit it to get the first page.
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          required: false
+          description: An upper bound on the number of storage configurations in the response.
+          schema:
+            type: integer
+            minimum: 1
         - name: dryRun
           in: query
           required: false
           description: If true, only list the unreferenced storage configurations and don't delete them.
+          schema:
+            type: boolean
+            default: false
+        - name: skipNeverReferenced
+          in: query
+          required: false
+          description: >-
+            If true, keep the storage configurations that no storage mapping has ever referenced, for
+            example ones created but not mapped yet.
           schema:
             type: boolean
             default: false
@@ -941,7 +965,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/StorageConfigurations"
         400:
-          description: "A parameter is invalid"
+          description: "A parameter or the page token is invalid"
         403:
           description: "The principal is not authorized to delete all the unreferenced storage configurations"
         404:
@@ -1842,6 +1866,12 @@ components:
           format: "int64"
           readOnly: true
           description: The creation time represented as unix epoch timestamp in milliseconds
+        everReferenced:
+          type: boolean
+          readOnly: true
+          description: >-
+            Whether a storage mapping has ever referenced this storage configuration. False until the
+            first mapping to it is created.
       required:
         - name
         - storageConfigInfo

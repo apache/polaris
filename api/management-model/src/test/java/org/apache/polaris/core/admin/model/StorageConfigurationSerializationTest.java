@@ -121,6 +121,7 @@ public class StorageConfigurationSerializationTest {
                         .build())
                 .setBaseLocation("s3://finance/lake/")
                 .setCreateTimestamp(1761868800000L)
+                .setEverReferenced(true)
                 .build()),
         Arguments.of(
             "Azure without base location",

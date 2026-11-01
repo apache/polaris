@@ -43,6 +43,7 @@ public class StorageMappingSerializationTest {
             new StorageMappingTarget(
                 StorageMappingTarget.TypeEnum.TABLE, List.of("finance", "ledger")),
             "finance",
+            false,
             false);
 
     String json = mapper.writeValueAsString(mapping);
@@ -51,7 +52,8 @@ public class StorageMappingSerializationTest {
         .isEqualTo(
             "{\"target\":{\"type\":\"table\",\"path\":[\"finance\",\"ledger\"]},"
                 + "\"storage-configuration-name\":\"finance\","
-                + "\"target-exists\":false}");
+                + "\"target-exists\":false,"
+                + "\"target-ever-existed\":false}");
     assertThat(mapper.readValue(json, StorageMapping.class)).isEqualTo(mapping);
   }
 
@@ -82,7 +84,8 @@ public class StorageMappingSerializationTest {
             new StorageMappingTarget(
                 StorageMappingTarget.TypeEnum.TABLE, List.of("finance", "old")),
             "finance",
-            false);
+            false,
+            true);
 
     ListStorageMappingsResponse empty = new ListStorageMappingsResponse(List.of());
     assertThat(
@@ -97,7 +100,8 @@ public class StorageMappingSerializationTest {
             "{\"next-page-token\":\"token-1\",\"storage-mappings\":[{"
                 + "\"target\":{\"type\":\"table\",\"path\":[\"finance\",\"old\"]},"
                 + "\"storage-configuration-name\":\"finance\","
-                + "\"target-exists\":false}]}");
+                + "\"target-exists\":false,"
+                + "\"target-ever-existed\":true}]}");
     assertThat(mapper.readValue(json, ListStorageMappingsResponse.class)).isEqualTo(page);
   }
 
