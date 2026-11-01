@@ -883,7 +883,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/StorageConfiguration"
         400:
-          description: "The storage configuration is invalid"
+          description: "The storage configuration is invalid, or its locations overlap another catalog"
         403:
           description: "The principal is not authorized to create storage configurations"
         404:
@@ -1823,6 +1823,18 @@ components:
         apply to the catalog's own `storageConfigInfo`, which can still be changed with updateCatalog;
         namespaces and tables that use it follow those changes, as before.
 
+        The `allowedLocations` of a storage configuration must not overlap the locations of another
+        catalog or of another catalog's storage configurations, unless
+        `ALLOW_OVERLAPPING_CATALOG_URLS` is set. Creating or updating a catalog is checked against them
+        too. They may overlap the catalog's own locations and its other storage configurations.
+
+        A storage configuration may name any cloud account or tenant and any supported storage type,
+        whatever the catalog's own `storageConfigInfo` uses. The limits updateCatalog puts on changing
+        the catalog's `storageConfigInfo` (the storage type, the AWS account and external ID, the Azure
+        tenant; see `ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES`) do not apply. So whoever holds
+        STORAGE_CONFIGURATION_CREATE chooses the cloud identity; CATALOG_MANAGE_METADATA on the catalog
+        includes it.
+
         Polaris does not check that the cloud identity of a storage configuration (for example an AWS
         IAM role) can access its locations. Changes made in the cloud provider to that identity or to
         its permissions take effect without any change in Polaris.
@@ -1853,6 +1865,7 @@ components:
           description: >-
             The storage settings, validated as for a catalog. `allowedLocations` must not be empty;
             unlike a catalog, a storage configuration has no default base location to fall back on.
+            A response always holds all the settings in effect.
         baseLocation:
           type: string
           description: >-
