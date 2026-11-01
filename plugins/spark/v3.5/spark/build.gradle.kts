@@ -120,6 +120,7 @@ testing {
         if (scalaVersion == "2.12") {
           implementation("org.apache.paimon:paimon-spark-3.5_${scalaVersion}:1.4.1") {
             exclude(group = "org.apache.spark")
+            // Avoid the Quarkus BOM replacing Paimon's Scala 2.12 compiler with Scala 2.13.
             exclude("org.scala-lang", "scala-compiler")
           }
         }
@@ -221,6 +222,7 @@ listOf("intTestCompileClasspath", "intTestRuntimeClasspath").forEach {
   configurations.named(it).configure {
     attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, intTestJvmVersion)
     if (scalaVersion == "2.12") {
+      // Resolve at.yawk.lz4:lz4-java from Paimon against org.lz4:lz4-java from Spark.
       resolutionStrategy.capabilitiesResolution.withCapability("org.lz4:lz4-java") {
         select("org.lz4:lz4-java:1.8.0")
       }

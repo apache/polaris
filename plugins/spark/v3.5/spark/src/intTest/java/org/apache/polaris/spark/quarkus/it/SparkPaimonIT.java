@@ -111,9 +111,12 @@ public class SparkPaimonIT extends SparkIntegrationBase {
   public void testUnsupportedAlterTableOperations() {
     String table = generateName("paimontb");
     sql("CREATE TABLE %s (id INT, name STRING) USING PAIMON", table);
+    sql("INSERT INTO %s VALUES (1, 'anna')", table);
 
     assertThatThrownBy(() -> sql("ALTER TABLE %s RENAME TO new_paimon", table))
         .isInstanceOf(UnsupportedOperationException.class);
+    assertThat(sql("SHOW TABLES")).containsExactly(new Object[] {namespace, table, false});
+    assertThat(sql("SELECT * FROM %s", table)).containsExactly(new Object[] {1, "anna"});
 
     sql("DROP TABLE %s", table);
   }
