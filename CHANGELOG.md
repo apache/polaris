@@ -50,6 +50,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- When `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` is enabled, the `storageName` of a GCS storage configuration
+  is no longer ignored. A GCS catalog whose `storageName` has no matching
+  `polaris.storage.gcp.<storage>.credentials-file` now fails credential vending and storage access
+  instead of using the default GCP credentials.
 - `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists the explicit mechanisms a realm accepts; an empty
   `credentialVendingMechanism` is always allowed. Startup reports a listed mechanism with no
   installed bean as a non-severe readiness warning. Startup fails (a severe readiness issue) when no
@@ -108,6 +112,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Added storage-scoped GCP credentials. With `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` enabled, a GCS storage
+  configuration's `storageName` selects the credentials file set by
+  `polaris.storage.gcp.<storage>.credentials-file`. Service account key files and Workload Identity
+  Federation configuration files are accepted. A storage name is refused while
+  `GCS_PRINCIPAL_ATTRIBUTION_ENABLED` is true.
 - Shared CloudEvents 1.0 JSON mapper for Polaris events (`CloudEventsEventJsonMapper` next to
   the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
   lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners

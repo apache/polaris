@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.storage;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
@@ -25,17 +26,29 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.AccessToken;
+import com.google.auth.oauth2.ExternalAccountCredentials;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
+import io.smallrye.config.PropertiesConfigSource;
+import io.smallrye.config.SmallRyeConfigBuilder;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyPairGenerator;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -73,6 +86,11 @@ public class StorageConfigurationTest {
             return Map.of();
           }
         };
+      }
+
+      @Override
+      public GcpStorageConfig gcp() {
+        return Map::of;
       }
 
       @Override
@@ -147,6 +165,11 @@ public class StorageConfigurationTest {
             return Map.of();
           }
         };
+      }
+
+      @Override
+      public GcpStorageConfig gcp() {
+        return Map::of;
       }
 
       @Override
@@ -233,6 +256,11 @@ public class StorageConfigurationTest {
                 });
           }
         };
+      }
+
+      @Override
+      public GcpStorageConfig gcp() {
+        return Map::of;
       }
 
       @Override
@@ -358,6 +386,156 @@ public class StorageConfigurationTest {
       assertThat(result).isSameAs(mockDefaultCreds);
       mockedStatic.verify(GoogleCredentials::getApplicationDefault, times(1));
     }
+  }
+
+  private static StorageConfiguration configFrom(Map<String, String> properties) {
+    return new SmallRyeConfigBuilder()
+        .withMapping(StorageConfiguration.class)
+        .withSources(new PropertiesConfigSource(properties, "test", 100))
+        .build()
+        .getConfigMapping(StorageConfiguration.class);
+  }
+
+  @Test
+  public void testNamedGcpStoragesDoNotChangeDefaultGcpProperties() {
+    StorageConfiguration config =
+        configFrom(
+            Map.of(
+                "polaris.storage.gcp.token", TEST_GCP_TOKEN,
+                "polaris.storage.gcp.lifespan", "PT20M",
+                "polaris.storage.gcp.team-a.credentials-file", "/secrets/a.json",
+                "polaris.storage.gcp.team-b.credentials-file", "/secrets/b.json"));
+
+    assertThat(config.gcpAccessToken()).contains(TEST_GCP_TOKEN);
+    assertThat(config.gcpAccessTokenLifespan()).contains(TEST_TOKEN_LIFESPAN);
+    assertThat(config.gcpNamedCredentialsSuppliers()).containsOnlyKeys("team-a", "team-b");
+  }
+
+  @Test
+  public void testNoNamedGcpStoragesByDefault() {
+    StorageConfiguration config = configFrom(Map.of("polaris.storage.gcp.token", TEST_GCP_TOKEN));
+
+    assertThat(config.gcpNamedCredentialsSuppliers()).isEmpty();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"token", "lifespan"})
+  public void testReservedGcpStorageNamesAreNotResolvable(String reserved) {
+    StorageConfiguration config =
+        configFrom(
+            Map.of("polaris.storage.gcp." + reserved + ".credentials-file", "/secrets.json"));
+
+    assertThat(config.gcpNamedCredentialsSuppliers()).isEmpty();
+  }
+
+  private static String serviceAccountJson(String privateKey) throws Exception {
+    return new ObjectMapper()
+        .writeValueAsString(
+            Map.of(
+                "type", "service_account",
+                "project_id", "project",
+                "private_key_id", "key-id",
+                "private_key", privateKey,
+                "client_email", "named@project.iam.gserviceaccount.com",
+                "client_id", "client-id"));
+  }
+
+  private static String generatedPrivateKeyPem() throws Exception {
+    KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+    generator.initialize(2048);
+    String encoded =
+        Base64.getMimeEncoder(64, "\n".getBytes(UTF_8))
+            .encodeToString(generator.generateKeyPair().getPrivate().getEncoded());
+    return "-----BEGIN PRIVATE KEY-----\n" + encoded + "\n-----END PRIVATE KEY-----\n";
+  }
+
+  private static Supplier<GoogleCredentials> namedSupplier(Path credentialsFile) {
+    return configFrom(
+            Map.of("polaris.storage.gcp.team-a.credentials-file", credentialsFile.toString()))
+        .gcpNamedCredentialsSuppliers()
+        .get("team-a");
+  }
+
+  @Test
+  public void testNamedGcpServiceAccountFileLoadsOnceWithoutExposingTheKey(@TempDir Path dir)
+      throws Exception {
+    String privateKey = generatedPrivateKeyPem();
+    Path file = Files.writeString(dir.resolve("a.json"), serviceAccountJson(privateKey));
+    Supplier<GoogleCredentials> supplier = namedSupplier(file);
+
+    GoogleCredentials credentials = supplier.get();
+
+    assertThat(credentials).isInstanceOf(ServiceAccountCredentials.class);
+    assertThat(((ServiceAccountCredentials) credentials).getClientEmail())
+        .isEqualTo("named@project.iam.gserviceaccount.com");
+    assertThat(supplier.get()).isSameAs(credentials);
+    assertThat(credentials.toString()).doesNotContain(privateKey.lines().toList().get(1));
+  }
+
+  @Test
+  public void testNamedGcpWorkloadIdentityFederationFileLoads(@TempDir Path dir) throws Exception {
+    String json =
+        new ObjectMapper()
+            .writeValueAsString(
+                Map.of(
+                    "type", "external_account",
+                    "audience",
+                        "//iam.googleapis.com/projects/1/locations/global/workloadIdentityPools/p/providers/q",
+                    "subject_token_type", "urn:ietf:params:oauth:token-type:jwt",
+                    "token_url", "https://sts.googleapis.com/v1/token",
+                    "credential_source", Map.of("file", "/var/run/token")));
+    Path file = Files.writeString(dir.resolve("wif.json"), json);
+
+    assertThat(namedSupplier(file).get()).isInstanceOf(ExternalAccountCredentials.class);
+  }
+
+  @Test
+  public void testNamedGcpFileOfUnsupportedTypeIsRefused(@TempDir Path dir) throws Exception {
+    Path file =
+        Files.writeString(
+            dir.resolve("user.json"),
+            "{\"type\":\"authorized_user\",\"client_id\":\"c\",\"client_secret\":\"file-secret\","
+                + "\"refresh_token\":\"r\"}");
+
+    assertThatThrownBy(() -> namedSupplier(file).get())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("team-a")
+        .hasMessageContaining("service_account")
+        .hasMessageNotContaining("file-secret");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "not json file-secret",
+        "{\"type\":\"service_account\",\"private_key\":\"file-secret\"}",
+        "{\"type\":\"service_account\",\"private_key\":\"file-secret\",\"client_id\":\"c\","
+            + "\"client_email\":\"e\",\"private_key_id\":\"i\"}",
+        "{\"type\":\"external_account\",\"audience\":\"file-secret\"}"
+      })
+  public void testBadNamedGcpFileFailsWithoutRepeatingItsContent(String content, @TempDir Path dir)
+      throws Exception {
+    Path file = Files.writeString(dir.resolve("bad.json"), content);
+
+    assertThatThrownBy(() -> namedSupplier(file).get())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("team-a")
+        .hasNoCause()
+        .hasMessageNotContaining("file-secret");
+  }
+
+  @Test
+  public void testFailedNamedGcpLoadIsRetried(@TempDir Path dir) throws Exception {
+    Path file = dir.resolve("late.json");
+    Supplier<GoogleCredentials> supplier = namedSupplier(file);
+
+    assertThatThrownBy(supplier::get)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("NoSuchFileException")
+        .hasMessageNotContaining(file.toString());
+
+    Files.writeString(file, serviceAccountJson(generatedPrivateKeyPem()));
+    assertThat(supplier.get()).isInstanceOf(ServiceAccountCredentials.class);
   }
 
   @Test
