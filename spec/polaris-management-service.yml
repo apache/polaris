@@ -1832,17 +1832,20 @@ components:
         whatever the catalog's own `storageConfigInfo` uses. The limits updateCatalog puts on changing
         the catalog's `storageConfigInfo` (the storage type, the AWS account and external ID, the Azure
         tenant; see `ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES`) do not apply. So whoever holds
-        STORAGE_CONFIGURATION_CREATE chooses the cloud identity; CATALOG_MANAGE_METADATA on the catalog
-        includes it.
+        STORAGE_CONFIGURATION_CREATE chooses the cloud identity and, with `storageName`, the server-side
+        credentials; CATALOG_MANAGE_METADATA on the catalog includes it.
 
-        `storageConfigInfo.storageName` selects the server-side credentials Polaris authenticates with
-        for this storage configuration, for any storage type, so several storage configurations can
-        reuse the same credentials by name. These credentials are configured on the server and are
-        never sent through this API. Without `storageName`, Polaris uses the server's default
-        credentials for the `storageType`, not the `storageName` of the catalog's `storageConfigInfo`.
-        Creating a storage configuration fails (400) if the server can't resolve `storageName` to
-        credentials for the `storageType`. If a name stops resolving later, operations that need
-        storage fail; Polaris never falls back to other credentials.
+        For S3, Azure and GCS, `storageConfigInfo.storageName` selects the server-side credentials Polaris
+        authenticates with for this storage configuration, so several storage configurations can reuse
+        the same credentials by name. A storage configuration always honors it, even on a server that
+        doesn't use the `storageName` of a catalog's own `storageConfigInfo`. These credentials are
+        configured on the server and are never sent through this API. Without `storageName`, Polaris
+        uses the server's default credentials for the `storageType`, not the `storageName` of the
+        catalog's `storageConfigInfo`. Creating a storage configuration fails (400) if the server can't
+        resolve `storageName` to credentials for the `storageType`. The error doesn't say why, and no
+        API lists the names a server knows. If a name stops resolving later, operations that need
+        storage fail; Polaris never falls back to other credentials. FILE storage has no credentials
+        and ignores `storageName`.
 
         Every location in `allowedLocations` must match the `storageType` (an `abfss://` location on
         an S3 storage configuration is a bad request), and the `storageType` must be one the server
@@ -1851,7 +1854,8 @@ components:
         When a storage configuration is created, Polaris does not check that its cloud identity (for
         example an AWS IAM role) or the credentials selected by `storageConfigInfo.storageName` can
         access its locations. Changes made in the cloud provider to that identity, to those credentials
-        or to their permissions take effect without any change in Polaris.
+        or to their permissions take effect without any change in Polaris. So do changes to the
+        credentials behind a name in the server's configuration, which is how they are rotated.
 
         Privileges:
         - STORAGE_CONFIGURATION_CREATE and STORAGE_CONFIGURATION_LIST on the catalog allow creating
@@ -1877,7 +1881,8 @@ components:
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
           description: >-
-            The storage settings, validated as for a catalog. `allowedLocations` must not be empty;
+            The storage settings, validated as for a catalog, and `storageName` must resolve (see
+            StorageConfiguration). `allowedLocations` must not be empty;
             unlike a catalog, a storage configuration has no default base location to fall back on.
             A response always holds all the settings in effect.
         baseLocation:
