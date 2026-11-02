@@ -521,6 +521,6 @@ install-dependencies-brew: check-brew ## Install dependencies if not present via
 	done
 	@echo "--- All requested dependencies checked/installed ---"
 
-install-optional-dependencies-brew: DEPENDENCIES := $(OPTIONAL_DEPENDENCIES)
 .PHONY: install-optional-dependencies-brew
-install-optional-dependencies-brew: install-dependencies-brew ## Install optional dependencies if not present via Brew
+install-optional-dependencies-brew: check-brew ## Install optional dependencies with Homebrew
+	@$(MAKE) --no-print-directory install-dependencies-brew DEPENDENCIES="$(OPTIONAL_DEPENDENCIES)"
