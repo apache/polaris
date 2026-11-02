@@ -40,6 +40,8 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWriteResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
@@ -297,17 +299,68 @@ public interface PolarisMetaStoreManager
       @NonNull PolarisBaseEntity entity);
 
   /**
+   * Applies entity writes atomically, and only if all of the batch's conditions hold.
+   *
+   * <p>Every backend must guarantee:
+   *
+   * <ul>
+   *   <li>All-or-nothing: either every condition holds and every write is applied, or nothing is
+   *       written.
+   *   <li>A serializable outcome, whatever the isolation level of the backend: the result is the
+   *       same as if the batch ran alone. In particular, a condition and a concurrent write of the
+   *       entity it concerns are ordered: either the condition sees that write, or the write is
+   *       applied after the batch.
+   *   <li>{@link ConditionalEntityWrite.Condition.Unchanged}: the entity exists with the given
+   *       entity version at the time the batch is applied. The entity is not written.
+   *   <li>{@link ConditionalEntityWrite.Write.Update}: has the semantics of {@link
+   *       #updateEntityPropertiesIfNotChanged(PolarisCallContext, List, PolarisBaseEntity)}.
+   *   <li>A condition or write that fails, including one on an entity that no longer exists, gives
+   *       {@link BaseResult.ReturnStatus#TARGET_ENTITY_CONCURRENTLY_MODIFIED}, with the failing
+   *       entity when it is known. A concurrency failure of the backend, such as a deadlock or a
+   *       serialization failure, is reported the same way and is never thrown, so that callers can
+   *       treat all of them as a conflict to retry.
+   * </ul>
+   *
+   * <p>A backend should not make batches that only check the same entity block or fail each other,
+   * since a check does not write the entity. How a backend meets this depends on its concurrency
+   * model, for example a shared row lock or an optimistic commit that evaluates the conditions
+   * again on retry. A backend that cannot always meet it reports the conflict as above.
+   *
+   * <p>The {@code catalogPath} of the batch's members is carried but not validated. Each entity may
+   * be the subject of at most one condition or write.
+   *
+   * <p>A backend may restrict which entities can be in one batch, and reject a batch it cannot
+   * apply atomically with an {@link IllegalArgumentException}: the NoSQL backend requires all
+   * entities of a batch to be of the same entity type and in the same catalog.
+   *
+   * @param callCtx call context
+   * @param batch the conditions to check and the writes to apply
+   * @return the written entities in the order of the batch's writes, or a failure
+   */
+  @NonNull ConditionalEntityWriteResult writeEntitiesIfConditionsHold(
+      @NonNull PolarisCallContext callCtx, @NonNull ConditionalEntityWrite batch);
+
+  /**
    * This works exactly like {@link #updateEntityPropertiesIfNotChanged(PolarisCallContext, List,
-   * PolarisBaseEntity)} but allows to operate on multiple entities at once. Just loop through the
-   * list, calling each entity update and return null if any of those fail.
+   * PolarisBaseEntity)} but operates on multiple entities at once, atomically: either all entities
+   * are updated or none is. It is {@link #writeEntitiesIfConditionsHold} without conditions.
    *
    * @param callCtx call context
    * @param entities the set of entities to update
-   * @return list of all entities we updated or null if the client should retry because one update
-   *     failed
+   * @return list of all entities we updated, or a failure if the client should retry because one
+   *     update failed
    */
-  @NonNull EntitiesResult updateEntitiesPropertiesIfNotChanged(
-      @NonNull PolarisCallContext callCtx, @NonNull List<EntityWithPath> entities);
+  default @NonNull EntitiesResult updateEntitiesPropertiesIfNotChanged(
+      @NonNull PolarisCallContext callCtx, @NonNull List<EntityWithPath> entities) {
+    ConditionalEntityWrite.Builder batch = ConditionalEntityWrite.builder();
+    for (EntityWithPath entity : entities) {
+      batch.update(entity.catalogPath(), entity.entity());
+    }
+    ConditionalEntityWriteResult result = writeEntitiesIfConditionsHold(callCtx, batch.build());
+    return result.isSuccess()
+        ? new EntitiesResult(Page.fromItems(result.getEntities()))
+        : new EntitiesResult(result.getReturnStatus(), result.getExtraInformation());
+  }
 
   /**
    * Rename an entity, potentially re-parenting it.
