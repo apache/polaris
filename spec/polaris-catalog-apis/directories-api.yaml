@@ -28,11 +28,19 @@ paths:
       tags:
         - Directory API
       summary: List all directory identifiers underneath a given namespace
-      description: Return all directory identifiers under this namespace
+      description: >
+        Return the directory identifiers under this namespace. The identifiers are those of the directories
+        (for example `product-images`), not of their `__inventory` tables.
+
+
+        The response may be paginated: clients should always check `next-page-token` and, when present,
+        pass it as `pageToken` to fetch the next page. Neither `pageToken` nor `pageSize` is required on the
+        first request. The server decides the actual page size, which may be smaller or larger than the
+        `pageSize` hint, and may return all results in a single response.
       operationId: listDirectories
       parameters:
-        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
-        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
+        - $ref: '#/components/parameters/page-token'
+        - $ref: '#/components/parameters/page-size'
       responses:
         200:
           $ref: '#/components/responses/ListDirectoriesResponse'
@@ -90,7 +98,9 @@ paths:
                 NamespaceNotFound:
                   $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchNamespaceError'
         409:
-          description: Conflict - The directory already exists under the given namespace
+          description: >
+            Conflict - The directory already exists under the given namespace, or its `<name>__inventory`
+            table name is already used by another table or directory in the namespace
           content:
             application/json:
               schema:
@@ -187,7 +197,7 @@ paths:
       summary: Scan a directory and refresh its inventory table
       operationId: scanDirectory
       description: >
-        Lists the objects under the directory `base_location`, applies the configured filter
+        Lists the objects under the directory `base-location`, applies the configured filter
         and replaces the content of the directory inventory table with the result in a single
         commit. If the scan fails, the inventory table is left unchanged.
       responses:
@@ -216,6 +226,25 @@ paths:
 
 components:
   parameters:
+    page-token:
+      name: pageToken
+      in: query
+      description: Opaque token returned as `next-page-token` by a previous response. Omit it to start listing.
+      required: false
+      schema:
+        $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+
+    page-size:
+      name: pageSize
+      in: query
+      description: >
+        A hint for the maximum number of results per page. The server decides the actual page size and
+        may return fewer or more results, or all of them at once.
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+
     directory:
       name: directory
       in: path
@@ -250,18 +279,18 @@ components:
       type: object
       description: >
         Controls which objects are included in the directory table during a scan.
-        If no filter is set, all objects found under the directory base_location are included.
+        If no filter is set, all objects found under the directory base-location are included.
       properties:
         include:
           type: array
           items:
             type: string
-          description: A list of regular expressions matched against the object URI. An object is included if it matches at least one pattern (or if `include` is omitted).
+          description: A list of regular expressions (`java.util.regex` syntax) matched against the object URI. An object is included if it matches at least one pattern (or if `include` is omitted).
         exclude:
           type: array
           items:
             type: string
-          description: A list of regular expressions matched against the object URI. An object matching any pattern is excluded, even if it also matches an include pattern.
+          description: A list of regular expressions (`java.util.regex` syntax) matched against the object URI. An object matching any pattern is excluded, even if it also matches an include pattern.
 
     ScanSchedule:
       type: object
@@ -276,12 +305,12 @@ components:
       type: object
       required:
         - name
-        - base_location
+        - base-location
       properties:
         name:
           type: string
           description: The name of the directory. It is used in REST endpoint paths and is used, followed by the `__inventory` suffix, as the name of the corresponding Iceberg table.
-        base_location:
+        base-location:
           type: string
           description: The external object store location to use as a root for scanning objects (e.g. s3://bucket/path/). This is where the scanned objects live, not the location of the Iceberg inventory table, which is assigned by Polaris.
         filter:
@@ -300,7 +329,7 @@ components:
 
         - `name` (REQUIRED): name of the directory
 
-        - `base_location` (REQUIRED): root location of the directory on the object store
+        - `base-location` (REQUIRED): root location of the directory on the object store
 
         - `filter` (OPTIONAL): include and exclude patterns for object filtering
 
@@ -309,11 +338,11 @@ components:
         - `properties` (OPTIONAL): properties for the directory passed on creation
       required:
         - name
-        - base_location
+        - base-location
       properties:
         name:
           type: string
-        base_location:
+        base-location:
           type: string
         filter:
           $ref: '#/components/schemas/DirectoryFilter'

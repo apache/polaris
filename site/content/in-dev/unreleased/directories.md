@@ -60,7 +60,7 @@ A directory is described by the following fields:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | `string` | Yes | The name of the directory. It is used in REST endpoint paths and is used, followed by the `__inventory` suffix, as the name of the corresponding Iceberg table. |
-| `base_location` | `string` | Yes | The external object store location to use as a root for scanning objects; this is not the location of the Iceberg inventory table, which is assigned by Polaris (for example `s3://my-bucket/images/`, `gs://my-bucket/docs/`, or `file:///data/local/`). |
+| `base-location` | `string` | Yes | The external object store location to use as a root for scanning objects; this is not the location of the Iceberg inventory table, which is assigned by Polaris (for example `s3://my-bucket/images/`, `gs://my-bucket/docs/`, or `file:///data/local/`). |
 | `filter` | `object` | No | Include and exclude patterns that control which objects are added to the directory table during a scan. See [Filter](#filter). |
 | `scan-schedule` | `object` | No | Object representing a scan schedule (trigger, cron, ...). |
 
@@ -68,7 +68,7 @@ A directory is described by the following fields:
 
 Directories use Polaris `StorageAccessConfig` to access the object store.
 
-The `base_location` is validated like a table location when the directory is created and again before each scan:
+The `base-location` is validated like a table location when the directory is created and again before each scan:
 it must be within the catalog's allowed locations. As for tables, it must also be within the namespace location
 unless the catalog sets `polaris.config.allow.unstructured.table.location` to `true`.
 
@@ -76,7 +76,7 @@ unless the catalog sets `polaris.config.allow.unstructured.table.location` to `t
 
 The `filter` object controls which objects are included in the directory table during a scan.
 
-If no filter is set, all objects found under the directory `base_location` are included.
+If no filter is set, all objects found under the directory `base-location` are included.
 
 `include` and `exclude` are lists of regular expressions matched against the object's full URI. An
 object is included if it matches at least one `include` pattern (or `include` is omitted) and does
@@ -96,11 +96,11 @@ not match any `exclude` pattern.
 ### Example: creating a directory
 
 ```json
-POST /v1/{prefix}/namespaces/{namespace}/directories
+POST /polaris/v1/{prefix}/namespaces/{namespace}/directories
 
 {
   "name": "product-images",
-  "base_location": "s3://warehouse/product-images/",
+  "base-location": "s3://warehouse/product-images/",
   "filter": {
     "include": [".*\\.jpg$", ".*\\.png$"]
   },
@@ -117,34 +117,34 @@ base URL.
 
 ### List directories
 
-**GET** `/v1/{prefix}/namespaces/{namespace}/directories`
+**GET** `/polaris/v1/{prefix}/namespaces/{namespace}/directories`
 
 Returns the list of directory identifiers in the given namespace.
 
 ### Create a directory
 
-**POST** `/v1/{prefix}/namespaces/{namespace}/directories`
+**POST** `/polaris/v1/{prefix}/namespaces/{namespace}/directories`
 
 Creates a new directory and its corresponding Iceberg table. The request body must contain the
 directory configuration (see [Configuration](#configuration)).
 
 ### Get directory details
 
-**GET** `/v1/{prefix}/namespaces/{namespace}/directories/{directory}`
+**GET** `/polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}`
 
 Returns the full configuration of the specified directory, including filter and scan schedule.
 
 ### Drop a directory
 
-**DELETE** `/v1/{prefix}/namespaces/{namespace}/directories/{directory}`
+**DELETE** `/polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}`
 
 Removes the directory and its associated Iceberg table from the namespace.
 
 ### Scan a directory
 
-**POST** `/v1/{prefix}/namespaces/{namespace}/directories/{directory}/scan`
+**POST** `/polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}/scan`
 
-Lists the objects under the directory `base_location`, applies the configured [filter](#filter) and
+Lists the objects under the directory `base-location`, applies the configured [filter](#filter) and
 replaces the content of the directory table with the result in a single commit. The response contains
 the number of objects recorded in the table:
 
@@ -152,8 +152,8 @@ the number of objects recorded in the table:
 { "file-count": 42 }
 ```
 
-Polaris lists the `base_location` with read-only credentials scoped to that location, and requires the
-`UPDATE_TABLE` privilege on the directory. The scan is synchronous and does not run on the
+Polaris lists the `base-location` with read-only credentials scoped to that location, and requires the
+`TABLE_WRITE_DATA` privilege on the directory table. The scan is synchronous and does not run on the
 `scan-schedule`: it is up to the caller (or an [external service](#external-services-scanning-services))
 to trigger it periodically. If the scan fails, the directory table remains unchanged.
 
@@ -183,7 +183,7 @@ table. For instance, you can query it with Spark SQL:
 
 ```sql
 SELECT file_uri, size, last_modified
-FROM my_catalog.my_namespace.product_images
+FROM my_catalog.my_namespace.`product-images__inventory`
 WHERE content_type = 'image/jpeg'
   AND size > 1048576
 ORDER BY last_modified DESC;
@@ -199,10 +199,10 @@ More precisely:
 
 - When an engine loads the directory table with [credential vending]({{% ref "vended-credentials" %}}), Polaris
   vends credentials scoped to the directory table location (its data and metadata files), as for any Iceberg
-  table. These credentials are not scoped to the directory `base_location`.
+  table. These credentials are not scoped to the directory `base-location`.
 - Privileges on the directory or on the directory table (for example `TABLE_READ_DATA`) don't grant access to the
-  objects under the `base_location`.
-- The [scan](#scan-a-directory) lists the `base_location` with credentials that stay in the Polaris server: they
+  objects under the `base-location`.
+- The [scan](#scan-a-directory) lists the `base-location` with credentials that stay in the Polaris server: they
   are never returned to the caller.
 
 Vending credentials for the objects referenced in the directory table is not supported yet.
@@ -213,7 +213,7 @@ The scan is performed by a `DirectoryScanService` (package `org.apache.polaris.s
 change how a directory is scanned (for example to compute checksums, read object-store metadata or update
 the table incrementally), provide an `ApplicationScoped` CDI bean implementing this interface in an
 extension: it replaces the built-in implementation. The service receives the directory table, a `FileIO`
-with read and list access to the `base_location`, and the directory filters.
+with read and list access to the `base-location`, and the directory filters.
 
 ## External services (scanning services)
 
@@ -234,12 +234,12 @@ sequenceDiagram
     participant Table as Directory (Iceberg) Table
 
     Note over Scanner: Triggered by scan-schedule
-    Scanner->>Polaris: GET /v1/{prefix}/namespaces/{ns}/directories
+    Scanner->>Polaris: GET /polaris/v1/{prefix}/namespaces/{ns}/directories
     Polaris-->>Scanner: list of directory names
-    Scanner->>Polaris: GET /v1/{prefix}/namespaces/{ns}/directories/{name}
-    Polaris-->>Scanner: directory config (base_location, filter, scan-schedule)
+    Scanner->>Polaris: GET /polaris/v1/{prefix}/namespaces/{ns}/directories/{name}
+    Polaris-->>Scanner: directory config (base-location, filter, scan-schedule)
 
-    Scanner->>Store: list objects under base_location
+    Scanner->>Store: list objects under base-location
     Store-->>Scanner: object metadata (uri, size, checksum, ...)
     Note over Scanner: apply include / exclude filters
 
@@ -253,7 +253,7 @@ sequenceDiagram
    [List directories](#list-directories) endpoint to discover which directories exist and then calls
    [Get directory details](#get-directory-details) to retrieve each directory's configuration.
 
-2. **Scan** — The service walks the object store location specified by the directory `base_location`,
+2. **Scan** — The service walks the object store location specified by the directory `base-location`,
    applying the configured [filter](#filter) rules. It collects metadata for each matching object
    (size, content type, checksum, last modified timestamp, and any object-store-specific metadata).
 
