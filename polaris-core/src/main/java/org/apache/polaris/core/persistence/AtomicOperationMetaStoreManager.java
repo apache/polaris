@@ -54,12 +54,15 @@ import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite.Condition;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite.Write;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWriteResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
@@ -965,39 +968,51 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
-  public @NonNull EntitiesResult updateEntitiesPropertiesIfNotChanged(
-      @NonNull PolarisCallContext callCtx, @NonNull List<EntityWithPath> entities) {
+  public @NonNull ConditionalEntityWriteResult writeEntitiesIfConditionsHold(
+      @NonNull PolarisCallContext callCtx, @NonNull ConditionalEntityWrite batch) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
-    // ensure that the entities list is not null
-    getDiagnostics().checkNotNull(entities, "unexpected_null_entities");
+    List<PolarisEntityCore> unchangedEntities = new ArrayList<>(batch.conditions().size());
+    for (Condition condition : batch.conditions()) {
+      if (condition instanceof Condition.Unchanged unchanged) {
+        unchangedEntities.add(unchanged.entity());
+      } else {
+        throw new IllegalArgumentException("Unsupported condition " + condition);
+      }
+    }
 
-    List<PolarisBaseEntity> updatedEntities = new ArrayList<>(entities.size());
-    List<PolarisBaseEntity> originalEntities = new ArrayList<>(entities.size());
-
-    // Collect list of updatedEntities
-    for (EntityWithPath entityWithPath : entities) {
-      PolarisBaseEntity updatedEntity =
-          prepareToPersistEntityAfterChange(
-              callCtx,
-              ms,
-              new PolarisBaseEntity.Builder(entityWithPath.entity()).build(),
-              false,
-              entityWithPath.entity());
-      originalEntities.add(entityWithPath.entity());
-      updatedEntities.add(updatedEntity);
+    List<PolarisBaseEntity> updatedEntities = new ArrayList<>(batch.writes().size());
+    List<PolarisBaseEntity> originalEntities = new ArrayList<>(batch.writes().size());
+    for (Write write : batch.writes()) {
+      if (write instanceof Write.Update update) {
+        updatedEntities.add(
+            prepareToPersistEntityAfterChange(
+                callCtx,
+                ms,
+                new PolarisBaseEntity.Builder(update.entity()).build(),
+                false,
+                update.entity()));
+        originalEntities.add(update.entity());
+      } else {
+        throw new IllegalArgumentException("Unsupported write " + write);
+      }
     }
 
     try {
-      ms.writeEntities(callCtx, updatedEntities, originalEntities);
+      ms.checkAndWriteEntities(callCtx, unchangedEntities, updatedEntities, originalEntities);
+    } catch (EntityConcurrentlyModifiedException e) {
+      return new ConditionalEntityWriteResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
+          e.getMessage(),
+          e.getEntity());
     } catch (RetryOnConcurrencyException e) {
-      return new EntitiesResult(
-          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());
+      return new ConditionalEntityWriteResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage(), null);
     }
 
     // good, all success
-    return new EntitiesResult(Page.fromItems(updatedEntities));
+    return new ConditionalEntityWriteResult(updatedEntities);
   }
 
   /** {@inheritDoc} */

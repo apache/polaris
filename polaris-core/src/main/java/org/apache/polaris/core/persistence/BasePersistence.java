@@ -132,6 +132,32 @@ public interface BasePersistence extends PolicyMappingPersistence {
       @Nullable List<PolarisBaseEntity> originalEntities);
 
   /**
+   * Atomically checks that entities are unchanged and updates other entities, all-or-nothing, as if
+   * the call ran alone at serializable isolation.
+   *
+   * <p>Each entity of {@code unchangedEntities} must still exist with the given entity version; it
+   * is not written. Each entity of {@code entities} is updated with a compare-and-swap on the
+   * versions of the corresponding element of {@code originalEntities}. The entities of the two
+   * lists must be distinct.
+   *
+   * <p>Implementations must make a batch conflict with a concurrent batch that touches the same
+   * entities, never deadlock with it, and report every such conflict as a {@link
+   * EntityConcurrentlyModifiedException}, including a database deadlock or serialization failure.
+   *
+   * @param callCtx call context
+   * @param unchangedEntities entities that must be unchanged; not written
+   * @param entities entities to update
+   * @param originalEntities original states of {@code entities} for the compare-and-swap; must
+   *     contain exactly as many non-null elements as {@code entities}, in the same order
+   * @throws EntityConcurrentlyModifiedException if a check or an update failed; nothing is written
+   */
+  void checkAndWriteEntities(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> unchangedEntities,
+      @NonNull List<PolarisBaseEntity> entities,
+      @NonNull List<PolarisBaseEntity> originalEntities);
+
+  /**
    * Write the specified grantRecord to the grant_records table. If there is a conflict (existing
    * record with the same PK), this is a no-op, because currently all fields of the grantRecord are
    * part of the PK. If additional non-PK attributes are added this might change.

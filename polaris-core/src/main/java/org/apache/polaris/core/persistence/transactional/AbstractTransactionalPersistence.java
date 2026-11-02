@@ -36,6 +36,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.EntityConcurrentlyModifiedException;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -213,6 +214,49 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
         () -> {
           this.checkConditionsForWriteEntityInCurrentTxn(callCtx, entity, originalEntity);
           this.writeEntityInCurrentTxn(callCtx, entity, nameOrParentChanged, originalEntity);
+        });
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void checkAndWriteEntities(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> unchangedEntities,
+      @NonNull List<PolarisBaseEntity> entities,
+      @NonNull List<PolarisBaseEntity> originalEntities) {
+    getDiagnostics()
+        .check(
+            entities.size() == originalEntities.size(),
+            "mismatched_entities_and_original_entities_size",
+            "entities.size()={}, originalEntities.size()={}",
+            entities.size(),
+            originalEntities.size());
+    runActionInTransaction(
+        callCtx,
+        () -> {
+          for (PolarisEntityCore expected : unchangedEntities) {
+            PolarisBaseEntity current =
+                this.lookupEntityInCurrentTxn(
+                    callCtx, expected.getCatalogId(), expected.getId(), expected.getTypeCode());
+            if (current == null || current.getEntityVersion() != expected.getEntityVersion()) {
+              throw new EntityConcurrentlyModifiedException(
+                  expected,
+                  String.format("Entity id '%s' concurrently modified", expected.getId()));
+            }
+          }
+          for (int i = 0; i < entities.size(); ++i) {
+            PolarisBaseEntity entity = entities.get(i);
+            PolarisBaseEntity originalEntity = originalEntities.get(i);
+            boolean nameOrParentChanged =
+                !entity.getName().equals(originalEntity.getName())
+                    || entity.getParentId() != originalEntity.getParentId();
+            try {
+              this.checkConditionsForWriteEntityInCurrentTxn(callCtx, entity, originalEntity);
+            } catch (RetryOnConcurrencyException e) {
+              throw new EntityConcurrentlyModifiedException(entity, e, e.getMessage());
+            }
+            this.writeEntityInCurrentTxn(callCtx, entity, nameOrParentChanged, originalEntity);
+          }
         });
   }
 
