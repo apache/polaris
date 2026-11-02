@@ -187,7 +187,7 @@ client-cleanup: ## Cleanup virtual environment, build artifacts, and generated f
 	@echo "Removing OpenAPI generator cache..."
 	@rm -rf $(PYTHON_CLIENT_DIR)/.openapi-generator
 	@echo "Removing Python cache files..."
-	@find $(PYTHON_CLIENT_DIR) -type d -name "__pycache__" -delete
+	@find $(PYTHON_CLIENT_DIR) -type d -name "__pycache__" -prune -exec rm -rf {} +
 	@echo "--- Client cleanup complete ---"
 
 .PHONY: client-setup-env
