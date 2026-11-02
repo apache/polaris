@@ -3118,10 +3118,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     // its previous parents.
     // The exception is a previous parent that is a direct child of the destination namespace: it
     // becomes a sibling of the entity, and its location may lie outside the destination location.
+    StorageLocation destinationLocation =
+        StorageLocation.of(resolveLocationForPath(diagnostics, resolvedNewParent.getRawFullPath()));
     List<StorageLocation> searchRoots = new ArrayList<>();
-    searchRoots.add(
-        StorageLocation.of(
-            resolveLocationForPath(diagnostics, resolvedNewParent.getRawFullPath())));
+    searchRoots.add(destinationLocation);
     List<PolarisEntity> oldPath = resolvedEntities.getRawFullPath();
     long newParentId = resolvedNewParent.getRawLeafEntity().getId();
     // Skip the catalog (first) and the entity itself (last): the rest are its previous parents.
@@ -3131,8 +3131,12 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       if (oldPath.get(i).getParentId() == newParentId) {
         // The location is resolved from the path that ends with it.
         List<PolarisEntity> pathToFormerParent = oldPath.subList(0, i + 1);
-        searchRoots.add(
-            StorageLocation.of(resolveLocationForPath(diagnostics, pathToFormerParent)));
+        StorageLocation formerParentLocation =
+            StorageLocation.of(resolveLocationForPath(diagnostics, pathToFormerParent));
+        // Inside the destination location, it is already covered by the first search root.
+        if (!formerParentLocation.isChildOf(destinationLocation)) {
+          searchRoots.add(formerParentLocation);
+        }
         // Parents form a chain, so at most one of them is a direct child of the destination.
         break;
       }

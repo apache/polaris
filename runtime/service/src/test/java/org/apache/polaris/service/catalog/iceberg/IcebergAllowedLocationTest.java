@@ -1404,37 +1404,13 @@ public class IcebergAllowedLocationTest {
   @ValueSource(booleans = {true, false})
   void testRenameTableIntoAncestorNamespaceWithCustomLocationRejectsOverlappingSibling(
       boolean optimizedSiblingCheck, @TempDir Path tmpDir) {
-    var services =
-        TestServices.builder()
-            .config(
-                Map.of(
-                    "ALLOW_INSECURE_STORAGE_TYPES",
-                    "true",
-                    "SUPPORTED_CATALOG_STORAGE_TYPES",
-                    List.of("FILE"),
-                    "ALLOW_NAMESPACE_CUSTOM_LOCATION",
-                    "true",
-                    OPTIMIZED_SIBLING_CHECK.key(),
-                    String.valueOf(optimizedSiblingCheck)))
-            .build();
     var catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
-    createCatalog(
-        services,
-        Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"),
-        catalogLocation,
-        List.of(catalogLocation));
+    var services = createCustomNamespaceLocationServices(optimizedSiblingCheck, catalogLocation);
     Namespace parent = Namespace.of("parent");
     Namespace child = Namespace.of("parent", "child");
-    newHandler(services)
-        .createNamespace(CreateNamespaceRequest.builder().withNamespace(parent).build());
+    createNamespaceAt(services, parent, null);
     // The child namespace is located outside its parent's location.
-    newHandler(services)
-        .createNamespace(
-            CreateNamespaceRequest.builder()
-                .withNamespace(child)
-                .setProperties(
-                    new HashMap<>(Map.of("location", catalogLocation + "/elsewhere/child")))
-                .build());
+    createNamespaceAt(services, child, catalogLocation + "/elsewhere/child");
     // The table's location is under the child namespace: .../elsewhere/child/t.
     newHandler(services)
         .createTableDirect(
@@ -1451,6 +1427,88 @@ public class IcebergAllowedLocationTest {
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
     newHandler(services).tableExists(source);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testRenameViewIntoAncestorNamespaceWithCustomLocationRejectsOverlappingSibling(
+      boolean optimizedSiblingCheck, @TempDir Path tmpDir) {
+    var catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    var services = createCustomNamespaceLocationServices(optimizedSiblingCheck, catalogLocation);
+    Namespace parent = Namespace.of("parent");
+    Namespace child = Namespace.of("parent", "child");
+    createNamespaceAt(services, parent, null);
+    createNamespaceAt(services, child, catalogLocation + "/elsewhere/child");
+    newHandler(services)
+        .createView(
+            child,
+            ImmutableCreateViewRequest.builder()
+                .name("v")
+                .schema(SCHEMA)
+                .viewVersion(VIEW_VERSION)
+                .build());
+    TableIdentifier source = TableIdentifier.of(child, "v");
+
+    assertThatThrownBy(() -> renameView(services, source, TableIdentifier.of(parent, "v")))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+    newHandler(services).viewExists(source);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testRenameTableIntoGrandparentNamespaceWithCustomLocationRejectsOverlappingSibling(
+      boolean optimizedSiblingCheck, @TempDir Path tmpDir) {
+    var catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    var services = createCustomNamespaceLocationServices(optimizedSiblingCheck, catalogLocation);
+    Namespace a = Namespace.of("a");
+    Namespace b = Namespace.of("a", "b");
+    Namespace c = Namespace.of("a", "b", "c");
+    createNamespaceAt(services, a, null);
+    // Namespace b is located outside of a. The default location of c is below b's.
+    createNamespaceAt(services, b, catalogLocation + "/elsewhere/b");
+    createNamespaceAt(services, c, null);
+    newHandler(services)
+        .createTableDirect(
+            c,
+            CreateTableRequest.builder().withName("t").withSchema(SCHEMA).build(),
+            EnumSet.noneOf(AccessDelegationMode.class),
+            Optional.empty());
+    TableIdentifier source = TableIdentifier.of(c, "t");
+
+    // Namespace b is not the table's immediate parent, but it becomes the table's sibling and its
+    // location contains the table's location.
+    assertThatThrownBy(() -> renameTable(services, source, TableIdentifier.of(a, "t")))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+    newHandler(services).tableExists(source);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testRenameTableWithUnstructuredLocationIntoAncestorNamespaceWithCustomLocation(
+      boolean optimizedSiblingCheck, @TempDir Path tmpDir) {
+    var catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    var services = createCustomNamespaceLocationServices(optimizedSiblingCheck, catalogLocation);
+    Namespace parent = Namespace.of("parent");
+    Namespace child = Namespace.of("parent", "child");
+    createNamespaceAt(services, parent, null);
+    createNamespaceAt(services, child, catalogLocation + "/elsewhere/child");
+    // The table's location is outside the child namespace, so it does not overlap with it.
+    newHandler(services)
+        .createTableDirect(
+            child,
+            CreateTableRequest.builder()
+                .withName("t")
+                .withSchema(SCHEMA)
+                .withLocation(catalogLocation + "/unstructured/t")
+                .build(),
+            EnumSet.noneOf(AccessDelegationMode.class),
+            Optional.empty());
+
+    TableIdentifier renamed = TableIdentifier.of(parent, "t");
+    renameTable(services, TableIdentifier.of(child, "t"), renamed);
+    newHandler(services).tableExists(renamed);
   }
 
   @ParameterizedTest
@@ -1711,6 +1769,46 @@ public class IcebergAllowedLocationTest {
                 OPTIMIZED_SIBLING_CHECK.key(),
                 String.valueOf(optimizedSiblingCheck)))
         .build();
+  }
+
+  /**
+   * Creates services and a catalog allowing namespaces with custom locations, and tables outside
+   * their namespace's location.
+   */
+  private TestServices createCustomNamespaceLocationServices(
+      boolean optimizedSiblingCheck, String catalogLocation) {
+    var services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE"),
+                    "ALLOW_NAMESPACE_CUSTOM_LOCATION",
+                    "true",
+                    OPTIMIZED_SIBLING_CHECK.key(),
+                    String.valueOf(optimizedSiblingCheck)))
+            .build();
+    createCatalog(
+        services,
+        Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"),
+        catalogLocation,
+        List.of(catalogLocation));
+    return services;
+  }
+
+  private void createNamespaceAt(TestServices services, Namespace namespace, String location) {
+    Map<String, String> properties = new HashMap<>();
+    if (location != null) {
+      properties.put("location", location);
+    }
+    newHandler(services)
+        .createNamespace(
+            CreateNamespaceRequest.builder()
+                .withNamespace(namespace)
+                .setProperties(properties)
+                .build());
   }
 
   private void createRenameNamespaces(TestServices services) {
