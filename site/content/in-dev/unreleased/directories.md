@@ -26,6 +26,11 @@ weight: 450
 
 {{< alert important >}}
 Directories are in beta. Please use it with caution and report any issue if encountered.
+
+The Directories API is disabled by default. Enable it with the `ENABLE_DIRECTORIES` feature flag
+(`polaris.features."ENABLE_DIRECTORIES"=true`, see [Configuration]({{% ref "configuration/configuration-reference" %}})).
+When it is disabled, all the directories endpoints (list, create, get, drop and scan) return `501 Not Implemented`
+and are not advertised in the catalog configuration.
 {{< /alert >}}
 
 Directories make objects (including unstructured data like images, videos, documents, and other objects) discoverable alongside
@@ -157,9 +162,7 @@ Polaris lists the `base-location` with read-only credentials scoped to that loca
 `scan-schedule`: it is up to the caller (or an [external service](#external-services-scanning-services))
 to trigger it periodically. If the scan fails, the directory table remains unchanged.
 
-The scan service is disabled by default: it is enabled with the `ENABLE_DIRECTORY_SCAN` feature flag (see
-[Configuration]({{% ref "configuration/configuration-reference" %}})). When it is disabled, the endpoint is rejected and not
-advertised in the catalog configuration. The scan populates `file_uri`, `content_type` (guessed from the
+The scan populates `file_uri`, `content_type` (guessed from the
 file name), `size` and `last_modified` (as reported by the object store); the other columns are left empty.
 It requires an object store whose `FileIO` supports listing a prefix.
 

@@ -320,6 +320,15 @@ When true, enables finer grained update table privileges which are passed to the
 
 ---
 
+##### `polaris.features."ENABLE_DIRECTORIES"`
+
+If true, the directories endpoints are enabled and advertised to clients in the catalog configuration response. If false, the endpoints return 501 Not Implemented. This is a beta feature: the API is under active development and may change in a backward-incompatible way. It is disabled by default; enable it with caution and report any issues encountered.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ENABLE_GENERIC_TABLES"`
 
 If true, the generic-tables endpoints are enabled
