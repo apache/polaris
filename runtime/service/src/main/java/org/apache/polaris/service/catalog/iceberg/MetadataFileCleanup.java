@@ -42,7 +42,8 @@ record MetadataFileCleanup(
 
   /**
    * Same as {@link CatalogUtil#deleteRemovedMetadataFiles}, except that only files under {@link
-   * #tableLocations()} are deleted.
+   * #tableLocations()} are deleted. Failures are logged and swallowed, since the commit has already
+   * succeeded.
    */
   void deleteRemovedMetadataFiles() {
     if (baseMetadata == null
@@ -51,21 +52,26 @@ record MetadataFileCleanup(
             TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED_DEFAULT)) {
       return;
     }
-    List<StorageLocation> locations = tableLocations.stream().map(StorageLocation::of).toList();
-    Set<TableMetadata.MetadataLogEntry> removed = new HashSet<>(baseMetadata.previousFiles());
-    removed.removeAll(newMetadata.previousFiles());
-    Set<String> files = new HashSet<>();
-    for (TableMetadata.MetadataLogEntry entry : removed) {
-      StorageLocation file = StorageLocation.of(entry.file());
-      if (locations.stream().anyMatch(file::isChildOf)) {
-        files.add(entry.file());
-      } else {
-        LOGGER.warn(
-            "Not deleting metadata file {} outside of the table locations {}",
-            entry.file(),
-            tableLocations);
+    try {
+      List<StorageLocation> locations = tableLocations.stream().map(StorageLocation::of).toList();
+      Set<TableMetadata.MetadataLogEntry> removed = new HashSet<>(baseMetadata.previousFiles());
+      removed.removeAll(newMetadata.previousFiles());
+      Set<String> files = new HashSet<>();
+      for (TableMetadata.MetadataLogEntry entry : removed) {
+        StorageLocation file = StorageLocation.of(entry.file());
+        if (locations.stream().anyMatch(file::isChildOf)) {
+          files.add(entry.file());
+        } else {
+          LOGGER.warn(
+              "Not deleting metadata file {} outside of the table locations {}",
+              entry.file(),
+              tableLocations);
+        }
       }
+      CatalogUtil.deleteFiles(io, files, "metadata");
+    } catch (RuntimeException e) {
+      // like CatalogUtil, never fail a commit that is already durable
+      LOGGER.warn("Failed to delete removed metadata files", e);
     }
-    CatalogUtil.deleteFiles(io, files, "metadata");
   }
 }

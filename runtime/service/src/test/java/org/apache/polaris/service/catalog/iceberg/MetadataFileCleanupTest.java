@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -61,6 +62,25 @@ class MetadataFileCleanupTest {
 
     assertThat(io.fileExists(insideFile)).isFalse();
     assertThat(io.fileExists(outsideFile)).isTrue();
+  }
+
+  @Test
+  void swallowsFailuresWhileResolvingFiles() throws IOException {
+    InMemoryFileIO io = new InMemoryFileIO();
+    String badFile = "/not a valid uri/v1.metadata.json";
+    TableMetadata newMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(required(1, "id", Types.IntegerType.get())),
+            PartitionSpec.unpartitioned(),
+            TABLE_LOCATION,
+            Map.of(TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED, "true"));
+    TableMetadata baseMetadata = withMetadataLog(newMetadata, badFile);
+
+    assertThatCode(
+            () ->
+                new MetadataFileCleanup(io, baseMetadata, newMetadata, Set.of(TABLE_LOCATION))
+                    .deleteRemovedMetadataFiles())
+        .doesNotThrowAnyException();
   }
 
   private static TableMetadata withMetadataLog(TableMetadata metadata, String... files)

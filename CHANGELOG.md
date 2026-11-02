@@ -81,7 +81,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Purging a table now fails with a 400 error if the table entity has no recorded location, and with
   a 403 error if the locations in the table metadata don't match the ones recorded on the entity.
   For tables created before 1.3.0, custom `write.data.path` and `write.metadata.path` locations are
-  taken from the table metadata, since they were not recorded on the entity.
+  taken from the table metadata, since they were not recorded on the entity. Purge tasks that were
+  queued by an older version only carry the table's base location: files under a custom
+  `write.data.path` or `write.metadata.path` outside of it are not deleted by those tasks.
 
 [Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 
