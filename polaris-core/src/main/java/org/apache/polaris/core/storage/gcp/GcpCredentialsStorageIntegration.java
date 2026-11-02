@@ -492,12 +492,10 @@ public class GcpCredentialsStorageIntegration
           // HNS buckets authorize storage.folders.* (from legacyBucketWriter) on folders/<path>.
           conditions.add(folderNameStartsWithExpression(bucket, path));
           // HNS creates missing parent folders on first write. Match each parent exactly, never by
-          // prefix, so sibling locations under the same parent stay out of scope.
-          for (int i = path.indexOf('/');
-              i >= 0 && i < path.length() - 1;
-              i = path.indexOf('/', i + 1)) {
-            conditions.add(folderNameEqualsExpression(bucket, path.substring(0, i + 1)));
-          }
+          // prefix, so sibling locations under the same parent stay out of scope (e.g. allowing
+          // folder "db/" must not allow "db/other_table/").
+          parentFolders(path)
+              .forEach(parent -> conditions.add(folderNameEqualsExpression(bucket, parent)));
         });
 
     CredentialAccessBoundary.Builder accessBoundaryBuilder = CredentialAccessBoundary.newBuilder();
@@ -535,6 +533,23 @@ public class GcpCredentialsStorageIntegration
           accessBoundaryBuilder.addRule(builder.build());
         });
     return accessBoundaryBuilder.build();
+  }
+
+  /**
+   * Returns the parent folders of {@code path}, shallowest first, excluding {@code path} itself.
+   * Every {@code /} is a folder boundary on HNS buckets, so consecutive slashes are preserved:
+   * {@code "a/b/c/"} gives {@code ["a/", "a/b/"]} and {@code "a//b/"} gives {@code ["a/", "a//"]}.
+   */
+  @VisibleForTesting
+  static List<String> parentFolders(String path) {
+    List<String> parents = new ArrayList<>();
+    int slash = path.indexOf('/');
+    // Stop before the last character: a trailing slash ends the location itself, not a parent.
+    while (slash >= 0 && slash < path.length() - 1) {
+      parents.add(path.substring(0, slash + 1));
+      slash = path.indexOf('/', slash + 1);
+    }
+    return parents;
   }
 
   @VisibleForTesting

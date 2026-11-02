@@ -648,6 +648,16 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 + " || resource.name == 'projects/_/buckets/bucket1/folders/a\\'b/'");
   }
 
+  @Test
+  public void testParentFoldersPreservesEveryFolderBoundary() {
+    assertThat(GcpCredentialsStorageIntegration.parentFolders("table/")).isEmpty();
+    assertThat(GcpCredentialsStorageIntegration.parentFolders("a/b/c/"))
+        .containsExactly("a/", "a/b/");
+    assertThat(GcpCredentialsStorageIntegration.parentFolders("a//b/"))
+        .containsExactly("a/", "a//");
+    assertThat(GcpCredentialsStorageIntegration.parentFolders("")).isEmpty();
+  }
+
   private static String expressionAt(JsonNode parsedRules, int ruleIndex) {
     return parsedRules
         .path("accessBoundaryRules")
