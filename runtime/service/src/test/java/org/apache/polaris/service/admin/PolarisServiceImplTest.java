@@ -40,6 +40,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -118,7 +119,7 @@ public class PolarisServiceImplTest {
   void deniedCreateCatalogThroughTheResourceNeverConsultsTheAllowlist() {
     PolarisResolutionManifest manifest = Mockito.mock(PolarisResolutionManifest.class);
     when(resolutionManifestFactory.createResolutionManifest(any(), any())).thenReturn(manifest);
-    when(polarisAuthorizer.authorize(any(), any()))
+    when(polarisAuthorizer.authorize(any(), any(AuthorizationRequest.class)))
         .thenReturn(AuthorizationDecision.deny("denied"));
     when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES))
         .thenReturn(List.of("S3"));

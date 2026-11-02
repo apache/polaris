@@ -33,6 +33,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.service.TestServices;
@@ -99,8 +100,9 @@ abstract class AbstractSemanticModelCatalogHandlerTest {
               return null;
             })
         .when(authorizer)
-        .resolveAuthorizationInputs(any(), any());
-    Mockito.when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
+        .resolveAuthorizationInputs(any(), any(AuthorizationRequest.class));
+    Mockito.when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
+        .thenReturn(AuthorizationDecision.allow());
     return handler(authorizer);
   }
 
