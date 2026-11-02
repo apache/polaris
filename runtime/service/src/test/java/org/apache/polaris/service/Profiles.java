@@ -78,6 +78,16 @@ public final class Profiles {
     }
   }
 
+  public static class DirectoryIntegrationProfile extends DefaultProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .put("polaris.features.\"ENABLE_DIRECTORY_SCAN\"", "true")
+          .build();
+    }
+  }
+
   public static class RestCatalogFileIntegrationProfile extends DefaultProfile {
     @Override
     public Map<String, String> getConfigOverrides() {

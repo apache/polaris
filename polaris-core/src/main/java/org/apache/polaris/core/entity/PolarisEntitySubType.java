@@ -32,7 +32,8 @@ public enum PolarisEntitySubType {
   NULL_SUBTYPE(0, null),
   ICEBERG_TABLE(2, PolarisEntityType.TABLE_LIKE),
   ICEBERG_VIEW(3, PolarisEntityType.TABLE_LIKE),
-  GENERIC_TABLE(4, PolarisEntityType.TABLE_LIKE);
+  GENERIC_TABLE(4, PolarisEntityType.TABLE_LIKE),
+  DIRECTORY(5, PolarisEntityType.TABLE_LIKE);
 
   // to efficiently map the code of a subtype to its corresponding subtype enum, use a reverse
   // array which is initialized below

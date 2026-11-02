@@ -86,7 +86,10 @@ dependencies {
 fun JvmTestSuite.configureSparkIntegrationDependencies() {
   dependencies {
     implementation(project(":polaris-tests"))
-    implementation(testFixtures(project(":polaris-runtime-service")))
+    implementation(testFixtures(project(":polaris-runtime-service"))) {
+      // The server's Parquet must not override the Parquet version provided by Spark.
+      exclude(group = "org.apache.parquet")
+    }
     implementation(project(":polaris-runtime-test-common"))
 
     implementation(platform(libs.awssdk.bom))
