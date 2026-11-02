@@ -55,6 +55,15 @@ public enum AccessDelegationMode {
     return protocolValue;
   }
 
+  /**
+   * Whether the client asked for an access delegation mechanism, i.e. for any mode other than
+   * {@link #NONE}. A request carrying only {@code none} is treated like a request without the
+   * header: it is authorized as a plain metadata operation and no credentials are vended.
+   */
+  public static boolean requestsDelegation(EnumSet<AccessDelegationMode> modes) {
+    return modes.stream().anyMatch(mode -> mode != NONE);
+  }
+
   public static EnumSet<AccessDelegationMode> fromProtocolValuesList(List<String> protocolValues) {
     if (protocolValues == null || protocolValues.isEmpty()) {
       return EnumSet.noneOf(AccessDelegationMode.class);

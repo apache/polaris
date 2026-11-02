@@ -285,6 +285,10 @@ class IcebergCatalogHandlerTest {
 
     verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
     assertThat(response.credentials()).isEmpty();
+    // A delegation mechanism was requested, so the request is still authorized as a delegation.
+    assertThat(authorizedOperations())
+        .contains(PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION)
+        .doesNotContain(PolarisAuthorizableOperation.REGISTER_TABLE);
   }
 
   @Test
@@ -301,6 +305,18 @@ class IcebergCatalogHandlerTest {
 
     verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
     assertThat(response.credentials()).isEmpty();
+    // `none` alone is authorized like a request without the header: no delegation privilege.
+    assertThat(authorizedOperations()).containsExactly(PolarisAuthorizableOperation.REGISTER_TABLE);
+  }
+
+  private List<PolarisAuthorizableOperation> authorizedOperations() {
+    ArgumentCaptor<AuthorizationRequest> captor =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
+    verify(authorizer, org.mockito.Mockito.atLeastOnce()).authorize(any(), captor.capture());
+    return captor.getAllValues().stream()
+        .flatMap(request -> request.intents().stream())
+        .map(intent -> intent.operation())
+        .toList();
   }
 
   @Test

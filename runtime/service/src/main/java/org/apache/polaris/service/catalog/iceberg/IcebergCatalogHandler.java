@@ -451,7 +451,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
+    authorizeCreateTableDirect(
+        namespace, request, AccessDelegationMode.requestsDelegation(delegationModes));
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
@@ -714,7 +715,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    authorizeCreateTableStaged(namespace, request, !delegationModes.isEmpty());
+    authorizeCreateTableStaged(
+        namespace, request, AccessDelegationMode.requestsDelegation(delegationModes));
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
@@ -1003,7 +1005,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       boolean overwrite) {
 
-    if (delegationModes.isEmpty()) {
+    if (!AccessDelegationMode.requestsDelegation(delegationModes)) {
 
       if (overwrite) {
         authorizeRegisterTableOverwriteOrThrow(
@@ -1139,7 +1141,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Optional<String> refreshCredentialsEndpoint) {
 
     Set<PolarisStorageActions> actionsRequested =
-        authorizeLoadTable(tableIdentifier, !delegationModes.isEmpty());
+        authorizeLoadTable(
+            tableIdentifier, AccessDelegationMode.requestsDelegation(delegationModes));
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     return loadTableWithResolvedAuthorization(
