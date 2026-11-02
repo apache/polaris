@@ -60,12 +60,15 @@ import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite.Condition;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite.Write;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWriteResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
@@ -1146,29 +1149,49 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         callCtx, () -> this.updateEntityPropertiesIfNotChanged(callCtx, ms, catalogPath, entity));
   }
 
-  /** See {@link #updateEntitiesPropertiesIfNotChanged(PolarisCallContext, List)} */
-  private @NonNull EntitiesResult updateEntitiesPropertiesIfNotChanged(
+  /** See {@link #writeEntitiesIfConditionsHold(PolarisCallContext, ConditionalEntityWrite)} */
+  private @NonNull ConditionalEntityWriteResult writeEntitiesIfConditionsHold(
       @NonNull PolarisCallContext callCtx,
       @NonNull TransactionalPersistence ms,
-      @NonNull List<EntityWithPath> entities) {
-    // ensure that the entities list is not null
-    getDiagnostics().checkNotNull(entities, "unexpected_null_entities");
+      @NonNull ConditionalEntityWrite batch) {
+    // unchanged entities must still be at the version read; they are not written
+    for (Condition condition : batch.conditions()) {
+      if (!(condition instanceof Condition.Unchanged unchanged)) {
+        throw new IllegalArgumentException("Unsupported condition " + condition);
+      }
+      PolarisEntityCore expected = unchanged.entity();
+      PolarisBaseEntity current =
+          ms.lookupEntityInCurrentTxn(
+              callCtx, expected.getCatalogId(), expected.getId(), expected.getTypeCode());
+      if (current == null || current.getEntityVersion() != expected.getEntityVersion()) {
+        ms.rollback();
+        return new ConditionalEntityWriteResult(
+            BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
+            String.format("Entity id '%s' concurrently modified", expected.getId()),
+            expected);
+      }
+    }
 
     // list of all updated entities
-    List<PolarisBaseEntity> updatedEntities = new ArrayList<>(entities.size());
+    List<PolarisBaseEntity> updatedEntities = new ArrayList<>(batch.writes().size());
 
     // iterate over the list and update each, one at a time
-    for (EntityWithPath entityWithPath : entities) {
+    for (Write write : batch.writes()) {
+      if (!(write instanceof Write.Update update)) {
+        throw new IllegalArgumentException("Unsupported write " + write);
+      }
       // update that entity, abort if it fails
       EntityResult updatedEntityResult =
           this.updateEntityPropertiesIfNotChanged(
-              callCtx, ms, entityWithPath.catalogPath(), entityWithPath.entity());
+              callCtx, ms, update.catalogPath(), update.entity());
 
-      // if failed, rollback and return the last error
+      // if failed, rollback and return the error
       if (updatedEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
         ms.rollback();
-        return new EntitiesResult(
-            updatedEntityResult.getReturnStatus(), updatedEntityResult.getExtraInformation());
+        return new ConditionalEntityWriteResult(
+            BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
+            updatedEntityResult.getExtraInformation(),
+            update.entity());
       }
 
       // one more was updated
@@ -1176,19 +1199,19 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // good, all success
-    return new EntitiesResult(Page.fromItems(updatedEntities));
+    return new ConditionalEntityWriteResult(updatedEntities);
   }
 
   /** {@inheritDoc} */
   @Override
-  public @NonNull EntitiesResult updateEntitiesPropertiesIfNotChanged(
-      @NonNull PolarisCallContext callCtx, @NonNull List<EntityWithPath> entities) {
+  public @NonNull ConditionalEntityWriteResult writeEntitiesIfConditionsHold(
+      @NonNull PolarisCallContext callCtx, @NonNull ConditionalEntityWrite batch) {
     // get metastore we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
 
     // need to run inside a read/write transaction
     return ms.runInTransaction(
-        callCtx, () -> this.updateEntitiesPropertiesIfNotChanged(callCtx, ms, entities));
+        callCtx, () -> this.writeEntitiesIfConditionsHold(callCtx, ms, batch));
   }
 
   /**

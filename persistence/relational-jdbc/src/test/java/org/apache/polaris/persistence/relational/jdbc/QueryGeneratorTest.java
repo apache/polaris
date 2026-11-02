@@ -40,6 +40,7 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 public class QueryGeneratorTest {
@@ -541,5 +542,22 @@ public class QueryGeneratorTest {
                 ModelEntity.getAllColumnNames(),
                 ModelEntity.TABLE_NAME,
                 Map.of("not_a_column", 1)));
+  }
+
+  /**
+   * The check of a conditional write locks the row in shared mode where the database supports it,
+   * so that checks of the same row do not wait for each other; H2 has no shared row lock.
+   */
+  @ParameterizedTest
+  @EnumSource(DatabaseType.class)
+  void testGenerateCheckEntityQuery_lockClausePerDatabase(DatabaseType databaseType) {
+    QueryGenerator.PreparedQuery query =
+        QueryGenerator.generateCheckEntityQuery("realm", 1L, 2L, databaseType);
+
+    String expectedClause = databaseType == DatabaseType.POSTGRES ? " FOR SHARE" : " FOR UPDATE";
+    Assertions.assertThat(query.sql())
+        .startsWith("SELECT id, catalog_id, entity_version, grant_records_version FROM ")
+        .endsWith(" WHERE catalog_id = ? AND id = ? AND realm_id = ?" + expectedClause);
+    Assertions.assertThat(query.parameters()).containsExactly(1L, 2L, "realm");
   }
 }

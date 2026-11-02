@@ -204,6 +204,38 @@ public class QueryGenerator {
   }
 
   /**
+   * Builds a SELECT query for the versions of one entity that a conditional write checks without
+   * writing. The query locks the entity's row until the end of the transaction, so that a
+   * concurrent transaction that updates the row waits for it, and a transaction that waits for the
+   * lock reads the latest committed row.
+   *
+   * <p>The lock is shared where the database supports it ({@code FOR SHARE} on PostgreSQL), so that
+   * transactions that only check the same row do not wait for each other. H2 does not support
+   * {@code FOR SHARE}, and CockroachDB only takes shared locks with additional settings, so both
+   * use {@code FOR UPDATE}: still correct, but checks of the same row run one after the other.
+   *
+   * @param realmId Realm to filter by.
+   * @param catalogId Catalog id of the entity.
+   * @param entityId Id of the entity.
+   * @param databaseType The database the query runs on.
+   * @return SELECT query with a row-locking clause that returns {@link
+   *     ModelEntity#VERSION_COLUMNS}.
+   */
+  public static PreparedQuery generateCheckEntityQuery(
+      @NonNull String realmId, long catalogId, long entityId, @NonNull DatabaseType databaseType) {
+    String lockClause =
+        switch (databaseType) {
+          case POSTGRES -> " FOR SHARE";
+          case H2, COCKROACHDB -> " FOR UPDATE";
+        };
+    String where = " WHERE catalog_id = ? AND id = ? AND realm_id = ?";
+    return new PreparedQuery(
+        generateSelectQuery(ModelEntity.VERSION_COLUMNS, ModelEntity.TABLE_NAME, where, null).sql()
+            + lockClause,
+        List.of(catalogId, entityId, realmId));
+  }
+
+  /**
    * Generates an INSERT query for a given table.
    *
    * @param allColumns Columns to insert values into.

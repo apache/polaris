@@ -35,6 +35,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -61,6 +62,14 @@ abstract class NonFunctionalBasePersistence implements BasePersistence, Integrat
       boolean nameOrParentChanged,
       @Nullable PolarisBaseEntity originalEntity) {
     throw useMetaStoreManager("create/update/rename/delete");
+  }
+
+  @Override
+  public void checkAndWriteEntities(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<ConditionalEntityWrite.Condition> conditions,
+      @NonNull List<EntityChange> changes) {
+    throw useMetaStoreManager("checkAndWriteEntities");
   }
 
   @Override

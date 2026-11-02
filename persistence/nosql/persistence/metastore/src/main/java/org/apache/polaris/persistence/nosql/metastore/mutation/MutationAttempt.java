@@ -51,6 +51,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -142,6 +143,7 @@ public record MutationAttempt(
                 update,
                 mutationResults,
                 memoizedIndexedAccess);
+        case CHECK -> applyEntityCheck(state, byName, byId, update, mutationResults);
         default -> throw new IllegalStateException("Unexpected operation " + update.operation());
       }
     }
@@ -302,6 +304,43 @@ public record MutationAttempt(
       if (changes != null) {
         changes.put(originalNameKey, ChangeRemove.builder().build());
       }
+    }
+  }
+
+  /**
+   * Fails the mutation unless the entity still exists with its version; changes nothing.
+   *
+   * <p>The state is the one of the current commit attempt: if the commit is retried because of a
+   * concurrent commit, the check is evaluated again against the new state.
+   */
+  private static void applyEntityCheck(
+      CommitterState<? extends ContainerObj, MutationResults> state,
+      UpdatableIndex<ObjRef> byName,
+      UpdatableIndex<IndexKey> byId,
+      EntityUpdate update,
+      MutationResults mutationResults) {
+    var entity = update.entity();
+    var nameKey = byId.get(IndexKey.key(entity.getId()));
+    var ref = nameKey != null ? byName.get(nameKey) : null;
+    if (ref == null) {
+      mutationResults.entityResult(TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+      return;
+    }
+    // The caller identifies the entity by its type only: the sub-type is that of the stored object.
+    var subTypeCode = entitySubTypeCodeFromObjType(ref);
+    var subType =
+        subTypeCode != null
+            ? PolarisEntitySubType.fromCode(Integer.parseInt(subTypeCode))
+            : PolarisEntitySubType.NULL_SUBTYPE;
+    var obj =
+        (ObjBase)
+            state
+                .persistence()
+                .fetch(ref, objTypeForPolarisType(entity.getType(), subType).targetClass());
+    if (obj == null || entity.getEntityVersion() != obj.entityVersion()) {
+      mutationResults.entityResult(TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+    } else {
+      mutationResults.unchangedEntityResult(entity);
     }
   }
 

@@ -26,6 +26,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -56,12 +57,14 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.EntityConcurrentlyModifiedException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite.Condition;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -169,6 +172,108 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           });
     } catch (SQLException e) {
       throw wrapEntityWriteFailure(e, "Error executing the transaction for writing entities");
+    }
+  }
+
+  /** SQLState of a deadlock (PostgreSQL). */
+  private static final String DEADLOCK_SQL_STATE = "40P01";
+
+  /** SQLState of a serialization failure (PostgreSQL, CockroachDB). */
+  private static final String SERIALIZATION_FAILURE_SQL_STATE = "40001";
+
+  /** A check or a compare-and-swap update of a {@link #checkAndWriteEntities} batch. */
+  private record BatchStep(
+      PolarisEntityCore entity, PolarisBaseEntity updated, PolarisBaseEntity original) {}
+
+  @Override
+  public void checkAndWriteEntities(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<Condition> conditions,
+      @NonNull List<EntityChange> changes) {
+    List<BatchStep> steps = new ArrayList<>(conditions.size() + changes.size());
+    for (Condition condition : conditions) {
+      if (!(condition instanceof Condition.Unchanged unchanged)) {
+        throw new IllegalArgumentException("Unsupported condition " + condition);
+      }
+      steps.add(new BatchStep(unchanged.entity(), null, null));
+    }
+    for (EntityChange change : changes) {
+      if (!(change instanceof EntityChange.Update update)) {
+        throw new IllegalArgumentException("Unsupported change " + change);
+      }
+      steps.add(new BatchStep(update.entity(), update.entity(), update.originalEntity()));
+    }
+    // Take the row locks of all batches in the same order, so that two batches that touch the same
+    // entities never wait for each other in a cycle, which the database would resolve by failing
+    // one of them with a deadlock. Any total order works. Within a realm the primary key is
+    // (realm_id, id), so the id alone would be enough today; the catalog id is kept in the key
+    // because that is how entities are addressed, and the order stays total if entity ids are ever
+    // only unique within a catalog, for example with federated catalogs.
+    steps.sort(
+        Comparator.comparingLong((BatchStep step) -> step.entity().getCatalogId())
+            .thenComparingLong(step -> step.entity().getId()));
+
+    try {
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            for (BatchStep step : steps) {
+              if (step.updated() == null) {
+                checkEntityUnchanged(connection, step.entity());
+              } else {
+                try {
+                  persistEntity(
+                      callCtx,
+                      step.updated(),
+                      step.original(),
+                      connection,
+                      datasourceOperations::execute);
+                } catch (RetryOnConcurrencyException e) {
+                  throw new EntityConcurrentlyModifiedException(step.entity(), e, e.getMessage());
+                }
+              }
+            }
+            return true;
+          });
+    } catch (SQLException e) {
+      if (DEADLOCK_SQL_STATE.equals(e.getSQLState())
+          || SERIALIZATION_FAILURE_SQL_STATE.equals(e.getSQLState())) {
+        throw new RetryOnConcurrencyException(
+            e,
+            "Entities concurrently modified, the database rejected the batch: %s",
+            e.getMessage());
+      }
+      throw new RuntimeException(
+          String.format(
+              "Error executing the transaction for checking and writing entities due to %s",
+              e.getMessage()),
+          e);
+    }
+  }
+
+  /** Locks the entity's row, and fails unless the entity exists with the expected version. */
+  private void checkEntityUnchanged(Connection connection, PolarisEntityCore expected)
+      throws SQLException {
+    AtomicReference<PolarisChangeTrackingVersions> current = new AtomicReference<>();
+    datasourceOperations.executeSelectOverStream(
+        connection,
+        QueryGenerator.generateCheckEntityQuery(
+            realmId,
+            expected.getCatalogId(),
+            expected.getId(),
+            datasourceOperations.getDatabaseType()),
+        new EntityVersionConverter(),
+        stream -> stream.findFirst().ifPresent(row -> current.set(row.versions())));
+    PolarisChangeTrackingVersions versions = current.get();
+    if (versions == null) {
+      throw new EntityConcurrentlyModifiedException(
+          expected, String.format("Entity id '%s' does not exist anymore", expected.getId()));
+    }
+    if (versions.entityVersion() != expected.getEntityVersion()) {
+      throw new EntityConcurrentlyModifiedException(
+          expected,
+          String.format(
+              "Entity id '%s' concurrently modified; expected entity_version=%s, found %s",
+              expected.getId(), expected.getEntityVersion(), versions.entityVersion()));
     }
   }
 

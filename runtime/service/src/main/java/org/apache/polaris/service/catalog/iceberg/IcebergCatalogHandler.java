@@ -43,6 +43,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
@@ -118,7 +119,8 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
-import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWriteResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.pagination.PageTokenUtil;
@@ -1615,16 +1617,28 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           if (!currentMetadata.changes().isEmpty()) {
             tableOps.commit(baseMetadata, currentMetadata);
             tableFileIOs.put(tableIdentifier, tableOps.io());
+          } else {
+            // Requirements only, no updates: the requirements were validated against the metadata
+            // loaded above, so the table must still be unchanged when the other tables are
+            // committed. The batch below checks the table's entity version atomically with the
+            // updates of the other tables, without writing the table.
+            PolarisResolvedPathWrapper checked = resolveCheckedTable(tableIdentifier, baseMetadata);
+            transactionMetaStoreManager.addUnchangedEntity(
+                PolarisEntity.toCoreList(checked.getRawParentPath()), checked.getRawLeafEntity());
           }
 
           tableMetadataObjs.add(currentMetadata);
         });
 
     List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
-    EntitiesResult result =
+    ConditionalEntityWrite.Builder batch = ConditionalEntityWrite.builder();
+    pendingUpdates.forEach(update -> batch.update(update.catalogPath(), update.entity()));
+    transactionMetaStoreManager
+        .getPendingUnchanged()
+        .forEach(checked -> batch.unchanged(checked.catalogPath(), checked.entity()));
+    ConditionalEntityWriteResult result =
         metaStoreManager()
-            .updateEntitiesPropertiesIfNotChanged(
-                callContext().getPolarisCallContext(), pendingUpdates);
+            .writeEntitiesIfConditionsHold(callContext().getPolarisCallContext(), batch.build());
     if (!result.isSuccess()) {
       // TODO: Retries on failure
 
@@ -1657,6 +1671,32 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
 
     eventAttributeMap().put(EventAttributes.TABLE_METADATAS, tableMetadataObjs);
+  }
+
+  /**
+   * Resolves a table that a multi-table commit validates requirements against but does not update.
+   *
+   * <p>The entity's version is later checked atomically with the commit, so it must be the version
+   * whose metadata the requirements were validated against: if the table was committed between
+   * loading its metadata and resolving it here, the entity would be newer than the validated
+   * metadata, and the check would pass although the requirements were validated against stale
+   * metadata.
+   */
+  private PolarisResolvedPathWrapper resolveCheckedTable(
+      TableIdentifier tableIdentifier, TableMetadata validated) {
+    PolarisResolvedPathWrapper resolved =
+        resolutionManifest.getPassthroughResolvedPath(
+            ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ICEBERG_TABLE);
+    if (resolved == null
+        || resolved.getRawLeafEntity() == null
+        || !Objects.equals(
+            IcebergTableLikeEntity.of(resolved.getRawLeafEntity()).getMetadataLocation(),
+            validated.metadataFileLocation())) {
+      // Retrying reloads the table: if it was dropped, the retry gets NoSuchTableException.
+      throw new CommitFailedException(
+          "Cannot commit transaction: table %s was concurrently modified", tableIdentifier);
+    }
+    return resolved;
   }
 
   record FileToDelete(FileIO io, String location) {

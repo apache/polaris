@@ -36,8 +36,10 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.EntityConcurrentlyModifiedException;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite.Condition;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -213,6 +215,48 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
         () -> {
           this.checkConditionsForWriteEntityInCurrentTxn(callCtx, entity, originalEntity);
           this.writeEntityInCurrentTxn(callCtx, entity, nameOrParentChanged, originalEntity);
+        });
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void checkAndWriteEntities(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<Condition> conditions,
+      @NonNull List<EntityChange> changes) {
+    runActionInTransaction(
+        callCtx,
+        () -> {
+          for (Condition condition : conditions) {
+            if (!(condition instanceof Condition.Unchanged unchanged)) {
+              throw new IllegalArgumentException("Unsupported condition " + condition);
+            }
+            PolarisEntityCore expected = unchanged.entity();
+            PolarisBaseEntity current =
+                this.lookupEntityInCurrentTxn(
+                    callCtx, expected.getCatalogId(), expected.getId(), expected.getTypeCode());
+            if (current == null || current.getEntityVersion() != expected.getEntityVersion()) {
+              throw new EntityConcurrentlyModifiedException(
+                  expected,
+                  String.format("Entity id '%s' concurrently modified", expected.getId()));
+            }
+          }
+          for (EntityChange change : changes) {
+            if (!(change instanceof EntityChange.Update update)) {
+              throw new IllegalArgumentException("Unsupported change " + change);
+            }
+            PolarisBaseEntity entity = update.entity();
+            PolarisBaseEntity originalEntity = update.originalEntity();
+            boolean nameOrParentChanged =
+                !entity.getName().equals(originalEntity.getName())
+                    || entity.getParentId() != originalEntity.getParentId();
+            try {
+              this.checkConditionsForWriteEntityInCurrentTxn(callCtx, entity, originalEntity);
+            } catch (RetryOnConcurrencyException e) {
+              throw new EntityConcurrentlyModifiedException(entity, e, e.getMessage());
+            }
+            this.writeEntityInCurrentTxn(callCtx, entity, nameOrParentChanged, originalEntity);
+          }
         });
   }
 
