@@ -75,7 +75,7 @@ public class Page<T> {
       // short-cut for "no pagination"
       data = items.map(mapper).collect(Collectors.toList());
     } else {
-      data = new ArrayList<>(request.pageSize().orElse(10));
+      data = new ArrayList<>();
 
       Iterator<T> it = iterator(items.spliterator());
       int limit = request.pageSize().orElse(Integer.MAX_VALUE);

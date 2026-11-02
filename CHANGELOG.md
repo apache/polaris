@@ -62,6 +62,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `Expect: 100-continue` by default. Set `polaris.storage.expect-continue-enabled=true`
   to preserve the previous behavior. Iceberg S3 clients continue to use Apache HttpClient 4
   and retain their existing default.
+- The `apache-polaris` Python package no longer depends on `boto3`, which it never used. Environments
+  that relied on it being installed transitively must now install `boto3` explicitly.
 - Relational JDBC: The per-schema-version runtime fallback has been removed. The migration to schema
   v6 is now **required** before starting this version of Polaris. The first request to any realm
   whose recorded schema version does not match what the binary expects will fail fast with a clear
@@ -135,6 +137,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   accounts for them. Entities with many grants weigh more, which can lead to more evictions than before
   with the same configured value. The description of `ENTITY_CACHE_WEIGHER_TARGET` now documents that
   its weights approximate bytes.
+- The `apache-polaris` Python package now accepts `pydantic` from 2.12 up to, but excluding, 3.0
+  instead of a single minor version, so it can be installed alongside packages that pin `pydantic`.
 - `TABLE_MANAGE_STRUCTURE` and the fine-grained table update privileges (such as
   `TABLE_ASSIGN_UUID`, `TABLE_ADD_SCHEMA` or `TABLE_SET_PROPERTIES`) now subsume
   `TABLE_READ_PROPERTIES`, consistent with `TABLE_WRITE_PROPERTIES`, because a table update returns
@@ -149,6 +153,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- The Iceberg REST `/config` response now advertises the
+  `GET /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials` endpoint, which Polaris
+  already served. Clients that check advertised endpoints before refreshing vended credentials can
+  now use it.
 - Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
   the packaged chart, so `helm test` ran no tests.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from

@@ -46,6 +46,7 @@ public class IcebergRestConfigEndpoints implements CatalogConfigEndpointContribu
           .add(Endpoint.V1_REGISTER_TABLE)
           .add(Endpoint.V1_REPORT_METRICS)
           .add(Endpoint.V1_COMMIT_TRANSACTION)
+          .add(Endpoint.V1_TABLE_CREDENTIALS)
           .build();
 
   @Override

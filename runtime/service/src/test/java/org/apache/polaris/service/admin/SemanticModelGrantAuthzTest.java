@@ -48,6 +48,7 @@ import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.SemanticModelGrant;
 import org.apache.polaris.core.admin.model.SemanticModelPrivilege;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -197,8 +198,8 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
               return null;
             })
         .when(authorizer)
-        .resolveAuthorizationInputs(any(), any());
-    when(authorizer.authorize(any(), any())).thenReturn(decision);
+        .resolveAuthorizationInputs(any(), any(AuthorizationRequest.class));
+    when(authorizer.authorize(any(), any(AuthorizationRequest.class))).thenReturn(decision);
     return authorizer;
   }
 
@@ -233,7 +234,7 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
                     TableIdentifier.of("missing-ns", "model"),
                     PolarisPrivilege.SEMANTIC_MODEL_READ))
         .isInstanceOf(NoSuchSemanticModelException.class);
-    verify(authorizer, times(4)).authorize(any(), any());
+    verify(authorizer, times(4)).authorize(any(), any(AuthorizationRequest.class));
     assertThat(newRootAdminService().listGrantsForCatalogRole(CATALOG_NAME, CATALOG_ROLE2))
         .isEmpty();
   }
@@ -276,7 +277,7 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
             })
         .isInstanceOf(ForbiddenException.class)
         .hasMessage("Not authorized");
-    verify(authorizer).authorize(any(), any());
+    verify(authorizer).authorize(any(), any(AuthorizationRequest.class));
   }
 
   static Stream<GrantResource> scopedGrants() {

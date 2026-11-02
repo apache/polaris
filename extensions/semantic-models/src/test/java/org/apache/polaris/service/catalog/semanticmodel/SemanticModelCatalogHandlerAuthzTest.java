@@ -171,8 +171,9 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
               return null;
             })
         .when(authorizer)
-        .resolveAuthorizationInputs(any(), any());
-    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
+        .resolveAuthorizationInputs(any(), any(AuthorizationRequest.class));
+    when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
+        .thenReturn(AuthorizationDecision.allow());
 
     handler(authorizer).loadSemanticModel(identifier("m1"));
 
