@@ -19,7 +19,17 @@ multi-engine connectivity.&lt;/p&gt;
 &lt;/h2&gt;
 &lt;p&gt;The Hive factory is packaged as an optional extension and is not baked into default server builds.
 Include it when assembling the runtime or container images by setting the &lt;code&gt;NonRESTCatalogs&lt;/code&gt; Gradle
-property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backends you need):&lt;/p&gt;</description></item><item><title>BigQuery Metastore Federation</title><link>https://polaris.apache.org/in-dev/unreleased/federation/bigquery-metastore-federation/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/federation/bigquery-metastore-federation/</guid><description>&lt;p&gt;Polaris can federate catalog operations to a BigQuery Metastore catalog. This lets BigQuery Metastore
+property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backends you need):&lt;/p&gt;</description></item><item><title>Hadoop Catalog Federation</title><link>https://polaris.apache.org/in-dev/unreleased/federation/hadoop-catalog-federation/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/federation/hadoop-catalog-federation/</guid><description>&lt;p&gt;Polaris can federate catalog operations to an Iceberg
+&lt;a href="https://iceberg.apache.org/docs/latest/java-api-quickstart/#using-a-hadoop-catalog"&gt;Hadoop catalog&lt;/a&gt;:
+a warehouse directory in which namespaces and tables are tracked by directory layout, without a
+metastore service. This lets existing file-based Iceberg tables remain where they are while Polaris
+brokers access, policies, and multi-engine connectivity.&lt;/p&gt;
+&lt;h2 id="build-time-enablement" id="build-time-enablement"&gt;Build-time enablement&lt;a class="heading-anchor" href="#build-time-enablement" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;Unlike Hive and BigQuery federation, the Hadoop factory is part of the default server build:
+&lt;code&gt;runtime/server/build.gradle.kts&lt;/code&gt; always includes &lt;code&gt;polaris-extensions-federation-hadoop&lt;/code&gt;, so no
+Gradle property is needed. Standard Polaris binaries and container images can federate to Hadoop
+catalogs as soon as the feature flags below are set.&lt;/p&gt;</description></item><item><title>BigQuery Metastore Federation</title><link>https://polaris.apache.org/in-dev/unreleased/federation/bigquery-metastore-federation/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/federation/bigquery-metastore-federation/</guid><description>&lt;p&gt;Polaris can federate catalog operations to a BigQuery Metastore catalog. This lets BigQuery Metastore
 remain the source of truth for Iceberg table metadata while Polaris brokers access, policies, and
 multi-engine connectivity.&lt;/p&gt;
 &lt;h2 id="build-time-enablement" id="build-time-enablement"&gt;Build-time enablement&lt;a class="heading-anchor" href="#build-time-enablement" aria-label="Anchor"&gt;🔗&lt;/a&gt;
