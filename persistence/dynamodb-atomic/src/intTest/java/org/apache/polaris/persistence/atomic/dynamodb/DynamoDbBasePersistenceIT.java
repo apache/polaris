@@ -230,6 +230,32 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
   }
 
   @Test
+  void idClashWithAFreeNameIsNotReportedAsTheSameEntity() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+
+    // Same id, different name: not an idempotent retry, and nothing new is written.
+    assertThatThrownBy(
+            () -> persistence.writeEntity(callCtx, entity(10L, PARENT, "orders", 1), false, null))
+        .isInstanceOf(RetryOnConcurrencyException.class);
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "orders")).isNull();
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isEqualTo(sales);
+  }
+
+  @Test
+  void deleteSucceedsAfterAConcurrentUpdate() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    persistence.writeEntity(callCtx, withVersion(sales, 2, 2, Map.of("k", "v")), false, sales);
+
+    // The caller's copy is now stale on both versions; the delete still goes through.
+    persistence.deleteEntity(callCtx, sales);
+
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isNull();
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales")).isNull();
+  }
+
+  @Test
   void deleteWithAStaleNameKeepsTheNewOwnersSentinel() {
     PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
     persistence.writeEntity(callCtx, sales, false, null);

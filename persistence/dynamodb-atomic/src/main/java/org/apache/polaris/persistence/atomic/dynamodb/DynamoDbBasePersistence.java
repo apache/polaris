@@ -101,6 +101,9 @@ public class DynamoDbBasePersistence implements BasePersistence {
 
   private static final long BATCH_GET_MAX_BACKOFF_MILLIS = 1_000;
 
+  /** Re-reads a delete may do when a concurrent update changes the entity's versions. */
+  private static final int MAX_DELETE_ATTEMPTS = 3;
+
   private static final String VERSIONS_MATCH = "#ev = :ev AND #grv = :grv";
   private static final String KEY_ABSENT = "attribute_not_exists(#pk)";
   private static final String SENTINEL_ABSENT_OR_OWNED = "attribute_not_exists(#pk) OR #id = :id";
@@ -143,9 +146,6 @@ public class DynamoDbBasePersistence implements BasePersistence {
   }
 
   private void createEntity(PolarisCallContext callCtx, PolarisBaseEntity entity) {
-    // Action order matters: cancellation reasons are reported by index.
-    final int entityIndex = 0;
-    final int sentinelIndex = 1;
     try {
       client.transactWriteItems(
           b ->
@@ -156,31 +156,21 @@ public class DynamoDbBasePersistence implements BasePersistence {
       if (!onlyConflicts(e)) {
         throw e;
       }
-      if (conditionFailedAt(e, sentinelIndex)) {
-        PolarisBaseEntity existing =
-            lookupEntityByName(
-                callCtx,
-                entity.getCatalogId(),
-                entity.getParentId(),
-                entity.getTypeCode(),
-                entity.getName());
-        if (existing != null) {
-          throw new EntityAlreadyExistsException(existing, e);
-        }
-        throw new RetryOnConcurrencyException(
-            e,
-            "Name '%s' was claimed concurrently but is no longer present; retry",
-            entity.getName());
-      }
-      if (conditionFailedAt(e, entityIndex)) {
-        // The id is taken. The manager treats a matching id as an idempotent retry of this create.
-        PolarisBaseEntity existing = readEntity(entity.getId());
-        if (existing != null) {
-          throw new EntityAlreadyExistsException(existing, e);
-        }
+      // Resolve by name, as JDBC does. A genuine retry of this create finds its own id here, which
+      // the manager treats as idempotent. An id clash with a free name finds nothing, so it is not
+      // mistaken for a successful create.
+      PolarisBaseEntity existing =
+          lookupEntityByName(
+              callCtx,
+              entity.getCatalogId(),
+              entity.getParentId(),
+              entity.getTypeCode(),
+              entity.getName());
+      if (existing != null) {
+        throw new EntityAlreadyExistsException(existing, e);
       }
       throw new RetryOnConcurrencyException(
-          e, "Create of '%s' was cancelled; retry", entity.getName());
+          e, "Create of '%s' conflicted with a concurrent write", entity.getName());
     }
   }
 
@@ -232,31 +222,24 @@ public class DynamoDbBasePersistence implements BasePersistence {
   public void deleteEntity(@NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity) {
     // Delete by the stored state, not the caller's copy: a concurrent rename may have moved the
     // sentinel, and deleting the caller's (old) name could remove a sentinel another entity now
-    // owns.
-    PolarisBaseEntity current = readEntity(entity.getId());
-    if (current == null) {
-      return;
-    }
-    try {
-      client.transactWriteItems(
-          b ->
-              b.transactItems(
-                  TransactWriteItem.builder()
-                      .delete(
-                          Delete.builder()
-                              .tableName(tableName)
-                              .key(key(entityPk(realmId, current.getId()), SK_ENTITY))
-                              .conditionExpression(VERSIONS_MATCH)
-                              .expressionAttributeNames(versionNames())
-                              .expressionAttributeValues(versionValues(current))
-                              .build())
-                      .build(),
-                  deleteSentinelIfOwned(current)));
-    } catch (TransactionCanceledException e) {
-      if (!onlyConflicts(e)) {
-        throw e;
+    // owns. Like JDBC, a concurrent update does not fail the delete: re-read and try again.
+    for (int attempt = 1; ; attempt++) {
+      PolarisBaseEntity current = readEntity(entity.getId());
+      if (current == null) {
+        return;
       }
-      throw concurrentModification(e, current);
+      try {
+        client.transactWriteItems(
+            b -> b.transactItems(deleteIfVersionsMatch(current), deleteSentinelIfOwned(current)));
+        return;
+      } catch (TransactionCanceledException e) {
+        if (!onlyConflicts(e)) {
+          throw e;
+        }
+        if (attempt == MAX_DELETE_ATTEMPTS) {
+          throw concurrentModification(e, current);
+        }
+      }
     }
   }
 
@@ -534,6 +517,19 @@ public class DynamoDbBasePersistence implements BasePersistence {
                 .item(item)
                 .conditionExpression(KEY_ABSENT)
                 .expressionAttributeNames(Map.of("#pk", PK))
+                .build())
+        .build();
+  }
+
+  private TransactWriteItem deleteIfVersionsMatch(PolarisBaseEntity expected) {
+    return TransactWriteItem.builder()
+        .delete(
+            Delete.builder()
+                .tableName(tableName)
+                .key(key(entityPk(realmId, expected.getId()), SK_ENTITY))
+                .conditionExpression(VERSIONS_MATCH)
+                .expressionAttributeNames(versionNames())
+                .expressionAttributeValues(versionValues(expected))
                 .build())
         .build();
   }
