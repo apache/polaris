@@ -33,6 +33,7 @@ import static org.assertj.core.api.InstanceOfAssertFactories.BOOLEAN;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
@@ -64,6 +65,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -78,6 +80,9 @@ import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
+import org.apache.polaris.persistence.nosql.api.commit.CommitRetryable;
+import org.apache.polaris.persistence.nosql.api.commit.Committer;
+import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogsObj;
 import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj;
@@ -951,4 +956,140 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   }
 
   private record FetchCounts(int fetch, int bulkFetches, int fetchReference) {}
+
+  /**
+   * A persistence whose committers do not exclude each other locally, like committers of different
+   * nodes, and that runs {@code competingCommit} after the first commit attempt computed its
+   * change, before the attempt is applied. The attempt then loses the compare-and-swap of the
+   * reference, and the committer retries it against the new state.
+   */
+  private static Persistence persistenceWithCompetingCommit(
+      Persistence persistence, AtomicInteger attempts, Runnable competingCommit) {
+    return (Persistence)
+        Proxy.newProxyInstance(
+            TestNoSqlMetaStoreManager.class.getClassLoader(),
+            new Class<?>[] {Persistence.class},
+            (proxy, method, args) -> {
+              try {
+                Object result = method.invoke(persistence, args);
+                return "createCommitter".equals(method.getName())
+                    ? committerWithCompetingCommit(
+                        (Committer<?, ?>) result, attempts, competingCommit)
+                    : result;
+              } catch (InvocationTargetException e) {
+                throw e.getCause();
+              }
+            });
+  }
+
+  private static Committer<?, ?> committerWithCompetingCommit(
+      Committer<?, ?> committer, AtomicInteger attempts, Runnable competingCommit) {
+    return Committer.class.cast(
+        Proxy.newProxyInstance(
+            TestNoSqlMetaStoreManager.class.getClassLoader(),
+            new Class<?>[] {Committer.class},
+            (p, method, args) -> {
+              if ("synchronizingLocally".equals(method.getName())) {
+                return p;
+              }
+              if (method.isDefault()) {
+                return InvocationHandler.invokeDefault(p, method, args);
+              }
+              if ("commit".equals(method.getName())) {
+                args =
+                    new Object[] {
+                      retryableWithCompetingCommit(
+                          (CommitRetryable<?, ?>) args[0], attempts, competingCommit)
+                    };
+              }
+              try {
+                return method.invoke(committer, args);
+              } catch (InvocationTargetException e) {
+                throw e.getCause();
+              }
+            }));
+  }
+
+  private static <R extends BaseCommitObj, T> CommitRetryable<R, T> retryableWithCompetingCommit(
+      CommitRetryable<R, T> retryable, AtomicInteger attempts, Runnable competingCommit) {
+    return (state, refObjSupplier) -> {
+      var change = retryable.attempt(state, refObjSupplier);
+      if (attempts.incrementAndGet() == 1) {
+        competingCommit.run();
+      }
+      return change;
+    };
+  }
+
+  /**
+   * The checks of a batch are evaluated against the state of every commit attempt: when a
+   * concurrent commit, which another node could make, moves the state after the first attempt
+   * computed its change, the retry sees that a checked entity was modified, and nothing is written.
+   */
+  @Test
+  public void batchChecksAreEvaluatedAgainAfterAFailedCompareAndSwap() {
+    TwoTables tables = createTwoTables("nosql_cas_retry_conflict");
+    AtomicInteger attempts = new AtomicInteger();
+    Persistence persistence =
+        persistenceWithCompetingCommit(
+            realmPersistenceFactory.newBuilder().realmId(realmId).build(),
+            attempts,
+            () ->
+                assertThat(
+                        metaStore
+                            .updateEntityPropertiesIfNotChanged(
+                                callContext, tables.path(), withProperty(tables.b(), "competing"))
+                            .isSuccess())
+                    .isTrue());
+
+    var result =
+        new NoSqlMetaStore(persistence, privileges)
+            .writeEntitiesIfConditionsHold(
+                ConditionalEntityWrite.builder()
+                    .update(tables.path(), withProperty(tables.a(), "batch"))
+                    .unchanged(tables.path(), tables.b())
+                    .build());
+
+    assertThat(attempts).hasValue(2);
+    assertThat(result.isSuccess()).isFalse();
+    assertThat(result.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+    assertThat(result.getFailedEntity().getId()).isEqualTo(tables.b().getId());
+    PolarisBaseEntity a = reload(tables.a());
+    assertThat(a.getEntityVersion()).isEqualTo(tables.a().getEntityVersion());
+    assertThat(a.getPropertiesAsMap()).isEqualTo(tables.a().getPropertiesAsMap());
+  }
+
+  /** A concurrent commit that does not touch the checked entity does not fail the batch. */
+  @Test
+  public void batchSucceedsAfterAFailedCompareAndSwapWhenChecksStillHold() {
+    TwoTables tables = createTwoTables("nosql_cas_retry_ok");
+    PolarisBaseEntity c =
+        polarisTestMetaStoreManager.createEntity(
+            tables.path(), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, "c");
+    AtomicInteger attempts = new AtomicInteger();
+    Persistence persistence =
+        persistenceWithCompetingCommit(
+            realmPersistenceFactory.newBuilder().realmId(realmId).build(),
+            attempts,
+            () ->
+                assertThat(
+                        metaStore
+                            .updateEntityPropertiesIfNotChanged(
+                                callContext, tables.path(), withProperty(c, "competing"))
+                            .isSuccess())
+                    .isTrue());
+
+    var result =
+        new NoSqlMetaStore(persistence, privileges)
+            .writeEntitiesIfConditionsHold(
+                ConditionalEntityWrite.builder()
+                    .update(tables.path(), withProperty(tables.a(), "batch"))
+                    .unchanged(tables.path(), tables.b())
+                    .build());
+
+    assertThat(attempts).hasValue(2);
+    assertThat(result.isSuccess()).isTrue();
+    assertThat(reload(tables.a()).getPropertiesAsMap()).isEqualTo(Map.of("k", "batch"));
+  }
 }

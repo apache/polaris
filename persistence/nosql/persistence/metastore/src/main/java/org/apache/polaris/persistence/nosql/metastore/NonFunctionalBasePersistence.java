@@ -64,6 +64,15 @@ abstract class NonFunctionalBasePersistence implements BasePersistence, Integrat
   }
 
   @Override
+  public void checkAndWriteEntities(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> unchangedEntities,
+      @NonNull List<PolarisBaseEntity> entities,
+      @NonNull List<PolarisBaseEntity> originalEntities) {
+    throw useMetaStoreManager("checkAndWriteEntities");
+  }
+
+  @Override
   public void writeEntities(
       @NonNull PolarisCallContext callCtx,
       @NonNull List<PolarisBaseEntity> entities,

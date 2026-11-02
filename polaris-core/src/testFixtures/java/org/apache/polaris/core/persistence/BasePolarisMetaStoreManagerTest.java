@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -39,15 +40,21 @@ import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWriteResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -626,5 +633,434 @@ public abstract class BasePolarisMetaStoreManagerTest {
     DropEntityResult dropped =
         metaStoreManager.dropEntityIfExists(callCtx, null, principalRole, null, false);
     Assertions.assertThat(dropped.isSuccess()).isTrue();
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Batch updates: updateEntitiesPropertiesIfNotChanged (apache/polaris#5807)
+  // ---------------------------------------------------------------------------------------------
+
+  /** A catalog, a namespace and two tables {@code a} and {@code b}, for the batch-update tests. */
+  protected record TwoTables(
+      List<PolarisEntityCore> path, PolarisBaseEntity a, PolarisBaseEntity b) {}
+
+  protected TwoTables createTwoTables(String catalogName) {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+    PolarisBaseEntity catalog =
+        metaStoreManager
+            .createCatalog(
+                callCtx,
+                new PolarisBaseEntity(
+                    PolarisEntityConstants.getNullId(),
+                    metaStoreManager.generateNewEntityId(callCtx).getId(),
+                    PolarisEntityType.CATALOG,
+                    PolarisEntitySubType.NULL_SUBTYPE,
+                    PolarisEntityConstants.getRootEntityId(),
+                    catalogName),
+                List.of())
+            .getCatalog();
+    PolarisBaseEntity namespace =
+        polarisTestMetaStoreManager.createEntity(
+            List.of(catalog), PolarisEntityType.NAMESPACE, PolarisEntitySubType.NULL_SUBTYPE, "ns");
+    List<PolarisEntityCore> path = List.of(catalog, namespace);
+    return new TwoTables(
+        path,
+        polarisTestMetaStoreManager.createEntity(
+            path, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, "a"),
+        polarisTestMetaStoreManager.createEntity(
+            path, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, "b"));
+  }
+
+  protected PolarisBaseEntity reload(PolarisBaseEntity entity) {
+    return polarisTestMetaStoreManager
+        .polarisMetaStoreManager
+        .loadEntity(
+            polarisTestMetaStoreManager.polarisCallContext,
+            entity.getCatalogId(),
+            entity.getId(),
+            entity.getType())
+        .getEntity();
+  }
+
+  /** The entity as the caller read it, with a property changed to the given value. */
+  protected static PolarisBaseEntity withProperty(PolarisBaseEntity entity, String value) {
+    return new PolarisBaseEntity.Builder(entity).properties("{\"k\":\"" + value + "\"}").build();
+  }
+
+  private EntitiesResult updateBatch(List<PolarisEntityCore> path, PolarisBaseEntity... entities) {
+    return polarisTestMetaStoreManager.polarisMetaStoreManager.updateEntitiesPropertiesIfNotChanged(
+        polarisTestMetaStoreManager.polarisCallContext,
+        Stream.of(entities).map(e -> new EntityWithPath(path, e)).toList());
+  }
+
+  /**
+   * A batch is all-or-nothing: when one member was modified after it was read, no member is
+   * updated, whichever position the stale member has in the batch.
+   */
+  @Test
+  protected void testUpdateEntitiesIsAllOrNothing() {
+    for (boolean staleFirst : List.of(true, false)) {
+      TwoTables tables = createTwoTables("batch_atomic_" + staleFirst);
+      // A concurrent writer updates b after both tables were read.
+      Assertions.assertThat(
+              polarisTestMetaStoreManager
+                  .polarisMetaStoreManager
+                  .updateEntityPropertiesIfNotChanged(
+                      polarisTestMetaStoreManager.polarisCallContext,
+                      tables.path(),
+                      withProperty(tables.b(), "concurrent"))
+                  .isSuccess())
+          .isTrue();
+
+      PolarisBaseEntity updatedA = withProperty(tables.a(), "batch");
+      PolarisBaseEntity staleB = withProperty(tables.b(), "batch");
+      EntitiesResult result =
+          staleFirst
+              ? updateBatch(tables.path(), staleB, updatedA)
+              : updateBatch(tables.path(), updatedA, staleB);
+
+      Assertions.assertThat(result.isSuccess()).isFalse();
+      PolarisBaseEntity a = reload(tables.a());
+      Assertions.assertThat(a.getEntityVersion()).isEqualTo(tables.a().getEntityVersion());
+      Assertions.assertThat(a.getPropertiesAsMap()).isEqualTo(tables.a().getPropertiesAsMap());
+    }
+  }
+
+  /**
+   * Two batches that update the same two entities in opposite order, at the same time. They
+   * conflict on the same versions, so exactly one succeeds and the other reports a concurrent
+   * modification. Neither may fail with an exception, for example a database deadlock.
+   */
+  @Test
+  protected void testCrossedBatchUpdatesAreConflictsNotErrors() throws Exception {
+    TwoTables tables = createTwoTables("batch_crossed");
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      for (int round = 0; round < 50; round++) {
+        PolarisBaseEntity a = reload(tables.a());
+        PolarisBaseEntity b = reload(tables.b());
+        CyclicBarrier start = new CyclicBarrier(2);
+        String r = Integer.toString(round);
+        Future<EntitiesResult> ab =
+            executor.submit(
+                () -> {
+                  start.await();
+                  return updateBatch(
+                      tables.path(), withProperty(a, r + "ab"), withProperty(b, r + "ab"));
+                });
+        Future<EntitiesResult> ba =
+            executor.submit(
+                () -> {
+                  start.await();
+                  return updateBatch(
+                      tables.path(), withProperty(b, r + "ba"), withProperty(a, r + "ba"));
+                });
+
+        int successes = 0;
+        for (Future<EntitiesResult> future : List.of(ab, ba)) {
+          // An exception from the batch (such as a deadlock) fails the test here.
+          EntitiesResult result = future.get(30, TimeUnit.SECONDS);
+          if (result.isSuccess()) {
+            successes++;
+          } else {
+            Assertions.assertThat(result.getReturnStatus())
+                .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+          }
+        }
+        Assertions.assertThat(successes).as("successful batches in round %s", round).isEqualTo(1);
+      }
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Atomic conditional batches: writeEntitiesIfConditionsHold (apache/polaris#5807)
+  // ---------------------------------------------------------------------------------------------
+
+  private ConditionalEntityWriteResult writeBatch(ConditionalEntityWrite batch) {
+    return polarisTestMetaStoreManager.polarisMetaStoreManager.writeEntitiesIfConditionsHold(
+        polarisTestMetaStoreManager.polarisCallContext, batch);
+  }
+
+  private void assertConcurrentlyModified(
+      ConditionalEntityWriteResult result, PolarisBaseEntity entity) {
+    Assertions.assertThat(result.isSuccess()).isFalse();
+    Assertions.assertThat(result.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+    Assertions.assertThat(result.getFailedEntity()).isNotNull();
+    Assertions.assertThat(result.getFailedEntity().getId()).isEqualTo(entity.getId());
+  }
+
+  /** A checked entity is not written: its version, timestamp and properties stay as they were. */
+  @Test
+  protected void testBatchDoesNotWriteUnchangedEntity() {
+    TwoTables tables = createTwoTables("batch_unchanged_ok");
+
+    ConditionalEntityWriteResult result =
+        writeBatch(
+            ConditionalEntityWrite.builder()
+                .update(tables.path(), withProperty(tables.a(), "batch"))
+                .unchanged(tables.path(), tables.b())
+                .build());
+
+    Assertions.assertThat(result.isSuccess()).isTrue();
+    Assertions.assertThat(result.getEntities())
+        .extracting(PolarisBaseEntity::getId)
+        .containsExactly(tables.a().getId());
+    PolarisBaseEntity a = reload(tables.a());
+    Assertions.assertThat(a.getEntityVersion()).isEqualTo(tables.a().getEntityVersion() + 1);
+    Assertions.assertThat(a.getPropertiesAsMap()).isEqualTo(Map.of("k", "batch"));
+    PolarisBaseEntity b = reload(tables.b());
+    Assertions.assertThat(b.getEntityVersion()).isEqualTo(tables.b().getEntityVersion());
+    Assertions.assertThat(b.getLastUpdateTimestamp())
+        .isEqualTo(tables.b().getLastUpdateTimestamp());
+    Assertions.assertThat(b.getPropertiesAsMap()).isEqualTo(tables.b().getPropertiesAsMap());
+  }
+
+  /** A batch with only conditions succeeds when they hold, and writes nothing. */
+  @Test
+  protected void testBatchOfOnlyConditionsWritesNothing() {
+    TwoTables tables = createTwoTables("batch_only_conditions");
+
+    ConditionalEntityWriteResult result =
+        writeBatch(
+            ConditionalEntityWrite.builder()
+                .unchanged(tables.path(), tables.a())
+                .unchanged(tables.path(), tables.b())
+                .build());
+
+    Assertions.assertThat(result.isSuccess()).isTrue();
+    Assertions.assertThat(result.getEntities()).isEmpty();
+    Assertions.assertThat(reload(tables.a()).getEntityVersion())
+        .isEqualTo(tables.a().getEntityVersion());
+    Assertions.assertThat(reload(tables.b()).getEntityVersion())
+        .isEqualTo(tables.b().getEntityVersion());
+  }
+
+  /** A checked entity that was modified after it was read fails the batch; nothing is written. */
+  @Test
+  protected void testBatchFailsWhenCheckedEntityWasModified() {
+    TwoTables tables = createTwoTables("batch_unchanged_moved");
+    // A concurrent writer updates b after it was read.
+    Assertions.assertThat(
+            polarisTestMetaStoreManager
+                .polarisMetaStoreManager
+                .updateEntityPropertiesIfNotChanged(
+                    polarisTestMetaStoreManager.polarisCallContext,
+                    tables.path(),
+                    withProperty(tables.b(), "concurrent"))
+                .isSuccess())
+        .isTrue();
+
+    ConditionalEntityWriteResult result =
+        writeBatch(
+            ConditionalEntityWrite.builder()
+                .update(tables.path(), withProperty(tables.a(), "batch"))
+                .unchanged(tables.path(), tables.b())
+                .build());
+
+    assertConcurrentlyModified(result, tables.b());
+    PolarisBaseEntity a = reload(tables.a());
+    Assertions.assertThat(a.getEntityVersion()).isEqualTo(tables.a().getEntityVersion());
+    Assertions.assertThat(a.getPropertiesAsMap()).isEqualTo(tables.a().getPropertiesAsMap());
+  }
+
+  /** A checked entity that was dropped fails the batch with the same status. */
+  @Test
+  protected void testBatchFailsWhenCheckedEntityWasDropped() {
+    TwoTables tables = createTwoTables("batch_unchanged_dropped");
+    Assertions.assertThat(
+            polarisTestMetaStoreManager
+                .polarisMetaStoreManager
+                .dropEntityIfExists(
+                    polarisTestMetaStoreManager.polarisCallContext,
+                    tables.path(),
+                    tables.b(),
+                    null,
+                    false)
+                .isSuccess())
+        .isTrue();
+
+    ConditionalEntityWriteResult result =
+        writeBatch(
+            ConditionalEntityWrite.builder()
+                .update(tables.path(), withProperty(tables.a(), "batch"))
+                .unchanged(tables.path(), tables.b())
+                .build());
+
+    assertConcurrentlyModified(result, tables.b());
+    Assertions.assertThat(reload(tables.a()).getEntityVersion())
+        .isEqualTo(tables.a().getEntityVersion());
+  }
+
+  /** An updated entity that was dropped after it was read fails the write; nothing is written. */
+  @Test
+  protected void testWriteFailsWhenUpdatedEntityWasDropped() {
+    TwoTables tables = createTwoTables("write_updated_dropped");
+    Assertions.assertThat(
+            polarisTestMetaStoreManager
+                .polarisMetaStoreManager
+                .dropEntityIfExists(
+                    polarisTestMetaStoreManager.polarisCallContext,
+                    tables.path(),
+                    tables.b(),
+                    null,
+                    false)
+                .isSuccess())
+        .isTrue();
+
+    ConditionalEntityWriteResult result =
+        writeBatch(
+            ConditionalEntityWrite.builder()
+                .update(tables.path(), withProperty(tables.a(), "batch"))
+                .update(tables.path(), withProperty(tables.b(), "batch"))
+                .build());
+
+    Assertions.assertThat(result.isSuccess()).isFalse();
+    Assertions.assertThat(result.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+    PolarisBaseEntity a = reload(tables.a());
+    Assertions.assertThat(a.getEntityVersion()).isEqualTo(tables.a().getEntityVersion());
+    Assertions.assertThat(a.getPropertiesAsMap()).isEqualTo(tables.a().getPropertiesAsMap());
+  }
+
+  /** A write without conditions and without writes succeeds and does nothing. */
+  @Test
+  protected void testEmptyWriteSucceedsAndWritesNothing() {
+    ConditionalEntityWriteResult result = writeBatch(ConditionalEntityWrite.builder().build());
+
+    Assertions.assertThat(result.isSuccess()).isTrue();
+    Assertions.assertThat(result.getEntities()).isEmpty();
+  }
+
+  /**
+   * A change of the grant records of a checked entity does not fail the batch: grants do not change
+   * the entity itself.
+   */
+  @Test
+  protected void testBatchIgnoresGrantChangesOfCheckedEntity() {
+    TwoTables tables = createTwoTables("batch_unchanged_grants");
+    PolarisBaseEntity role =
+        polarisTestMetaStoreManager.createEntity(
+            List.of(tables.path().get(0)),
+            PolarisEntityType.CATALOG_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            "role");
+    polarisTestMetaStoreManager.polarisMetaStoreManager.grantPrivilegeOnSecurableToRole(
+        polarisTestMetaStoreManager.polarisCallContext,
+        role,
+        tables.path(),
+        tables.b(),
+        PolarisPrivilege.TABLE_READ_DATA);
+
+    ConditionalEntityWriteResult result =
+        writeBatch(
+            ConditionalEntityWrite.builder()
+                .update(tables.path(), withProperty(tables.a(), "batch"))
+                .unchanged(tables.path(), tables.b())
+                .build());
+
+    Assertions.assertThat(result.isSuccess()).isTrue();
+  }
+
+  /**
+   * Write skew: two batches each update one entity and require the other to be unchanged. They
+   * invalidate each other's condition, so exactly one of them can be applied.
+   */
+  @Test
+  protected void testBatchesThatInvalidateEachOthersConditionsHaveOneWinner() throws Exception {
+    TwoTables tables = createTwoTables("batch_write_skew");
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      for (int round = 0; round < 50; round++) {
+        PolarisBaseEntity a = reload(tables.a());
+        PolarisBaseEntity b = reload(tables.b());
+        CyclicBarrier start = new CyclicBarrier(2);
+        String r = Integer.toString(round);
+        Future<ConditionalEntityWriteResult> updatesA =
+            executor.submit(
+                () -> {
+                  start.await();
+                  return writeBatch(
+                      ConditionalEntityWrite.builder()
+                          .update(tables.path(), withProperty(a, r + "a"))
+                          .unchanged(tables.path(), b)
+                          .build());
+                });
+        Future<ConditionalEntityWriteResult> updatesB =
+            executor.submit(
+                () -> {
+                  start.await();
+                  return writeBatch(
+                      ConditionalEntityWrite.builder()
+                          .update(tables.path(), withProperty(b, r + "b"))
+                          .unchanged(tables.path(), a)
+                          .build());
+                });
+
+        int successes = 0;
+        for (Future<ConditionalEntityWriteResult> future : List.of(updatesA, updatesB)) {
+          ConditionalEntityWriteResult result = future.get(30, TimeUnit.SECONDS);
+          if (result.isSuccess()) {
+            successes++;
+          } else {
+            Assertions.assertThat(result.getReturnStatus())
+                .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+          }
+        }
+        Assertions.assertThat(successes).as("applied batches in round %s", round).isEqualTo(1);
+      }
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  /** Batches that only check the same entity do not conflict with each other. */
+  @Test
+  protected void testBatchesThatOnlyCheckTheSameEntityDoNotConflict() throws Exception {
+    TwoTables tables = createTwoTables("batch_shared_check");
+    PolarisBaseEntity c =
+        polarisTestMetaStoreManager.createEntity(
+            tables.path(), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, "c");
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      for (int round = 0; round < 50; round++) {
+        PolarisBaseEntity a = reload(tables.a());
+        PolarisBaseEntity b = reload(tables.b());
+        CyclicBarrier start = new CyclicBarrier(2);
+        String r = Integer.toString(round);
+        Future<ConditionalEntityWriteResult> updatesA =
+            executor.submit(
+                () -> {
+                  start.await();
+                  return writeBatch(
+                      ConditionalEntityWrite.builder()
+                          .update(tables.path(), withProperty(a, r))
+                          .unchanged(tables.path(), c)
+                          .build());
+                });
+        Future<ConditionalEntityWriteResult> updatesB =
+            executor.submit(
+                () -> {
+                  start.await();
+                  return writeBatch(
+                      ConditionalEntityWrite.builder()
+                          .update(tables.path(), withProperty(b, r))
+                          .unchanged(tables.path(), c)
+                          .build());
+                });
+
+        Assertions.assertThat(updatesA.get(30, TimeUnit.SECONDS).isSuccess())
+            .as("batch updating a in round %s", round)
+            .isTrue();
+        Assertions.assertThat(updatesB.get(30, TimeUnit.SECONDS).isSuccess())
+            .as("batch updating b in round %s", round)
+            .isTrue();
+      }
+      Assertions.assertThat(reload(c).getEntityVersion()).isEqualTo(c.getEntityVersion());
+    } finally {
+      executor.shutdownNow();
+    }
   }
 }
