@@ -204,6 +204,25 @@ public class QueryGenerator {
   }
 
   /**
+   * Builds a SELECT query for the versions of one entity, which locks the entity's row until the
+   * end of the transaction. A concurrent transaction that updates the row waits for it, and a
+   * transaction that waits for the lock reads the latest committed row.
+   *
+   * @param realmId Realm to filter by.
+   * @param catalogId Catalog id of the entity.
+   * @param entityId Id of the entity.
+   * @return SELECT ... FOR UPDATE query that returns {@link ModelEntity#VERSION_COLUMNS}.
+   */
+  public static PreparedQuery generateSelectVersionsForUpdateQuery(
+      @NonNull String realmId, long catalogId, long entityId) {
+    String where = " WHERE catalog_id = ? AND id = ? AND realm_id = ?";
+    return new PreparedQuery(
+        generateSelectQuery(ModelEntity.VERSION_COLUMNS, ModelEntity.TABLE_NAME, where, null).sql()
+            + " FOR UPDATE",
+        List.of(catalogId, entityId, realmId));
+  }
+
+  /**
    * Generates an INSERT query for a given table.
    *
    * @param allColumns Columns to insert values into.

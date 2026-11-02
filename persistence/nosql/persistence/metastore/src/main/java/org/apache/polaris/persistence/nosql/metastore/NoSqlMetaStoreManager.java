@@ -58,12 +58,13 @@ import org.apache.polaris.core.persistence.RenameEntityUtil;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWriteResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
@@ -146,9 +147,9 @@ record NoSqlMetaStoreManager(
 
   @NonNull
   @Override
-  public EntitiesResult updateEntitiesPropertiesIfNotChanged(
-      @NonNull PolarisCallContext callCtx, @NonNull List<EntityWithPath> entities) {
-    return ms(callCtx).updateEntities(entities);
+  public ConditionalEntityWriteResult writeEntitiesIfConditionsHold(
+      @NonNull PolarisCallContext callCtx, @NonNull ConditionalEntityWrite batch) {
+    return ms(callCtx).writeEntitiesIfConditionsHold(batch);
   }
 
   @NonNull

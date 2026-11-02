@@ -34,6 +34,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyMappingPersistence;
@@ -130,6 +131,47 @@ public interface BasePersistence extends PolicyMappingPersistence {
       @NonNull PolarisCallContext callCtx,
       @NonNull List<PolarisBaseEntity> entities,
       @Nullable List<PolarisBaseEntity> originalEntities);
+
+  /**
+   * A change of one entity, applied by {@link #checkAndWriteEntities}. Implementations must handle
+   * every kind and must reject one they do not support.
+   */
+  sealed interface EntityChange {
+
+    /**
+     * Updates an entity with a compare-and-swap on the versions of {@code originalEntity}.
+     *
+     * @param entity the entity to persist
+     * @param originalEntity the entity as it was read, whose versions must still be current
+     */
+    record Update(@NonNull PolarisBaseEntity entity, @NonNull PolarisBaseEntity originalEntity)
+        implements EntityChange {}
+  }
+
+  /**
+   * Atomically checks conditions and applies entity changes, all-or-nothing, as if the call ran
+   * alone at serializable isolation. New kinds of condition and change are added as new members of
+   * {@link ConditionalEntityWrite.Condition} and {@link EntityChange}, not as new methods.
+   *
+   * <p>Each condition must hold: {@link ConditionalEntityWrite.Condition.Unchanged} requires the
+   * entity to still exist with the given entity version, and does not write it. Each change is
+   * applied as described by its kind. Each entity may be the subject of at most one condition or
+   * change.
+   *
+   * <p>Implementations must make a call conflict with a concurrent call that touches the same
+   * entities, never deadlock with it, and report every such conflict as a {@link
+   * EntityConcurrentlyModifiedException} or {@link RetryOnConcurrencyException}, including a
+   * database deadlock or serialization failure.
+   *
+   * @param callCtx call context
+   * @param conditions conditions that must hold; the entities they concern are not written
+   * @param changes changes to apply if all conditions hold
+   * @throws RetryOnConcurrencyException if a condition or a change failed; nothing is written
+   */
+  void checkAndWriteEntities(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<ConditionalEntityWrite.Condition> conditions,
+      @NonNull List<EntityChange> changes);
 
   /**
    * Write the specified grantRecord to the grant_records table. If there is a conflict (existing
