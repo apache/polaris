@@ -50,6 +50,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- When `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` is enabled, the `storageName` of an Azure storage
+  configuration is no longer ignored. An Azure catalog whose `storageName` has no matching
+  `polaris.storage.azure.<storage>.*` properties now fails credential vending and storage access
+  instead of using the default Azure credentials.
 - `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists the explicit mechanisms a realm accepts; an empty
   `credentialVendingMechanism` is always allowed. Startup reports a listed mechanism with no
   installed bean as a non-severe readiness warning. Startup fails (a severe readiness issue) when no
@@ -108,6 +112,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Added storage-scoped Azure credentials. With `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` enabled, an Azure
+  storage configuration's `storageName` selects the service principal set by
+  `polaris.storage.azure.<storage>.tenant-id`, `client-id` and `client-secret`. The storage
+  configuration's `tenantId` must match the configured tenant.
 - Shared CloudEvents 1.0 JSON mapper for Polaris events (`CloudEventsEventJsonMapper` next to
   the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
   lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners

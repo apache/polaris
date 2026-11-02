@@ -18,9 +18,12 @@
  */
 package org.apache.polaris.service.storage;
 
+import com.azure.core.credential.TokenCredential;
+import com.azure.identity.ClientSecretCredentialBuilder;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Suppliers;
+import com.google.common.collect.ImmutableMap;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithName;
 import io.smallrye.config.WithParentName;
@@ -109,6 +112,35 @@ public interface StorageConfiguration extends S3AccessConfig {
   @WithName("gcp.lifespan")
   Optional<Duration> gcpAccessTokenLifespan();
 
+  @WithName("azure")
+  AzureStorageConfig azure();
+
+  interface AzureStorageConfig {
+    @WithParentName
+    @ConfigDocs.ConfigPropertyName("storage")
+    Map<String, AzureNamedStorageConfig> storages();
+  }
+
+  interface AzureNamedStorageConfig {
+    /**
+     * The Microsoft Entra tenant of the service principal when using named storages. It must match
+     * the {@code tenantId} of every storage configuration that uses this name.
+     */
+    @WithName("tenant-id")
+    String tenantId();
+
+    /** The application (client) ID of the service principal when using named storages. */
+    @WithName("client-id")
+    String clientId();
+
+    /** The client secret of the service principal when using named storages. */
+    @WithName("client-secret")
+    String clientSecret();
+  }
+
+  /** The tenant a named Azure credential belongs to, and the credential itself. */
+  record AzureNamedCredential(String tenantId, Supplier<TokenCredential> credential) {}
+
   default Supplier<StsClient> stsClientSupplier() {
     return stsClientSupplier(true);
   }
@@ -169,5 +201,43 @@ public interface StorageConfiguration extends S3AccessConfig {
             return GoogleCredentials.create(accessToken);
           }
         });
+  }
+
+  /**
+   * Returns the named Azure credentials by storage name. Each credential is built on first use and
+   * then shared, because its access tokens are cached inside the credential object. A failed build
+   * is retried on the next use.
+   */
+  default Map<String, AzureNamedCredential> azureNamedCredentials() {
+    ImmutableMap.Builder<String, AzureNamedCredential> credentials = ImmutableMap.builder();
+    azure()
+        .storages()
+        .forEach(
+            (storageName, storageConfig) ->
+                credentials.put(
+                    storageName,
+                    new AzureNamedCredential(
+                        storageConfig.tenantId(),
+                        Suppliers.memoize(
+                            () -> buildAzureCredential(storageName, storageConfig)))));
+    return credentials.build();
+  }
+
+  private static TokenCredential buildAzureCredential(
+      String storageName, AzureNamedStorageConfig storageConfig) {
+    try {
+      return new ClientSecretCredentialBuilder()
+          .tenantId(storageConfig.tenantId())
+          .clientId(storageConfig.clientId())
+          .clientSecret(storageConfig.clientSecret())
+          .build();
+    } catch (RuntimeException e) {
+      // Only the failure type is reported: this message can reach API clients.
+      throw new IllegalStateException(
+          "Failed to build Azure credentials for storage name '"
+              + storageName
+              + "': "
+              + e.getClass().getSimpleName());
+    }
   }
 }
