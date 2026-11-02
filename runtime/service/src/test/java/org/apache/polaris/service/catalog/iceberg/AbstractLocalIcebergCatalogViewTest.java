@@ -33,9 +33,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.view.BaseView;
 import org.apache.iceberg.view.View;
 import org.apache.iceberg.view.ViewCatalogTests;
@@ -59,6 +61,8 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -369,5 +373,57 @@ public abstract class AbstractLocalIcebergCatalogViewTest
         writtenLocations.stream().filter(loc -> !legitimateWrites.contains(loc)).toList();
     Assertions.assertThat(orphanCandidates).isNotEmpty();
     Assertions.assertThat(deletedLocations).containsAll(orphanCandidates);
+  }
+
+  @Test
+  public void testViewCommitRetriesConcurrentModificationAtFinalTransaction() {
+    PolarisMetaStoreManager spyMetaStore = Mockito.spy(metaStoreManager);
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
+    LocalIcebergCatalog spiedCatalog =
+        new LocalIcebergCatalog(
+            diagServices,
+            resolverFactory,
+            spyMetaStore,
+            polarisContext,
+            passthroughView,
+            authenticatedRoot,
+            Mockito.mock(),
+            storageAccessConfigProvider,
+            fileIOFactory,
+            polarisEventDispatcher,
+            eventMetadataFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(VIEW_PREFIXES)
+            .build());
+
+    spiedCatalog.createNamespace(TestData.NAMESPACE);
+    spiedCatalog
+        .buildView(TestData.TABLE)
+        .withDefaultNamespace(TestData.NAMESPACE)
+        .withSchema(TestData.SCHEMA)
+        .withQuery("a", "b")
+        .create();
+    ViewOperations ops = ((BaseView) spiedCatalog.loadView(TestData.TABLE)).operations();
+
+    // Lose the final compare-and-set once, as when another commit lands after the earlier
+    // metadata location check.
+    Mockito.doReturn(
+            new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
+        .doCallRealMethod()
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(Mockito.any(), Mockito.any(), Mockito.any());
+
+    UpdateTableRequest request =
+        new UpdateTableRequest(
+            List.of(), List.of(new MetadataUpdate.SetProperties(Map.of("test-key", "test-value"))));
+    new CatalogHandlerUtils(5, false).commit(ops, request);
+
+    Assertions.assertThat(spiedCatalog.loadView(TestData.TABLE).properties())
+        .containsEntry("test-key", "test-value");
   }
 }
