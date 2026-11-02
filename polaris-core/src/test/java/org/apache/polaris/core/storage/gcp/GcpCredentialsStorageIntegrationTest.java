@@ -658,6 +658,35 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     assertThat(GcpCredentialsStorageIntegration.parentFolders("")).isEmpty();
   }
 
+  @Test
+  public void testGenerateAccessBoundaryWriteRuleForCustomNamespaceLocations() {
+    // With ALLOW_NAMESPACE_CUSTOM_LOCATION a namespace (and its tables) can live at an arbitrary
+    // path, possibly in another bucket than the catalog base (e.g. a table under
+    // gs://bucket2/custom/ns/ whose catalog base is gs://bucket1/warehouse/). The write rule is
+    // derived only from the table's own write locations, so parents are exact on whichever
+    // bucket they resolve to and sibling tables in the same custom namespace stay out of scope.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of(),
+            Set.of(),
+            Set.of("gs://bucket2/custom/ns/t1", "gs://bucket1/warehouse/data/t1"));
+
+    JsonNode rules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(rules.path("accessBoundaryRules")).hasSize(2);
+    String writeRules = expressionAt(rules, 0) + " || " + expressionAt(rules, 1);
+    assertThat(writeRules.split(" \\|\\| "))
+        .containsExactlyInAnyOrder(
+            "resource.name.startsWith('projects/_/buckets/bucket2/objects/custom/ns/t1/')",
+            "resource.name.startsWith('projects/_/buckets/bucket2/folders/custom/ns/t1/')",
+            "resource.name == 'projects/_/buckets/bucket2/folders/custom/'",
+            "resource.name == 'projects/_/buckets/bucket2/folders/custom/ns/'",
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/warehouse/data/t1/')",
+            "resource.name.startsWith('projects/_/buckets/bucket1/folders/warehouse/data/t1/')",
+            "resource.name == 'projects/_/buckets/bucket1/folders/warehouse/'",
+            "resource.name == 'projects/_/buckets/bucket1/folders/warehouse/data/'");
+  }
+
   private static String expressionAt(JsonNode parsedRules, int ruleIndex) {
     return parsedRules
         .path("accessBoundaryRules")
