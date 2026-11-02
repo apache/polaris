@@ -19,9 +19,8 @@
 package org.apache.polaris.service.admin;
 
 import org.apache.polaris.core.admin.model.Catalog;
-import org.apache.polaris.core.config.RealmConfig;
 
 /** Validates catalog configuration before it is created or updated. */
 public interface CatalogConfigValidator {
-  void validate(RealmConfig realmConfig, Catalog catalog);
+  void validate(Catalog catalog);
 }

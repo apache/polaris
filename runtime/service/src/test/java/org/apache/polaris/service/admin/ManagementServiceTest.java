@@ -510,7 +510,8 @@ public class ManagementServiceTest {
         new PolarisAuthorizerImpl(),
         ReservedProperties.NONE,
         services.vendingMechanisms(),
-        List.of(new BigLakeCatalogValidator()));
+        new CatalogConfigValidators(
+            List.of(new BigLakeCatalogValidator(callContext.getRealmConfig()))));
   }
 
   private Catalog createBigLakeCatalog(

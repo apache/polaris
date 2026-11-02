@@ -20,6 +20,11 @@ package org.apache.polaris.service.admin;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.List;
@@ -34,6 +39,7 @@ import org.apache.polaris.core.admin.model.GcpAuthenticationParameters;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,12 +51,47 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class BigLakeCatalogValidatorTest {
-  private RealmConfig realmConfig;
-  private final BigLakeCatalogValidator validator = new BigLakeCatalogValidator();
+  private BigLakeCatalogValidator validator;
 
   @BeforeEach
   void setup() {
-    realmConfig = TestServices.builder().build().realmConfig();
+    validator = new BigLakeCatalogValidator(TestServices.builder().build().realmConfig());
+  }
+
+  @Test
+  void constructionDoesNotReadRealmConfiguration() {
+    RealmConfig contextualConfig = mock(RealmConfig.class);
+
+    new CatalogConfigValidators(List.of(new BigLakeCatalogValidator(contextualConfig)));
+
+    verifyNoInteractions(contextualConfig);
+  }
+
+  @Test
+  void readsRealmConfigurationOnEveryValidation() {
+    RealmConfig contextualConfig = mock(RealmConfig.class);
+    when(contextualConfig.getConfig(
+            eq(FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING), anyMap()))
+        .thenReturn(false, true, false);
+    when(contextualConfig.getConfig(
+            eq(FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING), anyMap()))
+        .thenReturn(true);
+    CatalogConfigValidators validators =
+        new CatalogConfigValidators(List.of(new BigLakeCatalogValidator(contextualConfig)));
+    Catalog catalog =
+        bigLakeCatalog(
+            "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+            "my-remote-catalog",
+            Map.of("header.x-goog-user-project", "my-billing-project"),
+            true,
+            "gs://bucket/path/to/data",
+            null);
+
+    assertThatCode(() -> validators.validate(catalog)).doesNotThrowAnyException();
+    assertThatThrownBy(() -> validators.validate(catalog))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("GCS storage configuration is required");
+    assertThatCode(() -> validators.validate(catalog)).doesNotThrowAnyException();
   }
 
   @Test
@@ -58,7 +99,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog",
                         "my-remote-catalog",
@@ -96,7 +136,7 @@ class BigLakeCatalogValidatorTest {
                     .build())
             .build();
 
-    assertThatCode(() -> validator.validate(realmConfig, catalog)).doesNotThrowAnyException();
+    assertThatCode(() -> validator.validate(catalog)).doesNotThrowAnyException();
   }
 
   @Test
@@ -104,7 +144,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog",
                         "bl://projects/123456789/catalogs/my-biglake-catalog",
@@ -120,7 +159,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog",
                         "bl://projects/my-project-id/catalogs/my-biglake-catalog",
@@ -136,7 +174,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog",
                         "gs://bucket/path/to/warehouse",
@@ -152,7 +189,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://catalog-gateway.example.com/iceberg/v1",
                         null,
@@ -168,7 +204,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "http://biglake.googleapis.com/iceberg/v1/restcatalog",
                         "my-remote-catalog",
@@ -184,7 +219,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/not-biglake",
                         "my-remote-catalog",
@@ -200,7 +234,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog?warehouse=test",
                         "my-remote-catalog",
@@ -216,7 +249,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog#fragment",
                         "my-remote-catalog",
@@ -232,7 +264,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com:8443/iceberg/v1/restcatalog",
                         "my-remote-catalog",
@@ -248,7 +279,6 @@ class BigLakeCatalogValidatorTest {
     assertThatThrownBy(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog",
                         " ",
@@ -265,7 +295,6 @@ class BigLakeCatalogValidatorTest {
     assertThatThrownBy(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog",
                         "my-remote-catalog",
@@ -283,7 +312,6 @@ class BigLakeCatalogValidatorTest {
     assertThatThrownBy(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalogWithProperties(
                         Map.of(propertyName, "connection-project"), Map.of())))
         .isInstanceOf(IllegalArgumentException.class)
@@ -296,7 +324,6 @@ class BigLakeCatalogValidatorTest {
     assertThatThrownBy(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalogWithProperties(
                         Map.of(), Map.of(propertyName, "catalog-project"))))
         .isInstanceOf(IllegalArgumentException.class)
@@ -309,7 +336,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalogWithProperties(
                         Map.of(), Map.of(propertyName, "catalog-project"))))
         .doesNotThrowAnyException();
@@ -324,9 +350,7 @@ class BigLakeCatalogValidatorTest {
     catalogProperties.put("header.X-Goog-User-Project", caseVariantValue);
 
     assertThatCode(
-            () ->
-                validator.validate(
-                    realmConfig, bigLakeCatalogWithProperties(Map.of(), catalogProperties)))
+            () -> validator.validate(bigLakeCatalogWithProperties(Map.of(), catalogProperties)))
         .doesNotThrowAnyException();
   }
 
@@ -339,9 +363,7 @@ class BigLakeCatalogValidatorTest {
     catalogProperties.put("header.X-Goog-User-Project", "other-project");
 
     assertThatThrownBy(
-            () ->
-                validator.validate(
-                    realmConfig, bigLakeCatalogWithProperties(Map.of(), catalogProperties)))
+            () -> validator.validate(bigLakeCatalogWithProperties(Map.of(), catalogProperties)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("header.x-goog-user-project");
   }
@@ -351,7 +373,6 @@ class BigLakeCatalogValidatorTest {
     assertThatThrownBy(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalogWithProperties(
                         Map.of("header.x-goog-user-project", ""),
                         Map.of(
@@ -366,7 +387,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalogWithProperties(
                         Map.of("header.x-goog-user-project", "connection-project"),
                         Map.of(
@@ -384,7 +404,6 @@ class BigLakeCatalogValidatorTest {
     assertThatThrownBy(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalogWithProperties(
                         connectionProperties, Map.of(catalogPropertyName, "catalog-project"))))
         .isInstanceOf(IllegalArgumentException.class)
@@ -397,7 +416,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalogWithProperties(
                         Map.of(propertyName, " "),
                         Map.of("header.x-goog-user-project", "catalog-project"))))
@@ -410,7 +428,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalogWithProperties(
                         Map.of("header.x-goog-user-project", "connection-project"),
                         Map.of(catalogPropertyName, " "))))
@@ -422,7 +439,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalogWithProperties(
                         null, Map.of("header.x-goog-user-project", "catalog-project"))))
         .doesNotThrowAnyException();
@@ -433,7 +449,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog",
                         "my-remote-catalog",
@@ -453,7 +468,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog",
                         "my-remote-catalog",
@@ -473,7 +487,6 @@ class BigLakeCatalogValidatorTest {
     assertThatThrownBy(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog",
                         "my-remote-catalog",
@@ -490,7 +503,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog",
                         "my-remote-catalog",
@@ -506,7 +518,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog",
                         "my-remote-catalog",
@@ -522,7 +533,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog",
                         "my-remote-catalog",
@@ -555,7 +565,6 @@ class BigLakeCatalogValidatorTest {
     assertThatCode(
             () ->
                 validator.validate(
-                    realmConfig,
                     bigLakeCatalog(
                         "https://biglake.googleapis.com/iceberg/v1/restcatalog",
                         "my-remote-catalog",

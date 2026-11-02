@@ -78,6 +78,7 @@ import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.BigLakeCatalogValidator;
+import org.apache.polaris.service.admin.CatalogConfigValidators;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
@@ -583,6 +584,8 @@ public record TestServices(
             return new PolarisCatalogGenericTableApi(genericTableService);
           };
 
+      CatalogConfigValidators catalogConfigValidators =
+          new CatalogConfigValidators(List.of(new BigLakeCatalogValidator(realmConfig)));
       Supplier<PolarisCatalogsApi> catalogsApiSupplier =
           () -> {
             PolarisAdminService adminService =
@@ -596,7 +599,7 @@ public record TestServices(
                     authorizer,
                     reservedProperties,
                     vendingMechanisms,
-                    List.of(new BigLakeCatalogValidator()));
+                    catalogConfigValidators);
             return new PolarisCatalogsApi(
                 new PolarisServiceImpl(
                     realmConfig, reservedProperties, adminService, serviceIdentityProvider));

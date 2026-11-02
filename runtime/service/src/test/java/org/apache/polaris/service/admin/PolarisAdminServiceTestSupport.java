@@ -68,6 +68,6 @@ public final class PolarisAdminServiceTestSupport {
         authorizer,
         reservedProperties,
         vendingMechanisms,
-        List.of());
+        new CatalogConfigValidators(List.of()));
   }
 }

@@ -170,7 +170,7 @@ public class PolarisAdminServiceTest {
             authorizer,
             reservedProperties,
             vendingMechanisms,
-            List.of());
+            new CatalogConfigValidators(List.of()));
   }
 
   protected static void assertSuccess(BaseResult result) {

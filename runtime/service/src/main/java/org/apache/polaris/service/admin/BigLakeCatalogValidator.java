@@ -20,6 +20,7 @@ package org.apache.polaris.service.admin;
 
 import com.google.common.base.Strings;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.net.URI;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
@@ -38,8 +39,15 @@ public class BigLakeCatalogValidator implements CatalogConfigValidator {
   private static final String DEFAULT_BASE_LOCATION_KEY = "default-base-location";
   private static final String QUOTA_PROJECT_HEADER = "header.x-goog-user-project";
 
+  private final RealmConfig realmConfig;
+
+  @Inject
+  public BigLakeCatalogValidator(RealmConfig realmConfig) {
+    this.realmConfig = realmConfig;
+  }
+
   @Override
-  public void validate(RealmConfig realmConfig, Catalog catalog) {
+  public void validate(Catalog catalog) {
     if (!(catalog instanceof ExternalCatalog externalCatalog)) {
       return;
     }
@@ -64,7 +72,7 @@ public class BigLakeCatalogValidator implements CatalogConfigValidator {
     validateBigLakeRemoteCatalogName(connectionConfig.getRemoteCatalogName());
     validateBigLakeHeaders(
         connectionConfig.getProperties(), externalCatalog.getProperties().toMap());
-    validateBigLakeStorageConfiguration(realmConfig, externalCatalog);
+    validateBigLakeStorageConfiguration(externalCatalog);
   }
 
   private static void validateBigLakeRemoteCatalogName(String remoteCatalogName) {
@@ -102,8 +110,7 @@ public class BigLakeCatalogValidator implements CatalogConfigValidator {
     }
   }
 
-  private static void validateBigLakeStorageConfiguration(
-      RealmConfig realmConfig, ExternalCatalog externalCatalog) {
+  private void validateBigLakeStorageConfiguration(ExternalCatalog externalCatalog) {
     boolean credentialVendingEnabled =
         realmConfig.getConfig(
                 FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING,

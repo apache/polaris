@@ -76,7 +76,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         polarisAuthorizer,
         reservedProperties,
         vendingMechanisms,
-        List.of());
+        new CatalogConfigValidators(List.of()));
   }
 
   private PolarisAdminService newExternalTestAdminService(String principalName) {
@@ -97,7 +97,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         polarisAuthorizer,
         reservedProperties,
         vendingMechanisms,
-        List.of());
+        new CatalogConfigValidators(List.of()));
   }
 
   private PolarisAdminService newTestAdminService(Set<String> activatedPrincipalRoles) {

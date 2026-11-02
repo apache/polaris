@@ -105,7 +105,7 @@ public class PolarisServiceImplTest {
             polarisAuthorizer,
             reservedProperties,
             vendingMechanisms,
-            List.of());
+            new CatalogConfigValidators(List.of()));
     polarisService =
         new PolarisServiceImpl(
             realmConfig, reservedProperties, adminService, serviceIdentityProvider);
