@@ -1421,6 +1421,32 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
+   * Validates that the base location of a directory about to be created has no overlap with its
+   * sibling tables, views, directories or namespaces. Skipped when {@link
+   * FeatureConfiguration#ALLOW_TABLE_LOCATION_OVERLAP} is enabled, as for tables.
+   */
+  public void validateNoDirectoryLocationOverlap(
+      TableIdentifier identifier, String baseLocation, List<PolarisEntity> resolvedNamespace) {
+    if (realmConfig.getConfig(FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP, catalogEntity)) {
+      LOGGER.debug("Skipping location overlap validation for directory '{}'", identifier);
+      return;
+    }
+    PolarisEntity lastNamespace = resolvedNamespace.getLast();
+    IcebergTableLikeEntity virtualEntity =
+        IcebergTableLikeEntity.of(
+            new PolarisEntity.Builder()
+                .setId(PolarisEntityConstants.getNullId())
+                .setName(identifier.name())
+                .setType(PolarisEntityType.TABLE_LIKE)
+                .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
+                .setParentId(lastNamespace.getId())
+                .setCatalogId(lastNamespace.getCatalogId())
+                .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, baseLocation))
+                .build());
+    validateNoLocationOverlap(virtualEntity, resolvedNamespace, null);
+  }
+
+  /**
    * Validates the table location has no overlap with other entities after checking the
    * configuration of the service
    */
