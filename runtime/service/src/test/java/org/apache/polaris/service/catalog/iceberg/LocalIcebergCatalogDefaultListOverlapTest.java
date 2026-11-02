@@ -37,9 +37,8 @@ import org.junit.jupiter.api.Test;
  * LocalIcebergCatalog.validateNoLocationOverlap}. Inherits the assertions from {@link
  * AbstractLocalIcebergCatalogOverlapTest}. The dedicated optimized-path profiles ({@link
  * LocalIcebergCatalogOverlapTest}, {@link LocalIcebergCatalogRelationalOverlapTest}, {@link
- * LocalIcebergCatalogNoSqlOverlapTest}) all force {@code OPTIMIZED_SIBLING_CHECK=true}, so without
- * this profile the list-based path would run with enforcement enabled only in production, never in
- * tests.
+ * LocalIcebergCatalogNoSqlOverlapTest}) all force {@code OPTIMIZED_SIBLING_CHECK=true}, so this
+ * profile also exercises validation without the catalog-wide base-location check.
  */
 @QuarkusTest
 @TestProfile(LocalIcebergCatalogDefaultListOverlapTest.DefaultListOverlapProfile.class)

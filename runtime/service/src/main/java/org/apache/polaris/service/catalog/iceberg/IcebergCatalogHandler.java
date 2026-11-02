@@ -962,7 +962,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     StorageAccessConfig storageAccessConfig =
         vendCredentials(
-            tableIdentifier, tableLocations, actionsRequested, refreshCredentialsEndpoint);
+            tableIdentifier,
+            baseLocation,
+            tableLocations,
+            actionsRequested,
+            refreshCredentialsEndpoint);
     if (storageAccessConfig == null) {
       storageAccessConfig = StorageAccessConfig.builder().build();
     }
@@ -1256,6 +1260,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // allowedLocations before vending credentials. This protects against cases where
       // allowedLocations were tightened after the table was created.
       validateTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
+      if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))
+          && baseCatalog instanceof LocalIcebergCatalog localCatalog) {
+        localCatalog.validateNoLocationOverlapForCredentialVending(
+            tableIdentifier, tableMetadata.location(), tableLocations, resolvedStoragePath);
+      }
 
       StorageAccessConfig storageAccessConfig =
           storageAccessConfigProvider()
@@ -1299,7 +1308,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // catalogs before vending credentials to ensure locations are still within the
       // current catalog's allowedLocations (defense against policy changes after table creation).
       CatalogUtils.validateLocationsForTableLike(
-          realmConfig(), tableIdentifier, tableLocations, resolvedStoragePath);
+          realmConfig(), tableIdentifier, tableLocations, resolvedStoragePath.getRawFullPath());
 
       LOGGER
           .atInfo()
@@ -1912,6 +1921,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   private StorageAccessConfig vendCredentials(
       TableIdentifier tableIdentifier,
+      String baseLocation,
       Set<String> tableLocations,
       Set<PolarisStorageActions> actionsRequested,
       Optional<String> refreshCredentialsEndpoint) {
@@ -1926,6 +1936,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // Re-validate before vending in case this is called from other paths in the future.
     // Primary validation for loadCredentials and delegation happens at call sites.
     validateTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
+    if (baseCatalog instanceof LocalIcebergCatalog localCatalog) {
+      localCatalog.validateNoLocationOverlapForCredentialVending(
+          tableIdentifier, baseLocation, tableLocations, resolvedStoragePath);
+    }
 
     return storageAccessConfigProvider()
         .getStorageAccessConfig(

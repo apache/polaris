@@ -56,9 +56,11 @@ import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
+import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -1037,37 +1039,18 @@ public class IcebergAllowedLocationTest {
     AtomicInteger listEntitiesCalls = new AtomicInteger();
 
     TestServices services =
-        TestServices.builder()
-            .config(
-                Map.of(
-                    "ALLOW_INSECURE_STORAGE_TYPES",
-                    "true",
-                    "SUPPORTED_CATALOG_STORAGE_TYPES",
-                    List.of("FILE"),
-                    "ALLOW_NAMESPACE_CUSTOM_LOCATION",
-                    "true",
-                    OPTIMIZED_SIBLING_CHECK.key(),
-                    "false"))
-            .metaStoreManagerDecorator(
-                msm -> {
-                  PolarisMetaStoreManager spy = Mockito.spy(msm);
-                  Mockito.doAnswer(
-                          invocation -> {
-                            if (counting.get()) {
-                              listEntitiesCalls.incrementAndGet();
-                            }
-                            return invocation.callRealMethod();
-                          })
-                      .when(spy)
-                      .listEntities(
-                          Mockito.any(),
-                          Mockito.any(),
-                          Mockito.any(),
-                          Mockito.any(),
-                          Mockito.any());
-                  return spy;
-                })
-            .build();
+        getListCountingTestServices(
+            Map.of(
+                "ALLOW_INSECURE_STORAGE_TYPES",
+                "true",
+                "SUPPORTED_CATALOG_STORAGE_TYPES",
+                List.of("FILE"),
+                "ALLOW_NAMESPACE_CUSTOM_LOCATION",
+                "true",
+                OPTIMIZED_SIBLING_CHECK.key(),
+                "false"),
+            counting,
+            listEntitiesCalls);
 
     String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
     createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
@@ -1082,6 +1065,64 @@ public class IcebergAllowedLocationTest {
     listEntitiesCalls.set(0);
     updateNamespaceProperties(services, Map.of("location", namespaceLocation + "_moved"));
     assertThat(listEntitiesCalls.get()).isPositive();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testOptimizedSiblingCheckListsSiblingsOnlyForUnstructuredLocations(
+      boolean unstructured, @TempDir Path tmpDir) {
+    AtomicBoolean counting = new AtomicBoolean(false);
+    AtomicInteger listEntitiesCalls = new AtomicInteger();
+    TestServices services =
+        getListCountingTestServices(
+            Map.of(
+                "ALLOW_INSECURE_STORAGE_TYPES",
+                "true",
+                "SUPPORTED_CATALOG_STORAGE_TYPES",
+                List.of("FILE"),
+                OPTIMIZED_SIBLING_CHECK.key(),
+                "true"),
+            counting,
+            listEntitiesCalls);
+    String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
+    createCatalog(
+        services,
+        Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), String.valueOf(unstructured)),
+        catalogLocation,
+        List.of(catalogLocation));
+    createRenameNamespaces(services);
+
+    // Unless unstructured locations are allowed, the optimized check is sufficient.
+    counting.set(true);
+    createTable(services, "src", "t", null);
+    if (unstructured) {
+      assertThat(listEntitiesCalls.get()).isPositive();
+    } else {
+      assertThat(listEntitiesCalls.get()).isZero();
+    }
+  }
+
+  /** Returns test services counting calls to listEntities while {@code counting} is set. */
+  private static TestServices getListCountingTestServices(
+      Map<String, Object> config, AtomicBoolean counting, AtomicInteger listEntitiesCalls) {
+    return TestServices.builder()
+        .config(config)
+        .metaStoreManagerDecorator(
+            msm -> {
+              PolarisMetaStoreManager spy = Mockito.spy(msm);
+              Mockito.doAnswer(
+                      invocation -> {
+                        if (counting.get()) {
+                          listEntitiesCalls.incrementAndGet();
+                        }
+                        return invocation.callRealMethod();
+                      })
+                  .when(spy)
+                  .listEntities(
+                      Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+              return spy;
+            })
+        .build();
   }
 
   private void updateCatalogAllowedLocations(
@@ -1446,6 +1487,138 @@ public class IcebergAllowedLocationTest {
     assertThatThrownBy(() -> newHandler(services).updateTable(tableId, updateRequest))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {TableProperties.WRITE_DATA_LOCATION, TableProperties.WRITE_METADATA_LOCATION})
+  void testCreateTableRejectsWritePathOutsideTableLocation(
+      String writePathProperty, @TempDir Path tmpDir) {
+    var services = getRenameTestServices(false);
+    var catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    createRenameNamespaces(services);
+
+    // Inside the namespace, but outside the table's own location.
+    String namespaceLocation = catalogLocation + "/" + catalog + "/src";
+    CreateTableRequest request =
+        CreateTableRequest.builder()
+            .withName("t")
+            .withSchema(SCHEMA)
+            .setProperty(writePathProperty, namespaceLocation + "/elsewhere")
+            .build();
+    assertThatThrownBy(
+            () ->
+                newHandler(services)
+                    .createTableDirect(
+                        Namespace.of("src"),
+                        request,
+                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                        Optional.empty()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+    assertThatThrownBy(
+            () ->
+                newHandler(services)
+                    .createTableStaged(
+                        Namespace.of("src"),
+                        request,
+                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                        Optional.empty()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+    assertThatThrownBy(
+            () ->
+                newHandler(services)
+                    .loadTable(
+                        TableIdentifier.of("src", "t"),
+                        "all",
+                        null,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
+        .isInstanceOf(NoSuchTableException.class);
+
+    // Under the table's own location.
+    CreateTableRequest nested =
+        CreateTableRequest.builder()
+            .withName("t")
+            .withSchema(SCHEMA)
+            .setProperty(writePathProperty, namespaceLocation + "/t/elsewhere")
+            .build();
+    newHandler(services)
+        .createTableDirect(
+            Namespace.of("src"),
+            nested,
+            EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+            Optional.empty());
+  }
+
+  @Test
+  void testRegisterTableRejectsWriteDataPathOutsideTableLocation(@TempDir Path tmpDir)
+      throws IOException {
+    var services = getRenameTestServices(false);
+    var catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    createRenameNamespaces(services);
+
+    var tableDir = tmpDir.resolve("warehouse").resolve(catalog).resolve("src").resolve("t");
+    var metadataPath = tableDir.resolve("metadata").resolve("00000.metadata.json");
+    Files.createDirectories(metadataPath.getParent());
+    // Inside the namespace, but outside the table's own location.
+    String writeDataPath = catalogLocation + "/" + catalog + "/src/elsewhere";
+    var metadata =
+        TableMetadata.newTableMetadata(
+            SCHEMA,
+            PartitionSpec.unpartitioned(),
+            SortOrder.unsorted(),
+            tableDir.toAbsolutePath().toUri().toString(),
+            Map.of(TableProperties.WRITE_DATA_LOCATION, writeDataPath));
+    Files.writeString(metadataPath, TableMetadataParser.toJson(metadata), StandardCharsets.UTF_8);
+
+    var registerRequest =
+        ImmutableRegisterTableRequest.builder()
+            .name("t")
+            .metadataLocation(metadataPath.toAbsolutePath().toUri().toString())
+            .build();
+    assertThatThrownBy(
+            () ->
+                newHandler(services)
+                    .registerTable(
+                        Namespace.of("src"),
+                        registerRequest,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+  }
+
+  @Test
+  void testCreateTableAllowsWriteDataPathOutsideTableLocationWhenUnstructured(
+      @TempDir Path tmpDir) {
+    var services = getRenameTestServices(false);
+    var catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    createCatalog(
+        services,
+        Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"),
+        catalogLocation,
+        List.of(catalogLocation));
+    createRenameNamespaces(services);
+
+    CreateTableRequest request =
+        CreateTableRequest.builder()
+            .withName("t")
+            .withSchema(SCHEMA)
+            .setProperty(
+                TableProperties.WRITE_DATA_LOCATION,
+                catalogLocation + "/" + catalog + "/src/elsewhere")
+            .build();
+    newHandler(services)
+        .createTableDirect(
+            Namespace.of("src"),
+            request,
+            EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+            Optional.empty());
+    newHandler(services).loadCredentials(TableIdentifier.of("src", "t"), Optional.empty());
   }
 
   private void updateCatalogProperties(TestServices services, Map<String, String> updates) {

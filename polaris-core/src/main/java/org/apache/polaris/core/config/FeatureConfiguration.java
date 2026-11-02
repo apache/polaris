@@ -682,13 +682,20 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  /**
+   * Checks base-location overlap across the catalog with an index. When the index finds no
+   * conflict, siblings are still listed to check Iceberg tables' write paths if unstructured table
+   * locations are allowed or the catalog is external.
+   */
   public static final FeatureConfiguration<Boolean> OPTIMIZED_SIBLING_CHECK =
       PolarisConfiguration.<Boolean>builder()
           .key("OPTIMIZED_SIBLING_CHECK")
           .description(
-              "When set, Polaris uses an index to perform sibling overlap checks between tables, "
-                  + "views, and namespaces. This is not a bypass mode, but enabling or disabling "
-                  + "it can change overlap-detection coverage for non-standard location layouts. "
+              "When set, Polaris uses an index to check overlap against base locations of tables, "
+                  + "views, and namespaces across the catalog. If ALLOW_UNSTRUCTURED_TABLE_LOCATION "
+                  + "is enabled (or the catalog is external), siblings are still listed when the index "
+                  + "finds no conflict, to check sibling tables' write.data.path and "
+                  + "write.metadata.path properties. "
                   + "Only enable it when the required index and backfill state is known to be "
                   + "correct. Locations written by Polaris always end with a slash; locations "
                   + "stored by older versions without one are still handled. Supported by the "
