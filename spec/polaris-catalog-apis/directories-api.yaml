@@ -155,6 +155,48 @@ paths:
         5XX:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
+    post:
+      tags:
+        - Directory API
+      summary: Update a directory under the given namespace
+      operationId: updateDirectory
+      description: >
+        Update the mutable configuration of a directory (`filter`, `scan-schedule` and `properties`).
+        Only the fields present in the request are changed, and a provided field replaces the existing value.
+        The `name` and `base-location` cannot be changed. The directory inventory table and its
+        history are preserved. The new filter applies from the next scan.
+      parameters:
+        - $ref: '#/components/parameters/polaris-directory-data-access'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDirectoryRequest'
+      responses:
+        200:
+          $ref: '#/components/responses/LoadDirectoryResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchTableError, directory to update does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                DirectoryToUpdateDoesNotExist:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchTableError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
     delete:
       tags:
         - Directory API
@@ -313,6 +355,20 @@ components:
         base-location:
           type: string
           description: The external object store location to use as a root for scanning objects (e.g. s3://bucket/path/). This is where the scanned objects live, not the location of the Iceberg inventory table, which is assigned by Polaris.
+        filter:
+          $ref: '#/components/schemas/DirectoryFilter'
+        scan-schedule:
+          $ref: '#/components/schemas/ScanSchedule'
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+
+    UpdateDirectoryRequest:
+      type: object
+      description: >
+        Fields to update on a directory. Omitted fields are left unchanged.
+      properties:
         filter:
           $ref: '#/components/schemas/DirectoryFilter'
         scan-schedule:

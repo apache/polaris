@@ -29,7 +29,7 @@ Directories are in beta. Please use it with caution and report any issue if enco
 
 The Directories API is disabled by default. Enable it with the `ENABLE_DIRECTORIES` feature flag
 (`polaris.features."ENABLE_DIRECTORIES"=true`, see [Configuration]({{% ref "configuration/configuration-reference" %}})).
-When it is disabled, all the directories endpoints (list, create, get, drop and scan) return `501 Not Implemented`
+When it is disabled, all the directories endpoints (list, create, get, update, drop and scan) return `501 Not Implemented`
 and are not advertised in the catalog configuration.
 {{< /alert >}}
 
@@ -138,6 +138,14 @@ directory configuration (see [Configuration](#configuration)).
 **GET** `/polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}`
 
 Returns the full configuration of the specified directory, including filter and scan schedule.
+
+### Update a directory
+
+**POST** `/polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}`
+
+Updates the `filter`, `scan-schedule` and `properties` of the directory. Only the fields present in the request
+are changed, and a provided field replaces the existing value. The `name` and `base-location` cannot be changed.
+The directory table and its history are preserved, and the new filter applies from the next scan.
 
 ### Drop a directory
 
