@@ -97,6 +97,21 @@ table would not succeed either. A client that asks for delegation usually has no
 credentials of its own, and a `200` response without credentials would only move the failure to
 the first data access, where it is much harder to diagnose.
 
+### Clients that can work without delegation
+
+A client that has storage credentials of its own can say so by including `none` in the header, a
+value defined by the Iceberg REST specification. `none` is never selected as a mechanism; it tells
+Polaris that returning the table without delegated access is acceptable:
+
+- `X-Iceberg-Access-Delegation: none` returns the table without credentials, the same as omitting
+  the header.
+- `X-Iceberg-Access-Delegation: none, vended-credentials` returns vended credentials when the
+  catalog can provide them, and otherwise returns the table without credentials instead of the
+  `400` responses above. The same applies to `none, remote-signing`.
+
+A request that lists only `vended-credentials` or `remote-signing` still fails as described above:
+without `none`, Polaris does not assume that the client can proceed on its own.
+
 For catalogs that cannot vend credentials, configure the client to authenticate to the object
 store directly and omit the header. In Spark, for example, remove
 `spark.sql.catalog.<name>.header.X-Iceberg-Access-Delegation` and provide the storage credentials

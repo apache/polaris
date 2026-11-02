@@ -37,6 +37,12 @@ import org.slf4j.LoggerFactory;
 public enum AccessDelegationMode {
   VENDED_CREDENTIALS("vended-credentials"),
   REMOTE_SIGNING("remote-signing"),
+  /**
+   * The client is able to operate without any access delegation mechanism. This is never selected
+   * as a delegation mode; it tells the server that returning the table without delegated access is
+   * acceptable when none of the other requested mechanisms can be provided.
+   */
+  NONE("none"),
   ;
 
   AccessDelegationMode(String protocolValue) {

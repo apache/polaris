@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.NONE;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
@@ -86,6 +87,26 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
   public @NonNull Optional<AccessDelegationMode> resolve(
       @NonNull EnumSet<AccessDelegationMode> requestedModes,
       @Nullable CatalogEntity catalogEntity) {
+    if (!requestedModes.contains(NONE)) {
+      return resolveDelegation(requestedModes, catalogEntity);
+    }
+
+    // `none` means the client can operate without delegated access. It is never selected as a
+    // mode of its own; it turns "the requested mechanism is unavailable" from an error into
+    // "no delegation". Other requested mechanisms are still preferred when they can be provided.
+    EnumSet<AccessDelegationMode> delegationModes = EnumSet.copyOf(requestedModes);
+    delegationModes.remove(NONE);
+    try {
+      return resolveDelegation(delegationModes, catalogEntity);
+    } catch (IllegalArgumentException e) {
+      LOGGER.debug(
+          "Requested delegation is unavailable and the client accepts none: {}", e.getMessage());
+      return Optional.empty();
+    }
+  }
+
+  private Optional<AccessDelegationMode> resolveDelegation(
+      EnumSet<AccessDelegationMode> requestedModes, @Nullable CatalogEntity catalogEntity) {
 
     // Case 1: No valid delegation mode found, or none requested
     if (requestedModes.isEmpty()) {

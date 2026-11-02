@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.NONE;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.fromProtocolValuesList;
@@ -53,6 +54,14 @@ class AccessDelegationModeTest {
         .isEqualTo(EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING));
     assertThat(fromProtocolValuesList(List.of("vended-credentials, remote-signing")))
         .isEqualTo(EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING));
+  }
+
+  @Test
+  void testNoneCombinedWithOtherModes() {
+    assertThat(fromProtocolValuesList(List.of("none", "vended-credentials")))
+        .isEqualTo(EnumSet.of(NONE, VENDED_CREDENTIALS));
+    assertThat(fromProtocolValuesList(List.of("remote-signing,none")))
+        .isEqualTo(EnumSet.of(NONE, REMOTE_SIGNING));
   }
 
   @Test

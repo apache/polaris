@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE;
+import static org.apache.polaris.service.catalog.AccessDelegationMode.NONE;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -267,6 +268,39 @@ class IcebergCatalogHandlerTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("This catalog cannot vend credentials or sign requests")
         .hasMessageContaining("request without X-Iceberg-Access-Delegation");
+  }
+
+  @Test
+  void noneRequestedAlongsideRemoteSigningReturnsTableWithoutDelegation() {
+    Catalog catalog = mockRegisterTableCatalog(false);
+    EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE, REMOTE_SIGNING);
+    when(accessDelegationModeResolver.resolve(eq(modes), any()))
+        .thenReturn(Optional.of(REMOTE_SIGNING));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    LoadTableResponse response =
+        handler.registerTable(NS1, registerTableRequest(false), modes, Optional.empty());
+
+    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
+    assertThat(response.credentials()).isEmpty();
+  }
+
+  @Test
+  void noneRequestedAloneReturnsTableWithoutDelegation() {
+    Catalog catalog = mockRegisterTableCatalog(false);
+    EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE);
+    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(Optional.empty());
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    LoadTableResponse response =
+        handler.registerTable(NS1, registerTableRequest(false), modes, Optional.empty());
+
+    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
+    assertThat(response.credentials()).isEmpty();
   }
 
   @Test

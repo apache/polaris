@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.NONE;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -286,6 +287,54 @@ class AccessDelegationModeResolverTest {
 
     Optional<AccessDelegationMode> result =
         resolver.resolve(EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING), catalogEntity);
+
+    assertThat(result).hasValue(REMOTE_SIGNING);
+  }
+
+  @Test
+  void resolveNoneAlone_returnsEmpty() {
+    assertThat(resolver.resolve(EnumSet.of(NONE), null)).isEmpty();
+    assertThat(resolver.resolve(EnumSet.of(NONE), createCatalogWithAwsConfig(false))).isEmpty();
+  }
+
+  @Test
+  void resolveNoneWithVendedCredentials_internalCatalog_returnsVendedCredentials() {
+    CatalogEntity catalogEntity = createCatalogWithAwsConfig(false);
+
+    Optional<AccessDelegationMode> result =
+        resolver.resolve(EnumSet.of(NONE, VENDED_CREDENTIALS), catalogEntity);
+
+    assertThat(result).hasValue(VENDED_CREDENTIALS);
+  }
+
+  @Test
+  void resolveNoneWithVendedCredentials_externalCatalog_vendingDisabled_returnsEmpty() {
+    CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
+    mockAllowExternalCatalogCredentialVending(catalogEntity, false);
+
+    Optional<AccessDelegationMode> result =
+        resolver.resolve(EnumSet.of(NONE, VENDED_CREDENTIALS), catalogEntity);
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void resolveNoneWithVendedCredentials_externalCatalog_federatedVendingDisabled_returnsEmpty() {
+    CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
+    mockAllowExternalCatalogCredentialVending(catalogEntity, true);
+    mockAllowFederatedCatalogsCredentialVending(catalogEntity, false);
+
+    Optional<AccessDelegationMode> result =
+        resolver.resolve(EnumSet.of(NONE, VENDED_CREDENTIALS), catalogEntity);
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void resolveNoneWithRemoteSigning_returnsRemoteSigning() {
+    // Whether remote signing can actually be served is decided by the handler.
+    Optional<AccessDelegationMode> result =
+        resolver.resolve(EnumSet.of(NONE, REMOTE_SIGNING), createCatalogWithAwsConfig(false));
 
     assertThat(result).hasValue(REMOTE_SIGNING);
   }
