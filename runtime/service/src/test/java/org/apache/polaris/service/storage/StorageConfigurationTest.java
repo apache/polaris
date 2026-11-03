@@ -25,17 +25,33 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
+import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.oauth2.AccessToken;
+import com.google.auth.oauth2.DownscopedCredentials;
 import com.google.auth.oauth2.GoogleCredentials;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.Set;
 import java.util.function.Supplier;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.config.RealmConfigurationSource;
+import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.core.storage.LocationGrant;
+import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.gcp.GcpCredentialOps;
+import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
@@ -344,7 +360,7 @@ public class StorageConfigurationTest {
   }
 
   @Test
-  public void testGcpStaticTokenCredentialsRefreshRestampsExpiry() throws IOException {
+  public void testGcpStaticTokenCredentialsRefreshKeepsFixedExpiry() throws IOException {
     Instant start = Instant.parse("2026-01-01T00:00:00Z");
     Clock clock = mock(Clock.class);
     when(clock.instant()).thenReturn(start, start.plus(Duration.ofHours(1)));
@@ -356,15 +372,46 @@ public class StorageConfigurationTest {
     Instant firstExpiry = credentials.getAccessToken().getExpirationTime().toInstant();
     assertThat(firstExpiry).isEqualTo(start.plus(TEST_TOKEN_LIFESPAN));
 
-    // A plain GoogleCredentials.create(token) would throw here because it cannot refresh; the
-    // configured-token credential re-stamps the expiry instead (#2253).
+    // A plain GoogleCredentials.create(token) would throw here because it cannot refresh. The
+    // configured-token credential supports refresh but keeps the expiry fixed: the token value
+    // never changes, so neither does its reported expiry (#2253).
     credentials.refresh();
 
     AccessToken refreshed = credentials.getAccessToken();
     assertThat(refreshed.getTokenValue()).isEqualTo(TEST_GCP_TOKEN);
-    assertThat(refreshed.getExpirationTime().toInstant())
-        .isEqualTo(start.plus(Duration.ofHours(1)).plus(TEST_TOKEN_LIFESPAN))
-        .isAfter(firstExpiry);
+    assertThat(refreshed.getExpirationTime().toInstant()).isEqualTo(firstExpiry);
+  }
+
+  @Test
+  public void testGcpStaticTokenVendsThroughDownscoping() {
+    GcpCredentialOps ops =
+        new GcpCredentialOps() {
+          @Override
+          public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
+            return new AccessToken("vended", new Date(System.currentTimeMillis() + 3_600_000));
+          }
+        };
+
+    Supplier<GoogleCredentials> supplier =
+        configWithAwsCredentialsAndGcpToken().gcpCredentialsSupplier(Clock.systemUTC());
+    RealmConfig realmConfig =
+        new RealmConfigImpl(RealmConfigurationSource.EMPTY_CONFIG, () -> "test-realm");
+
+    // On main the source credential is GoogleCredentials.create(token), whose refresh() throws
+    // during vending; with the configured-token credential the downscoped token is vended.
+    StorageAccessConfig vended =
+        new GcpCredentialsStorageIntegration(
+                supplier.get(),
+                NetHttpTransport::new,
+                GcpStorageConfigurationInfo.builder().addAllowedLocation("gs://b/p/").build(),
+                realmConfig,
+                ops)
+            .getStorageAccessConfig(
+                List.of(new LocationGrant(Set.of("gs://b/p/"), Set.of(PolarisStorageActions.READ))),
+                Optional.empty(),
+                CredentialVendingContext.empty());
+
+    assertThat(vended.get(StorageAccessProperty.GCS_ACCESS_TOKEN)).isEqualTo("vended");
   }
 
   @Test

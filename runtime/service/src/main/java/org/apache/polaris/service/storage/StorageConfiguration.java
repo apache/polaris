@@ -26,6 +26,7 @@ import io.smallrye.config.WithParentName;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -101,10 +102,11 @@ public interface StorageConfiguration extends S3AccessConfig {
   Optional<String> gcpAccessToken();
 
   /**
-   * How far in the future the configured GCP access token's expiry is stamped, and re-stamped on
-   * every refresh. If not present, the {@linkplain #DEFAULT_TOKEN_LIFESPAN default token lifespan}
-   * is used. This does not extend the token's real validity on the provider side; it only controls
-   * the expiry Polaris reports for the configured token.
+   * How far in the future the configured GCP access token's expiry is stamped. The expiry is
+   * computed once, when the credential is created, and is returned unchanged on every refresh. If
+   * not present, the {@linkplain #DEFAULT_TOKEN_LIFESPAN default token lifespan} is used. This does
+   * not extend the token's real validity on the provider side; it only controls the expiry Polaris
+   * reports for the configured token.
    */
   @WithName("gcp.lifespan")
   Optional<Duration> gcpAccessTokenLifespan();
@@ -158,15 +160,15 @@ public interface StorageConfiguration extends S3AccessConfig {
               throw new RuntimeException("Failed to get GCP credentials", e);
             }
           } else {
-            // A statically configured token has no token endpoint to call. Wrap it in a credential
-            // that re-stamps the expiry on every refresh, so a long-running server does not get
-            // stuck with the one-time expiry stamped at first use. GoogleCredentials.create(..)
-            // cannot refresh, which makes server FileIO against GCS fail once the lifespan elapses,
-            // until the server is restarted (#2253).
-            return new ConfiguredGcpAccessTokenCredentials(
-                gcpAccessToken().orElseThrow(),
-                gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN),
-                clock);
+            // A statically configured token has no token endpoint to call, and
+            // GoogleCredentials.create(..) returns a credential that cannot refresh. Vending calls
+            // refresh() on the source credential before downscoping, so with that credential the
+            // first vend fails with an IllegalStateException regardless of expiry (#2253). Wrap the
+            // token in a credential that supports refresh by returning it with a fixed expiry,
+            // computed once here from the configured lifespan.
+            Instant expiry =
+                clock.instant().plus(gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN));
+            return new FixedGcpAccessTokenCredentials(gcpAccessToken().orElseThrow(), expiry);
           }
         });
   }
