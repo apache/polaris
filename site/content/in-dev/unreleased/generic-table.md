@@ -43,6 +43,13 @@ A generic table is an entity that defines the following fields:
   - A table with multiple disjoint locations (i.e. containing files that are outside the configured base location) is not compliant with the current generic table support in Polaris.
   - If no location is provided, clients or users are responsible for managing the location.
   - An explicitly provided, non-empty base location follows the same catalog allowed-location and namespace-location restrictions as Iceberg tables.
+  - With `ALLOW_TABLE_LOCATION_OVERLAP=false` (the default), a provided location must not overlap
+    an existing table or namespace location covered by the overlap check. Equal locations and
+    parent/child locations are conflicts; the ordinary containment by a table's own parent
+    namespace is allowed. The rule applies to Generic and Iceberg tables in either creation order.
+  - The optimized sibling check supplements its location index with a read of Generic Table
+    metadata, including older entries without index records. This can add metastore reads in
+    catalogs with many namespaces or Generic Tables.
   - A location is not assigned automatically when this field is omitted.
 - **properties** (optional): Properties for the generic table passed on creation.
   - Currently, there is no reserved property key defined.
