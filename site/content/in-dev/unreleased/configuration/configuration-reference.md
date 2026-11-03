@@ -171,8 +171,8 @@ The body is the shared CloudEvents mapper envelope: context fields at the top, K
 Polaris fields in `data`. `time` is the original event time from Polaris event metadata
 (RFC 3339). `id` is stable for the event and can be used by receivers to detect retry
 duplicates. Fields in `data` are omitted when not applicable. Each request carries
-`X-Polaris-Event` with the Polaris event type and `X-Polaris-Delivery-Time` with the send
-time. When `polaris.event-listener.webhook.secret` is set, an `X-Polaris-Signature-256`
+`Polaris-Event` with the Polaris event type and `Polaris-Delivery-Time` with the send
+time. When `polaris.event-listener.webhook.secret` is set, a `Polaris-Signature-256`
 header contains `sha256=` followed by the hex-encoded HMAC-SHA256 of the raw request body.
 
 Delivery is **best-effort and bounded**: concurrency and pending work are capped
