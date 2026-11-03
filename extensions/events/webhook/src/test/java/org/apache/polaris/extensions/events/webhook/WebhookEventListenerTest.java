@@ -154,7 +154,7 @@ class WebhookEventListenerTest {
     WebhookEventListener listener =
         new WebhookEventListener(config, CLOCK, meterRegistry) {
           @Override
-          protected WebhookTransport createTransport() {
+          WebhookTransport createTransport() {
             return new JdkTransport(endpoint(), config.timeout(), config.headers());
           }
         };
@@ -513,8 +513,8 @@ class WebhookEventListenerTest {
 
   @Test
   void reservedHeaderDetection() {
-    assertThat(WebhookEventListener.isReservedHeader("X-Polaris-Signature-256")).isTrue();
-    assertThat(WebhookEventListener.isReservedHeader("X-Polaris-Delivery-Time")).isTrue();
+    assertThat(WebhookEventListener.isReservedHeader("Polaris-Signature-256")).isTrue();
+    assertThat(WebhookEventListener.isReservedHeader("Polaris-Delivery-Time")).isTrue();
     assertThat(WebhookEventListener.isReservedHeader("content-type")).isTrue();
     assertThat(WebhookEventListener.isReservedHeader("Authorization")).isFalse();
   }
