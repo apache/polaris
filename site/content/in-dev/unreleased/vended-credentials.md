@@ -139,9 +139,9 @@ The endpoint is only returned together with credentials: a response that carries
 credentials, for example because the request included `none` or because the storage configuration
 does not vend credentials, does not contain it.
 
-The endpoint returns `storage-credentials` entries containing
-both the refreshed credentials and their accompanying client-facing storage settings.
-Unlike table responses, this response has no top-level `config` compatibility copy.
+The endpoint returns `storage-credentials` entries containing only the refreshed
+credentials. Clients retain client-facing storage settings from the initial table
+response. This response has no top-level `config` compatibility copy.
 
 ## When delegation cannot be satisfied
 
