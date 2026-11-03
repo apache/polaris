@@ -22,6 +22,10 @@ import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.AdditionalAnswers.delegatesTo;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
@@ -413,6 +417,21 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
   }
 
   @Test
+  public void testCreateNamespaceWithGenericTableElsewhereInCatalog() {
+    Namespace existing = Namespace.of("generic-namespace");
+    catalog().createNamespace(existing);
+    String location = STORAGE_LOCATION + "/generic-namespace/generic/";
+    TableIdentifier generic = TableIdentifier.of(existing, "generic");
+    createTable(generic, location, true);
+
+    Namespace unrelated = Namespace.of("unrelated");
+    catalog().createNamespace(unrelated);
+
+    assertThat(catalog().namespaceExists(unrelated)).isTrue();
+    assertThat(loadTableLocation(generic, true)).isEqualTo(location);
+  }
+
+  @Test
   public void testUnindexedGenericOverlapAcrossNamespaces() {
     Namespace legacyParent = Namespace.of("legacy");
     Namespace legacyNamespace = Namespace.of("legacy", "nested");
@@ -470,14 +489,17 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
       var validator =
           new LocationOverlapValidator(
               polarisContext, resolutionManifestFactory, authenticatedRoot);
+      var monitoredMetastore =
+          Mockito.mock(PolarisMetaStoreManager.class, delegatesTo(metaStoreManager));
       assertThatCode(
               () ->
                   validator.validate(
-                      metaStoreManager,
+                      monitoredMetastore,
                       candidate,
                       destinationPath.getRawFullPath(),
                       StorageLocation.of(STORAGE_LOCATION + "/legacy/")))
           .doesNotThrowAnyException();
+      verify(monitoredMetastore, never()).listFullEntitiesAll(any(), any(), any(), any());
       assertThatThrownBy(
               () ->
                   validator.validate(
@@ -487,6 +509,7 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
                       StorageLocation.of(STORAGE_LOCATION + "/destination/")))
           .isInstanceOf(ForbiddenException.class);
     } else {
+      // List mode checks only siblings under the same parent.
       createTable(second, location, false);
       assertThat(
               StorageLocation.of(loadTableLocation(second, false))
