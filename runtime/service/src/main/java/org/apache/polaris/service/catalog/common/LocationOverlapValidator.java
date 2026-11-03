@@ -263,7 +263,12 @@ public final class LocationOverlapValidator {
       long entityId,
       StorageLocation target,
       @Nullable StorageLocation searchRoot) {
-    // The location indexes do not cover Generic Table base locations stored in internal properties.
+    if (searchRoot != null && !target.isChildOf(searchRoot) && !searchRoot.isChildOf(target)) {
+      return;
+    }
+
+    // Generic Table base locations live in internal properties and are not indexed, even for new
+    // tables.
     Deque<List<PolarisEntityCore>> pending = new ArrayDeque<>();
     pending.add(List.of(PolarisEntity.toCore(catalog)));
     while (!pending.isEmpty()) {

@@ -47,9 +47,10 @@ A generic table is an entity that defines the following fields:
     an existing table or namespace location covered by the overlap check. Equal locations and
     parent/child locations are conflicts; the ordinary containment by a table's own parent
     namespace is allowed. The rule applies to Generic and Iceberg tables in either creation order.
-  - The optimized sibling check supplements its location index with a read of Generic Table
-    metadata, including older entries without index records. This can add metastore reads in
-    catalogs with many namespaces or Generic Tables.
+  - Generic Table locations are stored in internal properties and are outside the location index.
+    When the optimized index finds no conflict, validation can walk the catalog's namespaces to
+    check Generic Table locations. This can add metastore reads for table, view, and namespace
+    operations.
   - A location is not assigned automatically when this field is omitted.
 - **properties** (optional): Properties for the generic table passed on creation.
   - Currently, there is no reserved property key defined.
