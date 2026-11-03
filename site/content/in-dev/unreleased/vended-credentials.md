@@ -135,9 +135,9 @@ endpoint URL in the properties listed above (one per storage type). Iceberg clie
 the Iceberg REST credential-refresh protocol can call this endpoint to obtain fresh credentials
 before the current ones expire, avoiding the need to re-load the table.
 
-The endpoint returns `storage-credentials` entries containing
-both the refreshed credentials and their accompanying client-facing storage settings.
-Unlike table responses, this response has no top-level `config` compatibility copy.
+The endpoint returns `storage-credentials` entries containing only the refreshed
+credentials. Clients retain client-facing storage settings from the initial table
+response. This response has no top-level `config` compatibility copy.
 
 ## When delegation cannot be satisfied
 
