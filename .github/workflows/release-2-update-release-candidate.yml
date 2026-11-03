@@ -168,6 +168,8 @@ jobs:
         if: env.rc_number == '0'
         run: |
           source "${LIBS_DIR}/_exec.sh"
+          # Merging the changelog fragments must be a separate Gradle invocation, see build.gradle.kts
+          exec_process ./gradlew mergeChangelogFragments
           exec_process ./gradlew patchChangelog
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
@@ -201,7 +203,8 @@ jobs:
             "$HELM_REFERENCE_DOC_FILE" \
             "$PYTHON_PYPROJECT_FILE" \
             "$PYTHON_UV_LOCK_FILE" \
-            "$CHANGELOG_FILE"
+            "$CHANGELOG_FILE" \
+            "$CHANGELOG_FRAGMENTS_DIR"
           exec_process git commit -m "[chore] Bump version to ${version_without_rc}"
 
           # Push the changes
