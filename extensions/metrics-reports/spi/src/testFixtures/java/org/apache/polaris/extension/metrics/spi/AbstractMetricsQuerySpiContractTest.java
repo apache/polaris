@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -179,6 +180,36 @@ public abstract class AbstractMetricsQuerySpiContractTest {
         .extracting(MetricsRecordIdentity::reportId)
         .containsExactly(first.reportId());
     assertThat(secondPage.encodedResponseToken()).isNull();
+  }
+
+  @Test
+  void reportsSharingATimestampArePagedExactlyOnceInTimestampThenReportIdOrder() {
+    assumeTrue(supportsPersistence(), "backend does not persist data");
+    String realm = realm();
+    Instant shared = Instant.now();
+    // Five reports in one millisecond, spread over both report tables, so that page boundaries
+    // fall inside the tie. Ordering must be (timestamp DESC, report ID DESC).
+    for (String id : List.of("a", "c", "e")) {
+      writeScan(realm, scanRecord(id + "-report", CATALOG_ID, TABLE_ID, shared));
+    }
+    for (String id : List.of("b", "d")) {
+      writeCommit(realm, commitRecord(id + "-report", CATALOG_ID, TABLE_ID, shared));
+    }
+    Set<MetricsQuerySpi.MetricType> bothTypes =
+        Set.of(MetricsQuerySpi.MetricType.SCAN, MetricsQuerySpi.MetricType.COMMIT);
+
+    List<String> seen = new ArrayList<>();
+    PageToken pageToken = PageToken.fromLimit(2);
+    for (int pages = 0; pages < 10; pages++) {
+      Page<MetricsRecordIdentity> page = list(querySpi(realm), bothTypes, ALL_SNAPSHOTS, pageToken);
+      page.items().forEach(r -> seen.add(r.reportId()));
+      if (page.encodedResponseToken() == null) {
+        break;
+      }
+      pageToken = PageToken.build(page.encodedResponseToken(), 2, -1, () -> true);
+    }
+
+    assertThat(seen).containsExactly("e-report", "d-report", "c-report", "b-report", "a-report");
   }
 
   @Test
