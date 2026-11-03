@@ -62,7 +62,7 @@ Thanks,
 ```
 
 ### Ensure that the changelog is up to date
-As part of Polaris development process, for each major change in the codebase, a new entry should be added to the `CHANGELOG.md` file. This is usually verified during pull request reviews. But some changes may have been missed. So before cutting a release, it is important to ensure that the changelog is up to date.
+As part of Polaris development process, for each major change in the codebase, a new changelog fragment should be added to the `changelog.d` directory (see `changelog.d/README.md`). This is usually verified during pull request reviews. But some changes may have been missed. So before cutting a release, it is important to ensure that the changelog fragments and the `CHANGELOG.md` file are up to date.
 
 ## Release branch creation workflow
 The first Github workflow to run is [`Release - 1 - Create Release Branch`](https://github.com/apache/polaris/actions/workflows/release-1-create-release-branch.yml). This workflow will create a release branch from the main branch. The release branch is named after the release number and does not include the patch version. For instance, the release branch for version 1.3.0 is named `release/1.3.x`. It should **only be executed only once** per `major.minor` version.
@@ -77,7 +77,7 @@ Once the workflow has run, the run details page contains a recap of the main inf
 ## Release candidate tag creation workflow
 The second Github workflow to run is [`Release - 2 - Update version and Changelog for Release Candidate`](https://github.com/apache/polaris/actions/workflows/release-2-update-release-candidate.yml). This workflow will:
 * Verify that all Github checks are green for the release branch.
-* For RC0 only: update the project version files with the final version number, update the changelog, and commit the changes to the release branch.
+* For RC0 only: update the project version files with the final version number, merge the changelog fragments from `changelog.d` into `CHANGELOG.md`, update the changelog, and commit the changes to the release branch.
 * Create the `apache-polaris-[major].[minor].[patch]-rc[N]` tag
 
 The rules to create the `[major].[minor].[patch]-rc[N]` tag are as follows:
