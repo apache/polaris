@@ -520,6 +520,47 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(-1)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Integer> METRICS_QUERY_DEFAULT_PAGE_SIZE =
+      PolarisConfiguration.<Integer>builder()
+          .key("METRICS_QUERY_DEFAULT_PAGE_SIZE")
+          .description(
+              "The page size used by the metrics reports query API when a request supplies neither"
+                  + " a pageToken nor a pageSize. The metrics query API always paginates; it ignores"
+                  + " LIST_PAGINATION_ENABLED. Values below 1 are treated as 1.")
+          .defaultValue(100)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> METRICS_QUERY_MAX_PAGE_SIZE =
+      PolarisConfiguration.<Integer>builder()
+          .key("METRICS_QUERY_MAX_PAGE_SIZE")
+          .description(
+              "The largest page size a client may request from the metrics reports query API."
+                  + " Larger requested page sizes are reduced to this value. Values below 1 are"
+                  + " treated as 1.")
+          .defaultValue(1000)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> METRICS_QUERY_MAX_OBJECTS =
+      PolarisConfiguration.<Integer>builder()
+          .key("METRICS_QUERY_MAX_OBJECTS")
+          .description(
+              "The maximum number of entries allowed in the objects list of a single metrics"
+                  + " reports query. Each entry selects one table, optionally restricted to one"
+                  + " snapshot, so this also bounds the number of table/snapshot selectors sent to"
+                  + " the metrics backend. Requests above the limit are rejected with a 400.")
+          .defaultValue(100)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> METRICS_QUERY_DEFAULT_TIME_WINDOW_DAYS =
+      PolarisConfiguration.<Integer>builder()
+          .key("METRICS_QUERY_DEFAULT_TIME_WINDOW_DAYS")
+          .description(
+              "The time window, in days, applied by the metrics reports query API when a request"
+                  + " omits timestampFrom. The window ends at timestampTo, or at the current time"
+                  + " when timestampTo is also omitted. Values below 1 are treated as 1.")
+          .defaultValue(7)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_GENERIC_TABLES")

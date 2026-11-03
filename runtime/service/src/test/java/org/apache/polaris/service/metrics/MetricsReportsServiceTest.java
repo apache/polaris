@@ -32,7 +32,10 @@ import static org.mockito.Mockito.when;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -40,10 +43,9 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -61,18 +63,19 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
+import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
-import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.extension.metrics.spi.MetricsQuerySpi;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
@@ -84,12 +87,14 @@ import org.junit.jupiter.params.provider.MethodSource;
  */
 class MetricsReportsServiceTest {
 
+  private static final long NOW_MS = 1_000_000_000_000L;
   private static final String CATALOG = "test-catalog";
   private static final List<String> NAMESPACE = List.of("db", "schema");
   private static final String TABLE = "events";
   private static final String OTHER_TABLE = "other-table";
   private static final String SCAN = "iceberg-scan";
   private static final String COMMIT = "iceberg-commit";
+  private static final Clock CLOCK = Clock.fixed(Instant.ofEpochMilli(NOW_MS), ZoneOffset.UTC);
 
   private PolarisAuthorizer authorizer;
   private PolarisResolutionManifest manifest;
@@ -118,12 +123,12 @@ class MetricsReportsServiceTest {
     CatalogEntity catalogEntity = mock(CatalogEntity.class);
     when(catalogEntity.getId()).thenReturn(7L);
     realmConfig = mock(RealmConfig.class);
-    when(realmConfig.getConfig(
-            eq(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE), any(CatalogEntity.class)))
-        .thenReturn(-1);
-    when(realmConfig.getConfig(
-            eq(FeatureConfiguration.LIST_PAGINATION_ENABLED), any(CatalogEntity.class)))
-        .thenReturn(true);
+    when(realmConfig.getConfig(FeatureConfiguration.METRICS_QUERY_DEFAULT_PAGE_SIZE))
+        .thenReturn(100);
+    when(realmConfig.getConfig(FeatureConfiguration.METRICS_QUERY_MAX_PAGE_SIZE)).thenReturn(1000);
+    when(realmConfig.getConfig(FeatureConfiguration.METRICS_QUERY_MAX_OBJECTS)).thenReturn(100);
+    when(realmConfig.getConfig(FeatureConfiguration.METRICS_QUERY_DEFAULT_TIME_WINDOW_DAYS))
+        .thenReturn(7);
 
     when(manifest.resolveAll()).thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
     when(manifest.getResolvedCatalogEntity()).thenReturn(catalogEntity);
@@ -164,7 +169,8 @@ class MetricsReportsServiceTest {
             factory,
             queryProvider,
             new DefaultCatalogPrefixParser(),
-            realmConfig);
+            realmConfig,
+            CLOCK);
     realmContext = mock(RealmContext.class);
     securityContext = mock(SecurityContext.class);
   }
@@ -172,6 +178,10 @@ class MetricsReportsServiceTest {
   private static QueryMetricsRequest requestFor(
       String metricType, List<String> namespace, String table) {
     return new QueryMetricsRequest(List.of(metricType), List.of(object(namespace, table, null)));
+  }
+
+  private static TableIdentifier tableId(String table) {
+    return TableIdentifier.of(Namespace.of(NAMESPACE.toArray(new String[0])), table);
   }
 
   private static CatalogObject object(List<String> namespace, String table, Long snapshotId) {
@@ -208,28 +218,61 @@ class MetricsReportsServiceTest {
   }
 
   @Test
-  void unauthorizedRequestThrowsForbiddenException() {
+  void unauthorizedTableIsOmittedLikeAMissingOne() {
     when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.deny("denied"));
+    MetricsQuerySpi provider = queryProvider.get();
 
-    assertThatThrownBy(
-            () ->
-                service.queryTableMetrics(
-                    CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext))
-        .isInstanceOf(ForbiddenException.class);
+    Response response =
+        service.queryTableMetrics(
+            CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext);
+
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    assertThat(((ListMetricsResponse) response.getEntity()).getReports()).isEmpty();
+    verify(provider, never()).listReports(any(), anyLong(), any(), any(), any(), any());
   }
 
   @Test
-  void tableNotFoundThrowsNotFoundException() {
+  void missingTableIsOmittedWithoutError() {
     when(manifest.getResolvedPath(
             any(ResolvedPathKey.class), eq(PolarisEntitySubType.ICEBERG_TABLE), eq(true)))
         .thenReturn(null);
+    MetricsQuerySpi provider = queryProvider.get();
 
-    assertThatThrownBy(
-            () ->
-                service.queryTableMetrics(
-                    CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext))
-        .isInstanceOf(NotFoundException.class)
-        .hasMessageContaining(TABLE);
+    Response response =
+        service.queryTableMetrics(
+            CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext);
+
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    assertThat(((ListMetricsResponse) response.getEntity()).getReports()).isEmpty();
+    verify(provider, never()).listReports(any(), anyLong(), any(), any(), any(), any());
+  }
+
+  @Test
+  void queriesOnlyTablesThatExistAndAreAuthorized() {
+    when(manifest.getResolvedPath(
+            eq(ResolvedPathKey.ofTableLike(tableId("missing"))),
+            eq(PolarisEntitySubType.ICEBERG_TABLE),
+            eq(true)))
+        .thenReturn(null);
+    // TABLE (id 42) is allowed; OTHER_TABLE (id 43) is denied.
+    when(authorizer.authorize(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              AuthorizationRequest authorizationRequest = invocation.getArgument(1);
+              String target = authorizationRequest.intents().getFirst().toString();
+              return target.contains(OTHER_TABLE)
+                  ? AuthorizationDecision.deny("denied")
+                  : AuthorizationDecision.allow();
+            });
+
+    List<MetricsQuerySpi.TableSelector> selectors =
+        querySelectors(
+            List.of(
+                object(NAMESPACE, "missing", null),
+                object(NAMESPACE, TABLE, null),
+                object(NAMESPACE, OTHER_TABLE, null)));
+
+    assertThat(selectors).containsExactly(new MetricsQuerySpi.TableSelector(42L, null));
   }
 
   @Test
@@ -242,18 +285,6 @@ class MetricsReportsServiceTest {
                     CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining(CATALOG);
-  }
-
-  @Test
-  void pathNotFoundPropagatesNotFoundException() {
-    ResolverPath failedPath = new ResolverPath(NAMESPACE, PolarisEntityType.NAMESPACE);
-    when(manifest.resolveAll()).thenReturn(new ResolverStatus(failedPath, 0));
-
-    assertThatThrownBy(
-            () ->
-                service.queryTableMetrics(
-                    CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext))
-        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -499,25 +530,191 @@ class MetricsReportsServiceTest {
         .containsExactly(tuple(SCAN, 2_000L), tuple(COMMIT, 1_000L));
   }
 
+  private PageToken queryPageToken(QueryMetricsRequest request) {
+    MetricsQuerySpi backend = mock(MetricsQuerySpi.class);
+    List<PageToken> captured = new ArrayList<>();
+    when(backend.listReports(any(), anyLong(), any(), any(), any(), any(PageToken.class)))
+        .thenAnswer(
+            invocation -> {
+              captured.add(invocation.getArgument(5));
+              return Page.fromItems(List.of());
+            });
+    when(queryProvider.get()).thenReturn(backend);
+    service.queryTableMetrics(CATALOG, request, realmContext, securityContext);
+    assertThat(captured).hasSize(1);
+    return captured.getFirst();
+  }
+
+  private static QueryMetricsRequest withPaging(
+      QueryMetricsRequest request, String pageToken, Integer pageSize) {
+    return new QueryMetricsRequest(
+        request.getMetricTypes(),
+        request.getObjects(),
+        pageToken,
+        pageSize,
+        request.getTimestampFrom(),
+        request.getTimestampTo());
+  }
+
+  private static QueryMetricsRequest withTimes(
+      QueryMetricsRequest request, Long timestampFrom, Long timestampTo) {
+    return new QueryMetricsRequest(
+        request.getMetricTypes(),
+        request.getObjects(),
+        request.getPageToken(),
+        request.getPageSize(),
+        timestampFrom,
+        timestampTo);
+  }
+
+  static Stream<Arguments> pageSizes() {
+    return Stream.of(
+        Arguments.of(null, 100),
+        Arguments.of(10, 10),
+        Arguments.of(1000, 1000),
+        Arguments.of(5000, 1000));
+  }
+
+  @ParameterizedTest
+  @MethodSource("pageSizes")
+  void pageSizeDefaultsAndIsCapped(Integer requested, int expected) {
+    PageToken token =
+        queryPageToken(withPaging(requestFor(SCAN, NAMESPACE, TABLE), null, requested));
+
+    assertThat(token.pageSize()).hasValue(expected);
+  }
+
   @Test
-  void unpaginatedRequestExceedingMaxPageSizeIsRejected() {
+  void paginationIsAppliedEvenWhenListPaginationIsDisabled() {
     when(realmConfig.getConfig(
-            eq(FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE), any(CatalogEntity.class)))
-        .thenReturn(1);
-    @SuppressWarnings("unchecked")
-    Page<MetricsRecordIdentity> overflowing = mock(Page.class);
-    when(overflowing.items()).thenReturn(List.of());
-    when(overflowing.encodedResponseToken()).thenReturn("next");
-    MetricsQuerySpi provider = queryProvider.get();
-    when(provider.listReports(any(), anyLong(), any(), any(), any(), any(PageToken.class)))
-        .thenReturn(overflowing);
+            eq(FeatureConfiguration.LIST_PAGINATION_ENABLED), any(CatalogEntity.class)))
+        .thenReturn(false);
+
+    PageToken token = queryPageToken(requestFor(SCAN, NAMESPACE, TABLE));
+
+    assertThat(token.paginationRequested()).isTrue();
+  }
+
+  @Test
+  void pageSizeBelowOneIsRejected() {
+    for (int invalid : new int[] {0, -1}) {
+      QueryMetricsRequest request = withPaging(requestFor(SCAN, NAMESPACE, TABLE), null, invalid);
+      assertThatThrownBy(
+              () -> service.queryTableMetrics(CATALOG, request, realmContext, securityContext))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("pageSize");
+    }
+  }
+
+  @Test
+  void tooManyObjectsAreRejectedBeforeResolution() {
+    when(realmConfig.getConfig(FeatureConfiguration.METRICS_QUERY_MAX_OBJECTS)).thenReturn(2);
+    QueryMetricsRequest request =
+        new QueryMetricsRequest(
+            List.of(SCAN),
+            List.of(
+                object(NAMESPACE, TABLE, 1L),
+                object(NAMESPACE, TABLE, 2L),
+                object(NAMESPACE, TABLE, 3L)));
 
     assertThatThrownBy(
-            () ->
-                service.queryTableMetrics(
-                    CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext))
-        .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("maximum page size");
+            () -> service.queryTableMetrics(CATALOG, request, realmContext, securityContext))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("more than 2");
+    verify(factory, never()).createResolutionManifest(any(), any());
+  }
+
+  @Test
+  void missingLowerBoundDefaultsToWindowBeforeUpperBound() {
+    Duration window = Duration.ofDays(7);
+    QueryMetricsRequest open = requestFor(SCAN, NAMESPACE, TABLE);
+    QueryMetricsRequest bounded =
+        withTimes(requestFor(SCAN, NAMESPACE, TABLE), null, 500_000_000_000L);
+    QueryMetricsRequest explicit = withTimes(requestFor(SCAN, NAMESPACE, TABLE), 5L, null);
+
+    assertThat(queryTimestampFrom(open)).isEqualTo(NOW_MS - window.toMillis());
+    assertThat(queryTimestampFrom(bounded)).isEqualTo(500_000_000_000L - window.toMillis());
+    assertThat(queryTimestampFrom(explicit)).isEqualTo(5L);
+  }
+
+  private Long queryTimestampFrom(QueryMetricsRequest request) {
+    MetricsQuerySpi backend = mock(MetricsQuerySpi.class);
+    List<Long> captured = new ArrayList<>();
+    when(backend.listReports(any(), anyLong(), any(), any(), any(), any(PageToken.class)))
+        .thenAnswer(
+            invocation -> {
+              captured.add(invocation.getArgument(3));
+              return Page.fromItems(List.of());
+            });
+    when(queryProvider.get()).thenReturn(backend);
+    service.queryTableMetrics(CATALOG, request, realmContext, securityContext);
+    return captured.getFirst();
+  }
+
+  private String firstPageToken(QueryMetricsRequest request) {
+    // A real backend token: the service hands the unwrapped token to PageToken.build, which decodes
+    // it.
+    Page<MetricsRecordIdentity> page =
+        Page.page(PageToken.fromLimit(10), List.of(), EntityIdToken.fromEntityId(5L));
+    MetricsQuerySpi backend = mock(MetricsQuerySpi.class);
+    when(backend.listReports(any(), anyLong(), any(), any(), any(), any(PageToken.class)))
+        .thenReturn(page);
+    when(queryProvider.get()).thenReturn(backend);
+    return ((ListMetricsResponse)
+            service.queryTableMetrics(CATALOG, request, realmContext, securityContext).getEntity())
+        .getNextPageToken();
+  }
+
+  @Test
+  void pageTokenIsBoundToTheQueryThatIssuedIt() {
+    QueryMetricsRequest original = requestFor(SCAN, NAMESPACE, TABLE);
+    String token = firstPageToken(original);
+    assertThat(token).contains(".");
+
+    // The same query resumes, and the backend sees only its own token.
+    PageToken seen = queryPageToken(withPaging(requestFor(SCAN, NAMESPACE, TABLE), token, null));
+    assertThat(seen).isNotNull();
+
+    List<QueryMetricsRequest> different = new ArrayList<>();
+    different.add(requestFor(COMMIT, NAMESPACE, TABLE));
+    different.add(requestFor(SCAN, NAMESPACE, OTHER_TABLE));
+    different.add(withTimes(requestFor(SCAN, NAMESPACE, TABLE), 1L, null));
+    different.add(new QueryMetricsRequest(List.of(SCAN), List.of(object(NAMESPACE, TABLE, 9L))));
+
+    for (QueryMetricsRequest changed : different) {
+      QueryMetricsRequest request = withPaging(changed, token, null);
+      assertThatThrownBy(
+              () -> service.queryTableMetrics(CATALOG, request, realmContext, securityContext))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("different query");
+    }
+  }
+
+  @Test
+  void pageTokenIgnoresPageSizeAndObjectOrder() {
+    QueryMetricsRequest original =
+        new QueryMetricsRequest(
+            List.of(SCAN),
+            List.of(object(NAMESPACE, TABLE, null), object(NAMESPACE, OTHER_TABLE, null)));
+    String token = firstPageToken(original);
+
+    QueryMetricsRequest reordered =
+        new QueryMetricsRequest(
+            List.of(SCAN),
+            List.of(object(NAMESPACE, OTHER_TABLE, null), object(NAMESPACE, TABLE, null)));
+
+    assertThat(queryPageToken(withPaging(reordered, token, 5)).pageSize()).hasValue(5);
+  }
+
+  @Test
+  void malformedPageTokenIsRejected() {
+    for (String token : new String[] {"no-separator", "fingerprint-only."}) {
+      QueryMetricsRequest request = withPaging(requestFor(SCAN, NAMESPACE, TABLE), token, null);
+      assertThatThrownBy(
+              () -> service.queryTableMetrics(CATALOG, request, realmContext, securityContext))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Invalid page token");
+    }
   }
 
   @Test
