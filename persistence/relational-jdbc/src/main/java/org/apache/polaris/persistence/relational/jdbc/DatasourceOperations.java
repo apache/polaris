@@ -202,8 +202,7 @@ public class DatasourceOperations {
             executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
             return null;
           }
-        },
-        false);
+        });
   }
 
   /** Connection-aware version for use inside runWithinTransaction. */
@@ -217,8 +216,7 @@ public class DatasourceOperations {
         () -> {
           executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
           return null;
-        },
-        false);
+        });
   }
 
   /**
@@ -282,9 +280,11 @@ public class DatasourceOperations {
             try {
               try {
                 rowsUpdated = statement.executeUpdate();
-              } catch (SQLException executeFailure) {
+              } catch (SQLException | RuntimeException | Error executeFailure) {
                 // The statement failed before commit; roll back but keep the original failure,
                 // which is the exception callers classify. A failing rollback must not replace it.
+                // Catch RuntimeException/Error too: otherwise the finally below would restore
+                // autoCommit and commit the open transaction.
                 rollbackSuppressing(connection, executeFailure);
                 throw executeFailure;
               }
@@ -340,9 +340,11 @@ public class DatasourceOperations {
 
                 // Execute remaining queries in the batch
                 successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
-              } catch (SQLException batchFailure) {
+              } catch (SQLException | RuntimeException | Error batchFailure) {
                 // The batch is buffered until commit(); a failure here is uncommitted (a definite
                 // non-write). Roll back but keep the original failure, which callers classify.
+                // Catch RuntimeException/Error too: otherwise the finally below would restore
+                // autoCommit and commit the open transaction.
                 successCount.set(0);
                 rollbackSuppressing(connection, batchFailure);
                 throw batchFailure;
@@ -377,9 +379,11 @@ public class DatasourceOperations {
               boolean success;
               try {
                 success = callback.execute(connection);
-              } catch (SQLException | RuntimeException callbackFailure) {
+              } catch (SQLException | RuntimeException | Error callbackFailure) {
                 // The callback failed against an uncommitted transaction (a definite non-write).
-                // Roll back but keep the original failure, which callers classify.
+                // Roll back but keep the original failure, which callers classify. Catch Error too:
+                // otherwise the finally below would restore autoCommit and commit the open
+                // transaction.
                 rollbackSuppressing(connection, callbackFailure);
                 throw callbackFailure;
               }
@@ -488,11 +492,11 @@ public class DatasourceOperations {
     return false;
   }
 
-  private boolean isRetryable(SQLException e, boolean mutating) {
-    // For mutating operations an ambiguous commit() outcome may mean the commit was already
-    // applied, so retrying risks a double-apply or a misreported result. Reads have no commit
-    // outcome to protect, so they stay retryable.
-    if (mutating && isAmbiguousCommitOutcome(e)) {
+  private boolean isRetryable(SQLException e) {
+    // An ambiguous commit() outcome may mean the commit was already applied, so retrying risks a
+    // double-apply or a misreported result. Only mutating operations reach commit(), so this is
+    // the only path on which such a marker can arise.
+    if (isAmbiguousCommitOutcome(e)) {
       return false;
     }
 
@@ -510,13 +514,6 @@ public class DatasourceOperations {
   // and more knobs for tuning retry pattern.
   @VisibleForTesting
   <T> T withRetries(Operation<T> operation) throws SQLException {
-    // Default to the mutating policy: it is the safe choice when the caller does not state whether
-    // the operation writes.
-    return withRetries(operation, true);
-  }
-
-  @VisibleForTesting
-  <T> T withRetries(Operation<T> operation, boolean mutating) throws SQLException {
     int attempts = 0;
     // maximum number of retries.
     int maxAttempts = relationalJdbcConfiguration.maxRetries().orElse(1);
@@ -552,7 +549,7 @@ public class DatasourceOperations {
         attempts++;
         long timeLeft =
             Math.max((maxRetryTime - TimeUnit.NANOSECONDS.toMillis(System.nanoTime())), 0L);
-        if (timeLeft == 0 || attempts >= maxAttempts || !isRetryable(sqlException, mutating)) {
+        if (timeLeft == 0 || attempts >= maxAttempts || !isRetryable(sqlException)) {
           String exceptionMessage =
               String.format(
                   "Failed due to '%s' (error code %d, sql-state '%s'), after %s attempts and %s milliseconds",

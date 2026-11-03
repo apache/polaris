@@ -403,17 +403,18 @@ public class DatasourceOperationsTest {
   }
 
   @Test
-  void withRetries_retriesAmbiguousConnectionFailureForReads() throws Exception {
+  void withRetries_retriesUnmarkedConnectionFailure() throws Exception {
     when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
     when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(5000L));
     when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(1L));
-    // A read has no commit outcome to protect, so a transient connection failure is retried.
+    // A connection failure that was never marked as an ambiguous commit outcome (it happened
+    // before commit()) is a definite non-write and stays retryable.
     when(mockOperation.execute())
         .thenThrow(new SQLException("Connection reset by peer"))
         .thenThrow(new SQLException("Connection reset by peer"))
         .thenReturn("Success!");
 
-    String result = datasourceOperations.withRetries(mockOperation, false);
+    String result = datasourceOperations.withRetries(mockOperation);
     assertEquals("Success!", result);
     verify(mockOperation, times(3)).execute();
   }
