@@ -60,7 +60,14 @@ public interface MetricsQuerySpi {
   /**
    * Lists persisted metrics reports of the given {@link MetricType}s matching any of the given
    * table selectors, applying the supplied filters and returning at most one page of results merged
-   * across all requested types and tables, ordered by timestamp descending.
+   * across all requested types and tables.
+   *
+   * <p>Results must be ordered by report timestamp descending, then by report ID descending. The
+   * report ID is a unique tie-breaker: reports regularly share a millisecond timestamp, so paging
+   * by timestamp alone can skip or repeat reports at page boundaries. Implementations must put both
+   * values in the continuation token of the returned page and resume strictly after that pair
+   * (keyset pagination). Backing stores should index the lookup columns followed by the timestamp
+   * and the report ID so that the keyset query stays index-driven.
    *
    * <p>Selectors are combined with OR semantics, and a report matched by more than one selector is
    * returned only once. Each item of the returned page is a {@link ScanMetricsRecord} for {@link

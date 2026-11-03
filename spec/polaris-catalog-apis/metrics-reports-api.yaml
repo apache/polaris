@@ -37,7 +37,14 @@ paths:
         Returns persisted metrics for the catalog objects listed in the request body. All requested
         objects must belong to the catalog identified by `prefix`.
 
-        Requires the TABLE_READ_METRICS privilege on every requested table.
+        Requires the TABLE_READ_METRICS privilege on each requested table. Reports are returned for
+        the requested tables that exist and for which the caller holds that privilege. Other
+        requested tables are omitted without error, so the response does not reveal whether they
+        exist. A 404 is returned only when the catalog itself does not exist.
+
+        Results are always paginated. The number of entries in `objects` and the page size are
+        bounded by server configuration; requests above those bounds are rejected or reduced as
+        described on the individual properties.
       requestBody:
         required: true
         content:
@@ -58,7 +65,7 @@ paths:
         403:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
         404:
-          description: Not Found - The catalog, namespace, or table does not exist
+          description: Not Found - The catalog does not exist
           content:
             application/json:
               schema:
@@ -129,7 +136,10 @@ components:
             path. Entries are combined with OR semantics. Omitting `snapshotId` on an entry applies
             no snapshot filter; the other query filters still apply. If the same object appears
             both with and without a snapshot ID, the entry without a snapshot ID takes precedence.
-            Overlapping entries do not duplicate reports.
+            Overlapping entries do not duplicate reports. The server limits the number of entries
+            per request (`METRICS_QUERY_MAX_OBJECTS`, 100 by default) and rejects larger requests
+            with a 400. Entries naming a table that does not exist, or one the caller may not read
+            metrics of, are omitted from the result.
           items:
             $ref: '#/components/schemas/CatalogObject'
         pageToken:
@@ -138,12 +148,17 @@ components:
           type: integer
           minimum: 1
           description: >
-            Maximum number of results to return per page. When pagination is requested and this
-            field is omitted, the server selects the page size.
+            Maximum number of results to return per page. When omitted, the server selects the page
+            size (`METRICS_QUERY_DEFAULT_PAGE_SIZE`, 100 by default). Values above the server maximum
+            (`METRICS_QUERY_MAX_PAGE_SIZE`, 1000 by default) are reduced to it.
         timestampFrom:
           type: integer
           format: int64
-          description: Inclusive lower bound on report timestamp (Unix epoch milliseconds)
+          description: >
+            Inclusive lower bound on report timestamp (Unix epoch milliseconds). When omitted, the
+            server applies a default window (`METRICS_QUERY_DEFAULT_TIME_WINDOW_DAYS`, 7 days by
+            default) that ends at `timestampTo`, or at the time of the request when `timestampTo` is
+            also omitted.
         timestampTo:
           type: integer
           format: int64
@@ -158,7 +173,10 @@ components:
           type: string
           nullable: true
           description: >
-            Opaque cursor for fetching the next page. Null or absent when no further pages exist.
+            Opaque cursor for fetching the next page. Null or absent when no further pages exist. A
+            cursor is valid only with the same `metricTypes`, `objects`, `timestampFrom` and
+            `timestampTo` as the request that produced it; the server rejects it with a 400
+            otherwise.
         reports:
           type: array
           items:
