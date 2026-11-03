@@ -65,7 +65,7 @@ import tools.jackson.core.JacksonException;
  * Delivers Polaris events to an HTTP(S) endpoint as JSON POSTs, optionally signed with HMAC-SHA256.
  *
  * <p>The JSON body is the shared {@link CloudEventsEventJsonMapper} envelope. Delivery time is sent
- * as the {@code X-Polaris-Delivery-Time} header, not as a CloudEvents extension.
+ * as the {@code Polaris-Delivery-Time} header, not as a CloudEvents extension.
  *
  * <p>Delivery is best-effort and bounded: concurrency and pending work are capped; retries use
  * exponential backoff with full jitter for transient failures only. Ordering is not guaranteed.
@@ -76,9 +76,9 @@ import tools.jackson.core.JacksonException;
 public class WebhookEventListener implements PolarisEventListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebhookEventListener.class);
 
-  static final String SIGNATURE_HEADER = "X-Polaris-Signature-256";
-  static final String EVENT_TYPE_HEADER = "X-Polaris-Event";
-  static final String DELIVERY_TIME_HEADER = "X-Polaris-Delivery-Time";
+  static final String SIGNATURE_HEADER = "Polaris-Signature-256";
+  static final String EVENT_TYPE_HEADER = "Polaris-Event";
+  static final String DELIVERY_TIME_HEADER = "Polaris-Delivery-Time";
 
   private static final CloudEventsEventJsonMapper EVENT_JSON_MAPPER =
       new CloudEventsEventJsonMapper();
@@ -231,7 +231,7 @@ public class WebhookEventListener implements PolarisEventListener {
     default void close() throws Exception {}
   }
 
-  protected WebhookTransport createTransport() {
+  WebhookTransport createTransport() {
     // disableDefaultMapper is required: a ResponseExceptionMapper that returns null does not
     // suppress the MP default mapper, which throws on >=400 and drops status / Retry-After.
     WebhookHttpClient client =
