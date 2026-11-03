@@ -49,8 +49,10 @@ import org.apache.iceberg.GenericStatisticsFile;
 import org.apache.iceberg.ImmutableGenericPartitionStatisticsFile;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
+import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.Catalog;
@@ -683,9 +685,9 @@ class IcebergCatalogHandlerTest {
   }
 
   /**
-   * Same as {@link #loadedTwoSnapshotTableMetadata()}; with {@code historicalStatistics} the
-   * historical (non-ref) snapshot also carries a statistics file and a partition statistics file,
-   * as Trino writes on every insert by default.
+   * Same as {@link #loadedTwoSnapshotTableMetadata()}; with {@code historicalStatistics} each
+   * snapshot carries a statistics file and a partition statistics file, as Trino writes on every
+   * insert by default, so a test can tell the suppressed snapshot's files from the kept one's.
    */
   private TableMetadata loadedTwoSnapshotTableMetadata(boolean historicalStatistics) {
     Snapshot historicalSnapshot = mock(Snapshot.class);
@@ -715,6 +717,15 @@ class IcebergCatalogHandlerTest {
               ImmutableGenericPartitionStatisticsFile.builder()
                   .snapshotId(1L)
                   .path(TABLE_LOCATION + "/metadata/1.partition-stats")
+                  .fileSizeInBytes(100L)
+                  .build())
+          .setStatistics(
+              new GenericStatisticsFile(
+                  2L, TABLE_LOCATION + "/metadata/2.stats", 100L, 10L, List.of()))
+          .setPartitionStatistics(
+              ImmutableGenericPartitionStatisticsFile.builder()
+                  .snapshotId(2L)
+                  .path(TABLE_LOCATION + "/metadata/2.partition-stats")
                   .fileSizeInBytes(100L)
                   .build());
     }
@@ -752,8 +763,8 @@ class IcebergCatalogHandlerTest {
   @Test
   void filterResponseToSnapshotsRefsDropsStatisticsOfHistoricalSnapshots() {
     TableMetadata metadata = loadedTwoSnapshotTableMetadata(true);
-    assertThat(metadata.statisticsFiles()).hasSize(1);
-    assertThat(metadata.partitionStatisticsFiles()).hasSize(1);
+    assertThat(metadata.statisticsFiles()).hasSize(2);
+    assertThat(metadata.partitionStatisticsFiles()).hasSize(2);
 
     LoadTableResponse response = LoadTableResponse.builder().withTableMetadata(metadata).build();
     String metadataLocation = response.metadataLocation();
@@ -767,11 +778,13 @@ class IcebergCatalogHandlerTest {
 
     assertThat(filtered.tableMetadata().snapshots()).hasSize(1);
     assertThat(filtered.tableMetadata().statisticsFiles())
-        .as("statistics of a suppressed snapshot must not be returned")
-        .isEmpty();
+        .as("only the kept snapshot's statistics are returned")
+        .extracting(StatisticsFile::snapshotId)
+        .containsExactly(2L);
     assertThat(filtered.tableMetadata().partitionStatisticsFiles())
-        .as("partition statistics of a suppressed snapshot must not be returned")
-        .isEmpty();
+        .as("only the kept snapshot's partition statistics are returned")
+        .extracting(PartitionStatisticsFile::snapshotId)
+        .containsExactly(2L);
     assertThat(filtered.metadataLocation()).isEqualTo(metadataLocation);
   }
 
