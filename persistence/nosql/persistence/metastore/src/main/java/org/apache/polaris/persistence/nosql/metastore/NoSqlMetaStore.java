@@ -120,6 +120,7 @@ import org.apache.polaris.persistence.nosql.metastore.committers.CatalogChangeCo
 import org.apache.polaris.persistence.nosql.metastore.committers.ChangeCommitter;
 import org.apache.polaris.persistence.nosql.metastore.committers.ChangeCommitterWrapper;
 import org.apache.polaris.persistence.nosql.metastore.committers.ChangeResult;
+import org.apache.polaris.persistence.nosql.metastore.committers.SupportsCatalogChangeCommit;
 import org.apache.polaris.persistence.nosql.metastore.indexaccess.IndexedContainerAccess;
 import org.apache.polaris.persistence.nosql.metastore.indexaccess.MemoizedIndexedAccess;
 import org.apache.polaris.persistence.nosql.metastore.mutation.EntityUpdate;
@@ -138,7 +139,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class NoSqlMetaStore extends NonFunctionalBasePersistence {
+class NoSqlMetaStore extends NonFunctionalBasePersistence implements SupportsCatalogChangeCommit {
   private static final Logger LOGGER = LoggerFactory.getLogger(NoSqlMetaStore.class);
 
   private final Persistence persistence;
@@ -525,6 +526,23 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               .orElseThrow();
     } finally {
       memoizedIndexedAccess.invalidateReferenceHead(POLICY_MAPPINGS_REF_NAME);
+    }
+  }
+
+  @Override
+  public <T> T commitCatalogChange(
+      long catalogId, Class<T> resultType, CatalogChangeCommitterWrapper<T> wrapper) {
+    try {
+      var committer =
+          persistence
+              .createCommitter(
+                  format(CATALOG_STATE_REF_NAME_PATTERN, catalogId),
+                  CatalogStateObj.class,
+                  resultType)
+              .synchronizingLocally();
+      return committer.commitRuntimeException(wrapper).orElseThrow();
+    } finally {
+      memoizedIndexedAccess.invalidateCatalogContent(catalogId);
     }
   }
 
