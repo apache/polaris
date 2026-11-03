@@ -33,14 +33,11 @@ Properties marked `credential` contain sensitive authentication material and mus
 contain non-sensitive storage settings, such as region, endpoint, path-style access, or a
 credential-refresh endpoint.
 
-For table load, create, and register responses, Polaris returns these properties in
-`storage-credentials` entries. Each entry contains:
+For table load, create, and register responses, when credential vending is requested
+and credentials are provided, Polaris returns these properties in `storage-credentials`
+entries. Each entry contains:
 - `prefix`: the storage location prefix to which the configuration applies.
-- `config`: the client-facing storage settings and, when credential vending is
-  requested and provided, the credentials for that prefix.
-
-Despite the field name, a `storage-credentials` entry can contain configuration
-without any credentials.
+- `config`: the credentials and accompanying client-facing storage settings for that prefix.
 
 ### Prefix selection and precedence
 
@@ -57,8 +54,8 @@ Server-only internal properties are never included.
 ### Responses without credential vending
 
 When the client omits `X-Iceberg-Access-Delegation`, Polaris does not return storage
-credentials. If client-facing storage settings are available, it still returns a
-prefix-scoped entry containing those settings.
+credentials. Client-facing storage settings are returned only in the top-level table
+`config`. Polaris does not add `storage-credentials` entries containing settings alone.
 
 For example, the following response excerpt contains configuration but no credentials:
 
@@ -66,21 +63,9 @@ For example, the following response excerpt contains configuration but no creden
 {
   "config": {
     "client.region": "eu-central-1"
-  },
-  "storage-credentials": [
-    {
-      "prefix": "s3://example-bucket/warehouse/db/table",
-      "config": {
-        "client.region": "eu-central-1"
-      }
-    }
-  ]
+  }
 }
 ```
-
-If there are no client-facing properties to return, Polaris omits the structured
-entry. The presence of an entry alone does not indicate that authentication
-credentials have been delegated.
 
 ### Compatibility and scope
 

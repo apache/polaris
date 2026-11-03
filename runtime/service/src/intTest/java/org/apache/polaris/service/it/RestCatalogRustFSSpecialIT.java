@@ -281,13 +281,7 @@ public class RestCatalogRustFSSpecialIT {
     assertThat(response.config()).doesNotContainKey(SECRET_ACCESS_KEY);
     assertThat(response.config()).doesNotContainKey(ACCESS_KEY_ID);
     assertThat(response.config()).doesNotContainKey(REFRESH_CREDENTIALS_ENDPOINT);
-    assertThat(response.credentials())
-        .singleElement()
-        .satisfies(
-            credential -> {
-              assertThat(credential.prefix()).isEqualTo(response.tableMetadata().location());
-              assertThat(credential.config()).isEqualTo(response.config());
-            });
+    assertThat(response.credentials()).isEmpty();
   }
 
   @ParameterizedTest
