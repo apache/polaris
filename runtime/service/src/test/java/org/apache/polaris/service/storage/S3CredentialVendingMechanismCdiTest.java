@@ -427,21 +427,7 @@ class S3CredentialVendingMechanismCdiTest {
                 .get()) {
           assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
           LoadTableResponse loaded = r.readEntity(LoadTableResponse.class);
-          assertThat(loaded.credentials())
-              .singleElement()
-              .satisfies(
-                  credential -> {
-                    assertThat(credential.prefix()).isEqualTo(loaded.tableMetadata().location());
-                    assertThat(credential.config())
-                        .containsEntry(
-                            StorageAccessProperty.CLIENT_REGION.getPropertyName(), region)
-                        .containsEntry(
-                            StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
-                        .doesNotContainKeys(
-                            StorageAccessProperty.AWS_KEY_ID.getPropertyName(),
-                            StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(),
-                            StorageAccessProperty.AWS_TOKEN.getPropertyName());
-                  });
+          assertThat(loaded.credentials()).isEmpty();
           assertThat(loaded.config())
               .containsEntry(StorageAccessProperty.CLIENT_REGION.getPropertyName(), region)
               .containsEntry(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)

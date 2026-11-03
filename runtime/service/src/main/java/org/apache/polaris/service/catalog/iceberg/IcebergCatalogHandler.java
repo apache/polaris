@@ -1253,10 +1253,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   actions,
                   refreshCredentialsEndpoint,
                   resolvedStoragePath);
-      Map<String, String> credentialConfig = new HashMap<>();
-      if (includeExtraPropertiesInCredentials) {
-        credentialConfig.putAll(storageAccessConfig.extraProperties());
-      }
       // Keep client access configuration at the top level for compatibility with older clients.
       responseBuilder.addAllConfig(storageAccessConfig.extraProperties());
       if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))) {
@@ -1267,16 +1263,19 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               !storageAccessConfig.supportsCredentialVending() || skipCredIndirection,
               "Credential vending was requested for table %s, but no credentials are available",
               tableIdentifier);
+        } else {
+          responseBuilder.addAllConfig(storageAccessConfig.credentials());
+          Map<String, String> credentialConfig = new HashMap<>();
+          if (includeExtraPropertiesInCredentials) {
+            credentialConfig.putAll(storageAccessConfig.extraProperties());
+          }
+          credentialConfig.putAll(storageAccessConfig.credentials());
+          responseBuilder.addCredential(
+              ImmutableCredential.builder()
+                  .prefix(tableMetadata.location())
+                  .config(credentialConfig)
+                  .build());
         }
-        responseBuilder.addAllConfig(storageAccessConfig.credentials());
-        credentialConfig.putAll(storageAccessConfig.credentials());
-      }
-      if (!credentialConfig.isEmpty()) {
-        responseBuilder.addCredential(
-            ImmutableCredential.builder()
-                .prefix(tableMetadata.location())
-                .config(credentialConfig)
-                .build());
       }
     }
 

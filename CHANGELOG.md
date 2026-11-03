@@ -114,8 +114,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Changes
 
 - Include prefix-scoped storage settings in `storage-credentials` entries in table
-  responses. Table responses also return config-only entries
-  when delegation is not requested. Top-level table configuration remains for
+  responses when credentials are vended. Top-level table configuration remains for
   compatibility. For clients applying scoped configuration, catalog-provided
   settings take precedence over client-configured values.
 - Azure credential vending now maps MSAL authentication failures using their HTTP status codes,

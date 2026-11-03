@@ -307,9 +307,14 @@ class IcebergCatalogHandlerTest {
         PolarisStorageActions.READ, PolarisStorageActions.LIST, PolarisStorageActions.WRITE);
   }
 
-  @Test
-  void registerTableWithVendedCredentialsDuplicatesClientAccessPropertiesToCredential() {
-    mockRegisterTableCatalog(false);
+  @ParameterizedTest
+  @CsvSource({"load", "register"})
+  void tableWithVendedCredentialsDuplicatesClientAccessPropertiesToCredential(String operation) {
+    Catalog catalog = mockRegisterTableCatalog(false);
+    if (operation.equals("load")) {
+      BaseTable table = baseTable();
+      when(catalog.loadTable(TABLE2)).thenReturn(table);
+    }
     when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
         .thenReturn(Optional.of(VENDED_CREDENTIALS));
     StorageAccessConfig storageAccessConfig =
@@ -331,8 +336,12 @@ class IcebergCatalogHandlerTest {
     IcebergCatalogHandler handler = newHandler();
 
     LoadTableResponse response =
-        handler.registerTable(
-            NS1, registerTableRequest(false), EnumSet.of(VENDED_CREDENTIALS), Optional.empty());
+        operation.equals("load")
+            ? handler
+                .loadTable(TABLE2, "all", null, EnumSet.of(VENDED_CREDENTIALS), Optional.empty())
+                .orElseThrow()
+            : handler.registerTable(
+                NS1, registerTableRequest(false), EnumSet.of(VENDED_CREDENTIALS), Optional.empty());
 
     assertThat(response.config())
         .containsEntry("fake.access.key", "AKIAFAKE")
@@ -362,7 +371,7 @@ class IcebergCatalogHandlerTest {
   }
 
   @Test
-  void registerTableScopesClientAccessPropertiesWithoutCredentials() {
+  void registerTableKeepsClientAccessPropertiesOnlyAtTopLevelWithoutCredentials() {
     mockRegisterTableCatalog(false);
     when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
         .thenReturn(Optional.of(VENDED_CREDENTIALS));
@@ -385,14 +394,7 @@ class IcebergCatalogHandlerTest {
     assertThat(response.config())
         .containsEntry(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-west-1")
         .doesNotContainKey("internal.endpoint");
-    assertThat(response.credentials())
-        .singleElement()
-        .satisfies(
-            credential ->
-                assertThat(credential.config())
-                    .containsExactly(
-                        Map.entry(
-                            StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-west-1")));
+    assertThat(response.credentials()).isEmpty();
   }
 
   @ParameterizedTest
@@ -437,17 +439,7 @@ class IcebergCatalogHandlerTest {
                 NS1, registerTableRequest(false), noDelegation, Optional.empty());
 
     assertThat(response.config()).isEqualTo(extraProperties);
-    if (withExtraProperties) {
-      assertThat(response.credentials())
-          .singleElement()
-          .satisfies(
-              credential -> {
-                assertThat(credential.prefix()).isEqualTo(TABLE_LOCATION);
-                assertThat(credential.config()).isEqualTo(extraProperties);
-              });
-    } else {
-      assertThat(response.credentials()).isEmpty();
-    }
+    assertThat(response.credentials()).isEmpty();
     assertVendedActions();
   }
 
@@ -678,6 +670,7 @@ class IcebergCatalogHandlerTest {
             .putCredential("fake.secret.key", "fakeSecret")
             .putExtraProperty("fake.access.key", "extraAccessKey")
             .putExtraProperty(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-east-2")
+            .putInternalProperty("internal.endpoint", "https://internal.example.com")
             .build();
     when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
         .thenReturn(storageAccessConfig);
@@ -693,10 +686,7 @@ class IcebergCatalogHandlerTest {
         .satisfies(
             (Credential c) -> {
               assertThat(c.prefix()).isEqualTo(TABLE_LOCATION);
-              assertThat(c.config())
-                  .containsAllEntriesOf(fakeCredentials)
-                  .containsEntry(
-                      StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-east-2");
+              assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(fakeCredentials);
             });
   }
 
@@ -730,7 +720,9 @@ class IcebergCatalogHandlerTest {
         StorageAccessConfig.builder()
             .putCredential("fake.access.key", "AKIAFAKE")
             .putCredential("fake.secret.key", "fakeSecret")
+            .putExtraProperty("fake.access.key", "extraAccessKey")
             .putExtraProperty(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-east-2")
+            .putInternalProperty("internal.endpoint", "https://internal.example.com")
             .build();
     when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
         .thenReturn(storageAccessConfig);
@@ -747,34 +739,54 @@ class IcebergCatalogHandlerTest {
         .satisfies(
             (Credential c) -> {
               assertThat(c.prefix()).isEqualTo(tableLocation);
-              assertThat(c.config())
-                  .containsAllEntriesOf(fakeCredentials)
-                  .containsEntry(
-                      StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-east-2");
+              assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(fakeCredentials);
             });
   }
 
-  @Test
-  void loadCredentialsReturnsClientAccessPropertiesWithoutCredentials() {
-    String tableLocation = "s3://fake-bucket/tables/table2";
+  @ParameterizedTest
+  @CsvSource({
+    "optimized, false, false",
+    "external, false, false",
+    "missing-location, false, false",
+    "optimized, true, false",
+    "external, true, false",
+    "missing-location, true, false",
+    "optimized, true, true",
+    "external, true, true",
+    "missing-location, true, true"
+  })
+  void loadCredentialsWithoutCredentialsPreservesVendingPreconditions(
+      String path, boolean supportsCredentialVending, boolean skipCredIndirection) {
     PolarisEntity leafEntity =
         new PolarisEntity(
             new PolarisBaseEntity.Builder()
                 .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
                 .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
                 .name(TABLE2.name())
-                .internalPropertiesAsMap(Map.of(IcebergTableLikeEntity.LOCATION, tableLocation))
+                .internalPropertiesAsMap(
+                    path.equals("optimized")
+                        ? Map.of(IcebergTableLikeEntity.LOCATION, TABLE_LOCATION)
+                        : Map.of())
                 .build());
     when(resolvedPath.getRawLeafEntity()).thenReturn(leafEntity);
 
-    LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
-    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+    Catalog catalog =
+        path.equals("external") ? mock(Catalog.class) : mock(LocalIcebergCatalog.class);
+    if (!path.equals("optimized")) {
+      BaseTable table = baseTable();
+      when(catalog.loadTable(TABLE2)).thenReturn(table);
+    }
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(accessDelegationModeResolver.resolve(any(), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+    when(realmConfig.getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION))
+        .thenReturn(skipCredIndirection);
 
     StorageAccessConfig storageAccessConfig =
         StorageAccessConfig.builder()
             .putExtraProperty(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-east-2")
             .putInternalProperty("internal.endpoint", "https://internal.example.com")
-            .supportsCredentialVending(false)
+            .supportsCredentialVending(supportsCredentialVending)
             .build();
     when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
         .thenReturn(storageAccessConfig);
@@ -782,18 +794,16 @@ class IcebergCatalogHandlerTest {
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
 
-    ImmutableLoadCredentialsResponse response = handler.loadCredentials(TABLE2, Optional.empty());
-
-    assertThat(response.credentials())
-        .singleElement()
-        .satisfies(
-            credential -> {
-              assertThat(credential.prefix()).isEqualTo(tableLocation);
-              assertThat(credential.config())
-                  .containsExactly(
-                      Map.entry(
-                          StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-east-2"));
-            });
+    if (supportsCredentialVending && !skipCredIndirection) {
+      assertThatThrownBy(() -> handler.loadCredentials(TABLE2, Optional.empty()))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("no credentials are available");
+    } else {
+      ImmutableLoadCredentialsResponse response = handler.loadCredentials(TABLE2, Optional.empty());
+      assertThat(response.credentials()).isEmpty();
+    }
+    assertVendedActions(
+        PolarisStorageActions.READ, PolarisStorageActions.LIST, PolarisStorageActions.WRITE);
   }
 
   /**
@@ -841,6 +851,9 @@ class IcebergCatalogHandlerTest {
         StorageAccessConfig.builder()
             .putCredential("fake.access.key", "AKIAFAKE")
             .putCredential("fake.secret.key", "fakeSecret")
+            .putExtraProperty("fake.access.key", "extraAccessKey")
+            .putExtraProperty(StorageAccessProperty.CLIENT_REGION.getPropertyName(), "us-east-2")
+            .putInternalProperty("internal.endpoint", "https://internal.example.com")
             .build();
     when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
         .thenReturn(storageAccessConfig);
