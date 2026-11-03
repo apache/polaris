@@ -96,13 +96,43 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
     // "no delegation". Other requested mechanisms are still preferred when they can be provided.
     EnumSet<AccessDelegationMode> delegationModes = EnumSet.copyOf(requestedModes);
     delegationModes.remove(NONE);
-    try {
-      return resolveDelegation(delegationModes, catalogEntity);
-    } catch (IllegalArgumentException e) {
-      LOGGER.debug(
-          "Requested delegation is unavailable and the client accepts none: {}", e.getMessage());
-      return Optional.empty();
+    if (delegationModes.equals(EnumSet.of(VENDED_CREDENTIALS))) {
+      Optional<String> disallowed = credentialVendingDisallowedReason(catalogEntity);
+      if (disallowed.isPresent()) {
+        LOGGER.debug(
+            "Credential vending is not allowed and the client accepts no delegation: {}",
+            disallowed.get());
+        return Optional.empty();
+      }
     }
+    return resolveDelegation(delegationModes, catalogEntity);
+  }
+
+  /**
+   * Returns the reason why {@link AccessDelegationMode#VENDED_CREDENTIALS} must be rejected for the
+   * catalog, or empty when vending is allowed. This is the only situation in which a requested mode
+   * is refused rather than degraded to another mode.
+   */
+  private Optional<String> credentialVendingDisallowedReason(
+      @Nullable CatalogEntity catalogEntity) {
+    if (isExternalCatalogCredentialVendingDisabled(catalogEntity)) {
+      return Optional.of(
+          "Credential vending is not enabled for this external catalog. Please consult "
+              + "applicable documentation for the catalog config property '"
+              + FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig()
+              + "' to enable this feature");
+    }
+    if (catalogEntity != null
+        && catalogEntity.isExternal()
+        && !realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, catalogEntity)) {
+      return Optional.of(
+          "Credential vending is not enabled for this federated catalog. Please consult "
+              + "applicable documentation for the catalog config property '"
+              + FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING.catalogConfig()
+              + "' to enable this feature");
+    }
+    return Optional.empty();
   }
 
   private Optional<AccessDelegationMode> resolveDelegation(
@@ -119,22 +149,9 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       // REMOTE_SIGNING does not involve Polaris vending credentials to the client, so the
       // credential-vending feature flags below do not apply to it.
       if (mode == VENDED_CREDENTIALS) {
-        if (isExternalCatalogCredentialVendingDisabled(catalogEntity)) {
-          throw new IllegalArgumentException(
-              "Credential vending is not enabled for this external catalog. Please consult "
-                  + "applicable documentation for the catalog config property '"
-                  + FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig()
-                  + "' to enable this feature");
-        }
-        if (catalogEntity != null
-            && catalogEntity.isExternal()
-            && !realmConfig.getConfig(
-                FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, catalogEntity)) {
-          throw new IllegalArgumentException(
-              "Credential vending is not enabled for this federated catalog. Please consult "
-                  + "applicable documentation for the catalog config property '"
-                  + FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING.catalogConfig()
-                  + "' to enable this feature");
+        Optional<String> disallowed = credentialVendingDisallowedReason(catalogEntity);
+        if (disallowed.isPresent()) {
+          throw new IllegalArgumentException(disallowed.get());
         }
       }
       LOGGER.debug("Single delegation mode requested: {}", mode);

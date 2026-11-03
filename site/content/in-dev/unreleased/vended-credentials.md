@@ -112,6 +112,11 @@ Polaris that returning the table without delegated access is acceptable:
 A request that lists only `vended-credentials` or `remote-signing` still fails as described above:
 without `none`, Polaris does not assume that the client can proceed on its own.
 
+Authorization follows the mechanisms the client asked for, not what Polaris ends up returning: a
+request with `none, vended-credentials` requires the same data-access privileges as one with
+`vended-credentials` alone, even when the table is returned without credentials. A request with
+`none` only is authorized like a request without the header.
+
 For catalogs that cannot vend credentials, configure the client to authenticate to the object
 store directly and omit the header. In Spark, for example, remove
 `spark.sql.catalog.<name>.header.X-Iceberg-Access-Delegation` and provide the storage credentials
