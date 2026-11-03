@@ -38,6 +38,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import com.azure.core.exception.HttpResponseException;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
@@ -62,6 +63,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -98,6 +100,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.iceberg.exceptions.ValidationException;
@@ -108,6 +111,7 @@ import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.CharSequenceSet;
+import org.apache.iceberg.util.JsonUtil;
 import org.apache.iceberg.util.LocationUtil;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
@@ -129,6 +133,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -1478,6 +1483,66 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, updateRequest))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("is not allowed outside of table location");
+  }
+
+  @Test
+  public void testNotificationRecordsWritePathTransitions() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    String tableLocation =
+        String.format("s3://my-bucket/path/to/data/my_table_%s/", UUID.randomUUID());
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+    @SuppressWarnings("resource")
+    LocalIcebergCatalog catalog = catalog();
+    TableIdentifier table = TableIdentifier.of(Namespace.of("parent"), "my_table");
+
+    String dataKey = IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY;
+    String metadataKey = IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY;
+    String dataPath1 = tableLocation + "data1";
+    String metadataPath1 = tableLocation + "metadata1";
+    String dataPath2 = tableLocation + "data2";
+    String metadataPath2 = tableLocation + "metadata2";
+
+    // set (CREATE), replace (UPDATE), then remove (UPDATE) both write paths
+    List<Map<String, String>> versions =
+        List.of(
+            Map.of(dataKey, dataPath1, metadataKey, metadataPath1),
+            Map.of(dataKey, dataPath2, metadataKey, metadataPath2),
+            Map.of());
+    for (int i = 0; i < versions.size(); i++) {
+      Map<String, String> properties = versions.get(i);
+      String metadataLocation = tableLocation + "metadata/v" + (i + 1) + ".metadata.json";
+      TableMetadata metadata =
+          TableMetadata.newTableMetadata(
+              SCHEMA, PartitionSpec.unpartitioned(), tableLocation, properties);
+      fileIO.addFile(metadataLocation, TableMetadataParser.toJson(metadata).getBytes(UTF_8));
+
+      NotificationRequest request = new NotificationRequest();
+      request.setNotificationType(i == 0 ? NotificationType.CREATE : NotificationType.UPDATE);
+      TableUpdateNotification update = new TableUpdateNotification();
+      update.setMetadataLocation(metadataLocation);
+      update.setTableName(table.name());
+      update.setTableUuid(metadata.uuid());
+      update.setTimestamp(230950845L + i);
+      request.setPayload(update);
+      catalog.sendNotification(table, request);
+
+      Map<String, String> recorded = readTableEntity(table).getInternalPropertiesAsMap();
+      Assertions.assertThat(recorded)
+          .containsEntry(IcebergTableLikeEntity.LOCATION, metadata.location());
+      if (properties.isEmpty()) {
+        Assertions.assertThat(recorded).doesNotContainKeys(dataKey, metadataKey);
+      } else {
+        Assertions.assertThat(recorded).containsAllEntriesOf(properties);
+      }
+      // the refresh checks the metadata file against the recorded locations
+      Assertions.assertThat(catalog.loadTable(table).properties()).containsAllEntriesOf(properties);
+    }
   }
 
   @Test
@@ -3088,6 +3153,62 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testRenameTableStopsWhenSourceWasAlreadyRenamed() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    final LocalIcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    createNonExistingNamespaces(namespace);
+
+    final TableIdentifier source = TableIdentifier.of(namespace, "rename_moved_src");
+    final TableIdentifier dest = TableIdentifier.of(namespace, "rename_moved_dst");
+    catalog.buildTable(source, SCHEMA).create();
+
+    AtomicInteger renameAttempts = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              if (renameAttempts.incrementAndGet() == 1) {
+                return new EntityResult(
+                    BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
+              }
+              return invocation.callRealMethod();
+            })
+        .when(spyMetaStore)
+        .renameEntity(any(), any(), any(), any(), any());
+    doAnswer(
+            invocation -> {
+              EntityResult loaded = (EntityResult) invocation.callRealMethod();
+              if (renameAttempts.get() == 0 || !loaded.isSuccess() || loaded.getEntity() == null) {
+                return loaded;
+              }
+              PolarisEntity moved =
+                  new IcebergTableLikeEntity.Builder(IcebergTableLikeEntity.of(loaded.getEntity()))
+                      .setName("already_moved")
+                      .build();
+              return new EntityResult(moved);
+            })
+        .when(spyMetaStore)
+        .loadEntity(any(), anyLong(), anyLong(), any());
+
+    Assertions.assertThatThrownBy(() -> catalog.renameTable(source, dest))
+        .isInstanceOf(NoSuchTableException.class)
+        .hasMessageContaining("rename_moved_src");
+    Assertions.assertThat(renameAttempts.get()).isEqualTo(1);
+    Assertions.assertThat(catalog.tableExists(source)).isTrue();
+    Assertions.assertThat(catalog.tableExists(dest)).isFalse();
+  }
+
+  @Test
   public void testRenameTableExhaustsRetriesAndReturns503() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
@@ -3456,6 +3577,161 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
       catalog.setMetaStoreManager(metaStoreManager);
       catalog.dropTable(TABLE, false);
     }
+  }
+
+  @Test
+  public void testRefreshRejectsMetadataWithLocationDifferentFromEntity() throws IOException {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    rewriteCurrentMetadata(table, json -> json.put("location", "s3://other-bucket"));
+
+    assertThatThrownBy(() -> catalog.loadTable(TABLE))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("does not match its stored location");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {TableProperties.WRITE_DATA_LOCATION, TableProperties.WRITE_METADATA_LOCATION})
+  public void testRefreshRejectsMetadataWithWritePathDifferentFromEntity(String property)
+      throws IOException {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    rewriteCurrentMetadata(
+        table, json -> ((ObjectNode) json.get("properties")).put(property, "s3://other-bucket"));
+
+    assertThatThrownBy(() -> catalog.loadTable(TABLE))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining(property);
+  }
+
+  @Test
+  public void testFirstCommitValidatesLocationsOfEntityWithoutRecordedLocations()
+      throws IOException {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    removeRecordedLocations(TABLE);
+    rewriteCurrentMetadata(
+        table,
+        json ->
+            ((ObjectNode) json.get("properties"))
+                .put(TableProperties.WRITE_DATA_LOCATION, "s3://other-bucket/data"));
+
+    Table loaded = catalog.loadTable(TABLE);
+    assertThatThrownBy(() -> loaded.updateProperties().set("some-key", "some-value").commit())
+        .isInstanceOf(ForbiddenException.class);
+  }
+
+  @Test
+  public void testRefreshAcceptsAnyLocationForEntityWithoutRecordedLocations() throws IOException {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    removeRecordedLocations(TABLE);
+    rewriteCurrentMetadata(table, json -> json.put("location", "s3://other-bucket"));
+
+    assertThat(catalog.loadTable(TABLE).location()).isEqualTo("s3://other-bucket");
+  }
+
+  @Test
+  public void testNotificationRecordsMovedTableLocation() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    String suffix = UUID.randomUUID().toString();
+    String location1 = String.format("s3://my-bucket/path/to/data/table1_%s", suffix);
+    String location2 = String.format("s3://my-bucket/path/to/data/table2_%s", suffix);
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+    @SuppressWarnings("resource")
+    LocalIcebergCatalog catalog = catalog();
+    TableIdentifier table = TableIdentifier.of(Namespace.of("parent"), "my_table");
+
+    String uuid = null;
+    for (String location : List.of(location1, location2)) {
+      String metadataLocation = location + "/metadata/v1.metadata.json";
+      TableMetadata metadata =
+          TableMetadata.newTableMetadata(
+              SCHEMA, PartitionSpec.unpartitioned(), location, ImmutableMap.of());
+      fileIO.addFile(metadataLocation, TableMetadataParser.toJson(metadata).getBytes(UTF_8));
+
+      NotificationRequest request = new NotificationRequest();
+      request.setNotificationType(uuid == null ? NotificationType.CREATE : NotificationType.UPDATE);
+      TableUpdateNotification update = new TableUpdateNotification();
+      update.setMetadataLocation(metadataLocation);
+      update.setTableName(table.name());
+      update.setTableUuid(metadata.uuid());
+      update.setTimestamp(uuid == null ? 230950845L : 230950846L);
+      request.setPayload(update);
+      catalog.sendNotification(table, request);
+      uuid = metadata.uuid();
+
+      assertThat(readTableEntity(table).getBaseLocation()).isEqualTo(location + "/");
+      assertThat(catalog.loadTable(table).location()).isEqualTo(location);
+    }
+  }
+
+  @Test
+  public void testFirstCommitRecordsLocationsOfEntityWithoutRecordedLocations() {
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+    removeRecordedLocations(TABLE);
+
+    catalog.loadTable(TABLE).updateProperties().set("some-key", "some-value").commit();
+
+    assertThat(readTableEntity(TABLE).getInternalPropertiesAsMap())
+        .containsKey(IcebergTableLikeEntity.LOCATION);
+  }
+
+  /** Overwrites the table's current metadata file in place with the given changes. */
+  private void rewriteCurrentMetadata(Table table, Consumer<ObjectNode> changes)
+      throws IOException {
+    TableMetadata current = ((BaseTable) table).operations().current();
+    ObjectNode json = (ObjectNode) JsonUtil.mapper().readTree(TableMetadataParser.toJson(current));
+    changes.accept(json);
+    fileIO.addFile(current.metadataFileLocation(), JsonUtil.mapper().writeValueAsBytes(json));
+  }
+
+  private List<PolarisEntityCore> catalogPath(Namespace namespace) {
+    EntityResult namespaceResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            namespace.toString());
+    return List.of(catalogEntity, namespaceResult.getEntity());
+  }
+
+  private IcebergTableLikeEntity readTableEntity(TableIdentifier identifier) {
+    return IcebergTableLikeEntity.of(
+        metaStoreManager
+            .readEntityByName(
+                polarisContext,
+                catalogPath(identifier.namespace()),
+                PolarisEntityType.TABLE_LIKE,
+                PolarisEntitySubType.ICEBERG_TABLE,
+                identifier.name())
+            .getEntity());
+  }
+
+  /** Removes the locations recorded on the table entity, as for entities written before 1.3.0. */
+  private void removeRecordedLocations(TableIdentifier identifier) {
+    IcebergTableLikeEntity entity = readTableEntity(identifier);
+    Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
+    internalProperties.remove(IcebergTableLikeEntity.LOCATION);
+    internalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY);
+    internalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
+    EntityResult result =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            polarisContext,
+            catalogPath(identifier.namespace()),
+            new IcebergTableLikeEntity.Builder(entity)
+                .setInternalProperties(internalProperties)
+                .build());
+    assertThat(result.isSuccess()).isTrue();
   }
 
   @Test
