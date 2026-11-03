@@ -39,14 +39,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - S3 storage configurations gain an optional string field, `credentialVendingMechanism`. A catalog
   that leaves it empty uses the server's default mechanism, STS AssumeRole, and management API
-  responses omit the field for it; `STS` selects the same mechanism explicitly and is the only value
-  this release supports. Mechanisms are CDI beans discovered by their `@Identifier` at startup,
-  and each one can validate the catalogs that select it at create and update. A realm lists the
-  explicit mechanisms it accepts in the new `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` feature
-  (default `[STS]`), enforced at catalog create and update and when the server builds the storage
-  integration that vends credentials for a catalog. A catalog that names a mechanism this server
-  does not provide is refused at create and update, and whenever a credential is vended for it,
-  with "S3 credential vending mechanism `<id>` is not available in this server".
+  responses omit the field for it; `STS` selects the same mechanism explicitly. This release
+  supports two values, `STS` and `R2_LOCAL_SIGNING`. Mechanisms are CDI beans discovered by their
+  `@Identifier` at startup, and each one can validate the catalogs that select it at create and
+  update. A realm lists the explicit mechanisms it accepts in the new
+  `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` feature (default `[STS]`), enforced at catalog create
+  and update and when the server builds the storage integration that vends credentials for a
+  catalog. A catalog that names a mechanism this server does not provide is refused at create and
+  update, and whenever a credential is vended for it, with "S3 credential vending mechanism `<id>`
+  is not available in this server".
 
 ### Upgrade notes
 
@@ -57,7 +58,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Rolling upgrades: a node still running an earlier release does not know `credentialVendingMechanism`.
   It ignores the field in a stored configuration and vends through STS, and it drops the field from
   the catalog create and update requests it serves. Keep S3 storage configurations unchanged during
-  the upgrade.
+  the upgrade. A node without the Cloudflare R2 extension cannot vend credentials for an
+  `R2_LOCAL_SIGNING` catalog, so create such catalogs only after every node runs a build that
+  includes the extension.
 - Polaris-managed AWS SDK clients now use Apache HttpClient 5, which disables HTTP
   `Expect: 100-continue` by default. Set `polaris.storage.expect-continue-enabled=true`
   to preserve the previous behavior. Iceberg S3 clients continue to use Apache HttpClient 4
@@ -95,6 +98,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added `namespaces update` to set and remove namespace properties
 - NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
+- Cloudflare R2 credential vending. The new extension module
+  `polaris-extensions-storage-cloudflare-r2` provides the `R2_LOCAL_SIGNING` credential vending
+  mechanism for S3 catalogs that use an R2 endpoint. The server signs temporary R2 credentials
+  locally from a parent token in its configuration, scoped to the table's location. Set the default
+  parent token with `polaris.storage.cloudflare-r2.access-key` and `.secret-key`, and named tokens
+  with `polaris.storage.cloudflare-r2.<storage>.access-key` and `.secret-key`. Named tokens
+  apply only when `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` is true. A realm opts in by adding
+  `R2_LOCAL_SIGNING` to `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS`, whose default stays `[STS]`.
+  The server bundle includes the module.
 
 ### Changes
 

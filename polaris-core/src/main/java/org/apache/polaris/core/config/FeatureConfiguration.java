@@ -410,7 +410,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .description(
                   "The credential vending mechanisms an S3 catalog in this realm may name explicitly. Names\n"
                       + "are case-sensitive and must match a mechanism's identifier exactly, for example STS.\n"
-                      + "Apache Polaris supports STS, which is STS AssumeRole. A catalog that\n"
+                      + "Apache Polaris supports STS, which is STS AssumeRole, and R2_LOCAL_SIGNING, which\n"
+                      + "the Cloudflare R2 storage extension provides. A catalog that\n"
                       + "leaves credentialVendingMechanism empty uses the server's default mechanism and is\n"
                       + "always allowed. Realm-level only; catalog properties cannot widen it. Enforced at\n"
                       + "catalog create and update, and when the server builds the storage integration that\n"

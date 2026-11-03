@@ -74,6 +74,10 @@ All properties listed here are **runtime** properties and can be changed without
 
 {{% include-config-section "smallrye-polaris_storage" %}}
 
+### `polaris.storage.cloudflare-r2`
+
+{{% include-config-section "smallrye-polaris_storage_cloudflare_r2" %}}
+
 ### `polaris.storage-credential-cache`
 
 {{% include-config-section "smallrye-polaris_storage_credential_cache" %}}
