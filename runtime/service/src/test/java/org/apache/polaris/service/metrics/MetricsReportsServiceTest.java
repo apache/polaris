@@ -691,6 +691,41 @@ class MetricsReportsServiceTest {
   }
 
   @Test
+  void laterPagesReuseTheWindowOfTheFirstPage() {
+    QueryMetricsRequest first = requestFor(SCAN, NAMESPACE, TABLE);
+    String token = firstPageToken(first);
+
+    // Rebuild the service on a later clock: the default window must not slide.
+    Clock later = Clock.fixed(Instant.ofEpochMilli(NOW_MS + 3_600_000L), ZoneOffset.UTC);
+    MetricsReportsService laterService =
+        new MetricsReportsService(
+            authorizer,
+            principal,
+            factory,
+            queryProvider,
+            new DefaultCatalogPrefixParser(),
+            realmConfig,
+            later);
+    MetricsQuerySpi backend = mock(MetricsQuerySpi.class);
+    List<Long> captured = new ArrayList<>();
+    when(backend.listReports(any(), anyLong(), any(), any(), any(), any(PageToken.class)))
+        .thenAnswer(
+            invocation -> {
+              captured.add(invocation.getArgument(3));
+              return Page.fromItems(List.of());
+            });
+    when(queryProvider.get()).thenReturn(backend);
+
+    laterService.queryTableMetrics(
+        CATALOG,
+        withPaging(requestFor(SCAN, NAMESPACE, TABLE), token, null),
+        realmContext,
+        securityContext);
+
+    assertThat(captured).containsExactly(NOW_MS - Duration.ofDays(7).toMillis());
+  }
+
+  @Test
   void pageTokenIgnoresPageSizeAndObjectOrder() {
     QueryMetricsRequest original =
         new QueryMetricsRequest(
@@ -708,7 +743,7 @@ class MetricsReportsServiceTest {
 
   @Test
   void malformedPageTokenIsRejected() {
-    for (String token : new String[] {"no-separator", "fingerprint-only."}) {
+    for (String token : new String[] {"no-separator", "fingerprint.123.", "fp.not-a-number.x"}) {
       QueryMetricsRequest request = withPaging(requestFor(SCAN, NAMESPACE, TABLE), token, null);
       assertThatThrownBy(
               () -> service.queryTableMetrics(CATALOG, request, realmContext, securityContext))

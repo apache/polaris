@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotFoundException;
@@ -186,7 +187,8 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
             snapshotsByTable,
             request.getTimestampFrom(),
             request.getTimestampTo());
-    String backendPageToken = unwrapPageToken(request.getPageToken(), queryFingerprint);
+    ResumedPage resumed = unwrapPageToken(request.getPageToken(), queryFingerprint);
+    String backendPageToken = resumed == null ? null : resumed.backendToken();
 
     ResolvedTables resolved =
         resolveAndAuthorizeTableMetrics(catalogName, List.copyOf(snapshotsByTable.keySet()));
@@ -221,8 +223,13 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
     }
     PageToken pt = PageToken.build(backendPageToken, requestedPageSize, maxPageSize, () -> true);
 
-    // Without a lower bound the query would cover the full history of every requested table.
+    // Without a lower bound the query would cover the full history of every requested table. The
+    // window is fixed when the first page is served and carried in the page token, so that later
+    // pages query the same range instead of one that slides with the clock.
     Long timestampFrom = request.getTimestampFrom();
+    if (resumed != null) {
+      timestampFrom = resumed.timestampFrom();
+    }
     if (timestampFrom == null) {
       long windowDays =
           Math.max(
@@ -240,7 +247,13 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
 
     String backendNextToken = page.encodedResponseToken();
     String nextPageToken =
-        backendNextToken == null ? null : queryFingerprint + TOKEN_SEPARATOR + backendNextToken;
+        backendNextToken == null
+            ? null
+            : String.join(
+                String.valueOf(TOKEN_SEPARATOR),
+                queryFingerprint,
+                Long.toString(timestampFrom),
+                backendNextToken);
 
     return toResponse(
         nextPageToken,
@@ -301,25 +314,34 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
     hasher.putInt(value.length()).putString(value, StandardCharsets.UTF_8);
   }
 
+  /** A verified page token: the lower bound the listing started with and the backend's token. */
+  private record ResumedPage(long timestampFrom, String backendToken) {}
+
   /**
-   * Splits a client-supplied page token into its query fingerprint and the backend token, and
-   * verifies that the token was issued for this query.
+   * Splits a client-supplied page token into its query fingerprint, the pinned lower bound and the
+   * backend token, and verifies that the token was issued for this query.
    *
-   * @return the backend token, or {@code null} when the request starts a new listing
+   * @return the parts of the token, or {@code null} when the request starts a new listing
    */
-  private static String unwrapPageToken(String pageToken, String expectedFingerprint) {
+  private static ResumedPage unwrapPageToken(String pageToken, String expectedFingerprint) {
     if (pageToken == null || pageToken.isEmpty()) {
       return null;
     }
-    int separator = pageToken.indexOf(TOKEN_SEPARATOR);
-    if (separator < 0 || separator == pageToken.length() - 1) {
+    String[] parts = pageToken.split(Pattern.quote(String.valueOf(TOKEN_SEPARATOR)), 3);
+    if (parts.length != 3 || parts[2].isEmpty()) {
       throw new IllegalArgumentException("Invalid page token");
     }
-    if (!expectedFingerprint.equals(pageToken.substring(0, separator))) {
+    long timestampFrom;
+    try {
+      timestampFrom = Long.parseLong(parts[1]);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("Invalid page token", e);
+    }
+    if (!expectedFingerprint.equals(parts[0])) {
       throw new IllegalArgumentException(
           "Page token was issued for a different query; repeat the original request parameters");
     }
-    return pageToken.substring(separator + 1);
+    return new ResumedPage(timestampFrom, parts[2]);
   }
 
   private static TableIdentifier toTableIdentifier(List<String> identifier) {
