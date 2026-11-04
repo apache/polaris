@@ -39,8 +39,8 @@ paths:
         `pageSize` hint, and may return all results in a single response.
       operationId: listDirectories
       parameters:
-        - $ref: '#/components/parameters/page-token'
-        - $ref: '#/components/parameters/page-size'
+        - $ref: '#/components/parameters/directory-page-token'
+        - $ref: '#/components/parameters/directory-page-size'
       responses:
         200:
           $ref: '#/components/responses/ListDirectoriesResponse'
@@ -161,7 +161,7 @@ paths:
       summary: Update a directory under the given namespace
       operationId: updateDirectory
       description: >
-        Update the mutable configuration of a directory (`filter`, `scan-schedule` and `properties`).
+        Update the mutable configuration of a directory (`filter` and `properties`).
         Only the fields present in the request are changed, and a provided field replaces the existing value.
         The `name` and `base-location` cannot be changed. The directory inventory table and its
         history are preserved. The new filter applies from the next scan.
@@ -268,15 +268,15 @@ paths:
 
 components:
   parameters:
-    page-token:
+    directory-page-token:
       name: pageToken
       in: query
       description: Opaque token returned as `next-page-token` by a previous response. Omit it to start listing.
       required: false
       schema:
-        $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+        $ref: '#/components/schemas/DirectoryPageToken'
 
-    page-size:
+    directory-page-size:
       name: pageSize
       in: query
       description: >
@@ -317,6 +317,16 @@ components:
       example: "vended-credentials"
 
   schemas:
+    DirectoryPageToken:
+      description: >
+        An opaque token used to paginate the list of directories. The server returns it as
+        `next-page-token` when more results may be available, and the client passes it unchanged as the
+        `pageToken` query parameter to fetch the next page. The client does not need to send a
+        `pageToken` to start paginating: any response may be paginated, whether or not the request
+        carried a `pageToken` or a `pageSize`. A `null` or missing `next-page-token` means there are no
+        more results.
+      type: [ string, "null" ]
+
     DirectoryFilter:
       type: object
       description: >
@@ -334,15 +344,6 @@ components:
             type: string
           description: A list of regular expressions (`java.util.regex` syntax) matched against the object URI. An object matching any pattern is excluded, even if it also matches an include pattern.
 
-    ScanSchedule:
-      type: object
-      description: >
-        Describes when an external scanning service should re-scan the directory.
-      properties:
-        cron:
-          type: string
-          description: Cron expression describing when scans should run (e.g. `0 * * * *` for the top of every hour).
-
     CreateDirectoryRequest:
       type: object
       required:
@@ -357,8 +358,6 @@ components:
           description: The external object store location to use as a root for scanning objects (e.g. s3://bucket/path/). This is where the scanned objects live, not the location of the Iceberg inventory table, which is assigned by Polaris.
         filter:
           $ref: '#/components/schemas/DirectoryFilter'
-        scan-schedule:
-          $ref: '#/components/schemas/ScanSchedule'
         properties:
           type: object
           additionalProperties:
@@ -371,8 +370,6 @@ components:
       properties:
         filter:
           $ref: '#/components/schemas/DirectoryFilter'
-        scan-schedule:
-          $ref: '#/components/schemas/ScanSchedule'
         properties:
           type: object
           additionalProperties:
@@ -389,8 +386,6 @@ components:
 
         - `filter` (OPTIONAL): include and exclude patterns for object filtering
 
-        - `scan-schedule` (OPTIONAL): schedule describing when an external service should re-scan the directory
-
         - `properties` (OPTIONAL): properties for the directory passed on creation
       required:
         - name
@@ -402,8 +397,6 @@ components:
           type: string
         filter:
           $ref: '#/components/schemas/DirectoryFilter'
-        scan-schedule:
-          $ref: '#/components/schemas/ScanSchedule'
         properties:
           type: object
           additionalProperties:
@@ -440,7 +433,7 @@ components:
       type: object
       properties:
         next-page-token:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+          $ref: '#/components/schemas/DirectoryPageToken'
         identifiers:
           type: array
           uniqueItems: true

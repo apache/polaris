@@ -26,11 +26,6 @@ weight: 450
 
 {{< alert important >}}
 Directories are in beta. Please use it with caution and report any issue if encountered.
-
-The Directories API is disabled by default. Enable it with the `ENABLE_DIRECTORIES` feature flag
-(`polaris.features."ENABLE_DIRECTORIES"=true`, see [Configuration]({{% ref "configuration/configuration-reference" %}})).
-When it is disabled, all the directories endpoints (list, create, get, update, drop and scan) return `501 Not Implemented`
-and are not advertised in the catalog configuration.
 {{< /alert >}}
 
 Directories make objects (including unstructured data like images, videos, documents, and other objects) discoverable alongside
@@ -46,7 +41,7 @@ access unstructured data with little or no extra work (accessing the object itse
 A directory has two main parts:
 
 1. **Directory configuration** — stored by the Polaris server. It describes _where_ the data lives,
-   how to authenticate, which objects to include, and how often to re-scan. The configuration "lives" in a namespace.
+   how to authenticate, and which objects to include. The configuration "lives" in a namespace.
 2. **Directory table** — an Iceberg table serving as the inventory of all objects contained in the directory, one row per object discovered during a scan.
    The directory table is named after the configuration, with the `__inventory` suffix (for example `product-images__inventory`), because a directory and a table cannot share a name in a namespace.
 
@@ -67,7 +62,6 @@ A directory is described by the following fields:
 | `name` | `string` | Yes | The name of the directory. It is used in REST endpoint paths and is used, followed by the `__inventory` suffix, as the name of the corresponding Iceberg table. |
 | `base-location` | `string` | Yes | The external object store location to use as a root for scanning objects; this is not the location of the Iceberg inventory table, which is assigned by Polaris (for example `s3://my-bucket/images/`, `gs://my-bucket/docs/`, or `file:///data/local/`). |
 | `filter` | `object` | No | Include and exclude patterns that control which objects are added to the directory table during a scan. See [Filter](#filter). |
-| `scan-schedule` | `object` | No | Object representing a scan schedule (trigger, cron, ...). |
 
 ### Storage access
 
@@ -108,9 +102,6 @@ POST /polaris/v1/{prefix}/namespaces/{namespace}/directories
   "base-location": "s3://warehouse/product-images/",
   "filter": {
     "include": [".*\\.jpg$", ".*\\.png$"]
-  },
-  "scan-schedule": {
-    "cron": "0 * * * *"
   }
 }
 ```
@@ -137,13 +128,13 @@ directory configuration (see [Configuration](#configuration)).
 
 **GET** `/polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}`
 
-Returns the full configuration of the specified directory, including filter and scan schedule.
+Returns the full configuration of the specified directory, including its filter.
 
 ### Update a directory
 
 **POST** `/polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}`
 
-Updates the `filter`, `scan-schedule` and `properties` of the directory. Only the fields present in the request
+Updates the `filter` and `properties` of the directory. Only the fields present in the request
 are changed, and a provided field replaces the existing value. The `name` and `base-location` cannot be changed.
 The directory table and its history are preserved, and the new filter applies from the next scan.
 
@@ -166,9 +157,9 @@ the number of objects recorded in the table:
 ```
 
 Polaris lists the `base-location` with read-only credentials scoped to that location, and requires the
-`TABLE_WRITE_DATA` privilege on the directory table. The scan is synchronous and does not run on the
-`scan-schedule`: it is up to the caller (or an [external service](#external-services-scanning-services))
-to trigger it periodically. If the scan fails, the directory table remains unchanged.
+`TABLE_WRITE_DATA` privilege on the directory table. The scan is synchronous and Polaris does not schedule
+it: it is up to the caller (or an [external service](#external-services-scanning-services)) to trigger it
+periodically. If the scan fails, the directory table remains unchanged.
 
 The scan populates `file_uri`, `content_type` (guessed from the
 file name), `size` and `last_modified` (as reported by the object store); the other columns are left empty.
@@ -244,11 +235,11 @@ sequenceDiagram
     participant Store as Object Store
     participant Table as Directory (Iceberg) Table
 
-    Note over Scanner: Triggered by scan-schedule
+    Note over Scanner: Triggered by the service scheduler
     Scanner->>Polaris: GET /polaris/v1/{prefix}/namespaces/{ns}/directories
     Polaris-->>Scanner: list of directory names
     Scanner->>Polaris: GET /polaris/v1/{prefix}/namespaces/{ns}/directories/{name}
-    Polaris-->>Scanner: directory config (base-location, filter, scan-schedule)
+    Polaris-->>Scanner: directory config (base-location, filter)
 
     Scanner->>Store: list objects under base-location
     Store-->>Scanner: object metadata (uri, size, checksum, ...)
@@ -257,7 +248,7 @@ sequenceDiagram
     Scanner->>Table: append new / update changed / remove deleted rows
     Table-->>Scanner: new snapshot committed
 
-    Note over Scanner: sleep until next scan-schedule tick
+    Note over Scanner: wait for the next trigger
 ```
 
 1. **Discovery** — A service calls the
@@ -272,9 +263,8 @@ sequenceDiagram
    table, appending new objects, updating changed objects, and removing objects that no longer exist on
    the object store. This produces a new Iceberg table snapshot.
 
-4. **Scheduling** — The service respects the directory's `scan-schedule` to determine how
-   frequently to repeat the scan. For example, a `scan-schedule` with `cron` set to `0 * * * *`
-   means the service should re-scan at the top of every hour.
+4. **Scheduling** — Polaris does not define when a directory is re-scanned. The service decides
+   when to repeat the scan, for example on a fixed interval or when the object store reports changes.
 
 ### Deployment model
 
@@ -291,4 +281,4 @@ operate on different directories for horizontal scalability.
 
 If a scan fails (for example due to a transient network error or permission issue), the directory 
 table remains unchanged. 
-The service should retry on the next scan cycle according to the configured `scan-schedule`.
+The service should retry on its next scan cycle.

@@ -1660,11 +1660,14 @@ paths:
       tags:
         - Directory API
       summary: List all directory identifiers underneath a given namespace
-      description: Return all directory identifiers under this namespace
+      description: |
+        Return the directory identifiers under this namespace. The identifiers are those of the directories (for example `product-images`), not of their `__inventory` tables.
+
+        The response may be paginated: clients should always check `next-page-token` and, when present, pass it as `pageToken` to fetch the next page. Neither `pageToken` nor `pageSize` is required on the first request. The server decides the actual page size, which may be smaller or larger than the `pageSize` hint, and may return all results in a single response.
       operationId: listDirectories
       parameters:
-        - $ref: '#/components/parameters/page-token'
-        - $ref: '#/components/parameters/page-size'
+        - $ref: '#/components/parameters/directory-page-token'
+        - $ref: '#/components/parameters/directory-page-size'
       responses:
         '200':
           $ref: '#/components/responses/ListDirectoriesResponse'
@@ -1720,7 +1723,8 @@ paths:
                 NamespaceNotFound:
                   $ref: '#/components/examples/NoSuchNamespaceError'
         '409':
-          description: Conflict - The directory already exists under the given namespace
+          description: |
+            Conflict - The directory already exists under the given namespace, or its `<name>__inventory` table name is already used by another table or directory in the namespace
           content:
             application/json:
               schema:
@@ -1769,6 +1773,43 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
+    post:
+      tags:
+        - Directory API
+      summary: Update a directory under the given namespace
+      operationId: updateDirectory
+      description: |
+        Update the mutable configuration of a directory (`filter` and `properties`). Only the fields present in the request are changed, and a provided field replaces the existing value. The `name` and `base-location` cannot be changed. The directory inventory table and its history are preserved. The new filter applies from the next scan.
+      parameters:
+        - $ref: '#/components/parameters/polaris-directory-data-access'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDirectoryRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/LoadDirectoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - NoSuchTableError, directory to update does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                DirectoryToUpdateDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTableError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
     delete:
       tags:
         - Directory API
@@ -1808,7 +1849,7 @@ paths:
       summary: Scan a directory and refresh its inventory table
       operationId: scanDirectory
       description: |
-        Lists the objects under the directory `base_location`, applies the configured filter and replaces the content of the directory inventory table with the result in a single commit. If the scan fails, the inventory table is left unchanged.
+        Lists the objects under the directory `base-location`, applies the configured filter and replaces the content of the directory inventory table with the result in a single commit. If the scan fails, the inventory table is left unchanged.
       responses:
         '200':
           $ref: '#/components/responses/ScanDirectoryResponse'
@@ -5166,11 +5207,17 @@ components:
             settings for storage access, such as the client region for S3.
           items:
             $ref: '#/components/schemas/StorageAccessConfig'
+    DirectoryPageToken:
+      description: |
+        An opaque token used to paginate the list of directories. The server returns it as `next-page-token` when more results may be available, and the client passes it unchanged as the `pageToken` query parameter to fetch the next page. The client does not need to send a `pageToken` to start paginating: any response may be paginated, whether or not the request carried a `pageToken` or a `pageSize`. A `null` or missing `next-page-token` means there are no more results.
+      type:
+        - string
+        - 'null'
     ListDirectoriesResponse:
       type: object
       properties:
         next-page-token:
-          $ref: '#/components/schemas/PageToken'
+          $ref: '#/components/schemas/DirectoryPageToken'
         identifiers:
           type: array
           uniqueItems: true
@@ -5179,42 +5226,32 @@ components:
     DirectoryFilter:
       type: object
       description: |
-        Controls which objects are included in the directory table during a scan. If no filter is set, all objects found under the directory base_location are included.
+        Controls which objects are included in the directory table during a scan. If no filter is set, all objects found under the directory base-location are included.
       properties:
         include:
           type: array
           items:
             type: string
-          description: A list of regular expressions matched against the object URI. An object is included if it matches at least one pattern (or if `include` is omitted).
+          description: A list of regular expressions (`java.util.regex` syntax) matched against the object URI. An object is included if it matches at least one pattern (or if `include` is omitted).
         exclude:
           type: array
           items:
             type: string
-          description: A list of regular expressions matched against the object URI. An object matching any pattern is excluded, even if it also matches an include pattern.
-    ScanSchedule:
-      type: object
-      description: |
-        Describes when an external scanning service should re-scan the directory.
-      properties:
-        cron:
-          type: string
-          description: Cron expression describing when scans should run (e.g. `0 * * * *` for the top of every hour).
+          description: A list of regular expressions (`java.util.regex` syntax) matched against the object URI. An object matching any pattern is excluded, even if it also matches an include pattern.
     CreateDirectoryRequest:
       type: object
       required:
         - name
-        - base_location
+        - base-location
       properties:
         name:
           type: string
           description: The name of the directory. It is used in REST endpoint paths and is used, followed by the `__inventory` suffix, as the name of the corresponding Iceberg table.
-        base_location:
+        base-location:
           type: string
           description: The external object store location to use as a root for scanning objects (e.g. s3://bucket/path/). This is where the scanned objects live, not the location of the Iceberg inventory table, which is assigned by Polaris.
         filter:
           $ref: '#/components/schemas/DirectoryFilter'
-        scan-schedule:
-          $ref: '#/components/schemas/ScanSchedule'
         properties:
           type: object
           additionalProperties:
@@ -5224,22 +5261,19 @@ components:
       description: |
         Directory information.
         - `name` (REQUIRED): name of the directory
-        - `base_location` (REQUIRED): root location of the directory on the object store
+        - `base-location` (REQUIRED): root location of the directory on the object store
         - `filter` (OPTIONAL): include and exclude patterns for object filtering
-        - `scan-schedule` (OPTIONAL): schedule describing when an external service should re-scan the directory
         - `properties` (OPTIONAL): properties for the directory passed on creation
       required:
         - name
-        - base_location
+        - base-location
       properties:
         name:
           type: string
-        base_location:
+        base-location:
           type: string
         filter:
           $ref: '#/components/schemas/DirectoryFilter'
-        scan-schedule:
-          $ref: '#/components/schemas/ScanSchedule'
         properties:
           type: object
           additionalProperties:
@@ -5259,6 +5293,17 @@ components:
             settings for storage access, such as the client region for S3.
           items:
             $ref: '#/components/schemas/StorageAccessConfig'
+    UpdateDirectoryRequest:
+      type: object
+      description: |
+        Fields to update on a directory. Omitted fields are left unchanged.
+      properties:
+        filter:
+          $ref: '#/components/schemas/DirectoryFilter'
+        properties:
+          type: object
+          additionalProperties:
+            type: string
     ScanDirectoryResponse:
       description: Result of a directory scan.
       type: object
@@ -6178,6 +6223,22 @@ components:
       schema:
         type: string
       example: sales
+    directory-page-token:
+      name: pageToken
+      in: query
+      description: Opaque token returned as `next-page-token` by a previous response. Omit it to start listing.
+      required: false
+      schema:
+        $ref: '#/components/schemas/DirectoryPageToken'
+    directory-page-size:
+      name: pageSize
+      in: query
+      description: |
+        A hint for the maximum number of results per page. The server decides the actual page size and may return fewer or more results, or all of them at once.
+      required: false
+      schema:
+        type: integer
+        minimum: 1
     polaris-directory-data-access:
       name: Polaris-Directory-Access-Delegation
       in: header

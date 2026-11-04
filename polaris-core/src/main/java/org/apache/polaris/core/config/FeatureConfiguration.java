@@ -576,18 +576,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false) // beta feature, keep it off by default
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean> ENABLE_DIRECTORIES =
-      PolarisConfiguration.<Boolean>builder()
-          .key("ENABLE_DIRECTORIES")
-          .description(
-              "If true, the directories endpoints are enabled and advertised to clients in the"
-                  + " catalog configuration response. If false, the endpoints return 501 Not"
-                  + " Implemented. This is a beta feature: the API is under active development and"
-                  + " may change in a backward-incompatible way. It is disabled by default; enable"
-                  + " it with caution and report any issues encountered.")
-          .defaultValue(false) // beta feature, keep it off by default
-          .buildFeatureConfiguration();
-
   public static final FeatureConfiguration<Boolean> ENABLE_OPENLINEAGE_INGEST =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_OPENLINEAGE_INGEST")
