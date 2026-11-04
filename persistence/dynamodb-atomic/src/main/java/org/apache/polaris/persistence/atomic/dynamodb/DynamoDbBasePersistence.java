@@ -60,11 +60,12 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.BatchGetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.Delete;
-import software.amazon.awssdk.services.dynamodb.model.KeysAndAttributes;
+import software.amazon.awssdk.services.dynamodb.model.Get;
+import software.amazon.awssdk.services.dynamodb.model.ItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.Put;
+import software.amazon.awssdk.services.dynamodb.model.TransactGetItem;
 import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
 import software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException;
 import software.amazon.awssdk.services.dynamodb.model.TransactionConflictException;
@@ -82,6 +83,7 @@ import software.amazon.awssdk.services.dynamodb.model.TransactionConflictExcepti
  *   <li>An update is a compare-and-set on {@code entityVersion} and {@code grantRecordsVersion}.
  *   <li>A rename or re-parent moves the name sentinel in the same transaction as that
  *       compare-and-set.
+ *   <li>Multi-entity lookups read with {@code TransactGetItems}, so they see one snapshot.
  * </ul>
  *
  * <p>This class currently covers entity writes and lookups. Listing, multi-entity writes, grant
@@ -90,16 +92,16 @@ import software.amazon.awssdk.services.dynamodb.model.TransactionConflictExcepti
  */
 public class DynamoDbBasePersistence implements BasePersistence {
 
-  /** DynamoDB's limit on keys per {@code BatchGetItem} request. */
-  private static final int MAX_BATCH_GET_KEYS = 100;
+  /** DynamoDB's limit on items per {@code TransactGetItems} request. */
+  private static final int MAX_TRANSACT_GET_ITEMS = 100;
 
-  /** Upper bound on re-requests of keys DynamoDB returns as unprocessed. */
-  private static final int MAX_BATCH_GET_ATTEMPTS = 10;
+  /** Upper bound on attempts of a snapshot read cancelled by concurrent writes. */
+  private static final int MAX_TRANSACT_GET_ATTEMPTS = 5;
 
-  /** First wait before re-requesting unprocessed keys; doubles on each attempt, capped. */
-  private static final long BATCH_GET_BASE_BACKOFF_MILLIS = 20;
+  /** First wait before retrying a cancelled snapshot read; doubles on each attempt, capped. */
+  private static final long TRANSACT_GET_BASE_BACKOFF_MILLIS = 20;
 
-  private static final long BATCH_GET_MAX_BACKOFF_MILLIS = 1_000;
+  private static final long TRANSACT_GET_MAX_BACKOFF_MILLIS = 1_000;
 
   /** Re-reads a delete may do when a concurrent update changes the entity's versions. */
   private static final int MAX_DELETE_ATTEMPTS = 3;
@@ -436,9 +438,10 @@ public class DynamoDbBasePersistence implements BasePersistence {
   }
 
   /**
-   * Strongly consistent batch read of entity items, in chunks of {@value #MAX_BATCH_GET_KEYS}. A
-   * {@code null} projection returns whole items. Ids are de-duplicated, since {@code BatchGetItem}
-   * rejects repeated keys.
+   * Reads entity items as a consistent snapshot with {@code TransactGetItems}, in chunks of {@value
+   * #MAX_TRANSACT_GET_ITEMS}. Each chunk is its own snapshot, so a lookup of more ids than that is
+   * consistent per chunk only. A {@code null} projection returns whole items. Ids are
+   * de-duplicated, since {@code TransactGetItems} rejects repeated keys.
    */
   private List<Map<String, AttributeValue>> batchReadEntities(
       List<PolarisEntityId> entityIds, @Nullable String projection) {
@@ -448,47 +451,60 @@ public class DynamoDbBasePersistence implements BasePersistence {
     }
     List<Map<String, AttributeValue>> keys = new ArrayList<>(keysById.values());
     List<Map<String, AttributeValue>> items = new ArrayList<>();
-    for (int start = 0; start < keys.size(); start += MAX_BATCH_GET_KEYS) {
-      List<Map<String, AttributeValue>> chunk =
-          keys.subList(start, Math.min(start + MAX_BATCH_GET_KEYS, keys.size()));
-      KeysAndAttributes.Builder request =
-          KeysAndAttributes.builder().keys(chunk).consistentRead(true);
-      if (projection != null) {
-        request
-            .projectionExpression(projection)
-            .expressionAttributeNames(
-                Map.of(
-                    "#id", A_ID,
-                    "#cid", A_CATALOG_ID,
-                    "#ev", A_ENTITY_VERSION,
-                    "#grv", A_GRANT_RECORDS_VERSION));
+    for (int start = 0; start < keys.size(); start += MAX_TRANSACT_GET_ITEMS) {
+      List<TransactGetItem> gets = new ArrayList<>();
+      for (Map<String, AttributeValue> key :
+          keys.subList(start, Math.min(start + MAX_TRANSACT_GET_ITEMS, keys.size()))) {
+        Get.Builder get = Get.builder().tableName(tableName).key(key);
+        if (projection != null) {
+          get.projectionExpression(projection)
+              .expressionAttributeNames(
+                  Map.of(
+                      "#id", A_ID,
+                      "#cid", A_CATALOG_ID,
+                      "#ev", A_ENTITY_VERSION,
+                      "#grv", A_GRANT_RECORDS_VERSION));
+        }
+        gets.add(TransactGetItem.builder().get(get.build()).build());
       }
-      Map<String, KeysAndAttributes> pending = Map.of(tableName, request.build());
-      for (int attempt = 0; !pending.isEmpty(); attempt++) {
-        if (attempt == MAX_BATCH_GET_ATTEMPTS) {
-          throw new IllegalStateException(
-              "BatchGetItem on " + tableName + " left keys unprocessed after retries");
+      for (ItemResponse response : transactGet(gets)) {
+        if (response.hasItem() && !response.item().isEmpty()) {
+          items.add(response.item());
         }
-        if (attempt > 0) {
-          backOff(attempt);
-        }
-        Map<String, KeysAndAttributes> requestItems = pending;
-        BatchGetItemResponse response = client.batchGetItem(b -> b.requestItems(requestItems));
-        items.addAll(response.responses().getOrDefault(tableName, List.of()));
-        pending = response.hasUnprocessedKeys() ? response.unprocessedKeys() : Map.of();
       }
     }
     return items;
   }
 
+  /** Runs one snapshot read, retrying when a concurrent write transaction cancels it. */
+  private List<ItemResponse> transactGet(List<TransactGetItem> gets) {
+    for (int attempt = 1; ; attempt++) {
+      try {
+        return client.transactGetItems(b -> b.transactItems(gets)).responses();
+      } catch (TransactionCanceledException e) {
+        if (!onlyConflicts(e)) {
+          throw e;
+        }
+        if (attempt == MAX_TRANSACT_GET_ATTEMPTS) {
+          throw new RetryOnConcurrencyException(
+              e,
+              "Snapshot read of %s entities kept conflicting with concurrent writes",
+              gets.size());
+        }
+        backOff(attempt);
+      }
+    }
+  }
+
   private static void backOff(int attempt) {
     long millis =
-        Math.min(BATCH_GET_MAX_BACKOFF_MILLIS, BATCH_GET_BASE_BACKOFF_MILLIS << (attempt - 1));
+        Math.min(
+            TRANSACT_GET_MAX_BACKOFF_MILLIS, TRANSACT_GET_BASE_BACKOFF_MILLIS << (attempt - 1));
     try {
       Thread.sleep(millis);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted while retrying BatchGetItem", e);
+      throw new IllegalStateException("Interrupted while retrying TransactGetItems", e);
     }
   }
 
