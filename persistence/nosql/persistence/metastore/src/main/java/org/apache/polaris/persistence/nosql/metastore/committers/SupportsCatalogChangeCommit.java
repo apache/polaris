@@ -41,10 +41,12 @@ public interface SupportsCatalogChangeCommit {
    * <p>The callback may run several times, and the result of an earlier invocation may never be
    * committed. The catalog state builder and the indexes it receives are rebuilt for each attempt,
    * but the {@code CommitterState} is shared across attempts: objects must be written with {@code
-   * writeOrReplace} using stable keys, because {@code writeIntent} fails and {@code writeIfNew}
-   * returns the earlier attempt's object when a key is reused. External side effects, such as
-   * object-storage writes, event dispatch or calls to other services, are not undone between
-   * attempts: perform them before calling this method, or make them idempotent.
+   * writeOrReplace} using stable keys and a fresh object ID per attempt, because {@code
+   * writeIntent} fails and {@code writeIfNew} returns the earlier attempt's object when a key is
+   * reused, and {@code writeOrReplace} rejects an object ID that an earlier attempt already
+   * persisted. External side effects, such as object-storage writes, event dispatch or calls to
+   * other services, are not undone between attempts: perform them before calling this method, or
+   * make them idempotent.
    *
    * <p>If an attempt fails with an {@code UnknownOperationResultException}, its changes may have
    * been committed, and the next attempt may observe them. Whether to treat that as success or

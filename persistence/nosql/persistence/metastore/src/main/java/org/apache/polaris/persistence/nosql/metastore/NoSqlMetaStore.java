@@ -542,10 +542,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence implements SupportsCat
                   CatalogStateObj.class,
                   resultType)
               .synchronizingLocally();
-      return committer
-          .commitRuntimeException(wrapper)
-          .orElseThrow(
-              () -> new IllegalStateException("Catalog change callback returned a null result"));
+      return committer.commitRuntimeException(wrapper).orElseThrow();
     } finally {
       memoizedIndexedAccess.invalidateCatalogContent(catalogId);
     }

@@ -348,18 +348,26 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
         .hasMessage("Invalid catalog ID 0");
   }
 
-  @Test
-  public void commitCatalogChangeRejectsNullResult() {
-    long catalogId = createCatalogForCommit("commitCatalogChangeNullResultCatalog");
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void commitCatalogChangeRejectsNullResult(boolean commitChange) {
+    long catalogId = createCatalogForCommit("commitCatalogChangeNullResultCatalog-" + commitChange);
+    var stateBefore = fetchCatalogState(catalogId);
 
     var wrapper =
         new CatalogChangeCommitterWrapper<String>(
-            (state, ref, byName, byId, changes, locations) -> new ChangeResult.NoChange<>(null));
+            (state, ref, byName, byId, changes, locations) -> {
+              writeCatalogRole(state, catalogId, byName, byId, changes, "stagedRole");
+              return commitChange
+                  ? new ChangeResult.CommitChange<>(null)
+                  : new ChangeResult.NoChange<>(null);
+            });
 
     assertThatThrownBy(
             () -> catalogChangeCommitter().commitCatalogChange(catalogId, String.class, wrapper))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage("Catalog change callback returned a null result");
+    soft.assertThat(fetchCatalogState(catalogId)).isEqualTo(stateBefore);
   }
 
   private long createCatalogForCommit(String name) {
