@@ -1862,10 +1862,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     // TODO remove when remote signing is implemented
     if (resolvedMode.orElse(null) == AccessDelegationMode.REMOTE_SIGNING) {
-      if (requestedModes.contains(AccessDelegationMode.NONE)) {
-        // The client can operate without delegated access, so return the table without it.
-        return Optional.empty();
-      }
       throw new IllegalArgumentException(
           "This catalog cannot vend credentials or sign requests; request without "
               + "X-Iceberg-Access-Delegation and configure storage credentials on the client");

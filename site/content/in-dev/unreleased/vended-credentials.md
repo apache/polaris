@@ -100,22 +100,14 @@ the first data access, where it is much harder to diagnose.
 ### Clients that can work without delegation
 
 A client that has storage credentials of its own can say so by including `none` in the header, a
-value defined by the Iceberg REST specification. `none` is never selected as a mechanism; it tells
-Polaris that returning the table without delegated access is acceptable:
+value defined by the Iceberg REST specification. Polaris then treats the request like one without
+the header: the table is returned without credentials, the request is authorized as a plain
+metadata operation, and none of the `400` responses above apply. This holds whether `none` is sent
+alone or together with `vended-credentials` or `remote-signing`; Polaris does not vend credentials
+to a client that has said it can operate without them.
 
-- `X-Iceberg-Access-Delegation: none` returns the table without credentials, the same as omitting
-  the header.
-- `X-Iceberg-Access-Delegation: none, vended-credentials` returns vended credentials when the
-  catalog can provide them, and otherwise returns the table without credentials instead of the
-  `400` responses above. The same applies to `none, remote-signing`.
-
-A request that lists only `vended-credentials` or `remote-signing` still fails as described above:
-without `none`, Polaris does not assume that the client can proceed on its own.
-
-Authorization follows the mechanisms the client asked for, not what Polaris ends up returning: a
-request with `none, vended-credentials` requires the same data-access privileges as one with
-`vended-credentials` alone, even when the table is returned without credentials. A request with
-`none` only is authorized like a request without the header.
+Clients that want credentials where the catalog can provide them should therefore send
+`vended-credentials` without `none`, and accept the `400` responses above where it cannot.
 
 For catalogs that cannot vend credentials, configure the client to authenticate to the object
 store directly and omit the header. In Spark, for example, remove

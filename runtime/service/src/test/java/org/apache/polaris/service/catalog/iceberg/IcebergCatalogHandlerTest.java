@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -271,28 +272,7 @@ class IcebergCatalogHandlerTest {
   }
 
   @Test
-  void noneRequestedAlongsideRemoteSigningReturnsTableWithoutDelegation() {
-    Catalog catalog = mockRegisterTableCatalog(false);
-    EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE, REMOTE_SIGNING);
-    when(accessDelegationModeResolver.resolve(eq(modes), any()))
-        .thenReturn(Optional.of(REMOTE_SIGNING));
-
-    @SuppressWarnings("resource")
-    IcebergCatalogHandler handler = newHandler();
-
-    LoadTableResponse response =
-        handler.registerTable(NS1, registerTableRequest(false), modes, Optional.empty());
-
-    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
-    assertThat(response.credentials()).isEmpty();
-    // A delegation mechanism was requested, so the request is still authorized as a delegation.
-    assertThat(authorizedOperations())
-        .contains(PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION)
-        .doesNotContain(PolarisAuthorizableOperation.REGISTER_TABLE);
-  }
-
-  @Test
-  void noneRequestedAloneReturnsTableWithoutDelegation() {
+  void noneRequestedAloneRegistersTableWithoutDelegation() {
     Catalog catalog = mockRegisterTableCatalog(false);
     EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE);
     when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(Optional.empty());
@@ -305,14 +285,51 @@ class IcebergCatalogHandlerTest {
 
     verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
     assertThat(response.credentials()).isEmpty();
-    // `none` alone is authorized like a request without the header: no delegation privilege.
+    // Authorized like a request without the header: no delegation privilege is required.
     assertThat(authorizedOperations()).containsExactly(PolarisAuthorizableOperation.REGISTER_TABLE);
+  }
+
+  @Test
+  void noneRequestedAlongsideVendedCredentialsRegistersTableWithoutDelegation() {
+    Catalog catalog = mockRegisterTableCatalog(false);
+    EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE, VENDED_CREDENTIALS);
+    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(Optional.empty());
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    LoadTableResponse response =
+        handler.registerTable(NS1, registerTableRequest(false), modes, Optional.empty());
+
+    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
+    assertThat(response.credentials()).isEmpty();
+    assertThat(authorizedOperations()).containsExactly(PolarisAuthorizableOperation.REGISTER_TABLE);
+  }
+
+  @Test
+  void noneRequestedAloneLoadsTableWithoutDelegation() {
+    Catalog catalog = mock(Catalog.class);
+    BaseTable table = baseTable();
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.loadTable(TABLE2)).thenReturn(table);
+    EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE);
+    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(Optional.empty());
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    Optional<LoadTableResponse> response =
+        handler.loadTable(TABLE2, null, null, modes, Optional.empty());
+
+    assertThat(response).isPresent();
+    assertThat(response.get().credentials()).isEmpty();
+    assertThat(authorizedOperations()).containsExactly(PolarisAuthorizableOperation.LOAD_TABLE);
   }
 
   private List<PolarisAuthorizableOperation> authorizedOperations() {
     ArgumentCaptor<AuthorizationRequest> captor =
         ArgumentCaptor.forClass(AuthorizationRequest.class);
-    verify(authorizer, org.mockito.Mockito.atLeastOnce()).authorize(any(), captor.capture());
+    verify(authorizer, atLeastOnce()).authorize(any(), captor.capture());
     return captor.getAllValues().stream()
         .flatMap(request -> request.intents().stream())
         .map(intent -> intent.operation())

@@ -298,13 +298,20 @@ class AccessDelegationModeResolverTest {
   }
 
   @Test
-  void resolveNoneWithVendedCredentials_internalCatalog_returnsVendedCredentials() {
-    CatalogEntity catalogEntity = createCatalogWithAwsConfig(false);
-
+  void resolveNoneWithVendedCredentials_internalCatalog_returnsEmpty() {
+    // Vending would be possible, but the client said it can operate without delegation.
     Optional<AccessDelegationMode> result =
-        resolver.resolve(EnumSet.of(NONE, VENDED_CREDENTIALS), catalogEntity);
+        resolver.resolve(EnumSet.of(NONE, VENDED_CREDENTIALS), createCatalogWithAwsConfig(false));
 
-    assertThat(result).hasValue(VENDED_CREDENTIALS);
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void resolveNoneWithVendedCredentials_stsUnavailable_returnsEmpty() {
+    Optional<AccessDelegationMode> result =
+        resolver.resolve(EnumSet.of(NONE, VENDED_CREDENTIALS), createCatalogWithAwsConfig(true));
+
+    assertThat(result).isEmpty();
   }
 
   @Test
@@ -331,12 +338,21 @@ class AccessDelegationModeResolverTest {
   }
 
   @Test
-  void resolveNoneWithRemoteSigning_returnsRemoteSigning() {
-    // Whether remote signing can actually be served is decided by the handler.
+  void resolveNoneWithRemoteSigning_returnsEmpty() {
     Optional<AccessDelegationMode> result =
         resolver.resolve(EnumSet.of(NONE, REMOTE_SIGNING), createCatalogWithAwsConfig(false));
 
-    assertThat(result).hasValue(REMOTE_SIGNING);
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void resolveNoneWithAllModes_returnsEmpty() {
+    Optional<AccessDelegationMode> result =
+        resolver.resolve(
+            EnumSet.of(NONE, VENDED_CREDENTIALS, REMOTE_SIGNING),
+            createCatalogWithAwsConfig(false));
+
+    assertThat(result).isEmpty();
   }
 
   private CatalogEntity createExternalCatalogWithAwsConfig(boolean stsUnavailable) {

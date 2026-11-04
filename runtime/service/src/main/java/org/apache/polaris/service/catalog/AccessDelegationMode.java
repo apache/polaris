@@ -37,11 +37,7 @@ import org.slf4j.LoggerFactory;
 public enum AccessDelegationMode {
   VENDED_CREDENTIALS("vended-credentials"),
   REMOTE_SIGNING("remote-signing"),
-  /**
-   * The client is able to operate without any access delegation mechanism. This is never selected
-   * as a delegation mode; it tells the server that returning the table without delegated access is
-   * acceptable when none of the other requested mechanisms can be provided.
-   */
+  /** The client is able to operate without any access delegation mechanism. */
   NONE("none"),
   ;
 
@@ -56,12 +52,12 @@ public enum AccessDelegationMode {
   }
 
   /**
-   * Whether the client asked for an access delegation mechanism, i.e. for any mode other than
-   * {@link #NONE}. A request carrying only {@code none} is treated like a request without the
-   * header: it is authorized as a plain metadata operation and no credentials are vended.
+   * Whether the client asked for access delegation. A request that includes {@link #NONE}, alone or
+   * together with other modes, is treated like a request without the header: it is authorized as a
+   * plain metadata operation and no credentials are vended.
    */
   public static boolean requestsDelegation(EnumSet<AccessDelegationMode> modes) {
-    return modes.stream().anyMatch(mode -> mode != NONE);
+    return !modes.isEmpty() && !modes.contains(NONE);
   }
 
   public static EnumSet<AccessDelegationMode> fromProtocolValuesList(List<String> protocolValues) {

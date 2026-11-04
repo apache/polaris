@@ -44,6 +44,9 @@ import org.slf4j.LoggerFactory;
  *
  * <ol>
  *   <li>If no delegation mode is requested, returns empty.
+ *   <li>If {@link AccessDelegationMode#NONE} is requested, alone or together with other modes,
+ *       returns empty: the client has said that it can operate without delegated access, so no
+ *       credentials are vended.
  *   <li>If exactly one delegation mode is requested:
  *       <ul>
  *         <li>If {@link AccessDelegationMode#VENDED_CREDENTIALS} is requested on an external
@@ -87,56 +90,13 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
   public @NonNull Optional<AccessDelegationMode> resolve(
       @NonNull EnumSet<AccessDelegationMode> requestedModes,
       @Nullable CatalogEntity catalogEntity) {
-    if (!requestedModes.contains(NONE)) {
-      return resolveDelegation(requestedModes, catalogEntity);
-    }
 
-    // `none` means the client can operate without delegated access. It is never selected as a
-    // mode of its own; it turns "the requested mechanism is unavailable" from an error into
-    // "no delegation". Other requested mechanisms are still preferred when they can be provided.
-    EnumSet<AccessDelegationMode> delegationModes = EnumSet.copyOf(requestedModes);
-    delegationModes.remove(NONE);
-    if (delegationModes.equals(EnumSet.of(VENDED_CREDENTIALS))) {
-      Optional<String> disallowed = credentialVendingDisallowedReason(catalogEntity);
-      if (disallowed.isPresent()) {
-        LOGGER.debug(
-            "Credential vending is not allowed and the client accepts no delegation: {}",
-            disallowed.get());
-        return Optional.empty();
-      }
+    // Case 0: The client can operate without delegated access. Treat the request like one
+    // without the header, regardless of any other mode listed alongside `none`.
+    if (requestedModes.contains(NONE)) {
+      LOGGER.debug("Client accepts no access delegation, not resolving a delegation mode");
+      return Optional.empty();
     }
-    return resolveDelegation(delegationModes, catalogEntity);
-  }
-
-  /**
-   * Returns the reason why {@link AccessDelegationMode#VENDED_CREDENTIALS} must be rejected for the
-   * catalog, or empty when vending is allowed. This is the only situation in which a requested mode
-   * is refused rather than degraded to another mode.
-   */
-  private Optional<String> credentialVendingDisallowedReason(
-      @Nullable CatalogEntity catalogEntity) {
-    if (isExternalCatalogCredentialVendingDisabled(catalogEntity)) {
-      return Optional.of(
-          "Credential vending is not enabled for this external catalog. Please consult "
-              + "applicable documentation for the catalog config property '"
-              + FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig()
-              + "' to enable this feature");
-    }
-    if (catalogEntity != null
-        && catalogEntity.isExternal()
-        && !realmConfig.getConfig(
-            FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, catalogEntity)) {
-      return Optional.of(
-          "Credential vending is not enabled for this federated catalog. Please consult "
-              + "applicable documentation for the catalog config property '"
-              + FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING.catalogConfig()
-              + "' to enable this feature");
-    }
-    return Optional.empty();
-  }
-
-  private Optional<AccessDelegationMode> resolveDelegation(
-      EnumSet<AccessDelegationMode> requestedModes, @Nullable CatalogEntity catalogEntity) {
 
     // Case 1: No valid delegation mode found, or none requested
     if (requestedModes.isEmpty()) {
@@ -149,9 +109,22 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       // REMOTE_SIGNING does not involve Polaris vending credentials to the client, so the
       // credential-vending feature flags below do not apply to it.
       if (mode == VENDED_CREDENTIALS) {
-        Optional<String> disallowed = credentialVendingDisallowedReason(catalogEntity);
-        if (disallowed.isPresent()) {
-          throw new IllegalArgumentException(disallowed.get());
+        if (isExternalCatalogCredentialVendingDisabled(catalogEntity)) {
+          throw new IllegalArgumentException(
+              "Credential vending is not enabled for this external catalog. Please consult "
+                  + "applicable documentation for the catalog config property '"
+                  + FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig()
+                  + "' to enable this feature");
+        }
+        if (catalogEntity != null
+            && catalogEntity.isExternal()
+            && !realmConfig.getConfig(
+                FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, catalogEntity)) {
+          throw new IllegalArgumentException(
+              "Credential vending is not enabled for this federated catalog. Please consult "
+                  + "applicable documentation for the catalog config property '"
+                  + FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING.catalogConfig()
+                  + "' to enable this feature");
         }
       }
       LOGGER.debug("Single delegation mode requested: {}", mode);

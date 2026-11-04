@@ -70,7 +70,8 @@ class AccessDelegationModeTest {
         .isFalse();
     assertThat(AccessDelegationMode.requestsDelegation(EnumSet.of(NONE))).isFalse();
     assertThat(AccessDelegationMode.requestsDelegation(EnumSet.of(NONE, VENDED_CREDENTIALS)))
-        .isTrue();
+        .isFalse();
+    assertThat(AccessDelegationMode.requestsDelegation(EnumSet.of(VENDED_CREDENTIALS))).isTrue();
     assertThat(AccessDelegationMode.requestsDelegation(EnumSet.of(REMOTE_SIGNING))).isTrue();
   }
 
