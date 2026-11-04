@@ -194,7 +194,7 @@ jobs:
         uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Run build logic tests
         env: *gradle_env_vars
-        run: ./gradlew :polaris-build-logic:test
+        run: ./gradlew :polaris-build-logic:test :polaris-build-logic:integrationTest
 
   build-checks:
     name: Gradle Build Checks
