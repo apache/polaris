@@ -24,14 +24,14 @@ import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
 
 /**
- * Provenance namespaces for authorizer-facing attributes on {@link PolarisPrincipal}.
+ * Provenance prefixes for authorizer-facing attributes on {@link PolarisPrincipal}.
  *
  * <p>Authenticators set primary attributes such as {@link
  * PolarisPrincipalAttributes#PRINCIPAL_ENTITY_ATTRIBUTE_KEY}. A post-auth augmentor then projects
- * selected values onto these namespaced keys. External authorizers should consume the derived keys
+ * selected values onto these prefixed keys. External authorizers should consume the derived keys
  * rather than walking {@code PrincipalEntity}.
  */
-public final class PolarisPrincipalAttributeNamespaces {
+public final class PolarisPrincipalAttributePrefixes {
 
   /** Prefix for attributes asserted by an authenticator or identity provider. */
   public static final String AUTH_PREFIX = "polaris.auth.";
@@ -49,19 +49,25 @@ public final class PolarisPrincipalAttributeNamespaces {
   public static final String SYSTEM_CREDENTIAL_ROTATION_REQUIRED =
       SYSTEM_PREFIX + "credential-rotation-required";
 
-  private PolarisPrincipalAttributeNamespaces() {}
+  private PolarisPrincipalAttributePrefixes() {}
 
-  /** Returns a typed attribute key for a namespaced string attribute. */
+  /** Returns a typed attribute key for a prefixed string attribute. */
   public static AttributeKey<String> stringKey(String key) {
     return new AttributeKey<>(key);
   }
 
-  /** Returns whether {@code key} is a derived, namespaced principal attribute. */
+  /**
+   * Returns whether {@code key} is a derived, prefixed principal attribute. A bare prefix with no
+   * attribute name after it (for example {@code "polaris.user."}) is not a derived key.
+   */
   public static boolean isDerivedAttributeKey(String key) {
-    return key != null
-        && (key.startsWith(AUTH_PREFIX)
-            || key.startsWith(SYSTEM_PREFIX)
-            || key.startsWith(USER_PREFIX));
+    return hasPrefixedName(key, AUTH_PREFIX)
+        || hasPrefixedName(key, SYSTEM_PREFIX)
+        || hasPrefixedName(key, USER_PREFIX);
+  }
+
+  private static boolean hasPrefixedName(String key, String prefix) {
+    return key != null && key.startsWith(prefix) && key.length() > prefix.length();
   }
 
   /**

@@ -27,7 +27,7 @@ import java.security.Principal;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributePrefixes;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
@@ -101,11 +101,11 @@ public class PrincipalAttributeAugmentorTest {
                 .getAttributes()
                 .getOptional(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY))
         .contains(entity);
-    assertThat(PolarisPrincipalAttributeNamespaces.derivedStringAttributes(enriched))
-        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", "finance")
-        .containsEntry(PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID, "client-1")
+    assertThat(PolarisPrincipalAttributePrefixes.derivedStringAttributes(enriched))
+        .containsEntry(PolarisPrincipalAttributePrefixes.USER_PREFIX + "department", "finance")
+        .containsEntry(PolarisPrincipalAttributePrefixes.SYSTEM_CLIENT_ID, "client-1")
         .containsEntry(
-            PolarisPrincipalAttributeNamespaces.SYSTEM_CREDENTIAL_ROTATION_REQUIRED, "true");
+            PolarisPrincipalAttributePrefixes.SYSTEM_CREDENTIAL_ROTATION_REQUIRED, "true");
   }
 
   @Test
@@ -134,11 +134,11 @@ public class PrincipalAttributeAugmentorTest {
                 .getPrincipal();
 
     Map<String, String> derived =
-        PolarisPrincipalAttributeNamespaces.derivedStringAttributes(enriched);
+        PolarisPrincipalAttributePrefixes.derivedStringAttributes(enriched);
     assertThat(derived)
-        .containsEntry(PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID, "internal-client-id")
+        .containsEntry(PolarisPrincipalAttributePrefixes.SYSTEM_CLIENT_ID, "internal-client-id")
         .containsEntry(
-            PolarisPrincipalAttributeNamespaces.USER_PREFIX
+            PolarisPrincipalAttributePrefixes.USER_PREFIX
                 + PolarisEntityConstants.getClientIdPropertyName(),
             "user-client-id")
         .doesNotContainKey(PolarisEntityConstants.getClientIdPropertyName());
@@ -157,8 +157,8 @@ public class PrincipalAttributeAugmentorTest {
             ImmutableAttributeMap.builder()
                 .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, entity)
                 .put(
-                    PolarisPrincipalAttributeNamespaces.stringKey(
-                        PolarisPrincipalAttributeNamespaces.AUTH_PREFIX + "department"),
+                    PolarisPrincipalAttributePrefixes.stringKey(
+                        PolarisPrincipalAttributePrefixes.AUTH_PREFIX + "department"),
                     "idp-finance")
                 .build(),
             Set.of());
@@ -171,10 +171,10 @@ public class PrincipalAttributeAugmentorTest {
                 .indefinitely()
                 .getPrincipal();
 
-    assertThat(PolarisPrincipalAttributeNamespaces.derivedStringAttributes(enriched))
+    assertThat(PolarisPrincipalAttributePrefixes.derivedStringAttributes(enriched))
         .containsEntry(
-            PolarisPrincipalAttributeNamespaces.AUTH_PREFIX + "department", "idp-finance")
-        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", "finance");
+            PolarisPrincipalAttributePrefixes.AUTH_PREFIX + "department", "idp-finance")
+        .containsEntry(PolarisPrincipalAttributePrefixes.USER_PREFIX + "department", "finance");
   }
 
   @Test
@@ -200,10 +200,10 @@ public class PrincipalAttributeAugmentorTest {
                 .indefinitely()
                 .getPrincipal();
 
-    assertThat(PolarisPrincipalAttributeNamespaces.derivedStringAttributes(enriched))
-        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", "")
-        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "team", "   ")
-        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "region", "us-west");
+    assertThat(PolarisPrincipalAttributePrefixes.derivedStringAttributes(enriched))
+        .containsEntry(PolarisPrincipalAttributePrefixes.USER_PREFIX + "department", "")
+        .containsEntry(PolarisPrincipalAttributePrefixes.USER_PREFIX + "team", "   ")
+        .containsEntry(PolarisPrincipalAttributePrefixes.USER_PREFIX + "region", "us-west");
   }
 
   @Test
@@ -231,10 +231,10 @@ public class PrincipalAttributeAugmentorTest {
                 .getPrincipal();
 
     Map<String, String> derived =
-        PolarisPrincipalAttributeNamespaces.derivedStringAttributes(enriched);
+        PolarisPrincipalAttributePrefixes.derivedStringAttributes(enriched);
     assertThat(derived)
-        .containsEntry(PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID, "client-1")
-        .doesNotContainKey(PolarisPrincipalAttributeNamespaces.SYSTEM_PREFIX + "unrelated_internal")
+        .containsEntry(PolarisPrincipalAttributePrefixes.SYSTEM_CLIENT_ID, "client-1")
+        .doesNotContainKey(PolarisPrincipalAttributePrefixes.SYSTEM_PREFIX + "unrelated_internal")
         .doesNotContainKey("unrelated_internal");
   }
 

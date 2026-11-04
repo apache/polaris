@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributePrefixes;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -179,7 +179,7 @@ public class RangerUtils {
 
   private static Map<String, Object> getUserAttributes(PolarisPrincipal principal) {
     Map<String, String> derived =
-        PolarisPrincipalAttributeNamespaces.derivedStringAttributes(principal);
+        PolarisPrincipalAttributePrefixes.derivedStringAttributes(principal);
     return derived.isEmpty() ? Collections.emptyMap() : new HashMap<>(derived);
   }
 }

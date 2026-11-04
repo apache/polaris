@@ -26,7 +26,7 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Map;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributePrefixes;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
@@ -88,11 +88,11 @@ public class PrincipalAttributeAugmentor implements SecurityIdentityAugmentor {
     Map<String, String> internal = entity.getInternalPropertiesAsMap();
     putIfPresent(
         derived,
-        PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID,
+        PolarisPrincipalAttributePrefixes.SYSTEM_CLIENT_ID,
         internal.get(PolarisEntityConstants.getClientIdPropertyName()));
     putIfPresent(
         derived,
-        PolarisPrincipalAttributeNamespaces.SYSTEM_CREDENTIAL_ROTATION_REQUIRED,
+        PolarisPrincipalAttributePrefixes.SYSTEM_CREDENTIAL_ROTATION_REQUIRED,
         internal.get(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE));
     for (Map.Entry<String, String> property : entity.getPropertiesAsMap().entrySet()) {
       String key = property.getKey();
@@ -101,8 +101,8 @@ public class PrincipalAttributeAugmentor implements SecurityIdentityAugmentor {
       // reject blank property values, so dropping them here would hide them from authorizers.
       if (key != null && !key.isBlank() && value != null) {
         derived.put(
-            PolarisPrincipalAttributeNamespaces.stringKey(
-                PolarisPrincipalAttributeNamespaces.USER_PREFIX + key),
+            PolarisPrincipalAttributePrefixes.stringKey(
+                PolarisPrincipalAttributePrefixes.USER_PREFIX + key),
             value);
       }
     }
@@ -112,7 +112,7 @@ public class PrincipalAttributeAugmentor implements SecurityIdentityAugmentor {
   private static void putIfPresent(
       ImmutableAttributeMap.Builder derived, String key, String value) {
     if (value != null && !value.isBlank()) {
-      derived.put(PolarisPrincipalAttributeNamespaces.stringKey(key), value);
+      derived.put(PolarisPrincipalAttributePrefixes.stringKey(key), value);
     }
   }
 }

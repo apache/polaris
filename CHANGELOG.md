@@ -279,8 +279,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   keys as `actor.attributes`. Ranger copies them onto `RangerUserInfo`, but Apache Ranger 2.9.0's
   embedded plugin evaluates only user name, groups, and roles, so `polaris.user.*` cannot currently
   change a Ranger policy decision. The raw `PrincipalEntity` is not included in the external PDP
-  payload. A user property cannot shadow a system key because the namespace is part of the
+  payload. A user property cannot shadow a system key because the prefix is part of the
   attribute name. Empty-string user property values are forwarded as empty attributes, not omitted.
+  Note for custom Ranger integrations: the attributes copied onto `RangerUserInfo` are now the
+  prefixed keys (for example `polaris.system.client_id`) instead of the bare internal names (for
+  example `client_id`). Apache Ranger 2.9.0's embedded plugin does not evaluate them, so built-in
+  behavior is unchanged, but any custom code reading `RangerUserInfo` attributes must use the new
+  keys.
 - A metastore failure during authentication now returns a fixed `Service unavailable` message
   instead of naming the lookup that failed; the principal lookup previously returned `Unable to
   fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which

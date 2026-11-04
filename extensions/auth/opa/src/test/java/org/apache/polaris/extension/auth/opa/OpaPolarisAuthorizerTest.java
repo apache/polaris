@@ -57,7 +57,7 @@ import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributePrefixes;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.auth.RenameAuthorizationIntent;
@@ -107,8 +107,8 @@ public class OpaPolarisAuthorizerTest {
               "eve",
               ImmutableAttributeMap.builder()
                   .put(
-                      PolarisPrincipalAttributeNamespaces.stringKey(
-                          PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department"),
+                      PolarisPrincipalAttributePrefixes.stringKey(
+                          PolarisPrincipalAttributePrefixes.USER_PREFIX + "department"),
                       "finance")
                   .build(),
               Set.of("auditor"));
@@ -150,7 +150,7 @@ public class OpaPolarisAuthorizerTest {
       assertThat(
               actor
                   .get("attributes")
-                  .get(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department")
+                  .get(PolarisPrincipalAttributePrefixes.USER_PREFIX + "department")
                   .asText())
           .isEqualTo("finance");
     } finally {
@@ -1363,16 +1363,16 @@ public class OpaPolarisAuthorizerTest {
               "eve",
               ImmutableAttributeMap.builder()
                   .put(
-                      PolarisPrincipalAttributeNamespaces.stringKey(
-                          PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department"),
+                      PolarisPrincipalAttributePrefixes.stringKey(
+                          PolarisPrincipalAttributePrefixes.USER_PREFIX + "department"),
                       "finance")
                   .put(
-                      PolarisPrincipalAttributeNamespaces.stringKey(
-                          PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID),
+                      PolarisPrincipalAttributePrefixes.stringKey(
+                          PolarisPrincipalAttributePrefixes.SYSTEM_CLIENT_ID),
                       "internal-client-id")
                   .put(
-                      PolarisPrincipalAttributeNamespaces.stringKey(
-                          PolarisPrincipalAttributeNamespaces.USER_PREFIX
+                      PolarisPrincipalAttributePrefixes.stringKey(
+                          PolarisPrincipalAttributePrefixes.USER_PREFIX
                               + PolarisEntityConstants.getClientIdPropertyName()),
                       "user-client-id")
                   .build(),
@@ -1400,10 +1400,10 @@ public class OpaPolarisAuthorizerTest {
       var attributes = root.path("input").path("actor").path("attributes");
       assertThat(
               attributes
-                  .path(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department")
+                  .path(PolarisPrincipalAttributePrefixes.USER_PREFIX + "department")
                   .asText())
           .isEqualTo("finance");
-      assertThat(attributes.path(PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID).asText())
+      assertThat(attributes.path(PolarisPrincipalAttributePrefixes.SYSTEM_CLIENT_ID).asText())
           .isEqualTo("internal-client-id");
       assertThat(attributes.path(PolarisEntityConstants.getClientIdPropertyName()).isMissingNode())
           .isTrue();
@@ -1435,8 +1435,8 @@ public class OpaPolarisAuthorizerTest {
               "eve",
               ImmutableAttributeMap.builder()
                   .put(
-                      PolarisPrincipalAttributeNamespaces.stringKey(
-                          PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department"),
+                      PolarisPrincipalAttributePrefixes.stringKey(
+                          PolarisPrincipalAttributePrefixes.USER_PREFIX + "department"),
                       "")
                   .build(),
               Set.of("auditor"));
@@ -1461,11 +1461,11 @@ public class OpaPolarisAuthorizerTest {
       ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
       JsonNode attributes = root.path("input").path("actor").path("attributes");
-      assertThat(attributes.has(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department"))
+      assertThat(attributes.has(PolarisPrincipalAttributePrefixes.USER_PREFIX + "department"))
           .isTrue();
       assertThat(
               attributes
-                  .path(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department")
+                  .path(PolarisPrincipalAttributePrefixes.USER_PREFIX + "department")
                   .asText())
           .isEqualTo("");
     } finally {

@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-public class PolarisPrincipalAttributeNamespacesTest {
+public class PolarisPrincipalAttributePrefixesTest {
 
   @ParameterizedTest
   @CsvSource({
@@ -38,10 +38,17 @@ public class PolarisPrincipalAttributeNamespacesTest {
     "polaris.user.department,true",
     "department,false",
     "client_id,false",
-    "org.apache.polaris.core.auth.PRINCIPAL_ENTITY,false"
+    "org.apache.polaris.core.auth.PRINCIPAL_ENTITY,false",
+    // A bare prefix with no attribute name after it is not a derived key.
+    "polaris.user.,false",
+    "polaris.system.,false",
+    "polaris.auth.,false",
+    // A prefix without the trailing dot, or an unknown namespace, is not derived.
+    "polaris.user,false",
+    "polaris.other.department,false"
   })
   void isDerivedAttributeKey(String key, boolean expected) {
-    assertThat(PolarisPrincipalAttributeNamespaces.isDerivedAttributeKey(key)).isEqualTo(expected);
+    assertThat(PolarisPrincipalAttributePrefixes.isDerivedAttributeKey(key)).isEqualTo(expected);
   }
 
   @Test
@@ -54,28 +61,28 @@ public class PolarisPrincipalAttributeNamespacesTest {
                 .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, entity)
                 .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
                 .put(
-                    PolarisPrincipalAttributeNamespaces.stringKey(
-                        PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department"),
+                    PolarisPrincipalAttributePrefixes.stringKey(
+                        PolarisPrincipalAttributePrefixes.USER_PREFIX + "department"),
                     "finance")
                 .put(
-                    PolarisPrincipalAttributeNamespaces.stringKey(
-                        PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID),
+                    PolarisPrincipalAttributePrefixes.stringKey(
+                        PolarisPrincipalAttributePrefixes.SYSTEM_CLIENT_ID),
                     "client-1")
                 .put(
-                    PolarisPrincipalAttributeNamespaces.stringKey(
-                        PolarisPrincipalAttributeNamespaces.AUTH_PREFIX + "region"),
+                    PolarisPrincipalAttributePrefixes.stringKey(
+                        PolarisPrincipalAttributePrefixes.AUTH_PREFIX + "region"),
                     "us-west")
                 .build(),
             Set.of("auditor"));
 
-    assertThat(PolarisPrincipalAttributeNamespaces.derivedStringAttributes(principal))
+    assertThat(PolarisPrincipalAttributePrefixes.derivedStringAttributes(principal))
         .containsExactlyInAnyOrderEntriesOf(
             Map.of(
-                PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department",
+                PolarisPrincipalAttributePrefixes.USER_PREFIX + "department",
                 "finance",
-                PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID,
+                PolarisPrincipalAttributePrefixes.SYSTEM_CLIENT_ID,
                 "client-1",
-                PolarisPrincipalAttributeNamespaces.AUTH_PREFIX + "region",
+                PolarisPrincipalAttributePrefixes.AUTH_PREFIX + "region",
                 "us-west"));
   }
 
@@ -86,19 +93,19 @@ public class PolarisPrincipalAttributeNamespacesTest {
             "eve",
             ImmutableAttributeMap.builder()
                 .put(
-                    PolarisPrincipalAttributeNamespaces.stringKey(
-                        PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department"),
+                    PolarisPrincipalAttributePrefixes.stringKey(
+                        PolarisPrincipalAttributePrefixes.USER_PREFIX + "department"),
                     "")
                 .build(),
             Set.of());
 
-    assertThat(PolarisPrincipalAttributeNamespaces.derivedStringAttributes(principal))
-        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", "");
+    assertThat(PolarisPrincipalAttributePrefixes.derivedStringAttributes(principal))
+        .containsEntry(PolarisPrincipalAttributePrefixes.USER_PREFIX + "department", "");
   }
 
   @Test
   void derivedStringAttributesEmptyWhenNoneProjected() {
     PolarisPrincipal principal = PolarisPrincipal.of("eve", AttributeMap.EMPTY, Set.of());
-    assertThat(PolarisPrincipalAttributeNamespaces.derivedStringAttributes(principal)).isEmpty();
+    assertThat(PolarisPrincipalAttributePrefixes.derivedStringAttributes(principal)).isEmpty();
   }
 }

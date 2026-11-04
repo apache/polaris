@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributePrefixes;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
@@ -41,16 +41,16 @@ public class RangerUtilsTest {
             "alice",
             ImmutableAttributeMap.builder()
                 .put(
-                    PolarisPrincipalAttributeNamespaces.stringKey(
-                        PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department"),
+                    PolarisPrincipalAttributePrefixes.stringKey(
+                        PolarisPrincipalAttributePrefixes.USER_PREFIX + "department"),
                     "finance")
                 .put(
-                    PolarisPrincipalAttributeNamespaces.stringKey(
-                        PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID),
+                    PolarisPrincipalAttributePrefixes.stringKey(
+                        PolarisPrincipalAttributePrefixes.SYSTEM_CLIENT_ID),
                     "client-id-123")
                 .put(
-                    PolarisPrincipalAttributeNamespaces.stringKey(
-                        PolarisPrincipalAttributeNamespaces.AUTH_PREFIX + "region"),
+                    PolarisPrincipalAttributePrefixes.stringKey(
+                        PolarisPrincipalAttributePrefixes.AUTH_PREFIX + "region"),
                     "us-west")
                 .build(),
             Set.of("admin"));
@@ -63,9 +63,9 @@ public class RangerUtilsTest {
     // it evaluates, so this asserts the DTO contract only. An authorization-level test that
     // depends on polaris.user.* cannot pass until Ranger copies RangerUserInfo.attributes.
     assertThat(userInfo.getAttributes())
-        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", "finance")
-        .containsEntry(PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID, "client-id-123")
-        .containsEntry(PolarisPrincipalAttributeNamespaces.AUTH_PREFIX + "region", "us-west");
+        .containsEntry(PolarisPrincipalAttributePrefixes.USER_PREFIX + "department", "finance")
+        .containsEntry(PolarisPrincipalAttributePrefixes.SYSTEM_CLIENT_ID, "client-id-123")
+        .containsEntry(PolarisPrincipalAttributePrefixes.AUTH_PREFIX + "region", "us-west");
   }
 
   @Test
@@ -75,8 +75,8 @@ public class RangerUtilsTest {
             "alice",
             ImmutableAttributeMap.builder()
                 .put(
-                    PolarisPrincipalAttributeNamespaces.stringKey(
-                        PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department"),
+                    PolarisPrincipalAttributePrefixes.stringKey(
+                        PolarisPrincipalAttributePrefixes.USER_PREFIX + "department"),
                     "")
                 .build(),
             Set.of("admin"));
@@ -84,7 +84,7 @@ public class RangerUtilsTest {
     RangerUserInfo userInfo = RangerUtils.toUserInfo(principal);
 
     assertThat(userInfo.getAttributes())
-        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", "");
+        .containsEntry(PolarisPrincipalAttributePrefixes.USER_PREFIX + "department", "");
   }
 
   @Test

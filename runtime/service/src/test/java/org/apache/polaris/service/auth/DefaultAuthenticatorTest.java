@@ -40,7 +40,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributePrefixes;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
@@ -598,8 +598,8 @@ public class DefaultAuthenticatorTest {
             result
                 .getAttributes()
                 .containsKey(
-                    PolarisPrincipalAttributeNamespaces.stringKey(
-                        PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department")))
+                    PolarisPrincipalAttributePrefixes.stringKey(
+                        PolarisPrincipalAttributePrefixes.USER_PREFIX + "department")))
         .isFalse();
     assertThat(result.getAttributes().containsKey(new AttributeKey<>("department"))).isFalse();
   }
