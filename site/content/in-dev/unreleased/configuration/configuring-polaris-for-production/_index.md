@@ -180,7 +180,7 @@ Depending on your database, this may not be convenient as the generated credenti
 in clear text in the database.
 
 In order to provide your own credentials for `root` principal (so you can request tokens via
-`api/catalog/v1/oauth/tokens`), use the [Polaris Admin Tool](../admin-tool#bootstrapping-realms-and-principal-credentials) Bootstrap command.
+`api/catalog/v1/oauth/tokens`), use the [Polaris Admin Tool](../../admin-tool#bootstrapping-realms-and-principal-credentials) Bootstrap command.
 
 You can verify the setup by attempting a token issue for the `root` principal:
 
