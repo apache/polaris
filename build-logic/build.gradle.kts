@@ -28,4 +28,11 @@ dependencies {
   implementation(baselibs.nexus.publish)
   implementation(baselibs.shadow)
   implementation(baselibs.spotless)
+
+  testImplementation(platform(baselibs.junit.bom))
+  testImplementation(baselibs.junit.jupiter)
+  testImplementation(baselibs.assertj.core)
+  testRuntimeOnly(baselibs.junit.platform.launcher)
 }
+
+tasks.withType<Test>().configureEach { useJUnitPlatform() }

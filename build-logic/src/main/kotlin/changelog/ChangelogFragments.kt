@@ -20,41 +20,56 @@
 package changelog
 
 import java.io.File
-import org.gradle.api.DefaultTask
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import org.gradle.api.GradleException
-import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.tasks.Internal
-import org.gradle.api.tasks.TaskAction
-import org.gradle.work.DisableCachingByDefault
 
 /**
- * Base class for tasks handling the changelog fragments in `changelog.d`, see
+ * Validates changelog fragments and merges them into the changelog file, see
  * `changelog.d/README.md`.
  */
-@DisableCachingByDefault
-abstract class ChangelogFragmentsTask : DefaultTask() {
+object ChangelogFragments {
 
-  @get:Internal abstract val fragmentsDirectory: DirectoryProperty
+  /** Maps each section directory to the matching heading of the Unreleased section. */
+  val SECTIONS =
+    mapOf(
+      "highlights" to "Highlights",
+      "upgrade-notes" to "Upgrade notes",
+      "breaking-changes" to "Breaking changes",
+      "new-features" to "New Features",
+      "changes" to "Changes",
+      "deprecations" to "Deprecations",
+      "fixes" to "Fixes",
+    )
 
-  /** Returns the fragment files per section heading, in order, failing on invalid fragments. */
-  protected fun collectFragments(): Map<String, List<File>> {
+  private val FRAGMENT_NAME = Regex("[0-9]{2}-[a-z0-9][a-z0-9-]*\\.md")
+  private val LIST_MARKER = Regex("^[-*+] ")
+  private val LINK_REFERENCE = Regex("\\[[^]]+]:.*")
+
+  /**
+   * Returns the fragment files per section heading, in changelog order, sorted by file name within
+   * a section. Fails if any fragment is invalid.
+   */
+  fun collect(directory: File): Map<String, List<File>> {
     val errors = mutableListOf<String>()
     val fragments = mutableMapOf<String, List<File>>()
-    (fragmentsDirectory.get().asFile.listFiles() ?: emptyArray()).forEach { f ->
-      val section = SECTIONS[f.name]
-      if (f.isDirectory && section != null) {
-        fragments[section] = f.listFiles()!!.sortedBy { it.name }
-      } else if (f.name != "README.md") {
-        errors.add("$f: unknown section, must be one of ${SECTIONS.keys}")
+    (directory.listFiles() ?: emptyArray())
+      .sortedBy { it.name }
+      .forEach { f ->
+        val section = SECTIONS[f.name]
+        if (f.isDirectory && section != null) {
+          fragments[section] = f.listFiles()!!.sortedBy { it.name }
+        } else if (f.name != "README.md") {
+          errors.add("$f: unknown section, must be one of ${SECTIONS.keys}")
+        }
       }
-    }
     fragments.values.flatten().forEach { f ->
+      val text = if (f.isFile) f.readText().trim() else ""
       when {
         !f.isFile || !FRAGMENT_NAME.matches(f.name) ->
           errors.add("$f: file name must match NN-short-title.md, for example 99-my-change.md")
-        f.readText().isBlank() -> errors.add("$f: file is empty")
-        LIST_MARKER.containsMatchIn(f.readText().trim()) ->
+        text.isEmpty() -> errors.add("$f: file is empty")
+        LIST_MARKER.containsMatchIn(text) ->
           errors.add("$f: must not start with a list marker, it is added when merging")
       }
     }
@@ -66,54 +81,78 @@ abstract class ChangelogFragmentsTask : DefaultTask() {
       .filterValues { it.isNotEmpty() }
   }
 
-  companion object {
-    /** Maps each section directory to the matching heading of the Unreleased section. */
-    val SECTIONS =
-      mapOf(
-        "highlights" to "Highlights",
-        "upgrade-notes" to "Upgrade notes",
-        "breaking-changes" to "Breaking changes",
-        "new-features" to "New Features",
-        "changes" to "Changes",
-        "deprecations" to "Deprecations",
-        "fixes" to "Fixes",
+  /**
+   * Appends the fragments to the matching sections of the Unreleased section of the changelog file,
+   * or of the section of the given released [version], then deletes them. Returns the consumed
+   * fragments. Targeting a released version is for fragments cherry-picked onto a release branch
+   * after the changelog section of that version was created, i.e. for later release candidates.
+   *
+   * Everything that can fail is checked before the changelog is written: invalid fragments, missing
+   * headings and fragments that cannot be deleted leave all files untouched. The changelog is then
+   * replaced atomically.
+   */
+  fun merge(directory: File, changelog: File, version: String? = null): List<File> {
+    val fragments = collect(directory)
+    val consumed = fragments.values.flatten()
+    val lines = changelog.readLines()
+    val merged = appendFragments(lines, fragments, version)
+
+    val undeletable = consumed.filter { !Files.isWritable(it.parentFile.toPath()) }
+    if (undeletable.isNotEmpty()) {
+      throw GradleException(
+        "Cannot delete changelog fragments, nothing was changed:\n" +
+          undeletable.joinToString("\n"),
       )
-    private val FRAGMENT_NAME = Regex("[0-9]{2}-[a-z0-9][a-z0-9-]*\\.md")
-    private val LIST_MARKER = Regex("^[-*+] ")
+    }
+
+    val temp = Files.createTempFile(changelog.parentFile.toPath(), changelog.name, ".tmp")
+    try {
+      Files.writeString(temp, merged.joinToString("\n", postfix = "\n"))
+      Files.move(
+        temp,
+        changelog.toPath(),
+        StandardCopyOption.REPLACE_EXISTING,
+        StandardCopyOption.ATOMIC_MOVE,
+      )
+    } finally {
+      Files.deleteIfExists(temp)
+    }
+
+    val remaining = consumed.filter { f -> runCatching { Files.delete(f.toPath()) }.isFailure }
+    if (remaining.isNotEmpty()) {
+      throw GradleException(
+        "${changelog.name} was updated, but these fragments could not be deleted:\n" +
+          remaining.joinToString("\n") +
+          "\nDelete them manually. Do NOT run the merge again, it would add their entries twice.",
+      )
+    }
+    // Empty section directories are not tracked by Git, so a failure to delete them is harmless
+    SECTIONS.keys.forEach { File(directory, it).delete() }
+    return consumed
   }
-}
 
-/** Validates the changelog fragments. */
-@DisableCachingByDefault
-abstract class CheckChangelogFragmentsTask : ChangelogFragmentsTask() {
-  @TaskAction
-  fun check() {
-    collectFragments()
-  }
-}
-
-/**
- * Appends the changelog fragments to the matching sections of the Unreleased section of the
- * changelog file, then deletes them.
- */
-@DisableCachingByDefault
-abstract class MergeChangelogFragmentsTask : ChangelogFragmentsTask() {
-
-  @get:Internal abstract val changelogFile: RegularFileProperty
-
-  @TaskAction
-  fun merge() {
-    val fragments = collectFragments()
-    val changelog = changelogFile.get().asFile
-    val lines = changelog.readLines().toMutableList()
+  internal fun appendFragments(
+    changelog: List<String>,
+    fragments: Map<String, List<File>>,
+    version: String? = null,
+  ): List<String> {
+    val lines = changelog.toMutableList()
+    val target = "## [${version ?: "Unreleased"}]"
     for ((section, files) in fragments) {
-      val unreleased = lines.indexOf("## [Unreleased]")
-      if (unreleased < 0) throw GradleException("Section '## [Unreleased]' not found")
-      val unreleasedEnd =
+      val unreleased = lines.indexOf(target)
+      if (unreleased < 0) throw GradleException("Section '$target' not found")
+      var unreleasedEnd =
         (unreleased + 1 until lines.size).firstOrNull { lines[it].startsWith("## ") } ?: lines.size
-      val heading =
-        (unreleased + 1 until unreleasedEnd).firstOrNull { lines[it] == "### $section" }
-          ?: throw GradleException("Section '### $section' not found under '## [Unreleased]'")
+      var heading = (unreleased + 1 until unreleasedEnd).firstOrNull { lines[it] == "### $section" }
+      if (heading == null) {
+        // A released section only has the subsections that had entries, Unreleased has them all
+        if (version == null) {
+          throw GradleException("Section '### $section' not found under '$target'")
+        }
+        heading = createSubsection(lines, unreleased + 1, unreleasedEnd, section)
+        unreleasedEnd =
+          (heading + 1 until lines.size).firstOrNull { lines[it].startsWith("## ") } ?: lines.size
+      }
       val sectionEnd =
         (heading + 1 until unreleasedEnd).firstOrNull { lines[it].startsWith("### ") }
           ?: unreleasedEnd
@@ -134,15 +173,37 @@ abstract class MergeChangelogFragmentsTask : ChangelogFragmentsTask() {
           (if (insertAt == sectionEnd) listOf("") else listOf()),
       )
     }
-    changelog.writeText(lines.joinToString("\n", postfix = "\n"))
-    fragments.values.flatten().forEach { it.delete() }
-    fragmentsDirectory.get().asFile.listFiles()!!.filter { it.isDirectory }.forEach { it.delete() }
-    logger.lifecycle(
-      "Merged ${fragments.values.sumOf { it.size }} changelog fragment(s) into ${changelog.name}",
-    )
+    return lines
   }
 
-  private companion object {
-    val LINK_REFERENCE = Regex("\\[[^]]+]:.*")
+  /**
+   * Inserts an empty `### [section]` heading in its place among the existing subsections of the
+   * section spanning [start] until [end], and returns the index of the heading.
+   */
+  private fun createSubsection(
+    lines: MutableList<String>,
+    start: Int,
+    end: Int,
+    section: String,
+  ): Int {
+    val order = SECTIONS.values.toList() + "Commits"
+    val following =
+      (start until end).firstOrNull { i ->
+        lines[i].startsWith("### ") &&
+          order.indexOf(lines[i].removePrefix("### ")) > order.indexOf(section)
+      }
+    if (following != null) {
+      lines.addAll(following, listOf("### $section", ""))
+      return following
+    }
+    var insertAt = end
+    while (
+      insertAt > start &&
+        (lines[insertAt - 1].isBlank() || LINK_REFERENCE.matches(lines[insertAt - 1]))
+    ) {
+      insertAt--
+    }
+    lines.addAll(insertAt, listOf("", "### $section"))
+    return insertAt + 1
   }
 }
