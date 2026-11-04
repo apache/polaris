@@ -205,13 +205,7 @@ sourceSets {
   main { java { srcDir("../../common/src/main/java") } }
   test { java { srcDir("../../common/src/test/java") } }
   named("intTest") {
-    java {
-      srcDir("../../common/src/intTest/java")
-      // SparkPaimonIT requires the Paimon runtime added above.
-      if (scalaVersion == "2.13") {
-        exclude("**/SparkPaimonIT.java")
-      }
-    }
+    java { srcDir("../../common/src/intTest/java") }
     resources { srcDir("../../common/src/intTest/resources") }
   }
 }
