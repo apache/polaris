@@ -47,6 +47,12 @@ object ChangelogFragments {
   private val LINK_REFERENCE = Regex("\\[[^]]+]:.*")
 
   /**
+   * Orders the fragments of a section by priority, then by title, which both are in the file name.
+   * Directory listings have no defined order.
+   */
+  internal fun orderFragments(files: List<File>): List<File> = files.sortedBy { it.name }
+
+  /**
    * Returns the fragment files per section heading, in changelog order, sorted by file name within
    * a section. Fails if any fragment is invalid.
    */
@@ -58,7 +64,7 @@ object ChangelogFragments {
       .forEach { f ->
         val section = SECTIONS[f.name]
         if (f.isDirectory && section != null) {
-          fragments[section] = f.listFiles()!!.sortedBy { it.name }
+          fragments[section] = orderFragments(f.listFiles()!!.asList())
         } else if (f.name != "README.md") {
           errors.add("$f: unknown section, must be one of ${SECTIONS.keys}")
         }
@@ -91,7 +97,12 @@ object ChangelogFragments {
    * headings and fragments that cannot be deleted leave all files untouched. The changelog is then
    * replaced atomically.
    */
-  fun merge(directory: File, changelog: File, version: String? = null): List<File> {
+  fun merge(
+    directory: File,
+    changelog: File,
+    version: String? = null,
+    delete: (File) -> Unit = { Files.delete(it.toPath()) },
+  ): List<File> {
     val fragments = collect(directory)
     val consumed = fragments.values.flatten()
     val lines = changelog.readLines()
@@ -118,7 +129,7 @@ object ChangelogFragments {
       Files.deleteIfExists(temp)
     }
 
-    val remaining = consumed.filter { f -> runCatching { Files.delete(f.toPath()) }.isFailure }
+    val remaining = consumed.filter { f -> runCatching { delete(f) }.isFailure }
     if (remaining.isNotEmpty()) {
       throw GradleException(
         "${changelog.name} was updated, but these fragments could not be deleted:\n" +

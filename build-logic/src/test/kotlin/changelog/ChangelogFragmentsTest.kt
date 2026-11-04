@@ -20,6 +20,7 @@
 package changelog
 
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermissions
 import org.assertj.core.api.Assertions.assertThat
@@ -350,5 +351,38 @@ class ChangelogFragmentsTest {
 
     assertThat(changelog.readText()).isEqualTo(template)
     assertThat(fragmentFiles()).contains("99-fix.md")
+  }
+
+  @Test
+  fun orderingDoesNotDependOnTheOrderOfTheDirectoryListing() {
+    val files = listOf("99-b.md", "10-z.md", "99-a.md", "05-m.md").map { File(it) }
+
+    val expected = listOf("05-m.md", "10-z.md", "99-a.md", "99-b.md")
+    assertThat(ChangelogFragments.orderFragments(files).map { it.name }).isEqualTo(expected)
+    assertThat(ChangelogFragments.orderFragments(files.reversed()).map { it.name })
+      .isEqualTo(expected)
+  }
+
+  @Test
+  fun failedDeletionAfterWritingIsReportedWithRecoveryInstructions() {
+    fragment("fixes/10-a.md", "A.\n")
+    val b = fragment("fixes/20-b.md", "B.\n")
+    fragment("fixes/30-c.md", "C.\n")
+
+    assertThatThrownBy {
+        ChangelogFragments.merge(fragments, changelog) { f ->
+          if (f == b) throw IOException("denied") else Files.delete(f.toPath())
+        }
+      }
+      .isInstanceOf(GradleException::class.java)
+      .hasMessageContaining("was updated, but these fragments could not be deleted")
+      .hasMessageContaining(b.path)
+      .hasMessageContaining("Do NOT run the merge again")
+      .hasMessageNotContaining("10-a.md")
+      .hasMessageNotContaining("30-c.md")
+
+    // The changelog has all entries, once. Only the fragment that could not be deleted remains.
+    assertThat(changelog.readText()).contains("- A.\n- B.\n- C.\n")
+    assertThat(fragmentFiles()).containsExactlyInAnyOrder("README.md", "20-b.md")
   }
 }
