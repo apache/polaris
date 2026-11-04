@@ -39,17 +39,29 @@ public interface SupportsCatalogChangeCommit {
    * state on each retry.
    *
    * <p>The callback may run several times, and the result of an earlier invocation may never be
-   * committed. Changes to the attempt-local state and indexes it receives are discarded between
-   * attempts, so they are safe. External side effects, such as object-storage writes, event
-   * dispatch or calls to other services, are not: perform them before calling this method, or make
-   * them idempotent.
+   * committed. The catalog state builder and the indexes it receives are rebuilt for each attempt,
+   * but the {@code CommitterState} is shared across attempts: objects must be written with {@code
+   * writeOrReplace} using stable keys, because {@code writeIntent} fails and {@code writeIfNew}
+   * returns the earlier attempt's object when a key is reused. External side effects, such as
+   * object-storage writes, event dispatch or calls to other services, are not undone between
+   * attempts: perform them before calling this method, or make them idempotent.
+   *
+   * <p>If an attempt fails with an {@code UnknownOperationResultException}, its changes may have
+   * been committed, and the next attempt may observe them. Whether to treat that as success or
+   * failure is up to the callback.
+   *
+   * <p>The callback is responsible for keeping the name, id, change and location indexes consistent
+   * with each other. None of the conflict or location-overlap checks of the built-in entity
+   * mutations are applied.
    *
    * <p>The callback must return quickly and must not block. Each attempt holds an in-process lock
    * on the catalog's content reference, so a slow callback delays other local commits to that
    * catalog.
    *
+   * @param catalogId ID of an existing catalog; must be positive
    * @param resultType the reified result type required by the commit machinery; must match {@code
    *     T}
+   * @return the result of the callback, which must not be {@code null}
    */
   <T> T commitCatalogChange(
       long catalogId, Class<T> resultType, CatalogChangeCommitterWrapper<T> wrapper);

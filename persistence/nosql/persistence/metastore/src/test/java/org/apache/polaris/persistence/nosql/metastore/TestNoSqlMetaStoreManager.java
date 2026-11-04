@@ -335,6 +335,33 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     soft.assertThat(fetchCatalogState(catalogId)).isEqualTo(stateBefore);
   }
 
+  @Test
+  public void commitCatalogChangeRejectsInvalidCatalogId() {
+    var wrapper =
+        new CatalogChangeCommitterWrapper<String>(
+            (state, ref, byName, byId, changes, locations) ->
+                new ChangeResult.NoChange<>("unchanged"));
+
+    assertThatThrownBy(
+            () -> catalogChangeCommitter().commitCatalogChange(0L, String.class, wrapper))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid catalog ID 0");
+  }
+
+  @Test
+  public void commitCatalogChangeRejectsNullResult() {
+    long catalogId = createCatalogForCommit("commitCatalogChangeNullResultCatalog");
+
+    var wrapper =
+        new CatalogChangeCommitterWrapper<String>(
+            (state, ref, byName, byId, changes, locations) -> new ChangeResult.NoChange<>(null));
+
+    assertThatThrownBy(
+            () -> catalogChangeCommitter().commitCatalogChange(catalogId, String.class, wrapper))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Catalog change callback returned a null result");
+  }
+
   private long createCatalogForCommit(String name) {
     PolarisBaseEntity catalog =
         new PolarisBaseEntity(
