@@ -20,6 +20,7 @@ package org.apache.polaris.spark.quarkus.it;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -27,11 +28,23 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.it.ext.SparkSessionBuilder;
 import org.apache.spark.sql.SparkSession;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class SparkPaimonIT extends SparkIntegrationBase {
   private String namespace;
+
+  @BeforeAll
+  public static void assumePaimonAvailable() {
+    assumeTrue(
+        SparkPaimonIT.class
+                .getClassLoader()
+                .getResource(
+                    "org/apache/paimon/spark/extensions/PaimonSparkSessionExtensions.class")
+            != null,
+        "Paimon is not available on the classpath");
+  }
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
