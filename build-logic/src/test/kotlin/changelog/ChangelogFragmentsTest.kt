@@ -385,4 +385,14 @@ class ChangelogFragmentsTest {
     assertThat(changelog.readText()).contains("- A.\n- B.\n- C.\n")
     assertThat(fragmentFiles()).containsExactlyInAnyOrder("README.md", "20-b.md")
   }
+
+  @Test
+  fun directoryInsideSectionIsReportedAsNotAFile() {
+    File(fragments, "fixes/99-dir.md").mkdirs()
+
+    assertThatThrownBy { ChangelogFragments.collect(fragments) }
+      .isInstanceOf(GradleException::class.java)
+      .hasMessageContaining("99-dir.md: must be a file, not a directory")
+      .hasMessageNotContaining("file name must match")
+  }
 }

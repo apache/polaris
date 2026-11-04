@@ -72,7 +72,8 @@ object ChangelogFragments {
     fragments.values.flatten().forEach { f ->
       val text = if (f.isFile) f.readText().trim() else ""
       when {
-        !f.isFile || !FRAGMENT_NAME.matches(f.name) ->
+        !f.isFile -> errors.add("$f: must be a file, not a directory")
+        !FRAGMENT_NAME.matches(f.name) ->
           errors.add("$f: file name must match NN-short-title.md, for example 99-my-change.md")
         text.isEmpty() -> errors.add("$f: file is empty")
         LIST_MARKER.containsMatchIn(text) ->
