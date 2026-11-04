@@ -273,6 +273,7 @@ val checkChangelogFragments =
     group = "verification"
     description = "Validates the changelog fragments in changelog.d"
     fragmentsDirectory = layout.projectDirectory.dir("changelog.d")
+    successMarker = layout.buildDirectory.file("changelog-fragments-check/success")
   }
 
 tasks.named("check") { dependsOn(checkChangelogFragments) }

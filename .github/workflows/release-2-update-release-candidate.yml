@@ -210,6 +210,31 @@ jobs:
           # Push the changes
           exec_process git push origin "${release_branch}"
 
+      - name: Merge changelog fragments of cherry-picked changes
+        # RC0 merges the fragments above. For later release candidates, the fragments of the
+        # cherry-picked changes go into the already existing section of the release.
+        if: env.rc_number != '0'
+        run: |
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          exec_process ./gradlew mergeChangelogFragments --release-version="${version_without_rc}"
+          exec_process git add "$CHANGELOG_FILE" "$CHANGELOG_FRAGMENTS_DIR"
+          if ! git diff --cached --quiet; then
+            exec_process git commit -m "[chore] Update changelog for ${version_without_rc}-rc${rc_number}"
+            exec_process git push origin "${release_branch}"
+          fi
+
+      - name: Verify that all changelog fragments were merged
+        run: |
+          source "${LIBS_DIR}/_constants.sh"
+
+          # In dry-run mode nothing was merged
+          if [[ ${DRY_RUN:-1} -ne 1 ]] && [[ -n "$(find "$CHANGELOG_FRAGMENTS_DIR" -mindepth 2 -type f)" ]]; then
+            echo "❌ Unmerged changelog fragments remain in \`changelog.d\`, they would be missing from the release notes." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
       - name: Create RC tag at new commit
         run: |
           source "${LIBS_DIR}/_exec.sh"

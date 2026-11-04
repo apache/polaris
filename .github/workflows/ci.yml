@@ -39,6 +39,7 @@ jobs:
       python_client: ${{ github.event_name != 'pull_request' || steps.filter.outputs.python_client == 'true' }}
       docs: ${{ github.event_name != 'pull_request' || steps.filter.outputs.docs == 'true' }}
       changelog: ${{ github.event_name != 'pull_request' || steps.filter.outputs.changelog == 'true' }}
+      build_logic: ${{ github.event_name != 'pull_request' || steps.filter.outputs.build_logic == 'true' }}
     steps:
       - name: Checkout
         # Needed for git-based diffing below; the default GitHub-API-based mode of
@@ -109,6 +110,8 @@ jobs:
               - 'site/**'
             changelog:
               - 'changelog.d/**'
+            build_logic:
+              - 'build-logic/**'
             # 'some-with-excludes' makes exclusions final, so these generated-doc paths
             # can't be re-included within the 'backend'/'helm' filters above; they're
             # OR-ed into the job outputs instead (see `outputs:` above).
@@ -171,6 +174,27 @@ jobs:
       - name: Check changelog fragments
         env: *gradle_env_vars
         run: ./gradlew checkChangelogFragments
+
+  build-logic-tests:
+    name: Build Logic Tests
+    needs: changes
+    if: needs.changes.outputs.build_logic == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up JDK 21
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with: *setup-java-vars
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Run build logic tests
+        env: *gradle_env_vars
+        run: ./gradlew :polaris-build-logic:test
 
   build-checks:
     name: Gradle Build Checks
@@ -799,6 +823,7 @@ jobs:
       - changes
       - license-check
       - changelog-fragments-check
+      - build-logic-tests
       - build-checks
       - runtime-service-tests
       - runtime-service-int-tests
