@@ -923,8 +923,20 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    */
   public ImmutableLoadCredentialsResponse loadCredentials(
       TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
+    return loadCredentials(tableIdentifier, refreshCredentialsEndpoint, List.of());
+  }
 
-    Set<PolarisStorageActions> actionsRequested = authorizeLoadTable(tableIdentifier, true);
+  /**
+   * Same as {@link #loadCredentials(TableIdentifier, Optional)}, for a request that reached the
+   * table through the given chain of views, outermost first.
+   */
+  public ImmutableLoadCredentialsResponse loadCredentials(
+      TableIdentifier tableIdentifier,
+      Optional<String> refreshCredentialsEndpoint,
+      List<TableIdentifier> referencedBy) {
+
+    Set<PolarisStorageActions> actionsRequested =
+        authorizeLoadTable(tableIdentifier, true, referencedBy);
 
     // Optimized credential vending is only supported for native Polaris catalogs.
     // Federated/external catalogs are passthrough — writes happen directly on the
@@ -990,12 +1002,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   private Set<PolarisStorageActions> authorizeLoadTable(
-      TableIdentifier tableIdentifier, boolean delegationRequested) {
+      TableIdentifier tableIdentifier,
+      boolean delegationRequested,
+      List<TableIdentifier> referencedBy) {
     if (!delegationRequested) {
       resolveAndAuthorizeBasicTableLikeOperationOrThrow(
           PolarisAuthorizableOperation.LOAD_TABLE,
           PolarisEntitySubType.ICEBERG_TABLE,
-          tableIdentifier);
+          tableIdentifier,
+          referencedBy);
       return Set.of();
     }
 
@@ -1011,18 +1026,26 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     ensureResolutionManifestForTable(tableIdentifier);
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    resolveBasicTableLikeTargetOrThrow(authorizationState, write, tableIdentifier);
+    resolveBasicTableLikeTargetOrThrow(authorizationState, write, tableIdentifier, referencedBy);
 
     Set<PolarisStorageActions> actionsRequested =
         new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
     try {
       authorizeResolvedBasicTableLikeOperationOrThrow(
-          authorizationState, write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+          authorizationState,
+          write,
+          PolarisEntitySubType.ICEBERG_TABLE,
+          tableIdentifier,
+          referencedBy);
       actionsRequested.add(PolarisStorageActions.WRITE);
     } catch (ForbiddenException e) {
       // Reuse the already-resolved table view for the read-delegation fallback.
       authorizeResolvedBasicTableLikeOperationOrThrow(
-          authorizationState, read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+          authorizationState,
+          read,
+          PolarisEntitySubType.ICEBERG_TABLE,
+          tableIdentifier,
+          referencedBy);
     }
 
     return actionsRequested;
@@ -1167,9 +1190,29 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       IfNoneMatch ifNoneMatch,
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
+    return loadTable(
+        tableIdentifier,
+        snapshots,
+        ifNoneMatch,
+        delegationModes,
+        refreshCredentialsEndpoint,
+        List.of());
+  }
+
+  /**
+   * Same as {@link #loadTable(TableIdentifier, String, IfNoneMatch, EnumSet, Optional)}, for a
+   * request that reached the table through the given chain of views, outermost first.
+   */
+  public Optional<LoadTableResponse> loadTable(
+      TableIdentifier tableIdentifier,
+      String snapshots,
+      IfNoneMatch ifNoneMatch,
+      EnumSet<AccessDelegationMode> delegationModes,
+      Optional<String> refreshCredentialsEndpoint,
+      List<TableIdentifier> referencedBy) {
 
     Set<PolarisStorageActions> actionsRequested =
-        authorizeLoadTable(tableIdentifier, !delegationModes.isEmpty());
+        authorizeLoadTable(tableIdentifier, !delegationModes.isEmpty(), referencedBy);
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     return loadTableWithResolvedAuthorization(
@@ -1730,9 +1773,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   public LoadViewResponse loadView(TableIdentifier viewIdentifier) {
+    return loadView(viewIdentifier, List.of());
+  }
+
+  /**
+   * Same as {@link #loadView(TableIdentifier)}, for a request that reached the view through the
+   * given chain of views, outermost first.
+   */
+  public LoadViewResponse loadView(
+      TableIdentifier viewIdentifier, List<TableIdentifier> referencedBy) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_VIEW;
     resolveAndAuthorizeBasicTableLikeOperationOrThrow(
-        op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
+        op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier, referencedBy);
 
     return catalogHandlerUtils().loadView(viewCatalog, viewIdentifier);
   }
