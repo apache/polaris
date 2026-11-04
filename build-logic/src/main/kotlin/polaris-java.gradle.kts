@@ -57,15 +57,14 @@ private fun requiredLib(name: String): Provider<MinimalExternalModuleDependency>
     GradleException("$name version not found in libs.versions.toml")
   }
 
-// Keep Brotli4j's Java, service and native artifacts aligned, including with the enforced Quarkus
-// BOM.
+// Align Brotli4j 1.23.0 artifacts from the enforced Quarkus BOM without downgrading newer versions.
 // Remove this override once the Quarkus platform includes
 // https://github.com/quarkusio/quarkus/pull/57883.
 val brotli4jVersion = requiredLib("brotli4j").map { it.version!! }
 
 configurations.configureEach {
   resolutionStrategy.eachDependency {
-    if (requested.group == "com.aayushatharva.brotli4j") {
+    if (requested.group == "com.aayushatharva.brotli4j" && requested.version == "1.23.0") {
       useVersion(brotli4jVersion.get())
       because("Align Brotli4j artifacts until the Quarkus platform is updated")
     }
