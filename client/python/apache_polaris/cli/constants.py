@@ -248,6 +248,7 @@ class Arguments:
     ATTACHMENT_PATH = "attachment_path"
     SETUP_CONFIG = "setup_config"
     DRY_RUN = "dry_run"
+    INCLUDE_TABLES_AND_VIEWS = "include_tables_and_views"
     REALM = "realm"
     HEADER = "header"
     IDENTIFIER = "identifier"

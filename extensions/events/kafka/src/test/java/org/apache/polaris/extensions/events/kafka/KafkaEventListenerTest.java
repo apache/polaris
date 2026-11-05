@@ -65,12 +65,16 @@ import tools.jackson.databind.json.JsonMapper;
 @Testcontainers
 @ExtendWith(MockitoExtension.class)
 class KafkaEventListenerTest {
+  // apache/kafka-native images built with GraalVM < 25 segfault in getpwuid() on about 2% of
+  // starts (KAFKA-20314). Testcontainers only notices once the 60 second log wait times out, so
+  // allow more attempts; each starts a new container. Remove once the image is 4.4.0 or later.
   @Container
   private static final KafkaContainer KAFKA_CONTAINER =
       new KafkaContainer(
-          containerSpecHelper("kafka", KafkaEventListenerTest.class)
-              .dockerImageName(null)
-              .asCompatibleSubstituteFor("kafka-native"));
+              containerSpecHelper("kafka", KafkaEventListenerTest.class)
+                  .dockerImageName(null)
+                  .asCompatibleSubstituteFor("kafka-native"))
+          .withStartupAttempts(3);
 
   private static final String TOPIC = "polaris-events";
   private static final String REALM = "test-realm";

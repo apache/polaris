@@ -300,6 +300,16 @@ Flag to enable or disable the API to reset principal credentials. Defaults to en
 
 ---
 
+##### `polaris.features."ENABLE_ENTITY_LEVEL_LIST_FILTERING"`
+
+When true, listNamespaces, listTables and listViews no longer return 403 to a caller who lacks the matching *_LIST privilege on the parent. Instead, the caller receives only the children it has access to. Under the built-in RBAC authorizer, a child is accessible if the caller holds *_READ_PROPERTIES (or a stronger privilege that implies it, such as TABLE_READ_DATA for tables) on the child or one of its parents. Callers holding *_LIST on the parent are unaffected and still see every child. When false (default), callers without *_LIST on the parent receive a 403.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+- **Catalog Config:** `polaris.config.enable-entity-level-list-filtering`
+
+---
+
 ##### `polaris.features."ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES"`
 
 When true, enables finer grained update table privileges which are passed to the authorizer for update table operations
@@ -479,7 +489,7 @@ How many times to retry refreshing metadata when the previous error was retryabl
 
 ##### `polaris.features."OPTIMIZED_SIBLING_CHECK"`
 
-When set, Polaris uses an index to perform sibling overlap checks between tables, views, and namespaces. This is not a bypass mode, but enabling or disabling it can change overlap-detection coverage for non-standard location layouts. Only enable it when the required index and backfill state is known to be correct. Locations written by Polaris always end with a slash; locations stored by older versions without one are still handled. Supported by the JDBC and NoSQL metastore implementations.
+When set, Polaris uses an index to check overlap against base locations of tables, views, and namespaces across the catalog. If ALLOW_UNSTRUCTURED_TABLE_LOCATION is enabled (or the catalog is external), siblings are still listed when the index finds no conflict, to check sibling tables' write.data.path and write.metadata.path properties. Only enable it when the required index and backfill state is known to be correct. Locations written by Polaris always end with a slash; locations stored by older versions without one are still handled. Supported by the JDBC and NoSQL metastore implementations.
 
 - **Type:** `Boolean`
 - **Default:** `false`

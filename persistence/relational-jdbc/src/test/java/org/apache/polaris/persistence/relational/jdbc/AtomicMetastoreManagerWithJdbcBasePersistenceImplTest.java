@@ -25,7 +25,7 @@ import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -40,6 +40,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
@@ -132,8 +133,8 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(
-                callContext, List.of(PolarisEntity.toCore(catalog)), candidateNamespace))
-        .contains(Optional.of("s3://bucket/warehouse/existing/"));
+                callContext, candidateNamespace, Set.of(catalog.getId()), null))
+        .isEqualTo(new LocationOverlapResult.Overlap("s3://bucket/warehouse/existing/"));
 
     TestLocationBasedEntity nonOverlappingNamespace =
         new TestLocationBasedEntity(
@@ -145,8 +146,19 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(
-                callContext, List.of(PolarisEntity.toCore(catalog)), nonOverlappingNamespace))
-        .contains(Optional.empty());
+                callContext, nonOverlappingNamespace, Set.of(catalog.getId()), null))
+        .isEqualTo(new LocationOverlapResult.NoOverlap());
+
+    // The persisted entity itself, e.g. when renamed, does not conflict with its own location.
+    TestLocationBasedEntity renamedNamespace =
+        new TestLocationBasedEntity(
+            buildLocationBasedNamespace(
+                catalog, existingNamespace.getId(), "renamed", "s3://bucket/warehouse/existing/"));
+
+    Assertions.assertThat(
+            metaStoreManager.hasOverlappingSiblings(
+                callContext, renamedNamespace, Set.of(catalog.getId()), null))
+        .isEqualTo(new LocationOverlapResult.NoOverlap());
   }
 
   @Test

@@ -569,6 +569,39 @@ public class PolarisPolicyServiceIntegrationTest {
   }
 
   @Test
+  public void testUpdatePolicyWithoutCurrentPolicyVersion() {
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
+
+    UpdatePolicyRequest request =
+        UpdatePolicyRequest.builder()
+            .setContent("{\"enable\":false}")
+            .setDescription("updated test policy")
+            .build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
+                Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy", NS1_P1.name()))
+            .put(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains("current-policy-version is required to update a policy");
+    }
+
+    Policy policy = policyApi.loadPolicy(currentCatalogName, NS1_P1);
+    Assertions.assertThat(policy.getVersion()).isEqualTo(0);
+    Assertions.assertThat(policy.getContent()).isEqualTo(EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT);
+
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
   public void testListPolicies() {
     restCatalog.createNamespace(NS1);
     policyApi.createPolicy(

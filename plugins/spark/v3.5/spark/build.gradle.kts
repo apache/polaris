@@ -272,9 +272,8 @@ tasks.named("build") { dependsOn(createPolarisSparkJar) }
 // bundle jar is intentionally left untouched here).
 listOf("jar", "sourcesJar", "javadocJar").forEach { jarTask ->
   tasks.named<Jar>(jarTask) {
-    from(layout.settingsDirectory) {
-      include("gradle/jar-licenses/LICENSE", "gradle/jar-licenses/NOTICE")
-      eachFile { path = "META-INF/$sourceName" }
+    into("META-INF") {
+      from(layout.settingsDirectory.dir("gradle/jar-licenses")) { include("LICENSE", "NOTICE") }
     }
   }
 }

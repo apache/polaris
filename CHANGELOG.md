@@ -28,6 +28,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ## [Unreleased]
 
 ### Highlights
+- Table and view commits no longer delete newly written metadata when the metastore write outcome
+  is unknown (e.g. a dropped connection during `commit()`); they still clean up on known failures.
+  JDBC reports that unknown outcome as `PersistenceCommitStateUnknownException` (HTTP 500). A
+  connection failure before `commit()` is a plain failure and the new metadata file is kept.
 
 - Polaris now fully supports "external" principals, that is, principals that are not backed by an 
   entity in Polaris metastore. By enabling external principals, either globally or per-realm,
@@ -62,10 +66,28 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `Expect: 100-continue` by default. Set `polaris.storage.expect-continue-enabled=true`
   to preserve the previous behavior. Iceberg S3 clients continue to use Apache HttpClient 4
   and retain their existing default.
+- The `apache-polaris` Python package no longer depends on `boto3`, which it never used. Environments
+  that relied on it being installed transitively must now install `boto3` explicitly.
 - Relational JDBC: The per-schema-version runtime fallback has been removed. The migration to schema
   v6 is now **required** before starting this version of Polaris. The first request to any realm
   whose recorded schema version does not match what the binary expects will fail fast with a clear
   error message. See the [Relational JDBC metastore documentation] for the full upgrade path.
+- Tables last committed by a Polaris version older than 1.3.0 have all their locations validated on
+  their next commit. That commit fails if the locations do not satisfy the current location rules,
+  for example the catalog's allowed locations.
+- Loading a table whose metadata location or `write.data.path` / `write.metadata.path` differs from
+  the values recorded in Polaris now fails with a `ForbiddenException`, without any commit being
+  attempted. Tables last committed before 1.3.0 have no recorded values and are not affected until
+  their next commit.
+- Purging a table, and deleting metadata files after a commit
+  (`write.metadata.delete-after-commit.enabled`), no longer delete files located outside the
+  table's location. Such files are left in place and a warning is logged.
+- Purging a table now fails with a 400 error if the table entity has no recorded location, and with
+  a 403 error if the locations in the table metadata don't match the ones recorded on the entity.
+  For tables created before 1.3.0, custom `write.data.path` and `write.metadata.path` locations are
+  taken from the table metadata, since they were not recorded on the entity. Purge tasks that were
+  queued by an older version only carry the table's base location: files under a custom
+  `write.data.path` or `write.metadata.path` outside of it are not deleted by those tasks.
 
 [Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 
@@ -98,10 +120,38 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The event attribute `EventAttributes.ACCESS_DELEGATION_MODE` (`String`) has been replaced with
   `EventAttributes.ACCESS_DELEGATION_MODES` (`List<String>`). Accordingly, the OpenTelemetry event
   listener now emits `polaris.access_delegation_modes` instead of `polaris.access_delegation_mode`.
+- Table and view renames now validate locations against the destination namespace. Existing tables
+  also validate their namespace location during commits and credential vending. With
+  `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false` (default), operations involving locations outside the
+  namespace now return HTTP 403. Catalogs that enable unstructured locations remain subject to
+  catalog allowlists and configured overlap checks.
+- With `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false`, creating or registering a table whose
+  `write.data.path` or `write.metadata.path` lies outside the table's own location now fails with
+  403 Forbidden. Such tables could be created before, but loading them or vending credentials for
+  them already failed.
+- Unless `ALLOW_TABLE_LOCATION_OVERLAP` is enabled, a table can no longer be created at a location
+  that overlaps the `write.data.path` or `write.metadata.path` of an existing sibling table, and
+  sibling tables can no longer share such a path. A namespace can no longer be created at such a
+  location unless `ALLOW_NAMESPACE_LOCATION_OVERLAP` is enabled.
+- With `OPTIMIZED_SIBLING_CHECK` enabled, Polaris now also lists siblings after the indexed
+  overlap check when `ALLOW_UNSTRUCTURED_TABLE_LOCATION` is enabled or the catalog is external, to
+  check sibling tables' `write.data.path` and `write.metadata.path`. Validation may take longer in
+  such catalogs for namespaces with many entities. Checks against other tables' write paths remain
+  limited to siblings under the same parent.
+- With `ALLOW_UNSTRUCTURED_TABLE_LOCATION=true`, and in `EXTERNAL` catalogs, credentials are no
+  longer vended for a table whose `write.data.path` or `write.metadata.path` lies outside its own
+  location and overlaps another table or namespace. Such requests fail with 403 Forbidden. This
+  check does not apply when `ALLOW_TABLE_LOCATION_OVERLAP` is enabled, and it only applies to
+  catalogs served by `LocalIcebergCatalog`, not to federated catalogs.
 
 ### New Features
 
+- Shared CloudEvents 1.0 JSON mapper for Polaris events (`CloudEventsEventJsonMapper` next to
+  the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
+  lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners
+  (webhook / Kafka / CloudWatch) can adopt this in follow-ups.
 - Python CLI: added `register` support for both `tables` and `views` commands
+- Python CLI: `setup export` and `setup apply` now support both Iceberg tables and views as register entries.
 - Python CLI: added `namespaces update` to set and remove namespace properties
 - NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
@@ -111,8 +161,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Azure credential vending now maps MSAL authentication failures using their HTTP status codes,
   including the existing `401` to `403` and `404` to `400` mappings.
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
-  take the entity's resolved parent path, so implementations exclude the entity's own ancestors
-  without re-reading the parent chain from the metastore.
+  take the ids of the entity's catalog and parent namespaces, so implementations exclude them
+  without re-reading the parent chain from the metastore, and return a `LocationOverlapResult`. They
+  also take an optional search root: when set, only the entities located at or below it are
+  considered, which allows renamed entities to be checked against the destination namespace only.
+  Implementations must also ignore the entity itself, identified by its id, so that an already
+  persisted entity does not conflict with its own location.
 - Apache Iceberg has been upgraded to 1.12.0. The Java REST client now encodes spaces in namespace
   and table names as `%20` instead of `+` (apache/iceberg#15989). Polaris decodes path segments
   per RFC 3986 and has always treated `+` as a literal character, so the server behaves the same for
@@ -121,11 +175,28 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   accounts for them. Entities with many grants weigh more, which can lead to more evictions than before
   with the same configured value. The description of `ENTITY_CACHE_WEIGHER_TARGET` now documents that
   its weights approximate bytes.
+- The `apache-polaris` Python package now accepts `pydantic` from 2.12 up to, but excluding, 3.0
+  instead of a single minor version, so it can be installed alongside packages that pin `pydantic`.
+- `TABLE_MANAGE_STRUCTURE` and the fine-grained table update privileges (such as
+  `TABLE_ASSIGN_UUID`, `TABLE_ADD_SCHEMA` or `TABLE_SET_PROPERTIES`) now subsume
+  `TABLE_READ_PROPERTIES`, consistent with `TABLE_WRITE_PROPERTIES`, because a table update returns
+  the full table metadata. Roles holding only one of these privileges can now also load the table,
+  get the applicable policies on the table, and load the table as a generic table, since all of these
+  operations require `TABLE_READ_PROPERTIES`.
+  In the Ranger service definition, the corresponding access types (`table-structure-manage`,
+  `table-uuid-assign`, etc.) now imply `table-properties-read`; the service definition must be
+  re-imported into Ranger for this to take effect.
 
 ### Deprecations
 
 ### Fixes
 
+- The Iceberg REST `/config` response now advertises the
+  `GET /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials` endpoint, which Polaris
+  already served. Clients that check advertised endpoints before refreshing vended credentials can
+  now use it.
+- Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
+  the packaged chart, so `helm test` ran no tests.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - Maintenance policy content now rejects non-boolean values for the `enable` field again. The
@@ -175,6 +246,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Catalog federation: `connectionConfigInfo.properties` is now persisted and returned for `HADOOP`
   and `HIVE` connection configurations. It was previously accepted by the management API but
   silently dropped, so `GET /catalogs/{name}` never showed it.
+- Catalog federation: `connectionConfigInfo.properties` is now applied when Polaris initializes
+  the Iceberg client for `HADOOP` and `HIVE` catalogs. As for `ICEBERG_REST`, only an explicit
+  allow-list is forwarded: `suppress-permission-error` (Hadoop), `clients` and `list-all-tables`
+  (Hive), plus the non-secret FileIO settings `s3.endpoint`,
+  `s3.path-style-access` and `client.region` for both. Other keys are stored but ignored.
 - Semantic models: a `datasets` field that is not a JSON array now returns `400 Bad Request`
   instead of being silently skipped, which bypassed every `dataset.source` check.
 - Conditional `loadTable` (`If-None-Match` → HTTP 304) no longer attaches a null
@@ -200,6 +276,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Ranger authorizer: a table or policy under a nested namespace is no longer mapped to the wrong
   Ranger resource. Namespace levels now occupy a single namespace resource instead of one each,
   so a policy written for the nested namespace matches.
+- Updating a policy without `current-policy-version` now returns `400 Bad Request` naming the
+  missing field, instead of `500 Internal Server Error`. The field is used for the policy's
+  optimistic version check, so a request without it is rejected and the policy is unchanged.
 - Ranger authorizer: `table-data-write` now confers `table-properties-write`, as the built-in
   authorizer already does. Without it, a Ranger policy granting only `table-data-write` was
   refused operations the same grant allows under the built-in authorizer. Existing deployments
@@ -252,14 +331,22 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   generic-table paths used by the Spark plugin, now encode spaces in namespace and table names as
   `%20` instead of `+`. Previously, credential refresh failed for tables whose namespace or name
   contained a space.
+- NoSQL: a required credential rotation now invalidates the previous secret. The stored
+  credential-rotation state was not considered when deciding whether to drop the previous secret,
+  so the secret issued before the rotation stayed usable as the principal's secondary secret,
+  unlike on the relational-JDBC and transactional backends.
 - The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
   selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
   readiness monitoring without configuration changes.
 - Fixed an unbounded memory growth in the in-memory entity cache that could lead to out-of-memory
   errors: lookups by name no longer hold entities outside the cache's weight and expiry limits.
+- Setting a namespace's `location` property no longer fails with an internal error when its parent
+  is itself a nested namespace that has no stored location.
 - The Ranger authorizer no longer fails with `NoClassDefFoundError: javax/ws/rs/core/Cookie` when
   using `RangerAdminRESTClient` as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
+- Iceberg REST: creating a namespace with a request that omits `namespace` now returns
+  `400 Bad Request` instead of `500 Internal Server Error`.
 - Creating a table named after an Iceberg metadata table type, such as `history`, `snapshots` or
   `entries`, no longer fails with an `IllegalStateException` (HTTP 500).
 

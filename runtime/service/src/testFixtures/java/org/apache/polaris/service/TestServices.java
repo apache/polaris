@@ -42,7 +42,9 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationBatchRequest;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -276,8 +278,26 @@ public record TestServices(
                 return null;
               })
           .when(authorizer)
-          .resolveAuthorizationInputs(any(), any());
-      Mockito.when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
+          .resolveAuthorizationInputs(any(), any(AuthorizationRequest.class));
+      Mockito.when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
+          .thenReturn(AuthorizationDecision.allow());
+      // A Mockito mock does not run the interface's default methods, so the batch overloads must
+      // be stubbed too. Without this they return null, and callers that batch-authorize (such as
+      // entity-level list filtering) fail on the mock rather than on anything under test.
+      Mockito.doAnswer(
+              invocation -> {
+                AuthorizationState authzState = invocation.getArgument(0);
+                authzState.getResolutionManifest().resolveAll();
+                return null;
+              })
+          .when(authorizer)
+          .resolveAuthorizationInputs(any(), any(AuthorizationBatchRequest.class));
+      Mockito.when(authorizer.authorize(any(), any(AuthorizationBatchRequest.class)))
+          .thenAnswer(
+              invocation ->
+                  invocation.<AuthorizationBatchRequest>getArgument(1).intents().stream()
+                      .map(intent -> AuthorizationDecision.allow())
+                      .toList());
 
       // Application level
       StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;

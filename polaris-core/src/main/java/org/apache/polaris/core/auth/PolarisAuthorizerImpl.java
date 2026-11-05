@@ -254,7 +254,25 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_READ_DATA,
             TABLE_READ_PROPERTIES,
             TABLE_WRITE_DATA,
-            TABLE_WRITE_PROPERTIES));
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_ASSIGN_UUID,
+            TABLE_UPGRADE_FORMAT_VERSION,
+            TABLE_ADD_SCHEMA,
+            TABLE_SET_CURRENT_SCHEMA,
+            TABLE_ADD_PARTITION_SPEC,
+            TABLE_ADD_SORT_ORDER,
+            TABLE_SET_DEFAULT_SORT_ORDER,
+            TABLE_ADD_SNAPSHOT,
+            TABLE_SET_SNAPSHOT_REF,
+            TABLE_REMOVE_SNAPSHOTS,
+            TABLE_REMOVE_SNAPSHOT_REF,
+            TABLE_SET_LOCATION,
+            TABLE_SET_PROPERTIES,
+            TABLE_REMOVE_PROPERTIES,
+            TABLE_SET_STATISTICS,
+            TABLE_REMOVE_STATISTICS,
+            TABLE_REMOVE_PARTITION_SPECS));
     SUPER_PRIVILEGES.putAll(
         VIEW_READ_PROPERTIES,
         List.of(

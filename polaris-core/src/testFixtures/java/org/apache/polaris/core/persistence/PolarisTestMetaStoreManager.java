@@ -501,6 +501,13 @@ public class PolarisTestMetaStoreManager {
             .getPrincipalSecrets();
     Assertions.assertThat(secrets.getMainSecret()).isNotEqualTo(reloadSecrets.getMainSecret());
 
+    PolarisPrincipalSecrets afterRequiredRotation =
+        polarisMetaStoreManager
+            .loadPrincipalSecrets(this.polarisCallContext, clientId)
+            .getPrincipalSecrets();
+    Assertions.assertThat(afterRequiredRotation.getSecondarySecretHash())
+        .isNotEqualTo(reloadSecrets.getMainSecretHash());
+
     PrincipalEntity reloadPrincipal =
         polarisMetaStoreManager
             .findPrincipalById(

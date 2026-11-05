@@ -35,6 +35,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
@@ -117,43 +118,52 @@ public abstract class PolarisStorageConfigurationInfo {
     return DEFAULT_MAPPER.readValue(jsonStr, PolarisStorageConfigurationInfo.class);
   }
 
+  /**
+   * Returns the location restrictions for the given entity path.
+   *
+   * <p>The parent location is the nearest base location among the ancestors of a table-like leaf,
+   * or the nearest base location in the path otherwise.
+   *
+   * <p>When the path ends with an existing table-like entity, the entity's own base location is a
+   * separate restriction, so that it cannot stand in for its parent's.
+   */
   public static Optional<LocationRestrictions> forEntityPath(
       RealmConfig realmConfig, List<PolarisEntity> entityPath) {
     return findStorageConfigFromHierarchy(entityPath)
         .map(
             configInfo -> {
-              List<PolarisEntity> entityPathReversed = new ArrayList<>(entityPath);
-              Collections.reverse(entityPathReversed);
-
-              String baseLocation =
-                  entityPathReversed.stream()
-                      .flatMap(
-                          e ->
-                              Optional.ofNullable(
-                                  e.getPropertiesAsMap()
-                                      .get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
-                                  .stream())
-                      .findFirst()
-                      .orElse(null);
               CatalogEntity catalog = CatalogEntity.of(entityPath.get(0));
+              PolarisEntity leaf = entityPath.get(entityPath.size() - 1);
               boolean allowEscape =
                   realmConfig.getConfig(
                       FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION, catalog);
-              if (!allowEscape
-                  && catalog.getCatalogType() != Catalog.TypeEnum.EXTERNAL
-                  && baseLocation != null) {
-                LOGGER.debug(
-                    "Not allowing unstructured table location for entity: {}",
-                    entityPathReversed.get(0).getName());
-                return new LocationRestrictions(configInfo, baseLocation);
-              } else {
-                LOGGER.debug(
-                    "Allowing unstructured table location for entity: {}",
-                    entityPathReversed.get(0).getName());
-
+              if (allowEscape || catalog.getCatalogType() == Catalog.TypeEnum.EXTERNAL) {
+                LOGGER.debug("Allowing unstructured table location for entity: {}", leaf.getName());
                 return new LocationRestrictions(configInfo);
               }
+              boolean leafIsTableLike = leaf.getType() == PolarisEntityType.TABLE_LIKE;
+              String parentLocation = getParentLocation(entityPath, leafIsTableLike);
+              String entityLocation = leafIsTableLike ? getBaseLocation(leaf) : null;
+              LOGGER.debug(
+                  "Not allowing unstructured table location for entity: {}", leaf.getName());
+              return new LocationRestrictions(configInfo, parentLocation, entityLocation);
             });
+  }
+
+  private static @Nullable String getBaseLocation(PolarisEntity entity) {
+    return entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+  }
+
+  private static @Nullable String getParentLocation(
+      List<PolarisEntity> entityPath, boolean leafIsTableLike) {
+    List<PolarisEntity> parentPath =
+        leafIsTableLike ? entityPath.subList(0, entityPath.size() - 1) : entityPath;
+    List<PolarisEntity> parentPathReversed = new ArrayList<>(parentPath);
+    Collections.reverse(parentPathReversed);
+    return parentPathReversed.stream()
+        .flatMap(e -> Optional.ofNullable(getBaseLocation(e)).stream())
+        .findFirst()
+        .orElse(null);
   }
 
   public static @NonNull Optional<PolarisEntity> findEntityWithStorageConfigFromHierarchy(
