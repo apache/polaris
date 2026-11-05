@@ -18,16 +18,20 @@
  */
 package org.apache.polaris.persistence.nosql.metastore;
 
+import static java.lang.String.format;
 import static org.apache.polaris.core.entity.PolarisEntityConstants.ENTITY_BASE_LOCATION;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.NULL_SUBTYPE;
 import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.key;
+import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
+import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping.POLICY_MAPPING_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.metastore.mutation.PolicyMutation.MAX_POLICY_MAPPING_INDEX_VALUE_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.InstanceOfAssertFactories.BOOLEAN;
 
@@ -39,6 +43,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -78,10 +83,21 @@ import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
+import org.apache.polaris.persistence.nosql.api.commit.CommitterState;
+import org.apache.polaris.persistence.nosql.api.index.IndexKey;
+import org.apache.polaris.persistence.nosql.api.index.UpdatableIndex;
+import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
+import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRoleObj;
+import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogsObj;
+import org.apache.polaris.persistence.nosql.coretypes.changes.Change;
+import org.apache.polaris.persistence.nosql.coretypes.changes.ChangeAdd;
 import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping;
+import org.apache.polaris.persistence.nosql.metastore.committers.CatalogChangeCommitterWrapper;
+import org.apache.polaris.persistence.nosql.metastore.committers.ChangeResult;
+import org.apache.polaris.persistence.nosql.metastore.committers.SupportsCatalogChangeCommit;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
@@ -234,6 +250,206 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
         .fetchReferenceHead(PrincipalsObj.PRINCIPALS_REF_NAME, PrincipalsObj.class)
         .map(principals -> !principals.byClientId().stripes().isEmpty())
         .orElse(false);
+  }
+
+  @Test
+  public void commitCatalogChangeRetriesWithLiveStateOnConcurrentConflict() {
+    long catalogId = createCatalogForCommit("commitCatalogChangeRetryCatalog");
+    var executor = catalogChangeCommitter();
+
+    var attempts = new AtomicInteger();
+    var sawConcurrentEntityOnAttempt = new AtomicInteger(-1);
+
+    var wrapper =
+        new CatalogChangeCommitterWrapper<String>(
+            (state, ref, byName, byId, changes, locations) -> {
+              int attempt = attempts.incrementAndGet();
+              if (attempt == 1) {
+                // Simulate a write from a different Polaris node landing between this attempt
+                // reading live state and this commit's own CAS - bypassing the in-process
+                // synchronizingLocally() lock that commitCatalogChange() itself uses.
+                writeConcurrentCatalogRole(catalogId, "concurrentRole");
+              } else if (byName.get(key("concurrentRole")) != null) {
+                sawConcurrentEntityOnAttempt.set(attempt);
+              }
+
+              writeCatalogRole(state, catalogId, byName, byId, changes, "ownRole");
+
+              return new ChangeResult.CommitChange<>("ok");
+            });
+
+    var result = executor.commitCatalogChange(catalogId, String.class, wrapper);
+
+    assertThat(result).isEqualTo("ok");
+    // A single attempt would mean the conflicting write never forced a retry, which would defeat
+    // the point of this test: proving the caller-supplied wrapper re-evaluates against live state
+    // rather than a snapshot taken before the first attempt.
+    soft.assertThat(attempts.get()).isGreaterThanOrEqualTo(2);
+    soft.assertThat(sawConcurrentEntityOnAttempt.get()).isGreaterThanOrEqualTo(2);
+
+    // Both the competing write and the caller's own change must have landed and remain readable -
+    // a retry must merge with live state, not silently drop or overwrite it.
+    var nameToObjRef =
+        fetchCatalogState(catalogId)
+            .map(CatalogStateObj::nameToObjRef)
+            .map(c -> c.indexForRead(readPersistence(), OBJ_REF_SERIALIZER))
+            .orElseThrow();
+    soft.assertThat(nameToObjRef.get(key("concurrentRole"))).isNotNull();
+    soft.assertThat(nameToObjRef.get(key("ownRole"))).isNotNull();
+  }
+
+  @Test
+  public void commitCatalogChangeLeavesStateUnchangedWhenCallbackThrows() {
+    long catalogId = createCatalogForCommit("commitCatalogChangeThrowCatalog");
+    var stateBefore = fetchCatalogState(catalogId);
+    var failure = new IllegalStateException("callback failed after staging changes");
+
+    var wrapper =
+        new CatalogChangeCommitterWrapper<String>(
+            (state, ref, byName, byId, changes, locations) -> {
+              writeCatalogRole(state, catalogId, byName, byId, changes, "stagedRole");
+              throw failure;
+            });
+
+    assertThatThrownBy(
+            () -> catalogChangeCommitter().commitCatalogChange(catalogId, String.class, wrapper))
+        .isSameAs(failure);
+    soft.assertThat(fetchCatalogState(catalogId)).isEqualTo(stateBefore);
+  }
+
+  @Test
+  public void commitCatalogChangeReturnsResultWithoutCommittingOnNoChange() {
+    long catalogId = createCatalogForCommit("commitCatalogChangeNoChangeCatalog");
+    var stateBefore = fetchCatalogState(catalogId);
+
+    var wrapper =
+        new CatalogChangeCommitterWrapper<String>(
+            (state, ref, byName, byId, changes, locations) -> {
+              writeCatalogRole(state, catalogId, byName, byId, changes, "stagedRole");
+              return new ChangeResult.NoChange<>("unchanged");
+            });
+
+    var result = catalogChangeCommitter().commitCatalogChange(catalogId, String.class, wrapper);
+
+    soft.assertThat(result).isEqualTo("unchanged");
+    soft.assertThat(fetchCatalogState(catalogId)).isEqualTo(stateBefore);
+  }
+
+  @Test
+  public void commitCatalogChangeRejectsInvalidCatalogId() {
+    var wrapper =
+        new CatalogChangeCommitterWrapper<String>(
+            (state, ref, byName, byId, changes, locations) ->
+                new ChangeResult.NoChange<>("unchanged"));
+
+    assertThatThrownBy(
+            () -> catalogChangeCommitter().commitCatalogChange(0L, String.class, wrapper))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid catalog ID 0");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void commitCatalogChangeRejectsNullResult(boolean commitChange) {
+    long catalogId = createCatalogForCommit("commitCatalogChangeNullResultCatalog-" + commitChange);
+    var stateBefore = fetchCatalogState(catalogId);
+
+    var wrapper =
+        new CatalogChangeCommitterWrapper<String>(
+            (state, ref, byName, byId, changes, locations) -> {
+              writeCatalogRole(state, catalogId, byName, byId, changes, "stagedRole");
+              return commitChange
+                  ? new ChangeResult.CommitChange<>(null)
+                  : new ChangeResult.NoChange<>(null);
+            });
+
+    assertThatThrownBy(
+            () -> catalogChangeCommitter().commitCatalogChange(catalogId, String.class, wrapper))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Catalog change callback returned a null result");
+    soft.assertThat(fetchCatalogState(catalogId)).isEqualTo(stateBefore);
+  }
+
+  private long createCatalogForCommit(String name) {
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStore.generateNewEntityId(callContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            name);
+    CreateCatalogResult catalogCreated = metaStore.createCatalog(callContext, catalog, List.of());
+    assertThat(catalogCreated).isNotNull();
+    return catalogCreated.getCatalog().getId();
+  }
+
+  private SupportsCatalogChangeCommit catalogChangeCommitter() {
+    assertThat(callContext.getMetaStore()).isInstanceOf(SupportsCatalogChangeCommit.class);
+    return (SupportsCatalogChangeCommit) callContext.getMetaStore();
+  }
+
+  private Persistence readPersistence() {
+    return realmPersistenceFactory.newBuilder().realmId(realmId).build();
+  }
+
+  private Optional<CatalogStateObj> fetchCatalogState(long catalogId) {
+    return readPersistence()
+        .fetchReferenceHead(
+            format(CATALOG_STATE_REF_NAME_PATTERN, catalogId), CatalogStateObj.class);
+  }
+
+  /**
+   * Writes a {@link CatalogRoleObj} and registers it in all three catalog-content indexes (name,
+   * stable-id, and change log) the way a real entity mutation would, so the committed catalog state
+   * stays internally consistent.
+   */
+  private static void writeCatalogRole(
+      CommitterState<CatalogStateObj, String> state,
+      long catalogId,
+      UpdatableIndex<ObjRef> byName,
+      UpdatableIndex<IndexKey> byId,
+      UpdatableIndex<Change> changes,
+      String roleName) {
+    var persistence = state.persistence();
+    var now = persistence.currentInstant();
+    var stableId = persistence.generateId();
+    var role =
+        CatalogRoleObj.builder()
+            .id(persistence.generateId())
+            .name(roleName)
+            .createTimestamp(now)
+            .updateTimestamp(now)
+            .stableId(stableId)
+            .parentStableId(catalogId)
+            .build();
+    var nameKey = key(roleName);
+    state.writeOrReplace(roleName, role);
+    byName.put(nameKey, objRef(role));
+    byId.put(key(stableId), nameKey);
+    changes.put(nameKey, ChangeAdd.builder().build());
+  }
+
+  /**
+   * Commits a {@link CatalogRoleObj} to the given catalog's content reference using a brand-new,
+   * non-{@code synchronizingLocally()} committer - simulating a write from another Polaris node
+   * that does not participate in this JVM's in-process commit lock.
+   */
+  private void writeConcurrentCatalogRole(long catalogId, String roleName) {
+    var sidePersistence = realmPersistenceFactory.newBuilder().realmId(realmId).build();
+    var committer =
+        sidePersistence.createCommitter(
+            format(CATALOG_STATE_REF_NAME_PATTERN, catalogId), CatalogStateObj.class, String.class);
+    var sideResult =
+        committer
+            .commitRuntimeException(
+                new CatalogChangeCommitterWrapper<String>(
+                    (state, ref, byName, byId, changes, locations) -> {
+                      writeCatalogRole(state, catalogId, byName, byId, changes, roleName);
+                      return new ChangeResult.CommitChange<>("ok");
+                    }))
+            .orElseThrow();
+    assertThat(sideResult).isEqualTo("ok");
   }
 
   @Test
