@@ -123,6 +123,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.pagination.PageTokenUtil;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -1589,7 +1590,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   throw new BadRequestException(
                       "Unsupported operation: commitTransaction containing SetLocation"
                           + " for table '%s' and new location '%s'",
-                      change.identifier(), ((MetadataUpdate.SetLocation) singleUpdate).location());
+                      change.identifier(), setLocation.location());
                 }
               }
 
