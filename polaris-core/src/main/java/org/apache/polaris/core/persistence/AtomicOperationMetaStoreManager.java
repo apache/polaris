@@ -1096,6 +1096,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       renamedEntityToReturn =
           this.persistEntityAfterChange(
               callCtx, ms, refreshEntityToRenameBuilder.build(), true, refreshEntityToRename);
+    } catch (EntityAlreadyExistsException e) {
+      // Another writer claimed the destination name after the check above.
+      return new EntityResult(
+          BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, e.getExistingEntity().getSubTypeCode());
     } catch (RetryOnConcurrencyException e) {
       return new EntityResult(
           BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());

@@ -189,6 +189,34 @@ class JdbcBasePersistenceImplTest {
         .withMessageContaining("not visible");
   }
 
+  @Test
+  void writeEntity_renameOntoTakenName_throwsEntityAlreadyExistsException()
+      throws SQLException, IOException {
+    TestPersistence persistence = newTestPersistence(newH2DatasourceOperations("rename_taken"));
+    PolarisBaseEntity source = newTestEntity(201L, "source_principal", 1, 1);
+    PolarisBaseEntity taken = newTestEntity(202L, "taken_principal", 1, 1);
+    persistence.impl().writeEntity(persistence.callCtx(), source, false, null);
+    persistence.impl().writeEntity(persistence.callCtx(), taken, false, null);
+
+    PolarisBaseEntity renamed =
+        new PolarisBaseEntity.Builder(source).name(taken.getName()).entityVersion(2).build();
+
+    assertThatExceptionOfType(EntityAlreadyExistsException.class)
+        .isThrownBy(
+            () -> persistence.impl().writeEntity(persistence.callCtx(), renamed, true, source))
+        .satisfies(e -> assertThat(e.getExistingEntity().getId()).isEqualTo(taken.getId()));
+    assertThat(
+            persistence
+                .impl()
+                .lookupEntity(
+                    persistence.callCtx(),
+                    0L,
+                    source.getId(),
+                    PolarisEntityType.PRINCIPAL.getCode())
+                .getName())
+        .isEqualTo("source_principal");
+  }
+
   @ParameterizedTest
   @MethodSource("entityWriteFailures")
   void writeEntityMapsSqlFailureByCommitPhase(

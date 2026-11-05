@@ -261,6 +261,22 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               originalEntity.getGrantRecordsVersion());
         }
       } catch (SQLException e) {
+        if (datasourceOperations.isUniquenessConstraintViolation(e)) {
+          // An update keeps the primary key, so this is the name constraint: a rename or
+          // re-parent lost a race for its destination name.
+          PolarisBaseEntity existingEntity =
+              lookupEntityByName(
+                  callCtx,
+                  entity.getCatalogId(),
+                  entity.getParentId(),
+                  entity.getTypeCode(),
+                  entity.getName());
+          if (existingEntity != null && existingEntity.getId() != entity.getId()) {
+            throw new EntityAlreadyExistsException(existingEntity, e);
+          }
+          throw new RetryOnConcurrencyException(
+              e, "Conflicting entity is not visible in the current transaction snapshot; retry");
+        }
         throw wrapEntityWriteFailure(e);
       }
     }
