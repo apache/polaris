@@ -155,8 +155,7 @@ class OpenLineageAdapterTest {
     assertThat(body.failedEvents()).hasSize(1);
     OpenLineageBatchIngestResponse.FailedEvent threw = body.failedEvents().getFirst();
     assertThat(threw.index()).isEqualTo(1);
-    // Non-retriable: the provider models the transient case as UNAVAILABLE, so an unexpected throw
-    // is more likely deterministic and replaying it would loop.
+    // Non-retriable: the provider contract reserves UNAVAILABLE for transient failures.
     assertThat(threw.retriable()).isFalse();
     // The exception is logged server-side, never echoed to the caller.
     assertThat(threw.message()).isEqualTo("Event could not be processed");

@@ -80,6 +80,7 @@ public class OpenLineageAdapter implements PolarisOpenLineageApiService {
       return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
     int successful = 0;
+    int unexpectedFailures = 0;
     List<OpenLineageBatchIngestResponse.FailedEvent> failed = new ArrayList<>();
 
     for (int i = 0; i < events.size(); i++) {
@@ -87,15 +88,13 @@ public class OpenLineageAdapter implements PolarisOpenLineageApiService {
       try {
         result = ingestOne(events.get(i));
       } catch (RuntimeException e) {
-        // One bad event must not abort the batch. The ingest provider is a pluggable SPI that can
-        // throw anything, and the Iceberg exception mapper is registered globally across
-        // /api/openlineage/v1, so an escaping RuntimeException would otherwise be mapped into a
-        // single error response for the whole batch, losing the outcomes of every other event.
-        // Reported as non-retriable because the provider already models the transient case as
-        // UNAVAILABLE, so an unexpected throw is more likely deterministic; calling it retriable
-        // would invite a client to replay the batch forever. The exception is logged rather than
-        // returned, so provider internals are not disclosed to the caller.
-        LOGGER.warn("Lineage event at batch index {} failed unexpectedly", i, e);
+        // Isolate each event so one throw cannot abort the batch. Non-retriable because the
+        // provider
+        // contract reserves UNAVAILABLE for transient failures. Only the first stack trace is
+        // logged so a provider failing on every event does not flood the log.
+        if (unexpectedFailures++ == 0) {
+          LOGGER.warn("Lineage event at batch index {} failed unexpectedly", i, e);
+        }
         failed.add(
             new OpenLineageBatchIngestResponse.FailedEvent(
                 i, false, "Event could not be processed"));
@@ -110,6 +109,12 @@ public class OpenLineageAdapter implements PolarisOpenLineageApiService {
                 new OpenLineageBatchIngestResponse.FailedEvent(
                     i, true, "Ingest backend unavailable"));
       }
+    }
+    if (unexpectedFailures > 1) {
+      LOGGER.warn(
+          "{} of {} lineage events in the batch failed unexpectedly; only the first was logged",
+          unexpectedFailures,
+          events.size());
     }
 
     OpenLineageBatchIngestResponse.Status status;
