@@ -241,7 +241,8 @@ public abstract class MarkdownFormatter {
     }
 
     void addTextOrCode(String text, boolean code) {
-      var t = text.replaceAll("\n", " ");
+      // A line break and the indentation around it become one space.
+      var t = text.replaceAll("\\s*\n\\s*", " ");
       t = t.replaceFirst("^\\s*", "");
 
       if (t.isEmpty() && !text.isEmpty()) {
@@ -249,9 +250,8 @@ public abstract class MarkdownFormatter {
         return;
       }
 
-      var e = text.replaceFirst("\\s*$", "");
-
-      if (text.charAt(0) != t.charAt(0)) {
+      // A code body that starts on the next line begins with whitespace, which is not a word break.
+      if (!code && text.charAt(0) != t.charAt(0)) {
         maybeAddSeparator();
       }
 
@@ -261,10 +261,6 @@ public abstract class MarkdownFormatter {
       this.text.append(t);
       if (code) {
         this.text.append('`');
-      }
-
-      if (!e.equals(t)) {
-        maybeAddSeparator();
       }
     }
 

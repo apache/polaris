@@ -25,9 +25,9 @@ build:
 
 Deploy-time configuration for entity-property (single-transaction) idempotency. 
 
-This model embeds the `Idempotency-Key` directly into the `internalProperties` of  the entity created by the originating operation, so the key and the operation commit atomically.  There is no separate idempotency store, so the configuration surface is intentionally minimal:  just a feature flag and the key TTL.
+This model embeds the `Idempotency-Key` directly into the `internalProperties` of the entity created by the originating operation, so the key and the operation commit atomically. There is no separate idempotency store, so the configuration surface is intentionally minimal: just a feature flag and the key TTL.
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.idempotency.enabled` | `false` | `boolean` | Whether handler-level idempotency is enabled. When `false` the handlers ignore the `Idempotency-Key` header entirely and never stamp or read idempotency keys.  |
-| `polaris.idempotency.ttl` | `PT5M` | `duration` | TTL for newly recorded idempotency keys. A retry that arrives within this window of a  successful create replays the existing table; after it elapses the key is treated as absent and  dropped inline on the entity's next write.  |
+| `polaris.idempotency.enabled` | `false` | `boolean` | Whether handler-level idempotency is enabled. When `false` the handlers ignore the `Idempotency-Key` header entirely and never stamp or read idempotency keys. |
+| `polaris.idempotency.ttl` | `PT5M` | `duration` | TTL for newly recorded idempotency keys. A retry that arrives within this window of a successful create replays the existing table; after it elapses the key is treated as absent and dropped inline on the entity's next write. |

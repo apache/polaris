@@ -29,6 +29,6 @@ Node management configuration.
 |----------|---------------|------|-------------|
 | `polaris.node.lease-duration` | `PT1H` | `duration` | Duration of a node-lease.  |
 | `polaris.node.renewal-period` | `PT15M` | `duration` | Time window before the end of a node lease when the lease will be renewed.  |
-| `polaris.node.num-nodes` | `1024` | `int` | Maximum number of concurrently active Polaris nodes. Do not change this value or the ID  generator spec, it is a rather internal property. See ID generator spec below.  |
+| `polaris.node.num-nodes` | `1024` | `int` | Maximum number of concurrently active Polaris nodes. Do not change this value or the ID generator spec, it is a rather internal property. See ID generator spec below. |
 | `polaris.node.id-generator-spec.type` | `snowflake` | `string` |  |
 | `polaris.node.id-generator-spec.params.`_`<name>`_ |  | `string` |  |

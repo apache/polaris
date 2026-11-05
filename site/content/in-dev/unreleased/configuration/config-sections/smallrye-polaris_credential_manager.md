@@ -25,8 +25,8 @@ build:
 
 Quarkus configuration mapping for Polaris Credential Manager. 
 
-Defines which (`PolarisCredentialManager`) implementation should be used at runtime. This  allows switching between different credential management strategies via configuration.
+Defines which (`PolarisCredentialManager`) implementation should be used at runtime. This allows switching between different credential management strategies via configuration.
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.credential-manager.type` |  | `string` | The type identifier of the PolarisCredentialManager implementation to use. This corresponds to  the `@Identifier` annotation value on the implementation (e.g., "default").  |
+| `polaris.credential-manager.type` |  | `string` | The type identifier of the PolarisCredentialManager implementation to use. This corresponds to the `@Identifier` annotation value on the implementation (e.g., "default"). |
