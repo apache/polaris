@@ -150,9 +150,11 @@ class JdbcBasePersistenceImplTest {
         .withCause(nonUniqueViolation);
   }
 
-  @Test
-  void writeEntity_uniquenessViolationWithInvisibleConflict_throwsRetryOnConcurrencyException()
-      throws SQLException {
+  /** Covers both the insert path (no original entity) and the update path (rename). */
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void writeEntity_uniquenessViolationWithInvisibleConflict_throwsRetryOnConcurrencyException(
+      boolean update) throws SQLException {
     DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
     when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.H2);
     doThrow(new SQLException("Unique constraint violation", "23505"))
@@ -183,10 +185,42 @@ class JdbcBasePersistenceImplTest {
             .grantRecordsVersion(0)
             .createTimestamp(System.currentTimeMillis())
             .build();
+    PolarisBaseEntity originalEntity =
+        update
+            ? new PolarisBaseEntity.Builder(entity).name("original_name").entityVersion(0).build()
+            : null;
 
     assertThatExceptionOfType(RetryOnConcurrencyException.class)
-        .isThrownBy(() -> basePersistence.writeEntity(callCtx, entity, true, null))
+        .isThrownBy(() -> basePersistence.writeEntity(callCtx, entity, true, originalEntity))
         .withMessageContaining("not visible");
+  }
+
+  @Test
+  void writeEntity_renameOntoTakenName_throwsEntityAlreadyExistsException()
+      throws SQLException, IOException {
+    TestPersistence persistence = newTestPersistence(newH2DatasourceOperations("rename_taken"));
+    PolarisBaseEntity source = newTestEntity(201L, "source_principal", 1, 1);
+    PolarisBaseEntity taken = newTestEntity(202L, "taken_principal", 1, 1);
+    persistence.impl().writeEntity(persistence.callCtx(), source, false, null);
+    persistence.impl().writeEntity(persistence.callCtx(), taken, false, null);
+
+    PolarisBaseEntity renamed =
+        new PolarisBaseEntity.Builder(source).name(taken.getName()).entityVersion(2).build();
+
+    assertThatExceptionOfType(EntityAlreadyExistsException.class)
+        .isThrownBy(
+            () -> persistence.impl().writeEntity(persistence.callCtx(), renamed, true, source))
+        .satisfies(e -> assertThat(e.getExistingEntity().getId()).isEqualTo(taken.getId()));
+    assertThat(
+            persistence
+                .impl()
+                .lookupEntity(
+                    persistence.callCtx(),
+                    0L,
+                    source.getId(),
+                    PolarisEntityType.PRINCIPAL.getCode())
+                .getName())
+        .isEqualTo("source_principal");
   }
 
   @ParameterizedTest

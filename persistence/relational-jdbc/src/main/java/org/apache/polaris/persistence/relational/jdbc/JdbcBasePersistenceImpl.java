@@ -207,25 +207,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                 ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, values, realmId));
       } catch (SQLException e) {
         if (datasourceOperations.isUniquenessConstraintViolation(e)) {
-          PolarisBaseEntity existingEntity =
-              lookupEntityByName(
-                  callCtx,
-                  entity.getCatalogId(),
-                  entity.getParentId(),
-                  entity.getTypeCode(),
-                  entity.getName());
-          // This happens in two scenarios:
-          // 1. PRIMARY KEY violated
-          // 2. UNIQUE CONSTRAINT on (realm_id, catalog_id, parent_id, type_code, name) violated
-          // With SERIALIZABLE isolation, the conflicting entity may _not_ be visible and
-          // existingEntity can be null. We cannot distinguish a same-id idempotent retry from a
-          // genuine name collision in that case, so we must report a concurrency conflict rather
-          // than fabricate the entity we were trying to create.
-          if (existingEntity != null) {
-            throw new EntityAlreadyExistsException(existingEntity, e);
-          }
-          throw new RetryOnConcurrencyException(
-              e, "Conflicting entity is not visible in the current transaction snapshot; retry");
+          throw uniquenessViolation(callCtx, entity, e);
         }
         throw wrapEntityWriteFailure(e);
       }
@@ -261,9 +243,39 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               originalEntity.getGrantRecordsVersion());
         }
       } catch (SQLException e) {
+        if (datasourceOperations.isUniquenessConstraintViolation(e)) {
+          // An update keeps the primary key, so this is the name constraint: a rename or
+          // re-parent lost a race for its destination name.
+          throw uniquenessViolation(callCtx, entity, e);
+        }
         throw wrapEntityWriteFailure(e);
       }
     }
+  }
+
+  /**
+   * Maps a uniqueness violation on an entity write to the exception the metastore manager expects.
+   *
+   * <p>On insert this is either the primary key or the unique constraint on (realm_id, catalog_id,
+   * parent_id, type_code, name); on update it is always the name constraint. With SERIALIZABLE
+   * isolation the conflicting entity may not be visible, so the lookup can return null. A same-id
+   * idempotent retry cannot be told apart from a name collision then, so this reports a concurrency
+   * conflict rather than fabricating the entity being written.
+   */
+  private RuntimeException uniquenessViolation(
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity, SQLException e) {
+    PolarisBaseEntity existingEntity =
+        lookupEntityByName(
+            callCtx,
+            entity.getCatalogId(),
+            entity.getParentId(),
+            entity.getTypeCode(),
+            entity.getName());
+    if (existingEntity != null) {
+      return new EntityAlreadyExistsException(existingEntity, e);
+    }
+    return new RetryOnConcurrencyException(
+        e, "Conflicting entity is not visible in the current transaction snapshot; retry");
   }
 
   private RuntimeException wrapEntityWriteFailure(SQLException e) {
