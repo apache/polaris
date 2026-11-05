@@ -66,13 +66,13 @@ class AccessDelegationModeTest {
 
   @Test
   void testRequestsDelegation() {
-    assertThat(AccessDelegationMode.requestsDelegation(EnumSet.noneOf(AccessDelegationMode.class)))
+    assertThat(AccessDelegationMode.requiresDelegation(EnumSet.noneOf(AccessDelegationMode.class)))
         .isFalse();
-    assertThat(AccessDelegationMode.requestsDelegation(EnumSet.of(NONE))).isFalse();
-    assertThat(AccessDelegationMode.requestsDelegation(EnumSet.of(NONE, VENDED_CREDENTIALS)))
+    assertThat(AccessDelegationMode.requiresDelegation(EnumSet.of(NONE))).isFalse();
+    assertThat(AccessDelegationMode.requiresDelegation(EnumSet.of(NONE, VENDED_CREDENTIALS)))
         .isFalse();
-    assertThat(AccessDelegationMode.requestsDelegation(EnumSet.of(VENDED_CREDENTIALS))).isTrue();
-    assertThat(AccessDelegationMode.requestsDelegation(EnumSet.of(REMOTE_SIGNING))).isTrue();
+    assertThat(AccessDelegationMode.requiresDelegation(EnumSet.of(VENDED_CREDENTIALS))).isTrue();
+    assertThat(AccessDelegationMode.requiresDelegation(EnumSet.of(REMOTE_SIGNING))).isTrue();
   }
 
   @Test

@@ -452,7 +452,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Optional<String> refreshCredentialsEndpoint) {
 
     authorizeCreateTableDirect(
-        namespace, request, AccessDelegationMode.requestsDelegation(delegationModes));
+        namespace, request, AccessDelegationMode.requiresDelegation(delegationModes));
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
@@ -716,7 +716,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Optional<String> refreshCredentialsEndpoint) {
 
     authorizeCreateTableStaged(
-        namespace, request, AccessDelegationMode.requestsDelegation(delegationModes));
+        namespace, request, AccessDelegationMode.requiresDelegation(delegationModes));
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
@@ -1005,7 +1005,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       boolean overwrite) {
 
-    if (!AccessDelegationMode.requestsDelegation(delegationModes)) {
+    if (!AccessDelegationMode.requiresDelegation(delegationModes)) {
 
       if (overwrite) {
         authorizeRegisterTableOverwriteOrThrow(
@@ -1142,7 +1142,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     Set<PolarisStorageActions> actionsRequested =
         authorizeLoadTable(
-            tableIdentifier, AccessDelegationMode.requestsDelegation(delegationModes));
+            tableIdentifier, AccessDelegationMode.requiresDelegation(delegationModes));
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     return loadTableWithResolvedAuthorization(

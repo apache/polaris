@@ -52,11 +52,11 @@ public enum AccessDelegationMode {
   }
 
   /**
-   * Whether the client asked for access delegation. A request that includes {@link #NONE}, alone or
-   * together with other modes, is treated like a request without the header: it is authorized as a
-   * plain metadata operation and no credentials are vended.
+   * Whether the request requires access delegation. A request that includes {@link #NONE}, alone or
+   * together with other modes, does not: it is treated like a request without the header,
+   * authorized as a plain metadata operation, and no credentials are vended.
    */
-  public static boolean requestsDelegation(EnumSet<AccessDelegationMode> modes) {
+  public static boolean requiresDelegation(EnumSet<AccessDelegationMode> modes) {
     return !modes.isEmpty() && !modes.contains(NONE);
   }
 

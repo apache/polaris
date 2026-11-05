@@ -94,7 +94,9 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
     // Case 0: The client can operate without delegated access. Treat the request like one
     // without the header, regardless of any other mode listed alongside `none`.
     if (requestedModes.contains(NONE)) {
-      LOGGER.debug("Client accepts no access delegation, not resolving a delegation mode");
+      LOGGER.debug(
+          "Client accepts no access delegation. This request will not use any client-side "
+              + "delegation mechanisms.");
       return Optional.empty();
     }
 
