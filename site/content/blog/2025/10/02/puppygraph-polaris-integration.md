@@ -146,11 +146,11 @@ With Docker installed, you can run the following command in your terminal:
 docker run -p 8081:8081 -p 8183:8182 -p 7687:7687 -v /tmp/polaris:/tmp/polaris --name puppy --rm -itd puppygraph/puppygraph:latest
 ```
 
-The commands and JSON below target PuppyGraph 1.x and were tested with PuppyGraph 1.17.0. Screenshots show the original interface; the current interface may differ. See the [migration guide](https://docs.puppygraph.com/modeling/migrating-from-v0/) for existing 0.x schemas.
+The commands and JSON below target PuppyGraph 1.x. The walkthrough and screenshots were tested with PuppyGraph 1.17.0. See the [migration guide](https://docs.puppygraph.com/modeling/migrating-from-v0/) for existing 0.x schemas.
 
 This will spin up a PuppyGraph instance on your local machine (or on a cloud or bare metal server if that's where you want to deploy it). Next, you can go to **localhost:8081** or the URL on which you launched the instance. This will show you the PuppyGraph login screen:
 
-![](/img/blog/2025/10/02/fig4-puppygraph-login-page.png)
+![Sign in to PuppyGraph](/img/blog/2025/10/02/fig4-puppygraph-login-page.png)
 
 After logging in with the default credentials (username: “`puppygraph”` and default password: “`puppygraph123`”) you’ll enter the application itself. At this point, our instance is ready to go and we can proceed with connecting to the underlying data stored in Apache Polaris.
 
@@ -374,49 +374,70 @@ Next, we must connect to our data source to run graph queries against it. Users 
 
 In the example, you can see the data store details under the **catalog** section. This is all that is needed to connect to the Apache Polaris instance. Underneath the **catalog** section, you’ll notice that we have defined the nodes and edges and where the data comes from. This tells PuppyGraph how to map the SQL data into the graph hosted within PuppyGraph. This can then be uploaded to PuppyGraph, and you’ll be ready to query\!
 
-![](/img/blog/2025/10/02/fig5-puppygraph-schema-upload-page.png) 
-To create the schema in this way, just save the schema to a JSON file, modify the uri and credential to reflect the actual Polaris uri and credential, and select “Upload Graph Schema JSON” to upload the JSON file. The graph will then be created.
+Save the schema to a JSON file and adjust the connection settings for your Polaris deployment. On the **Graph** page, choose **Upload JSON**, then **Select Schema File**. Review the preview and click **Upload**. When the upload succeeds, click **Close**.
 
-Alternatively, for those who want a more UI-based approach, PuppyGraph also offers a schema builder that allows users to use a drag-and-drop editor to build their schema. In an example similar to the one above, here is what the UI flow looks like with the schema built this way. 
+![Upload the schema JSON and review its catalog, nodes, and edges](/img/blog/2025/10/02/fig5-puppygraph-schema-upload-page.png)
 
-Click on “Create graph schema” on the Web UI instead.  
-First, you would add in the details about your Apache Polaris Catalog data source:
+Alternatively, you can build the same graph through the UI. From the **Graph** welcome page, choose **Create Catalog**, select **Apache Iceberg**, and configure the Polaris connection:
 
-![](/img/blog/2025/10/02/fig6-puppygraph-schema-builder-ui.png)  
-Here are the detailed explanations of the fields:
+![Apache Polaris catalog configuration with OAuth2 authentication](/img/blog/2025/10/02/fig6-puppygraph-schema-builder-ui.png)
 
-* Catalog type: `Apache Iceberg`  
-* Catalog name: Some name for the catalog as you like.  
-* Metastore Type: `Iceberg-Rest`  
-* RestUri: `http://host.docker.internal:8181/api/catalog`. On Linux the IP for the host might be `172.17.0.1` if you do not add `--add-host=host.docker.internal:host-gateway` to the docker run command.  
-* Warehouse: `manual_spark`. This was created by the `run_spark_sql.sh` script.  
-* Credential: Fill in the root principal credentials from the Apache Polaris Catalog server's output. For example `f6973789e5270e5d:dce8e8e53d8f770eb9804f22de923645`.  
-* Scope: `PRINCIPAL_ROLE:ALL`  
-* Storage type: `Get from metastore`
+* Catalog name: `test`.
+* Metastore type: `Apache Polaris`.
+* REST Endpoint URL: `http://172.17.0.1:8181/api/catalog` for the Linux Docker setup shown here. Use the host address reachable from your PuppyGraph container; on Docker Desktop, this is typically `http://host.docker.internal:8181/api/catalog`.
+* Warehouse: `manual_spark`, created by `run_spark_sql.sh`.
+* Apache Polaris Authentication Type: `OAuth2`.
+* OAuth 2.0 Credential: `root:s3cr3t` for this local Polaris dev server. Use your own principal credentials for another deployment.
+* OAuth 2.0 Scope: `PRINCIPAL_ROLE:ALL`.
+* Storage type: `Get from metastore`.
 
-Then, with the data source added, you can begin to build out the nodes and edges for the schema using the UI. PuppyGraph will allow you to easily create these by prepopulating the dropdowns based on the table data it retrieves from your Iceberg instance.
+Click **Create Catalog**. Then choose **Add Node**, expand `test` → `modern`, select a table, and click **Next**. Use **Add to ID** to move `id` into **ID Columns** and keep the other columns as attributes:
 
-![](/img/blog/2025/10/02/fig7-puppygraph-add-vertex.png)
+| Table | Node label | ID column | Attribute columns |
+|---|---|---|---|
+| `person` | `person` | `id` | `name`, `age` |
+| `software` | `software` | `id` | `name`, `lang` |
 
-After that use the Auto Suggestion to create other nodes and edges. Select person as the start vertex (node) and add the auto suggested nodes and edges.
+![Configure the person node ID and attributes](/img/blog/2025/10/02/fig7-puppygraph-add-vertex.png)
 
-![](/img/blog/2025/10/02/fig8-puppygraph-auto-suggestion.png)
+For each node, click **Next**, leave **Enable Local Replication** disabled, and click **Add Node**.
 
-After clicking on “Add neighbors”, you’ll see it rendered on the screen as nodes and edges are added. It should look like this:  
-![](/img/blog/2025/10/02/fig9-finished-schema.png)
+Next, choose **Add Edge**, select the corresponding table under `test` → `modern`, click **Next**, and configure the endpoints:
 
-You can click the **Submit** button to submit the schema to the server when it is complete.
+| Table / edge label | From node | From column → node ID | To node | To column → node ID |
+|---|---|---|---|---|
+| `created` | `person` | `from_id` → `id` | `software` | `to_id` → `id` |
+| `knows` | `person` | `from_id` → `id` | `person` | `to_id` → `id` |
 
-After this, your integration and schema creation are complete. That’s all that there is to it. Next step: graph querying\!
+For both edges, use **Add to ID** to select `id`. Keep only `weight` under **Attribute Columns**: remove `from_id` and `to_id` from the attribute list after selecting them as endpoint columns.
+
+![Configure the created edge endpoints, ID, and weight attribute](/img/blog/2025/10/02/fig8-puppygraph-auto-suggestion.png)
+
+Click **Next**, leave **Enable Local Replication** disabled, and click **Add Edge**. Each node and edge is applied when added. The completed **Graph** page shows the two node types and their relationships:
+
+![Completed schema with person and software nodes and created and knows edges](/img/blog/2025/10/02/fig9-finished-schema.png)
 
 ### Query your Data as a Graph
 
-Now, you can query your data as a graph without needing data replication or ETL. Our next step is to figure out **how** we want to query our data and **what** insights we want to gather from it.
+Choose **Query** in the sidebar. If the language button shows **Cypher**, click it to switch to **Gremlin**. Enter the following query and click **Execute**:
 
-PuppyGraph allows users to use [Gremlin](https://docs.puppygraph.com/reference/gremlin-query-language), Cypher, or Jupyter Notebook.   
-Click on Query in the left sidebar to bring the Interactive Query UI: For example, based on the schemas above, a Gremlin query, shown in a visualized format that can be explored further, will look like this:
+```groovy
+g.V().outE().inV().path()
+```
 
-![](/img/blog/2025/10/02/fig10-puppygraph-sample-query.png)
+The **Graph** tab visualizes the sample data: six vertices and six edges.
+
+![Gremlin query visualizing six vertices and six edges](/img/blog/2025/10/02/fig10-puppygraph-sample-query.png)
+
+To find the software created by people Marko knows, run:
+
+```groovy
+g.V().has("name", "marko").out("knows").out("created").valueMap()
+```
+
+Select the **Table** tab to inspect the results. The query returns `lop` and `ripple`, both with `lang` set to `java`.
+
+![Table results showing lop and ripple from the Marko traversal](/img/blog/2025/10/02/fig11-puppygraph-query-results.png)
 
 As you can see, graph capabilities can be achieved with PuppyGraph in minutes without the heavy lift usually associated with graph databases. Whether you’re a seasoned graph professional looking to expand the data you have to query as a graph or a budding graph enthusiast testing out a use case, PuppyGraph offers a performant and straightforward way to add graph querying and analytics to the data you have sitting within Apache Polaris.
 
