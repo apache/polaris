@@ -155,17 +155,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added `namespaces update` to set and remove namespace properties
 - NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
-- New `LINEAGE_READ` and `LINEAGE_INGEST` privileges authorize querying the lineage graph and
-  submitting OpenLineage events, respectively. Both are grantable to catalog roles at catalog,
-  namespace, and table scope. They are also conferred by the described entity's existing grants:
-  `LINEAGE_READ` by the table read and write grants, `LINEAGE_INGEST` by the write ones.
-  `LINEAGE_INGEST` does not confer `LINEAGE_READ`. Within an OpenLineage event, output datasets
-  require `LINEAGE_INGEST` (falling back to the parent namespace when the output table does not
-  exist yet, as with CREATE TABLE AS SELECT), while input datasets require only read access to the
-  table, so ordinary readers can record lineage from the sources they read without being granted
-  write-level privileges on them. Deployments using the Ranger authorizer must define the
-  `lineage-query` and `lineage-ingest` access types in their Polaris service definition; citing a
-  table as a lineage input reuses the existing `table-properties-read` access type.
+- New `TABLE_READ_LINEAGE`, `TABLE_INGEST_LINEAGE`, `VIEW_READ_LINEAGE`, and `VIEW_INGEST_LINEAGE`
+  privileges authorize querying the lineage graph and submitting OpenLineage events for tables and
+  views, respectively. They are grantable to catalog roles at catalog and namespace scope, and on
+  the individual table or view. They are also conferred by the entity's existing grants: the read
+  privileges by the table or view read and write grants, the ingest privileges by the write ones.
+  Ingest does not confer read, and table and view lineage privileges never confer each other. The
+  Ranger service definition adds matching `table-lineage-query`, `table-lineage-ingest`,
+  `view-lineage-query`, and `view-lineage-ingest` access types; existing Ranger deployments must
+  re-register the updated service definition with Ranger Admin to use them.
 
 ### Changes
 

@@ -237,6 +237,48 @@
           ],
           "users": [ "structuremanager1" ] }
       ]
+    },
+    {
+      "id": 10, "name": "table:POLARIS/catalog1/namespace1/table1 (lineage via implied grants)",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "catalog1" ] },
+        "namespace": { "values": [ "namespace1" ] },
+        "table":     { "values": [ "table1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "table-data-read" }
+          ],
+          "users": [ "tablereader1" ] },
+        {
+          "accesses": [
+            { "type": "table-data-write" }
+          ],
+          "users": [ "tablewriter1" ] }
+      ]
+    },
+    {
+      "id": 11, "name": "table:POLARIS/catalog1/namespace1/view1 (lineage via implied grants)",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "catalog1" ] },
+        "namespace": { "values": [ "namespace1" ] },
+        "table":     { "values": [ "view1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "view-properties-read" }
+          ],
+          "users": [ "viewreader1" ] },
+        {
+          "accesses": [
+            { "type": "view-properties-write" }
+          ],
+          "users": [ "viewwriter1" ] }
+      ]
     }
   ]
 }

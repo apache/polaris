@@ -36,6 +36,8 @@ import org.apache.polaris.core.admin.model.NamespacePrivilege;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
+import org.apache.polaris.core.admin.model.ViewGrant;
+import org.apache.polaris.core.admin.model.ViewPrivilege;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.Profiles;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -44,10 +46,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 /**
  * Guards the management-API round trip for the lineage privileges.
  *
- * <p>Lineage introduces no new securable entity type and no new grant schema: {@code LINEAGE_READ}
- * and {@code LINEAGE_INGEST} attach to the existing catalog / namespace / table securables, so the
- * existing {@link CatalogGrant} / {@link NamespaceGrant} / {@link TableGrant} wire models carry
- * them.
+ * <p>Lineage introduces no new securable entity type and no new grant schema: the table and view
+ * lineage privileges attach to the existing catalog / namespace / table / view securables, so the
+ * existing {@link CatalogGrant} / {@link NamespaceGrant} / {@link TableGrant} / {@link ViewGrant}
+ * wire models carry them.
  *
  * <p>That makes a missing spec literal completely silent at build time. If a lineage privilege is
  * grantable at a scope but absent from the corresponding {@code *Privilege} enum in {@code
@@ -68,7 +70,7 @@ class LineageGrantAuthzTest extends PolarisAuthzTestBase {
    */
   static Stream<GrantResource> scopedGrants() {
     return Stream.of(PolarisPrivilege.values())
-        .filter(privilege -> privilege.name().startsWith("LINEAGE_"))
+        .filter(privilege -> privilege.name().endsWith("_LINEAGE"))
         .flatMap(
             privilege ->
                 Stream.of(
@@ -78,11 +80,21 @@ class LineageGrantAuthzTest extends PolarisAuthzTestBase {
                         List.of(NS1.levels()),
                         NamespacePrivilege.valueOf(privilege.name()),
                         GrantResource.TypeEnum.NAMESPACE),
-                    new TableGrant(
-                        List.of(NS1.levels()),
-                        TABLE_NS1_1.name(),
-                        TablePrivilege.valueOf(privilege.name()),
-                        GrantResource.TypeEnum.TABLE)));
+                    leafGrant(privilege)));
+  }
+
+  private static GrantResource leafGrant(PolarisPrivilege privilege) {
+    return privilege.name().startsWith("VIEW_")
+        ? new ViewGrant(
+            List.of(NS1.levels()),
+            VIEW_NS1_1.name(),
+            ViewPrivilege.valueOf(privilege.name()),
+            GrantResource.TypeEnum.VIEW)
+        : new TableGrant(
+            List.of(NS1.levels()),
+            TABLE_NS1_1.name(),
+            TablePrivilege.valueOf(privilege.name()),
+            GrantResource.TypeEnum.TABLE);
   }
 
   @ParameterizedTest

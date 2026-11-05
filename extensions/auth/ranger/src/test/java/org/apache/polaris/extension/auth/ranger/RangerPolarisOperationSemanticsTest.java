@@ -35,24 +35,30 @@ public class RangerPolarisOperationSemanticsTest {
    */
   private static final Map<PolarisAuthorizableOperation, String> EXPECTED_LINEAGE_ACTIONS =
       Map.of(
-          PolarisAuthorizableOperation.QUERY_LINEAGE,
-          "lineage-query",
-          PolarisAuthorizableOperation.INGEST_LINEAGE,
-          "lineage-ingest",
-          // Deliberately the pre-existing table-read action rather than a lineage-specific one, so
-          // that an existing table-read grant is sufficient to cite a table as a lineage input --
-          // matching RbacOperationSemantics, which requires TABLE_READ_PROPERTIES. A dedicated
-          // access type here would make Ranger stricter than the default authorizer and force a
-          // new policy for every ETL job.
+          PolarisAuthorizableOperation.QUERY_TABLE_LINEAGE,
+          "table-lineage-query",
+          PolarisAuthorizableOperation.QUERY_VIEW_LINEAGE,
+          "view-lineage-query",
+          PolarisAuthorizableOperation.INGEST_TABLE_LINEAGE,
+          "table-lineage-ingest",
+          PolarisAuthorizableOperation.INGEST_VIEW_LINEAGE,
+          "view-lineage-ingest",
+          // Deliberately the pre-existing properties-read actions rather than lineage-specific
+          // ones, so that an existing read grant is sufficient to cite a table or view as a lineage
+          // input -- matching RbacOperationSemantics, which requires TABLE_READ_PROPERTIES /
+          // VIEW_READ_PROPERTIES. A dedicated access type here would make Ranger stricter than the
+          // default authorizer and force a new policy for every ETL job.
           PolarisAuthorizableOperation.REFERENCE_LINEAGE_INPUT_TABLE,
-          "table-properties-read");
+          "table-properties-read",
+          PolarisAuthorizableOperation.REFERENCE_LINEAGE_INPUT_VIEW,
+          "view-properties-read");
 
   /**
    * {@link RangerPolarisAuthorizer} fails closed: an operation with no entry in {@link
    * RangerPolarisOperationSemantics} is denied outright. Adding a lineage operation to the core
    * enum without a Ranger mapping would therefore deny it for every Ranger deployment, with a
    * message indistinguishable from a genuine permissions denial. Assert coverage over the whole
-   * lineage family rather than only the three operations that exist today.
+   * lineage family rather than only the operations that exist today.
    */
   @Test
   void everyLineageOperationHasRangerSemantics() {

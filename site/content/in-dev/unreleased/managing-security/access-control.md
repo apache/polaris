@@ -157,7 +157,7 @@ keys, or other secrets in table or view properties.
 | Privilege | Description |
 | -----------------------| ----------- |
 | CATALOG_MANAGE_ACCESS | Includes the ability to grant or revoke privileges on objects in a catalog to catalog roles, and the ability to grant or revoke catalog roles to or from principal roles. |
-| CATALOG_MANAGE_CONTENT | Enables full management of content for the catalog. This privilege encompasses the following privileges:<ul><li>CATALOG_MANAGE_METADATA</li><li>TABLE_FULL_METADATA</li><li>NAMESPACE_FULL_METADATA</li><li>VIEW_FULL_METADATA</li><li>TABLE_WRITE_DATA</li><li>TABLE_READ_DATA</li><li>TABLE_READ_METRICS</li><li>CATALOG_READ_PROPERTIES</li><li>CATALOG_WRITE_PROPERTIES</li></ul> |
+| CATALOG_MANAGE_CONTENT | Enables full management of content for the catalog. This privilege encompasses the following privileges:<ul><li>CATALOG_MANAGE_METADATA</li><li>TABLE_FULL_METADATA</li><li>NAMESPACE_FULL_METADATA</li><li>VIEW_FULL_METADATA</li><li>TABLE_WRITE_DATA</li><li>TABLE_READ_DATA</li><li>TABLE_READ_METRICS</li><li>TABLE_READ_LINEAGE</li><li>TABLE_INGEST_LINEAGE</li><li>VIEW_READ_LINEAGE</li><li>VIEW_INGEST_LINEAGE</li><li>CATALOG_READ_PROPERTIES</li><li>CATALOG_WRITE_PROPERTIES</li></ul> |
 | CATALOG_MANAGE_METADATA | Enables full management of the catalog, catalog roles, namespaces, and tables.  |
 | CATALOG_READ_PROPERTIES | Enables listing catalogs and reading properties of the catalog. |
 | CATALOG_WRITE_PROPERTIES | Enables configuring catalog properties. |
@@ -249,34 +249,34 @@ The existing role-grants listing returns grants with their model, namespace, or 
 
 | Privilege | Target | Description |
 | --------- | ------ | ----------- |
-| LINEAGE_READ | Catalog, namespace, table | Enables querying the lineage graph for the entity. |
-| LINEAGE_INGEST | Catalog, namespace, table | Enables submitting OpenLineage events that record lineage for the entity. |
+| TABLE_READ_LINEAGE | Catalog, namespace, table | Enables querying the lineage graph for a table. |
+| TABLE_INGEST_LINEAGE | Catalog, namespace, table | Enables submitting OpenLineage events that record lineage for a table. |
+| VIEW_READ_LINEAGE | Catalog, namespace, view | Enables querying the lineage graph for a view. |
+| VIEW_INGEST_LINEAGE | Catalog, namespace, view | Enables submitting OpenLineage events that record lineage for a view. |
 
 Lineage is a property of the entity it describes rather than a separate child entity, so these
-privileges ride the entity's existing grants. `LINEAGE_READ` is also conferred by
+privileges ride the entity's existing grants. `TABLE_READ_LINEAGE` is also conferred by
 `TABLE_READ_PROPERTIES`, `TABLE_READ_DATA`, `TABLE_WRITE_PROPERTIES`, `TABLE_WRITE_DATA`,
-`TABLE_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and `CATALOG_MANAGE_CONTENT`. `LINEAGE_INGEST`
-is also conferred by the write ones: `TABLE_WRITE_PROPERTIES`, `TABLE_WRITE_DATA`,
-`TABLE_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and `CATALOG_MANAGE_CONTENT`. A principal that
-can already read a table can therefore read its lineage, and a principal that can write one can
-record lineage for it, without an additional grant.
+`TABLE_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and `CATALOG_MANAGE_CONTENT`.
+`TABLE_INGEST_LINEAGE` is also conferred by the write ones: `TABLE_WRITE_PROPERTIES`,
+`TABLE_WRITE_DATA`, `TABLE_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and `CATALOG_MANAGE_CONTENT`.
+Likewise, `VIEW_READ_LINEAGE` is conferred by `VIEW_READ_PROPERTIES`, `VIEW_WRITE_PROPERTIES`,
+`VIEW_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and `CATALOG_MANAGE_CONTENT`, and
+`VIEW_INGEST_LINEAGE` by `VIEW_WRITE_PROPERTIES`, `VIEW_FULL_METADATA`, `CATALOG_MANAGE_METADATA`,
+and `CATALOG_MANAGE_CONTENT`. A principal that can already read a table or view can therefore read
+its lineage, and a principal that can write one can record lineage for it, without an additional
+grant.
 
-`LINEAGE_INGEST` does not confer `LINEAGE_READ`. Ingest is append-only event submission, so a
-principal granted only `LINEAGE_INGEST` cannot query the lineage graph.
+Table and view lineage are separate privileges so that a grant for one never confers access to the
+other: a view privilege granted on a namespace does not expose the lineage of the tables in it, and
+the reverse.
 
-Granting either privilege on a catalog or namespace covers the tables beneath it, so a
-namespace-scoped grant satisfies a table-scoped check without a per-table grant.
+The ingest privileges do not confer the read privileges. Ingest is append-only event submission, so
+a principal granted only `TABLE_INGEST_LINEAGE` or `VIEW_INGEST_LINEAGE` cannot query the lineage
+graph.
 
-A single OpenLineage event names both the datasets a job read and the datasets it wrote, and the two
-are authorized differently. Each **output** dataset requires `LINEAGE_INGEST` on the table; when the
-output table does not exist yet, as with a CREATE TABLE AS SELECT, the check falls back to the
-parent namespace, so a principal that may create the table may also record the lineage that creates
-it. Each **input** dataset requires only read access to that table, expressed as
-`TABLE_READ_PROPERTIES`. Citing a table as a source is not reading its lineage, so `LINEAGE_READ` is
-not required either; ordinary readers can record lineage from the sources they read without being
-granted write-level privileges on them. Note that `TABLE_CREATE` alone does not satisfy the input
-check: a principal that may only create tables in a namespace cannot name an existing table there as
-a lineage input unless it can also read that table.
+Granting any of these privileges on a catalog or namespace covers the matching entities beneath it,
+so a namespace-scoped grant satisfies a table- or view-scoped check without a per-entity grant.
 
 ## RBAC example
 

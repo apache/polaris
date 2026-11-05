@@ -68,7 +68,8 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_CATA
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_PRINCIPAL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_PRINCIPAL_ROLE;
-import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.INGEST_LINEAGE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.INGEST_TABLE_LINEAGE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.INGEST_VIEW_LINEAGE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_CATALOGS;
@@ -94,8 +95,10 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TAB
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.NAMESPACE_EXISTS;
-import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.QUERY_LINEAGE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.QUERY_TABLE_LINEAGE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.QUERY_VIEW_LINEAGE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REFERENCE_LINEAGE_INPUT_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REFERENCE_LINEAGE_INPUT_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_TABLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION;
@@ -159,8 +162,6 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_MANAG
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_WRITE_PROPERTIES;
-import static org.apache.polaris.core.entity.PolarisPrivilege.LINEAGE_INGEST;
-import static org.apache.polaris.core.entity.PolarisPrivilege.LINEAGE_READ;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DETACH_POLICY;
@@ -211,9 +212,11 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_FULL_METADATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_INGEST_LINEAGE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_LINEAGE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PROPERTIES;
@@ -231,8 +234,10 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_DROP;
+import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_INGEST_LINEAGE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_READ_LINEAGE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_WRITE_PROPERTIES;
 
@@ -444,9 +449,12 @@ record RbacOperationSemantics(
         EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
 
     // Lineage operations
-    register(QUERY_LINEAGE, LINEAGE_READ);
-    register(INGEST_LINEAGE, LINEAGE_INGEST);
+    register(QUERY_TABLE_LINEAGE, TABLE_READ_LINEAGE);
+    register(QUERY_VIEW_LINEAGE, VIEW_READ_LINEAGE);
+    register(INGEST_TABLE_LINEAGE, TABLE_INGEST_LINEAGE);
+    register(INGEST_VIEW_LINEAGE, VIEW_INGEST_LINEAGE);
     register(REFERENCE_LINEAGE_INPUT_TABLE, TABLE_READ_PROPERTIES);
+    register(REFERENCE_LINEAGE_INPUT_VIEW, VIEW_READ_PROPERTIES);
 
     // Policy attachment operations (use CATALOG rooting)
     register(
