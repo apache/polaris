@@ -34,18 +34,4 @@ class CloudflareR2ParentTokenTest {
         .isEqualTo("CloudflareR2ParentToken{accessKeyId=test-r2-access-key, secret=<redacted>}");
     assertThat(text).doesNotContain(SECRET_KEY);
   }
-
-  @Test
-  void fingerprintIsTheFirstFourBytesOfSha256AsLowercaseHex() {
-    // sha256("test-r2-secret-key") starts with af6d386e.
-    assertThat(CloudflareR2ParentToken.fingerprint(SECRET_KEY)).isEqualTo("af6d386e");
-    assertThat(CloudflareR2ParentToken.fingerprint(SECRET_KEY)).hasSize(8).matches("[0-9a-f]{8}");
-  }
-
-  @Test
-  void fingerprintIsStableAndDiffersBetweenSecrets() {
-    assertThat(CloudflareR2ParentToken.fingerprint(SECRET_KEY))
-        .isEqualTo(CloudflareR2ParentToken.fingerprint(SECRET_KEY))
-        .isNotEqualTo(CloudflareR2ParentToken.fingerprint("other-secret"));
-  }
 }

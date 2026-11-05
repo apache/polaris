@@ -101,10 +101,10 @@ public class CloudflareR2CredentialsStorageIntegration
         singleBucket(grants, context),
         normalizedPrefixes(grants),
         scopeFor(grants),
+        Optional.ofNullable(storageName),
         token.accessKeyId(),
-        CloudflareR2ParentToken.fingerprint(token.secretAccessKey()),
-        ttl,
         token.secretAccessKey(),
+        ttl,
         clock,
         realmConfig());
   }
@@ -146,9 +146,9 @@ public class CloudflareR2CredentialsStorageIntegration
   /**
    * Mint a fresh {@link StorageAccessConfig} for the given key. Called by the cache on miss, so the
    * DEBUG line below is one per mint rather than one per credential request: a request served from
-   * the cache logs nothing. The line prints the effective storage name, the one the parent token
-   * was resolved with, or {@code <default>} when the realm does not resolve by name. It names the
-   * credential's shape and never its material: no key id, no secret, no session token, no JWT.
+   * the cache logs nothing. The line prints the storage name the key carries, the one the parent
+   * token was resolved with, or {@code <default>} for the default token. It names the credential's
+   * shape and never its material: no key id, no secret, no session token, no JWT.
    *
    * <p>This method checks the endpoint, the path style, and the region again at vend time, so a
    * stored config that never passed the mechanism's {@code validate} fails closed with an {@link
@@ -157,8 +157,6 @@ public class CloudflareR2CredentialsStorageIntegration
    */
   static StorageAccessConfig compute(CloudflareR2CredentialCacheKey key) {
     AwsStorageConfigurationInfo config = key.storageConfig();
-    String effective =
-        CloudflareR2ParentTokenResolver.effectiveStorageName(key.realmConfig(), config);
     CloudflareR2Endpoint endpoint = CloudflareR2Endpoint.parse(config.getEndpoint());
     R2LocalSigningCredentialVendingMechanism.requirePathStyleAndAutoRegion(config);
     CloudflareR2TemporaryCredentialSigner.Credential credential =
@@ -175,7 +173,7 @@ public class CloudflareR2CredentialsStorageIntegration
                 key.clock().instant()));
     LOGGER.debug(
         "Minted R2 credential: storageName={} bucket={} prefixes={} scope={} ttl={}s expiresAt={}",
-        effective == null ? "<default>" : effective,
+        key.effectiveStorageName().orElse("<default>"),
         key.bucket(),
         key.prefixes().size(),
         key.scope(),
