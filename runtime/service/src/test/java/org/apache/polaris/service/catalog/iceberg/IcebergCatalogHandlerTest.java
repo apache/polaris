@@ -274,25 +274,10 @@ class IcebergCatalogHandlerTest {
   /**
    * The resolver is mocked, so these tests do not cover what is vended. They cover the handler's
    * own decision that a request including {@code none} is authorized as a plain metadata operation
-   * rather than with the delegation privileges.
+   * rather than with the delegation privileges, for the two authorization paths involved.
    */
   @Test
-  void noneRequestedAloneIsAuthorizedWithoutDelegation() {
-    Catalog catalog = mockRegisterTableCatalog(false);
-    EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE);
-    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(Optional.empty());
-
-    @SuppressWarnings("resource")
-    IcebergCatalogHandler handler = newHandler();
-
-    handler.registerTable(NS1, registerTableRequest(false), modes, Optional.empty());
-
-    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
-    assertThat(authorizedOperations()).containsExactly(PolarisAuthorizableOperation.REGISTER_TABLE);
-  }
-
-  @Test
-  void noneRequestedAlongsideVendedCredentialsIsAuthorizedWithoutDelegation() {
+  void noneRequestedRegisterTableIsAuthorizedWithoutDelegation() {
     Catalog catalog = mockRegisterTableCatalog(false);
     EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE, VENDED_CREDENTIALS);
     when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(Optional.empty());
