@@ -70,9 +70,8 @@ public interface WebhookEventListenerConfiguration {
 
   /**
    * Extra headers on every request (for example {@code Authorization}). Reserved headers ({@code
-   * Content-Type}, {@code Polaris-Signature-256}, {@code Polaris-Event}, {@code
-   * Polaris-Delivery-Time}, {@code Host}, {@code Content-Length}) cannot be overridden. Header
-   * values may be secrets; protect them accordingly.
+   * Content-Type}, {@code Polaris-Signature-256}, {@code Polaris-Event}, {@code Host}, {@code
+   * Content-Length}) cannot be overridden. Header values may be secrets; protect them accordingly.
    *
    * <p>Configuration property: {@code polaris.event-listener.webhook.headers."<header-name>"}
    */
