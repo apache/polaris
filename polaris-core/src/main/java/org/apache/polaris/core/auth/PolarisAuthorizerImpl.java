@@ -526,11 +526,10 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             SERVICE_MANAGE_ACCESS));
     // CATALOG_READ_CONFIG gates client bootstrap via the Iceberg REST /v1/config endpoint, so it
     // is subsumed by every privilege that is exercised through that client: the catalog-level
-    // read/manage privileges and all catalog-content privileges (including fine-grained table
-    // structure privileges such as TABLE_SET_PROPERTIES / TABLE_ADD_SCHEMA /
-    // TABLE_MANAGE_STRUCTURE). Note the check still evaluates grants on the catalog path, so
-    // content privileges must be granted at catalog level (or above) to subsume; grants scoped
-    // to a single namespace or table are not visible to the catalog-level check.
+    // read/manage privileges and all catalog-content privileges (including Iceberg table-update
+    // privileges, POLICY_*, and SEMANTIC_MODEL_*). Note the check still evaluates grants on the
+    // catalog path, so content privileges must be granted at catalog level (or above) to subsume;
+    // grants scoped to a single namespace or table are not visible to the catalog-level check.
     SUPER_PRIVILEGES.putAll(
         CATALOG_READ_CONFIG,
         List.of(
@@ -546,7 +545,27 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             NAMESPACE_LIST,
             NAMESPACE_READ_PROPERTIES,
             NAMESPACE_WRITE_PROPERTIES,
+            POLICY_ATTACH,
+            POLICY_CREATE,
+            POLICY_DETACH,
+            POLICY_DROP,
+            POLICY_FULL_METADATA,
+            POLICY_LIST,
+            POLICY_MANAGE_GRANTS_ON_SECURABLE,
+            POLICY_READ,
+            POLICY_WRITE,
+            SEMANTIC_MODEL_CREATE,
+            SEMANTIC_MODEL_DROP,
+            SEMANTIC_MODEL_FULL_METADATA,
+            SEMANTIC_MODEL_LIST,
+            SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE,
+            SEMANTIC_MODEL_READ,
+            SEMANTIC_MODEL_WRITE,
+            TABLE_ADD_PARTITION_SPEC,
             TABLE_ADD_SCHEMA,
+            TABLE_ADD_SNAPSHOT,
+            TABLE_ADD_SORT_ORDER,
+            TABLE_ASSIGN_UUID,
             TABLE_CREATE,
             TABLE_DROP,
             TABLE_FULL_METADATA,
@@ -554,7 +573,18 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_MANAGE_STRUCTURE,
             TABLE_READ_DATA,
             TABLE_READ_PROPERTIES,
+            TABLE_REMOVE_PARTITION_SPECS,
+            TABLE_REMOVE_PROPERTIES,
+            TABLE_REMOVE_SNAPSHOTS,
+            TABLE_REMOVE_SNAPSHOT_REF,
+            TABLE_REMOVE_STATISTICS,
+            TABLE_SET_CURRENT_SCHEMA,
+            TABLE_SET_DEFAULT_SORT_ORDER,
+            TABLE_SET_LOCATION,
             TABLE_SET_PROPERTIES,
+            TABLE_SET_SNAPSHOT_REF,
+            TABLE_SET_STATISTICS,
+            TABLE_UPGRADE_FORMAT_VERSION,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
             VIEW_CREATE,
