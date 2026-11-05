@@ -41,13 +41,27 @@ abstract class CheckChangelogFragmentsTask : DefaultTask() {
   @get:PathSensitive(PathSensitivity.RELATIVE)
   abstract val fragmentsDirectory: DirectoryProperty
 
-  /** Marker written only after the fragments have been validated successfully. */
+  /**
+   * Marker written only after the fragments have been validated successfully, listing them for
+   * human review. Gradle needs an output for its up-to-date checks and the build cache, but
+   * freshness depends on the inputs only. The paths are relative to [fragmentsDirectory], so that
+   * the content is the same when the result is restored from the build cache in another checkout.
+   * Should other tasks ever depend on the validation, we'd have to expose a value derived from the
+   * fragment files and their contents instead.
+   */
   @get:OutputFile abstract val successMarker: RegularFileProperty
 
   @TaskAction
   fun check() {
-    ChangelogFragments.collect(fragmentsDirectory.get().asFile)
-    successMarker.get().asFile.writeText("ok\n")
+    val directory = fragmentsDirectory.get().asFile
+    val fragments = ChangelogFragments.collect(directory).values.flatten()
+    successMarker
+      .get()
+      .asFile
+      .writeText(
+        "Validated ${fragments.size} changelog fragment(s):\n" +
+          fragments.joinToString("") { "${it.relativeTo(directory).invariantSeparatorsPath}\n" },
+      )
   }
 }
 
