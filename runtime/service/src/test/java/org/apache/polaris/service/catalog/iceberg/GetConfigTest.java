@@ -90,7 +90,7 @@ public class GetConfigTest {
               return null;
             })
         .when(authorizer)
-        .resolveAuthorizationInputs(any(), any());
+        .resolveAuthorizationInputs(any(), any(AuthorizationRequest.class));
     Mockito.doAnswer(
             invocation -> {
               AuthorizationRequest request = invocation.getArgument(1);
@@ -104,7 +104,7 @@ public class GetConfigTest {
               return AuthorizationDecision.allow();
             })
         .when(authorizer)
-        .authorize(any(), any());
+        .authorize(any(), any(AuthorizationRequest.class));
     return authorizer;
   }
 

@@ -29,6 +29,7 @@ import jakarta.inject.Inject;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.rest.Endpoint;
@@ -114,8 +115,11 @@ public class CatalogConfigHandler {
       authorizer.authorize(authorizationState, configAuthzRequest).throwIfDenied();
     }
 
+    Map<String, String> properties = PolarisEntity.of(catalogEntity).getPropertiesAsMap();
+
     ConfigResponse.Builder builder =
         ConfigResponse.builder()
+            .withDefaults(properties)
             .withOverrides(
                 ImmutableMap.of(
                     "prefix",
@@ -124,8 +128,7 @@ public class CatalogConfigHandler {
                     // always communicate the default namespace separator to clients.
                     RESTCatalogProperties.NAMESPACE_SEPARATOR,
                     NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED))
-            .withEndpoints(ImmutableList.copyOf(supportedEndpoints()))
-            .withDefaults(PolarisEntity.of(catalogEntity).getPropertiesAsMap());
+            .withEndpoints(ImmutableList.copyOf(supportedEndpoints()));
 
     // Advertise Idempotency-Key support to clients. Per the REST spec, presence of this field
     // signals that mutation endpoints honor Idempotency-Key; its value is the reuse window a
