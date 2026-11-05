@@ -18,10 +18,6 @@
  */
 package org.apache.polaris.extension.storage.cloudflare.r2;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -30,17 +26,6 @@ import org.jspecify.annotations.NonNull;
  */
 public record CloudflareR2ParentToken(
     @NonNull String accessKeyId, @NonNull String secretAccessKey) {
-
-  /** First 8 hex characters of SHA-256 over the secret; safe to place in cache keys and logs. */
-  public static String fingerprint(String secret) {
-    try {
-      byte[] digest =
-          MessageDigest.getInstance("SHA-256").digest(secret.getBytes(StandardCharsets.UTF_8));
-      return HexFormat.of().formatHex(digest, 0, 4);
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException("SHA-256 not available", e);
-    }
-  }
 
   @Override
   public String toString() {

@@ -260,16 +260,6 @@ class CloudflareR2TemporaryCredentialSignerTest {
   }
 
   @Test
-  void parentTokenFingerprintIsStableAndShort() {
-    String fp = CloudflareR2ParentToken.fingerprint(PARENT_SECRET);
-    assertThat(fp).hasSize(8).matches("[0-9a-f]{8}");
-    assertThat(fp).isEqualTo(CloudflareR2ParentToken.fingerprint(PARENT_SECRET));
-    assertThat(fp).isNotEqualTo(CloudflareR2ParentToken.fingerprint("other"));
-    assertThat(new CloudflareR2ParentToken(PARENT_KEY, PARENT_SECRET).toString())
-        .doesNotContain(PARENT_SECRET);
-  }
-
-  @Test
   void requestToStringOmitsTheParentSecret() {
     CloudflareR2TemporaryCredentialSigner.Request request =
         request(

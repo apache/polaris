@@ -33,6 +33,7 @@ import com.auth0.jwt.exceptions.SignatureVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -368,9 +369,9 @@ class CloudflareR2CredentialsStorageIntegrationTest {
   }
 
   /**
-   * The cache key holds a fingerprint of the parent secret. After a rotation that keeps the access
-   * key id, the next request misses the cache and mints again. The new credential carries a
-   * signature of the new secret only. The test compares signatures through booleans.
+   * The cache key holds the parent secret. After a rotation that keeps the access key id, the next
+   * request misses the cache and mints again. The new credential carries a signature of the new
+   * secret only. The test compares signatures through booleans.
    */
   @Test
   void aRotatedParentSecretWithTheSameKeyIdMintsAgain() {
@@ -962,6 +963,47 @@ class CloudflareR2CredentialsStorageIntegrationTest {
     assertThat(events)
         .extracting(ILoggingEvent::getFormattedMessage)
         .anySatisfy(message -> assertThat(message).contains("storageName=<default>"));
+  }
+
+  /** The key holds the effective storage name: the catalog's name only when the flag is true. */
+  @Test
+  void theKeyCarriesTheEffectiveStorageName() {
+    CloudflareR2CredentialCacheKey byName =
+        (CloudflareR2CredentialCacheKey)
+            integration(RESOLVER, CLOCK, null, CONFIG, BY_NAME_REALM_CONFIG)
+                .buildCacheKey(GRANTS, CredentialVendingContext.empty());
+    CloudflareR2CredentialCacheKey byDefault =
+        (CloudflareR2CredentialCacheKey)
+            integration(RESOLVER, CLOCK, null, CONFIG)
+                .buildCacheKey(GRANTS, CredentialVendingContext.empty());
+    assertThat(byName.effectiveStorageName()).isEqualTo(Optional.of("tenant-a"));
+    assertThat(byDefault.effectiveStorageName()).isEmpty();
+  }
+
+  /** The log line prints the name the key carries; it does not read the realm config again. */
+  @Test
+  void loadLogsTheStorageNameTheKeyCarries() {
+    CloudflareR2CredentialCacheKey key =
+        CloudflareR2CredentialCacheKey.of(
+            "realm",
+            UNNAMED_CONFIG,
+            "bucket",
+            List.of("wh/db/t/"),
+            CloudflareR2TemporaryCredentialSigner.SCOPE_OBJECT_READ_WRITE,
+            Optional.of("tenant-a"),
+            NAMED_TOKEN.accessKeyId(),
+            NAMED_TOKEN.secretAccessKey(),
+            Duration.ofSeconds(3600),
+            CLOCK,
+            REALM_CONFIG);
+    List<ILoggingEvent> events;
+    try (LogCapture logs = new LogCapture(Level.DEBUG)) {
+      key.load();
+      events = logs.events();
+    }
+    assertThat(events)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .anySatisfy(message -> assertThat(message).contains("storageName=tenant-a"));
   }
 
   /** The credential lifetime comes from the realm's STORAGE_CREDENTIAL_DURATION_SECONDS. */

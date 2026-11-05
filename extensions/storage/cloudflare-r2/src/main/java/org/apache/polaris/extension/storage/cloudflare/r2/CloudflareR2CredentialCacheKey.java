@@ -21,6 +21,7 @@ package org.apache.polaris.extension.storage.cloudflare.r2;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -29,9 +30,7 @@ import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
 /**
- * Cache key for vended Cloudflare R2 credentials. Data fields drive equality; the parent secret is
- * auxiliary so it never participates in {@code equals}, {@code hashCode}, or {@code toString}. The
- * fingerprint stands in for it, so a rotated secret with an unchanged key id changes the key.
+ * Cache key for vended Cloudflare R2 credentials. Data fields drive equality.
  *
  * <p>The key has no refresh endpoint. The storage integration adds that property after the cache
  * lookup, so callers with different refresh endpoints share one cache entry.
@@ -56,20 +55,29 @@ public interface CloudflareR2CredentialCacheKey extends StorageCredentialCacheKe
   @Value.Parameter(order = 5)
   String scope();
 
+  /**
+   * The storage name the parent token was resolved with, or empty for the default token. The
+   * integration computes it once when it builds the key, so {@code load()} does not read the realm
+   * config for it.
+   */
   @Value.Parameter(order = 6)
-  String parentKeyId();
+  Optional<String> effectiveStorageName();
 
   @Value.Parameter(order = 7)
-  String parentSecretFingerprint();
+  String parentKeyId();
 
+  /**
+   * The parent secret. It is a data field, so a rotated secret with an unchanged key id changes the
+   * key. {@code @Value.Redacted} keeps it out of {@code toString}.
+   */
   @Value.Parameter(order = 8)
+  @Value.Redacted
+  String parentSecret();
+
+  @Value.Parameter(order = 9)
   Duration ttl();
 
   // ---- aux: excluded from equals/hashCode/toString ----
-  @Value.Parameter(order = 9)
-  @Value.Auxiliary
-  String parentSecret();
-
   @Value.Parameter(order = 10)
   @Value.Auxiliary
   Clock clock();
@@ -90,10 +98,10 @@ public interface CloudflareR2CredentialCacheKey extends StorageCredentialCacheKe
       String bucket,
       List<String> prefixes,
       String scope,
+      Optional<String> effectiveStorageName,
       String parentKeyId,
-      String parentSecretFingerprint,
-      Duration ttl,
       String parentSecret,
+      Duration ttl,
       Clock clock,
       RealmConfig realmConfig) {
     return ImmutableCloudflareR2CredentialCacheKey.of(
@@ -102,10 +110,10 @@ public interface CloudflareR2CredentialCacheKey extends StorageCredentialCacheKe
         bucket,
         prefixes,
         scope,
+        effectiveStorageName,
         parentKeyId,
-        parentSecretFingerprint,
-        ttl,
         parentSecret,
+        ttl,
         clock,
         realmConfig);
   }

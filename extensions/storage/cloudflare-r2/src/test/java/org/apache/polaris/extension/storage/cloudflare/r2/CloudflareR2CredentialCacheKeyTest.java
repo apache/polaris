@@ -32,6 +32,7 @@ import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -71,9 +72,9 @@ class CloudflareR2CredentialCacheKeyTest {
       String bucket,
       List<String> prefixes,
       String scope,
+      Optional<String> storageName,
       String parentKeyId,
       String secret,
-      String fingerprint,
       Duration ttl) {
     return CloudflareR2CredentialCacheKey.of(
         realmId,
@@ -81,10 +82,10 @@ class CloudflareR2CredentialCacheKeyTest {
         bucket,
         prefixes,
         scope,
+        storageName,
         parentKeyId,
-        fingerprint,
-        ttl,
         secret,
+        ttl,
         CLOCK,
         REALM_CONFIG);
   }
@@ -96,47 +97,16 @@ class CloudflareR2CredentialCacheKeyTest {
         "bucket",
         List.of("p/"),
         READ_ONLY,
+        Optional.empty(),
         "parent-key",
         secret,
-        CloudflareR2ParentToken.fingerprint(secret),
         TTL);
   }
 
   @Test
-  void equalityIgnoresSecretButNotFingerprint() {
-    CloudflareR2CredentialCacheKey a = keyFor("s1");
-    CloudflareR2CredentialCacheKey sameData = keyFor("s1");
-    CloudflareR2CredentialCacheKey rotated = keyFor("s2");
-    assertThat(a).isEqualTo(sameData).hasSameHashCodeAs(sameData);
-    assertThat(a).isNotEqualTo(rotated);
-
-    // The secret itself is auxiliary: two keys that differ only in it stay equal, which is what
-    // makes the fingerprint the thing that has to change on rotation.
-    CloudflareR2CredentialCacheKey secretOnlyDifference =
-        key(
-            "realm",
-            CONFIG,
-            "bucket",
-            List.of("p/"),
-            READ_ONLY,
-            "parent-key",
-            "s1",
-            "deadbeef",
-            TTL);
-    CloudflareR2CredentialCacheKey otherSecretSameFingerprint =
-        key(
-            "realm",
-            CONFIG,
-            "bucket",
-            List.of("p/"),
-            READ_ONLY,
-            "parent-key",
-            "s2",
-            "deadbeef",
-            TTL);
-    assertThat(secretOnlyDifference)
-        .isEqualTo(otherSecretSameFingerprint)
-        .hasSameHashCodeAs(otherSecretSameFingerprint);
+  void equalityIncludesTheSecret() {
+    assertThat(keyFor("s1")).isEqualTo(keyFor("s1")).hasSameHashCodeAs(keyFor("s1"));
+    assertThat(keyFor("s1")).isNotEqualTo(keyFor("s2"));
   }
 
   @Test
@@ -149,10 +119,10 @@ class CloudflareR2CredentialCacheKeyTest {
             "bucket",
             List.of("p/"),
             READ_ONLY,
+            Optional.empty(),
             "parent-key",
-            CloudflareR2ParentToken.fingerprint("s1"),
-            TTL,
             "s1",
+            TTL,
             Clock.systemUTC(),
             otherRealmConfig);
     assertThat(keyFor("s1")).isEqualTo(other).hasSameHashCodeAs(other);
@@ -160,7 +130,6 @@ class CloudflareR2CredentialCacheKeyTest {
 
   @Test
   void everyVendingInputIsPartOfTheKey() {
-    String fingerprint = CloudflareR2ParentToken.fingerprint("s1");
     AwsStorageConfigurationInfo otherAccount =
         r2Config("https://ffffffffffffffffffffffffffffffff.r2.cloudflarestorage.com").build();
     CloudflareR2CredentialCacheKey base = keyFor("s1");
@@ -172,9 +141,9 @@ class CloudflareR2CredentialCacheKeyTest {
                 "bucket",
                 List.of("p/"),
                 READ_ONLY,
+                Optional.empty(),
                 "parent-key",
                 "s1",
-                fingerprint,
                 TTL))
         .isNotEqualTo(
             key(
@@ -183,9 +152,9 @@ class CloudflareR2CredentialCacheKeyTest {
                 "bucket",
                 List.of("p/"),
                 READ_ONLY,
+                Optional.empty(),
                 "parent-key",
                 "s1",
-                fingerprint,
                 TTL))
         .isNotEqualTo(
             key(
@@ -194,9 +163,9 @@ class CloudflareR2CredentialCacheKeyTest {
                 "other",
                 List.of("p/"),
                 READ_ONLY,
+                Optional.empty(),
                 "parent-key",
                 "s1",
-                fingerprint,
                 TTL))
         .isNotEqualTo(
             key(
@@ -205,9 +174,9 @@ class CloudflareR2CredentialCacheKeyTest {
                 "bucket",
                 List.of("q/"),
                 READ_ONLY,
+                Optional.empty(),
                 "parent-key",
                 "s1",
-                fingerprint,
                 TTL))
         .isNotEqualTo(
             key(
@@ -216,9 +185,9 @@ class CloudflareR2CredentialCacheKeyTest {
                 "bucket",
                 List.of("p/"),
                 READ_WRITE,
+                Optional.empty(),
                 "parent-key",
                 "s1",
-                fingerprint,
                 TTL))
         .isNotEqualTo(
             key(
@@ -227,9 +196,9 @@ class CloudflareR2CredentialCacheKeyTest {
                 "bucket",
                 List.of("p/"),
                 READ_ONLY,
+                Optional.empty(),
                 "other-key",
                 "s1",
-                fingerprint,
                 TTL))
         .isNotEqualTo(
             key(
@@ -238,10 +207,32 @@ class CloudflareR2CredentialCacheKeyTest {
                 "bucket",
                 List.of("p/"),
                 READ_ONLY,
+                Optional.empty(),
                 "parent-key",
                 "s1",
-                fingerprint,
-                Duration.ofSeconds(600)));
+                Duration.ofSeconds(600)))
+        .isNotEqualTo(
+            key(
+                "realm",
+                CONFIG,
+                "bucket",
+                List.of("p/"),
+                READ_ONLY,
+                Optional.empty(),
+                "parent-key",
+                "s2",
+                TTL))
+        .isNotEqualTo(
+            key(
+                "realm",
+                CONFIG,
+                "bucket",
+                List.of("p/"),
+                READ_ONLY,
+                Optional.of("prod"),
+                "parent-key",
+                "s1",
+                TTL));
   }
 
   @Test
@@ -252,13 +243,10 @@ class CloudflareR2CredentialCacheKeyTest {
   }
 
   @Test
-  void toStringShowsTheFingerprintAndNeverTheSecret() {
+  void toStringNeverShowsTheSecret() {
     String secret = "very-secret-value";
     String text = keyFor(secret).toString();
-    assertThat(text)
-        .contains(CloudflareR2ParentToken.fingerprint(secret))
-        .contains("parent-key")
-        .doesNotContain(secret);
+    assertThat(text).contains("parent-key").doesNotContain(secret);
   }
 
   @Test
@@ -272,9 +260,9 @@ class CloudflareR2CredentialCacheKeyTest {
                 "bucket",
                 List.of("wh/t1/"),
                 READ_WRITE,
+                Optional.empty(),
                 "parent-key",
                 "secret",
-                "deadbeef",
                 TTL)
             .load();
     assertThat(cfg.extraProperties()).containsEntry("s3.endpoint", "https://" + expectedHost);
@@ -301,9 +289,9 @@ class CloudflareR2CredentialCacheKeyTest {
                 "bucket",
                 List.of("wh/t1/"),
                 READ_WRITE,
+                Optional.empty(),
                 "parent-key",
                 "secret",
-                "deadbeef",
                 TTL)
             .load();
     assertThat(cfg.credentials())
@@ -329,7 +317,16 @@ class CloudflareR2CredentialCacheKeyTest {
   void loadFailsClosedOnANonR2Endpoint() {
     AwsStorageConfigurationInfo notR2 = r2Config("https://example.com").build();
     CloudflareR2CredentialCacheKey notR2Key =
-        key("realm", notR2, "bucket", List.of("p/"), READ_ONLY, "parent-key", "s", "deadbeef", TTL);
+        key(
+            "realm",
+            notR2,
+            "bucket",
+            List.of("p/"),
+            READ_ONLY,
+            Optional.empty(),
+            "parent-key",
+            "s",
+            TTL);
     assertThatThrownBy(notR2Key::load)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("endpoint");
