@@ -62,13 +62,6 @@ can edit or delete fragments added by earlier ones.
 `./gradlew checkChangelogFragments` validates the fragments; it also runs as part of
 `./gradlew check`, and in CI for every pull request that changes this directory.
 
-## Pull requests opened before this process
-
-If your pull request adds an entry directly to `CHANGELOG.md`, move it into a fragment when you
-rebase: remove your lines from `CHANGELOG.md` and add them as a file under `changelog.d/`, as
-described above. Nothing in `check` or CI detects an entry added directly to the `## [Unreleased]`
-section, so reviewers should look out for it.
-
 ## Releasing
 
 When a release is cut, `./gradlew mergeChangelogFragments` appends the fragments to the matching

@@ -168,6 +168,54 @@ class ChangelogFragmentsTest {
   }
 
   @Test
+  fun entriesLandAfterTheLastItemOfASection() {
+    changelog.writeText(
+      """
+      ## [Unreleased]
+
+      ### Highlights
+      - First item, right under the heading.
+
+      - Second item,
+        wrapped.
+
+      - Last item.
+
+      ### Upgrade notes
+
+      ## [1.0.0]
+      """
+        .trimIndent() + "\n",
+    )
+    fragment("highlights/10-new.md", "New highlight.\n")
+    fragment("highlights/99-newer.md", "Newer highlight.\n")
+
+    ChangelogFragments.merge(fragments, changelog)
+
+    assertThat(changelog.readText())
+      .isEqualTo(
+        """
+        ## [Unreleased]
+
+        ### Highlights
+        - First item, right under the heading.
+
+        - Second item,
+          wrapped.
+
+        - Last item.
+        - New highlight.
+        - Newer highlight.
+
+        ### Upgrade notes
+
+        ## [1.0.0]
+        """
+          .trimIndent() + "\n",
+      )
+  }
+
+  @Test
   fun entriesAreOrderedByPriorityThenName() {
     fragment("fixes/99-b.md", "B.\n")
     fragment("fixes/10-z.md", "Z.\n")
@@ -394,5 +442,18 @@ class ChangelogFragmentsTest {
       .isInstanceOf(GradleException::class.java)
       .hasMessageContaining("99-dir.md: must be a file, not a directory")
       .hasMessageNotContaining("file name must match")
+  }
+
+  @Test
+  fun hiddenFilesAreIgnored() {
+    File(fragments, ".DS_Store").writeText("junk")
+    fragment("fixes/99-fix.md", "Fix.\n")
+    File(fragments, "fixes/.DS_Store").writeText("junk")
+
+    assertThat(ChangelogFragments.collect(fragments).values.flatten().map { it.name })
+      .containsExactly("99-fix.md")
+    ChangelogFragments.merge(fragments, changelog)
+
+    assertThat(changelog.readText()).contains("- Existing fix.\n- Fix.\n")
   }
 }

@@ -46,6 +46,10 @@ object ChangelogFragments {
   private val LIST_MARKER = Regex("^[-*+] ")
   private val LINK_REFERENCE = Regex("\\[[^]]+]:.*")
 
+  /** Lists the files of a directory, ignoring hidden files like `.DS_Store`, which Git ignores. */
+  private fun visibleFiles(directory: File): List<File> =
+    (directory.listFiles() ?: emptyArray()).filterNot { it.name.startsWith(".") }
+
   /**
    * Orders the fragments of a section by priority, then by title, which both are in the file name.
    * Directory listings have no defined order.
@@ -59,12 +63,12 @@ object ChangelogFragments {
   fun collect(directory: File): Map<String, List<File>> {
     val errors = mutableListOf<String>()
     val fragments = mutableMapOf<String, List<File>>()
-    (directory.listFiles() ?: emptyArray())
+    visibleFiles(directory)
       .sortedBy { it.name }
       .forEach { f ->
         val section = SECTIONS[f.name]
         if (f.isDirectory && section != null) {
-          fragments[section] = orderFragments(f.listFiles()!!.asList())
+          fragments[section] = orderFragments(visibleFiles(f))
         } else if (f.name != "README.md") {
           errors.add("$f: unknown section, must be one of ${SECTIONS.keys}")
         }

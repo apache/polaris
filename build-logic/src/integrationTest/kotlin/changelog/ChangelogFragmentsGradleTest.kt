@@ -207,16 +207,24 @@ class ChangelogFragmentsGradleTest {
   @Test
   fun checkTaskResultIsRestoredFromTheBuildCache() {
     fragment("fixes/99-new-fix.md", "New fix.\n")
+    fragment("highlights/10-highlight.md", "Highlight.\n")
+    val marker = File(project, "build/changelog-fragments-check/success")
 
     assertThat(
         runWithBuildCache("checkChangelogFragments").task(":checkChangelogFragments")?.outcome,
       )
       .isEqualTo(TaskOutcome.SUCCESS)
+    // The marker lists the fragments in changelog order, with paths relative to changelog.d
+    val expectedMarker =
+      "Validated 2 changelog fragment(s):\nhighlights/10-highlight.md\nfixes/99-new-fix.md\n"
+    assertThat(marker.readText()).isEqualTo(expectedMarker)
+
     File(project, "build").deleteRecursively()
     assertThat(
         runWithBuildCache("checkChangelogFragments").task(":checkChangelogFragments")?.outcome,
       )
       .isEqualTo(TaskOutcome.FROM_CACHE)
+    assertThat(marker.readText()).isEqualTo(expectedMarker)
 
     // A different set of fragments is a different cache entry
     fragment("fixes/99-other-fix.md", "Other fix.\n")
