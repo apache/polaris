@@ -46,12 +46,13 @@ A directory has two main parts:
    The directory table is named after the configuration, with the `__inventory` suffix (for example `product-images__inventory`), because a directory and a table cannot share a name in a namespace.
 
 {{< alert warning >}}
-The directory table is managed by Polaris. Dropping it, or writing to it through the Iceberg REST API, breaks the directory:
-the next scan fails or the inventory no longer reflects the objects of the directory. Use the directories API to scan or drop a directory.
+The directory table is created and dropped with its directory. Dropping it through the Iceberg REST API breaks the
+directory: use the directories API to drop a directory.
 {{< /alert >}}
 
-Polaris provides a simple synchronous scan endpoint but does not schedule scans. External services (e.g. directory table scanning service) can also read the directory configuration through the REST API,
-walk the object store, and write the results into the directory table.
+Polaris does not scan directories itself. [External services](#external-services-scanning-services) (e.g. directory
+table scanning service) read the directory configuration through the REST API, walk the object store, and write the
+results into the directory table.
 
 ## Configuration
 
@@ -63,11 +64,9 @@ A directory is described by the following fields:
 | `base-location` | `string` | Yes | The external object store location to use as a root for scanning objects; this is not the location of the Iceberg inventory table, which is assigned by Polaris (for example `s3://my-bucket/images/`, `gs://my-bucket/docs/`, or `file:///data/local/`). |
 | `filter` | `object` | No | Include and exclude patterns that control which objects are added to the directory table during a scan. See [Filter](#filter). |
 
-### Storage access
+### Base location
 
-Directories use Polaris `StorageAccessConfig` to access the object store.
-
-The `base-location` is validated like a table location when the directory is created and again before each scan:
+The `base-location` is validated like a table location when the directory is created:
 it must be within the catalog's allowed locations. As for tables, it must also be within the namespace location
 unless the catalog sets `polaris.config.allow.unstructured.table.location` to `true`.
 
@@ -144,27 +143,6 @@ The directory table and its history are preserved, and the new filter applies fr
 
 Removes the directory and its associated Iceberg table from the namespace.
 
-### Scan a directory
-
-**POST** `/polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}/scan`
-
-Lists the objects under the directory `base-location`, applies the configured [filter](#filter) and
-replaces the content of the directory table with the result in a single commit. The response contains
-the number of objects recorded in the table:
-
-```json
-{ "file-count": 42 }
-```
-
-Polaris lists the `base-location` with read-only credentials scoped to that location, and requires the
-`TABLE_WRITE_DATA` privilege on the directory table. The scan is synchronous and Polaris does not schedule
-it: it is up to the caller (or an [external service](#external-services-scanning-services)) to trigger it
-periodically. If the scan fails, the directory table remains unchanged.
-
-The scan populates `file_uri`, `content_type` (guessed from the
-file name), `size` and `last_modified` (as reported by the object store); the other columns are left empty.
-It requires an object store whose `FileIO` supports listing a prefix.
-
 ## Directory table
 
 When a directory is created, Polaris creates an Iceberg table in the same namespace using the directory
@@ -204,24 +182,13 @@ More precisely:
   table. These credentials are not scoped to the directory `base-location`.
 - Privileges on the directory or on the directory table (for example `TABLE_READ_DATA`) don't grant access to the
   objects under the `base-location`.
-- The [scan](#scan-a-directory) lists the `base-location` with credentials that stay in the Polaris server: they
-  are never returned to the caller.
 
 Vending credentials for the objects referenced in the directory table is not supported yet.
 
-### Customizing the scan
-
-The scan is performed by a `DirectoryScanService` (package `org.apache.polaris.service.catalog.spi`). To
-change how a directory is scanned (for example to compute checksums, read object-store metadata or update
-the table incrementally), provide an `ApplicationScoped` CDI bean implementing this interface in an
-extension: it replaces the built-in implementation. The service receives the directory table, a `FileIO`
-with read and list access to the `base-location`, and the directory filters.
-
 ## External services (scanning services)
 
-The Polaris server provides a simple [scan endpoint](#scan-a-directory), but it does **not** schedule scans
-by itself. Scheduling, as well as richer scans (checksums, object-store metadata, incremental updates), can
-be handled by external services.
+The Polaris server **neither** scans directories **nor** schedules scans. Scanning and scheduling are handled by
+external services.
 
 ### How external services could work
 

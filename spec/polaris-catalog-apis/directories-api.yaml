@@ -71,8 +71,6 @@ paths:
       description:
         Create a directory under the given namespace, and return the created directory information as a response.
       operationId: createDirectory
-      parameters:
-        - $ref: '#/components/parameters/polaris-directory-data-access'
       requestBody:
         required: true
         content:
@@ -129,8 +127,6 @@ paths:
 
         The response contains all directory information passed during create.
 
-      parameters:
-        - $ref: '#/components/parameters/polaris-directory-data-access'
       responses:
         200:
           $ref: '#/components/responses/LoadDirectoryResponse'
@@ -165,8 +161,6 @@ paths:
         Only the fields present in the request are changed, and a provided field replaces the existing value.
         The `name` and `base-location` cannot be changed. The directory inventory table and its
         history are preserved. The new filter applies from the next scan.
-      parameters:
-        - $ref: '#/components/parameters/polaris-directory-data-access'
       requestBody:
         required: true
         content:
@@ -227,45 +221,6 @@ paths:
         5XX:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
-  /polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}/scan:
-    parameters:
-      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
-      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/namespace'
-      - $ref: '#/components/parameters/directory'
-
-    post:
-      tags:
-        - Directory API
-      summary: Scan a directory and refresh its inventory table
-      operationId: scanDirectory
-      description: >
-        Lists the objects under the directory `base-location`, applies the configured filter
-        and replaces the content of the directory inventory table with the result in a single
-        commit. If the scan fails, the inventory table is left unchanged.
-      responses:
-        200:
-          $ref: '#/components/responses/ScanDirectoryResponse'
-        400:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
-        401:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
-        403:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
-        404:
-          description:
-            Not Found - NoSuchTableError, directory to scan does not exist
-          content:
-            application/json:
-              schema:
-                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
-              examples:
-                DirectoryToScanDoesNotExist:
-                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchTableError'
-        503:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
-        5XX:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
-
 components:
   parameters:
     directory-page-token:
@@ -274,7 +229,7 @@ components:
       description: Opaque token returned as `next-page-token` by a previous response. Omit it to start listing.
       required: false
       schema:
-        $ref: '#/components/schemas/DirectoryPageToken'
+        type: string
 
     directory-page-size:
       name: pageSize
@@ -295,26 +250,6 @@ components:
       schema:
         type: string
       example: "product-images"
-
-    polaris-directory-data-access:
-      name: Polaris-Directory-Access-Delegation
-      in: header
-      description: >
-        Optional header indicating that the client supports delegated access
-        using a specific mechanism. If the header is present, the server must
-        either provide access using the requested mechanism or fail the request.
-        If `vended-credentials` is specified, the server must return scoped
-        storage credentials in the `storage-access-configs` field of the response.
-      required: false
-      schema:
-        type: array
-        items:
-          type: string
-          enum:
-            - vended-credentials
-      style: simple
-      explode: false
-      example: "vended-credentials"
 
   schemas:
     DirectoryPageToken:
@@ -410,24 +345,6 @@ components:
       properties:
         directory:
           $ref: '#/components/schemas/Directory'
-        storage-access-configs:
-          type: array
-          description: |
-            Storage configurations required to access the directory, encompassing both credentials and other necessary
-            settings for storage access, such as the client region for S3.
-          items:
-            $ref: './common-schemas.yaml#/components/schemas/StorageAccessConfig'
-
-    ScanDirectoryResponse:
-      description: Result of a directory scan.
-      type: object
-      required:
-        - file-count
-      properties:
-        file-count:
-          type: integer
-          format: int64
-          description: Number of objects recorded in the directory inventory table after the scan.
 
     ListDirectoriesResponse:
       type: object
@@ -455,13 +372,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadDirectoryResponse'
-
-    ScanDirectoryResponse:
-      description: Number of objects recorded after a successful scan.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ScanDirectoryResponse'
 
     ListDirectoriesResponse:
       description: List of directory identifiers.
