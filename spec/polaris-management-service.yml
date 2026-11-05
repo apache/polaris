@@ -126,7 +126,9 @@ paths:
 
     delete:
       operationId: deleteCatalog
-      description: Delete an existing catalog. The catalog must be empty.
+      description: >-
+        Delete an existing catalog. The catalog must be empty. Its storage configurations and storage
+        mappings are deleted with it.
       responses:
         204:
           description: "Success, no content"
@@ -806,6 +808,302 @@ paths:
         404:
           description: "The catalog or the role does not exist"
 
+  /catalogs/{catalogName}/storage-configurations:
+    parameters:
+      - name: catalogName
+        in: path
+        description: The catalog that holds the storage configurations
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
+    get:
+      operationId: listStorageConfigurations
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        List the storage configurations of a catalog. The catalog's own `storageConfigInfo` is not
+        listed.
+
+        Results are paginated. A client follows `nextPageToken` until it is absent. A server
+        may return fewer results than `pageSize`, and may paginate even when `pageSize` is not set.
+
+        Requires STORAGE_CONFIGURATION_LIST on the catalog.
+      parameters:
+        - name: pageToken
+          in: query
+          required: false
+          description: The `nextPageToken` of the previous response. Omit it to get the first page.
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          required: false
+          description: An upper bound on the number of storage configurations in the response.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        200:
+          description: A page of the storage configurations in this catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfigurations"
+        400:
+          description: "The page token or the page size is invalid"
+        403:
+          description: "The principal is not authorized to list storage configurations"
+        404:
+          description: "The catalog does not exist"
+    post:
+      operationId: createStorageConfiguration
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Create a storage configuration in the catalog. Storage configurations are immutable; see
+        StorageConfiguration.
+
+        Requires STORAGE_CONFIGURATION_CREATE on the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStorageConfigurationRequest"
+      responses:
+        201:
+          description: "Successful response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfiguration"
+        400:
+          description: "The storage configuration is invalid, its locations overlap another catalog, or its `storageName` can't be resolved"
+        403:
+          description: "The principal is not authorized to create storage configurations"
+        404:
+          description: "The catalog does not exist"
+        409:
+          description: "A storage configuration with the specified name already exists in the catalog"
+
+  /catalogs/{catalogName}/storage-configurations/orphans:
+    parameters:
+      - name: catalogName
+        in: path
+        description: The catalog that holds the storage configurations
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
+    delete:
+      operationId: deleteOrphanStorageConfigurations
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Delete the unreferenced storage configurations of a catalog: those that no storage mapping
+        references, whether or not the namespace or table of the mapping exists. An orphan or pending
+        storage mapping still references its storage configuration, so remove those mappings first
+        with removeOrphanStorageMappings in the Polaris catalog API. A storage configuration
+        that was just created and not mapped yet is unreferenced too, and is deleted, unless
+        `skipNeverReferenced` is true. The catalog's own `storageConfigInfo` is not a storage
+        configuration in this sense and is never deleted.
+
+        With `dryRun` set to true, nothing is changed and the response lists the storage
+        configurations a call without `dryRun` would delete at that moment. Otherwise a call deletes at
+        most one page of them, all together or not at all, and the response lists those deleted. The
+        response has a `nextPageToken` when more candidates were left: call again, with or without the
+        token, until it is absent. A storage configuration that gets referenced before the deletion
+        takes effect is not deleted.
+
+        Requires STORAGE_CONFIGURATION_DROP on each storage configuration the call would delete, which
+        CATALOG_MANAGE_METADATA on the catalog includes. Without it on every one of them the call is
+        forbidden and nothing is deleted. STORAGE_CONFIGURATION_DETACH is not enough: it only allows
+        removing mappings to a storage configuration, not deleting it.
+      parameters:
+        - name: pageToken
+          in: query
+          required: false
+          description: The `nextPageToken` of the previous response. Omit it to get the first page.
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          required: false
+          description: An upper bound on the number of storage configurations in the response.
+          schema:
+            type: integer
+            minimum: 1
+        - name: dryRun
+          in: query
+          required: false
+          description: If true, only list the unreferenced storage configurations and don't delete them.
+          schema:
+            type: boolean
+            default: false
+        - name: skipNeverReferenced
+          in: query
+          required: false
+          description: >-
+            If true, keep the storage configurations that no storage mapping has ever referenced, for
+            example ones created but not mapped yet.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        200:
+          description: The unreferenced storage configurations, deleted unless `dryRun` is true
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfigurations"
+        400:
+          description: "A parameter or the page token is invalid"
+        403:
+          description: "The principal is not authorized to delete all the unreferenced storage configurations"
+        404:
+          description: "The catalog does not exist"
+
+  /catalogs/{catalogName}/storage-configurations/{storageConfigurationName}:
+    parameters:
+      - name: catalogName
+        in: path
+        description: The catalog that holds the storage configuration
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
+      - name: storageConfigurationName
+        in: path
+        description: The name of the storage configuration
+        required: true
+        schema:
+          type: string
+          pattern: '^(?!orphans$)[a-zA-Z0-9_-]{1,128}$'
+    get:
+      operationId: getStorageConfiguration
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Get a storage configuration.
+
+        Requires STORAGE_CONFIGURATION_READ on the storage configuration.
+      responses:
+        200:
+          description: The storage configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfiguration"
+        403:
+          description: "The principal is not authorized to read the storage configuration"
+        404:
+          description: "The catalog or the storage configuration does not exist"
+
+    delete:
+      operationId: deleteStorageConfiguration
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Delete a storage configuration. The deletion is refused while any storage mapping references
+        the storage configuration. A storage mapping can only be removed while its namespace or table
+        does not exist, so a storage configuration used by existing namespaces or tables can only be
+        deleted after they are dropped and their storage mappings are removed. Dropping a namespace or
+        table does not remove its storage mapping; use removeStorageMapping, or
+        removeOrphanStorageMappings in the Polaris catalog API. Deleting the catalog deletes its
+        storage configurations.
+
+        Requires STORAGE_CONFIGURATION_DROP on the storage configuration.
+      responses:
+        204:
+          description: "Success, no content"
+        403:
+          description: "The principal is not authorized to delete the storage configuration"
+        404:
+          description: "The catalog or the storage configuration does not exist"
+        409:
+          description: "A storage mapping references the storage configuration"
+
+  /catalogs/{catalogName}/storage-configurations/{storageConfigurationName}/validate:
+    parameters:
+      - name: catalogName
+        in: path
+        description: The catalog that holds the storage configuration
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
+      - name: storageConfigurationName
+        in: path
+        description: The name of the storage configuration
+        required: true
+        schema:
+          type: string
+          pattern: '^(?!orphans$)[a-zA-Z0-9_-]{1,128}$'
+    post:
+      operationId: validateStorageConfiguration
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Check that the storage configuration can reach its locations, by calling the cloud provider.
+        Creating a storage configuration doesn't do this, because access is often granted only after
+        the storage configuration exists. Call this operation once access is set up, or whenever access
+        is in doubt.
+
+        Polaris checks every location in `allowedLocations`, and `baseLocation` if it is set. For each
+        one it gets a new session with the cloud identity and credentials of the storage configuration,
+        scoped to that location as for vended credentials, and lists the location. A location with
+        nothing under it yet is ACCESSIBLE if the cloud provider allows the listing. A cached session
+        is never used. With `checkWrite` set to true, Polaris also creates a small object under the
+        location and deletes it. This is off by default because the object is visible in the customer's
+        storage and may trigger bucket notifications. If the object can't be deleted, `write` is DENIED
+        and `message` names the object left behind.
+
+        A failed check is not an error: the response is 200 and reports each location. A storage
+        configuration that fails can be fixed in the cloud provider, or deleted and created again
+        while no storage mapping references it. If `storageName` no longer resolves, every location is
+        DENIED. The check changes nothing in Polaris and its result is not stored. It is not required
+        before creating a storage mapping. It holds only at the time of the call, and only for the
+        checks it ran. Without `checkWrite` it says nothing about write access.
+
+        The response never holds the session or any credentials. FILE storage has no cloud identity
+        and nothing is checked: every location is INCONCLUSIVE.
+
+        Requires STORAGE_CONFIGURATION_VALIDATE on the storage configuration.
+      parameters:
+        - name: checkWrite
+          in: query
+          required: false
+          description: If true, also create and delete a small object under each location.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        200:
+          description: The result for each location, whether or not it can be reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfigurationValidation"
+        403:
+          description: "The principal is not authorized to validate the storage configuration"
+        404:
+          description: "The catalog or the storage configuration does not exist"
+
 components:
   securitySchemes:
     OAuth2:
@@ -1118,7 +1416,15 @@ components:
             - "For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/]"
         storageName:
           type: string
-          description: An optional name referencing a server-side storage configuration
+          description: >-
+            This name is meant for associating StorageConfigInfo objects to deployment-specific
+            configuration. The interpretation of this name depends on specific runtime components that
+            are included in a server to support interacting with storage systems. Standard Apache Polaris
+            servers use this name for finding base storage credentials.
+
+
+            Note: this name is optional and unrelated to the name of a storage configuration
+            (StorageConfiguration.name).
       required:
         - storageType
       discriminator:
@@ -1549,6 +1855,179 @@ components:
       required:
         - currentEntityVersion
         - properties
+
+    StorageConfigurations:
+      type: object
+      description: A page of storage configurations
+      properties:
+        storageConfigurations:
+          type: array
+          items:
+            $ref: "#/components/schemas/StorageConfiguration"
+        nextPageToken:
+          type: string
+          description: Pass this value as `pageToken` to get the next page. Absent on the last page.
+      required:
+        - storageConfigurations
+
+    CreateStorageConfigurationRequest:
+      type: object
+      description: Request to create a storage configuration
+      properties:
+        storageConfiguration:
+          $ref: "#/components/schemas/StorageConfiguration"
+      required:
+        - storageConfiguration
+
+    StorageConfiguration:
+      type: object
+      description: |
+        A named storage configuration in a catalog. A catalog can hold several, in addition to its own
+        `storageConfigInfo`, which has no name and stays the catalog's default. Namespaces and tables
+        use a storage configuration through storage mappings, defined in the Polaris catalog API.
+
+        A storage configuration is immutable: there is no update operation. To change settings,
+        create a new storage configuration and use it for new namespaces and tables. Existing
+        namespaces and tables keep the storage configuration they were created with. This does not
+        apply to the catalog's own `storageConfigInfo`, which can still be changed with updateCatalog;
+        namespaces and tables that use it follow those changes, as before.
+
+        The `allowedLocations` of a storage configuration must not overlap the locations of another
+        catalog or of another catalog's storage configurations, unless
+        `ALLOW_OVERLAPPING_CATALOG_URLS` is set. Creating or updating a catalog is checked against them
+        too. They may overlap the catalog's own locations and its other storage configurations.
+
+        A storage configuration may name any cloud account or tenant and any supported storage type,
+        whatever the catalog's own `storageConfigInfo` uses. The limits updateCatalog puts on changing
+        the catalog's `storageConfigInfo` (the storage type, the AWS account and external ID, the Azure
+        tenant; see `ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES`) do not apply. So whoever holds
+        STORAGE_CONFIGURATION_CREATE chooses the cloud identity and, with `storageName`, the server-side
+        credentials; CATALOG_MANAGE_METADATA on the catalog includes it.
+
+        For S3, Azure and GCS, `storageConfigInfo.storageName` selects the server-side credentials Polaris
+        authenticates with for this storage configuration, so several storage configurations can reuse
+        the same credentials by name. A storage configuration always honors it, even on a server that
+        doesn't use the `storageName` of a catalog's own `storageConfigInfo`. These credentials are
+        configured on the server and are never sent through this API. Without `storageName`, Polaris
+        uses the server's default credentials for the `storageType`, not the `storageName` of the
+        catalog's `storageConfigInfo`. Creating a storage configuration fails (400) if the server can't
+        resolve `storageName` to credentials for the `storageType`. The error doesn't say why, and no
+        API lists the names a server knows. If a name stops resolving later, operations that need
+        storage fail; Polaris never falls back to other credentials. FILE storage has no credentials
+        and ignores `storageName`.
+
+        Every location in `allowedLocations` must match the `storageType` (an `abfss://` location on
+        an S3 storage configuration is a bad request), and the `storageType` must be one the server
+        supports.
+
+        When a storage configuration is created, Polaris does not check that its cloud identity (for
+        example an AWS IAM role) or the credentials selected by `storageConfigInfo.storageName` can
+        access its locations. validateStorageConfiguration checks this on request. Changes made in the
+        cloud provider to that identity, to those credentials or to their permissions take effect
+        without any change in Polaris. So do changes to the credentials behind a name in the server's
+        configuration, which is how they are rotated.
+
+        Privileges:
+        - STORAGE_CONFIGURATION_CREATE and STORAGE_CONFIGURATION_LIST on the catalog allow creating
+          and listing storage configurations.
+        - STORAGE_CONFIGURATION_READ, STORAGE_CONFIGURATION_DROP and STORAGE_CONFIGURATION_VALIDATE on
+          a storage configuration allow reading, deleting and validating it.
+          STORAGE_CONFIGURATION_FULL_METADATA includes all three.
+        - STORAGE_CONFIGURATION_ATTACH and STORAGE_CONFIGURATION_DETACH on a storage configuration
+          allow creating and removing storage mappings to it, together with
+          NAMESPACE_ATTACH_STORAGE_CONFIGURATION and NAMESPACE_DETACH_STORAGE_CONFIGURATION on the
+          parent namespace (CATALOG_ATTACH_STORAGE_CONFIGURATION and
+          CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog for a top-level namespace), as for
+          policies. They do not allow reading, deleting or validating the storage configuration, and
+          creating a storage configuration does not allow using it.
+        - STORAGE_CONFIGURATION_MANAGE_GRANTS_ON_SECURABLE on a storage configuration allows
+          managing the grants on it.
+      properties:
+        name:
+          type: string
+          pattern: '^(?!orphans$)[a-zA-Z0-9_-]{1,128}$'
+          description: >-
+            The name of the storage configuration. Unique within the catalog and case sensitive.
+            `orphans` is reserved.
+        storageConfigInfo:
+          $ref: "#/components/schemas/StorageConfigInfo"
+          description: >-
+            The storage settings, validated as for a catalog, and `storageName` must resolve (see
+            StorageConfiguration). `allowedLocations` must not be empty;
+            unlike a catalog, a storage configuration has no default base location to fall back on.
+            A response always holds all the settings in effect.
+        baseLocation:
+          type: string
+          description: >-
+            Optional. Must be inside one of `storageConfigInfo.allowedLocations`. A namespace or table
+            whose own storage mapping names this storage configuration, and that is created without an
+            explicit location, is placed under it. Without it, such a namespace or table must be
+            created with an explicit location. A namespace is placed at `baseLocation` plus its full
+            namespace path, and a table with its own mapping at `baseLocation` plus its namespace path
+            and name. These are also the locations the server's rules on custom namespace locations and
+            tables outside their namespace compare with, so a table on its own mapping need not be under
+            its namespace's location. Namespaces and tables inside a mapped namespace are placed under
+            that namespace's location, as before.
+        createTimestamp:
+          type: integer
+          format: "int64"
+          readOnly: true
+          description: The creation time represented as unix epoch timestamp in milliseconds
+        everReferenced:
+          type: boolean
+          readOnly: true
+          description: >-
+            Whether a storage mapping has ever referenced this storage configuration. False until the
+            first mapping to it is created.
+      required:
+        - name
+        - storageConfigInfo
+
+    StorageConfigurationValidation:
+      type: object
+      description: The result of validateStorageConfiguration
+      properties:
+        locations:
+          type: array
+          description: One result for each distinct location checked.
+          items:
+            $ref: "#/components/schemas/StorageLocationValidation"
+      required:
+        - locations
+
+    StorageLocationValidation:
+      type: object
+      description: The result of checking one location of a storage configuration
+      properties:
+        location:
+          type: string
+        read:
+          $ref: "#/components/schemas/StorageAccessStatus"
+          description: The result of listing the location.
+        write:
+          $ref: "#/components/schemas/StorageAccessStatus"
+          description: >-
+            The result of creating and deleting an object under the location. Absent unless `checkWrite`
+            is true.
+        message:
+          type: string
+          description: >-
+            Optional. A reason for a person to read, when a check did not pass. Never holds credentials.
+            Don't parse it.
+      required:
+        - location
+        - read
+
+    StorageAccessStatus:
+      type: string
+      description: >-
+        ACCESSIBLE: the cloud provider allowed the access. DENIED: the cloud provider refused the
+        session or the access, or the bucket or container doesn't exist. INCONCLUSIVE: the check gave no answer, for example because the cloud provider couldn't be
+        reached. Check again.
+      enum:
+        - ACCESSIBLE
+        - DENIED
+        - INCONCLUSIVE
 
     ViewPrivilege:
       type: string

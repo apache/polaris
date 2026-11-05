@@ -1,0 +1,582 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+---
+paths:
+  /polaris/v1/{prefix}/storage-mappings:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+
+    get:
+      tags:
+        - Storage Mapping API
+      summary: List storage mappings
+      operationId: listStorageMappings
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        List storage mappings. A storage mapping says that the namespace or table with a given fully
+        qualified name uses a given storage configuration (see StorageMappingTarget). Storage
+        configurations are managed through the Polaris management API.
+
+        Mappings are listed one level at a time, like namespaces: with `namespace`, the mappings of the
+        namespaces and tables directly inside it; without it, the mappings of the top-level
+        namespaces. This requires NAMESPACE_READ_PROPERTIES on `namespace`, or CATALOG_READ_PROPERTIES
+        on the catalog without it.
+        The mappings of namespaces are left out of a page unless the caller also has NAMESPACE_LIST,
+        and the mappings of tables unless the caller also has TABLE_LIST, on `namespace` or on the
+        catalog without it. So this listing never shows a name to a caller who can't list it.
+
+        With `storage-configuration-name` instead, all the mappings to that storage configuration are
+        listed, at any level of the catalog. This answers which names use a storage configuration,
+        for example before deleting it, and requires CATALOG_MANAGE_METADATA on the catalog.
+        Setting both `namespace` and `storage-configuration-name` is a bad request (400).
+
+        A mapping whose namespace or table has been dropped keeps being listed, with `target-exists` set
+        to false. Listing with `namespace` requires that namespace to exist, so the mappings left behind
+        by a dropped namespace are found with `storage-configuration-name`, or with `dry-run` on
+        `removeOrphanStorageMappings`.
+
+        Results are paginated. A client follows `next-page-token` until it is null or absent.
+      parameters:
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
+        - name: namespace
+          in: query
+          required: false
+          description:
+            A namespace identifier as a single string.
+            Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+          schema:
+            type: string
+          examples:
+            singlepart_namespace:
+              value: "accounting"
+            multipart_namespace:
+              value: "accounting%1Ftax"
+        - name: storage-configuration-name
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/StorageConfigurationName'
+      responses:
+        200:
+          $ref: '#/components/responses/ListStorageMappingsResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The namespace or the storage configuration does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+    post:
+      tags:
+        - Storage Mapping API
+      summary: Create a storage mapping
+      operationId: createStorageMapping
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        Map the fully qualified name of a namespace or table to a storage configuration. The target
+        must not exist yet; its parent namespace must exist. When a namespace or table is later
+        created under that name, through the Iceberg REST API (including a staged create and
+        `registerTable`) or the Polaris API, it is created on the mapped storage configuration:
+        - its location is checked against that storage configuration's `allowedLocations`;
+        - without an explicit location, it is placed under that storage configuration's
+          `baseLocation`;
+        - Polaris uses that storage configuration for all access to its storage, including the
+          credentials it vends.
+
+        For a staged create, the mapping that counts is the one in place when the create is
+        committed.
+
+        Namespaces, Iceberg tables, views and generic tables created inside a mapped namespace use its
+        storage configuration unless they have a mapping of their own. Only namespaces and Iceberg
+        tables can have a mapping of their own.
+
+        A storage mapping is never changed while its target exists: it can't be created for an
+        existing namespace or table, and it can't be removed from one. Together with the rename rules
+        below, this means that a namespace or table created on a storage configuration keeps using it
+        for as long as it exists. A rename keeps a table on the storage configuration it uses:
+        - if the new name has a storage mapping, the rename is refused unless that mapping names the
+          storage configuration the table uses;
+        - otherwise, a table without a mapping of its own can't be renamed into a namespace that uses
+          a different storage configuration.
+
+        For the same reason, a view can't be renamed into a namespace that uses a different storage
+        configuration.
+
+        A table with a mapping of its own takes it along: after the rename, the new name is mapped and
+        the old name is not. Moving a mapping this way does not require the privileges needed to
+        create or remove one.
+
+        Storage configurations are compared by identity, not by content: two storage configurations,
+        or a storage configuration and the catalog's own `storageConfigInfo`, are always different.
+
+        A storage mapping stays when its namespace or table is dropped, so a namespace or table created
+        again under the same name uses the same storage configuration. Dropping a namespace does NOT
+        remove the mappings inside it. All child mappings inside a dropped namespace remain as orphan
+        mappings (`target-exists` is false and `target-ever-existed` is true) until they are
+        explicitly removed with `removeOrphanStorageMappings`.
+
+        A rename never lets a caller get around the privileges above. It does not change the
+        storage configuration a table uses, so it can't put a table on a storage configuration the
+        caller may not attach. It moves a mapping only along with the table it belongs to, so it can't
+        be used to create a mapping in a parent namespace where the caller lacks
+        NAMESPACE_ATTACH_STORAGE_CONFIGURATION (or CATALOG_ATTACH_STORAGE_CONFIGURATION), or to remove
+        one without the matching DETACH privileges. The caller still needs the privileges of the Iceberg
+        REST `renameTable` operation.
+
+        Requires STORAGE_CONFIGURATION_ATTACH on the storage configuration, and
+        NAMESPACE_ATTACH_STORAGE_CONFIGURATION on the parent namespace
+        (CATALOG_ATTACH_STORAGE_CONFIGURATION on the catalog for a top-level namespace), as attaching a
+        policy requires POLICY_ATTACH and NAMESPACE_ATTACH_POLICY. The privilege is checked on the
+        parent because the target does not exist yet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStorageMappingRequest'
+      responses:
+        204:
+          description: Success, no content
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The parent namespace or the storage configuration does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        409:
+          description:
+            Conflict - The target namespace or table already exists, or a storage mapping already exists
+            for the target
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+  /polaris/v1/{prefix}/storage-mappings/remove:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+
+    post:
+      tags:
+        - Storage Mapping API
+      summary: Remove a storage mapping
+      operationId: removeStorageMapping
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        Remove the storage mapping of a namespace or table. The target must not exist; drop it first.
+        A namespace or table created under the name afterwards uses the storage configuration of its
+        parent. To remove the mappings left behind by dropped namespaces and tables in bulk, or when the
+        parent namespace has been dropped as well, use `removeOrphanStorageMappings`.
+
+        Requires STORAGE_CONFIGURATION_DETACH on the mapped storage configuration, and
+        NAMESPACE_DETACH_STORAGE_CONFIGURATION on the parent namespace
+        (CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog for a top-level namespace), as detaching
+        a policy requires POLICY_DETACH and NAMESPACE_DETACH_POLICY.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveStorageMappingRequest'
+      responses:
+        204:
+          description: Success, no content
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - No storage mapping exists for the target
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        409:
+          description: Conflict - The target namespace or table exists
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+  /polaris/v1/{prefix}/storage-mappings/orphans:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+
+    delete:
+      tags:
+        - Storage Mapping API
+      summary: Remove orphan storage mappings
+      operationId: removeOrphanStorageMappings
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        Remove the storage mappings that no namespace or table uses any more. Dropping a namespace or
+        table never removes a storage mapping, so this is the way to clean up what it leaves behind.
+        A mapping whose namespace or table does not exist (`target-exists` is false) is either:
+        - an orphan mapping: the namespace or table existed and was dropped (`target-ever-existed` is
+          true). Removed by default.
+        - a pending mapping: the namespace or table has not existed since the mapping was created
+          (`target-ever-existed` is false). Created ahead of its target with `createStorageMapping`,
+          left by a failed `createNamespaceOnStorageConfiguration` or
+          `createTableOnStorageConfiguration`, or kept for a
+          staged table create that has not been committed. Removed only with `include-pending`, since
+          a pending mapping is usually still wanted.
+
+        Without `namespace`, the whole catalog is considered. With it, only the mappings below that
+        namespace, at any depth; the namespace must exist (404 otherwise).
+
+        With `dry-run` set to true, nothing is changed and the response lists the mappings a call
+        without `dry-run` would remove at that moment. Otherwise a call removes at most one page of
+        them, all together or not at all, and the response lists those removed. The response has a
+        `next-page-token` when more candidates were left: call again, with or without the token, until
+        it is absent. A mapping is removed only if its namespace or table does not exist when the
+        removal takes effect, so a target created concurrently keeps its mapping, and a call can remove
+        fewer mappings than the same call with `dry-run` listed.
+
+        Requires, for the mappings it would remove, the privileges of `removeStorageMapping`:
+        CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog (NAMESPACE_DETACH_STORAGE_CONFIGURATION on
+        `namespace` when it is set), and STORAGE_CONFIGURATION_DETACH on each mapped storage
+        configuration. CATALOG_MANAGE_METADATA on the catalog includes them. If any is missing the call
+        is forbidden and nothing is removed, so the call never removes a mapping the caller could not
+        remove with `removeStorageMapping` (apart from the parent namespace having been dropped). The
+        response names the namespaces and tables of those mappings, none of which exist at that moment,
+        even if the caller lacks NAMESPACE_LIST or TABLE_LIST.
+      parameters:
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
+        - name: namespace
+          in: query
+          required: false
+          description:
+            A namespace identifier as a single string, limiting the removal to the mappings below
+            it. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+          schema:
+            type: string
+          examples:
+            singlepart_namespace:
+              value: "accounting"
+            multipart_namespace:
+              value: "accounting%1Ftax"
+        - name: dry-run
+          in: query
+          required: false
+          description: If true, only list the storage mappings and don't remove them.
+          schema:
+            type: boolean
+            default: false
+        - name: include-pending
+          in: query
+          required: false
+          description: >-
+            If true, also remove the pending mappings, those whose target has not existed since the
+            mapping was created.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        200:
+          $ref: '#/components/responses/ListStorageMappingsResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The namespace does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+  /polaris/v1/{prefix}/storage-configurations/{storage-configuration-name}/namespaces:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '#/components/parameters/storage-configuration-name'
+
+    post:
+      tags:
+        - Storage Mapping API
+      summary: Create a namespace on a storage configuration
+      operationId: createNamespaceOnStorageConfiguration
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        Create a namespace on the given storage configuration in one call. The request body, the
+        `Idempotency-Key` header and the response are those of the Iceberg REST `createNamespace`
+        operation. A request replayed with the same `Idempotency-Key` has no additional effects, on
+        the namespace or on the storage mapping.
+
+        The call maps the namespace name to the storage configuration, as `createStorageMapping` does,
+        then creates the namespace as the Iceberg REST `createNamespace` operation would. If the name
+        is already mapped to this storage configuration, the existing mapping is used. If the namespace
+        is not created, the server removes a mapping created by this call. This is best effort: after
+        a server failure the mapping can remain. It is then a pending mapping (`target-exists` and
+        `target-ever-existed` are false), shown by `listStorageMappings` and removed by
+        `removeOrphanStorageMappings` with `include-pending`.
+
+        Requires the privileges of `createStorageMapping`, even when the existing mapping is used, and
+        those of the Iceberg REST `createNamespace` operation.
+      parameters:
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/idempotency-key'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/CreateNamespaceRequest'
+      responses:
+        200:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/CreateNamespaceResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The parent namespace or the storage configuration does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        409:
+          description:
+            Conflict - The namespace already exists, or its name is mapped to a different storage
+            configuration
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+  /polaris/v1/{prefix}/storage-configurations/{storage-configuration-name}/namespaces/{namespace}/tables:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '#/components/parameters/storage-configuration-name'
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/namespace'
+
+    post:
+      tags:
+        - Storage Mapping API
+      summary: Create a table on a storage configuration
+      operationId: createTableOnStorageConfiguration
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        Create a table on the given storage configuration in one call. The request body, the
+        `X-Iceberg-Access-Delegation` and `Idempotency-Key` headers and the response are those of the
+        Iceberg REST `createTable` operation, including `stage-create`. A request replayed with the
+        same `Idempotency-Key` has no additional effects, on the table or on the storage mapping.
+
+        The call maps the table name to the storage configuration, as `createStorageMapping` does,
+        then creates the table as the Iceberg REST `createTable` operation would. If the name is
+        already mapped to this storage configuration, the existing mapping is used. If the table is not
+        created, the server removes a mapping created by this call. This is best effort: after a
+        server failure the mapping can remain. It is then a pending mapping (`target-exists` and
+        `target-ever-existed` are false), shown by `listStorageMappings` and removed by
+        `removeOrphanStorageMappings` with `include-pending`. With `stage-create`, the mapping is kept,
+        so that the commit that creates the table uses the storage configuration; it is a pending
+        mapping until that commit, and also if the commit never happens.
+
+        Requires the privileges of `createStorageMapping`, even when the existing mapping is used, and
+        those of the Iceberg REST `createTable` operation.
+      parameters:
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/data-access'
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/idempotency-key'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/CreateTableRequest'
+      responses:
+        200:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/CreateTableResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The namespace or the storage configuration does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        409:
+          description:
+            Conflict - The identifier already exists as a table or view, or the table name is mapped to
+            a different storage configuration
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+components:
+  parameters:
+    storage-configuration-name:
+      name: storage-configuration-name
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/StorageConfigurationName'
+
+  schemas:
+
+    StorageConfigurationName:
+      type: string
+      description: The name of a storage configuration in the catalog. Case sensitive. `orphans` is reserved.
+      pattern: '^(?!orphans$)[a-zA-Z0-9_-]{1,128}$'
+      example: 'finance'
+
+    StorageMappingTarget:
+      type: object
+      description: The namespace or table a storage mapping applies to.
+      required:
+        - type
+        - path
+      properties:
+        type:
+          type: string
+          enum:
+            - namespace
+            - table
+          example: table
+        path:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: |
+            The fully qualified name of the target, from the top-level namespace down to the target
+            itself. For a table, the last element is the table name, so the path has at least two
+            elements.
+          example: ["finance", "ledger"]
+
+    StorageMapping:
+      type: object
+      description: A storage mapping from the fully qualified name of a namespace or table to a storage configuration.
+      required:
+        - target
+        - storage-configuration-name
+        - target-exists
+        - target-ever-existed
+      properties:
+        target:
+          $ref: '#/components/schemas/StorageMappingTarget'
+        storage-configuration-name:
+          $ref: '#/components/schemas/StorageConfigurationName'
+        target-exists:
+          type: boolean
+          description: Whether the target namespace or table currently exists.
+        target-ever-existed:
+          type: boolean
+          description: |
+            Whether the target namespace or table has existed since the mapping was created. False for
+            a mapping created ahead of its target (a pending mapping), true once the target has been
+            created, and it stays true after the target is dropped (an orphan mapping).
+
+    CreateStorageMappingRequest:
+      type: object
+      required:
+        - target
+        - storage-configuration-name
+      properties:
+        target:
+          $ref: '#/components/schemas/StorageMappingTarget'
+        storage-configuration-name:
+          $ref: '#/components/schemas/StorageConfigurationName'
+
+    RemoveStorageMappingRequest:
+      type: object
+      required:
+        - target
+      properties:
+        target:
+          $ref: '#/components/schemas/StorageMappingTarget'
+
+    ListStorageMappingsResponse:
+      type: object
+      required:
+        - storage-mappings
+      properties:
+        next-page-token:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+        storage-mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/StorageMapping'
+
+  responses:
+    ListStorageMappingsResponse:
+      description: A page of storage mappings
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListStorageMappingsResponse'
