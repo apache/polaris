@@ -150,9 +150,11 @@ class JdbcBasePersistenceImplTest {
         .withCause(nonUniqueViolation);
   }
 
-  @Test
-  void writeEntity_uniquenessViolationWithInvisibleConflict_throwsRetryOnConcurrencyException()
-      throws SQLException {
+  /** Covers both the insert path (no original entity) and the update path (rename). */
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void writeEntity_uniquenessViolationWithInvisibleConflict_throwsRetryOnConcurrencyException(
+      boolean update) throws SQLException {
     DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
     when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.H2);
     doThrow(new SQLException("Unique constraint violation", "23505"))
@@ -183,9 +185,13 @@ class JdbcBasePersistenceImplTest {
             .grantRecordsVersion(0)
             .createTimestamp(System.currentTimeMillis())
             .build();
+    PolarisBaseEntity originalEntity =
+        update
+            ? new PolarisBaseEntity.Builder(entity).name("original_name").entityVersion(0).build()
+            : null;
 
     assertThatExceptionOfType(RetryOnConcurrencyException.class)
-        .isThrownBy(() -> basePersistence.writeEntity(callCtx, entity, true, null))
+        .isThrownBy(() -> basePersistence.writeEntity(callCtx, entity, true, originalEntity))
         .withMessageContaining("not visible");
   }
 
