@@ -67,6 +67,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Catalog"
+        400:
+          description: "The request is invalid, for example an unsupported or incomplete storage or connection configuration"
         403:
           description: "The caller does not have permission to create a catalog"
         404:
