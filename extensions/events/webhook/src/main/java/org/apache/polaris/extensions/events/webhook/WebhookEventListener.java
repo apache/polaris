@@ -47,7 +47,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -64,8 +63,8 @@ import tools.jackson.core.JacksonException;
 /**
  * Delivers Polaris events to an HTTP(S) endpoint as JSON POSTs, optionally signed with HMAC-SHA256.
  *
- * <p>The JSON body is the shared {@link CloudEventsEventJsonMapper} envelope. Delivery time is sent
- * as the {@code Polaris-Delivery-Time} header, not as a CloudEvents extension.
+ * <p>The JSON body is the shared {@link CloudEventsEventJsonMapper} envelope. Event time is the
+ * CloudEvents {@code time} field from {@code PolarisEventMetadata.timestamp()}.
  *
  * <p>Delivery is best-effort and bounded: concurrency and pending work are capped; retries use
  * exponential backoff with full jitter for transient failures only. Ordering is not guaranteed.
@@ -78,7 +77,6 @@ public class WebhookEventListener implements PolarisEventListener {
 
   static final String SIGNATURE_HEADER = "Polaris-Signature-256";
   static final String EVENT_TYPE_HEADER = "Polaris-Event";
-  static final String DELIVERY_TIME_HEADER = "Polaris-Delivery-Time";
 
   private static final CloudEventsEventJsonMapper EVENT_JSON_MAPPER =
       new CloudEventsEventJsonMapper();
@@ -89,8 +87,7 @@ public class WebhookEventListener implements PolarisEventListener {
           "content-length",
           "host",
           SIGNATURE_HEADER.toLowerCase(Locale.ROOT),
-          EVENT_TYPE_HEADER.toLowerCase(Locale.ROOT),
-          DELIVERY_TIME_HEADER.toLowerCase(Locale.ROOT));
+          EVENT_TYPE_HEADER.toLowerCase(Locale.ROOT));
 
   private final URI endpoint;
   private final String secret;
@@ -110,8 +107,7 @@ public class WebhookEventListener implements PolarisEventListener {
   private final AtomicInteger inFlight = new AtomicInteger();
 
   private WebhookTransport transport;
-  private ExecutorService deliveryExecutor;
-  private ScheduledExecutorService retryExecutor;
+  private ScheduledExecutorService executor;
 
   private Counter successCounter;
   private Counter failureCounter;
@@ -145,18 +141,11 @@ public class WebhookEventListener implements PolarisEventListener {
     }
     validateEndpoint(endpoint, requireHttps);
     this.transport = createTransport();
-    this.deliveryExecutor =
-        Executors.newFixedThreadPool(
+    this.executor =
+        Executors.newScheduledThreadPool(
             maxConcurrent,
             runnable -> {
-              Thread thread = new Thread(runnable, "polaris-webhook-event-listener-delivery");
-              thread.setDaemon(true);
-              return thread;
-            });
-    this.retryExecutor =
-        Executors.newSingleThreadScheduledExecutor(
-            runnable -> {
-              Thread thread = new Thread(runnable, "polaris-webhook-event-listener-retry");
+              Thread thread = new Thread(runnable, "polaris-webhook-event-listener");
               thread.setDaemon(true);
               return thread;
             });
@@ -224,8 +213,7 @@ public class WebhookEventListener implements PolarisEventListener {
   interface WebhookTransport extends AutoCloseable {
     record Result(int status, String retryAfter) {}
 
-    Result post(String eventType, String signature, String deliveryTime, String payload)
-        throws Exception;
+    Result post(String eventType, String signature, String payload) throws Exception;
 
     @Override
     default void close() throws Exception {}
@@ -259,9 +247,9 @@ public class WebhookEventListener implements PolarisEventListener {
     }
 
     @Override
-    public Result post(String eventType, String signature, String deliveryTime, String payload) {
+    public Result post(String eventType, String signature, String payload) {
       try {
-        try (Response response = client.post(eventType, signature, deliveryTime, payload)) {
+        try (Response response = client.post(eventType, signature, payload)) {
           return toResult(response);
         }
       } catch (WebApplicationException e) {
@@ -320,13 +308,9 @@ public class WebhookEventListener implements PolarisEventListener {
       }
       transport = null;
     }
-    if (retryExecutor != null) {
-      retryExecutor.shutdownNow();
-      retryExecutor = null;
-    }
-    if (deliveryExecutor != null) {
-      deliveryExecutor.shutdownNow();
-      deliveryExecutor = null;
+    if (executor != null) {
+      executor.shutdownNow();
+      executor = null;
     }
   }
 
@@ -367,48 +351,20 @@ public class WebhookEventListener implements PolarisEventListener {
   }
 
   private void scheduleDelivery(String payload, String eventType, int attempt, long delayMs) {
-    ExecutorService delivery = deliveryExecutor;
-    ScheduledExecutorService retry = retryExecutor;
-    if (delivery == null || delivery.isShutdown()) {
+    ScheduledExecutorService exec = executor;
+    if (exec == null || exec.isShutdown()) {
       releaseAccepted();
       dropCounter.increment();
       return;
     }
     Runnable task = () -> deliverWithConcurrency(payload, eventType, attempt);
-    if (delayMs <= 0) {
-      try {
-        delivery.execute(task);
-      } catch (RuntimeException e) {
-        releaseAccepted();
-        dropCounter.increment();
-      }
-      return;
-    }
-    if (retry == null || retry.isShutdown()) {
-      releaseAccepted();
-      dropCounter.increment();
-      return;
-    }
     // Retries are best-effort; the Future is not joined (delivery completion is handled in-task).
     try {
-      var unused =
-          retry.schedule(
-              () -> {
-                ExecutorService d = deliveryExecutor;
-                if (d == null || d.isShutdown()) {
-                  releaseAccepted();
-                  dropCounter.increment();
-                  return;
-                }
-                try {
-                  d.execute(task);
-                } catch (RuntimeException e) {
-                  releaseAccepted();
-                  dropCounter.increment();
-                }
-              },
-              delayMs,
-              TimeUnit.MILLISECONDS);
+      if (delayMs <= 0) {
+        exec.execute(task);
+      } else {
+        var unused = exec.schedule(task, delayMs, TimeUnit.MILLISECONDS);
+      }
     } catch (RuntimeException e) {
       releaseAccepted();
       dropCounter.increment();
@@ -419,9 +375,8 @@ public class WebhookEventListener implements PolarisEventListener {
     inFlight.incrementAndGet();
     long startNanos = System.nanoTime();
     String signature = secret != null ? "sha256=" + sign(payload, secret) : null;
-    String deliveryTime = clock.instant().toString();
     try {
-      WebhookTransport.Result result = transport.post(eventType, signature, deliveryTime, payload);
+      WebhookTransport.Result result = transport.post(eventType, signature, payload);
       deliveryTimer.record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
       int status = result.status();
       if (status >= 200 && status < 300) {
