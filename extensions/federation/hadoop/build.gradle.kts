@@ -53,6 +53,16 @@ dependencies {
   implementation(libs.hadoop.client.api)
   implementation(libs.hadoop.client.runtime)
 
+  constraints {
+    implementation(libs.commons.configuration2) {
+      because(
+        "Hadoop 3.5.0 pins commons-configuration2 2.10.1, below the 2.15.0 fix for" +
+          " CVE-2026-45205 (StackOverflowError on untrusted YAML with cycles). Not reachable" +
+          " from Polaris; kept to avoid scanner findings and to stay current",
+      )
+    }
+  }
+
   // CDI dependencies for runtime discovery
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.smallrye.common.annotation)
