@@ -23,6 +23,7 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermissions
+import java.util.stream.Stream
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.gradle.api.GradleException
@@ -31,7 +32,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.Arguments.arguments
+import org.junit.jupiter.params.provider.MethodSource
 
 class ChangelogFragmentsTest {
 
@@ -75,23 +78,30 @@ class ChangelogFragmentsTest {
     changelog = File(dir, "CHANGELOG.md").also { it.writeText(template) }
   }
 
-  private fun fragment(path: String, text: String) =
-    File(fragments, path).also {
-      it.parentFile.mkdirs()
-      it.writeText(text)
-    }
+  /** Creates a fragment with a single list item for each of the given sections. */
+  private fun fragment(name: String, vararg sections: Pair<String, String>) =
+    rawFragment(
+      name,
+      sections.joinToString("\n") { (section, text) -> "### $section\n\n- $text\n" },
+    )
+
+  private fun fragment(name: String, section: String, text: String) =
+    fragment(name, section to text)
+
+  private fun rawFragment(name: String, content: String) =
+    File(fragments, name).also { it.writeText(content) }
 
   private fun fragmentFiles() = fragments.walkTopDown().filter { it.isFile }.map { it.name }.toSet()
 
   @Test
   fun assemblyAppendsEachFragmentOnceToItsSection() {
-    fragment("fixes/99-new-fix.md", "New fix.\n")
-    fragment("highlights/99-new-highlight.md", "New highlight.\n")
-    fragment("upgrade-notes/99-new-note.md", "New note.\n")
+    fragment("new-fix.md", "Fixes", "New fix.")
+    // A fragment can have an entry in several sections
+    fragment("new-stuff.md", "Highlights" to "New highlight.", "Upgrade notes" to "New note.")
 
     val consumed = ChangelogFragments.merge(fragments, changelog)
 
-    assertThat(consumed).hasSize(3)
+    assertThat(consumed.map { it.name }).containsExactlyInAnyOrder("new-fix.md", "new-stuff.md")
     assertThat(changelog.readText())
       .isEqualTo(
         """
@@ -128,17 +138,57 @@ class ChangelogFragmentsTest {
   }
 
   @Test
-  fun markdownStructureIsPreserved() {
-    fragment(
-      "changes/99-complex.md",
+  fun aSectionCanHaveSeveralItemsAndTheyAreMergedAsWritten() {
+    rawFragment(
+      "several.md",
       """
-      First line,
-      wrapped.
+      ### Fixes
 
-      Second paragraph.
+      - First fix.
 
-      - nested
-        - deeper
+      - Second fix,
+        wrapped.
+      - Third fix.
+      """
+        .trimIndent() + "\n",
+    )
+    fragment("other.md", "Fixes", "Other fix.")
+
+    ChangelogFragments.merge(fragments, changelog)
+
+    assertThat(changelog.readText())
+      .contains(
+        """
+        ### Fixes
+
+        - Existing fix.
+        - Other fix.
+        - First fix.
+
+        - Second fix,
+          wrapped.
+        - Third fix.
+
+        ### Commits
+        """
+          .trimIndent(),
+      )
+  }
+
+  @Test
+  fun markdownStructureIsPreserved() {
+    rawFragment(
+      "complex.md",
+      """
+      ### Changes
+
+      - First line,
+        wrapped.
+
+        Second paragraph.
+
+        - nested
+          - deeper
       """
         .trimIndent() + "\n",
     )
@@ -168,6 +218,42 @@ class ChangelogFragmentsTest {
   }
 
   @Test
+  fun codeInAnEntryIsNotMistakenForHeadings() {
+    rawFragment(
+      "with-code.md",
+      """
+      ### Fixes
+
+      - Use the script:
+
+        ```shell
+        ### not a section
+        # not a heading either
+        run.sh
+        ```
+      """
+        .trimIndent() + "\n",
+    )
+
+    ChangelogFragments.merge(fragments, changelog)
+
+    assertThat(changelog.readText())
+      .contains(
+        """
+        - Existing fix.
+        - Use the script:
+
+          ```shell
+          ### not a section
+          # not a heading either
+          run.sh
+          ```
+        """
+          .trimIndent(),
+      )
+  }
+
+  @Test
   fun entriesLandAfterTheLastItemOfASection() {
     changelog.writeText(
       """
@@ -187,8 +273,8 @@ class ChangelogFragmentsTest {
       """
         .trimIndent() + "\n",
     )
-    fragment("highlights/10-new.md", "New highlight.\n")
-    fragment("highlights/99-newer.md", "Newer highlight.\n")
+    fragment("10-new.md", "Highlights", "New highlight.")
+    fragment("99-newer.md", "Highlights", "Newer highlight.")
 
     ChangelogFragments.merge(fragments, changelog)
 
@@ -216,10 +302,10 @@ class ChangelogFragmentsTest {
   }
 
   @Test
-  fun entriesAreOrderedByPriorityThenName() {
-    fragment("fixes/99-b.md", "B.\n")
-    fragment("fixes/10-z.md", "Z.\n")
-    fragment("fixes/99-a.md", "A.\n")
+  fun entriesAreOrderedByFileNameSoANumberPrefixPrioritizesAnEntry() {
+    fragment("b.md", "Fixes", "B.")
+    fragment("10-z.md", "Fixes", "Z.")
+    fragment("a.md", "Fixes", "A.")
 
     ChangelogFragments.merge(fragments, changelog)
 
@@ -228,61 +314,141 @@ class ChangelogFragmentsTest {
 
   @Test
   fun consumedFragmentsAreDeletedAndRetryAddsNothing() {
-    fragment("fixes/99-new-fix.md", "New fix.\n")
+    fragment("new-fix.md", "Fixes", "New fix.")
 
     ChangelogFragments.merge(fragments, changelog)
     val afterFirst = changelog.readText()
 
     assertThat(fragmentFiles()).containsExactly("README.md")
-    assertThat(File(fragments, "fixes")).doesNotExist()
     assertThat(ChangelogFragments.merge(fragments, changelog)).isEmpty()
     assertThat(changelog.readText()).isEqualTo(afterFirst)
   }
 
+  companion object {
+    @JvmStatic
+    fun invalidFragments(): Stream<Arguments> =
+      Stream.of(
+        arguments("Bad_Name.md", "### Fixes\n\n- Text\n", "file name must match"),
+        arguments("notes.txt", "### Fixes\n\n- Text\n", "file name must match"),
+        arguments("empty.md", "  \n", "file is empty"),
+        arguments("no-heading.md", "- Just text\n", "text before the first section heading"),
+        arguments("unknown.md", "### Bugs\n\n- Text\n", "unknown section 'Bugs'"),
+        arguments("case.md", "### fixes\n\n- Text\n", "did you mean 'Fixes'?"),
+        arguments(
+          "duplicate.md",
+          "### Fixes\n\n- A\n\n### Fixes\n\n- B\n",
+          "section 'Fixes' appears more than once",
+        ),
+        arguments(
+          "empty-section.md",
+          "### Fixes\n\n### Changes\n\n- Text\n",
+          "section 'Fixes' is empty",
+        ),
+        arguments("heading-only.md", "### Fixes\n", "section 'Fixes' is empty"),
+        arguments(
+          "no-marker.md",
+          "### Fixes\n\nText\n",
+          "no-marker.md:3: section 'Fixes' must start with a list item",
+        ),
+        arguments(
+          "star-marker.md",
+          "### Fixes\n\n* Text\n",
+          "section 'Fixes' must start with a list item",
+        ),
+        arguments(
+          "marker-without-space.md",
+          "### Fixes\n\n-Text\n",
+          "section 'Fixes' must start with a list item",
+        ),
+        arguments(
+          "indented-start.md",
+          "### Fixes\n\n  - Text\n",
+          "section 'Fixes' must start with a list item",
+        ),
+        arguments(
+          "unindented.md",
+          "### Fixes\n\n- Text\nwrapped\n",
+          "unindented.md:4: expected a list item starting with '- ' or a line indented by two spaces",
+        ),
+        arguments(
+          "tab.md",
+          "### Fixes\n\n- Text\n\twrapped\n",
+          "expected a list item starting with '- ' or a line indented by two spaces",
+        ),
+        arguments(
+          "h1.md",
+          "### Fixes\n\n- Text\n\n# Fixes\n\n- More\n",
+          "heading '# Fixes' is not allowed in an entry, write the section as '### Fixes'",
+        ),
+        arguments(
+          "h2.md",
+          "### Fixes\n\n- Text\n\n## Deprecation\n\n- More\n",
+          "write the section as '### Deprecations'",
+        ),
+        arguments(
+          "h4.md",
+          "### Fixes\n\n- Text\n\n#### Details\n\n- More\n",
+          "heading '#### Details' is not allowed in an entry, sections are written as '### <name>'",
+        ),
+        arguments(
+          "heading-before-item.md",
+          "### Fixes\n\n# Fixes\n\n- Text\n",
+          "heading '# Fixes' is not allowed in an entry",
+        ),
+      )
+  }
+
   @ParameterizedTest
-  @CsvSource(
-    "bogus/99-x.md,           unknown section",
-    "fixes/Bad_Name.md,       file name must match",
-    "fixes/9-short.md,        file name must match",
-    "fixes/99-empty.md,       file is empty",
-    "fixes/99-list.md,        must not start with a list marker",
-  )
-  fun invalidFragmentsFailWithDiagnosticsAndChangeNothing(path: String, message: String) {
-    fragment("fixes/99-valid.md", "Valid.\n")
-    val text = if (path.endsWith("empty.md")) "  \n" else "- bullet\n"
-    fragment(path, text)
+  @MethodSource("invalidFragments")
+  fun invalidFragmentsFailWithDiagnosticsAndChangeNothing(
+    name: String,
+    content: String,
+    message: String,
+  ) {
+    fragment("valid.md", "Fixes", "Valid.")
+    rawFragment(name, content)
 
     assertThatThrownBy { ChangelogFragments.merge(fragments, changelog) }
       .isInstanceOf(GradleException::class.java)
+      .hasMessageContaining(name)
       .hasMessageContaining(message)
 
     assertThat(changelog.readText()).isEqualTo(template)
-    assertThat(fragmentFiles()).contains("99-valid.md")
+    assertThat(fragmentFiles()).contains("valid.md")
     assertThatThrownBy { ChangelogFragments.collect(fragments) }
       .isInstanceOf(GradleException::class.java)
   }
 
   @Test
+  fun unknownSectionWithoutSimilarNameHasNoSuggestion() {
+    fragment("noteworthy.md", "New & Noteworthy", "Text.")
+
+    assertThatThrownBy { ChangelogFragments.collect(fragments) }
+      .isInstanceOf(GradleException::class.java)
+      .hasMessageContaining("unknown section 'New & Noteworthy', must be one of")
+      .hasMessageNotContaining("did you mean")
+  }
+
+  @Test
   fun missingHeadingFailsBeforeWritingAnything() {
-    fragment("new-features/99-feature.md", "Feature.\n")
-    fragment("fixes/99-fix.md", "Fix.\n")
+    fragment("feature.md", "New Features", "Feature.")
+    fragment("fix.md", "Fixes", "Fix.")
 
     assertThatThrownBy { ChangelogFragments.merge(fragments, changelog) }
       .isInstanceOf(GradleException::class.java)
       .hasMessageContaining("### New Features")
 
     assertThat(changelog.readText()).isEqualTo(template)
-    assertThat(fragmentFiles()).contains("99-feature.md", "99-fix.md")
+    assertThat(fragmentFiles()).contains("feature.md", "fix.md")
   }
 
   @Test
   fun undeletableFragmentsFailBeforeWritingAnything() {
-    val f = fragment("fixes/99-fix.md", "Fix.\n")
-    val section = f.parentFile
-    Files.setPosixFilePermissions(section.toPath(), PosixFilePermissions.fromString("r-xr-xr-x"))
+    val f = fragment("fix.md", "Fixes", "Fix.")
+    Files.setPosixFilePermissions(fragments.toPath(), PosixFilePermissions.fromString("r-xr-xr-x"))
     try {
       // Skip when running as a user that ignores directory permissions, e.g. root
-      assumeFalse(Files.isWritable(section.toPath()))
+      assumeFalse(Files.isWritable(fragments.toPath()))
 
       assertThatThrownBy { ChangelogFragments.merge(fragments, changelog) }
         .isInstanceOf(GradleException::class.java)
@@ -291,7 +457,10 @@ class ChangelogFragmentsTest {
       assertThat(changelog.readText()).isEqualTo(template)
       assertThat(f).exists()
     } finally {
-      Files.setPosixFilePermissions(section.toPath(), PosixFilePermissions.fromString("rwxr-xr-x"))
+      Files.setPosixFilePermissions(
+        fragments.toPath(),
+        PosixFilePermissions.fromString("rwxr-xr-x"),
+      )
     }
   }
 
@@ -326,10 +495,10 @@ class ChangelogFragmentsTest {
   @Test
   fun releaseVersionMergesIntoExistingAndNewSubsectionsOfThatSection() {
     changelog.writeText(released)
-    fragment("fixes/99-fix.md", "New fix.\n")
-    fragment("highlights/99-highlight.md", "New highlight.\n")
-    fragment("new-features/99-feature.md", "New feature.\n")
-    fragment("deprecations/99-dep.md", "Deprecation.\n")
+    fragment("fix.md", "Fixes", "New fix.")
+    fragment("highlight.md", "Highlights", "New highlight.")
+    fragment("feature.md", "New Features", "New feature.")
+    fragment("dep.md", "Deprecations", "Deprecation.")
 
     ChangelogFragments.merge(fragments, changelog, "1.1.0")
 
@@ -381,7 +550,7 @@ class ChangelogFragmentsTest {
   @Test
   fun releaseVersionCreatesMissingSubsectionAtTheEndOfTheSection() {
     changelog.writeText(released.replace("### Fixes\n\n- Existing fix.\n\n", ""))
-    fragment("fixes/99-fix.md", "New fix.\n")
+    fragment("fix.md", "Fixes", "New fix.")
 
     ChangelogFragments.merge(fragments, changelog, "1.1.0")
 
@@ -391,21 +560,21 @@ class ChangelogFragmentsTest {
 
   @Test
   fun unknownReleaseVersionFailsAndChangesNothing() {
-    fragment("fixes/99-fix.md", "Fix.\n")
+    fragment("fix.md", "Fixes", "Fix.")
 
     assertThatThrownBy { ChangelogFragments.merge(fragments, changelog, "9.9.9") }
       .isInstanceOf(GradleException::class.java)
       .hasMessageContaining("## [9.9.9]")
 
     assertThat(changelog.readText()).isEqualTo(template)
-    assertThat(fragmentFiles()).contains("99-fix.md")
+    assertThat(fragmentFiles()).contains("fix.md")
   }
 
   @Test
   fun orderingDoesNotDependOnTheOrderOfTheDirectoryListing() {
-    val files = listOf("99-b.md", "10-z.md", "99-a.md", "05-m.md").map { File(it) }
+    val files = listOf("b.md", "10-z.md", "a.md", "05-m.md").map { File(it) }
 
-    val expected = listOf("05-m.md", "10-z.md", "99-a.md", "99-b.md")
+    val expected = listOf("05-m.md", "10-z.md", "a.md", "b.md")
     assertThat(ChangelogFragments.orderFragments(files).map { it.name }).isEqualTo(expected)
     assertThat(ChangelogFragments.orderFragments(files.reversed()).map { it.name })
       .isEqualTo(expected)
@@ -413,9 +582,9 @@ class ChangelogFragmentsTest {
 
   @Test
   fun failedDeletionAfterWritingIsReportedWithRecoveryInstructions() {
-    fragment("fixes/10-a.md", "A.\n")
-    val b = fragment("fixes/20-b.md", "B.\n")
-    fragment("fixes/30-c.md", "C.\n")
+    fragment("10-a.md", "Fixes", "A.")
+    val b = fragment("20-b.md", "Fixes", "B.")
+    fragment("30-c.md", "Fixes", "C.")
 
     assertThatThrownBy {
         ChangelogFragments.merge(fragments, changelog) { f ->
@@ -435,23 +604,24 @@ class ChangelogFragmentsTest {
   }
 
   @Test
-  fun directoryInsideSectionIsReportedAsNotAFile() {
-    File(fragments, "fixes/99-dir.md").mkdirs()
+  fun directoryIsReportedAsNotAFile() {
+    File(fragments, "99-dir.md").mkdirs()
+    // The layout before fragments were flat: one directory per section
+    File(fragments, "fixes").mkdirs()
 
     assertThatThrownBy { ChangelogFragments.collect(fragments) }
       .isInstanceOf(GradleException::class.java)
       .hasMessageContaining("99-dir.md: must be a file, not a directory")
+      .hasMessageContaining("fixes: must be a file, not a directory")
       .hasMessageNotContaining("file name must match")
   }
 
   @Test
   fun hiddenFilesAreIgnored() {
     File(fragments, ".DS_Store").writeText("junk")
-    fragment("fixes/99-fix.md", "Fix.\n")
-    File(fragments, "fixes/.DS_Store").writeText("junk")
+    fragment("fix.md", "Fixes", "Fix.")
 
-    assertThat(ChangelogFragments.collect(fragments).values.flatten().map { it.name })
-      .containsExactly("99-fix.md")
+    assertThat(ChangelogFragments.collect(fragments).map { it.file.name }).containsExactly("fix.md")
     ChangelogFragments.merge(fragments, changelog)
 
     assertThat(changelog.readText()).contains("- Existing fix.\n- Fix.\n")

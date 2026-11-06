@@ -96,8 +96,9 @@ tasks.named<RatTask>("rat").configure {
   excludes.add(".git")
   excludes.add(".github/pull_request_template.md")
 
-  // Changelog fragments are plain Markdown merged into CHANGELOG.md and deleted at release time
-  excludes.add("changelog.d/*/**")
+  // Changelog fragments are plain Markdown merged into CHANGELOG.md and deleted at release time.
+  // This includes README.md, which has a header anyway.
+  excludes.add("changelog.d/*.md")
 
   // AI agents
   excludes.add(".claude/**")
