@@ -17,6 +17,8 @@
  * under the License.
  */
 
+import changelog.CheckChangelogFragmentsTask
+import changelog.MergeChangelogFragmentsTask
 import java.net.URI
 import org.nosphere.apache.rat.RatTask
 
@@ -93,6 +95,10 @@ tasks.named<RatTask>("rat").configure {
   // Git & GitHub
   excludes.add(".git")
   excludes.add(".github/pull_request_template.md")
+
+  // Changelog fragments are plain Markdown merged into CHANGELOG.md and deleted at release time.
+  // This includes README.md, which has a header anyway.
+  excludes.add("changelog.d/*.md")
 
   // AI agents
   excludes.add(".claude/**")
@@ -260,6 +266,26 @@ changelog {
     ),
   )
   version.set(provider { project.version.toString() })
+}
+
+// Changelog fragments, see changelog.d/README.md
+val checkChangelogFragments =
+  tasks.register<CheckChangelogFragmentsTask>("checkChangelogFragments") {
+    group = "verification"
+    description = "Validates the changelog fragments in changelog.d"
+    fragmentsDirectory = layout.projectDirectory.dir("changelog.d")
+    successMarker = layout.buildDirectory.file("changelog-fragments-check/success")
+  }
+
+tasks.named("check") { dependsOn(checkChangelogFragments) }
+
+// Must run in a separate Gradle invocation before patchChangelog, which reads CHANGELOG.md during
+// configuration when the configuration cache is enabled.
+tasks.register<MergeChangelogFragmentsTask>("mergeChangelogFragments") {
+  group = "changelog"
+  description = "Merges the changelog fragments in changelog.d into CHANGELOG.md and deletes them"
+  fragmentsDirectory = layout.projectDirectory.dir("changelog.d")
+  changelogFile = layout.projectDirectory.file("CHANGELOG.md")
 }
 
 tasks.register("showVersion") {

@@ -28,4 +28,42 @@ dependencies {
   implementation(baselibs.nexus.publish)
   implementation(baselibs.shadow)
   implementation(baselibs.spotless)
+
+  testImplementation(platform(baselibs.junit.bom))
+  testImplementation(baselibs.junit.jupiter)
+  testImplementation(baselibs.assertj.core)
+  testRuntimeOnly(baselibs.junit.platform.launcher)
 }
+
+tasks.withType<Test>().configureEach { useJUnitPlatform() }
+
+// Gradle TestKit tests run real Gradle builds, so they are much slower than the unit tests and live
+// in a separate suite, run with `./gradlew :polaris-build-logic:integrationTest`.
+testing {
+  suites {
+    register<JvmTestSuite>("integrationTest") {
+      dependencies {
+        implementation(project())
+        implementation(gradleTestKit())
+        implementation(platform(baselibs.junit.bom))
+        implementation(baselibs.junit.jupiter)
+        implementation(baselibs.assertj.core)
+        runtimeOnly(baselibs.junit.platform.launcher)
+      }
+      targets.configureEach {
+        testTask.configure {
+          // The fixture projects use the task classes of this project
+          dependsOn(tasks.jar)
+          systemProperty("build-logic.jar", tasks.jar.get().archiveFile.get().asFile.absolutePath)
+          // The tests apply the same version of the changelog plugin as the root build
+          systemProperty(
+            "libs.versions.toml",
+            layout.projectDirectory.file("../gradle/libs.versions.toml").asFile.absolutePath,
+          )
+        }
+      }
+    }
+  }
+}
+
+gradlePlugin { testSourceSets(sourceSets["integrationTest"]) }

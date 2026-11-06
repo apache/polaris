@@ -160,26 +160,28 @@ and commit/push the version bump:
 git commit -m "Bump version to x.y.z" version.txt helm/polaris/Chart.yaml helm/polaris/README.md helm/polaris/values.yaml helm/polaris/values.schema.json
 ```
 
-Update `CHANGELOG.md`:
+Merge the changelog fragments from `changelog.d` into `CHANGELOG.md`, then update `CHANGELOG.md`.
+The two Gradle commands must be run separately:
 ```
+./gradlew mergeChangelogFragments
 ./gradlew patchChangelog
-git commit CHANGELOG.md -m "Update CHANGELOG for x.y.z release"
+git add CHANGELOG.md changelog.d
+git commit -m "Update CHANGELOG for x.y.z release"
 git push
 ```
 
-Note: You should submit a PR to propagate (automated) CHANGELOG updates from the release
-branch to `main`.
+If more changes are cherry-picked for the next RC, and those changes introduce changelog fragments,
+merge the fragments into the existing section of the release, instead of running `patchChangelog`
+again:
+```
+./gradlew mergeChangelogFragments --release-version=x.y.z
+git add CHANGELOG.md changelog.d
+git commit -m "Update CHANGELOG for x.y.z-rcN"
+git push
+```
 
-If more changes are cherry-picked for the next RC, and those change introduce CHANGELOG entries,
-follow this update process:
-* Manually add an `-rcN` suffix to the previously generated versioned CHANGELOG section.
-* Rerun the `patchChangelog` command
-* Manually remove RC sections from the CHANGELOG
-* Submit a PR to propagate CHANGELOG updates from the release branch to `main`.
-
-Note: the CHANGELOG patch commit should probably be the last commit on the release branch when
-an RC is cut. If more changes are cherry-picked for the next RC, it is best to drop the
-CHANGELOG patch commit, apply cherry-picks, and re-run `patchChangelog`.
+Note: the CHANGELOG updates are propagated to `main` only once the vote has passed, see
+[Propagating the changelog to main](#propagating-the-changelog-to-main).
 
 Note: You should also submit a PR on `main` branch to bump the version in the `version.txt` file.
 
@@ -395,6 +397,13 @@ git tag -a apache-polaris-x.y.z apache-polaris-x.y.z-rci
 Update GitHub with the release: https://github.com/apache/polaris/releases/tag/apache-polaris-x.y.z
 
 Then release the candidate repository on [Nexus](https://repository.apache.org/#stagingRepositories).
+
+### Propagating the changelog to main
+
+Submit a PR against `main` that brings in the release section generated in `CHANGELOG.md` on the
+release branch, and deletes the changelog fragments that the release consumed from `changelog.d`.
+Only delete those fragments: fragments added to `main` after the release branch was created belong
+to the next release.
 
 ### Publishing the Docker images
 
