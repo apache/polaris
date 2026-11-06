@@ -146,6 +146,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- The `X-Iceberg-Access-Delegation` header now accepts `none`, as defined by the Iceberg REST
+  specification, meaning the client can operate without delegated access. A request that includes
+  `none`, alone or together with other values, is handled like a request without the header: the
+  table is returned without credentials and no delegation privilege is required.
 - Shared CloudEvents 1.0 JSON mapper for Polaris events (`CloudEventsEventJsonMapper` next to
   the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
   lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners
