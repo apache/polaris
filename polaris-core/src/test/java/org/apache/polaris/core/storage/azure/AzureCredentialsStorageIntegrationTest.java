@@ -112,6 +112,30 @@ public class AzureCredentialsStorageIntegrationTest {
         .containsEntry(StorageAccessProperty.AZURE_ACCOUNT_NAME.getPropertyName(), "myaccount");
   }
 
+  @Test
+  void computeSkipSasTokenGenerationReturnsEmptyCredentials() {
+    AzureStorageConfigurationInfo storageConfig =
+        AzureStorageConfigurationInfo.builder()
+            .addAllowedLocation("wasbs://container@account.blob.core.windows.net/path")
+            .tenantId("tenant-id")
+            .skipSasTokenGeneration(true)
+            .build();
+    AzureStorageCredentialCacheKey key =
+        AzureStorageCredentialCacheKey.of(
+            "realm",
+            storageConfig,
+            false,
+            Set.of("wasbs://container@account.blob.core.windows.net/path"),
+            Set.of(),
+            Mockito.mock(DefaultAzureCredential.class),
+            Mockito.mock(RealmConfig.class));
+
+    StorageAccessConfig accessConfig = AzureCredentialsStorageIntegration.compute(key);
+
+    Assertions.assertThat(accessConfig.credentials()).isEmpty();
+    Assertions.assertThat(accessConfig.supportsCredentialVending()).isTrue();
+  }
+
   @ParameterizedTest
   @CsvSource({"3600,3900", "604800,604740"})
   void computeUsesAdjustedKeyStartAndMatchingExpiry(

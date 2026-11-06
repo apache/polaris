@@ -113,6 +113,33 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     return grants;
   }
 
+  @Test
+  void computeSkipCredentialDownscopingReturnsEmptyCredentials() {
+    GcpStorageConfigurationInfo storageConfig =
+        GcpStorageConfigurationInfo.builder()
+            .addAllowedLocation("gs://test-bucket/path/")
+            .skipCredentialDownscoping(true)
+            .build();
+    GcpStorageCredentialCacheKey key =
+        GcpStorageCredentialCacheKey.of(
+            "realm",
+            storageConfig,
+            Set.of("gs://test-bucket/path/"),
+            Set.of(),
+            Set.of(),
+            Optional.empty(),
+            Mockito.mock(GoogleCredentials.class),
+            Mockito.mock(HttpTransportFactory.class),
+            EMPTY_REALM_CONFIG,
+            Mockito.mock(GcpCredentialOps.class),
+            Optional.empty());
+
+    StorageAccessConfig accessConfig = GcpCredentialsStorageIntegration.compute(key);
+
+    assertThat(accessConfig.credentials()).isEmpty();
+    assertThat(accessConfig.supportsCredentialVending()).isTrue();
+  }
+
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   public void testSubscope(boolean allowedListAction) throws Exception {

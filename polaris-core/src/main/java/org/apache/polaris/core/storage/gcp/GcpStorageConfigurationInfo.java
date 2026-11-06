@@ -51,4 +51,12 @@ public abstract class GcpStorageConfigurationInfo extends PolarisStorageConfigur
   /** The gcp service account */
   @Nullable
   public abstract String getGcpServiceAccount();
+
+  /**
+   * When {@code true}, skip GCS credential downscoping and do not vend storage credentials. Unset
+   * or {@code false} keeps downscoping enabled. Catalog-level equivalent of S3 {@code
+   * stsUnavailable}.
+   */
+  @Nullable
+  public abstract Boolean getSkipCredentialDownscoping();
 }

@@ -113,6 +113,29 @@ Apache Polaris code does not use these fields when communicating with Azure APIs
 informational and can be omitted in self-hosted deployments that authenticate with a service
 principal as described above.
 
+## Skipping SAS token generation
+
+For self-managed client-side storage access or emulator deployments that
+must not mint Azure SAS tokens, set `skipSasTokenGeneration: true` on the
+catalog storage configuration. Polaris then skips SAS vending for that
+catalog, the same way S3 `stsUnavailable: true` skips STS. Unset or `false`
+keeps SAS vending enabled.
+
+A client that still sends `X-Iceberg-Access-Delegation: vended-credentials` gets `400 Bad Request`;
+see [When delegation cannot be satisfied]({{% relref "../../vended-credentials#when-delegation-cannot-be-satisfied" %}}).
+Omit the header and configure Azure credentials on the client instead.
+
+```json
+"storageConfigInfo": {
+  "storageType": "AZURE",
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "skipSasTokenGeneration": true,
+  "allowedLocations": [
+    "abfss://warehouse@example.dfs.core.windows.net/"
+  ]
+}
+```
+
 ## SAS token scoping and HNS ACLs
 
 When HNS is enabled (`hierarchical: true`), Polaris narrows each vended SAS token to the directory
