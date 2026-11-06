@@ -515,6 +515,15 @@ If set to true, Polaris will attempt to delete view metadata files when a view i
 
 ---
 
+##### `polaris.features."REFERENCED_BY_MAX_DEPTH"`
+
+The maximum number of views accepted in the referenced-by chain of a loadTable, loadView or loadCredentials request. Requests with a deeper chain are rejected with a 400 error.
+
+- **Type:** `Integer`
+- **Default:** `10`
+
+---
+
 ##### `polaris.features."RESOLVE_CREDENTIALS_BY_STORAGE_NAME"`
 
 If set to true, resolve AWS credentials based on the storageName field of the storage configuration. When disabled, the default AWS credentials are used for all storages.
