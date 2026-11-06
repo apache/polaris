@@ -45,10 +45,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.GenericStatisticsFile;
+import org.apache.iceberg.ImmutableGenericPartitionStatisticsFile;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
+import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.Catalog;
@@ -677,6 +681,15 @@ class IcebergCatalogHandlerTest {
    * changes, non-null location).
    */
   private TableMetadata loadedTwoSnapshotTableMetadata() {
+    return loadedTwoSnapshotTableMetadata(false);
+  }
+
+  /**
+   * Same as {@link #loadedTwoSnapshotTableMetadata()}; with {@code historicalStatistics} each
+   * snapshot carries a statistics file and a partition statistics file, as Trino writes on every
+   * insert by default, so a test can tell the suppressed snapshot's files from the kept one's.
+   */
+  private TableMetadata loadedTwoSnapshotTableMetadata(boolean historicalStatistics) {
     Snapshot historicalSnapshot = mock(Snapshot.class);
     when(historicalSnapshot.snapshotId()).thenReturn(1L);
     when(historicalSnapshot.sequenceNumber()).thenReturn(1L);
@@ -685,7 +698,7 @@ class IcebergCatalogHandlerTest {
     when(currentSnapshot.snapshotId()).thenReturn(2L);
     when(currentSnapshot.sequenceNumber()).thenReturn(2L);
 
-    TableMetadata uncommitted =
+    TableMetadata.Builder builder =
         TableMetadata.buildFrom(
                 TableMetadata.newTableMetadata(
                     new Schema(Types.NestedField.required(1, "id", Types.IntegerType.get())),
@@ -694,8 +707,29 @@ class IcebergCatalogHandlerTest {
                     Map.of()))
             .addSnapshot(historicalSnapshot)
             // setBranchSnapshot() adds currentSnapshot itself, no separate addSnapshot() call.
-            .setBranchSnapshot(currentSnapshot, "main")
-            .build();
+            .setBranchSnapshot(currentSnapshot, "main");
+    if (historicalStatistics) {
+      builder
+          .setStatistics(
+              new GenericStatisticsFile(
+                  1L, TABLE_LOCATION + "/metadata/1.stats", 100L, 10L, List.of()))
+          .setPartitionStatistics(
+              ImmutableGenericPartitionStatisticsFile.builder()
+                  .snapshotId(1L)
+                  .path(TABLE_LOCATION + "/metadata/1.partition-stats")
+                  .fileSizeInBytes(100L)
+                  .build())
+          .setStatistics(
+              new GenericStatisticsFile(
+                  2L, TABLE_LOCATION + "/metadata/2.stats", 100L, 10L, List.of()))
+          .setPartitionStatistics(
+              ImmutableGenericPartitionStatisticsFile.builder()
+                  .snapshotId(2L)
+                  .path(TABLE_LOCATION + "/metadata/2.partition-stats")
+                  .fileSizeInBytes(100L)
+                  .build());
+    }
+    TableMetadata uncommitted = builder.build();
 
     return TableMetadata.buildFrom(uncommitted)
         .withMetadataLocation(TABLE_LOCATION + "/metadata/00002-fake.metadata.json")
@@ -724,6 +758,34 @@ class IcebergCatalogHandlerTest {
     assertThat(filtered.metadataLocation())
         .as("metadata-location must be preserved when filtering snapshots=refs")
         .isEqualTo(metadataLocation);
+  }
+
+  @Test
+  void filterResponseToSnapshotsRefsDropsStatisticsOfHistoricalSnapshots() {
+    TableMetadata metadata = loadedTwoSnapshotTableMetadata(true);
+    assertThat(metadata.statisticsFiles()).hasSize(2);
+    assertThat(metadata.partitionStatisticsFiles()).hasSize(2);
+
+    LoadTableResponse response = LoadTableResponse.builder().withTableMetadata(metadata).build();
+    String metadataLocation = response.metadataLocation();
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    // Suppressing the historical snapshot also removes its statistics, which the builder records
+    // as RemoveStatistics/RemovePartitionStatistics changes. Those must not make build() reject
+    // the preserved metadata-location.
+    LoadTableResponse filtered = handler.filterResponseToSnapshots(response, "refs");
+
+    assertThat(filtered.tableMetadata().snapshots()).hasSize(1);
+    assertThat(filtered.tableMetadata().statisticsFiles())
+        .as("only the kept snapshot's statistics are returned")
+        .extracting(StatisticsFile::snapshotId)
+        .containsExactly(2L);
+    assertThat(filtered.tableMetadata().partitionStatisticsFiles())
+        .as("only the kept snapshot's partition statistics are returned")
+        .extracting(PartitionStatisticsFile::snapshotId)
+        .containsExactly(2L);
+    assertThat(filtered.metadataLocation()).isEqualTo(metadataLocation);
   }
 
   @Test

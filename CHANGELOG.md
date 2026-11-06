@@ -200,6 +200,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `400 Bad Request` instead of `500 Internal Server Error`.
 - Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
   the packaged chart, so `helm test` ran no tests.
+- Loading a table with `snapshots=refs` no longer fails with HTTP 400 (`Cannot set metadata location
+  with changes to table metadata`) when a snapshot outside the table's refs has statistics or
+  partition statistics files, which Trino writes on every insert by default.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - Maintenance policy content now rejects non-boolean values for the `enable` field again. The
