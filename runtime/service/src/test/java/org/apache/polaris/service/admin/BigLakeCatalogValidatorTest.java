@@ -274,20 +274,23 @@ class BigLakeCatalogValidatorTest {
         .doesNotThrowAnyException();
   }
 
-  @Test
-  void rejectsMissingRemoteCatalogIdentifier() {
+  @ParameterizedTest
+  @MethodSource("validWarehouseConfigurations")
+  void acceptsEffectiveWarehouse(String remoteCatalogName, String warehouse) {
+    assertThatCode(
+            () -> validator.validate(bigLakeCatalogWithWarehouse(remoteCatalogName, warehouse)))
+        .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidWarehouseConfigurations")
+  void rejectsMissingEffectiveWarehouse(String remoteCatalogName, String warehouse) {
     assertThatThrownBy(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        " ",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+            () -> validator.validate(bigLakeCatalogWithWarehouse(remoteCatalogName, warehouse)))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("remote catalog or warehouse identifier is required");
+        .hasMessageContaining("remote catalog or warehouse identifier is required")
+        .hasMessageContaining("connectionConfigInfo.remoteCatalogName")
+        .hasMessageContaining("catalog.properties.warehouse");
   }
 
   @Test
@@ -529,7 +532,7 @@ class BigLakeCatalogValidatorTest {
   }
 
   @Test
-  void requiresServiceAccountButDoesNotValidateItsFormat() {
+  void doesNotValidateServiceAccountFormat() {
     assertThatCode(
             () ->
                 validator.validate(
@@ -545,6 +548,46 @@ class BigLakeCatalogValidatorTest {
                             .setAllowedLocations(List.of("gs://bucket/path/to/data"))
                             .build())))
         .doesNotThrowAnyException();
+  }
+
+  @Test
+  void acceptsMissingServiceAccountWhenCredentialVendingEnabled() {
+    assertThatCode(
+            () ->
+                validator.validate(
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                        "my-remote-catalog",
+                        Map.of("header.x-goog-user-project", "my-billing-project"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        GcpStorageConfigInfo.builder()
+                            .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+                            .setAllowedLocations(List.of("gs://bucket/path/to/data"))
+                            .build())))
+        .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"", " ", "\t"})
+  void rejectsBlankServiceAccountWhenCredentialVendingEnabled(String serviceAccount) {
+    assertThatThrownBy(
+            () ->
+                validator.validate(
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                        "my-remote-catalog",
+                        Map.of("header.x-goog-user-project", "my-billing-project"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        GcpStorageConfigInfo.builder()
+                            .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+                            .setGcsServiceAccount(serviceAccount)
+                            .setAllowedLocations(List.of("gs://bucket/path/to/data"))
+                            .build())))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("storageConfigInfo.gcsServiceAccount")
+        .hasMessageContaining("omit this field");
   }
 
   @ParameterizedTest
@@ -575,12 +618,44 @@ class BigLakeCatalogValidatorTest {
         .doesNotThrowAnyException();
   }
 
+  private static Stream<Arguments> validWarehouseConfigurations() {
+    return Stream.of(
+        Arguments.of(null, "catalog-warehouse"),
+        Arguments.of(null, "gs://bucket/path/to/warehouse"),
+        Arguments.of("remote-catalog", null),
+        Arguments.of("remote-catalog", ""),
+        Arguments.of("remote-catalog", " "),
+        Arguments.of("remote-catalog", "different-warehouse"));
+  }
+
+  private static Stream<Arguments> invalidWarehouseConfigurations() {
+    return Stream.concat(
+        Stream.of(null, "", " ", "\t").map(warehouse -> Arguments.of(null, warehouse)),
+        Stream.of("", " ", "\t")
+            .map(remoteCatalogName -> Arguments.of(remoteCatalogName, "catalog-warehouse")));
+  }
+
   private static Stream<Arguments> blankConnectionQuotaProjectOverrides() {
     return Stream.of(null, "", " ", "\t")
         .flatMap(
             quotaProject ->
                 Stream.of("header.x-goog-user-project", "header.X-Goog-User-Project")
                     .map(propertyName -> Arguments.of(quotaProject, propertyName)));
+  }
+
+  private Catalog bigLakeCatalogWithWarehouse(String remoteCatalogName, String warehouse) {
+    Catalog catalog =
+        bigLakeCatalog(
+            "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+            remoteCatalogName,
+            Map.of("header.x-goog-user-project", "my-billing-project"),
+            true,
+            "gs://bucket/path/to/data",
+            validGcsStorage("gs://bucket/path/to/data"));
+    if (warehouse != null) {
+      catalog.getProperties().put("warehouse", warehouse);
+    }
+    return catalog;
   }
 
   private Catalog bigLakeCatalogWithProperties(

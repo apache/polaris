@@ -24,10 +24,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import jakarta.ws.rs.core.Response;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
@@ -72,6 +74,9 @@ import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvid
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
 public class ManagementServiceTest {
@@ -379,14 +384,19 @@ public class ManagementServiceTest {
             "Explicitly setting polaris.config.enable-sub-catalog-rbac-for-federated-catalogs is not allowed because ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS is set to false.");
   }
 
-  @Test
-  public void testCreateAndUpdateValidBigLakeCatalog() {
+  @ParameterizedTest
+  @MethodSource("validBigLakeConfigurations")
+  public void testCreateAndUpdateValidBigLakeCatalog(
+      String remoteCatalogName, String serviceAccount) {
     String catalogName = "biglake-catalog";
     String initialBaseLocation = "gs://bucket/path/to/data";
     String updatedBaseLocation = "gs://bucket/path/to/updated-data";
     Catalog catalog =
         createBigLakeCatalog(
-            catalogName, initialBaseLocation, createBigLakeStorageConfig(initialBaseLocation));
+            catalogName,
+            initialBaseLocation,
+            createBigLakeStorageConfig(initialBaseLocation, serviceAccount),
+            remoteCatalogName);
 
     try (Response response =
         services
@@ -407,16 +417,21 @@ public class ManagementServiceTest {
       fetchedCatalog = (Catalog) response.getEntity();
     }
 
+    IcebergRestConnectionConfigInfo storedConnection =
+        (IcebergRestConnectionConfigInfo)
+            ((ExternalCatalog) fetchedCatalog).getConnectionConfigInfo();
+    assertThat(storedConnection.getRemoteCatalogName()).isEqualTo(remoteCatalogName);
+    Map<String, String> updatedProperties = new HashMap<>(catalog.getProperties().toMap());
+    updatedProperties.put("default-base-location", updatedBaseLocation);
+    if (remoteCatalogName == null) {
+      updatedProperties.put("warehouse", "updated-warehouse");
+    }
+
     UpdateCatalogRequest updateRequest =
         UpdateCatalogRequest.builder()
             .setCurrentEntityVersion(fetchedCatalog.getEntityVersion())
-            .setProperties(
-                Map.of(
-                    "default-base-location",
-                    updatedBaseLocation,
-                    "enable.credential.vending",
-                    "true"))
-            .setStorageConfigInfo(createBigLakeStorageConfig(updatedBaseLocation))
+            .setProperties(updatedProperties)
+            .setStorageConfigInfo(createBigLakeStorageConfig(updatedBaseLocation, serviceAccount))
             .build();
 
     try (Response response =
@@ -428,16 +443,25 @@ public class ManagementServiceTest {
       Catalog updatedCatalog = (Catalog) response.getEntity();
       assertThat(updatedCatalog.getProperties().getDefaultBaseLocation())
           .isEqualTo(updatedBaseLocation);
+      assertThat(updatedCatalog.getProperties().toMap()).containsAllEntriesOf(updatedProperties);
+      assertThat(updatedCatalog.getStorageConfigInfo())
+          .isInstanceOfSatisfying(
+              GcpStorageConfigInfo.class,
+              storage -> assertThat(storage.getGcsServiceAccount()).isEqualTo(serviceAccount));
     }
   }
 
   @Test
-  public void testUpdateBigLakeCatalogRejectsMissingServiceAccount() {
+  public void testUpdateBigLakeCatalogCanDisableServiceAccountImpersonation() {
     String catalogName = "biglake-catalog";
     String initialBaseLocation = "gs://bucket/path/to/data";
     Catalog catalog =
         createBigLakeCatalog(
-            catalogName, initialBaseLocation, createBigLakeStorageConfig(initialBaseLocation));
+            catalogName,
+            initialBaseLocation,
+            createBigLakeStorageConfig(
+                initialBaseLocation, "test-sa@my-project.iam.gserviceaccount.com"),
+            "my-remote-catalog");
 
     try (Response response =
         services
@@ -474,17 +498,26 @@ public class ManagementServiceTest {
                     .build())
             .build();
 
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogsApi()
-                    .updateCatalog(
-                        catalogName,
-                        updateRequest,
-                        services.realmContext(),
-                        services.securityContext()))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("storageConfigInfo.gcsServiceAccount");
+    try (Response response =
+        services
+            .catalogsApi()
+            .updateCatalog(
+                catalogName, updateRequest, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog updatedCatalog = (Catalog) response.getEntity();
+      assertThat(updatedCatalog.getStorageConfigInfo())
+          .isInstanceOfSatisfying(
+              GcpStorageConfigInfo.class,
+              storage -> assertThat(storage.getGcsServiceAccount()).isNull());
+    }
+  }
+
+  private static Stream<Arguments> validBigLakeConfigurations() {
+    return Stream.of("my-remote-catalog", null)
+        .flatMap(
+            remoteCatalogName ->
+                Stream.of("test-sa@my-project.iam.gserviceaccount.com", null)
+                    .map(serviceAccount -> Arguments.of(remoteCatalogName, serviceAccount)));
   }
 
   private PolarisAdminService setupPolarisAdminService(
@@ -515,9 +548,15 @@ public class ManagementServiceTest {
   }
 
   private Catalog createBigLakeCatalog(
-      String catalogName, String defaultBaseLocation, StorageConfigInfo storageConfigInfo) {
+      String catalogName,
+      String defaultBaseLocation,
+      StorageConfigInfo storageConfigInfo,
+      String remoteCatalogName) {
     CatalogProperties catalogProperties = CatalogProperties.builder(defaultBaseLocation).build();
     catalogProperties.put("enable.credential.vending", "true");
+    if (remoteCatalogName == null) {
+      catalogProperties.put("warehouse", "catalog-warehouse");
+    }
     return ExternalCatalog.builder()
         .setType(Catalog.TypeEnum.EXTERNAL)
         .setName(catalogName)
@@ -527,7 +566,7 @@ public class ManagementServiceTest {
             IcebergRestConnectionConfigInfo.builder(
                     ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
                 .setUri("https://biglake.googleapis.com/iceberg/v1/restcatalog")
-                .setRemoteCatalogName("my-remote-catalog")
+                .setRemoteCatalogName(remoteCatalogName)
                 .setProperties(Map.of("header.x-goog-user-project", "my-billing-project"))
                 .setAuthenticationParameters(
                     GcpAuthenticationParameters.builder()
@@ -537,10 +576,11 @@ public class ManagementServiceTest {
         .build();
   }
 
-  private StorageConfigInfo createBigLakeStorageConfig(String allowedLocation) {
+  private StorageConfigInfo createBigLakeStorageConfig(
+      String allowedLocation, String serviceAccount) {
     return GcpStorageConfigInfo.builder()
         .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
-        .setGcsServiceAccount("test-sa@my-project.iam.gserviceaccount.com")
+        .setGcsServiceAccount(serviceAccount)
         .setAllowedLocations(List.of(allowedLocation))
         .build();
   }

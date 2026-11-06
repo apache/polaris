@@ -23,6 +23,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.net.URI;
 import java.util.Map;
+import org.apache.iceberg.CatalogProperties;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
@@ -69,16 +70,24 @@ public class BigLakeCatalogValidator implements CatalogConfigValidator {
       return;
     }
 
-    validateBigLakeRemoteCatalogName(connectionConfig.getRemoteCatalogName());
+    validateBigLakeWarehouse(
+        connectionConfig.getRemoteCatalogName(), externalCatalog.getProperties().toMap());
     validateBigLakeHeaders(
         connectionConfig.getProperties(), externalCatalog.getProperties().toMap());
     validateBigLakeStorageConfiguration(externalCatalog);
   }
 
-  private static void validateBigLakeRemoteCatalogName(String remoteCatalogName) {
-    if (Strings.isNullOrEmpty(remoteCatalogName) || remoteCatalogName.trim().isEmpty()) {
+  private static void validateBigLakeWarehouse(
+      String remoteCatalogName, Map<String, String> catalogProperties) {
+    // Match the factory: a non-null remoteCatalogName overrides warehouse, even when blank.
+    String warehouse =
+        remoteCatalogName != null
+            ? remoteCatalogName
+            : catalogProperties.get(CatalogProperties.WAREHOUSE_LOCATION);
+    if (Strings.isNullOrEmpty(warehouse) || warehouse.trim().isEmpty()) {
       throw new IllegalArgumentException(
-          "Invalid BigLake connectionConfigInfo.remoteCatalogName: a remote catalog or warehouse identifier is required.");
+          "Invalid BigLake warehouse configuration: a remote catalog or warehouse identifier is required."
+              + " Set connectionConfigInfo.remoteCatalogName or, when it is absent, catalog.properties.warehouse.");
     }
   }
 
@@ -135,9 +144,10 @@ public class BigLakeCatalogValidator implements CatalogConfigValidator {
         "catalog.properties." + DEFAULT_BASE_LOCATION_KEY,
         externalCatalog.getProperties().toMap().get(DEFAULT_BASE_LOCATION_KEY));
     String serviceAccount = gcpStorageConfigInfo.getGcsServiceAccount();
-    if (Strings.isNullOrEmpty(serviceAccount) || serviceAccount.trim().isEmpty()) {
+    if (serviceAccount != null && serviceAccount.trim().isEmpty()) {
       throw new IllegalArgumentException(
-          "Invalid BigLake storageConfigInfo.gcsServiceAccount: a value is required when credential vending is enabled.");
+          "Invalid BigLake storageConfigInfo.gcsServiceAccount: omit this field to use ambient credentials,"
+              + " or provide a non-empty service account for impersonation.");
     }
   }
 
