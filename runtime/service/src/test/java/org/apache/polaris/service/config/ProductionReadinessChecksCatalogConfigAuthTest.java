@@ -20,6 +20,7 @@ package org.apache.polaris.service.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
@@ -28,6 +29,8 @@ import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,7 +50,8 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
   void flagUnsetReturnsWarning() {
     FeaturesConfiguration config = mockConfig(Map.of(), Map.of());
 
-    ProductionReadinessCheck result = checks.checkCatalogConfigAuthorization(config);
+    ProductionReadinessCheck result =
+        checks.checkCatalogConfigAuthorization(config, authorizationConfig("internal"));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
@@ -63,7 +67,8 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
   void flagExplicitlyTrueReturnsOk() {
     FeaturesConfiguration config = mockConfig(Map.of(FLAG_KEY, "true"), Map.of());
 
-    ProductionReadinessCheck result = checks.checkCatalogConfigAuthorization(config);
+    ProductionReadinessCheck result =
+        checks.checkCatalogConfigAuthorization(config, authorizationConfig("internal"));
 
     assertThat(result.ready()).isTrue();
   }
@@ -72,7 +77,8 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
   void flagExplicitlyFalseReturnsWarning() {
     FeaturesConfiguration config = mockConfig(Map.of(FLAG_KEY, "false"), Map.of());
 
-    ProductionReadinessCheck result = checks.checkCatalogConfigAuthorization(config);
+    ProductionReadinessCheck result =
+        checks.checkCatalogConfigAuthorization(config, authorizationConfig("internal"));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors()).hasSize(1);
@@ -85,7 +91,8 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
             Map.of(FLAG_KEY, "true"),
             Map.of("test-realm", mockRealmOverrides(Map.of(FLAG_KEY, "false"))));
 
-    ProductionReadinessCheck result = checks.checkCatalogConfigAuthorization(config);
+    ProductionReadinessCheck result =
+        checks.checkCatalogConfigAuthorization(config, authorizationConfig("internal"));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
@@ -93,6 +100,24 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
         .satisfies(
             error ->
                 assertThat(error.offendingProperty()).contains("test-realm").contains(FLAG_KEY));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"opa", "ranger", "custom"})
+  void nonInternalAuthorizerReturnsOk(String type) {
+    FeaturesConfiguration config = mock(FeaturesConfiguration.class);
+
+    ProductionReadinessCheck result =
+        checks.checkCatalogConfigAuthorization(config, authorizationConfig(type));
+
+    assertThat(result.ready()).isTrue();
+    verifyNoInteractions(config);
+  }
+
+  private static AuthorizationConfiguration authorizationConfig(String type) {
+    AuthorizationConfiguration config = mock(AuthorizationConfiguration.class);
+    when(config.type()).thenReturn(type);
+    return config;
   }
 
   private static FeaturesConfiguration mockConfig(

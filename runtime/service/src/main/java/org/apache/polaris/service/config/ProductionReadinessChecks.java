@@ -524,7 +524,11 @@ public class ProductionReadinessChecks {
 
   @Produces
   public ProductionReadinessCheck checkCatalogConfigAuthorization(
-      FeaturesConfiguration featureConfiguration) {
+      FeaturesConfiguration featureConfiguration,
+      AuthorizationConfiguration authorizationConfiguration) {
+    if (!authorizationConfiguration.type().equals("internal")) {
+      return ProductionReadinessCheck.OK;
+    }
     var flag = FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION;
     var message =
         "ENFORCE_CATALOG_CONFIG_AUTHORIZATION is disabled. Iceberg REST GET /v1/config is not "

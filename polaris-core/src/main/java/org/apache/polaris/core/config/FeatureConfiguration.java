@@ -88,7 +88,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "dedicated catalog-config-read access type exists (or accept that coarse mapping). "
                   + "This flag is temporary. The default will not flip until client-facing catalog "
                   + "configuration is defined. A production-readiness warning is emitted while the "
-                  + "flag remains false.")
+                  + "flag remains false only when using the internal Polaris authorizer"
+                  + "(`polaris.authorization.type=internal`).")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
