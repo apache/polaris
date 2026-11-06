@@ -251,6 +251,20 @@ outputs:
     # Print support disabled until the `releases` layout supports it
     #- print
 
+outputFormats:
+  # VEX (Vulnerability Exploitability eXchange) documents, generated from the pages in
+  # content/community/dependency-cves/ by layouts/docs/section.{cyclonedx,openvex}.json
+  cyclonedx:
+    mediaType: application/json
+    baseName: polaris.vex
+    isPlainText: true
+    notAlternative: true
+  openvex:
+    mediaType: application/json
+    baseName: polaris.openvex
+    isPlainText: true
+    notAlternative: true
+
 markup:
   highlight:
     # See https://www.docsy.dev/docs/content/lookandfeel/#code-highlighting-with-chroma

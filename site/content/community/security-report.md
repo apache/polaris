@@ -47,3 +47,9 @@ The general process for handling security vulnerabilities as follows:
   * [CVE-2026-42812](../security-advisories/cve-2026-42812/)
 * Fixed in Apache Polaris 1.8.0
   * [CVE-2026-97395](../security-advisories/cve-2026-97395/)
+
+# CVEs in Dependencies
+
+Security scanners also flag CVEs in the third-party libraries that Polaris depends on. Our
+assessment of whether these CVEs affect Polaris, including machine-readable VEX documents, is
+published on the [CVE Status for Dependencies](../dependency-cves/) page.
