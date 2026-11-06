@@ -55,7 +55,7 @@ class EntityItemTest {
     assertThat(item.get(DynamoDbLayout.PK).s()).isEqualTo("realm1#42");
     assertThat(item.get(DynamoDbLayout.SK).s()).isEqualTo(DynamoDbLayout.SK_ENTITY);
     assertThat(item.get(DynamoDbLayout.GSI1_PK).s()).isEqualTo("realm1#7#3#2");
-    assertThat(item.get(DynamoDbLayout.GSI1_SK).s()).isEqualTo("my_table");
+    assertThat(item.get(DynamoDbLayout.GSI1_SK).s()).isEqualTo("0000000000000000042");
   }
 
   @Test
