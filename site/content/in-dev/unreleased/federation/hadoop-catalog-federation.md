@@ -133,10 +133,10 @@ polaris catalogs create analytics_hadoop \
 `default-base-location` is required for every Polaris catalog; the `HadoopCatalog` itself places
 tables and their metadata under `warehouse`, so keep the two values aligned.
 
-`uri` is optional for `HADOOP` connections and ignored when present: the Hadoop catalog has no
-service endpoint and is reached through `warehouse`. Any URI is accepted, including `hdfs://` or
+`uri` is optional for `HADOOP` connections and not used by the catalog, which has no service
+endpoint and is reached through `warehouse`. Any valid URI is accepted, including `hdfs://` or
 `s3://` locations, so the field can be omitted or used as a label for the warehouse. The CLI still
-asks for `--catalog-uri` on `HADOOP` connections; any value works there.
+asks for `--catalog-uri` on `HADOOP` connections; any valid URI works there.
 
 For an S3 warehouse, use `"storageType": "S3"` with `roleArn` and `region`, point `warehouse` at
 the bucket prefix, and select `S3FileIO` through the catalog-level `properties` so that the server
@@ -161,7 +161,6 @@ curl -X POST https://<polaris-host>/management/v1/catalogs \
         },
         "connectionConfigInfo": {
           "connectionType": "HADOOP",
-          "uri": "https://analytics-bucket.s3.us-east-1.amazonaws.com/",
           "warehouse": "s3://analytics-bucket/warehouse/",
           "authenticationParameters": { "authenticationType": "IMPLICIT" }
         }

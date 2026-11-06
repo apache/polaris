@@ -95,6 +95,7 @@ class HadoopConnectionConfigInfoDpoTest {
   @ParameterizedTest
   @ValueSource(
       strings = {
+        "",
         "hdfs://namenode:8020/warehouse",
         "s3://bucket/warehouse",
         "abfss://container@account.dfs.core.windows.net/warehouse"
