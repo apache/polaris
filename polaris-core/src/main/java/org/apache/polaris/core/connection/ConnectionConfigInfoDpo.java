@@ -65,8 +65,8 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   // The type of the connection
   private final int connectionTypeCode;
 
-  // The URI of the remote catalog
-  private final String uri;
+  // The URI of the remote catalog; null only for connection types that do not use one
+  private final @Nullable String uri;
 
   // The authentication parameters for the connection
   private final AuthenticationParametersDpo authenticationParameters;
@@ -79,7 +79,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
 
   public ConnectionConfigInfoDpo(
       @JsonProperty(value = "connectionTypeCode", required = true) int connectionTypeCode,
-      @JsonProperty(value = "uri", required = true) @NonNull String uri,
+      @JsonProperty(value = "uri", required = false) @Nullable String uri,
       @JsonProperty(value = "authenticationParameters", required = true)
           @Nullable AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "serviceIdentity", required = false)
@@ -99,7 +99,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
 
   protected ConnectionConfigInfoDpo(
       int connectionTypeCode,
-      @NonNull String uri,
+      @Nullable String uri,
       @Nullable AuthenticationParametersDpo authenticationParameters,
       @Nullable ServiceIdentityInfoDpo serviceIdentity,
       @Nullable Map<String, String> properties,
@@ -123,7 +123,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     return ConnectionType.fromCode(connectionTypeCode);
   }
 
-  public String getUri() {
+  public @Nullable String getUri() {
     return uri;
   }
 
@@ -178,8 +178,16 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     return DEFAULT_MAPPER.readValue(jsonStr, ConnectionConfigInfoDpo.class);
   }
 
-  /** Validates the remote URI. */
-  protected void validateUri(String uri) {
+  /**
+   * Validates the remote URI. The connection types that connect to a remote service require a URI
+   * that is a {@link URL} (or a {@code thrift://} URI for Hive); a type that does not use the URI
+   * overrides this method.
+   */
+  protected void validateUri(@Nullable String uri) {
+    if (uri == null) {
+      throw new IllegalArgumentException(
+          "uri is required for " + getConnectionType().name() + " connections");
+    }
     try {
       URI uriObj = URI.create(uri);
       if (connectionTypeCode == ConnectionType.HIVE.getCode()

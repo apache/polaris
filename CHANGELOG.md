@@ -218,6 +218,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `ENFORCE_CATALOG_CONFIG_AUTHORIZATION`; when enabled, unauthorized callers get 403. A 200 still
   returns catalog properties (`defaults`) as today. Previously any authenticated principal who
   knew a warehouse name could call the endpoint with no AuthZ.
+- `uri` is now optional for `HADOOP` connection configurations and is no longer validated as a
+  `java.net.URL`. The Hadoop catalog is initialized from `warehouse` and never uses `uri`, but
+  values such as `hdfs://namenode:8020/warehouse` or `s3://bucket/warehouse` were rejected with
+  `400 Invalid remote URI`, and omitting the field failed with `500 Internal Server Error`. For the
+  other connection types a missing `uri` now returns `400 Bad Request` with the message
+  `uri is required for <TYPE> connections`.
 - Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
   the packaged chart, so `helm test` ran no tests.
 - Credential vending with a statically configured GCP access token (`polaris.storage.gcp.token`)
