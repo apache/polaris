@@ -194,8 +194,9 @@ object ChangelogFragments {
    * branch after the changelog section of that version was created, i.e. for later release
    * candidates.
    *
-   * Invalid fragments and missing headings are reported before the changelog is written. Deletion is
-   * also pre-checked for obvious problems (for example, when a fragment directory is not writable).
+   * Invalid fragments and missing headings are reported before the changelog is written. Deletion
+   * is also pre-checked for obvious problems (for example, when a fragment directory is not
+   * writable).
    *
    * The changelog file itself is replaced atomically. Fragment deletion happens after the changelog
    * update, so unexpected deletion failures can still occur after writing; in that case, the
