@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -327,9 +328,10 @@ public class QueryGeneratorTest {
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR"
             + " location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR"
             + " location_without_scheme LIKE ? ESCAPE '\\')",
-        QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/tmp/location/").sql());
+        QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/tmp/location/", null)
+            .sql());
     Assertions.assertThatCollection(
-            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/tmp/location/")
+            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/tmp/location/", null)
                 .parameters())
         .containsExactly(
             "realmId",
@@ -346,7 +348,7 @@ public class QueryGeneratorTest {
     // A location without a trailing slash produces the same prefix terms so that ancestors stored
     // in either form are matched.
     Assertions.assertThatCollection(
-            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/tmp/location")
+            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/tmp/location", null)
                 .parameters())
         .containsExactly(
             "realmId",
@@ -369,9 +371,10 @@ public class QueryGeneratorTest {
             + " ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR"
             + " location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme LIKE ? ESCAPE '\\')",
-        QueryGenerator.generateOverlapQuery("realmId", -123, "/tmp/location/").sql());
+        QueryGenerator.generateOverlapQuery("realmId", -123, "/tmp/location/", null).sql());
     Assertions.assertThatCollection(
-            QueryGenerator.generateOverlapQuery("realmId", -123, "/tmp/location/").parameters())
+            QueryGenerator.generateOverlapQuery("realmId", -123, "/tmp/location/", null)
+                .parameters())
         .containsExactly(
             "realmId",
             -123L,
@@ -390,9 +393,10 @@ public class QueryGeneratorTest {
             + " FROM ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR"
             + " location_without_scheme = ? OR location_without_scheme LIKE ? ESCAPE '\\')",
-        QueryGenerator.generateOverlapQuery("realmId", -123, "s3://バケツ/\"loc.ation\"/").sql());
+        QueryGenerator.generateOverlapQuery("realmId", -123, "s3://バケツ/\"loc.ation\"/", null)
+            .sql());
     Assertions.assertThatCollection(
-            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://バケツ/\"loc.ation\"/")
+            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://バケツ/\"loc.ation\"/", null)
                 .parameters())
         .containsExactly(
             "realmId",
@@ -411,17 +415,20 @@ public class QueryGeneratorTest {
     // so an ancestor stored at the bare scheme root s3:// (ALLOW_NAMESPACE_CUSTOM_LOCATION mode)
     // is still matched. Regression pair: namespace at "//" with a table under "//bucket/ns/t".
     Assertions.assertThat(
-            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/ns/t/").parameters())
+            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/ns/t/", null)
+                .parameters())
         .contains("//")
         .doesNotContain("/");
     // Same without a trailing slash (prefix walk normalizes; slash-only skip is unchanged).
     Assertions.assertThat(
-            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/ns/t").parameters())
+            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/ns/t", null)
+                .parameters())
         .contains("//")
         .doesNotContain("/");
     // file: locations: the "///" root and "//" are kept, but "/" is not emitted.
     Assertions.assertThat(
-            QueryGenerator.generateOverlapQuery("realmId", -123, "file:///tmp/data/").parameters())
+            QueryGenerator.generateOverlapQuery("realmId", -123, "file:///tmp/data/", null)
+                .parameters())
         .contains("//", "///")
         .doesNotContain("/");
   }
@@ -432,11 +439,11 @@ public class QueryGeneratorTest {
     // an ESCAPE clause) so they match literally rather than as wildcards; the exact-match prefix
     // terms use "=" and must keep the raw characters.
     assertTrue(
-        QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/a_b/c%d/")
+        QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/a_b/c%d/", null)
             .sql()
             .contains("location_without_scheme LIKE ? ESCAPE '\\'"));
     Assertions.assertThat(
-            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/a_b/c%d/")
+            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/a_b/c%d/", null)
                 .parameters())
         .endsWith("//bucket/a\\_b/c\\%d/%")
         .contains("//bucket/a_b", "//bucket/a_b/c%d");
@@ -448,8 +455,63 @@ public class QueryGeneratorTest {
     // escaped
     // so a descendant whose path contains a backslash is still matched rather than silently missed.
     Assertions.assertThat(
-            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/a\\b/").parameters())
+            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/a\\b/", null)
+                .parameters())
         .endsWith("//bucket/a\\\\b/%");
+  }
+
+  @Test
+  void generateOverlapQueryWithSearchRootContainingLocation() {
+    // All the descendants of the location are inside the search root, but only some of its
+    // ancestors.
+    var query =
+        QueryGenerator.generateOverlapQuery(
+            "realmId", -123, "s3://bucket/ns/t/", StorageLocation.of("s3://bucket/ns/"));
+    Assertions.assertThat(query.sql()).containsOnlyOnce("LIKE");
+    Assertions.assertThat(query.parameters())
+        .containsExactly(
+            "realmId",
+            -123L,
+            "//bucket/ns",
+            "//bucket/ns/",
+            "//bucket/ns/t",
+            "//bucket/ns/t/",
+            "//bucket/ns/t/%");
+  }
+
+  @Test
+  void generateOverlapQueryWithSearchRootInsideLocation() {
+    // Only the descendants of the search root can match, and no ancestor of the location: the
+    // search root's
+    // LIKE condition replaces the location's.
+    var query =
+        QueryGenerator.generateOverlapQuery(
+            "realmId", -123, "s3://bucket/ns/", StorageLocation.of("s3://bucket/ns/a_b"));
+    Assertions.assertThat(query.sql()).containsOnlyOnce("LIKE");
+    Assertions.assertThat(query.parameters())
+        .containsExactly(
+            "realmId", -123L, "//bucket/ns/a_b", "//bucket/ns/a_b/", "//bucket/ns/a\\_b/%");
+  }
+
+  @Test
+  void generateOverlapQueryRejectsUnrelatedSearchRoot() {
+    Assertions.assertThatThrownBy(
+            () ->
+                QueryGenerator.generateOverlapQuery(
+                    "realmId", -123, "s3://bucket/ns/t/", StorageLocation.of("s3://bucket/other/")))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void generateOverlapQueryDoesNotRewriteSchemeLessLocations() {
+    // Without their scheme, "s3://bucket/a/" is "//bucket/a/" and "file:///bucket/a/" is
+    // "///bucket/a/": they are different locations, which must not be conflated into the same
+    // file:/// location.
+    Assertions.assertThatThrownBy(
+            () ->
+                QueryGenerator.generateOverlapQuery(
+                    "realmId", -123, "s3://bucket/a/", StorageLocation.of("file:///bucket/a/")))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test

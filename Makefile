@@ -187,7 +187,7 @@ client-cleanup: ## Cleanup virtual environment, build artifacts, and generated f
 	@echo "Removing OpenAPI generator cache..."
 	@rm -rf $(PYTHON_CLIENT_DIR)/.openapi-generator
 	@echo "Removing Python cache files..."
-	@find $(PYTHON_CLIENT_DIR) -type d -name "__pycache__" -delete
+	@find $(PYTHON_CLIENT_DIR) -type d -name "__pycache__" -prune -exec rm -rf {} +
 	@echo "--- Client cleanup complete ---"
 
 .PHONY: client-setup-env
@@ -521,6 +521,6 @@ install-dependencies-brew: check-brew ## Install dependencies if not present via
 	done
 	@echo "--- All requested dependencies checked/installed ---"
 
-install-optional-dependencies-brew: DEPENDENCIES := $(OPTIONAL_DEPENDENCIES)
 .PHONY: install-optional-dependencies-brew
-install-optional-dependencies-brew: install-dependencies-brew ## Install optional dependencies if not present via Brew
+install-optional-dependencies-brew: ## Install optional dependencies if not present via Brew
+	@$(MAKE) --no-print-directory install-dependencies-brew DEPENDENCIES="$(OPTIONAL_DEPENDENCIES)"

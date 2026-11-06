@@ -24,7 +24,27 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
+  implementation(libs.slf4j.api)
 
   implementation(platform(libs.awssdk.bom))
   implementation("software.amazon.awssdk:dynamodb")
+}
+
+testing {
+  suites {
+    // Floci/Docker-backed tests live in `intTest`, matching the rest of the repo
+    // (tools/testcontainers/floci-aws, persistence/nosql dynamodb). Keeping them out of `test`
+    // means `:polaris-persistence-dynamodb-atomic:test` does not require a Docker daemon.
+    register<JvmTestSuite>("intTest") {
+      dependencies {
+        implementation(project(":polaris-core"))
+        // Exports the testcontainers BOM + `org.testcontainers:testcontainers` and the Floci
+        // AWS SDK clients as `api`, so they do not need to be declared again here.
+        implementation(project(":polaris-floci-aws-testcontainer"))
+
+        implementation(platform(libs.awssdk.bom))
+        implementation("software.amazon.awssdk:dynamodb")
+      }
+    }
+  }
 }

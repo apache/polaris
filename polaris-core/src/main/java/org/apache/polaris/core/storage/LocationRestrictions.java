@@ -46,17 +46,33 @@ public class LocationRestrictions {
   /**
    * The parent location for structured table enforcement.
    *
-   * <p>When non-null, this location represents the root under which all new tables must be created,
+   * <p>When non-null, this location represents the root under which all tables must reside,
    * enforcing a structured hierarchy in addition to residing under {@code allowedLocations}. When
-   * null, table creation is allowed anywhere within the {@code allowedLocations}.
+   * null, tables are allowed anywhere within the {@code allowedLocations}.
    */
   private final String parentLocation;
 
+  /**
+   * The location of an existing table-like entity for structured table enforcement.
+   *
+   * <p>When non-null, the requested locations must also reside under the entity's own location, in
+   * addition to the parent location.
+   */
+  private final String entityLocation;
+
   public LocationRestrictions(
-      @NonNull PolarisStorageConfigurationInfo storageConfigurationInfo, String parentLocation) {
+      @NonNull PolarisStorageConfigurationInfo storageConfigurationInfo,
+      String parentLocation,
+      String entityLocation) {
     this.allowedLocations = storageConfigurationInfo.getAllowedLocations();
     allowedLocations.forEach(storageConfigurationInfo::validatePrefixForStorageType);
     this.parentLocation = parentLocation;
+    this.entityLocation = entityLocation;
+  }
+
+  public LocationRestrictions(
+      @NonNull PolarisStorageConfigurationInfo storageConfigurationInfo, String parentLocation) {
+    this(storageConfigurationInfo, parentLocation, null);
   }
 
   public LocationRestrictions(@NonNull PolarisStorageConfigurationInfo storageConfigurationInfo) {
@@ -70,12 +86,14 @@ public class LocationRestrictions {
    *
    * <ul>
    *   <li>The parent location (if configured) for structured table enforcement
+   *   <li>The entity location (if configured) for structured table enforcement
    *   <li>The allowed locations list for general access permissions
    * </ul>
    *
    * <p>The validation ensures that all requested locations conform to the storage access
-   * restrictions defined for this context. If a parent location is configured, all requests must be
-   * under that location hierarchy in addition to being within the allowed locations.
+   * restrictions defined for this context. If a parent or entity location is configured, all
+   * requests must be under that location hierarchy in addition to being within the allowed
+   * locations.
    *
    * @param realmConfig the realm configuration containing storage validation rules
    * @param identifier the table identifier for which locations are being validated
@@ -87,6 +105,9 @@ public class LocationRestrictions {
       RealmConfig realmConfig, TableIdentifier identifier, Set<String> requestLocations) {
     if (parentLocation != null) {
       validateLocations(realmConfig, List.of(parentLocation), requestLocations, identifier);
+    }
+    if (entityLocation != null) {
+      validateLocations(realmConfig, List.of(entityLocation), requestLocations, identifier);
     }
 
     validateLocations(realmConfig, allowedLocations, requestLocations, identifier);

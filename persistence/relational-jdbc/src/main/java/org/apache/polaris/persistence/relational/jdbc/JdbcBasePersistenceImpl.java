@@ -57,6 +57,8 @@ import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
+import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
@@ -141,7 +143,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             return datasourceOperations.executeUpdate(preparedQuery);
           });
     } catch (SQLException e) {
-      throw new RuntimeException("Error persisting entity", e);
+      throw wrapEntityWriteFailure(e);
     }
   }
 
@@ -166,10 +168,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             return true;
           });
     } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format(
-              "Error executing the transaction for writing entities due to %s", e.getMessage()),
-          e);
+      throw wrapEntityWriteFailure(e, "Error executing the transaction for writing entities");
     }
   }
 
@@ -228,8 +227,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           throw new RetryOnConcurrencyException(
               e, "Conflicting entity is not visible in the current transaction snapshot; retry");
         }
-        throw new RuntimeException(
-            String.format("Failed to write entity due to %s", e.getMessage()), e);
+        throw wrapEntityWriteFailure(e);
       }
     } else {
       // CAS on both entity_version and grant_records_version because grant operations only
@@ -263,10 +261,23 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               originalEntity.getGrantRecordsVersion());
         }
       } catch (SQLException e) {
-        throw new RuntimeException(
-            String.format("Failed to write entity due to %s", e.getMessage()), e);
+        throw wrapEntityWriteFailure(e);
       }
     }
+  }
+
+  private RuntimeException wrapEntityWriteFailure(SQLException e) {
+    return wrapEntityWriteFailure(e, "Failed to write entity");
+  }
+
+  private RuntimeException wrapEntityWriteFailure(SQLException e, String context) {
+    // Only a failure inside commit() is ambiguous. Anything earlier is a definite failure, even
+    // when its SQLSTATE (for example class 08) would otherwise look like a lost connection.
+    if (datasourceOperations.isAmbiguousCommitOutcome(e)) {
+      return new PersistenceCommitStateUnknownException(
+          String.format("%s due to %s; commit outcome is unknown", context, e.getMessage()), e);
+    }
+    return new RuntimeException(String.format("%s due to %s", context, e.getMessage()), e);
   }
 
   @Override
@@ -793,31 +804,39 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
-      Optional<Optional<String>> hasOverlappingSiblings(
+      LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> parentPath,
-          T entity) {
+          T entity,
+          @NonNull Set<Long> parentPathIds,
+          @Nullable StorageLocation searchRoot) {
     if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count()
         > MAX_LOCATION_COMPONENTS) {
-      return Optional.empty();
+      return new LocationOverlapResult.Unsupported();
+    }
+
+    StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
+
+    if (searchRoot != null) {
+      // Only the entities located inside the search root are considered: if the search root and the
+      // entity's
+      // location are not nested, there is none that can overlap the location.
+      if (!entityLocation.isChildOf(searchRoot) && !searchRoot.isChildOf(entityLocation)) {
+        return new LocationOverlapResult.NoOverlap();
+      }
     }
 
     PreparedQuery query =
         QueryGenerator.generateOverlapQuery(
-            realmId, entity.getCatalogId(), entity.getBaseLocation());
+            realmId, entity.getCatalogId(), entity.getBaseLocation(), searchRoot);
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity());
       if (results.isEmpty()) {
-        return Optional.of(Optional.empty());
+        return new LocationOverlapResult.NoOverlap();
       }
       // The query matches every entity whose location is an ancestor of, equal to, or a descendant
       // of the entity's location. The entity's own parent namespaces may match the ancestor terms:
       // they always do when locations follow the namespace tree, as default locations do. Such an
       // ancestor is not a sibling.
-      Set<Long> ancestorIds =
-          parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
-
-      StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
       for (PolarisBaseEntity result : results) {
         if (result.getId() == entity.getId()) {
           continue;
@@ -835,14 +854,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         boolean containsEntity = entityLocation.isChildOf(resultLocation.get());
         boolean containedByEntity = resultLocation.get().isChildOf(entityLocation);
         // An ancestor may contain the entity, but the entity may not sit at exactly its location.
-        if (containsEntity && !containedByEntity && ancestorIds.contains(result.getId())) {
+        if (containsEntity && !containedByEntity && parentPathIds.contains(result.getId())) {
           continue;
         }
         if (containsEntity || containedByEntity) {
-          return Optional.of(Optional.of(resultLocation.get().toString()));
+          return new LocationOverlapResult.Overlap(resultLocation.get().toString());
         }
       }
-      return Optional.of(Optional.empty());
+      return new LocationOverlapResult.NoOverlap();
     } catch (SQLException e) {
       LOGGER.error(
           "Failed to retrieve location overlap for location {} due to {}",

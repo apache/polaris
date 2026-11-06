@@ -103,6 +103,14 @@ public class TestResolvConf {
             """,
             List.of(new InetSocketAddress("127.0.0.1", 53), new InetSocketAddress("1.2.3.4", 53)),
             List.of("search.domain", "anothersearch.anotherdomain")),
+        arguments(
+            "nameserver 127.0.0.1\nsearch search.domain  \t another.domain\tthird.domain\n",
+            List.of(new InetSocketAddress("127.0.0.1", 53)),
+            List.of("search.domain", "another.domain", "third.domain")),
+        arguments(
+            "nameserver 127.0.0.1\nsearch\n",
+            List.of(new InetSocketAddress("127.0.0.1", 53)),
+            List.of()),
         arguments("", List.of(), List.of()));
   }
 }
