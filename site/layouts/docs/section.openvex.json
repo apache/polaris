@@ -1,0 +1,90 @@
+{{/*
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+*/}}
+{{- /*
+OpenVEX document (see https://openvex.dev/) generated from the pages in
+content/community/dependency-cves/, the only section with the `openvex` output format.
+The vulnerable components are the statement products, because scanners match VEX statements on the
+package URL of the flagged package.
+*/ -}}
+{{- $timestampFormat := "2006-01-02T15:04:05Z" -}}
+{{- $statuses := dict
+  "not_affected" "not_affected"
+  "false_positive" "not_affected"
+  "exploitable" "affected"
+  "in_triage" "under_investigation"
+  "resolved" "fixed"
+  "resolved_with_pedigree" "fixed"
+-}}
+{{- /* CycloneDX justifications without an OpenVEX equivalent rely on the impact statement. */ -}}
+{{- $justifications := dict
+  "code_not_present" "vulnerable_code_not_present"
+  "code_not_reachable" "vulnerable_code_not_in_execute_path"
+-}}
+{{- $pages := .Pages.ByDate.Reverse -}}
+{{- $statements := slice -}}
+{{- range $pages -}}
+  {{- $entry := partial "vex-entry.html" . -}}
+  {{- $status := index $statuses $entry.analysis.state -}}
+  {{- $detail := $entry.analysis.detail -}}
+  {{- $notes := "" -}}
+  {{- with $entry.versions -}}
+    {{- $notes = printf "Affected Apache Polaris versions: %s." . -}}
+  {{- end -}}
+  {{- $products := slice -}}
+  {{- range $entry.components -}}
+    {{- $products = $products | append (dict "@id" .) -}}
+  {{- end -}}
+  {{- $statement := dict
+    "products" $products
+    "status" $status
+    "timestamp" ($entry.date.UTC.Format $timestampFormat)
+  -}}
+  {{- if eq $status "not_affected" -}}
+    {{- with index $justifications ($entry.analysis.justification | default "") -}}
+      {{- $statement = merge $statement (dict "justification" .) -}}
+    {{- end -}}
+    {{- /* OpenVEX requires a justification or an impact statement for not_affected. */ -}}
+    {{- $statement = merge $statement (dict "impact_statement" ($detail | default "Apache Polaris is not affected.")) -}}
+  {{- else if eq $status "affected" -}}
+    {{- /* OpenVEX requires an action statement for affected. */ -}}
+    {{- $statement = merge $statement (dict "action_statement" ($detail | default "Update to a fixed release of Apache Polaris.")) -}}
+  {{- else -}}
+    {{- $notes = delimit (slice $notes $detail) " " | strings.TrimSpace -}}
+  {{- end -}}
+  {{- with $notes -}}
+    {{- $statement = merge $statement (dict "status_notes" .) -}}
+  {{- end -}}
+  {{- /* One statement per ID: scanners match on vulnerability.name, not on aliases. */ -}}
+  {{- range $entry.ids -}}
+    {{- $statements = $statements | append (merge $statement (dict "vulnerability" (dict "name" .))) -}}
+  {{- end -}}
+{{- end -}}
+{{- $timestamp := "" -}}
+{{- with index $pages 0 -}}
+  {{- $timestamp = .Date.UTC.Format $timestampFormat -}}
+{{- end -}}
+{{- dict
+  "@context" "https://openvex.dev/ns/v0.2.0"
+  "@id" (.OutputFormats.Get "openvex").Permalink
+  "author" "Apache Polaris Project (security@apache.org)"
+  "timestamp" $timestamp
+  "version" 1
+  "statements" $statements
+  | jsonify (dict "indent" "  " "noHTMLEscape" true)
+-}}
