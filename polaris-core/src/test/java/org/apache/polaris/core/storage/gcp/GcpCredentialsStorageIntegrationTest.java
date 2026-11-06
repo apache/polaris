@@ -332,7 +332,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 + "/')");
     assertThat(expressionAt(parsedRules, 1))
         .isEqualTo(
-            "resource.name.startsWith('projects/_/buckets/bucket1/objects/a\\'b\\\"c\\\\d/')");
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/a\\'b\\\"c\\\\d/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/a\\'b\\\"c\\\\d/')");
   }
 
   @ParameterizedTest
@@ -559,7 +560,131 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 + " || api.getAttribute('storage.googleapis.com/objectListPrefix', '')"
                 + ".startsWith('data/')");
     assertThat(expressionAt(parsedRules, 1))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/data/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/data/')");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryWriteRuleCoversHnsFolders() {
+    // HNS buckets check storage.folders.* against folders/<path>, not objects/<path>.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of("gs://bucket1/data"), Set.of(), Set.of("gs://bucket1/data"));
+
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(expressionAt(parsedRules, 0))
+        .doesNotContain("/folders/")
         .isEqualTo("resource.name.startsWith('projects/_/buckets/bucket1/objects/data/')");
+    assertThat(expressionAt(parsedRules, 1))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/data/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/data/')");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryWriteRuleCoversHnsParentFoldersExactly() {
+    // HNS creates missing parent folders on first write; parents are matched exactly, never by
+    // prefix, so sibling locations under the same parent stay out of scope.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of("gs://bucket1/cdr/dwh/probe"), Set.of(), Set.of("gs://bucket1/cdr/dwh/probe"));
+
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(expressionAt(parsedRules, 0)).doesNotContain("/folders/");
+    assertThat(expressionAt(parsedRules, 1))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/cdr/dwh/probe/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/cdr/dwh/probe/')"
+                + " || resource.name == 'projects/_/buckets/bucket1/folders/cdr/'"
+                + " || resource.name == 'projects/_/buckets/bucket1/folders/cdr/dwh/'");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryWriteRuleListsSharedParentFolderOnce() {
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of(), Set.of(), Set.of("gs://bucket1/cdr/t1", "gs://bucket1/cdr/t2"));
+
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(parsedRules.path("accessBoundaryRules")).hasSize(1);
+    String expression = expressionAt(parsedRules, 0);
+    assertThat(expression.split(" \\|\\| "))
+        .containsExactlyInAnyOrder(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/cdr/t1/')",
+            "resource.name.startsWith('projects/_/buckets/bucket1/folders/cdr/t1/')",
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/cdr/t2/')",
+            "resource.name.startsWith('projects/_/buckets/bucket1/folders/cdr/t2/')",
+            "resource.name == 'projects/_/buckets/bucket1/folders/cdr/'");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryWriteRuleAtBucketRootHasNoParentFolders() {
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of(), Set.of(), Set.of("gs://bucket1"));
+
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(expressionAt(parsedRules, 0)).doesNotContain("resource.name ==");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryEscapesCelLiteralCharactersInFolderExpressions() {
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of(), Set.of(), Set.of("gs://bucket1/a'b/c\"d"));
+
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(expressionAt(parsedRules, 0))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/a\\'b/c\\\"d/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/a\\'b/c\\\"d/')"
+                + " || resource.name == 'projects/_/buckets/bucket1/folders/a\\'b/'");
+  }
+
+  @Test
+  public void testParentFoldersPreservesEveryFolderBoundary() {
+    assertThat(GcpCredentialsStorageIntegration.parentFolders("table/")).isEmpty();
+    assertThat(GcpCredentialsStorageIntegration.parentFolders("a/b/c/"))
+        .containsExactly("a/", "a/b/");
+    assertThat(GcpCredentialsStorageIntegration.parentFolders("a//b/"))
+        .containsExactly("a/", "a//");
+    assertThat(GcpCredentialsStorageIntegration.parentFolders("")).isEmpty();
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryWriteRuleForCustomNamespaceLocations() {
+    // With ALLOW_NAMESPACE_CUSTOM_LOCATION a namespace (and its tables) can live at an arbitrary
+    // path, possibly in another bucket than the catalog base (e.g. a table under
+    // gs://bucket2/custom/ns/ whose catalog base is gs://bucket1/warehouse/). The write rule is
+    // derived only from the table's own write locations, so parents are exact on whichever
+    // bucket they resolve to and sibling tables in the same custom namespace stay out of scope.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of(),
+            Set.of(),
+            Set.of("gs://bucket2/custom/ns/t1", "gs://bucket1/warehouse/data/t1"));
+
+    JsonNode rules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(rules.path("accessBoundaryRules")).hasSize(2);
+    String writeRules = expressionAt(rules, 0) + " || " + expressionAt(rules, 1);
+    assertThat(writeRules.split(" \\|\\| "))
+        .containsExactlyInAnyOrder(
+            "resource.name.startsWith('projects/_/buckets/bucket2/objects/custom/ns/t1/')",
+            "resource.name.startsWith('projects/_/buckets/bucket2/folders/custom/ns/t1/')",
+            "resource.name == 'projects/_/buckets/bucket2/folders/custom/'",
+            "resource.name == 'projects/_/buckets/bucket2/folders/custom/ns/'",
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/warehouse/data/t1/')",
+            "resource.name.startsWith('projects/_/buckets/bucket1/folders/warehouse/data/t1/')",
+            "resource.name == 'projects/_/buckets/bucket1/folders/warehouse/'",
+            "resource.name == 'projects/_/buckets/bucket1/folders/warehouse/data/'");
   }
 
   private static String expressionAt(JsonNode parsedRules, int ruleIndex) {

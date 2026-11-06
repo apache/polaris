@@ -486,9 +486,16 @@ public class GcpCredentialsStorageIntegration
           StorageUri uri = StorageUri.parse(location);
           String bucket = uri.authority();
           String path = ensureTrailingSlash(trimLeadingSlash(uri.rawPath()));
-          writeConditionsByBucket
-              .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
-              .add(resourceNameStartsWithExpression(bucket, path));
+          LinkedHashSet<String> conditions =
+              writeConditionsByBucket.computeIfAbsent(bucket, key -> new LinkedHashSet<>());
+          conditions.add(resourceNameStartsWithExpression(bucket, path));
+          // HNS buckets authorize storage.folders.* (from legacyBucketWriter) on folders/<path>.
+          conditions.add(folderNameStartsWithExpression(bucket, path));
+          // HNS creates missing parent folders on first write. Match each parent exactly, never by
+          // prefix, so sibling locations under the same parent stay out of scope (e.g. allowing
+          // folder "db/" must not allow "db/other_table/").
+          parentFolders(path)
+              .forEach(parent -> conditions.add(folderNameEqualsExpression(bucket, parent)));
         });
 
     CredentialAccessBoundary.Builder accessBoundaryBuilder = CredentialAccessBoundary.newBuilder();
@@ -528,10 +535,41 @@ public class GcpCredentialsStorageIntegration
     return accessBoundaryBuilder.build();
   }
 
+  /**
+   * Returns the parent folders of {@code path}, shallowest first, excluding {@code path} itself.
+   * Every {@code /} is a folder boundary on HNS buckets, so consecutive slashes are preserved:
+   * {@code "a/b/c/"} gives {@code ["a/", "a/b/"]} and {@code "a//b/"} gives {@code ["a/", "a//"]}.
+   */
+  @VisibleForTesting
+  static List<String> parentFolders(String path) {
+    List<String> parents = new ArrayList<>();
+    int slash = path.indexOf('/');
+    // Stop before the last character: a trailing slash ends the location itself, not a parent.
+    while (slash >= 0 && slash < path.length() - 1) {
+      parents.add(path.substring(0, slash + 1));
+      slash = path.indexOf('/', slash + 1);
+    }
+    return parents;
+  }
+
   @VisibleForTesting
   static String resourceNameStartsWithExpression(String bucket, String path) {
     return String.format(
         "resource.name.startsWith('projects/_/buckets/%s/objects/%s')",
+        escapeCelLiteral(bucket), escapeCelLiteral(path));
+  }
+
+  @VisibleForTesting
+  static String folderNameStartsWithExpression(String bucket, String path) {
+    return String.format(
+        "resource.name.startsWith('projects/_/buckets/%s/folders/%s')",
+        escapeCelLiteral(bucket), escapeCelLiteral(path));
+  }
+
+  @VisibleForTesting
+  static String folderNameEqualsExpression(String bucket, String path) {
+    return String.format(
+        "resource.name == 'projects/_/buckets/%s/folders/%s'",
         escapeCelLiteral(bucket), escapeCelLiteral(path));
   }
 
