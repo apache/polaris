@@ -34,8 +34,8 @@ apply<PublishingHelperPlugin>()
 if (providers.systemProperty("idea.sync.active").getOrElse("false").toBoolean()) {
   idea {
     module {
-      isDownloadJavadoc = false // was 'true', but didn't work
-      isDownloadSources = false // was 'true', but didn't work
+      isDownloadJavadoc = true
+      isDownloadSources = true
       inheritOutputDirs = true
 
       excludeDirs =
