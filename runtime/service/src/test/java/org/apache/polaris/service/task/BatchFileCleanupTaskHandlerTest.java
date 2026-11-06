@@ -33,6 +33,7 @@ import jakarta.inject.Inject;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -409,6 +410,38 @@ public class BatchFileCleanupTaskHandlerTest {
     for (String file : files) {
       assertThat(TaskUtils.exists(file, fileIO)).isFalse();
     }
+  }
+
+  @Test
+  public void testBulkRetryAfterPartialDeletion() {
+    String firstFile = TASK_LOCATION + "first.metadata.json";
+    String retryFile = TASK_LOCATION + "retry.metadata.json";
+    List<String> files = List.of(firstFile, retryFile);
+    Set<String> remainingFiles = new HashSet<>(files);
+    SupportsBulkOperations fileIO = Mockito.mock(SupportsBulkOperations.class);
+    Mockito.doAnswer(
+            invocation -> {
+              remainingFiles.remove(firstFile);
+              throw new BulkDeletionFailureException(1);
+            })
+        .doAnswer(
+            invocation -> {
+              assertThat(remainingFiles).containsExactly(retryFile);
+              files.forEach(remainingFiles::remove);
+              return null;
+            })
+        .when(fileIO)
+        .deleteFiles(files);
+
+    BatchFileCleanupTaskHandler handler = newBatchFileCleanupTaskHandler(fileIO);
+    handler
+        .tryDelete(
+            TableIdentifier.of("db", "table"), fileIO, files, "table_metadata", true, null, 1)
+        .join();
+
+    Mockito.verify(fileIO, Mockito.times(2)).deleteFiles(files);
+    Mockito.verify(fileIO, Mockito.never()).deleteFile(Mockito.anyString());
+    assertThat(remainingFiles).isEmpty();
   }
 
   @Test
