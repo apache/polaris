@@ -198,6 +198,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Creating an external catalog whose `connectionConfigInfo` has no `authenticationParameters`, or
   uses a connection or authentication type outside the realm's allow-list, now fails with
   `400 Bad Request` instead of `500 Internal Server Error`.
+- `uri` is now optional for `HADOOP` connection configurations and is no longer validated as a
+  `java.net.URL`. The Hadoop catalog is initialized from `warehouse` and never uses `uri`, but
+  values such as `hdfs://namenode:8020/warehouse` or `s3://bucket/warehouse` were rejected with
+  `400 Invalid remote URI`, and omitting the field failed with `500 Internal Server Error`. For the
+  other connection types a missing `uri` now returns `400 Bad Request` with the message
+  `uri is required for <TYPE> connections`.
 - Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
   the packaged chart, so `helm test` ran no tests.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from

@@ -110,7 +110,6 @@ curl -X POST https://<polaris-host>/management/v1/catalogs \
         "properties": { "default-base-location": "file:///data/warehouse/analytics/" },
         "connectionConfigInfo": {
           "connectionType": "HADOOP",
-          "uri": "file:///data/warehouse/analytics/",
           "warehouse": "file:///data/warehouse/analytics/",
           "authenticationParameters": { "authenticationType": "IMPLICIT" }
         }
@@ -134,11 +133,10 @@ polaris catalogs create analytics_hadoop \
 `default-base-location` is required for every Polaris catalog; the `HadoopCatalog` itself places
 tables and their metadata under `warehouse`, so keep the two values aligned.
 
-`uri` is ignored for `HADOOP` connections: the Hadoop catalog has no service endpoint, and Polaris
-never passes the value on. The connection configuration API still requires the field and validates
-it as a `java.net.URL`, so it must use a scheme the JVM knows (`file`, `http`, `https`); `hdfs://`
-and `s3://` values are rejected with `Invalid remote URI`. Reuse the `file://` warehouse location,
-or any `http(s)` address, as a placeholder.
+`uri` is optional for `HADOOP` connections and ignored when present: the Hadoop catalog has no
+service endpoint and is reached through `warehouse`. Any URI is accepted, including `hdfs://` or
+`s3://` locations, so the field can be omitted or used as a label for the warehouse. The CLI still
+asks for `--catalog-uri` on `HADOOP` connections; any value works there.
 
 For an S3 warehouse, use `"storageType": "S3"` with `roleArn` and `region`, point `warehouse` at
 the bucket prefix, and select `S3FileIO` through the catalog-level `properties` so that the server
