@@ -191,6 +191,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Batch file cleanup now retries storage deletion failures reported by `FileIO`. Tasks that
+  exhaust their retries remain persisted for replay, so persistent storage errors such as denied
+  deletes can cause failed tasks to accumulate. Iceberg 1.12.0's Azure `ADLSFileIO` still logs
+  and suppresses deletion exceptions ([#5482](https://github.com/apache/polaris/issues/5482)),
+  and its `GCSFileIO` bulk deletion ignores per-object failure results.
 - The Iceberg REST `/config` response now advertises the
   `GET /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials` endpoint, which Polaris
   already served. Clients that check advertised endpoints before refreshing vended credentials can
