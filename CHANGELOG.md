@@ -191,6 +191,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- `renameTable` and `renameView` now retry a concurrent modification of the source entity
+  server-side before returning HTTP 503. Retries use Iceberg's `Tasks` API with exponential
+  backoff and reload the entity between attempts. The number of retries is
+  `RENAME_RETRY_MAX_ATTEMPTS` (default 3); `0` disables them. The HTTP 503 response and
+  `Retry-After` header are unchanged when retries are exhausted. If the reloaded entity is no
+  longer at the source name and parent, the rename fails instead of moving it again.
 - The Iceberg REST `/config` response now advertises the
   `GET /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials` endpoint, which Polaris
   already served. Clients that check advertised endpoints before refreshing vended credentials can

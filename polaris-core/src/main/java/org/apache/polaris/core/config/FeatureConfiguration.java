@@ -493,6 +493,20 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(2)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Integer> RENAME_RETRY_MAX_ATTEMPTS =
+      PolarisConfiguration.<Integer>builder()
+          .key("RENAME_RETRY_MAX_ATTEMPTS")
+          .description(
+              "How many times to retry a renameTable / renameView when the entity is concurrently"
+                  + " modified before surfacing the error to the client. Retries use Iceberg's"
+                  + " Tasks API with exponential backoff and reload the entity between attempts."
+                  + " A retry is skipped when the reloaded entity is no longer at the source name"
+                  + " and parent. The first attempt is not counted as a retry, so a value of 0"
+                  + " disables retries entirely. After all retries are exhausted, the server"
+                  + " returns a retriable PolarisServiceUnavailableException (HTTP 503).")
+          .defaultValue(3)
+          .buildFeatureConfiguration();
+
   public static final PolarisConfiguration<Boolean> LIST_PAGINATION_ENABLED =
       PolarisConfiguration.<Boolean>builder()
           .key("LIST_PAGINATION_ENABLED")
