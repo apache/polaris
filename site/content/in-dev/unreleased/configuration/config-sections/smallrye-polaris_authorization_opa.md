@@ -30,6 +30,7 @@ Beta Feature: OPA authorization is currently in Beta and is not a stable  releas
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
 | `polaris.authorization.opa.policy-uri` |  | `uri` |  |
+| `polaris.authorization.opa.context-properties.`_`<name>`_ |  | `string` | Operator-defined static properties emitted verbatim in the OPA input under `context.properties` . Intended for values that identify the deployment, such as an environment  or tier name. These values are visible to OPA and appear in its decision logs; do not use them  for credentials.  |
 | `polaris.authorization.opa.auth.type` | `none` | `enum (NONE, BEARER)` | Type of authentication  |
 | `polaris.authorization.opa.auth.bearer.static-token.value` |  | `string` | Static bearer token value  |
 | `polaris.authorization.opa.auth.bearer.file-based.path` |  | `path` | Path to file containing bearer token  |

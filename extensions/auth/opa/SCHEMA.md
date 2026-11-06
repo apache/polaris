@@ -120,6 +120,6 @@ The generated `opa-input-schema.json` documents the structure of authorization r
 | `Actor` | Principal information | `principal`, `roles` |
 | `Resource` | Resources being accessed | `targets`, `secondaries` |
 | `ResourceEntity` | Individual resource | `type`, `name`, `parents` |
-| `Context` | Request metadata | `request_id` |
+| `Context` | Request metadata | `request_id`, `realm`, `properties` |
 
 See the [model package README](src/main/java/org/apache/polaris/extension/auth/opa/model/README.md) for detailed usage examples.
