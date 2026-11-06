@@ -53,6 +53,7 @@ dependencies {
   runtimeOnly(project(":polaris-extensions-openlineage"))
   runtimeOnly(project(":polaris-extensions-metrics-reports"))
   runtimeOnly(project(":polaris-extensions-metrics-reports-jdbc"))
+  runtimeOnly(project(":polaris-extensions-storage-cloudflare-r2"))
 
   val nonRestCatalogs = providers.gradleProperty("NonRESTCatalogs").orNull
   if (nonRestCatalogs?.contains("HIVE") == true) {
