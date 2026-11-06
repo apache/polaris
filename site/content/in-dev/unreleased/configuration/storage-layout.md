@@ -120,6 +120,10 @@ allowed locations, instead of only inside their namespace's location or, for wri
 table's own location. Generated locations still follow the default layout unless the object storage
 prefix described below is enabled.
 
+For what changes when you switch a catalog between structured and unstructured locations, and how
+to handle existing tables and views, see
+[Structured and Unstructured Table Locations]({{% ref "structured-and-unstructured-table-locations.md" %}}).
+
 Related settings:
 
 - `ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION`, which is `true` by default, controls whether clients may
@@ -309,5 +313,6 @@ created or updated by a notification.
 
 ## See also
 
+- [Structured and Unstructured Table Locations]({{% ref "structured-and-unstructured-table-locations.md" %}})
 - [Configuring Polaris for Production]({{% ref "configuring-polaris-for-production" %}})
 - [Configuration reference]({{% ref "configuration-reference.md" %}})

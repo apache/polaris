@@ -48,6 +48,17 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   does not provide is refused at create and update, and whenever a credential is vended for it,
   with "S3 credential vending mechanism `<id>` is not available in this server".
 
+- Changing the effective value of `ALLOW_UNSTRUCTURED_TABLE_LOCATION` (or of the catalog property
+  `polaris.config.allow.unstructured.table.location`) from `true` to `false` does not validate or
+  move existing tables and views. For example, a table renamed into another namespace while
+  unstructured locations were enabled keeps its files under the old namespace, and once they are
+  disabled, commits and credential vending for it return HTTP 403. Catalogs that used
+  `DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED` have the same problem for every table created
+  under the prefixed layout. If the prefix flag stays on, new creates without a location fail with
+  `IllegalStateException`. Operators should check existing locations before or after disabling
+  unstructured locations, and turn off the prefix flag together with unstructured locations when
+  applicable; see "Structured and Unstructured Table Locations" in the configuration documentation.
+
 ### Upgrade notes
 
 - `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists the explicit mechanisms a realm accepts; an empty
@@ -121,16 +132,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false` (default), operations involving locations outside the
   namespace now return HTTP 403. Catalogs that enable unstructured locations remain subject to
   catalog allowlists and configured overlap checks.
-- Changing the effective value of `ALLOW_UNSTRUCTURED_TABLE_LOCATION` (or of the catalog property
-  `polaris.config.allow.unstructured.table.location`) from `true` to `false` does not validate or
-  move existing tables and views. For example, a table renamed into another namespace while
-  unstructured locations were enabled keeps its files under the old namespace, and once they are
-  disabled, commits and credential vending for it return HTTP 403. Catalogs that used
-  `DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED` have the same problem for every table created
-  under the prefixed layout. If the prefix flag stays on, new creates without a location fail with
-  `IllegalStateException`. Operators should check existing locations before or after disabling
-  unstructured locations, and turn off the prefix flag together with unstructured locations when
-  applicable; see "Structured and Unstructured Table Locations" in the configuration documentation.
 - With `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false`, creating or registering a table whose
   `write.data.path` or `write.metadata.path` lies outside the table's own location now fails with
   403 Forbidden. Such tables could be created before, but loading them or vending credentials for

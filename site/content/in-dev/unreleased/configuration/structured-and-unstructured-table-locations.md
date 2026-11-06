@@ -195,5 +195,6 @@ If operations start failing with HTTP 403 after the change, setting the catalog 
 
 ## Related pages
 
+- [Storage Layout]({{% ref "storage-layout.md" %}})
 - [Configuring Polaris for Production]({{% ref "configuring-polaris-for-production" %}})
 - [Configuration Reference]({{% ref "configuration-reference.md" %}})
