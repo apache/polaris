@@ -124,6 +124,7 @@ import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -1474,6 +1475,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
+   * A multi-table transaction stages its writes in a {@link TransactionWorkspaceMetaStoreManager},
+   * which refuses the listing this validation needs, so a commit that reaches this check inside a
+   * transaction is rejected as a bad request instead. If the overlap check is ever made atomic, the
+   * transaction may run it like any other commit.
+   *
    * @param searchRoot if not null, only the entities located at or below this location are
    *     considered by the optimized sibling check
    */
@@ -1490,6 +1496,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
     } else if (validateViewOverlap
         || entity.getSubType().equals(PolarisEntitySubType.ICEBERG_TABLE)) {
+      if (getMetaStoreManager() instanceof TransactionWorkspaceMetaStoreManager) {
+        throw new BadRequestException(
+            "Unsupported operation: commitTransaction that changes the locations of table '%s'",
+            identifier);
+      }
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
       for (String location : locations) {
         validateNoLocationOverlap(

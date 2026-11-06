@@ -345,6 +345,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   errors: lookups by name no longer hold entities outside the cache's weight and expiry limits.
 - Setting a namespace's `location` property no longer fails with an internal error when its parent
   is itself a nested namespace that has no stored location.
+- `commitTransaction` now returns `400 Bad Request` instead of an internal error when it cannot
+  validate a table's locations: an update changing `write.data.path` or `write.metadata.path`, or
+  any commit on a table written before 1.3.0. It is allowed when `ALLOW_TABLE_LOCATION_OVERLAP` is
+  enabled; `ALLOW_NAMESPACE_LOCATION_OVERLAP` no longer applies and still governs namespaces.
 - The Ranger authorizer no longer fails with `NoClassDefFoundError: javax/ws/rs/core/Cookie` when
   using `RangerAdminRESTClient` as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
