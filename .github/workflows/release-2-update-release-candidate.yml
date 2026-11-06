@@ -229,7 +229,7 @@ jobs:
         run: |
           source "${LIBS_DIR}/_constants.sh"
 
-          # In dry-run mode nothing was merged
+          # In dry-run mode nothing was merged. Like in exec_process, DRY_RUN defaults to 1.
           if [[ ${DRY_RUN:-1} -ne 1 ]] && [[ -n "$(find "$CHANGELOG_FRAGMENTS_DIR" -mindepth 1 -maxdepth 1 -type f ! -name README.md ! -name '.*')" ]]; then
             echo "❌ Unmerged changelog fragments remain in \`changelog.d\`, they would be missing from the release notes." >> $GITHUB_STEP_SUMMARY
             exit 1
