@@ -1914,4 +1914,43 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Optional.empty(),
             CredentialVendingContext.empty());
   }
+
+  @Test
+  public void testNoInlinePolicyOmitsAssumeRolePolicy() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+
+    // When the flag is enabled, AssumeRoleRequest must carry no inline policy at all: the
+    // S3-compatible STS implementation rejects the request with 501 when a policy is present.
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              assertThat(request.policy()).isNull();
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .noInlinePolicy(true)
+            .build();
+
+    assertThat(
+            new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
+                .getStorageAccessConfig(
+                    toGrants(
+                        Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+                        Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+                        Set.of()),
+                    Optional.empty(),
+                    CredentialVendingContext.empty()))
+        .isNotNull();
+    Mockito.verify(stsClient).assumeRole(Mockito.isA(AssumeRoleRequest.class));
+  }
 }

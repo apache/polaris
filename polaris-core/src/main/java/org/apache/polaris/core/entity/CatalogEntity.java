@@ -199,6 +199,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         .setStsUnavailable(awsConfig.getStsUnavailable())
         .setEndpointInternal(awsConfig.getEndpointInternal())
         .setKmsUnavailable(awsConfig.getKmsUnavailable())
+        .setNoInlinePolicy(awsConfig.getNoInlinePolicy())
         .setCredentialVendingMechanism(awsConfig.getCredentialVendingMechanism())
         .build();
   }
@@ -434,6 +435,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
           .stsUnavailable(awsConfigModel.getStsUnavailable())
           .endpointInternal(awsConfigModel.getEndpointInternal())
           .kmsUnavailable(awsConfigModel.getKmsUnavailable())
+          .noInlinePolicy(awsConfigModel.getNoInlinePolicy())
           .build();
     }
 
