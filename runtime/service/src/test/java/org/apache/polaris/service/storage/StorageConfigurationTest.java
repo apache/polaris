@@ -71,6 +71,10 @@ public class StorageConfigurationTest {
   private static final Duration TEST_TOKEN_LIFESPAN = Duration.ofMinutes(20);
 
   private StorageConfiguration configWithAwsCredentialsAndGcpToken() {
+    return configWithAwsCredentialsAndGcpToken(Optional.empty());
+  }
+
+  private StorageConfiguration configWithAwsCredentialsAndGcpToken(Optional<Instant> gcpExpiry) {
     return new StorageConfiguration() {
       @Override
       public AwsStorageConfig aws() {
@@ -100,6 +104,11 @@ public class StorageConfigurationTest {
       @Override
       public Optional<Duration> gcpAccessTokenLifespan() {
         return Optional.of(TEST_TOKEN_LIFESPAN);
+      }
+
+      @Override
+      public Optional<Instant> gcpAccessTokenExpiry() {
+        return gcpExpiry;
       }
 
       @Override
@@ -173,6 +182,11 @@ public class StorageConfigurationTest {
 
       @Override
       public Optional<Duration> gcpAccessTokenLifespan() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Instant> gcpAccessTokenExpiry() {
         return Optional.empty();
       }
 
@@ -259,6 +273,11 @@ public class StorageConfigurationTest {
 
       @Override
       public Optional<Duration> gcpAccessTokenLifespan() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Instant> gcpAccessTokenExpiry() {
         return Optional.empty();
       }
 
@@ -380,6 +399,27 @@ public class StorageConfigurationTest {
     AccessToken refreshed = credentials.getAccessToken();
     assertThat(refreshed.getTokenValue()).isEqualTo(TEST_GCP_TOKEN);
     assertThat(refreshed.getExpirationTime().toInstant()).isEqualTo(firstExpiry);
+  }
+
+  @Test
+  public void testGcpStaticTokenExpiryOverridesLifespan() throws IOException {
+    Instant start = Instant.parse("2026-01-01T00:00:00Z");
+    Instant configuredExpiry = Instant.parse("2027-06-15T12:00:00Z");
+    Clock clock = mock(Clock.class);
+    when(clock.instant()).thenReturn(start);
+
+    Supplier<GoogleCredentials> supplier =
+        configWithAwsCredentialsAndGcpToken(Optional.of(configuredExpiry))
+            .gcpCredentialsSupplier(clock);
+    GoogleCredentials credentials = supplier.get();
+
+    // gcp.expiry is used verbatim as the token expiry, ignoring gcp.lifespan, and stays fixed
+    // across refresh.
+    assertThat(credentials.getAccessToken().getExpirationTime().toInstant())
+        .isEqualTo(configuredExpiry);
+    credentials.refresh();
+    assertThat(credentials.getAccessToken().getExpirationTime().toInstant())
+        .isEqualTo(configuredExpiry);
   }
 
   @Test

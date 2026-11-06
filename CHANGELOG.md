@@ -136,7 +136,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Credential vending with a statically configured GCP access token (`polaris.storage.gcp.token`)
   failed immediately with an `IllegalStateException`, because the token was wrapped in a credential
   that cannot refresh and vending calls refresh before downscoping. The configured token is now
-  wrapped in a credential that supports refresh, returning the token with a fixed expiry.
+  wrapped in a credential that supports refresh, returning the token with a fixed expiry. The expiry
+  can be set explicitly via `polaris.storage.gcp.expiry` (an ISO-8601 instant); when unset it is
+  computed from `polaris.storage.gcp.lifespan` as before.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - Maintenance policy content now rejects non-boolean values for the `enable` field again. The

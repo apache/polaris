@@ -104,12 +104,23 @@ public interface StorageConfiguration extends S3AccessConfig {
   /**
    * How far in the future the configured GCP access token's expiry is stamped. The expiry is
    * computed once, when the credential is created, and is returned unchanged on every refresh. If
-   * not present, the {@linkplain #DEFAULT_TOKEN_LIFESPAN default token lifespan} is used. This does
-   * not extend the token's real validity on the provider side; it only controls the expiry Polaris
-   * reports for the configured token.
+   * not present, the {@linkplain #DEFAULT_TOKEN_LIFESPAN default token lifespan} is used. Ignored
+   * when {@link #gcpAccessTokenExpiry()} is set. This does not extend the token's real validity on
+   * the provider side; it only controls the expiry Polaris reports for the configured token.
    */
   @WithName("gcp.lifespan")
   Optional<Duration> gcpAccessTokenLifespan();
+
+  /**
+   * A fixed expiry for the configured GCP access token, as an ISO-8601 instant (for example {@code
+   * 2027-01-01T00:00:00Z}). When present, this exact instant is reported as the token's expiry and
+   * is returned unchanged on every refresh, and {@link #gcpAccessTokenLifespan()} is ignored. When
+   * absent, the expiry is computed from the lifespan. Like the lifespan, this does not extend the
+   * token's real validity on the provider side; it only controls the expiry Polaris reports for the
+   * configured token.
+   */
+  @WithName("gcp.expiry")
+  Optional<Instant> gcpAccessTokenExpiry();
 
   default Supplier<StsClient> stsClientSupplier() {
     return stsClientSupplier(true);
@@ -164,10 +175,16 @@ public interface StorageConfiguration extends S3AccessConfig {
             // GoogleCredentials.create(..) returns a credential that cannot refresh. Vending calls
             // refresh() on the source credential before downscoping, so with that credential the
             // first vend fails with an IllegalStateException regardless of expiry (#2253). Wrap the
-            // token in a credential that supports refresh by returning it with a fixed expiry,
-            // computed once here from the configured lifespan.
+            // token in a credential that supports refresh by returning it with a fixed expiry: the
+            // configured gcp.expiry if set, otherwise computed once here from the configured
+            // lifespan.
             Instant expiry =
-                clock.instant().plus(gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN));
+                gcpAccessTokenExpiry()
+                    .orElseGet(
+                        () ->
+                            clock
+                                .instant()
+                                .plus(gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN)));
             return new FixedGcpAccessTokenCredentials(gcpAccessToken().orElseThrow(), expiry);
           }
         });
