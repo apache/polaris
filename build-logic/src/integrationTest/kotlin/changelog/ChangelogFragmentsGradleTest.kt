@@ -136,7 +136,13 @@ class ChangelogFragmentsGradleTest {
   private fun runner(buildCache: Boolean, vararg args: String) =
     GradleRunner.create()
       .withProjectDir(project)
-      .withArguments(if (buildCache) "--build-cache" else "--no-build-cache", *args)
+      // The tests change files between builds. Under load, the file system watcher of the daemon
+      // can lag behind and miss the change, so the task wrongly is up to date.
+      .withArguments(
+        if (buildCache) "--build-cache" else "--no-build-cache",
+        "--no-watch-fs",
+        *args,
+      )
 
   private fun run(vararg args: String): BuildResult = runner(false, *args).build()
 
