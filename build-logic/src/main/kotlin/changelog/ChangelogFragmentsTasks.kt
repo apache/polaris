@@ -54,13 +54,16 @@ abstract class CheckChangelogFragmentsTask : DefaultTask() {
   @TaskAction
   fun check() {
     val directory = fragmentsDirectory.get().asFile
-    val fragments = ChangelogFragments.collect(directory).values.flatten()
+    val fragments = ChangelogFragments.collect(directory)
     successMarker
       .get()
       .asFile
       .writeText(
         "Validated ${fragments.size} changelog fragment(s):\n" +
-          fragments.joinToString("") { "${it.relativeTo(directory).invariantSeparatorsPath}\n" },
+          fragments.joinToString("") {
+            "${it.file.relativeTo(directory).invariantSeparatorsPath}: " +
+              "${it.sections.keys.joinToString(", ")}\n"
+          },
       )
   }
 }

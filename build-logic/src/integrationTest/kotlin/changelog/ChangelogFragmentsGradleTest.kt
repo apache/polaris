@@ -127,10 +127,10 @@ class ChangelogFragmentsGradleTest {
     File(project, "changelog.d").mkdirs()
   }
 
-  private fun fragment(path: String, text: String) =
-    File(project, "changelog.d/$path").also {
-      it.parentFile.mkdirs()
-      it.writeText(text)
+  /** Creates a fragment with a single list item for each of the given sections. */
+  private fun fragment(name: String, vararg sections: Pair<String, String>) =
+    File(project, "changelog.d/$name").also {
+      it.writeText(sections.joinToString("\n") { (section, text) -> "### $section\n\n- $text\n" })
     }
 
   private fun runner(buildCache: Boolean, vararg args: String) =
@@ -155,14 +155,16 @@ class ChangelogFragmentsGradleTest {
 
   @Test
   fun mergeThenPatchChangelogProducesTheReleaseSection() {
-    fragment("fixes/99-new-fix.md", "New fix.\n")
-    fragment("new-features/99-feature.md", "New feature.\n")
+    fragment("new-fix.md", "Fixes" to "New fix.")
+    fragment("feature.md", "New Features" to "New feature.", "Upgrade notes" to "New note.")
 
     run("mergeChangelogFragments")
     run("patchChangelog")
 
     assertThat(section("## [1.1.0]"))
-      .contains("### New Features", "- New feature.", "### Fixes", "- Existing fix.", "- New fix.")
+      .contains("### New Features", "- New feature.")
+      .contains("### Fixes", "- Existing fix.", "- New fix.")
+      .contains("### Upgrade notes", "- New note.")
     assertThat(section("## [Unreleased]")).doesNotContain("New fix.", "Existing fix.")
     assertThat(section("## [1.0.0]")).contains("- Old fix.").doesNotContain("New fix.")
     assertThat(fragmentFiles()).isEmpty()
@@ -170,12 +172,11 @@ class ChangelogFragmentsGradleTest {
 
   @Test
   fun laterReleaseCandidateFragmentsGoIntoTheExistingReleaseSection() {
-    fragment("fixes/99-new-fix.md", "New fix.\n")
+    fragment("new-fix.md", "Fixes" to "New fix.")
     run("mergeChangelogFragments")
     run("patchChangelog")
 
-    fragment("fixes/99-rc1-fix.md", "RC1 fix.\n")
-    fragment("deprecations/99-rc1-deprecation.md", "RC1 deprecation.\n")
+    fragment("rc1.md", "Fixes" to "RC1 fix.", "Deprecations" to "RC1 deprecation.")
     run("mergeChangelogFragments", "--release-version=1.1.0")
 
     assertThat(section("## [1.1.0]"))
@@ -187,18 +188,18 @@ class ChangelogFragmentsGradleTest {
 
   @Test
   fun checkTaskIsUpToDateUntilFragmentsChangeAndFailsOnInvalidOnes() {
-    fragment("fixes/99-new-fix.md", "New fix.\n")
+    fragment("new-fix.md", "Fixes" to "New fix.")
 
     assertThat(run("checkChangelogFragments").task(":checkChangelogFragments")?.outcome)
       .isEqualTo(TaskOutcome.SUCCESS)
     assertThat(run("checkChangelogFragments").task(":checkChangelogFragments")?.outcome)
       .isEqualTo(TaskOutcome.UP_TO_DATE)
 
-    fragment("fixes/99-other-fix.md", "Other fix.\n")
+    fragment("other-fix.md", "Fixes" to "Other fix.")
     assertThat(run("checkChangelogFragments").task(":checkChangelogFragments")?.outcome)
       .isEqualTo(TaskOutcome.SUCCESS)
 
-    fragment("fixes/Bad_Name.md", "- Invalid.\n")
+    fragment("Bad_Name.md", "Fixes" to "Invalid.")
     val failure = runner(false, "checkChangelogFragments").buildAndFail()
     assertThat(failure.task(":checkChangelogFragments")?.outcome).isEqualTo(TaskOutcome.FAILED)
     assertThat(failure.output).contains("Invalid changelog fragments", "Bad_Name.md")
@@ -206,17 +207,19 @@ class ChangelogFragmentsGradleTest {
 
   @Test
   fun checkTaskResultIsRestoredFromTheBuildCache() {
-    fragment("fixes/99-new-fix.md", "New fix.\n")
-    fragment("highlights/10-highlight.md", "Highlight.\n")
+    fragment("new-fix.md", "Fixes" to "New fix.")
+    fragment("highlight.md", "Highlights" to "Highlight.", "Upgrade notes" to "Note.")
     val marker = File(project, "build/changelog-fragments-check/success")
 
     assertThat(
         runWithBuildCache("checkChangelogFragments").task(":checkChangelogFragments")?.outcome,
       )
       .isEqualTo(TaskOutcome.SUCCESS)
-    // The marker lists the fragments in changelog order, with paths relative to changelog.d
+    // The marker lists the fragments in order of their file names, with their sections
     val expectedMarker =
-      "Validated 2 changelog fragment(s):\nhighlights/10-highlight.md\nfixes/99-new-fix.md\n"
+      "Validated 2 changelog fragment(s):\n" +
+        "highlight.md: Highlights, Upgrade notes\n" +
+        "new-fix.md: Fixes\n"
     assertThat(marker.readText()).isEqualTo(expectedMarker)
 
     File(project, "build").deleteRecursively()
@@ -227,7 +230,7 @@ class ChangelogFragmentsGradleTest {
     assertThat(marker.readText()).isEqualTo(expectedMarker)
 
     // A different set of fragments is a different cache entry
-    fragment("fixes/99-other-fix.md", "Other fix.\n")
+    fragment("other-fix.md", "Fixes" to "Other fix.")
     assertThat(
         runWithBuildCache("checkChangelogFragments").task(":checkChangelogFragments")?.outcome,
       )
@@ -236,7 +239,7 @@ class ChangelogFragmentsGradleTest {
 
   @Test
   fun mergeTaskIsNeverCachedOrUpToDateAndRetryAddsNothing() {
-    fragment("fixes/99-new-fix.md", "New fix.\n")
+    fragment("new-fix.md", "Fixes" to "New fix.")
 
     assertThat(run("mergeChangelogFragments").task(":mergeChangelogFragments")?.outcome)
       .isEqualTo(TaskOutcome.SUCCESS)

@@ -28,36 +28,47 @@ changes, new features, upgrade caveats or notable fixes.
 
 ## Adding an entry
 
-Create a file named `changelog.d/<section>/NN-<short-title>.md`, where:
+Create a file named `changelog.d/<short-title>.md`, where `<short-title>` is a short, unique,
+lowercase title with words separated by dashes, for example `namespace-location-error.md`.
 
-* `<section>` is one of the sections of the changelog:
+The file looks like a miniature changelog. It has one section for each part of the changelog that
+the change needs an entry in. A section starts with a heading naming it, followed by one or more
+list items, written like in `CHANGELOG.md`:
 
-  | Directory          | Section in `CHANGELOG.md` |
-  |--------------------|---------------------------|
-  | `highlights`       | Highlights                |
-  | `upgrade-notes`    | Upgrade notes             |
-  | `breaking-changes` | Breaking changes          |
-  | `new-features`     | New Features              |
-  | `changes`          | Changes                   |
-  | `deprecations`     | Deprecations              |
-  | `fixes`            | Fixes                     |
+* Each item starts with `- `.
+* The other lines of an item, such as wrapped text, paragraphs, nested lists or code blocks, are
+  indented by two spaces.
 
-* `NN` is a two-digit priority: entries with smaller numbers are listed first in their section.
-  Use `99` unless the position of the entry matters.
-* `<short-title>` is a short, unique, lowercase title with words separated by dashes. It also
-  orders entries that have the same priority.
+The sections are the ones of the changelog: `Highlights`, `Upgrade notes`, `Breaking changes`,
+`New Features`, `Changes`, `Deprecations` and `Fixes`. Fragments have no license header.
 
-The file contains the text of a single list item, in plain Markdown, without the leading `- `
-list marker and without a license header. Long lines can be wrapped. For example,
-`changelog.d/fixes/99-namespace-location-internal-error.md`:
+A fix needs one section:
 
 ```markdown
-Setting a namespace's `location` property no longer fails with an internal error when its parent
-is itself a nested namespace that has no stored location.
+### Fixes
+
+- Setting a namespace's `location` property no longer fails with an internal error when its parent
+  is itself a nested namespace that has no stored location.
 ```
 
-A change that needs entries in several sections uses one file per section. Follow-up pull requests
-can edit or delete fragments added by earlier ones.
+A breaking change typically needs two:
+
+```markdown
+### Breaking changes
+
+- `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters.
+
+### Upgrade notes
+
+- Set `LIST_PAGINATION_ENABLED` to false to keep the previous behavior.
+```
+
+The items are added to the sections of `CHANGELOG.md` as written. Every line that does not start
+with a space is therefore either blank, a `- ` item, or a section heading, which is what the
+validation checks.
+
+Within a section, entries are listed in the order of the file names of their fragments. Follow-up
+pull requests can edit or delete fragments added by earlier ones.
 
 `./gradlew checkChangelogFragments` validates the fragments; it also runs as part of
 `./gradlew check`, and in CI for every pull request that changes this directory.

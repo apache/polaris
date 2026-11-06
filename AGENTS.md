@@ -195,7 +195,7 @@ Use the PR template (`.github/pull_request_template.md`). At minimum:
 5. Add a changelog entry only for changes worth calling out to users in release
    notes, such as breaking changes, metastore schema changes, or changes requiring manual
    steps during an upgrade. An entry is not required for every PR. Do not edit
-   `CHANGELOG.md` directly: add a fragment file under `changelog.d/<section>/` as described
+   `CHANGELOG.md` directly: add a fragment file under `changelog.d/` as described
    in [changelog.d/README.md](changelog.d/README.md).
 6. If your change affects user-facing behavior or configuration, check whether
    `site/content/in-dev/unreleased/` needs updates.
