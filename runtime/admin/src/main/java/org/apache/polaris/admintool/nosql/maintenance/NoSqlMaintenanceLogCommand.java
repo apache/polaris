@@ -33,6 +33,10 @@ public class NoSqlMaintenanceLogCommand extends BaseNoSqlMaintenanceCommand {
 
   @Override
   public Integer call() {
+    if (rejectLegacyRetentionProperties()) {
+      return EXIT_CODE_MAINTENANCE_ERROR;
+    }
+
     checkInMemory();
 
     var infos = maintenanceService.maintenanceRunLog();

@@ -41,6 +41,10 @@ public class NoSqlMaintenanceRunCommand extends BaseNoSqlMaintenanceCommand {
 
   @Override
   public Integer call() {
+    if (rejectLegacyRetentionProperties()) {
+      return EXIT_CODE_MAINTENANCE_ERROR;
+    }
+
     checkInMemory();
 
     printMaintenanceConfig();

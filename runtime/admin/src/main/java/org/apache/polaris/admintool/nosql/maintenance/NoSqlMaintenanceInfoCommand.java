@@ -28,6 +28,10 @@ public class NoSqlMaintenanceInfoCommand extends BaseNoSqlMaintenanceCommand {
 
   @Override
   public Integer call() {
+    if (rejectLegacyRetentionProperties()) {
+      return EXIT_CODE_MAINTENANCE_ERROR;
+    }
+
     printNoSqlInfo();
 
     printMaintenanceConfig();

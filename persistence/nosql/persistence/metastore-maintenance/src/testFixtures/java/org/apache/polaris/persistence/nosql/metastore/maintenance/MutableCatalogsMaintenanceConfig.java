@@ -18,8 +18,10 @@
  */
 package org.apache.polaris.persistence.nosql.metastore.maintenance;
 
+import java.time.Duration;
 import java.util.Optional;
 
+@SuppressWarnings({"deprecation", "removal"})
 public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConfig {
 
   private static CatalogsMaintenanceConfig current =
@@ -27,6 +29,51 @@ public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConf
 
   public static void setCurrent(CatalogsMaintenanceConfig config) {
     current = config;
+  }
+
+  @Override
+  public Duration minRetentionDuration() {
+    return current.minRetentionDuration();
+  }
+
+  @Override
+  public RetentionConfig principalsRetention() {
+    return current.principalsRetention();
+  }
+
+  @Override
+  public RetentionConfig principalRolesRetention() {
+    return current.principalRolesRetention();
+  }
+
+  @Override
+  public RetentionConfig grantsRetention() {
+    return current.grantsRetention();
+  }
+
+  @Override
+  public RetentionConfig immediateTasksRetention() {
+    return current.immediateTasksRetention();
+  }
+
+  @Override
+  public RetentionConfig catalogsHistoryRetention() {
+    return current.catalogsHistoryRetention();
+  }
+
+  @Override
+  public RetentionConfig catalogRolesRetention() {
+    return current.catalogRolesRetention();
+  }
+
+  @Override
+  public RetentionConfig catalogPoliciesRetention() {
+    return current.catalogPoliciesRetention();
+  }
+
+  @Override
+  public RetentionConfig catalogStateRetention() {
+    return current.catalogStateRetention();
   }
 
   @Override
@@ -60,12 +107,12 @@ public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConf
   }
 
   @Override
-  public Optional<String> catalogStateRetain() {
-    return current.catalogStateRetain();
+  public Optional<String> catalogPoliciesRetain() {
+    return current.catalogPoliciesRetain();
   }
 
   @Override
-  public Optional<String> catalogPoliciesRetain() {
-    return current.catalogPoliciesRetain();
+  public Optional<String> catalogStateRetain() {
+    return current.catalogStateRetain();
   }
 }
