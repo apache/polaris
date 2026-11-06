@@ -30,9 +30,12 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -45,8 +48,10 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
+import org.apache.polaris.service.catalog.common.LocationOverlapValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,18 +60,22 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
 
   private final CallContext callContext;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
-  private final long catalogId;
+  private final CatalogEntity catalog;
+  private final LocationOverlapValidator locationOverlapValidator;
   private final PolarisMetaStoreManager metaStoreManager;
 
   public PolarisGenericTableCatalog(
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
-      PolarisResolutionManifestCatalogView resolvedEntityView) {
+      PolarisResolutionManifestCatalogView resolvedEntityView,
+      ResolutionManifestFactory resolutionManifestFactory,
+      PolarisPrincipal principal) {
     this.callContext = callContext;
     this.resolvedEntityView = requireNonNull(resolvedEntityView, "No resolved entity view");
-    this.catalogId =
-        requireNonNull(resolvedEntityView.getResolvedCatalogEntity(), "No resolved catalog entity")
-            .getId();
+    this.catalog =
+        requireNonNull(resolvedEntityView.getResolvedCatalogEntity(), "No resolved catalog entity");
+    this.locationOverlapValidator =
+        new LocationOverlapValidator(callContext, resolutionManifestFactory, principal);
     this.metaStoreManager = metaStoreManager;
   }
 
@@ -101,13 +110,14 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
             ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ANY_SUBTYPE);
     PolarisEntity entity = resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity();
     if (null == entity) {
-      if (baseLocation != null && !baseLocation.isEmpty()) {
+      boolean hasLocation = baseLocation != null && !baseLocation.isEmpty();
+      if (hasLocation) {
         CatalogUtils.validateLocationsForTableLike(
             callContext.getRealmConfig(), tableIdentifier, Set.of(baseLocation), catalogPath);
       }
-      entity =
+      GenericTableEntity newEntity =
           new GenericTableEntity.Builder(tableIdentifier, format)
-              .setCatalogId(this.catalogId)
+              .setCatalogId(catalog.getId())
               .setParentNamespace(tableIdentifier.namespace())
               .setParentId(resolvedParent.getRawLeafEntity().getId())
               .setId(
@@ -119,6 +129,13 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
               .setBaseLocation(baseLocation)
               .setCreateTimestamp(System.currentTimeMillis())
               .build();
+      if (hasLocation
+          && !callContext
+              .getRealmConfig()
+              .getConfig(FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP, catalog)) {
+        locationOverlapValidator.validate(metaStoreManager, newEntity, catalogPath, null);
+      }
+      entity = newEntity;
     } else {
       throw alreadyExistsExceptionForTableLikeEntity(tableIdentifier, entity.getSubType());
     }

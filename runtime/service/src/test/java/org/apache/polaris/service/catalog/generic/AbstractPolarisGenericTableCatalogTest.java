@@ -242,7 +242,12 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
         .thenReturn(storageIntegration);
 
     this.genericTableCatalog =
-        new PolarisGenericTableCatalog(metaStoreManager, polarisContext, passthroughView);
+        new PolarisGenericTableCatalog(
+            metaStoreManager,
+            polarisContext,
+            passthroughView,
+            resolutionManifestFactory,
+            authenticatedRoot);
     this.genericTableCatalog.initialize(CATALOG_NAME, Map.of());
     this.icebergCatalog =
         new LocalIcebergCatalog(
@@ -545,7 +550,9 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             concurrentlyDeleted,
             polarisContext,
             new PolarisPassthroughResolutionView(
-                resolutionManifestFactory, authenticatedRoot, CATALOG_NAME));
+                resolutionManifestFactory, authenticatedRoot, CATALOG_NAME),
+            resolutionManifestFactory,
+            authenticatedRoot);
 
     Assertions.assertThatThrownBy(() -> catalog.dropGenericTable(TABLE))
         .isInstanceOf(NoSuchTableException.class)
