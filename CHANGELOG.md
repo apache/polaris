@@ -257,6 +257,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   depend on the previous combined-intent input shape may need to be updated. Same applies to other
   PolarisAuthorizer implementations.
 - Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
+- Custom Ranger authorizer integrations: the principal attributes copied onto `RangerUserInfo`
+  are now prefixed keys (for example `polaris.system.client_id`) instead of the bare internal
+  names (for example `client_id`). Apache Ranger 2.9.0's embedded plugin does not evaluate these
+  attributes, so built-in behavior is unchanged, but any custom code reading `RangerUserInfo`
+  attributes must use the new keys.
 
 ### New Features
 
@@ -281,11 +286,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   change a Ranger policy decision. The raw `PrincipalEntity` is not included in the external PDP
   payload. A user property cannot shadow a system key because the prefix is part of the
   attribute name. Empty-string user property values are forwarded as empty attributes, not omitted.
-  Note for custom Ranger integrations: the attributes copied onto `RangerUserInfo` are now the
-  prefixed keys (for example `polaris.system.client_id`) instead of the bare internal names (for
-  example `client_id`). Apache Ranger 2.9.0's embedded plugin does not evaluate them, so built-in
-  behavior is unchanged, but any custom code reading `RangerUserInfo` attributes must use the new
-  keys.
 - A metastore failure during authentication now returns a fixed `Service unavailable` message
   instead of naming the lookup that failed; the principal lookup previously returned `Unable to
   fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which

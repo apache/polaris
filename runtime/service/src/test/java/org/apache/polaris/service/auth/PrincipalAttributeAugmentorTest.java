@@ -172,8 +172,7 @@ public class PrincipalAttributeAugmentorTest {
                 .getPrincipal();
 
     assertThat(PolarisPrincipalAttributePrefixes.derivedStringAttributes(enriched))
-        .containsEntry(
-            PolarisPrincipalAttributePrefixes.AUTH_PREFIX + "department", "idp-finance")
+        .containsEntry(PolarisPrincipalAttributePrefixes.AUTH_PREFIX + "department", "idp-finance")
         .containsEntry(PolarisPrincipalAttributePrefixes.USER_PREFIX + "department", "finance");
   }
 
