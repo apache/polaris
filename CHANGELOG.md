@@ -350,6 +350,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
 - Iceberg REST: creating a namespace with a request that omits `namespace` now returns
   `400 Bad Request` instead of `500 Internal Server Error`.
+- Creating a table named after an Iceberg metadata table type, such as `history`, `snapshots` or
+  `entries`, no longer fails with an `IllegalStateException` (HTTP 500).
 
 ### Commits
 
