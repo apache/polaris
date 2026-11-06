@@ -194,9 +194,13 @@ object ChangelogFragments {
    * branch after the changelog section of that version was created, i.e. for later release
    * candidates.
    *
-   * Everything that can fail is checked before the changelog is written: invalid fragments, missing
-   * headings and fragments that cannot be deleted leave all files untouched. The changelog is then
-   * replaced atomically.
+   * Invalid fragments and missing headings are reported before the changelog is written. Deletion is
+   * also pre-checked for obvious problems (for example, when a fragment directory is not writable).
+   *
+   * The changelog file itself is replaced atomically. Fragment deletion happens after the changelog
+   * update, so unexpected deletion failures can still occur after writing; in that case, the
+   * changelog may already be updated and the remaining fragments must be deleted manually (do not
+   * run the merge again, or their entries would be added twice).
    */
   fun merge(
     directory: File,
