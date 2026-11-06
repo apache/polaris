@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.RetryableValidationException;
+import org.apache.iceberg.Schema;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Namespace;
@@ -40,6 +41,8 @@ import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.iceberg.types.Types;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -202,6 +205,170 @@ public class CommitTransactionTest {
         afterUpdateTableEvent.attributes().getRequired(EventAttributes.TABLE_METADATA);
     assertThat(metadata).isNotNull();
     assertThat(metadata.properties()).containsEntry(propertyName, "value2");
+  }
+
+  @Test
+  void testCommitTransactionWithRequirementOnlyTableSucceeds() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+
+    String table1Name = "req-table-1";
+    String table2Name = "req-table-2";
+    createTable(testServices, table1Name, catalogLocation);
+    createTable(testServices, table2Name, catalogLocation);
+
+    LoadTableResponse loadResp2 =
+        (LoadTableResponse)
+            testServices
+                .restApi()
+                .loadTable(
+                    catalog,
+                    namespace,
+                    table2Name,
+                    null,
+                    null,
+                    null,
+                    null,
+                    testServices.realmContext(),
+                    testServices.securityContext())
+                .getEntity();
+    String uuid2 = loadResp2.tableMetadata().uuid();
+
+    CommitTransactionRequest request =
+        new CommitTransactionRequest(
+            List.of(
+                UpdateTableRequest.create(
+                    TableIdentifier.of(namespace, table1Name),
+                    List.of(),
+                    List.of(new MetadataUpdate.SetProperties(Map.of(propertyName, "val1")))),
+                UpdateTableRequest.create(
+                    TableIdentifier.of(namespace, table2Name),
+                    List.of(new UpdateRequirement.AssertTableUUID(uuid2)),
+                    List.of())));
+
+    try (Response response =
+        testServices
+            .restApi()
+            .commitTransaction(
+                catalog,
+                request,
+                IDEMPOTENCY_KEY,
+                testServices.realmContext(),
+                testServices.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
+    }
+  }
+
+  @Test
+  void testCommitTransactionWithStaleRequirementOnlyTableFails() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+
+    String table1Name = "req-fail-table-1";
+    String table2Name = "req-fail-table-2";
+    createTable(testServices, table1Name, catalogLocation);
+    createTable(testServices, table2Name, catalogLocation);
+
+    CommitTransactionRequest request =
+        new CommitTransactionRequest(
+            List.of(
+                UpdateTableRequest.create(
+                    TableIdentifier.of(namespace, table1Name),
+                    List.of(),
+                    List.of(new MetadataUpdate.SetProperties(Map.of(propertyName, "val1")))),
+                UpdateTableRequest.create(
+                    TableIdentifier.of(namespace, table2Name),
+                    List.of(new UpdateRequirement.AssertCurrentSchemaID(-99)),
+                    List.of())));
+
+    assertThatThrownBy(
+            () ->
+                testServices
+                    .restApi()
+                    .commitTransaction(
+                        catalog,
+                        request,
+                        IDEMPOTENCY_KEY,
+                        testServices.realmContext(),
+                        testServices.securityContext()))
+        .isInstanceOf(CommitFailedException.class);
+  }
+
+  @Test
+  void testConcurrentCommitTransactionsWithCrossRequirementOnlyTablesAreIsolated() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+
+    String table1Name = "cross-req-table-1";
+    String table2Name = "cross-req-table-2";
+    createTable(testServices, table1Name, catalogLocation);
+    createTable(testServices, table2Name, catalogLocation);
+
+    Schema newSchema1 =
+        new Schema(
+            List.of(
+                Types.NestedField.required(1, "id", Types.LongType.get()),
+                Types.NestedField.optional(2, "c1", Types.LongType.get())));
+    Schema newSchema2 =
+        new Schema(
+            List.of(
+                Types.NestedField.required(1, "id", Types.LongType.get()),
+                Types.NestedField.optional(3, "c2", Types.LongType.get())));
+
+    CommitTransactionRequest tx1 =
+        new CommitTransactionRequest(
+            List.of(
+                UpdateTableRequest.create(
+                    TableIdentifier.of(namespace, table1Name),
+                    List.of(new UpdateRequirement.AssertCurrentSchemaID(0)),
+                    List.of(
+                        new MetadataUpdate.AddSchema(newSchema1),
+                        new MetadataUpdate.SetCurrentSchema(-1))),
+                UpdateTableRequest.create(
+                    TableIdentifier.of(namespace, table2Name),
+                    List.of(new UpdateRequirement.AssertCurrentSchemaID(0)),
+                    List.of())));
+
+    CommitTransactionRequest tx2 =
+        new CommitTransactionRequest(
+            List.of(
+                UpdateTableRequest.create(
+                    TableIdentifier.of(namespace, table2Name),
+                    List.of(new UpdateRequirement.AssertCurrentSchemaID(0)),
+                    List.of(
+                        new MetadataUpdate.AddSchema(newSchema2),
+                        new MetadataUpdate.SetCurrentSchema(-1))),
+                UpdateTableRequest.create(
+                    TableIdentifier.of(namespace, table1Name),
+                    List.of(new UpdateRequirement.AssertCurrentSchemaID(0)),
+                    List.of())));
+
+    // Tx1 commits successfully
+    try (Response response =
+        testServices
+            .restApi()
+            .commitTransaction(
+                catalog,
+                tx1,
+                UUID.randomUUID(),
+                testServices.realmContext(),
+                testServices.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
+    }
+
+    // Tx2 has table1 as a requirement-only table, but table1 was concurrently modified by tx1.
+    // Tx2 must fail commit due to isolation failure on requirement-only table.
+    assertThatThrownBy(
+            () ->
+                testServices
+                    .restApi()
+                    .commitTransaction(
+                        catalog,
+                        tx2,
+                        UUID.randomUUID(),
+                        testServices.realmContext(),
+                        testServices.securityContext()))
+        .isInstanceOf(CommitFailedException.class);
   }
 
   private void createCatalogAndNamespace(
