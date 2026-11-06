@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.storage;
 
+import com.azure.core.credential.TokenCredential;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -26,9 +27,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -80,8 +83,21 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         storageConfig ->
             new GcpCredentialsStorageIntegration(
                 gcpCredsProvider.get(), gcpTransportFactory, cache, storageConfig, realmConfig);
+    Map<String, StorageConfiguration.AzureNamedCredential> azureNamedCredentials =
+        storageConfiguration.azureNamedCredentials();
     this.azureFactory =
-        storageConfig -> new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig);
+        storageConfig -> {
+          String storageName = storageConfig.getStorageName();
+          if (storageName == null
+              || !realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
+            return new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig);
+          }
+          return new AzureCredentialsStorageIntegration(
+              resolveAzureCredential(storageConfig, azureNamedCredentials),
+              cache,
+              storageConfig,
+              realmConfig);
+        };
   }
 
   public PolarisStorageIntegrationProviderImpl(
@@ -126,6 +142,27 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       case AZURE -> azureFactory.apply((AzureStorageConfigurationInfo) storageConfig);
       case FILE -> FILE_INTEGRATION;
     };
+  }
+
+  private static TokenCredential resolveAzureCredential(
+      AzureStorageConfigurationInfo storageConfig,
+      Map<String, StorageConfiguration.AzureNamedCredential> namedCredentials) {
+    String storageName = storageConfig.getStorageName();
+    StorageConfiguration.AzureNamedCredential named = namedCredentials.get(storageName);
+    if (named == null) {
+      throw new IllegalArgumentException(
+          "Storage name '" + storageName + "' is not configured on the server");
+    }
+    // A client secret credential only obtains tokens for its own tenant. This message can reach API
+    // clients, so it does not include the tenant configured on the server.
+    if (!named.tenantId().equalsIgnoreCase(storageConfig.getTenantId())) {
+      throw new IllegalArgumentException(
+          "The tenantId of this storage configuration does not match the tenant configured for"
+              + " storage name '"
+              + storageName
+              + "'");
+    }
+    return named.credential().get();
   }
 
   /**

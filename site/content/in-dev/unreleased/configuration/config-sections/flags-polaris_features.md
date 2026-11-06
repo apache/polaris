@@ -517,7 +517,7 @@ If set to true, Polaris will attempt to delete view metadata files when a view i
 
 ##### `polaris.features."RESOLVE_CREDENTIALS_BY_STORAGE_NAME"`
 
-If set to true, resolve AWS credentials based on the storageName field of the storage configuration. When disabled, the default AWS credentials are used for all storages.
+If set to true, resolve AWS and Azure credentials based on the storageName field of the storage configuration. When disabled, the default credentials are used for all storages.
 
 - **Type:** `Boolean`
 - **Default:** `false`

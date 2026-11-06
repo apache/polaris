@@ -76,6 +76,11 @@ public class StorageConfigurationTest {
       }
 
       @Override
+      public AzureStorageConfig azure() {
+        return Map::of;
+      }
+
+      @Override
       public Optional<String> gcpAccessToken() {
         return Optional.of(TEST_GCP_TOKEN);
       }
@@ -147,6 +152,11 @@ public class StorageConfigurationTest {
             return Map.of();
           }
         };
+      }
+
+      @Override
+      public AzureStorageConfig azure() {
+        return Map::of;
       }
 
       @Override
@@ -233,6 +243,11 @@ public class StorageConfigurationTest {
                 });
           }
         };
+      }
+
+      @Override
+      public AzureStorageConfig azure() {
+        return Map::of;
       }
 
       @Override

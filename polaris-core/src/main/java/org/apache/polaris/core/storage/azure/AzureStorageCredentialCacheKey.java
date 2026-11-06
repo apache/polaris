@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.core.storage.azure;
 
-import com.azure.identity.DefaultAzureCredential;
+import com.azure.core.credential.TokenCredential;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -54,7 +54,7 @@ public interface AzureStorageCredentialCacheKey extends StorageCredentialCacheKe
 
   @Value.Parameter(order = 6)
   @Value.Auxiliary
-  DefaultAzureCredential defaultAzureCredential();
+  TokenCredential credential();
 
   @Override
   @Value.Parameter(order = 7)
@@ -72,7 +72,7 @@ public interface AzureStorageCredentialCacheKey extends StorageCredentialCacheKe
       boolean allowedListAction,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations,
-      DefaultAzureCredential defaultAzureCredential,
+      TokenCredential credential,
       RealmConfig realmConfig) {
     return ImmutableAzureStorageCredentialCacheKey.of(
         realmId,
@@ -80,7 +80,7 @@ public interface AzureStorageCredentialCacheKey extends StorageCredentialCacheKe
         allowedListAction,
         allowedReadLocations,
         allowedWriteLocations,
-        defaultAzureCredential,
+        credential,
         realmConfig);
   }
 }
