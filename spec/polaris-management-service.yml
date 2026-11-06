@@ -1563,6 +1563,8 @@ components:
         - VIEW_READ_PROPERTIES
         - VIEW_WRITE_PROPERTIES
         - VIEW_FULL_METADATA
+        - VIEW_READ_LINEAGE
+        - VIEW_INGEST_LINEAGE
 
     TablePrivilege:
       type: string
@@ -1596,6 +1598,8 @@ components:
         - TABLE_REMOVE_STATISTICS
         - TABLE_REMOVE_PARTITION_SPECS
         - TABLE_MANAGE_STRUCTURE
+        - TABLE_READ_LINEAGE
+        - TABLE_INGEST_LINEAGE
 
     SemanticModelPrivilege:
       type: string
@@ -1679,6 +1683,10 @@ components:
         - TABLE_REMOVE_STATISTICS
         - TABLE_REMOVE_PARTITION_SPECS
         - TABLE_MANAGE_STRUCTURE
+        - TABLE_READ_LINEAGE
+        - TABLE_INGEST_LINEAGE
+        - VIEW_READ_LINEAGE
+        - VIEW_INGEST_LINEAGE
 
     CatalogPrivilege:
       type: string
@@ -1742,6 +1750,10 @@ components:
         - TABLE_REMOVE_STATISTICS
         - TABLE_REMOVE_PARTITION_SPECS
         - TABLE_MANAGE_STRUCTURE
+        - TABLE_READ_LINEAGE
+        - TABLE_INGEST_LINEAGE
+        - VIEW_READ_LINEAGE
+        - VIEW_INGEST_LINEAGE
 
     AddGrantRequest:
       type: object

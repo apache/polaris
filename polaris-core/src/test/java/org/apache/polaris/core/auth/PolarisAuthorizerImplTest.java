@@ -32,6 +32,8 @@ import static org.mockito.Mockito.when;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationIntentResolver.ResolvedIntent;
 import org.apache.polaris.core.collection.AttributeMap;
@@ -60,6 +62,203 @@ public class PolarisAuthorizerImplTest {
             ? PolarisAuthorizerImpl.SUPER_PRIVILEGES.get(privilege)
             : EnumSet.of(privilege);
     assertThat(actual).isEqualTo(expected);
+  }
+
+  // Expected sets are spelled out literally: subsumingPrivilegesOf falls back to
+  // EnumSet.of(privilege) for an absent key, so deriving them from SUPER_PRIVILEGES would pass
+  // whether or not the lineage keys were registered.
+
+  @Test
+  void tableReadLineageIsSubsumedByTableReadAndWriteUberGrants() {
+    assertThat(PolarisAuthorizerImpl.subsumingPrivilegesOf(PolarisPrivilege.TABLE_READ_LINEAGE))
+        .containsExactlyInAnyOrder(
+            PolarisPrivilege.TABLE_READ_LINEAGE,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT);
+  }
+
+  @Test
+  void tableIngestLineageIsSubsumedByTableWriteUberGrants() {
+    assertThat(PolarisAuthorizerImpl.subsumingPrivilegesOf(PolarisPrivilege.TABLE_INGEST_LINEAGE))
+        .containsExactlyInAnyOrder(
+            PolarisPrivilege.TABLE_INGEST_LINEAGE,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT);
+  }
+
+  @Test
+  void viewReadLineageIsSubsumedByViewReadAndWriteUberGrants() {
+    assertThat(PolarisAuthorizerImpl.subsumingPrivilegesOf(PolarisPrivilege.VIEW_READ_LINEAGE))
+        .containsExactlyInAnyOrder(
+            PolarisPrivilege.VIEW_READ_LINEAGE,
+            PolarisPrivilege.VIEW_READ_PROPERTIES,
+            PolarisPrivilege.VIEW_WRITE_PROPERTIES,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT);
+  }
+
+  @Test
+  void viewIngestLineageIsSubsumedByViewWriteUberGrants() {
+    assertThat(PolarisAuthorizerImpl.subsumingPrivilegesOf(PolarisPrivilege.VIEW_INGEST_LINEAGE))
+        .containsExactlyInAnyOrder(
+            PolarisPrivilege.VIEW_INGEST_LINEAGE,
+            PolarisPrivilege.VIEW_WRITE_PROPERTIES,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT);
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = PolarisPrivilege.class,
+      names = {"TABLE_READ_LINEAGE", "TABLE_INGEST_LINEAGE"})
+  void noViewPrivilegeConfersTableLineage(PolarisPrivilege tableLineage) {
+    // Subsumption ignores the leaf type, so a VIEW_* grant on a namespace that confers a table
+    // lineage privilege would apply to every table in that namespace.
+    assertNoPrivilegeWithPrefixConfers("VIEW_", tableLineage);
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = PolarisPrivilege.class,
+      names = {"VIEW_READ_LINEAGE", "VIEW_INGEST_LINEAGE"})
+  void noTablePrivilegeConfersViewLineage(PolarisPrivilege viewLineage) {
+    // The converse of noViewPrivilegeConfersTableLineage.
+    assertNoPrivilegeWithPrefixConfers("TABLE_", viewLineage);
+  }
+
+  @Test
+  void lineageReadAndIngestDoNotConferEachOther() {
+    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl();
+
+    // The asymmetry is deliberate: ingest is append-only submission, so an engine principal has no
+    // need to read the graph back out. An edit that "fixes" it must justify itself here.
+    assertThat(
+            authorizer.matchesOrIsSubsumedBy(
+                PolarisPrivilege.TABLE_READ_LINEAGE, PolarisPrivilege.TABLE_INGEST_LINEAGE))
+        .isFalse();
+    assertThat(
+            authorizer.matchesOrIsSubsumedBy(
+                PolarisPrivilege.VIEW_READ_LINEAGE, PolarisPrivilege.VIEW_INGEST_LINEAGE))
+        .isFalse();
+
+    // And the converse: reading the graph confers no ability to write to it.
+    assertThat(
+            authorizer.matchesOrIsSubsumedBy(
+                PolarisPrivilege.TABLE_INGEST_LINEAGE, PolarisPrivilege.TABLE_READ_LINEAGE))
+        .isFalse();
+    assertThat(
+            authorizer.matchesOrIsSubsumedBy(
+                PolarisPrivilege.VIEW_INGEST_LINEAGE, PolarisPrivilege.VIEW_READ_LINEAGE))
+        .isFalse();
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = PolarisPrivilege.class,
+      names = {
+        "TABLE_READ_LINEAGE",
+        "TABLE_INGEST_LINEAGE",
+        "VIEW_READ_LINEAGE",
+        "VIEW_INGEST_LINEAGE"
+      })
+  void serviceManageAccessDoesNotConferLineagePrivileges(PolarisPrivilege lineage) {
+    // SERVICE_MANAGE_ACCESS is self-only as a SUPER_PRIVILEGES *key*, but it does appear as a
+    // value under other privileges -- the CATALOG_* lifecycle/metadata set and every PRINCIPAL_* /
+    // PRINCIPAL_ROLE_* entry. It is therefore not a universal super-privilege: it is absent from
+    // all TABLE_* / VIEW_* value lists and from CATALOG_MANAGE_METADATA / CATALOG_MANAGE_CONTENT,
+    // which are exactly the lists the lineage entries mirror. Service-level access administration
+    // must not imply reading or writing lineage.
+    assertThat(
+            new PolarisAuthorizerImpl()
+                .matchesOrIsSubsumedBy(lineage, PolarisPrivilege.SERVICE_MANAGE_ACCESS))
+        .isFalse();
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = PolarisPrivilege.class,
+      names = {
+        "TABLE_READ_LINEAGE",
+        "TABLE_INGEST_LINEAGE",
+        "VIEW_READ_LINEAGE",
+        "VIEW_INGEST_LINEAGE"
+      })
+  void noNamespacePrivilegeConfersLineagePrivileges(PolarisPrivilege lineage) {
+    // Namespace-level property access does not confer table- or view-level access anywhere in the
+    // map -- TABLE_READ_PROPERTIES is likewise not subsumed by NAMESPACE_READ_PROPERTIES.
+    // Namespace-scope *grantability* for lineage comes from hasTransitivePrivilege's walk over the
+    // resolved path, not from this map, so no NAMESPACE_* entry belongs in the lineage value lists.
+    assertNoPrivilegeWithPrefixConfers("NAMESPACE_", lineage);
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = PolarisPrivilege.class,
+      names = {
+        "TABLE_READ_DATA",
+        "TABLE_READ_PROPERTIES",
+        "TABLE_WRITE_DATA",
+        "VIEW_READ_PROPERTIES",
+        "VIEW_WRITE_PROPERTIES",
+        "CATALOG_MANAGE_CONTENT"
+      })
+  void lineageInputReferenceIsSatisfiedByReadAccess(PolarisPrivilege granted) {
+    // REFERENCE_LINEAGE_INPUT_{TABLE,VIEW} require the entity's *_READ_PROPERTIES rather than a
+    // lineage privilege: citing a table or view as a lineage source is not reading its lineage, and
+    // requiring the ingest privilege on inputs would break ordinary ETL, since ingest rides
+    // write-only uber-grants and a job that merely reads a source would record nothing.
+    PolarisPrivilege required =
+        granted.name().startsWith("VIEW_")
+            ? PolarisPrivilege.VIEW_READ_PROPERTIES
+            : PolarisPrivilege.TABLE_READ_PROPERTIES;
+    assertThat(new PolarisAuthorizerImpl().matchesOrIsSubsumedBy(required, granted)).isTrue();
+  }
+
+  @Test
+  void createDoesNotSatisfyLineageInputReference() {
+    // A principal who may only create tables or views in a namespace must not be able to cite an
+    // existing one it cannot read as a lineage input. TABLE_LIST *is* satisfied by TABLE_CREATE,
+    // which is exactly why TABLE_LIST was rejected as the input check in favour of
+    // TABLE_READ_PROPERTIES.
+    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl();
+
+    assertThat(
+            authorizer.matchesOrIsSubsumedBy(
+                PolarisPrivilege.TABLE_READ_PROPERTIES, PolarisPrivilege.TABLE_CREATE))
+        .isFalse();
+    assertThat(
+            authorizer.matchesOrIsSubsumedBy(
+                PolarisPrivilege.VIEW_READ_PROPERTIES, PolarisPrivilege.VIEW_CREATE))
+        .isFalse();
+    assertThat(
+            authorizer.matchesOrIsSubsumedBy(
+                PolarisPrivilege.TABLE_LIST, PolarisPrivilege.TABLE_CREATE))
+        .isTrue();
+  }
+
+  private static void assertNoPrivilegeWithPrefixConfers(String prefix, PolarisPrivilege lineage) {
+    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl();
+    Set<PolarisPrivilege> candidates =
+        Stream.of(PolarisPrivilege.values())
+            .filter(privilege -> privilege.name().startsWith(prefix))
+            .collect(Collectors.toSet());
+    assertThat(candidates).isNotEmpty();
+
+    for (PolarisPrivilege granted : candidates) {
+      assertThat(authorizer.matchesOrIsSubsumedBy(lineage, granted))
+          .as("%s must not confer %s", granted, lineage)
+          .isFalse();
+    }
   }
 
   @Test

@@ -159,6 +159,54 @@
     {
       "request": { "authzOp": "LOAD_TABLE", "principal": { "name": "structuremanager1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
       "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "QUERY_TABLE_LINEAGE", "principal": { "name": "tablereader1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "REFERENCE_LINEAGE_INPUT_TABLE", "principal": { "name": "tablereader1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "INGEST_TABLE_LINEAGE", "principal": { "name": "tablereader1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "QUERY_TABLE_LINEAGE", "principal": { "name": "tablewriter1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "INGEST_TABLE_LINEAGE", "principal": { "name": "tablewriter1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "QUERY_VIEW_LINEAGE", "principal": { "name": "tablereader1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/view1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "QUERY_VIEW_LINEAGE", "principal": { "name": "viewreader1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/view1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "REFERENCE_LINEAGE_INPUT_VIEW", "principal": { "name": "viewreader1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/view1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "INGEST_VIEW_LINEAGE", "principal": { "name": "viewreader1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/view1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "QUERY_VIEW_LINEAGE", "principal": { "name": "viewwriter1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/view1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "INGEST_VIEW_LINEAGE", "principal": { "name": "viewwriter1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/view1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "INGEST_TABLE_LINEAGE", "principal": { "name": "viewwriter1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": false }
     }
   ]
 }

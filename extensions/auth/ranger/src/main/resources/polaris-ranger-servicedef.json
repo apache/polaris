@@ -120,7 +120,11 @@
           "view-drop",
           "view-properties-read",
           "view-properties-write",
-          "view-metadata-full"
+          "view-metadata-full",
+          "table-lineage-query",
+          "table-lineage-ingest",
+          "view-lineage-query",
+          "view-lineage-ingest"
         ]
       },
       {
@@ -213,6 +217,10 @@
           "view-metadata-full",
           "view-properties-read",
           "view-properties-write",
+          "table-lineage-query",
+          "table-lineage-ingest",
+          "view-lineage-query",
+          "view-lineage-ingest",
           "policy-create",
           "policy-drop",
           "policy-list",
@@ -270,6 +278,10 @@
           "view-properties-read",
           "view-properties-write",
           "view-metadata-full",
+          "table-lineage-query",
+          "table-lineage-ingest",
+          "view-lineage-query",
+          "view-lineage-ingest",
           "policy-create",
           "policy-drop",
           "policy-list",
@@ -305,7 +317,7 @@
       { "itemId": 28, "name": "table-create",     "label": "Table Create",     "category": "CREATE", "impliedGrants": [ "table-list" ] },
       { "itemId": 29, "name": "table-drop",       "label": "Table Drop",       "category": "DELETE" },
       { "itemId": 30, "name": "table-list",       "label": "Table List",       "category": "READ" },
-      { "itemId": 31, "name": "table-data-read",  "label": "Table Data Read",  "category": "READ",   "impliedGrants": [ "table-list", "table-properties-read" ] },
+      { "itemId": 31, "name": "table-data-read",  "label": "Table Data Read",  "category": "READ",   "impliedGrants": [ "table-list", "table-properties-read", "table-lineage-query" ] },
       { "itemId": 32, "name": "table-data-write", "label": "Table Data Write", "category": "UPDATE",
         "impliedGrants": [
           "table-list",
@@ -329,7 +341,9 @@
           "table-statistics-remove",
           "table-partition-spec-add",
           "table-partition-specs-remove",
-          "table-structure-manage"
+          "table-structure-manage",
+          "table-lineage-query",
+          "table-lineage-ingest"
         ]
       },
       { "itemId": 33, "name": "table-metadata-full", "label": "Table Metadata Full", "category": "MANAGE",
@@ -356,12 +370,14 @@
           "table-location-set",
           "table-statistics-set",
           "table-statistics-remove",
-          "table-structure-manage"
+          "table-structure-manage",
+          "table-lineage-query",
+          "table-lineage-ingest"
         ]
       },
       { "itemId": 34, "name": "table-policy-attach",    "label": "Table Policy Attach",    "category": "MANAGE" },
       { "itemId": 35, "name": "table-policy-detach",    "label": "Table Policy Detach",    "category": "MANAGE" },
-      { "itemId": 36, "name": "table-properties-read",  "label": "Table Properties Read",  "category": "READ", "impliedGrants": [ "table-list" ] },
+      { "itemId": 36, "name": "table-properties-read",  "label": "Table Properties Read",  "category": "READ", "impliedGrants": [ "table-list", "table-lineage-query" ] },
       { "itemId": 37, "name": "table-properties-write", "label": "Table Properties Write", "category": "UPDATE",
         "impliedGrants": [
           "table-list",
@@ -383,7 +399,9 @@
           "table-location-set",
           "table-statistics-set",
           "table-statistics-remove",
-          "table-structure-manage"
+          "table-structure-manage",
+          "table-lineage-query",
+          "table-lineage-ingest"
         ]
       },
       { "itemId": 38, "name": "table-properties-set",         "label": "Table Properties Set",         "category": "UPDATE", "impliedGrants": [ "table-properties-read" ] },
@@ -427,9 +445,9 @@
       { "itemId": 56,  "name": "view-create",           "label": "View Create",           "category": "CREATE", "impliedGrants": [ "view-list" ] },
       { "itemId": 57,  "name": "view-drop",             "label": "View Drop",             "category": "DELETE" },
       { "itemId": 58,  "name": "view-list",             "label": "View List",             "category": "READ" },
-      { "itemId": 59, "name": "view-metadata-full",    "label": "View Metadata Full",    "category": "MANAGE", "impliedGrants": [ "view-create", "view-drop", "view-list", "view-properties-read", "view-properties-write" ] },
-      { "itemId": 60, "name": "view-properties-read",  "label": "View Properties Read",  "category": "READ",   "impliedGrants": [ "view-list" ] },
-      { "itemId": 61, "name": "view-properties-write", "label": "View Properties Write", "category": "UPDATE", "impliedGrants": [ "view-list", "view-properties-read" ] },
+      { "itemId": 59, "name": "view-metadata-full",    "label": "View Metadata Full",    "category": "MANAGE", "impliedGrants": [ "view-create", "view-drop", "view-list", "view-properties-read", "view-properties-write", "view-lineage-query", "view-lineage-ingest" ] },
+      { "itemId": 60, "name": "view-properties-read",  "label": "View Properties Read",  "category": "READ",   "impliedGrants": [ "view-list", "view-lineage-query" ] },
+      { "itemId": 61, "name": "view-properties-write", "label": "View Properties Write", "category": "UPDATE", "impliedGrants": [ "view-list", "view-properties-read", "view-lineage-query", "view-lineage-ingest" ] },
 
       { "itemId": 62, "name": "policy-create",        "label": "Policy Create",        "category": "CREATE", "impliedGrants": [ "policy-list" ] },
       { "itemId": 63, "name": "policy-drop",          "label": "Policy Drop",          "category": "DELETE" },
@@ -438,6 +456,11 @@
       { "itemId": 66, "name": "policy-write",         "label": "Policy Write",         "category": "UPDATE", "impliedGrants": [ "policy-list", "policy-read" ] },
       { "itemId": 67, "name": "policy-attach",        "label": "Policy Attach",        "category": "MANAGE" },
       { "itemId": 68, "name": "policy-detach",        "label": "Policy Detach",        "category": "MANAGE" },
-      { "itemId": 69, "name": "policy-metadata-full", "label": "Policy Metadata Full", "category": "MANAGE", "impliedGrants": [ "policy-create", "policy-drop", "policy-list", "policy-read", "policy-write" ] }
+      { "itemId": 69, "name": "policy-metadata-full", "label": "Policy Metadata Full", "category": "MANAGE", "impliedGrants": [ "policy-create", "policy-drop", "policy-list", "policy-read", "policy-write" ] },
+
+      { "itemId": 70, "name": "table-lineage-query",  "label": "Table Lineage Query",  "category": "READ" },
+      { "itemId": 71, "name": "table-lineage-ingest", "label": "Table Lineage Ingest", "category": "UPDATE" },
+      { "itemId": 72, "name": "view-lineage-query",   "label": "View Lineage Query",   "category": "READ" },
+      { "itemId": 73, "name": "view-lineage-ingest",  "label": "View Lineage Ingest",  "category": "UPDATE" }
     ]
   }
