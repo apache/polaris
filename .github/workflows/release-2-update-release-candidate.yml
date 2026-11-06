@@ -31,7 +31,7 @@ on:
 jobs:
   update-release-candidate:
     name: Release - 2 - Update version and Changelog for Release Candidate
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
 
