@@ -26,3 +26,18 @@ extensions.getByType<CopiedCodeCheckerExtension>().apply {
   addDefaultContentTypes()
   licenseFile.convention(layout.settingsDirectory.file("LICENSE"))
 }
+
+configurations.configureEach {
+  resolutionStrategy.eachDependency {
+    if (
+      (requested.group == "org.eclipse.jetty" || requested.group == "org.eclipse.jetty.websocket") &&
+        requested.version?.startsWith("9.") == true
+    ) {
+      useVersion("9.4.58.v20250814")
+      because(
+        "Build-wide Jetty 9.x pin: align transitive Jetty 9.x dependencies (e.g. from hive-metastore, ranger)" +
+          " to 9.4.58.v20250814 to address CVE-2024-13009",
+      )
+    }
+  }
+}
