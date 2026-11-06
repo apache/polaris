@@ -185,8 +185,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   in `SigV4AuthenticationParameters`. This makes SigV4-compatible catalogs that are not AWS
   reachable, since they have no IAM role to assume and no AWS STS endpoint. It requires
   `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` to be enabled. `roleArn` is therefore no longer required in
-  the management API spec; exactly one of `roleArn` or `storageName` must be set, and
-  `roleSessionName` / `externalId` / `sessionPolicy` are rejected together with `storageName`.
+  the management API spec. At least one of `roleArn` or `storageName` must be set; setting both is
+  rejected for now, and `roleSessionName` / `externalId` / `sessionPolicy` are rejected together
+  with `storageName`.
 - Python CLI: added `register` support for both `tables` and `views` commands
 - Python CLI: `setup export` and `setup apply` now support both Iceberg tables and views as register entries.
 - Python CLI: added `namespaces update` to set and remove namespace properties
