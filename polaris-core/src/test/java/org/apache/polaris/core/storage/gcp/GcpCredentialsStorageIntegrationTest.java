@@ -26,6 +26,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.auth.Credentials;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
@@ -48,6 +49,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -68,6 +70,7 @@ import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -722,5 +725,158 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     DecodedJWT jwt = JWT.decode(idp.retrieveSubjectToken());
     assertThat(jwt.getSubject()).isEqualTo("realm1/principal1");
     assertThat(jwt.getClaim("realm").asString()).isEqualTo("realm1");
+  }
+
+  private static GoogleCredentials sourceCredentials() throws IOException {
+    GoogleCredentials credentials = Mockito.mock(GoogleCredentials.class);
+    Mockito.when(credentials.createScoped(Mockito.any(String.class))).thenReturn(credentials);
+    Mockito.when(credentials.getUniverseDomain()).thenReturn(Credentials.GOOGLE_DEFAULT_UNIVERSE);
+    return credentials;
+  }
+
+  private static GcpStorageConfigurationInfo namedConfig(String storageName) {
+    return GcpStorageConfigurationInfo.builder()
+        .addAllowedLocation("gs://bucket/path")
+        .storageName(storageName)
+        .build();
+  }
+
+  private static List<LocationGrant> readGrant() {
+    return toGrants(Set.of("gs://bucket/path"), Set.of(), Set.of());
+  }
+
+  /** Mints one token per source credential, so a test can see which credential produced it. */
+  private static GcpCredentialOps tokenPerSourceOps(Map<GoogleCredentials, String> tokensBySource) {
+    return new GcpCredentialOps() {
+      @Override
+      public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
+        return new AccessToken(
+            tokensBySource.get(credentials.getSourceCredentials()),
+            Date.from(Instant.now().plusSeconds(3600)));
+      }
+    };
+  }
+
+  private static String vendedToken(
+      GoogleCredentials source,
+      String storageName,
+      StorageCredentialCache cache,
+      GcpCredentialOps ops) {
+    return new GcpCredentialsStorageIntegration(
+            source,
+            ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
+            cache,
+            namedConfig(storageName),
+            EMPTY_REALM_CONFIG,
+            ops)
+        .getStorageAccessConfig(readGrant(), Optional.empty(), CredentialVendingContext.empty())
+        .get(StorageAccessProperty.GCS_ACCESS_TOKEN);
+  }
+
+  @Test
+  public void testTwoStorageNamesNeverShareACachedCredential() throws IOException {
+    GoogleCredentials teamA = sourceCredentials();
+    GoogleCredentials teamB = sourceCredentials();
+    GcpCredentialOps ops = tokenPerSourceOps(Map.of(teamA, "token-a", teamB, "token-b"));
+    StorageCredentialCache cache = new StorageCredentialCache(() -> 10_000);
+
+    assertThat(vendedToken(teamA, "team-a", cache, ops)).isEqualTo("token-a");
+    assertThat(vendedToken(teamB, "team-b", cache, ops)).isEqualTo("token-b");
+    assertThat(vendedToken(teamA, "team-a", cache, ops)).isEqualTo("token-a");
+    assertThat(vendedToken(teamB, "team-b", cache, ops)).isEqualTo("token-b");
+
+    Mockito.verify(teamA).refresh();
+    Mockito.verify(teamB).refresh();
+  }
+
+  @Test
+  public void testCacheKeyIdentityFollowsStorageNameNotSourceCredentials() throws IOException {
+    GoogleCredentials source = sourceCredentials();
+    HttpTransportFactory transport = NetHttpTransport::new;
+
+    assertThat(cacheKey("team-a", source, transport))
+        .isEqualTo(cacheKey("team-a", sourceCredentials(), transport))
+        .isNotEqualTo(cacheKey("team-b", source, transport))
+        .isNotEqualTo(cacheKey(null, source, transport));
+  }
+
+  @Test
+  public void testCacheKeyToStringOmitsSourceCredentials() {
+    GoogleCredentials source = Mockito.mock(GoogleCredentials.class);
+    Mockito.when(source.toString()).thenReturn("source-credentials-with-secret");
+
+    assertThat(cacheKey("team-a", source, NetHttpTransport::new).toString())
+        .contains("team-a")
+        .doesNotContain("source-credentials-with-secret");
+  }
+
+  private static GcpStorageCredentialCacheKey cacheKey(
+      String storageName, GoogleCredentials source, HttpTransportFactory transport) {
+    return GcpStorageCredentialCacheKey.of(
+        "realm",
+        namedConfig(storageName),
+        Set.of("gs://bucket/path"),
+        Set.of(),
+        Set.of(),
+        Optional.empty(),
+        source,
+        transport,
+        EMPTY_REALM_CONFIG,
+        GcpCredentialOps.DEFAULT,
+        Optional.empty());
+  }
+
+  @Test
+  public void testImpersonationUsesTheNamedSourceCredentials() throws IOException {
+    String serviceAccount = "target@project.iam.gserviceaccount.com";
+    GoogleCredentials named = sourceCredentials();
+    IamCredentialsClient iamClient = Mockito.mock(IamCredentialsClient.class);
+    Mockito.when(iamClient.generateAccessToken(Mockito.any(GenerateAccessTokenRequest.class)))
+        .thenReturn(
+            GenerateAccessTokenResponse.newBuilder()
+                .setAccessToken("impersonated-token")
+                .setExpireTime(
+                    Timestamp.newBuilder()
+                        .setSeconds(System.currentTimeMillis() / 1000 + 3600)
+                        .build())
+                .build());
+    AtomicReference<GoogleCredentials> impersonationSource = new AtomicReference<>();
+    GcpCredentialOps ops =
+        new GcpCredentialOps() {
+          @Override
+          public IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
+            impersonationSource.set(credentials);
+            return iamClient;
+          }
+
+          @Override
+          public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
+            return new AccessToken("downscoped-token", new Date());
+          }
+        };
+
+    new GcpCredentialsStorageIntegration(
+            named,
+            ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
+            GcpStorageConfigurationInfo.builder()
+                .addAllowedLocation("gs://bucket/path")
+                .storageName("team-a")
+                .gcpServiceAccount(serviceAccount)
+                .build(),
+            EMPTY_REALM_CONFIG,
+            ops)
+        .getStorageAccessConfig(readGrant(), Optional.empty(), CredentialVendingContext.empty());
+
+    Mockito.verify(named).refresh();
+    assertThat(impersonationSource.get()).isSameAs(named);
+    Mockito.verify(iamClient)
+        .generateAccessToken(
+            Mockito.argThat(
+                request ->
+                    request
+                        .getName()
+                        .equals(
+                            GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX
+                                + serviceAccount)));
   }
 }

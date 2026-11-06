@@ -35,6 +35,7 @@ Applies to the STS client pool and to Iceberg S3 clients created for table opera
 | `polaris.storage.aws.`_`<storage>`_`.secret-key` |  | `string` | The AWS secret key to use for authentication when using named storages.  |
 | `polaris.storage.gcp.token` |  | `string` | The GCP access token to use for authentication. If not present, the default credentials  provider chain will be used.  |
 | `polaris.storage.gcp.lifespan` |  | `duration` | The lifespan of the GCP access token. If not present, the default token lifespan (null) will be used.  |
+| `polaris.storage.gcp.`_`<storage>`_`.credentials-file` |  | `path` | Path to the GCP credentials file to use for authentication when using named storages. This is  the same JSON format that the `GOOGLE_APPLICATION_CREDENTIALS` environment variable  points to for the default credentials. Service account key files and Workload Identity  Federation configuration files are accepted. The names `token` and `lifespan` are  reserved and cannot be used as storage names.  |
 | `polaris.storage.clients-cache-max-size` |  | `int` | Maximum number of entries to keep in the STS clients cache.  |
 | `polaris.storage.max-http-connections` |  | `int` | Override the default maximum number of pooled connections.  |
 | `polaris.storage.read-timeout` |  | `duration` | Override the default connection read timeout.  |
