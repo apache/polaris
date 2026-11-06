@@ -19,6 +19,7 @@
 package org.apache.polaris.core.connection.hadoop;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -26,10 +27,14 @@ import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.aws.s3.S3FileIOProperties;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ImplicitAuthenticationParametersDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class HadoopConnectionConfigInfoDpoTest {
 
@@ -87,6 +92,38 @@ class HadoopConnectionConfigInfoDpoTest {
     assertThat(properties).containsEntry(CatalogProperties.URI, dpo.getUri());
   }
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "",
+        "hdfs://namenode:8020/warehouse",
+        "s3://bucket/warehouse",
+        "abfss://container@account.dfs.core.windows.net/warehouse"
+      })
+  void testUriWithoutUrlHandlerIsAccepted(String uri) {
+    // The Hadoop catalog never connects to `uri`, so any URI is fine, including schemes the JVM
+    // has no URL handler for.
+    assertThatCode(() -> createDpo(uri, null)).doesNotThrowAnyException();
+  }
+
+  @Test
+  void testUriIsOptional() {
+    HadoopConnectionConfigInfoDpo dpo = createDpo(null, null);
+
+    assertThat(dpo.getUri()).isNull();
+    assertThat(dpo.asIcebergCatalogProperties(mockCredentialManager(dpo)))
+        .doesNotContainKey(CatalogProperties.URI)
+        .containsEntry(CatalogProperties.WAREHOUSE_LOCATION, "warehouse");
+
+    ConnectionConfigInfo model = dpo.asConnectionConfigInfoModel(null);
+    assertThat(model.getUri()).isNull();
+
+    ConnectionConfigInfoDpo roundTrip = ConnectionConfigInfoDpo.deserialize(dpo.serialize());
+    assertThat(roundTrip).isInstanceOf(HadoopConnectionConfigInfoDpo.class);
+    assertThat(roundTrip.getUri()).isNull();
+    assertThat(((HadoopConnectionConfigInfoDpo) roundTrip).getWarehouse()).isEqualTo("warehouse");
+  }
+
   private static PolarisCredentialManager mockCredentialManager(HadoopConnectionConfigInfoDpo dpo) {
     PolarisCredentialManager credentialManager = mock(PolarisCredentialManager.class);
     ConnectionCredentials credentials = mock(ConnectionCredentials.class);
@@ -96,11 +133,12 @@ class HadoopConnectionConfigInfoDpoTest {
   }
 
   private static HadoopConnectionConfigInfoDpo createDpo(Map<String, String> properties) {
+    return createDpo("file:///warehouse", properties);
+  }
+
+  private static HadoopConnectionConfigInfoDpo createDpo(
+      String uri, Map<String, String> properties) {
     return new HadoopConnectionConfigInfoDpo(
-        "file:///warehouse",
-        new ImplicitAuthenticationParametersDpo(),
-        null,
-        "warehouse",
-        properties);
+        uri, new ImplicitAuthenticationParametersDpo(), null, "warehouse", properties);
   }
 }
