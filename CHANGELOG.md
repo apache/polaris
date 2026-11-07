@@ -87,12 +87,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `polaris.features."ENFORCE_CATALOG_CONFIG_AUTHORIZATION"`, so upgrades do not 403 bootstrap. When
   enabled, callers need `CATALOG_READ_CONFIG` (or a catalog-level content privilege that subsumes
   it). A 200 still returns catalog properties (`defaults`) as today. Before enabling: grant
-  `CATALOG_READ_CONFIG` and update Ranger/OPA policies for `GET_CATALOG_CONFIG`. Ranger currently
-  maps that operation to the existing `catalog-properties-read` access type — do not enable the flag
-  for Ranger until a dedicated `catalog-config-read` access type exists (or accept that coarse
-  mapping). A production-readiness warning is emitted while the flag remains false. The default will
-  not flip until client-facing catalog configuration is defined. Table- or namespace-scoped grants
-  alone do not satisfy the catalog-path check used for `CATALOG_READ_CONFIG` once enforcement is on.
+  `CATALOG_READ_CONFIG` and update Ranger/OPA policies for `GET_CATALOG_CONFIG`. Ranger maps
+  `GET_CATALOG_CONFIG` to `catalog-config-read`; `catalog-properties-read` implies
+  `catalog-config-read`. Re-import `polaris-ranger-servicedef.json` (PUT the service definition) so
+  the new access type exists in Ranger Admin; a git-only Polaris upgrade does not change the
+  registered definition. A production-readiness warning is emitted while the flag remains false
+  (internal authorizer) or when the flag is enabled under Ranger. The default will not flip until
+  client-facing catalog configuration is defined. Table- or namespace-scoped grants alone do not
+  satisfy the catalog-path check used for `CATALOG_READ_CONFIG` once enforcement is on.
 - Tables last committed by a Polaris version older than 1.3.0 have all their locations validated on
   their next commit. That commit fails if the locations do not satisfy the current location rules,
   for example the catalog's allowed locations.
@@ -171,6 +173,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   specification, meaning the client can operate without delegated access. A request that includes
   `none`, alone or together with other values, is handled like a request without the header: the
   table is returned without credentials and no delegation privilege is required.
+- Ranger: dedicated `catalog-config-read` access type for Iceberg REST `GET /v1/config`
+  (`GET_CATALOG_CONFIG`). Existing catalog-level `catalog-properties-read` (and stronger catalog
+  access types) imply `catalog-config-read`. Operators must re-import
+  `polaris-ranger-servicedef.json`.
 - Shared CloudEvents 1.0 JSON mapper for Polaris events (`CloudEventsEventJsonMapper` next to
   the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
   lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners

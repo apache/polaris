@@ -31,6 +31,7 @@
         "isValidLeaf": true,
         "accessTypeRestrictions": [
           "catalog-drop",
+          "catalog-config-read",
           "catalog-properties-read",
           "catalog-properties-write",
           "catalog-metadata-full",
@@ -147,6 +148,7 @@
           "catalog-create",
           "catalog-drop",
           "catalog-list",
+          "catalog-config-read",
           "catalog-properties-read",
           "catalog-properties-write",
           "catalog-metadata-full",
@@ -166,6 +168,7 @@
       { "itemId": 5, "name": "catalog-content-manage", "label": "Catalog Manage Content", "category": "MANAGE",
         "impliedGrants": [
           "catalog-list",
+          "catalog-config-read",
           "catalog-metadata-manage",
           "catalog-properties-read",
           "catalog-properties-write",
@@ -222,10 +225,11 @@
           "policy-detach"
         ]
       },
-      { "itemId": 6, "name": "catalog-metadata-full",   "label": "Catalog Metadata Full",   "category": "MANAGE", "impliedGrants": [ "catalog-create", "catalog-drop", "catalog-list", "catalog-properties-read", "catalog-properties-write" ] },
+      { "itemId": 6, "name": "catalog-metadata-full",   "label": "Catalog Metadata Full",   "category": "MANAGE", "impliedGrants": [ "catalog-create", "catalog-drop", "catalog-list", "catalog-config-read", "catalog-properties-read", "catalog-properties-write" ] },
       { "itemId": 7, "name": "catalog-metadata-manage", "label": "Catalog Metadata Manage", "category": "MANAGE",
         "impliedGrants": [
           "catalog-list",
+          "catalog-config-read",
           "catalog-properties-read",
           "catalog-properties-write",
           "catalog-policy-attach",
@@ -281,8 +285,8 @@
       },
       { "itemId":  8, "name": "catalog-policy-attach",    "label": "Catalog Policy Attach",    "category": "MANAGE" },
       { "itemId":  9, "name": "catalog-policy-detach",    "label": "Catalog Policy Detach",    "category": "MANAGE" },
-      { "itemId": 10, "name": "catalog-properties-read",  "label": "Catalog Properties Read",  "category": "READ",   "impliedGrants": [ "catalog-list" ] },
-      { "itemId": 11, "name": "catalog-properties-write", "label": "Catalog Properties Write", "category": "UPDATE", "impliedGrants": [ "catalog-list", "catalog-properties-read" ] },
+      { "itemId": 10, "name": "catalog-properties-read",  "label": "Catalog Properties Read",  "category": "READ",   "impliedGrants": [ "catalog-list", "catalog-config-read" ] },
+      { "itemId": 11, "name": "catalog-properties-write", "label": "Catalog Properties Write", "category": "UPDATE", "impliedGrants": [ "catalog-list", "catalog-config-read", "catalog-properties-read" ] },
 
       { "itemId": 12, "name": "principal-create",                    "label": "Principal Create",                    "category": "CREATE", "impliedGrants": [ "principal-list" ] },
       { "itemId": 13, "name": "principal-drop",                      "label": "Principal Drop",                      "category": "DELETE" },
@@ -438,6 +442,7 @@
       { "itemId": 66, "name": "policy-write",         "label": "Policy Write",         "category": "UPDATE", "impliedGrants": [ "policy-list", "policy-read" ] },
       { "itemId": 67, "name": "policy-attach",        "label": "Policy Attach",        "category": "MANAGE" },
       { "itemId": 68, "name": "policy-detach",        "label": "Policy Detach",        "category": "MANAGE" },
-      { "itemId": 69, "name": "policy-metadata-full", "label": "Policy Metadata Full", "category": "MANAGE", "impliedGrants": [ "policy-create", "policy-drop", "policy-list", "policy-read", "policy-write" ] }
+      { "itemId": 69, "name": "policy-metadata-full", "label": "Policy Metadata Full", "category": "MANAGE", "impliedGrants": [ "policy-create", "policy-drop", "policy-list", "policy-read", "policy-write" ] },
+      { "itemId": 70, "name": "catalog-config-read",  "label": "Catalog Config Read",  "category": "READ",   "impliedGrants": [ "catalog-list" ] }
     ]
   }

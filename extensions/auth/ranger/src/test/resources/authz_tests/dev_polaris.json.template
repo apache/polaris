@@ -63,7 +63,12 @@
             { "type": "catalog-policy-attach" },
             { "type": "catalog-policy-detach" }
           ],
-          "users": [ "admin1" ] }
+          "users": [ "admin1" ] },
+        {
+          "accesses": [
+            { "type": "catalog-config-read" }
+          ],
+          "users": [ "configreader1" ] }
       ]
     },
     {
