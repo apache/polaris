@@ -38,15 +38,13 @@ paths:
 
         Mappings are listed one level at a time, like namespaces: with `namespace`, the mappings of the
         namespaces and tables directly inside it; without it, the mappings of the top-level
-        namespaces. This requires NAMESPACE_READ_PROPERTIES on `namespace`, or CATALOG_READ_PROPERTIES
-        on the catalog without it.
-        The mappings of namespaces are left out of a page unless the caller also has NAMESPACE_LIST,
-        and the mappings of tables unless the caller also has TABLE_LIST, on `namespace` or on the
-        catalog without it. So this listing never shows a name to a caller who can't list it.
+        namespaces. Results only include the mappings the caller is authorized to see, so this listing
+        never shows a name to a caller who can't list it.
 
         With `storage-configuration-name` instead, all the mappings to that storage configuration are
         listed, at any level of the catalog. This answers which names use a storage configuration,
-        for example before deleting it, and requires CATALOG_MANAGE_METADATA on the catalog.
+        for example before deleting it. It is restricted to callers who are authorized to see all the
+        mappings of the catalog.
         Setting both `namespace` and `storage-configuration-name` is a bad request (400).
 
         A mapping whose namespace or table has been dropped keeps being listed, with `target-exists` set
@@ -135,8 +133,7 @@ paths:
         configuration.
 
         A table with a mapping of its own takes it along: after the rename, the new name is mapped and
-        the old name is not. Moving a mapping this way does not require the privileges needed to
-        create or remove one.
+        the old name is not.
 
         Storage configurations are compared by identity, not by content: two storage configurations,
         or a storage configuration and the catalog's own `storageConfigInfo`, are always different.
@@ -147,19 +144,10 @@ paths:
         mappings (`target-exists` is false and `target-ever-existed` is true) until they are
         explicitly removed with `removeOrphanStorageMappings`.
 
-        A rename never lets a caller get around the privileges above. It does not change the
-        storage configuration a table uses, so it can't put a table on a storage configuration the
-        caller may not attach. It moves a mapping only along with the table it belongs to, so it can't
-        be used to create a mapping in a parent namespace where the caller lacks
-        NAMESPACE_ATTACH_STORAGE_CONFIGURATION (or CATALOG_ATTACH_STORAGE_CONFIGURATION), or to remove
-        one without the matching DETACH privileges. The caller still needs the privileges of the Iceberg
-        REST `renameTable` operation.
-
-        Requires STORAGE_CONFIGURATION_ATTACH on the storage configuration, and
-        NAMESPACE_ATTACH_STORAGE_CONFIGURATION on the parent namespace
-        (CATALOG_ATTACH_STORAGE_CONFIGURATION on the catalog for a top-level namespace), as attaching a
-        policy requires POLICY_ATTACH and NAMESPACE_ATTACH_POLICY. The privilege is checked on the
-        parent because the target does not exist yet.
+        A rename can't be used to get around these rules. It does not change the storage
+        configuration a table uses, so it can't put a table on a different storage configuration. It
+        moves a mapping only along with the table it belongs to, so it can't be used to create a
+        mapping for a name that has none or to remove one.
       requestBody:
         required: true
         content:
@@ -183,8 +171,8 @@ paths:
                 $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
         409:
           description:
-            Conflict - The target namespace or table already exists, or a storage mapping already exists
-            for the target
+            Conflict - The request conflicts with the current state of the catalog, for example the
+            target namespace or table already exists, or a storage mapping already exists for the target
           content:
             application/json:
               schema:
@@ -211,11 +199,6 @@ paths:
         A namespace or table created under the name afterwards uses the storage configuration of its
         parent. To remove the mappings left behind by dropped namespaces and tables in bulk, or when the
         parent namespace has been dropped as well, use `removeOrphanStorageMappings`.
-
-        Requires STORAGE_CONFIGURATION_DETACH on the mapped storage configuration, and
-        NAMESPACE_DETACH_STORAGE_CONFIGURATION on the parent namespace
-        (CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog for a top-level namespace), as detaching
-        a policy requires POLICY_DETACH and NAMESPACE_DETACH_POLICY.
       requestBody:
         required: true
         content:
@@ -238,7 +221,9 @@ paths:
               schema:
                 $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
         409:
-          description: Conflict - The target namespace or table exists
+          description:
+            Conflict - The request conflicts with the current state of the catalog, for example the
+            target namespace or table exists
           content:
             application/json:
               schema:
@@ -284,14 +269,11 @@ paths:
         removal takes effect, so a target created concurrently keeps its mapping, and a call can remove
         fewer mappings than the same call with `dry-run` listed.
 
-        Requires, for the mappings it would remove, the privileges of `removeStorageMapping`:
-        CATALOG_DETACH_STORAGE_CONFIGURATION on the catalog (NAMESPACE_DETACH_STORAGE_CONFIGURATION on
-        `namespace` when it is set), and STORAGE_CONFIGURATION_DETACH on each mapped storage
-        configuration. CATALOG_MANAGE_METADATA on the catalog includes them. If any is missing the call
-        is forbidden and nothing is removed, so the call never removes a mapping the caller could not
-        remove with `removeStorageMapping` (apart from the parent namespace having been dropped). The
-        response names the namespaces and tables of those mappings, none of which exist at that moment,
-        even if the caller lacks NAMESPACE_LIST or TABLE_LIST.
+        If the caller is not authorized to remove any one of the mappings, the call is forbidden and
+        nothing is removed, so the call never removes a mapping the caller could not remove with
+        `removeStorageMapping` (apart from the parent namespace having been dropped). The response
+        names the namespaces and tables of those mappings, none of which exist at that moment, even
+        if the caller could not otherwise list them.
       parameters:
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
@@ -370,9 +352,6 @@ paths:
         a server failure the mapping can remain. It is then a pending mapping (`target-exists` and
         `target-ever-existed` are false), shown by `listStorageMappings` and removed by
         `removeOrphanStorageMappings` with `include-pending`.
-
-        Requires the privileges of `createStorageMapping`, even when the existing mapping is used, and
-        those of the Iceberg REST `createNamespace` operation.
       parameters:
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/idempotency-key'
       requestBody:
@@ -398,8 +377,8 @@ paths:
                 $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
         409:
           description:
-            Conflict - The namespace already exists, or its name is mapped to a different storage
-            configuration
+            Conflict - The request conflicts with the current state of the catalog, for example the
+            namespace already exists, or its name is mapped to a different storage configuration
           content:
             application/json:
               schema:
@@ -438,9 +417,6 @@ paths:
         `removeOrphanStorageMappings` with `include-pending`. With `stage-create`, the mapping is kept,
         so that the commit that creates the table uses the storage configuration; it is a pending
         mapping until that commit, and also if the commit never happens.
-
-        Requires the privileges of `createStorageMapping`, even when the existing mapping is used, and
-        those of the Iceberg REST `createTable` operation.
       parameters:
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/data-access'
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/idempotency-key'
@@ -467,8 +443,9 @@ paths:
                 $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
         409:
           description:
-            Conflict - The identifier already exists as a table or view, or the table name is mapped to
-            a different storage configuration
+            Conflict - The request conflicts with the current state of the catalog, for example the
+            identifier already exists as a table or view, or the table name is mapped to a different
+            storage configuration
           content:
             application/json:
               schema:
