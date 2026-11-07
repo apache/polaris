@@ -120,9 +120,11 @@ allowed locations, instead of only inside their namespace's location or, for wri
 table's own location. Generated locations still follow the default layout unless the object storage
 prefix described below is enabled.
 
-For what changes when you switch a catalog between structured and unstructured locations, and how
-to handle existing tables and views, see
-[Structured and Unstructured Table Locations]({{% ref "structured-and-unstructured-table-locations.md" %}}).
+Switching `ALLOW_UNSTRUCTURED_TABLE_LOCATION` from `true` to `false` does not check existing tables
+and views, and can cause unexpected location check failures later, for example when updating or
+renaming a table that is outside its namespace. See
+[Structured and Unstructured Table Locations]({{% ref "structured-and-unstructured-table-locations.md" %}})
+for details and how to avoid these failures.
 
 Related settings:
 
