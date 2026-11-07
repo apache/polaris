@@ -18,8 +18,10 @@
  */
 package org.apache.polaris.core.storage;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.view.ViewMetadata;
@@ -69,13 +71,14 @@ public class StorageUtil {
   /** Given a baseLocation and entity (table?) properties, extracts the relevant locations */
   public static @NonNull Set<String> getLocationsUsedByTable(
       String baseLocation, Map<String, String> properties) {
-    Set<String> locations = new HashSet<>();
-    locations.add(baseLocation);
-    locations.add(properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY));
-    locations.add(
+    // The base location goes first so that it wins over an equivalent data or metadata location.
+    List<String> candidates = new ArrayList<>();
+    candidates.add(baseLocation);
+    candidates.add(properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY));
+    candidates.add(
         properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
-    locations.remove(null);
-    return removeRedundantLocations(locations);
+    candidates.removeIf(Objects::isNull);
+    return removeRedundantLocations(candidates);
   }
 
   /** Given a ViewMetadata, extracts the locations where the view's [meta]data might be found. */
@@ -83,21 +86,26 @@ public class StorageUtil {
     return Set.of(viewMetadata.location());
   }
 
-  /** Removes "redundant" locations, so {/a/b/, /a/b/c, /a/b/d} will be reduced to just {/a/b/} */
-  private static @NonNull Set<String> removeRedundantLocations(Set<String> locationStrings) {
-    HashSet<String> result = new HashSet<>(locationStrings);
-
-    for (String potentialParent : locationStrings) {
-      StorageLocation potentialParentLocation = StorageLocation.of(potentialParent);
-      for (String potentialChild : locationStrings) {
-        if (!potentialParent.equals(potentialChild)) {
-          StorageLocation potentialChildLocation = StorageLocation.of(potentialChild);
-          if (potentialChildLocation.isChildOf(potentialParentLocation)) {
-            result.remove(potentialChild);
-          }
-        }
+  /**
+   * Removes "redundant" locations, so {/a/b/, /a/b/c, /a/b/d} will be reduced to just {/a/b/}.
+   *
+   * <p>Candidates are considered in order. When several candidates denote the same location (for
+   * example, they differ only in scheme or trailing slash), the first one is kept. The raw location
+   * strings are returned as-is, because {@link StorageLocation} normalizes local paths and callers
+   * expect the original strings back.
+   */
+  private static @NonNull Set<String> removeRedundantLocations(List<String> candidates) {
+    List<String> kept = new ArrayList<>();
+    for (String candidate : candidates) {
+      StorageLocation location = StorageLocation.of(candidate);
+      // Skip the candidate when a kept location already covers it (is equal to or an ancestor of).
+      if (kept.stream().map(StorageLocation::of).anyMatch(location::isChildOf)) {
+        continue;
       }
+      // Otherwise drop any kept location that this candidate covers, then keep the candidate.
+      kept.removeIf(keptLocation -> StorageLocation.of(keptLocation).isChildOf(location));
+      kept.add(candidate);
     }
-    return result;
+    return Set.copyOf(kept);
   }
 }

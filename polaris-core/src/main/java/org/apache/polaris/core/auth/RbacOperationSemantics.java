@@ -65,6 +65,7 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_APPL
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_NAMESPACE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_TABLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_CATALOG;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_CATALOG_CONFIG;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_PRINCIPAL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_PRINCIPAL_ROLE;
@@ -74,13 +75,16 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_CAT
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_CATALOG_ROLES;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_GRANTS_FOR_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_NAMESPACE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_NAMESPACES;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_POLICY;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPALS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES_ASSIGNED;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_SEMANTIC_MODEL;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_TABLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_TABLES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_VIEWS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_NAMESPACE_METADATA;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_POLICY;
@@ -143,6 +147,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DETACH_POL
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_READ_CONFIG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_DROP;
@@ -293,6 +298,7 @@ record RbacOperationSemantics(
   static {
     // Namespace operations
     register(LIST_NAMESPACES, NAMESPACE_LIST);
+    register(LIST_NAMESPACE, NAMESPACE_READ_PROPERTIES);
     register(CREATE_NAMESPACE, NAMESPACE_CREATE);
     register(LOAD_NAMESPACE_METADATA, NAMESPACE_READ_PROPERTIES);
     register(NAMESPACE_EXISTS, NAMESPACE_LIST);
@@ -301,6 +307,7 @@ record RbacOperationSemantics(
 
     // Table operations
     register(LIST_TABLES, TABLE_LIST);
+    register(LIST_TABLE, TABLE_READ_PROPERTIES);
     register(CREATE_TABLE_DIRECT, TABLE_CREATE);
     register(CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION, EnumSet.of(TABLE_CREATE, TABLE_WRITE_DATA));
     register(CREATE_TABLE_STAGED, TABLE_CREATE);
@@ -328,6 +335,7 @@ record RbacOperationSemantics(
 
     // View operations
     register(LIST_VIEWS, VIEW_LIST);
+    register(LIST_VIEW, VIEW_READ_PROPERTIES);
     register(CREATE_VIEW, VIEW_CREATE);
     register(REGISTER_VIEW, VIEW_CREATE);
     register(LOAD_VIEW, VIEW_READ_PROPERTIES);
@@ -350,6 +358,7 @@ record RbacOperationSemantics(
     register(GET_CATALOG, CATALOG_READ_PROPERTIES);
     register(UPDATE_CATALOG, CATALOG_WRITE_PROPERTIES);
     register(DELETE_CATALOG, CATALOG_DROP);
+    register(GET_CATALOG_CONFIG, CATALOG_READ_CONFIG);
 
     // Principal operations
     register(LIST_PRINCIPALS, PRINCIPAL_LIST);

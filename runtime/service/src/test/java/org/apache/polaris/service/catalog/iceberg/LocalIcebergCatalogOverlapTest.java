@@ -18,11 +18,18 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.service.Profiles;
+import org.junit.jupiter.api.Test;
 
 /**
  * Default-persistence overlap test. Inherits the assertions from {@link
@@ -46,5 +53,25 @@ public class LocalIcebergCatalogOverlapTest extends AbstractLocalIcebergCatalogO
       overrides.put("polaris.features.\"ALLOW_OPTIMIZED_SIBLING_CHECK\"", "true");
       return overrides;
     }
+  }
+
+  @Test
+  public void testTableLocationOverlapAcrossNamespacesIsRejected() {
+    Namespace first = Namespace.of("first");
+    Namespace second = Namespace.of("second");
+    catalog().createNamespace(first);
+    catalog().createNamespace(second);
+    String location = STORAGE_LOCATION + "/shared-table-location";
+    catalog().buildTable(TableIdentifier.of(first, "t1"), SCHEMA).withLocation(location).create();
+
+    assertThatThrownBy(
+            () ->
+                catalog()
+                    .buildTable(TableIdentifier.of(second, "t2"), SCHEMA)
+                    .withLocation(location)
+                    .create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(location);
   }
 }

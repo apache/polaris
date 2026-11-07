@@ -43,7 +43,17 @@ spotless {
   } else if (!noSourceCheckProjects.contains(project.path)) {
     java {
       target("src/*/java/**/*.java")
-      googleJavaFormat()
+      googleJavaFormat(
+        versionCatalogs
+          .named("libs")
+          .findLibrary("google-java-format")
+          .orElseThrow {
+            GradleException("google-java-format version not found in libs.versions.toml")
+          }
+          .get()
+          .versionConstraint
+          .requiredVersion,
+      )
       // licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
       endWithNewline()
       toggleOffOn()

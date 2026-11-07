@@ -42,7 +42,9 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationBatchRequest;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -196,6 +198,7 @@ public record TestServices(
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
     private UnaryOperator<PolarisMetaStoreManager> metaStoreManagerDecorator =
         UnaryOperator.identity();
+    private PolarisAuthorizer authorizer;
     private final PolarisEventMetadataFactory eventMetadataFactory =
         new PolarisEventMetadataFactory() {
           @Override
@@ -266,18 +269,43 @@ public record TestServices(
       return this;
     }
 
+    public Builder authorizer(PolarisAuthorizer authorizer) {
+      this.authorizer = authorizer;
+      return this;
+    }
+
     public TestServices build() {
       RealmConfigurationSource configurationSource = (rc, name) -> config.get(name);
-      PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
-      Mockito.doAnswer(
-              invocation -> {
-                AuthorizationState authzState = invocation.getArgument(0);
-                authzState.resolve();
-                return null;
-              })
-          .when(authorizer)
-          .resolveAuthorizationInputs(any(), any());
-      Mockito.when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
+      if (authorizer == null) {
+        authorizer = Mockito.mock(PolarisAuthorizer.class);
+        Mockito.doAnswer(
+                invocation -> {
+                  AuthorizationState authzState = invocation.getArgument(0);
+                  authzState.resolve();
+                  return null;
+                })
+            .when(authorizer)
+            .resolveAuthorizationInputs(any(), any(AuthorizationRequest.class));
+        Mockito.when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
+            .thenReturn(AuthorizationDecision.allow());
+        // A Mockito mock does not run the interface's default methods, so the batch overloads must
+        // be stubbed too. Without this they return null, and callers that batch-authorize (such as
+        // entity-level list filtering) fail on the mock rather than on anything under test.
+        Mockito.doAnswer(
+                invocation -> {
+                  AuthorizationState authzState = invocation.getArgument(0);
+                  authzState.getResolutionManifest().resolveAll();
+                  return null;
+                })
+            .when(authorizer)
+            .resolveAuthorizationInputs(any(), any(AuthorizationBatchRequest.class));
+        Mockito.when(authorizer.authorize(any(), any(AuthorizationBatchRequest.class)))
+            .thenAnswer(
+                invocation ->
+                    invocation.<AuthorizationBatchRequest>getArgument(1).intents().stream()
+                        .map(intent -> AuthorizationDecision.allow())
+                        .toList());
+      }
 
       // Application level
       StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
@@ -470,9 +498,11 @@ public record TestServices(
                                 IcebergViewConfigEndpoints.class, icebergViewEndpoints)));
             return new CatalogConfigHandler(
                 new DefaultCatalogPrefixParser(),
-                resolverFactory,
+                resolutionManifestFactory,
+                authorizer,
                 configEndpointContributors,
-                idempotencyConfiguration);
+                idempotencyConfiguration,
+                realmConfig);
           };
 
       Supplier<IcebergCatalogAdapter> catalogAdapterSupplier =

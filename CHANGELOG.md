@@ -28,6 +28,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ## [Unreleased]
 
 ### Highlights
+- Table and view commits no longer delete newly written metadata when the metastore write outcome
+  is unknown (e.g. a dropped connection during `commit()`); they still clean up on known failures.
+  JDBC reports that unknown outcome as `PersistenceCommitStateUnknownException` (HTTP 500). A
+  connection failure before `commit()` is a plain failure and the new metadata file is kept.
 
 - Polaris now fully supports "external" principals, that is, principals that are not backed by an 
   entity in Polaris metastore. By enabling external principals, either globally or per-realm,
@@ -73,6 +77,33 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   v6 is now **required** before starting this version of Polaris. The first request to any realm
   whose recorded schema version does not match what the binary expects will fail fast with a clear
   error message. See the [Relational JDBC metastore documentation] for the full upgrade path.
+- New privilege `CATALOG_READ_CONFIG` (authorizable operation `GET_CATALOG_CONFIG`) is available for
+  the Iceberg REST `GET /v1/config` endpoint. The endpoint hard-gate is **off by default** behind
+  `polaris.features."ENFORCE_CATALOG_CONFIG_AUTHORIZATION"`, so upgrades do not 403 bootstrap. When
+  enabled, callers need `CATALOG_READ_CONFIG` (or a catalog-level content privilege that subsumes
+  it). A 200 still returns catalog properties (`defaults`) as today. Before enabling: grant
+  `CATALOG_READ_CONFIG` and update Ranger/OPA policies for `GET_CATALOG_CONFIG`. Ranger currently
+  maps that operation to the existing `catalog-properties-read` access type — do not enable the flag
+  for Ranger until a dedicated `catalog-config-read` access type exists (or accept that coarse
+  mapping). A production-readiness warning is emitted while the flag remains false. The default will
+  not flip until client-facing catalog configuration is defined. Table- or namespace-scoped grants
+  alone do not satisfy the catalog-path check used for `CATALOG_READ_CONFIG` once enforcement is on.
+- Tables last committed by a Polaris version older than 1.3.0 have all their locations validated on
+  their next commit. That commit fails if the locations do not satisfy the current location rules,
+  for example the catalog's allowed locations.
+- Loading a table whose metadata location or `write.data.path` / `write.metadata.path` differs from
+  the values recorded in Polaris now fails with a `ForbiddenException`, without any commit being
+  attempted. Tables last committed before 1.3.0 have no recorded values and are not affected until
+  their next commit.
+- Purging a table, and deleting metadata files after a commit
+  (`write.metadata.delete-after-commit.enabled`), no longer delete files located outside the
+  table's location. Such files are left in place and a warning is logged.
+- Purging a table now fails with a 400 error if the table entity has no recorded location, and with
+  a 403 error if the locations in the table metadata don't match the ones recorded on the entity.
+  For tables created before 1.3.0, custom `write.data.path` and `write.metadata.path` locations are
+  taken from the table metadata, since they were not recorded on the entity. Purge tasks that were
+  queued by an older version only carry the table's base location: files under a custom
+  `write.data.path` or `write.metadata.path` outside of it are not deleted by those tasks.
 
 [Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 
@@ -110,6 +141,24 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false` (default), operations involving locations outside the
   namespace now return HTTP 403. Catalogs that enable unstructured locations remain subject to
   catalog allowlists and configured overlap checks.
+- With `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false`, creating or registering a table whose
+  `write.data.path` or `write.metadata.path` lies outside the table's own location now fails with
+  403 Forbidden. Such tables could be created before, but loading them or vending credentials for
+  them already failed.
+- Unless `ALLOW_TABLE_LOCATION_OVERLAP` is enabled, a table can no longer be created at a location
+  that overlaps the `write.data.path` or `write.metadata.path` of an existing sibling table, and
+  sibling tables can no longer share such a path. A namespace can no longer be created at such a
+  location unless `ALLOW_NAMESPACE_LOCATION_OVERLAP` is enabled.
+- With `OPTIMIZED_SIBLING_CHECK` enabled, Polaris now also lists siblings after the indexed
+  overlap check when `ALLOW_UNSTRUCTURED_TABLE_LOCATION` is enabled or the catalog is external, to
+  check sibling tables' `write.data.path` and `write.metadata.path`. Validation may take longer in
+  such catalogs for namespaces with many entities. Checks against other tables' write paths remain
+  limited to siblings under the same parent.
+- With `ALLOW_UNSTRUCTURED_TABLE_LOCATION=true`, and in `EXTERNAL` catalogs, credentials are no
+  longer vended for a table whose `write.data.path` or `write.metadata.path` lies outside its own
+  location and overlaps another table or namespace. Such requests fail with 403 Forbidden. This
+  check does not apply when `ALLOW_TABLE_LOCATION_OVERLAP` is enabled, and it only applies to
+  catalogs served by `LocalIcebergCatalog`, not to federated catalogs.
 
 ### New Features
 
@@ -149,17 +198,44 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   its weights approximate bytes.
 - The `apache-polaris` Python package now accepts `pydantic` from 2.12 up to, but excluding, 3.0
   instead of a single minor version, so it can be installed alongside packages that pin `pydantic`.
+- `TABLE_MANAGE_STRUCTURE` and the fine-grained table update privileges (such as
+  `TABLE_ASSIGN_UUID`, `TABLE_ADD_SCHEMA` or `TABLE_SET_PROPERTIES`) now subsume
+  `TABLE_READ_PROPERTIES`, consistent with `TABLE_WRITE_PROPERTIES`, because a table update returns
+  the full table metadata. Roles holding only one of these privileges can now also load the table,
+  get the applicable policies on the table, and load the table as a generic table, since all of these
+  operations require `TABLE_READ_PROPERTIES`.
+  In the Ranger service definition, the corresponding access types (`table-structure-manage`,
+  `table-uuid-assign`, etc.) now imply `table-properties-read`; the service definition must be
+  re-imported into Ranger for this to take effect.
 
 ### Deprecations
 
 ### Fixes
 
+- Credential vending no longer ends up with no allowed read/write locations when a table's data
+  or metadata path matches its base location except for the scheme (for example `abfss://` vs
+  `abfs://`) or a trailing slash. Such locations are mutual children, so the previous logic dropped
+  both and left the set empty. The base location is now kept as the surviving representative.
 - The Iceberg REST `/config` response now advertises the
   `GET /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials` endpoint, which Polaris
   already served. Clients that check advertised endpoints before refreshing vended credentials can
   now use it.
+- Creating an external catalog whose `connectionConfigInfo` has no `authenticationParameters`, or
+  uses a connection or authentication type outside the realm's allow-list, now fails with
+  `400 Bad Request` instead of `500 Internal Server Error`.
+- Iceberg REST `GET /v1/config` can optionally require `CATALOG_READ_CONFIG` (operation
+  `GET_CATALOG_CONFIG`). The check is off by default behind
+  `ENFORCE_CATALOG_CONFIG_AUTHORIZATION`; when enabled, unauthorized callers get 403. A 200 still
+  returns catalog properties (`defaults`) as today. Previously any authenticated principal who
+  knew a warehouse name could call the endpoint with no AuthZ.
 - Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
   the packaged chart, so `helm test` ran no tests.
+- Credential vending with a statically configured GCP access token (`polaris.storage.gcp.token`)
+  failed immediately with an `IllegalStateException`, because the token was wrapped in a credential
+  that cannot refresh and vending calls refresh before downscoping. The configured token is now
+  wrapped in a credential that supports refresh, returning the token with a fixed expiry. The expiry
+  can be set explicitly via `polaris.storage.gcp.expiry` (an ISO-8601 instant); when unset it is
+  computed from `polaris.storage.gcp.lifespan` as before.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - Maintenance policy content now rejects non-boolean values for the `enable` field again. The
@@ -250,6 +326,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Policy API: detaching a policy from a target it was never attached to now returns
   `404 Not Found` with error type `NoSuchMappingException`, as the policy API specification
   requires, instead of `500 Internal Server Error`.
+- One failing event no longer fails an entire OpenLineage batch ingest request. It is reported as a
+  non-retriable failed entry for that event.
 - Registering a table whose stored metadata file is no longer readable no longer fails: with
   overwrite it replaces the metadata location, and without overwrite it reports the table as
   already existing.
