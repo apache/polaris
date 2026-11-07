@@ -1698,7 +1698,7 @@ The `setup` command is used to automate the creation of various entities in Pola
 
 #### apply
 
-The `apply` subcommand reads a configuration file and creates the specified entities in Polaris. The configuration file must be in YAML format and define the entities to be created. Tables and views are registered only if they do not already exist. An existing table or view is left unchanged even if the current `metadata_location` differs from the one in the configuraiton file.
+The `apply` subcommand reads a configuration file and creates the specified entities in Polaris. The configuration file must be in YAML format and define the entities to be created. Tables and views are registered only if they do not already exist. An existing table or view is left unchanged even if the current `metadata_location` differs from the one in the configuration file.
 
 ```
 usage: polaris setup apply [-h] [options] SETUP_CONFIG_FILE
