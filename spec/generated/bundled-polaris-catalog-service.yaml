@@ -1661,9 +1661,16 @@ paths:
         - Directory API
       summary: List all directory identifiers underneath a given namespace
       description: |
-        Return the directory identifiers under this namespace. The identifiers are those of the directories (for example `product-images`), not of their `__inventory` tables.
+        **Beta:** The Directories API is under active development and may change in a
+        backward-incompatible way.
 
-        The response may be paginated: clients should always check `next-page-token` and, when present, pass it as `pageToken` to fetch the next page. Neither `pageToken` nor `pageSize` is required on the first request. The server decides the actual page size, which may be smaller or larger than the `pageSize` hint, and may return all results in a single response.
+        Return the directory identifiers under this namespace. The identifiers are those of the directories
+        (for example `product-images`), not of their `__inventory` tables.
+
+        The response may be paginated: clients should always check `next-page-token` and, when present,
+        pass it as `pageToken` to fetch the next page. Neither `pageToken` nor `pageSize` is required on the
+        first request. The server decides the actual page size, which may be smaller or larger than the
+        `pageSize` hint, and may return all results in a single response.
       operationId: listDirectories
       parameters:
         - $ref: '#/components/parameters/directory-page-token'
@@ -1694,7 +1701,11 @@ paths:
       tags:
         - Directory API
       summary: Create a directory under the given namespace
-      description: Create a directory under the given namespace, and return the created directory information as a response.
+      description: |
+        **Beta:** The Directories API is under active development and may change in a
+        backward-incompatible way.
+
+        Create a directory under the given namespace, and return the created directory information as a response.
       operationId: createDirectory
       requestBody:
         required: true
@@ -1744,9 +1755,14 @@ paths:
         - Directory API
       summary: Load a directory under the given namespace from the catalog
       operationId: loadDirectory
-      description: |-
+      description: |
+        **Beta:** The Directories API is under active development and may change in a
+        backward-incompatible way.
+
         Load a directory from the catalog under the given namespace.
-        The response contains all directory information passed during create.
+
+        The response contains the directory configuration and, when the directory inventory table exists,
+        its identifier.
       responses:
         '200':
           $ref: '#/components/responses/LoadDirectoryResponse'
@@ -1775,7 +1791,13 @@ paths:
       summary: Update a directory under the given namespace
       operationId: updateDirectory
       description: |
-        Update the mutable configuration of a directory (`filter` and `properties`). Only the fields present in the request are changed, and a provided field replaces the existing value. The `name` and `base-location` cannot be changed. The directory inventory table and its history are preserved. The new filter applies from the next scan.
+        **Beta:** The Directories API is under active development and may change in a
+        backward-incompatible way.
+
+        Update the mutable configuration of a directory (`scanner-config` and `properties`).
+        Only the fields present in the request are changed, and a provided field replaces the existing value.
+        The `name` and `base-location` cannot be changed. The directory inventory table and its
+        history are preserved. The new scanner configuration applies from the next scan.
       requestBody:
         required: true
         content:
@@ -1809,7 +1831,11 @@ paths:
         - Directory API
       summary: Drop a directory under the given namespace from the catalog
       operationId: dropDirectory
-      description: Remove a directory under the given namespace from the catalog
+      description: |
+        **Beta:** The Directories API is under active development and may change in a
+        backward-incompatible way.
+
+        Remove a directory under the given namespace from the catalog
       responses:
         '204':
           description: Success, no content
@@ -5198,6 +5224,13 @@ components:
           items:
             type: string
           description: A list of regular expressions (`java.util.regex` syntax) matched against the object URI. An object matching any pattern is excluded, even if it also matches an include pattern.
+    DirectoryScannerConfig:
+      type: object
+      description: |
+        Configuration used by the external scanning services to populate the directory inventory table. Polaris stores it and returns it when the directory is loaded, but does not act on it.
+      properties:
+        filter:
+          $ref: '#/components/schemas/DirectoryFilter'
     CreateDirectoryRequest:
       type: object
       required:
@@ -5210,8 +5243,8 @@ components:
         base-location:
           type: string
           description: The external object store location to use as a root for scanning objects (e.g. s3://bucket/path/). This is where the scanned objects live, not the location of the Iceberg inventory table, which is assigned by Polaris.
-        filter:
-          $ref: '#/components/schemas/DirectoryFilter'
+        scanner-config:
+          $ref: '#/components/schemas/DirectoryScannerConfig'
         properties:
           type: object
           additionalProperties:
@@ -5222,8 +5255,9 @@ components:
         Directory information.
         - `name` (REQUIRED): name of the directory
         - `base-location` (REQUIRED): root location of the directory on the object store
-        - `filter` (OPTIONAL): include and exclude patterns for object filtering
+        - `scanner-config` (OPTIONAL): configuration for the scanning services, such as the include and exclude patterns for object filtering
         - `properties` (OPTIONAL): properties for the directory passed on creation
+        - `inventory-table` (OPTIONAL): identifier of the directory inventory table, assigned by Polaris. It is absent if the inventory table does not exist, for example if it was dropped through the Iceberg REST API.
       required:
         - name
         - base-location
@@ -5232,12 +5266,14 @@ components:
           type: string
         base-location:
           type: string
-        filter:
-          $ref: '#/components/schemas/DirectoryFilter'
+        scanner-config:
+          $ref: '#/components/schemas/DirectoryScannerConfig'
         properties:
           type: object
           additionalProperties:
             type: string
+        inventory-table:
+          $ref: '#/components/schemas/TableIdentifier'
     LoadDirectoryResponse:
       description: Result used when a directory is successfully loaded.
       type: object
@@ -5251,8 +5287,8 @@ components:
       description: |
         Fields to update on a directory. Omitted fields are left unchanged.
       properties:
-        filter:
-          $ref: '#/components/schemas/DirectoryFilter'
+        scanner-config:
+          $ref: '#/components/schemas/DirectoryScannerConfig'
         properties:
           type: object
           additionalProperties:

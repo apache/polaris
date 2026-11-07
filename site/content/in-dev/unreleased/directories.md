@@ -36,6 +36,10 @@ an Iceberg table with object-level metadata such as URI, size, content type, che
 This means query engines and tools that already know how to read Iceberg tables can discover and
 access unstructured data with little or no extra work (accessing the object itself).
 
+The directory table is a snapshot of the objects as of the last scan, not a live view of the object store. Objects
+added, changed, or removed after the last scan appear in the directory table only after the next scan, so the
+directory table can lag behind the object store.
+
 ## Concepts
 
 A directory has two main parts:
@@ -62,7 +66,7 @@ A directory is described by the following fields:
 |-------|------|----------|-------------|
 | `name` | `string` | Yes | The name of the directory. It is used in REST endpoint paths and is used, followed by the `__inventory` suffix, as the name of the corresponding Iceberg table. |
 | `base-location` | `string` | Yes | The external object store location to use as a root for scanning objects; this is not the location of the Iceberg inventory table, which is assigned by Polaris (for example `s3://my-bucket/images/`, `gs://my-bucket/docs/`, or `file:///data/local/`). |
-| `filter` | `object` | No | Include and exclude patterns that control which objects are added to the directory table during a scan. See [Filter](#filter). |
+| `scanner-config` | `object` | No | Configuration for the scanning services, such as the filter that controls which objects are added to the directory table during a scan. See [Scanner configuration](#scanner-configuration). |
 
 ### Base location
 
@@ -70,7 +74,15 @@ The `base-location` is validated like a table location when the directory is cre
 it must be within the catalog's allowed locations. As for tables, it must also be within the namespace location
 unless the catalog sets `polaris.config.allow.unstructured.table.location` to `true`.
 
-### Filter
+### Scanner configuration
+
+The `scanner-config` object holds the configuration used by the
+[external scanning services](#external-services-scanning-services) to populate the directory table. Polaris stores
+it and returns it when the directory is loaded, but does not act on it.
+
+It contains a [`filter`](#filter) that controls which objects are added to the directory table during a scan.
+
+#### Filter
 
 The `filter` object controls which objects are included in the directory table during a scan.
 
@@ -84,9 +96,11 @@ not match any `exclude` pattern.
 
 ```json
 {
-  "filter": {
-    "include": [".*\\.jpg$", ".*\\.png$"],
-    "exclude": [".*thumbs/.*"]
+  "scanner-config": {
+    "filter": {
+      "include": [".*\\.jpg$", ".*\\.png$"],
+      "exclude": [".*thumbs/.*"]
+    }
   }
 }
 ```
@@ -99,8 +113,10 @@ POST /polaris/v1/{prefix}/namespaces/{namespace}/directories
 {
   "name": "product-images",
   "base-location": "s3://warehouse/product-images/",
-  "filter": {
-    "include": [".*\\.jpg$", ".*\\.png$"]
+  "scanner-config": {
+    "filter": {
+      "include": [".*\\.jpg$", ".*\\.png$"]
+    }
   }
 }
 ```
@@ -127,15 +143,17 @@ directory configuration (see [Configuration](#configuration)).
 
 **GET** `/polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}`
 
-Returns the full configuration of the specified directory, including its filter.
+Returns the full configuration of the specified directory, including its scanner configuration, and the
+identifier of its [directory table](#directory-table) in the `inventory-table` field. The `inventory-table` field
+is absent if the directory table does not exist.
 
 ### Update a directory
 
 **POST** `/polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}`
 
-Updates the `filter` and `properties` of the directory. Only the fields present in the request
+Updates the `scanner-config` and `properties` of the directory. Only the fields present in the request
 are changed, and a provided field replaces the existing value. The `name` and `base-location` cannot be changed.
-The directory table and its history are preserved, and the new filter applies from the next scan.
+The directory table and its history are preserved, and the new scanner configuration applies from the next scan.
 
 ### Drop a directory
 
@@ -146,16 +164,17 @@ Removes the directory and its associated Iceberg table from the namespace.
 ## Directory table
 
 When a directory is created, Polaris creates an Iceberg table in the same namespace using the directory
-`name` followed by `__inventory` as the table name. The table uses the following schema:
+`name` followed by `__inventory` as the table name. The table identifier is also returned in the `inventory-table`
+field when the directory is loaded. The table uses the following schema:
 
 | Field Id | Field Name | Type | Required | Description |
 |----------|------------|------|----------|-------------|
 | 1 | `file_uri` | `string` | Yes | The fully qualified URI of the object (for example `s3://my-bucket/images/photo.jpg`). |
 | 2 | `content_type` | `string` | No | The MIME content type (RFC 2045) of the object (for example `image/jpeg`, `application/pdf`). |
 | 3 | `size` | `long` | No | The size of the object in bytes. |
-| 4 | `checksum_algorithm` | `string` | No | The name of the checksum algorithm (for example `MD5`, `SHA-256`, `CRC32`). |
+| 4 | `checksum_algorithm` | `string` | No | The name of the checksum algorithm (for example `MD5`, `SHA-256`, `CRC32`). It is set per object because objects under the same location can have checksums computed with different algorithms (for example S3 objects uploaded with different checksum settings), so a scanning service can record the checksum reported by the object store without reading the object. |
 | 5 | `checksum` | `string` | No | The object checksum value computed with the algorithm specified in `checksum_algorithm`. |
-| 6 | `last_modified` | `timestamptz` | No | The last modification timestamp of the object as reported by the object store. |
+| 6 | `last_modified` | `timestamptz` | Yes | The last modification timestamp of the object as reported by the object store. |
 | 7 | `metadata` | `map<string, string>` | No | Additional labels and tags from the object store (for example S3 user-defined metadata, storage class, or content encoding). |
 
 Clients (query engines, analytics tools, etc.) interact with the directory table as a regular Iceberg
@@ -183,7 +202,8 @@ More precisely:
 - Privileges on the directory or on the directory table (for example `TABLE_READ_DATA`) don't grant access to the
   objects under the `base-location`.
 
-Vending credentials for the objects referenced in the directory table is not supported yet.
+Vending credentials for the objects under the directory `base-location` is not supported yet. It is planned for a
+future release.
 
 ## External services (scanning services)
 
@@ -206,7 +226,7 @@ sequenceDiagram
     Scanner->>Polaris: GET /polaris/v1/{prefix}/namespaces/{ns}/directories
     Polaris-->>Scanner: list of directory names
     Scanner->>Polaris: GET /polaris/v1/{prefix}/namespaces/{ns}/directories/{name}
-    Polaris-->>Scanner: directory config (base-location, filter)
+    Polaris-->>Scanner: directory config (base-location, scanner-config, inventory-table)
 
     Scanner->>Store: list objects under base-location
     Store-->>Scanner: object metadata (uri, size, checksum, ...)
@@ -220,7 +240,8 @@ sequenceDiagram
 
 1. **Discovery** — A service calls the
    [List directories](#list-directories) endpoint to discover which directories exist and then calls
-   [Get directory details](#get-directory-details) to retrieve each directory's configuration.
+   [Get directory details](#get-directory-details) to retrieve each directory's configuration and the identifier
+   of its directory table.
 
 2. **Scan** — The service walks the object store location specified by the directory `base-location`,
    applying the configured [filter](#filter) rules. It collects metadata for each matching object
