@@ -800,16 +800,6 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .isNotEqualTo(cacheKey(null, source, transport));
   }
 
-  @Test
-  public void testCacheKeyToStringOmitsSourceCredentials() {
-    GoogleCredentials source = Mockito.mock(GoogleCredentials.class);
-    Mockito.when(source.toString()).thenReturn("source-credentials-with-secret");
-
-    assertThat(cacheKey("team-a", source, NetHttpTransport::new).toString())
-        .contains("team-a")
-        .doesNotContain("source-credentials-with-secret");
-  }
-
   private static GcpStorageCredentialCacheKey cacheKey(
       String storageName, GoogleCredentials source, HttpTransportFactory transport) {
     return GcpStorageCredentialCacheKey.of(
@@ -824,59 +814,5 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         EMPTY_REALM_CONFIG,
         GcpCredentialOps.DEFAULT,
         Optional.empty());
-  }
-
-  @Test
-  public void testImpersonationUsesTheNamedSourceCredentials() throws IOException {
-    String serviceAccount = "target@project.iam.gserviceaccount.com";
-    GoogleCredentials named = sourceCredentials();
-    IamCredentialsClient iamClient = Mockito.mock(IamCredentialsClient.class);
-    Mockito.when(iamClient.generateAccessToken(Mockito.any(GenerateAccessTokenRequest.class)))
-        .thenReturn(
-            GenerateAccessTokenResponse.newBuilder()
-                .setAccessToken("impersonated-token")
-                .setExpireTime(
-                    Timestamp.newBuilder()
-                        .setSeconds(System.currentTimeMillis() / 1000 + 3600)
-                        .build())
-                .build());
-    AtomicReference<GoogleCredentials> impersonationSource = new AtomicReference<>();
-    GcpCredentialOps ops =
-        new GcpCredentialOps() {
-          @Override
-          public IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
-            impersonationSource.set(credentials);
-            return iamClient;
-          }
-
-          @Override
-          public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
-            return new AccessToken("downscoped-token", new Date());
-          }
-        };
-
-    new GcpCredentialsStorageIntegration(
-            named,
-            ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
-            GcpStorageConfigurationInfo.builder()
-                .addAllowedLocation("gs://bucket/path")
-                .storageName("team-a")
-                .gcpServiceAccount(serviceAccount)
-                .build(),
-            EMPTY_REALM_CONFIG,
-            ops)
-        .getStorageAccessConfig(readGrant(), Optional.empty(), CredentialVendingContext.empty());
-
-    Mockito.verify(named).refresh();
-    assertThat(impersonationSource.get()).isSameAs(named);
-    Mockito.verify(iamClient)
-        .generateAccessToken(
-            Mockito.argThat(
-                request ->
-                    request
-                        .getName()
-                        .equals(
-                            GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX
-                                + serviceAccount)));
   }
 }

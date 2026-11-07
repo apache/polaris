@@ -22,6 +22,7 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
+import io.quarkus.runtime.Startup;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
@@ -56,6 +57,9 @@ import org.jspecify.annotations.Nullable;
  * credentials supplier, Google HTTP transport factory, request-scope realm config).
  */
 @ApplicationScoped
+// Created at startup, so that invalid named GCP credentials stop the server instead of failing the
+// first request.
+@Startup
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
   private final S3CredentialVendingMechanisms mechanisms;
@@ -150,7 +154,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     // Attribution replaces the source credentials with a per-principal federated identity, so a
     // storage name could not take effect. Refuse the combination rather than ignore either setting.
     if (realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_ENABLED)) {
-      throw new IllegalArgumentException(
+      throw new IllegalStateException(
           "Storage name '"
               + storageName
               + "' cannot be used while GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true");

@@ -144,7 +144,7 @@ class GcpNamedCredentialsProviderTest {
                 true));
 
     assertThatThrownBy(() -> provider.getStorageIntegration(entityPath("team-a")))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("team-a")
         .hasMessageContaining(GCS_PRINCIPAL_ATTRIBUTION_ENABLED.key());
     assertThat(defaultLoads).hasValue(0);

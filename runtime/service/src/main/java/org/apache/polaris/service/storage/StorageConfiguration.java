@@ -56,9 +56,10 @@ public interface StorageConfiguration extends S3AccessConfig {
 
   /**
    * Names that cannot select GCP credentials, because they are the property names of the default
-   * GCP credentials: {@code polaris.storage.gcp.token} and {@code polaris.storage.gcp.lifespan}.
+   * GCP credentials: {@code polaris.storage.gcp.token}, {@code polaris.storage.gcp.lifespan} and
+   * {@code polaris.storage.gcp.expiry}.
    */
-  Set<String> RESERVED_GCP_STORAGE_NAMES = Set.of("token", "lifespan");
+  Set<String> RESERVED_GCP_STORAGE_NAMES = Set.of("token", "lifespan", "expiry");
 
   @WithName("aws")
   AwsStorageConfig aws();
@@ -151,8 +152,8 @@ public interface StorageConfiguration extends S3AccessConfig {
      * Path to the GCP credentials file to use for authentication when using named storages. This is
      * the same JSON format that the {@code GOOGLE_APPLICATION_CREDENTIALS} environment variable
      * points to for the default credentials. Service account key files and Workload Identity
-     * Federation configuration files are accepted. The names {@code token} and {@code lifespan} are
-     * reserved and cannot be used as storage names.
+     * Federation configuration files are accepted. The names {@code token}, {@code lifespan} and
+     * {@code expiry} are reserved: configuring one of them stops the server from starting.
      */
     @WithName("credentials-file")
     Path credentialsFile();
@@ -230,6 +231,8 @@ public interface StorageConfiguration extends S3AccessConfig {
    * Returns one supplier per configured GCP storage name. Each supplier loads its credentials file
    * on first use and shares the result, like {@link #gcpCredentialsSupplier(Clock)} does for the
    * default credentials. A failed load is retried on the next use.
+   *
+   * @throws IllegalStateException if a reserved name is configured
    */
   default Map<String, Supplier<GoogleCredentials>> gcpNamedCredentialsSuppliers() {
     ImmutableMap.Builder<String, Supplier<GoogleCredentials>> suppliers = ImmutableMap.builder();
@@ -237,12 +240,18 @@ public interface StorageConfiguration extends S3AccessConfig {
         .storages()
         .forEach(
             (storageName, storageConfig) -> {
-              if (!RESERVED_GCP_STORAGE_NAMES.contains(storageName)) {
-                suppliers.put(
-                    storageName,
-                    Suppliers.memoize(
-                        () -> loadGcpCredentials(storageName, storageConfig.credentialsFile())));
+              if (RESERVED_GCP_STORAGE_NAMES.contains(storageName)) {
+                throw new IllegalStateException(
+                    "'"
+                        + storageName
+                        + "' cannot be used as a GCP storage name, because polaris.storage.gcp."
+                        + storageName
+                        + " is a property of the default GCP credentials");
               }
+              suppliers.put(
+                  storageName,
+                  Suppliers.memoize(
+                      () -> loadGcpCredentials(storageName, storageConfig.credentialsFile())));
             });
     return suppliers.build();
   }

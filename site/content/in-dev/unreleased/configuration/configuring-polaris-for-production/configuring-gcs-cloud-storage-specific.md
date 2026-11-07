@@ -63,7 +63,7 @@ The following rules apply:
 - When the feature flag is disabled, `storageName` is ignored for credential selection.
 - If `gcsServiceAccount` is also set, the named credentials are used to impersonate that service account.
 - A `storageName` is refused while `GCS_PRINCIPAL_ATTRIBUTION_ENABLED` is true, because attribution uses a federated identity instead of these credentials.
-- The names `token` and `lifespan` are reserved and cannot select credentials.
+- The names `token`, `lifespan` and `expiry` are reserved, because they are properties of the default credentials. Configuring one of them as a name stops Polaris from starting.
 - A file is read the first time its name is used, and then kept until Polaris restarts. A bad file fails only the storages that use its name.
 - When setting the property through an environment variable, a name containing a dash needs the literal property name as the variable name (`polaris.storage.gcp.team-a.credentials-file`). `POLARIS_STORAGE_GCP_TEAM_A_CREDENTIALS_FILE` alone does not define `team-a`.
 
