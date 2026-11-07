@@ -33,7 +33,7 @@ Polaris requires both IAM roles and [Hierarchical Namespace (HNS)](https://docs.
 
 ## Server credentials
 
-Polaris uses one server-side GCP credential to mint vended tokens and to access storage. Catalogs never carry this credential. By default it comes from [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials): the `GOOGLE_APPLICATION_CREDENTIALS` environment variable pointing to a credentials file, or the service account attached to the workload.
+By default, Polaris uses one server-side GCP credential to mint vended tokens and to access storage. Catalogs never carry this credential. It comes from [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials): the `GOOGLE_APPLICATION_CREDENTIALS` environment variable pointing to a credentials file, or the service account attached to the workload.
 
 ### Named credentials
 

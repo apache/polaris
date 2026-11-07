@@ -53,7 +53,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - When `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` is enabled, the `storageName` of a GCS storage configuration
   is no longer ignored. A GCS catalog whose `storageName` has no matching
   `polaris.storage.gcp.<storage>.credentials-file` now fails credential vending and storage access
-  instead of using the default GCP credentials.
+  instead of using the default GCP credentials. A GCS catalog with a `storageName` also fails while
+  `GCS_PRINCIPAL_ATTRIBUTION_ENABLED` is true.
 - `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists the explicit mechanisms a realm accepts; an empty
   `credentialVendingMechanism` is always allowed. Startup reports a listed mechanism with no
   installed bean as a non-severe readiness warning. Startup fails (a severe readiness issue) when no

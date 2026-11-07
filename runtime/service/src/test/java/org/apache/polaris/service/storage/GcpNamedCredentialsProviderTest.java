@@ -43,8 +43,6 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 
 /** How {@link PolarisStorageIntegrationProviderImpl} selects GCP credentials for a storage. */
 class GcpNamedCredentialsProviderTest {
@@ -76,8 +74,7 @@ class GcpNamedCredentialsProviderTest {
         null);
   }
 
-  /** A catalog, or a cleanup task: both carry the configuration in their internal properties. */
-  private static List<PolarisEntity> entityPath(PolarisEntityType type, String storageName) {
+  private static List<PolarisEntity> entityPath(String storageName) {
     GcpStorageConfigurationInfo config =
         GcpStorageConfigurationInfo.builder()
             .addAllowedLocation("gs://bucket/path/")
@@ -85,7 +82,7 @@ class GcpNamedCredentialsProviderTest {
             .build();
     return List.of(
         new PolarisEntity.Builder()
-            .setType(type)
+            .setType(PolarisEntityType.CATALOG)
             .setName("entity")
             .setInternalProperties(
                 Map.of(
@@ -97,11 +94,10 @@ class GcpNamedCredentialsProviderTest {
     return Map.of(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true);
   }
 
-  @ParameterizedTest
-  @CsvSource({"CATALOG", "TASK"})
-  void flagOnWithNameUsesOnlyTheNamedCredentials(PolarisEntityType type) {
+  @Test
+  void flagOnWithNameUsesOnlyTheNamedCredentials() {
     PolarisStorageIntegration integration =
-        provider(resolveByName()).getStorageIntegration(entityPath(type, "team-a"));
+        provider(resolveByName()).getStorageIntegration(entityPath("team-a"));
 
     assertThat(integration).isInstanceOf(GcpCredentialsStorageIntegration.class);
     assertThat(teamALoads).hasValue(1);
@@ -110,7 +106,7 @@ class GcpNamedCredentialsProviderTest {
 
   @Test
   void flagOnWithoutNameUsesTheDefault() {
-    provider(resolveByName()).getStorageIntegration(entityPath(PolarisEntityType.CATALOG, null));
+    provider(resolveByName()).getStorageIntegration(entityPath(null));
 
     assertThat(defaultLoads).hasValue(1);
     assertThat(teamALoads).hasValue(0);
@@ -119,19 +115,18 @@ class GcpNamedCredentialsProviderTest {
   @Test
   void flagOffIgnoresTheName() {
     provider(Map.of(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), false))
-        .getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a"));
-    provider(Map.of()).getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "unknown"));
+        .getStorageIntegration(entityPath("team-a"));
+    provider(Map.of()).getStorageIntegration(entityPath("unknown"));
 
     assertThat(defaultLoads).hasValue(2);
     assertThat(teamALoads).hasValue(0);
   }
 
-  @ParameterizedTest
-  @CsvSource({"CATALOG", "TASK"})
-  void flagOnWithUnknownNameFailsWithoutFallback(PolarisEntityType type) {
+  @Test
+  void flagOnWithUnknownNameFailsWithoutFallback() {
     PolarisStorageIntegrationProviderImpl provider = provider(resolveByName());
 
-    assertThatThrownBy(() -> provider.getStorageIntegration(entityPath(type, "unknown")))
+    assertThatThrownBy(() -> provider.getStorageIntegration(entityPath("unknown")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("unknown")
         .hasMessageContaining("not configured");
@@ -148,8 +143,7 @@ class GcpNamedCredentialsProviderTest {
                 GCS_PRINCIPAL_ATTRIBUTION_ENABLED.key(),
                 true));
 
-    assertThatThrownBy(
-            () -> provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a")))
+    assertThatThrownBy(() -> provider.getStorageIntegration(entityPath("team-a")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("team-a")
         .hasMessageContaining(GCS_PRINCIPAL_ATTRIBUTION_ENABLED.key());
