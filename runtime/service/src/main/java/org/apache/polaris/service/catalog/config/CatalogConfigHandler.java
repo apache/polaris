@@ -46,6 +46,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -99,11 +100,12 @@ public class CatalogConfigHandler {
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
       throw new NotFoundException("Unable to find warehouse %s", catalogName);
     }
-    PolarisBaseEntity catalogEntity =
-        resolutionManifest
-            .getResolvedTopLevelEntity(catalogName, PolarisEntityType.CATALOG)
-            .getResolvedLeafEntity()
-            .getEntity();
+    PolarisResolvedPathWrapper resolvedCatalog =
+        resolutionManifest.getResolvedReferenceCatalogEntity();
+    if (resolvedCatalog == null) {
+      throw new NotFoundException("Unable to find warehouse %s", catalogName);
+    }
+    PolarisBaseEntity catalogEntity = resolvedCatalog.getResolvedLeafEntity().getEntity();
 
     // GET_CATALOG_CONFIG is opt-in via ENFORCE_CATALOG_CONFIG_AUTHORIZATION (default false).
     // When false, behavior matches the pre-authorization path so upgrades do not 403 bootstrap.
