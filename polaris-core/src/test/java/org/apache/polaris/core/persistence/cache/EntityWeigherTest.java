@@ -53,11 +53,10 @@ public class EntityWeigherTest {
         new IcebergTableLikeEntity.Builder(
             PolarisEntitySubType.ICEBERG_TABLE, TableIdentifier.of(name), metadataLocation);
     entity.setProperties(propertiesMap);
-    internalProperties.ifPresent(
-        p -> {
-          Map<String, String> internalPropertiesMap = getPropertiesMap(p);
-          entity.setInternalProperties(internalPropertiesMap);
-        });
+    internalProperties.ifPresent(p -> {
+      Map<String, String> internalPropertiesMap = getPropertiesMap(p);
+      entity.setInternalProperties(internalPropertiesMap);
+    });
     return new ResolvedPolarisEntity(diagnostics, entity.build(), List.of(), 1);
   }
 

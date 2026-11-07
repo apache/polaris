@@ -64,12 +64,11 @@ public class LocalIcebergCatalogOverlapTest extends AbstractLocalIcebergCatalogO
     String location = STORAGE_LOCATION + "/shared-table-location";
     catalog().buildTable(TableIdentifier.of(first, "t1"), SCHEMA).withLocation(location).create();
 
-    assertThatThrownBy(
-            () ->
-                catalog()
-                    .buildTable(TableIdentifier.of(second, "t2"), SCHEMA)
-                    .withLocation(location)
-                    .create())
+    assertThatThrownBy(() ->
+            catalog()
+                .buildTable(TableIdentifier.of(second, "t2"), SCHEMA)
+                .withLocation(location)
+                .create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace")
         .hasMessageContaining(location);

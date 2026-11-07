@@ -275,10 +275,9 @@ public abstract class AbstractLocalIcebergCatalogViewTest
 
     await()
         .atMost(Duration.ofSeconds(10))
-        .until(
-            () ->
-                testPolarisEventListener.hasEvent(PolarisEventType.BEFORE_REFRESH_VIEW)
-                    && testPolarisEventListener.hasEvent(PolarisEventType.AFTER_REFRESH_VIEW));
+        .until(() ->
+            testPolarisEventListener.hasEvent(PolarisEventType.BEFORE_REFRESH_VIEW)
+                && testPolarisEventListener.hasEvent(PolarisEventType.AFTER_REFRESH_VIEW));
 
     PolarisEvent beforeRefreshEvent =
         testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_VIEW);

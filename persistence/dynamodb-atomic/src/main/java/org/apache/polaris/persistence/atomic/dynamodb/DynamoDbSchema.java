@@ -57,19 +57,18 @@ public final class DynamoDbSchema {
   public static void createIfAbsent(DynamoDbClient client, String tableName) {
     if (!tableExists(client, tableName)) {
       try {
-        client.createTable(
-            builder ->
-                builder
-                    .tableName(tableName)
-                    .billingMode(BillingMode.PAY_PER_REQUEST)
-                    .attributeDefinitions(
-                        stringAttribute(DynamoDbLayout.PK),
-                        stringAttribute(DynamoDbLayout.SK),
-                        stringAttribute(DynamoDbLayout.GSI1_PK),
-                        stringAttribute(DynamoDbLayout.GSI1_SK))
-                    .keySchema(
-                        key(DynamoDbLayout.PK, KeyType.HASH), key(DynamoDbLayout.SK, KeyType.RANGE))
-                    .globalSecondaryIndexes(byNameIndex()));
+        client.createTable(builder ->
+            builder
+                .tableName(tableName)
+                .billingMode(BillingMode.PAY_PER_REQUEST)
+                .attributeDefinitions(
+                    stringAttribute(DynamoDbLayout.PK),
+                    stringAttribute(DynamoDbLayout.SK),
+                    stringAttribute(DynamoDbLayout.GSI1_PK),
+                    stringAttribute(DynamoDbLayout.GSI1_SK))
+                .keySchema(
+                    key(DynamoDbLayout.PK, KeyType.HASH), key(DynamoDbLayout.SK, KeyType.RANGE))
+                .globalSecondaryIndexes(byNameIndex()));
       } catch (ResourceInUseException concurrentCreate) {
         // Another caller created the table between the existence check and here; that is fine. Its
         // layout is validated after the waiter below, so a racing miscreation is still surfaced.
@@ -117,12 +116,11 @@ public final class DynamoDbSchema {
         table.globalSecondaryIndexes().stream()
             .filter(index -> DynamoDbLayout.GSI1.equals(index.indexName()))
             .findFirst()
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        String.format(
-                            "Existing table %s is missing the %s index.",
-                            table.tableName(), DynamoDbLayout.GSI1)));
+            .orElseThrow(() ->
+                new IllegalStateException(
+                    String.format(
+                        "Existing table %s is missing the %s index.",
+                        table.tableName(), DynamoDbLayout.GSI1)));
     if (!keySchemaMatches(gsi.keySchema(), DynamoDbLayout.GSI1_PK, DynamoDbLayout.GSI1_SK)) {
       throw new IllegalStateException(
           String.format(

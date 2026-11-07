@@ -68,10 +68,9 @@ public class MeasuredFileIO implements FileIO {
   }
 
   private InputFile wrapInputFile(InputFile inner) {
-    newInputFileExceptionSupplier.ifPresent(
-        s -> {
-          throw s.get();
-        });
+    newInputFileExceptionSupplier.ifPresent(s -> {
+      throw s.get();
+    });
 
     // Use the inner's length in case the MeasuredInputFile throws a getLength exception
     inputBytes += inner.getLength();
@@ -105,10 +104,9 @@ public class MeasuredFileIO implements FileIO {
 
   @Override
   public OutputFile newOutputFile(String path) {
-    newOutputFileExceptionSupplier.ifPresent(
-        s -> {
-          throw s.get();
-        });
+    newOutputFileExceptionSupplier.ifPresent(s -> {
+      throw s.get();
+    });
 
     numOutputFiles++;
     return io.newOutputFile(path);

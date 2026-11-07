@@ -89,7 +89,7 @@ public class SigV4ConnectionCredentialVendorTest {
     // Create vendor with lambda that captures the destination
     vendor =
         new SigV4ConnectionCredentialVendor(
-            (destination) -> {
+            destination -> {
               capturedDestination.set(destination);
               return mockStsClient;
             },

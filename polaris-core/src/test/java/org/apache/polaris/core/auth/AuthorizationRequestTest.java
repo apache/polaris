@@ -30,20 +30,18 @@ public class AuthorizationRequestTest {
 
   @Test
   void rootPrivilegeGrantIntentRejectsNullGrantee() {
-    assertThatThrownBy(
-            () ->
-                new RootPrivilegeGrantAuthorizationIntent(
-                    PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE, null))
+    assertThatThrownBy(() ->
+            new RootPrivilegeGrantAuthorizationIntent(
+                PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE, null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("grantee must be non-null");
   }
 
   @Test
   void requestRequiresAtLeastOneIntent() {
-    assertThatThrownBy(
-            () ->
-                new AuthorizationRequest(
-                    PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role")), List.of()))
+    assertThatThrownBy(() ->
+            new AuthorizationRequest(
+                PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role")), List.of()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("must contain at least one intent");
   }

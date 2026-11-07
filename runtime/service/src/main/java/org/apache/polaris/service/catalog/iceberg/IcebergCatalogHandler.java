@@ -1333,18 +1333,17 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     List<UpdateRequirement> requirements = request.requirements();
     List<MetadataUpdate> updates =
         request.updates().stream()
-            .map(
-                update -> {
-                  if (!isFederated && update instanceof MetadataUpdate.SetLocation setLocation) {
-                    String requestedLocation = setLocation.location();
-                    String filteredLocation =
-                        ((LocalIcebergCatalog) baseCatalog)
-                            .transformTableLikeLocation(identifier, requestedLocation);
-                    return new MetadataUpdate.SetLocation(filteredLocation);
-                  } else {
-                    return update;
-                  }
-                })
+            .map(update -> {
+              if (!isFederated && update instanceof MetadataUpdate.SetLocation setLocation) {
+                String requestedLocation = setLocation.location();
+                String filteredLocation =
+                    ((LocalIcebergCatalog) baseCatalog)
+                        .transformTableLikeLocation(identifier, requestedLocation);
+                return new MetadataUpdate.SetLocation(filteredLocation);
+              } else {
+                return update;
+              }
+            })
             .toList();
     return UpdateTableRequest.create(identifier, requirements, updates);
   }
@@ -1549,73 +1548,70 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // complex) alternative that would intercept at the MetaStoreManager layer.
     List<TableMetadata> tableMetadataObjs = new ArrayList<>();
     Map<TableIdentifier, FileIO> tableFileIOs = new HashMap<>();
-    changesByTable.forEach(
-        (tableIdentifier, changes) -> {
-          Table table = baseCatalog.loadTable(tableIdentifier);
-          if (!(table instanceof BaseTable baseTable)) {
-            throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
-          }
+    changesByTable.forEach((tableIdentifier, changes) -> {
+      Table table = baseCatalog.loadTable(tableIdentifier);
+      if (!(table instanceof BaseTable baseTable)) {
+        throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+      }
 
-          TableOperations tableOps = baseTable.operations();
-          TableMetadata baseMetadata = tableOps.current();
+      TableOperations tableOps = baseTable.operations();
+      TableMetadata baseMetadata = tableOps.current();
 
-          // Apply each change sequentially: validate requirements against current state,
-          // then apply updates. This ensures conflicts are detected (e.g., if two changes
-          // both expect schema ID 0, the second will fail after the first increments it).
-          TableMetadata currentMetadata = baseMetadata;
-          for (UpdateTableRequest change : changes) {
-            // A multi-table transaction must not be a way to bypass the caller-specified-location
-            // gate enforced on the single-table updateTable path.
-            rejectClientSpecifiedLocationIfDisallowed(change);
+      // Apply each change sequentially: validate requirements against current state,
+      // then apply updates. This ensures conflicts are detected (e.g., if two changes
+      // both expect schema ID 0, the second will fail after the first increments it).
+      TableMetadata currentMetadata = baseMetadata;
+      for (UpdateTableRequest change : changes) {
+        // A multi-table transaction must not be a way to bypass the caller-specified-location
+        // gate enforced on the single-table updateTable path.
+        rejectClientSpecifiedLocationIfDisallowed(change);
 
-            // Validate requirements against the current metadata state
-            final TableMetadata metadataForValidation = currentMetadata;
-            change
-                .requirements()
-                .forEach(requirement -> requirement.validate(metadataForValidation));
+        // Validate requirements against the current metadata state
+        final TableMetadata metadataForValidation = currentMetadata;
+        change.requirements().forEach(requirement -> requirement.validate(metadataForValidation));
 
-            // TODO: Refactor to share/reconcile the update-application logic below with
-            // CatalogHandlerUtils to avoid divergence as complexity grows.
-            TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
-            for (MetadataUpdate singleUpdate : change.updates()) {
-              // Note: If location-overlap checking is refactored to be atomic, we could
-              // support validation within a single multi-table transaction as well, but
-              // will need to update the TransactionWorkspaceMetaStoreManager to better
-              // expose the concept of being able to read uncommitted updates.
-              if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
-                if (!currentMetadata.location().equals(setLocation.location())
-                    && !realmConfig()
-                        .getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
-                  throw new BadRequestException(
-                      "Unsupported operation: commitTransaction containing SetLocation"
-                          + " for table '%s' and new location '%s'",
-                      change.identifier(), ((MetadataUpdate.SetLocation) singleUpdate).location());
-                }
-              }
-
-              // Apply updates to builder
-              try {
-                singleUpdate.applyTo(metadataBuilder);
-              } catch (RetryableValidationException e) {
-                // Surface as a retryable 409, matching CatalogHandlerUtils.commit.
-                throw new CommitFailedException(
-                    e, "Validation failed, please retry: %s", e.getMessage());
-              }
+        // TODO: Refactor to share/reconcile the update-application logic below with
+        // CatalogHandlerUtils to avoid divergence as complexity grows.
+        TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
+        for (MetadataUpdate singleUpdate : change.updates()) {
+          // Note: If location-overlap checking is refactored to be atomic, we could
+          // support validation within a single multi-table transaction as well, but
+          // will need to update the TransactionWorkspaceMetaStoreManager to better
+          // expose the concept of being able to read uncommitted updates.
+          if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
+            if (!currentMetadata.location().equals(setLocation.location())
+                && !realmConfig()
+                    .getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+              throw new BadRequestException(
+                  "Unsupported operation: commitTransaction containing SetLocation"
+                      + " for table '%s' and new location '%s'",
+                  change.identifier(), ((MetadataUpdate.SetLocation) singleUpdate).location());
             }
-
-            // Update currentMetadata to reflect this change for subsequent requirement validation
-            currentMetadata = metadataBuilder.build();
           }
 
-          // Commit all accumulated changes for this table in a single atomic operation.
-          // The delete logic (set above to collectCleanup) will record instead of delete.
-          if (!currentMetadata.changes().isEmpty()) {
-            tableOps.commit(baseMetadata, currentMetadata);
-            tableFileIOs.put(tableIdentifier, tableOps.io());
+          // Apply updates to builder
+          try {
+            singleUpdate.applyTo(metadataBuilder);
+          } catch (RetryableValidationException e) {
+            // Surface as a retryable 409, matching CatalogHandlerUtils.commit.
+            throw new CommitFailedException(
+                e, "Validation failed, please retry: %s", e.getMessage());
           }
+        }
 
-          tableMetadataObjs.add(currentMetadata);
-        });
+        // Update currentMetadata to reflect this change for subsequent requirement validation
+        currentMetadata = metadataBuilder.build();
+      }
+
+      // Commit all accumulated changes for this table in a single atomic operation.
+      // The delete logic (set above to collectCleanup) will record instead of delete.
+      if (!currentMetadata.changes().isEmpty()) {
+        tableOps.commit(baseMetadata, currentMetadata);
+        tableFileIOs.put(tableIdentifier, tableOps.io());
+      }
+
+      tableMetadataObjs.add(currentMetadata);
+    });
 
     List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
     EntitiesResult result =
@@ -1634,11 +1630,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               .map(ewp -> IcebergTableLikeEntity.of(ewp.entity()))
               .filter(entity -> entity != null && entity.getMetadataLocation() != null)
               .filter(entity -> tableFileIOs.containsKey(entity.getTableIdentifier()))
-              .map(
-                  entity ->
-                      new FileToDelete(
-                          tableFileIOs.get(entity.getTableIdentifier()),
-                          entity.getMetadataLocation()))
+              .map(entity ->
+                  new FileToDelete(
+                      tableFileIOs.get(entity.getTableIdentifier()), entity.getMetadataLocation()))
               .toList();
       cleanupWrittenMetadataFiles(writtenMetadataFiles);
       throw new CommitFailedException(
@@ -1823,47 +1817,46 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (useFineGrainedOperations) {
       EnumSet<PolarisAuthorizableOperation> actions =
           request.updates().stream()
-              .map(
-                  update ->
-                      switch (update) {
-                        case MetadataUpdate.AssignUUID assignUuid ->
-                            PolarisAuthorizableOperation.ASSIGN_TABLE_UUID;
-                        case MetadataUpdate.UpgradeFormatVersion upgradeFormat ->
-                            PolarisAuthorizableOperation.UPGRADE_TABLE_FORMAT_VERSION;
-                        case MetadataUpdate.AddSchema addSchema ->
-                            PolarisAuthorizableOperation.ADD_TABLE_SCHEMA;
-                        case MetadataUpdate.SetCurrentSchema setCurrentSchema ->
-                            PolarisAuthorizableOperation.SET_TABLE_CURRENT_SCHEMA;
-                        case MetadataUpdate.AddPartitionSpec addPartitionSpec ->
-                            PolarisAuthorizableOperation.ADD_TABLE_PARTITION_SPEC;
-                        case MetadataUpdate.AddSortOrder addSortOrder ->
-                            PolarisAuthorizableOperation.ADD_TABLE_SORT_ORDER;
-                        case MetadataUpdate.SetDefaultSortOrder setDefaultSortOrder ->
-                            PolarisAuthorizableOperation.SET_TABLE_DEFAULT_SORT_ORDER;
-                        case MetadataUpdate.AddSnapshot addSnapshot ->
-                            PolarisAuthorizableOperation.ADD_TABLE_SNAPSHOT;
-                        case MetadataUpdate.SetSnapshotRef setSnapshotRef ->
-                            PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF;
-                        case MetadataUpdate.RemoveSnapshots removeSnapshots ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOTS;
-                        case MetadataUpdate.RemoveSnapshotRef removeSnapshotRef ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOT_REF;
-                        case MetadataUpdate.SetLocation setLocation ->
-                            PolarisAuthorizableOperation.SET_TABLE_LOCATION;
-                        case MetadataUpdate.SetProperties setProperties ->
-                            PolarisAuthorizableOperation.SET_TABLE_PROPERTIES;
-                        case MetadataUpdate.RemoveProperties removeProperties ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES;
-                        case MetadataUpdate.SetStatistics setStatistics ->
-                            PolarisAuthorizableOperation.SET_TABLE_STATISTICS;
-                        case MetadataUpdate.RemoveStatistics removeStatistics ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_STATISTICS;
-                        case MetadataUpdate.RemovePartitionSpecs removePartitionSpecs ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS;
-                        default ->
-                            PolarisAuthorizableOperation
-                                .UPDATE_TABLE; // Fallback for unknown update types
-                      })
+              .map(update ->
+                  switch (update) {
+                    case MetadataUpdate.AssignUUID assignUuid ->
+                        PolarisAuthorizableOperation.ASSIGN_TABLE_UUID;
+                    case MetadataUpdate.UpgradeFormatVersion upgradeFormat ->
+                        PolarisAuthorizableOperation.UPGRADE_TABLE_FORMAT_VERSION;
+                    case MetadataUpdate.AddSchema addSchema ->
+                        PolarisAuthorizableOperation.ADD_TABLE_SCHEMA;
+                    case MetadataUpdate.SetCurrentSchema setCurrentSchema ->
+                        PolarisAuthorizableOperation.SET_TABLE_CURRENT_SCHEMA;
+                    case MetadataUpdate.AddPartitionSpec addPartitionSpec ->
+                        PolarisAuthorizableOperation.ADD_TABLE_PARTITION_SPEC;
+                    case MetadataUpdate.AddSortOrder addSortOrder ->
+                        PolarisAuthorizableOperation.ADD_TABLE_SORT_ORDER;
+                    case MetadataUpdate.SetDefaultSortOrder setDefaultSortOrder ->
+                        PolarisAuthorizableOperation.SET_TABLE_DEFAULT_SORT_ORDER;
+                    case MetadataUpdate.AddSnapshot addSnapshot ->
+                        PolarisAuthorizableOperation.ADD_TABLE_SNAPSHOT;
+                    case MetadataUpdate.SetSnapshotRef setSnapshotRef ->
+                        PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF;
+                    case MetadataUpdate.RemoveSnapshots removeSnapshots ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOTS;
+                    case MetadataUpdate.RemoveSnapshotRef removeSnapshotRef ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOT_REF;
+                    case MetadataUpdate.SetLocation setLocation ->
+                        PolarisAuthorizableOperation.SET_TABLE_LOCATION;
+                    case MetadataUpdate.SetProperties setProperties ->
+                        PolarisAuthorizableOperation.SET_TABLE_PROPERTIES;
+                    case MetadataUpdate.RemoveProperties removeProperties ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES;
+                    case MetadataUpdate.SetStatistics setStatistics ->
+                        PolarisAuthorizableOperation.SET_TABLE_STATISTICS;
+                    case MetadataUpdate.RemoveStatistics removeStatistics ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_STATISTICS;
+                    case MetadataUpdate.RemovePartitionSpecs removePartitionSpecs ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS;
+                    default ->
+                        PolarisAuthorizableOperation
+                            .UPDATE_TABLE; // Fallback for unknown update types
+                  })
               .collect(
                   () -> EnumSet.noneOf(PolarisAuthorizableOperation.class),
                   EnumSet::add,
@@ -2053,10 +2046,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // filter) are dropped silently.
     List<Candidate<T>> resolvable =
         candidates.stream()
-            .filter(
-                candidate ->
-                    filterManifest.getResolvedPath(ResolvedPathKey.of(candidate.path()), true)
-                        != null)
+            .filter(candidate ->
+                filterManifest.getResolvedPath(ResolvedPathKey.of(candidate.path()), true) != null)
             .toList();
 
     List<AuthorizationDecision> decisions =

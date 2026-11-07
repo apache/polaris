@@ -244,11 +244,10 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     // allocate return list
     return entityIds.stream()
-        .map(
-            id ->
-                this.store
-                    .getSliceEntities()
-                    .read(this.store.buildKeyComposite(id.catalogId(), id.id())))
+        .map(id ->
+            this.store
+                .getSliceEntities()
+                .read(this.store.buildKeyComposite(id.catalogId(), id.id())))
         .collect(Collectors.toList());
   }
 
@@ -258,17 +257,15 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     // allocate return list
     return entityIds.stream()
-        .map(
-            id ->
-                this.store
-                    .getSliceEntitiesChangeTracking()
-                    .read(this.store.buildKeyComposite(id.catalogId(), id.id())))
-        .map(
-            entity ->
-                (entity != null)
-                    ? new PolarisChangeTrackingVersions(
-                        entity.getEntityVersion(), entity.getGrantRecordsVersion())
-                    : null)
+        .map(id ->
+            this.store
+                .getSliceEntitiesChangeTracking()
+                .read(this.store.buildKeyComposite(id.catalogId(), id.id())))
+        .map(entity ->
+            (entity != null)
+                ? new PolarisChangeTrackingVersions(
+                    entity.getEntityVersion(), entity.getGrantRecordsVersion())
+                : null)
         .collect(Collectors.toList());
   }
 
@@ -321,19 +318,17 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             .readRange(
                 this.store.buildPrefixKeyComposite(catalogId, parentId, entityType.getCode()))
             .stream()
-            .map(
-                nameRecord ->
-                    this.lookupEntityInCurrentTxn(
-                        callCtx, catalogId, nameRecord.getId(), entityType.getCode()));
+            .map(nameRecord ->
+                this.lookupEntityInCurrentTxn(
+                    callCtx, catalogId, nameRecord.getId(), entityType.getCode()));
 
     Predicate<PolarisBaseEntity> tokenFilter =
         pageToken
             .valueAs(EntityIdToken.class)
-            .map(
-                entityIdToken -> {
-                  var nextId = entityIdToken.entityId();
-                  return (Predicate<PolarisBaseEntity>) e -> e.getId() > nextId;
-                })
+            .map(entityIdToken -> {
+              var nextId = entityIdToken.entityId();
+              return (Predicate<PolarisBaseEntity>) e -> e.getId() > nextId;
+            })
             .orElse(e -> true);
 
     data = data.sorted(Comparator.comparingLong(PolarisEntityCore::getId)).filter(tokenFilter);

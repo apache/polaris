@@ -51,16 +51,14 @@ public class TestEntityObjMappings {
   @Test
   public void invalidTypes() {
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                EntityObjMappings.objTypeForPolarisType(
-                    PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.NULL_SUBTYPE))
+        .isThrownBy(() ->
+            EntityObjMappings.objTypeForPolarisType(
+                PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.NULL_SUBTYPE))
         .withMessage("Invalid subType NULL_SUBTYPE for TABLE_LIKE");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                EntityObjMappings.objTypeForPolarisType(
-                    PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.NULL_SUBTYPE))
+        .isThrownBy(() ->
+            EntityObjMappings.objTypeForPolarisType(
+                PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.NULL_SUBTYPE))
         .withMessage("Invalid subType NULL_SUBTYPE for TABLE_LIKE");
     soft.assertThatIllegalArgumentException()
         .isThrownBy(() -> EntityObjMappings.byEntityType(PolarisEntityType.NULL_TYPE))
@@ -86,10 +84,8 @@ public class TestEntityObjMappings {
         .isSameAs(EntityObjMappings.byEntityType(entityType));
 
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                EntityObjMappings.objTypeForPolarisType(
-                    entityType, PolarisEntitySubType.ANY_SUBTYPE))
+        .isThrownBy(() ->
+            EntityObjMappings.objTypeForPolarisType(entityType, PolarisEntitySubType.ANY_SUBTYPE))
         .withMessage("Unresolvable subtype ANY_SUBTYPE for exact match for %s", entityType);
     soft.assertThat(
             EntityObjMappings.objTypeForPolarisTypeForFiltering(
@@ -122,17 +118,16 @@ public class TestEntityObjMappings {
         // TODO: SEMANTIC_MODEL is not yet mapped by the NoSQL backend; drop this filter once its
         //  mapping is added.
         .filter(t -> t != PolarisEntityType.SEMANTIC_MODEL)
-        .flatMap(
-            t -> {
-              var subTypes =
-                  Arrays.stream(PolarisEntitySubType.values())
-                      .filter(s -> s.getParentType() == t)
-                      .toList();
-              if (subTypes.isEmpty()) {
-                return Stream.of(Arguments.of(t, PolarisEntitySubType.NULL_SUBTYPE));
-              } else {
-                return subTypes.stream().map(s -> Arguments.of(t, s));
-              }
-            });
+        .flatMap(t -> {
+          var subTypes =
+              Arrays.stream(PolarisEntitySubType.values())
+                  .filter(s -> s.getParentType() == t)
+                  .toList();
+          if (subTypes.isEmpty()) {
+            return Stream.of(Arguments.of(t, PolarisEntitySubType.NULL_SUBTYPE));
+          } else {
+            return subTypes.stream().map(s -> Arguments.of(t, s));
+          }
+        });
   }
 }

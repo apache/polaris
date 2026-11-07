@@ -215,18 +215,17 @@ public class FileBearerTokenProviderTest {
     MockAsyncExec asyncExec = new MockAsyncExec(monotonicClock);
 
     // Constructor should throw exception when token file doesn't exist
-    assertThatThrownBy(
-            () ->
-                new FileBearerTokenProvider(
-                        Paths.get("/non/existent/file.txt"),
-                        Duration.ofMinutes(5),
-                        true,
-                        Duration.ofMinutes(1),
-                        Duration.ofMillis(1),
-                        Duration.ofSeconds(1),
-                        asyncExec,
-                        monotonicClock::currentInstant)
-                    .close())
+    assertThatThrownBy(() ->
+            new FileBearerTokenProvider(
+                    Paths.get("/non/existent/file.txt"),
+                    Duration.ofMinutes(5),
+                    true,
+                    Duration.ofMinutes(1),
+                    Duration.ofMillis(1),
+                    Duration.ofSeconds(1),
+                    asyncExec,
+                    monotonicClock::currentInstant)
+                .close())
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("OPA token file does not exist or is not readable");
 

@@ -169,9 +169,8 @@ public interface MaintenanceConfig {
         .ifPresent(
             v -> checkState(v > 0d && v <= 1d, "filterInitializedFpp must be > 0.0d and <= 1.0d"));
     maxAcceptableFilterFpp()
-        .ifPresent(
-            v ->
-                checkState(v > 0d && v <= 1d, "maxAcceptableFilterFpp must be > 0.0d and <= 1.0d"));
+        .ifPresent(v ->
+            checkState(v > 0d && v <= 1d, "maxAcceptableFilterFpp must be > 0.0d and <= 1.0d"));
     retainedRuns().ifPresent(v -> checkState(v >= 2, "retainedRuns must 2 or greater"));
     createdAtGraceTime()
         .ifPresent(v -> checkState(!v.isNegative(), "createdAtGraceTime must not be negative"));

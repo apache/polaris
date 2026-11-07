@@ -86,56 +86,46 @@ public class IcebergExceptionMapperTest {
                 404),
             Arguments.of(new RuntimeException("Error persisting entity"), 500)),
         cloudCodeMappings.entrySet().stream()
-            .flatMap(
-                entry ->
-                    Stream.of(
+            .flatMap(entry ->
+                Stream.of(
+                        Arguments.of(
+                            new HttpResponseException(
+                                "", new FakeAzureHttpResponse(entry.getKey()), ""),
+                            entry.getValue()),
+                        Arguments.of(
+                            S3Exception.builder().message("").statusCode(entry.getKey()).build(),
+                            entry.getValue()),
+                        Arguments.of(
+                            new MsalServiceException(
+                                "AADSTS7000222: The provided client secret keys for app "
+                                    + "'abc12345-abcd-4abc-8abc-1234567890ab' are expired. "
+                                    + "Visit the Azure portal to create new keys for your "
+                                    + "app: https://aka.ms/NewClientSecret, or consider using "
+                                    + "certificate credentials for added security: "
+                                    + "https://aka.ms/certCreds. Trace ID: "
+                                    + "abc12345-abcd-4abc-8abc-1234567890ac Correlation ID: "
+                                    + "abc12345-abcd-4abc-8abc-1234567890ad Timestamp: "
+                                    + "2026-09-24 07:59:05Z",
+                                "service_error") {
+                              @Override
+                              public Integer statusCode() {
+                                return entry.getKey();
+                              }
+                            },
+                            entry.getValue()),
+                        Arguments.of(
+                            new MsalServiceException("Authentication failed", "service_error"),
+                            Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()),
+                        Arguments.of(
+                            StsException.builder().message("").statusCode(entry.getKey()).build(),
+                            entry.getValue()),
+                        Arguments.of(new StorageException(entry.getKey(), ""), entry.getValue()))
+                    .flatMap(args ->
+                        Stream.of(
+                            args,
                             Arguments.of(
-                                new HttpResponseException(
-                                    "", new FakeAzureHttpResponse(entry.getKey()), ""),
-                                entry.getValue()),
-                            Arguments.of(
-                                S3Exception.builder()
-                                    .message("")
-                                    .statusCode(entry.getKey())
-                                    .build(),
-                                entry.getValue()),
-                            Arguments.of(
-                                new MsalServiceException(
-                                    "AADSTS7000222: The provided client secret keys for app "
-                                        + "'abc12345-abcd-4abc-8abc-1234567890ab' are expired. "
-                                        + "Visit the Azure portal to create new keys for your "
-                                        + "app: https://aka.ms/NewClientSecret, or consider using "
-                                        + "certificate credentials for added security: "
-                                        + "https://aka.ms/certCreds. Trace ID: "
-                                        + "abc12345-abcd-4abc-8abc-1234567890ac Correlation ID: "
-                                        + "abc12345-abcd-4abc-8abc-1234567890ad Timestamp: "
-                                        + "2026-09-24 07:59:05Z",
-                                    "service_error") {
-                                  @Override
-                                  public Integer statusCode() {
-                                    return entry.getKey();
-                                  }
-                                },
-                                entry.getValue()),
-                            Arguments.of(
-                                new MsalServiceException("Authentication failed", "service_error"),
-                                Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()),
-                            Arguments.of(
-                                StsException.builder()
-                                    .message("")
-                                    .statusCode(entry.getKey())
-                                    .build(),
-                                entry.getValue()),
-                            Arguments.of(
-                                new StorageException(entry.getKey(), ""), entry.getValue()))
-                        .flatMap(
-                            args ->
-                                Stream.of(
-                                    args,
-                                    Arguments.of(
-                                        new RuntimeIOException(
-                                            new IOException((Throwable) args.get()[0])),
-                                        args.get()[1])))));
+                                new RuntimeIOException(new IOException((Throwable) args.get()[0])),
+                                args.get()[1])))));
   }
 
   @ParameterizedTest

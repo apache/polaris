@@ -36,47 +36,43 @@ class DropEntityFailureMapperTest {
 
   @Test
   void throwIfFailed_success_doesNotThrow() {
-    assertThatCode(
-            () ->
-                DropEntityFailureMapper.throwIfFailed(
-                    new DropEntityResult(), () -> ENTITY_LABEL, UNDROPPABLE_MESSAGE))
+    assertThatCode(() ->
+            DropEntityFailureMapper.throwIfFailed(
+                new DropEntityResult(), () -> ENTITY_LABEL, UNDROPPABLE_MESSAGE))
         .doesNotThrowAnyException();
   }
 
   @Test
   void throwIfFailed_success_doesNotEvaluateLabel() {
-    assertThatCode(
-            () ->
-                DropEntityFailureMapper.throwIfFailed(
-                    new DropEntityResult(),
-                    () -> {
-                      throw new AssertionError("Label should not be evaluated on success");
-                    },
-                    UNDROPPABLE_MESSAGE))
+    assertThatCode(() ->
+            DropEntityFailureMapper.throwIfFailed(
+                new DropEntityResult(),
+                () -> {
+                  throw new AssertionError("Label should not be evaluated on success");
+                },
+                UNDROPPABLE_MESSAGE))
         .doesNotThrowAnyException();
   }
 
   @Test
   void throwIfFailed_entityUndroppable_usesProtectedEntityMessage() {
-    assertThatThrownBy(
-            () ->
-                DropEntityFailureMapper.throwIfFailed(
-                    new DropEntityResult(BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, null),
-                    () -> ENTITY_LABEL,
-                    UNDROPPABLE_MESSAGE))
+    assertThatThrownBy(() ->
+            DropEntityFailureMapper.throwIfFailed(
+                new DropEntityResult(BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, null),
+                () -> ENTITY_LABEL,
+                UNDROPPABLE_MESSAGE))
         .isInstanceOf(BadRequestException.class)
         .hasMessage(UNDROPPABLE_MESSAGE);
   }
 
   @Test
   void throwIfFailed_concurrentModification_usesEntityLabelNotProtectedMessage() {
-    assertThatThrownBy(
-            () ->
-                DropEntityFailureMapper.throwIfFailed(
-                    new DropEntityResult(
-                        BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null),
-                    () -> ENTITY_LABEL,
-                    UNDROPPABLE_MESSAGE))
+    assertThatThrownBy(() ->
+            DropEntityFailureMapper.throwIfFailed(
+                new DropEntityResult(
+                    BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null),
+                () -> ENTITY_LABEL,
+                UNDROPPABLE_MESSAGE))
         .isInstanceOf(BadRequestException.class)
         .hasMessage(
             "Principal 'alice' cannot be dropped, concurrent modification detected. Please try again")
@@ -85,12 +81,11 @@ class DropEntityFailureMapperTest {
 
   @Test
   void throwIfFailed_entityNotFound_throwsNotFoundException() {
-    assertThatThrownBy(
-            () ->
-                DropEntityFailureMapper.throwIfFailed(
-                    new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null),
-                    () -> ENTITY_LABEL,
-                    UNDROPPABLE_MESSAGE))
+    assertThatThrownBy(() ->
+            DropEntityFailureMapper.throwIfFailed(
+                new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null),
+                () -> ENTITY_LABEL,
+                UNDROPPABLE_MESSAGE))
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Principal 'alice' not found");
   }
@@ -100,23 +95,20 @@ class DropEntityFailureMapperTest {
       value = BaseResult.ReturnStatus.class,
       names = {"CATALOG_NOT_EMPTY", "NAMESPACE_NOT_EMPTY"})
   void throwIfFailed_notEmpty_reportsNotEmpty(BaseResult.ReturnStatus status) {
-    assertThatThrownBy(
-            () ->
-                DropEntityFailureMapper.throwIfFailed(
-                    new DropEntityResult(status, null), () -> "Catalog 'my-catalog'", null))
+    assertThatThrownBy(() ->
+            DropEntityFailureMapper.throwIfFailed(
+                new DropEntityResult(status, null), () -> "Catalog 'my-catalog'", null))
         .isInstanceOf(BadRequestException.class)
         .hasMessage("Catalog 'my-catalog' cannot be dropped, it is not empty");
   }
 
   @Test
   void throwIfFailed_unknownStatus_reportsGenericMessage() {
-    assertThatThrownBy(
-            () ->
-                DropEntityFailureMapper.throwIfFailed(
-                    new DropEntityResult(
-                        BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null),
-                    () -> ENTITY_LABEL,
-                    UNDROPPABLE_MESSAGE))
+    assertThatThrownBy(() ->
+            DropEntityFailureMapper.throwIfFailed(
+                new DropEntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null),
+                () -> ENTITY_LABEL,
+                UNDROPPABLE_MESSAGE))
         .isInstanceOf(BadRequestException.class)
         .hasMessage("Principal 'alice' cannot be dropped: CATALOG_PATH_CANNOT_BE_RESOLVED");
   }

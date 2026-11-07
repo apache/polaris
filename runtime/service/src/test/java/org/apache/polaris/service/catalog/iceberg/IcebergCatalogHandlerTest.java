@@ -265,10 +265,8 @@ class IcebergCatalogHandlerTest {
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
 
-    assertThatThrownBy(
-            () ->
-                handler.registerTable(
-                    NS1, registerTableRequest(false), bothModes, Optional.empty()))
+    assertThatThrownBy(() ->
+            handler.registerTable(NS1, registerTableRequest(false), bothModes, Optional.empty()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("This catalog cannot vend credentials or sign requests")
         .hasMessageContaining("request without X-Iceberg-Access-Delegation");
@@ -284,10 +282,9 @@ class IcebergCatalogHandlerTest {
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
 
-    assertThatThrownBy(
-            () ->
-                handler.registerTable(
-                    NS1, registerTableRequest(false), remoteSigningOnly, Optional.empty()))
+    assertThatThrownBy(() ->
+            handler.registerTable(
+                NS1, registerTableRequest(false), remoteSigningOnly, Optional.empty()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("This catalog cannot vend credentials or sign requests");
   }
@@ -321,11 +318,9 @@ class IcebergCatalogHandlerTest {
     IcebergCatalogHandler handler = newHandler();
     when(authorizer.authorize(
             any(),
-            argThat(
-                (AuthorizationRequest request) ->
-                    hasOperation(
-                        request,
-                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION))))
+            argThat((AuthorizationRequest request) ->
+                hasOperation(
+                    request, PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION))))
         .thenReturn(AuthorizationDecision.deny("write delegation denied"));
 
     LoadTableResponse response =
@@ -368,11 +363,9 @@ class IcebergCatalogHandlerTest {
     IcebergCatalogHandler handler = newHandler();
     when(authorizer.authorize(
             any(),
-            argThat(
-                (AuthorizationRequest request) ->
-                    hasOperation(
-                        request,
-                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION))))
+            argThat((AuthorizationRequest request) ->
+                hasOperation(
+                    request, PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION))))
         .thenReturn(AuthorizationDecision.deny("write delegation denied"));
     when(resolutionManifest.getResolvedPath(
             eq(ResolvedPathKey.ofTableLike(TABLE2)),
@@ -420,10 +413,9 @@ class IcebergCatalogHandlerTest {
     IcebergCatalogHandler handler = newHandler();
     when(authorizer.authorize(
             any(),
-            argThat(
-                (AuthorizationRequest request) ->
-                    hasOperation(
-                        request, PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION))))
+            argThat((AuthorizationRequest request) ->
+                hasOperation(
+                    request, PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION))))
         .thenReturn(AuthorizationDecision.deny("write delegation denied"));
 
     handler.loadCredentials(TABLE2, Optional.empty());
@@ -520,11 +512,10 @@ class IcebergCatalogHandlerTest {
     verify(externalCatalog).loadTable(TABLE2);
     assertThat(response.credentials())
         .singleElement()
-        .satisfies(
-            (Credential c) -> {
-              assertThat(c.prefix()).isEqualTo(TABLE_LOCATION);
-              assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(fakeCredentials);
-            });
+        .satisfies((Credential c) -> {
+          assertThat(c.prefix()).isEqualTo(TABLE_LOCATION);
+          assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(fakeCredentials);
+        });
   }
 
   /**
@@ -570,11 +561,10 @@ class IcebergCatalogHandlerTest {
     verify(icebergCatalog, never()).loadTable(any());
     assertThat(response.credentials())
         .singleElement()
-        .satisfies(
-            (Credential c) -> {
-              assertThat(c.prefix()).isEqualTo(tableLocation);
-              assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(fakeCredentials);
-            });
+        .satisfies((Credential c) -> {
+          assertThat(c.prefix()).isEqualTo(tableLocation);
+          assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(fakeCredentials);
+        });
   }
 
   /**
@@ -636,11 +626,10 @@ class IcebergCatalogHandlerTest {
     verify(accessDelegationModeResolver).resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any());
     assertThat(response.credentials())
         .singleElement()
-        .satisfies(
-            (Credential c) -> {
-              assertThat(c.prefix()).isEqualTo(tableLocation);
-              assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(fakeCredentials);
-            });
+        .satisfies((Credential c) -> {
+          assertThat(c.prefix()).isEqualTo(tableLocation);
+          assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(fakeCredentials);
+        });
   }
 
   @Test

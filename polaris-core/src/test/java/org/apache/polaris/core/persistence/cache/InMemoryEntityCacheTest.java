@@ -231,9 +231,8 @@ public class InMemoryEntityCacheTest {
     assertThat(cacheEntry_R1.getGrantRecordsAsGrantee()).hasSize(4);
     List<PolarisGrantRecord> matchPriv =
         cacheEntry_R1.getGrantRecordsAsGrantee().stream()
-            .filter(
-                grantRecord ->
-                    grantRecord.getPrivilegeCode() == PolarisPrivilege.TABLE_READ_DATA.getCode())
+            .filter(grantRecord ->
+                grantRecord.getPrivilegeCode() == PolarisPrivilege.TABLE_READ_DATA.getCode())
             .collect(Collectors.toList());
     assertThat(matchPriv).hasSize(1);
     gr = matchPriv.get(0);
@@ -845,10 +844,8 @@ public class InMemoryEntityCacheTest {
     // Create entity ID list
     List<PolarisEntityId> entityIds =
         List.of(getPolarisEntityId(catalog), getPolarisEntityId(N1), getPolarisEntityId(N2));
-    Assertions.assertThatThrownBy(
-            () ->
-                cache.getOrLoadResolvedEntities(
-                    this.callCtx, PolarisEntityType.NAMESPACE, entityIds))
+    Assertions.assertThatThrownBy(() ->
+            cache.getOrLoadResolvedEntities(this.callCtx, PolarisEntityType.NAMESPACE, entityIds))
         .isInstanceOf(RuntimeException.class);
   }
 
@@ -927,18 +924,17 @@ public class InMemoryEntityCacheTest {
                       changeTrackingFor(N5),
                       changeTrackingFor(N5_N6)));
             })
-        .doAnswer(
-            invocation -> {
-              // Second call (client2) - returns newer version for N2
-              LOGGER.debug("Returning change tracking for client2");
-              return new ChangeTrackingResult(
-                  List.of(
-                      changeTrackingFor(N1),
-                      changeTrackingFor(N2v3), // newer version
-                      changeTrackingFor(N3),
-                      changeTrackingFor(N5),
-                      changeTrackingFor(N5_N6)));
-            })
+        .doAnswer(invocation -> {
+          // Second call (client2) - returns newer version for N2
+          LOGGER.debug("Returning change tracking for client2");
+          return new ChangeTrackingResult(
+              List.of(
+                  changeTrackingFor(N1),
+                  changeTrackingFor(N2v3), // newer version
+                  changeTrackingFor(N3),
+                  changeTrackingFor(N5),
+                  changeTrackingFor(N5_N6)));
+        })
         .when(mockedMetaStoreManager)
         .loadEntitiesChangeTracking(Mockito.any(), Mockito.any());
 
@@ -997,37 +993,35 @@ public class InMemoryEntityCacheTest {
     try {
       // Client 1 task - should get older version and be blocked during loadResolvedEntities
       Future<List<EntityCacheLookupResult>> client1Task =
-          executorService.submit(
-              () -> {
-                try {
-                  // Client1 calls getOrLoadResolvedEntities
-                  // - loadEntitiesChangeTracking returns older version for N2
-                  // - loadResolvedEntities will block until client2 completes
-                  return cache.getOrLoadResolvedEntities(
-                      this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
-                } catch (Exception e) {
-                  client1Exception.set(e);
-                  return null;
-                }
-              });
+          executorService.submit(() -> {
+            try {
+              // Client1 calls getOrLoadResolvedEntities
+              // - loadEntitiesChangeTracking returns older version for N2
+              // - loadResolvedEntities will block until client2 completes
+              return cache.getOrLoadResolvedEntities(
+                  this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
+            } catch (Exception e) {
+              client1Exception.set(e);
+              return null;
+            }
+          });
 
       // Client 2 task - should get newer version and complete first
       Future<List<EntityCacheLookupResult>> client2Task =
-          executorService.submit(
-              () -> {
-                try {
-                  // Client2 calls getOrLoadResolvedEntities
-                  // - loadEntitiesChangeTracking returns newer version for N2
-                  // - loadResolvedEntities executes normally and signals client1 when done
-                  client1ChangeTrackingResult.await();
-                  return cache.getOrLoadResolvedEntities(
-                      this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
-                } catch (Exception e) {
-                  client2Exception.set(e);
-                  client1ResolvedEntitiesBlocker.release(); // Release in case of error
-                  return null;
-                }
-              });
+          executorService.submit(() -> {
+            try {
+              // Client2 calls getOrLoadResolvedEntities
+              // - loadEntitiesChangeTracking returns newer version for N2
+              // - loadResolvedEntities executes normally and signals client1 when done
+              client1ChangeTrackingResult.await();
+              return cache.getOrLoadResolvedEntities(
+                  this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
+            } catch (Exception e) {
+              client2Exception.set(e);
+              client1ResolvedEntitiesBlocker.release(); // Release in case of error
+              return null;
+            }
+          });
 
       // Wait for both tasks to complete
       List<EntityCacheLookupResult> client1Results = client1Task.get();

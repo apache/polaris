@@ -86,16 +86,15 @@ public abstract class GenericObj implements Obj {
     if (versionToken != null) {
       builder.versionToken(versionToken);
     }
-    attributes.forEach(
-        (k, v) -> {
-          if (!"type".equals(k)
-              && !"id".equals(k)
-              && !"numParts".equals(k)
-              && !"createdAtMicros".equals(k)
-              && !"versionToken".equals(k)) {
-            builder.putAttributes(k, v);
-          }
-        });
+    attributes.forEach((k, v) -> {
+      if (!"type".equals(k)
+          && !"id".equals(k)
+          && !"numParts".equals(k)
+          && !"createdAtMicros".equals(k)
+          && !"versionToken".equals(k)) {
+        builder.putAttributes(k, v);
+      }
+    });
     return builder.build();
   }
 

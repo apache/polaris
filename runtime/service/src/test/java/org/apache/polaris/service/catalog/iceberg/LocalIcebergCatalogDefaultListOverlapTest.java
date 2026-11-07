@@ -72,13 +72,12 @@ public class LocalIcebergCatalogDefaultListOverlapTest
     catalog().buildTable(table, SCHEMA).create();
 
     String tableLocation = catalog().loadTable(table).location();
-    assertThatCode(
-            () ->
-                catalog()
-                    .loadTable(table)
-                    .updateLocation()
-                    .setLocation(LocationUtil.stripTrailingSlash(tableLocation) + "/moved")
-                    .commit())
+    assertThatCode(() ->
+            catalog()
+                .loadTable(table)
+                .updateLocation()
+                .setLocation(LocationUtil.stripTrailingSlash(tableLocation) + "/moved")
+                .commit())
         .doesNotThrowAnyException();
   }
 }

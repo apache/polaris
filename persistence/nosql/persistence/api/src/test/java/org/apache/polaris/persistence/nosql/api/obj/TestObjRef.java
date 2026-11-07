@@ -91,28 +91,24 @@ public class TestObjRef {
         new AbstractObjType<>("123456789012345678901234567890123", "123456", Obj.class) {};
 
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                // type name too long
-                objRef(dummyObjType, 42L, -1).toBytes())
+        .isThrownBy(() ->
+            // type name too long
+            objRef(dummyObjType, 42L, -1).toBytes())
         .withMessage("partNum must not be negative");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                // type name too long
-                objRef(dummyObjType, 42L, -1).toByteBuffer())
+        .isThrownBy(() ->
+            // type name too long
+            objRef(dummyObjType, 42L, -1).toByteBuffer())
         .withMessage("partNum must not be negative");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                // type name too long
-                objRef(dummyObjType, 42L, 1).toBytes())
+        .isThrownBy(() ->
+            // type name too long
+            objRef(dummyObjType, 42L, 1).toBytes())
         .withMessage("Name length must be between 1 and 32");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                // type name too long
-                objRef(dummyObjType, 42L, 1).toByteBuffer())
+        .isThrownBy(() ->
+            // type name too long
+            objRef(dummyObjType, 42L, 1).toByteBuffer())
         .withMessage("Name length must be between 1 and 32");
   }
 

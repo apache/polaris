@@ -117,21 +117,20 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
         loop.setRetryStatsConsumer(retryStatsConsumer);
       }
       var result =
-          loop.retryLoop(
-              nanosRemaining -> {
-                var acquired = false;
-                try {
-                  acquired = sync.before(nanosRemaining);
-                  if (!acquired) {
-                    return Optional.empty();
-                  }
-                  return commitAttempt(committerState, commitRetryable);
-                } finally {
-                  if (acquired) {
-                    sync.after();
-                  }
-                }
-              });
+          loop.retryLoop(nanosRemaining -> {
+            var acquired = false;
+            try {
+              acquired = sync.before(nanosRemaining);
+              if (!acquired) {
+                return Optional.empty();
+              }
+              return commitAttempt(committerState, commitRetryable);
+            } finally {
+              if (acquired) {
+                sync.after();
+              }
+            }
+          });
       if (result == noResultSentinel()) {
         LOGGER.debug("commit() yielding no result");
         return Optional.ofNullable(committerState.result);
@@ -531,20 +530,19 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
     } else {
       state.allPersistedIds.add(resultObjRef);
     }
-    return newReference.map(
-        newRef -> {
-          LOGGER.debug("Successfully committed change from {} to {}", reference, newRef);
-          if (state.result != null) {
-            return state.result;
-          }
-          if (resultType.isAssignableFrom(referenceType)) {
-            return resultType.cast(persistedResultObj);
-          }
-          throw new IllegalStateException(
-              "CommitRetryable.attempt() did not set a non-null result via CommitterState.commitResult and the result type "
-                  + resultType.getName()
-                  + " cannot be casted to the reference obj type "
-                  + referenceType.getName());
-        });
+    return newReference.map(newRef -> {
+      LOGGER.debug("Successfully committed change from {} to {}", reference, newRef);
+      if (state.result != null) {
+        return state.result;
+      }
+      if (resultType.isAssignableFrom(referenceType)) {
+        return resultType.cast(persistedResultObj);
+      }
+      throw new IllegalStateException(
+          "CommitRetryable.attempt() did not set a non-null result via CommitterState.commitResult and the result type "
+              + resultType.getName()
+              + " cannot be casted to the reference obj type "
+              + referenceType.getName());
+    });
   }
 }

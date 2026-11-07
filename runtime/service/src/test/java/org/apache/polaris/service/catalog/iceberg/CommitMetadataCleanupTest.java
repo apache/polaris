@@ -95,23 +95,21 @@ public class CommitMetadataCleanupTest {
                     "true",
                     "SUPPORTED_CATALOG_STORAGE_TYPES",
                     List.of("FILE")))
-            .metaStoreManagerDecorator(
-                msm -> {
-                  PolarisMetaStoreManager spy = Mockito.spy(msm);
-                  Mockito.doAnswer(
-                          invocation -> {
-                            Object result = invocation.callRealMethod();
-                            if (shouldFail.get()) {
-                              // Simulate: DB applied the CAS, then client lost the ack.
-                              throw failure;
-                            }
-                            return result;
-                          })
-                      .when(spy)
-                      .updateEntityPropertiesIfNotChanged(
-                          Mockito.any(), Mockito.any(), Mockito.any());
-                  return spy;
-                })
+            .metaStoreManagerDecorator(msm -> {
+              PolarisMetaStoreManager spy = Mockito.spy(msm);
+              Mockito.doAnswer(
+                      invocation -> {
+                        Object result = invocation.callRealMethod();
+                        if (shouldFail.get()) {
+                          // Simulate: DB applied the CAS, then client lost the ack.
+                          throw failure;
+                        }
+                        return result;
+                      })
+                  .when(spy)
+                  .updateEntityPropertiesIfNotChanged(Mockito.any(), Mockito.any(), Mockito.any());
+              return spy;
+            })
             .build();
 
     createCatalogAndNamespace(testServices, location);
@@ -171,19 +169,14 @@ public class CommitMetadataCleanupTest {
                     "true",
                     "SUPPORTED_CATALOG_STORAGE_TYPES",
                     List.of("FILE")))
-            .metaStoreManagerDecorator(
-                msm -> {
-                  PolarisMetaStoreManager spy = Mockito.spy(msm);
-                  Mockito.doAnswer(
-                          invocation ->
-                              shouldFail.get()
-                                  ? failure.answer(invocation)
-                                  : invocation.callRealMethod())
-                      .when(spy)
-                      .updateEntityPropertiesIfNotChanged(
-                          Mockito.any(), Mockito.any(), Mockito.any());
-                  return spy;
-                })
+            .metaStoreManagerDecorator(msm -> {
+              PolarisMetaStoreManager spy = Mockito.spy(msm);
+              Mockito.doAnswer(invocation ->
+                      shouldFail.get() ? failure.answer(invocation) : invocation.callRealMethod())
+                  .when(spy)
+                  .updateEntityPropertiesIfNotChanged(Mockito.any(), Mockito.any(), Mockito.any());
+              return spy;
+            })
             .build();
 
     createCatalogAndNamespace(testServices, location);
@@ -239,23 +232,21 @@ public class CommitMetadataCleanupTest {
                     "true",
                     "SUPPORTED_CATALOG_STORAGE_TYPES",
                     List.of("FILE")))
-            .metaStoreManagerDecorator(
-                msm -> {
-                  PolarisMetaStoreManager spy = Mockito.spy(msm);
-                  Mockito.doAnswer(
-                          invocation -> {
-                            if (shouldFail.get()) {
-                              return new EntityResult(
-                                  BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
-                                  "simulated concurrent modification");
-                            }
-                            return invocation.callRealMethod();
-                          })
-                      .when(spy)
-                      .updateEntityPropertiesIfNotChanged(
-                          Mockito.any(), Mockito.any(), Mockito.any());
-                  return spy;
-                })
+            .metaStoreManagerDecorator(msm -> {
+              PolarisMetaStoreManager spy = Mockito.spy(msm);
+              Mockito.doAnswer(
+                      invocation -> {
+                        if (shouldFail.get()) {
+                          return new EntityResult(
+                              BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
+                              "simulated concurrent modification");
+                        }
+                        return invocation.callRealMethod();
+                      })
+                  .when(spy)
+                  .updateEntityPropertiesIfNotChanged(Mockito.any(), Mockito.any(), Mockito.any());
+              return spy;
+            })
             .build();
 
     createCatalogAndNamespace(testServices, location);

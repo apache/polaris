@@ -50,11 +50,10 @@ public class PurgeCommand extends BaseMetaStoreCommand {
       }
 
       var out = spec.commandLine().getOut();
-      failed.forEach(
-          r ->
-              out.printf(
-                  "Realm %s is not bootstrapped, could not load root principal. Please run Bootstrap command.%n",
-                  r));
+      failed.forEach(r ->
+          out.printf(
+              "Realm %s is not bootstrapped, could not load root principal. Please run Bootstrap command.%n",
+              r));
 
       spec.commandLine().getErr().printf("Purge encountered errors during operation.");
       return EXIT_CODE_PURGE_ERROR;

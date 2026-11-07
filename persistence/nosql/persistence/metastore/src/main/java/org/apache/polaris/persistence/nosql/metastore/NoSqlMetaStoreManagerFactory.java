@@ -231,15 +231,14 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
     //  intermediate realm-states to make this function not racy
 
     var realmDesc =
-        existing.orElseGet(
-            () -> {
-              var desc = realmManagement.create(realmId);
-              // Move realm from CREATED to INITIALIZING state
-              desc =
-                  realmManagement.update(
-                      desc, RealmDefinition.builder().from(desc).status(INITIALIZING).build());
-              return desc;
-            });
+        existing.orElseGet(() -> {
+          var desc = realmManagement.create(realmId);
+          // Move realm from CREATED to INITIALIZING state
+          desc =
+              realmManagement.update(
+                  desc, RealmDefinition.builder().from(desc).status(INITIALIZING).build());
+          return desc;
+        });
 
     if (realmDesc.status() == CREATED) {
       realmDesc =

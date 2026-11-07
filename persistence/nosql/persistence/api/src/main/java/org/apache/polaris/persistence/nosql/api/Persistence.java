@@ -175,12 +175,11 @@ public interface Persistence {
       @NonNull String name, @NonNull Class<T> clazz) throws ReferenceNotFoundException {
     var ref = fetchReference(name);
     return ref.pointer()
-        .map(
-            id -> {
-              var head = fetch(id, clazz);
-              checkState(head != null, "%s referenced by '%s' does not exist", id, name);
-              return head;
-            });
+        .map(id -> {
+          var head = fetch(id, clazz);
+          checkState(head != null, "%s referenced by '%s' does not exist", id, name);
+          return head;
+        });
   }
 
   /**

@@ -40,12 +40,11 @@ public interface EntityIdSet {
   @Value.Check
   default void check() {
     entityIds()
-        .forEach(
-            id -> {
-              if (id < 0) {
-                throw new IllegalStateException("Entity ID must not be negative: " + id);
-              }
-            });
+        .forEach(id -> {
+          if (id < 0) {
+            throw new IllegalStateException("Entity ID must not be negative: " + id);
+          }
+        });
   }
 
   static EntityIdSet entityIdSet(Set<Long> entityIds) {

@@ -724,25 +724,21 @@ public class PolarisAdminService {
 
     Set<String> newCatalogLocations = getCatalogLocations(catalogEntity);
     return listCatalogsUnsafe()
-        .anyMatch(
-            existingCatalog -> {
-              if (existingCatalog.getName().equals(catalogEntity.getName())) {
-                return false;
-              }
-              return getCatalogLocations(existingCatalog).stream()
-                  .map(StorageLocation::of)
-                  .anyMatch(
-                      existingLocation -> {
-                        return newCatalogLocations.stream()
-                            .anyMatch(
-                                newLocationString -> {
-                                  StorageLocation newLocation =
-                                      StorageLocation.of(newLocationString);
-                                  return newLocation.isChildOf(existingLocation)
-                                      || existingLocation.isChildOf(newLocation);
-                                });
-                      });
-            });
+        .anyMatch(existingCatalog -> {
+          if (existingCatalog.getName().equals(catalogEntity.getName())) {
+            return false;
+          }
+          return getCatalogLocations(existingCatalog).stream()
+              .map(StorageLocation::of)
+              .anyMatch(existingLocation -> {
+                return newCatalogLocations.stream()
+                    .anyMatch(newLocationString -> {
+                      StorageLocation newLocation = StorageLocation.of(newLocationString);
+                      return newLocation.isChildOf(existingLocation)
+                          || existingLocation.isChildOf(newLocation);
+                    });
+              });
+        });
   }
 
   /**
@@ -812,18 +808,17 @@ public class PolarisAdminService {
 
   private void deleteSecretReferences(
       Collection<SecretReference> secretReferences, String context) {
-    secretReferences.forEach(
-        secretReference -> {
-          try {
-            getUserSecretsManager().deleteSecret(secretReference);
-          } catch (RuntimeException e) {
-            LOGGER
-                .atWarn()
-                .setCause(e)
-                .addKeyValue(StructuredLogKeys.SECRET_REFERENCE, secretReference.urn())
-                .log("Failed to clean up secret {} while {}", secretReference.urn(), context);
-          }
-        });
+    secretReferences.forEach(secretReference -> {
+      try {
+        getUserSecretsManager().deleteSecret(secretReference);
+      } catch (RuntimeException e) {
+        LOGGER
+            .atWarn()
+            .setCause(e)
+            .addKeyValue(StructuredLogKeys.SECRET_REFERENCE, secretReference.urn())
+            .log("Failed to clean up secret {} while {}", secretReference.urn(), context);
+      }
+    });
   }
 
   /**
@@ -1122,10 +1117,9 @@ public class PolarisAdminService {
                     PolarisEntity.of(
                         metaStoreManager.updateEntityPropertiesIfNotChanged(
                             getCurrentPolarisContext(), null, updatedEntity))))
-            .orElseThrow(
-                () ->
-                    new CommitConflictException(
-                        "Concurrent modification on Catalog '%s'; retry later", name));
+            .orElseThrow(() ->
+                new CommitConflictException(
+                    "Concurrent modification on Catalog '%s'; retry later", name));
     return returnedEntity;
   }
 
@@ -1235,10 +1229,9 @@ public class PolarisAdminService {
                     PolarisEntity.of(
                         metaStoreManager.updateEntityPropertiesIfNotChanged(
                             getCurrentPolarisContext(), null, updatedEntity))))
-            .orElseThrow(
-                () ->
-                    new CommitConflictException(
-                        "Concurrent modification on Principal '%s'; retry later", name));
+            .orElseThrow(() ->
+                new CommitConflictException(
+                    "Concurrent modification on Principal '%s'; retry later", name));
     return returnedEntity;
   }
 
@@ -1286,10 +1279,9 @@ public class PolarisAdminService {
                       PolarisEntity.of(
                           metaStoreManager.updateEntityPropertiesIfNotChanged(
                               getCurrentPolarisContext(), null, updatedNewPrincipalEntity))))
-              .orElseThrow(
-                  () ->
-                      new CommitConflictException(
-                          "Concurrent modification on Principal '%s'; retry later", principalName));
+              .orElseThrow(() ->
+                  new CommitConflictException(
+                      "Concurrent modification on Principal '%s'; retry later", principalName));
     }
 
     String resolvedClientId =
@@ -1485,10 +1477,9 @@ public class PolarisAdminService {
                     PolarisEntity.of(
                         metaStoreManager.updateEntityPropertiesIfNotChanged(
                             getCurrentPolarisContext(), null, updatedEntity))))
-            .orElseThrow(
-                () ->
-                    new CommitConflictException(
-                        "Concurrent modification on PrincipalRole '%s'; retry later", name));
+            .orElseThrow(() ->
+                new CommitConflictException(
+                    "Concurrent modification on PrincipalRole '%s'; retry later", name));
     return returnedEntity;
   }
 
@@ -1601,10 +1592,9 @@ public class PolarisAdminService {
                             getCurrentPolarisContext(),
                             PolarisEntity.toCoreList(List.of(catalogEntity)),
                             updatedEntity))))
-            .orElseThrow(
-                () ->
-                    new CommitConflictException(
-                        "Concurrent modification on CatalogRole '%s'; retry later", name));
+            .orElseThrow(() ->
+                new CommitConflictException(
+                    "Concurrent modification on CatalogRole '%s'; retry later", name));
     return returnedEntity;
   }
 
