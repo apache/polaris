@@ -918,13 +918,12 @@ public class PolarisPolicyServiceIntegrationTest {
       managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_2);
       Stream<PolicyGrant> policyGrants =
           Arrays.stream(PolicyPrivilege.values())
-              .map(
-                  p ->
-                      new PolicyGrant(
-                          Arrays.asList(NS1.levels()),
-                          NS1_P1.name(),
-                          p,
-                          GrantResource.TypeEnum.POLICY));
+              .map(p ->
+                  new PolicyGrant(
+                      Arrays.asList(NS1.levels()),
+                      NS1_P1.name(),
+                      p,
+                      GrantResource.TypeEnum.POLICY));
       policyGrants.forEach(g -> managementApi.addGrant(currentCatalogName, CATALOG_ROLE_2, g));
 
       Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))
@@ -959,25 +958,23 @@ public class PolarisPolicyServiceIntegrationTest {
       managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_2);
       Stream<PolicyGrant> policyGrants =
           Arrays.stream(PolicyPrivilege.values())
-              .map(
-                  p ->
-                      new PolicyGrant(
-                          Arrays.asList(NS1.levels()),
-                          NS1_P1.name(),
-                          p,
-                          GrantResource.TypeEnum.POLICY));
-      policyGrants.forEach(
-          g -> {
-            try (Response response =
-                managementApi
-                    .request(
-                        "v1/catalogs/{cat}/catalog-roles/{role}/grants",
-                        Map.of("cat", currentCatalogName, "role", "catalogrole2"))
-                    .put(Entity.json(g))) {
+              .map(p ->
+                  new PolicyGrant(
+                      Arrays.asList(NS1.levels()),
+                      NS1_P1.name(),
+                      p,
+                      GrantResource.TypeEnum.POLICY));
+      policyGrants.forEach(g -> {
+        try (Response response =
+            managementApi
+                .request(
+                    "v1/catalogs/{cat}/catalog-roles/{role}/grants",
+                    Map.of("cat", currentCatalogName, "role", "catalogrole2"))
+                .put(Entity.json(g))) {
 
-              assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
-            }
-          });
+          assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+        }
+      });
     } finally {
       policyApi.purge(currentCatalogName, NS1);
     }
@@ -1000,10 +997,9 @@ public class PolarisPolicyServiceIntegrationTest {
               NamespacePrivilege.NAMESPACE_DETACH_POLICY);
       Stream<NamespaceGrant> namespaceGrants =
           policyPrivilegesOnNamespace.stream()
-              .map(
-                  p ->
-                      new NamespaceGrant(
-                          Arrays.asList(NS1.levels()), p, GrantResource.TypeEnum.NAMESPACE));
+              .map(p ->
+                  new NamespaceGrant(
+                      Arrays.asList(NS1.levels()), p, GrantResource.TypeEnum.NAMESPACE));
       namespaceGrants.forEach(g -> managementApi.addGrant(currentCatalogName, CATALOG_ROLE_2, g));
 
       Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))
@@ -1056,13 +1052,9 @@ public class PolarisPolicyServiceIntegrationTest {
 
       Stream<TableGrant> tableGrants =
           policyPrivilegesOnTable.stream()
-              .map(
-                  p ->
-                      new TableGrant(
-                          Arrays.asList(NS2.levels()),
-                          NS2_T1.name(),
-                          p,
-                          GrantResource.TypeEnum.TABLE));
+              .map(p ->
+                  new TableGrant(
+                      Arrays.asList(NS2.levels()), NS2_T1.name(), p, GrantResource.TypeEnum.TABLE));
       tableGrants.forEach(g -> managementApi.addGrant(currentCatalogName, CATALOG_ROLE_2, g));
 
       Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))

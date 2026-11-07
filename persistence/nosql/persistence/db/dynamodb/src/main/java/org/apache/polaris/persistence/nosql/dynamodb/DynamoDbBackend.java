@@ -138,20 +138,16 @@ public class DynamoDbBackend implements Backend {
   }
 
   private void createTable(String name) {
-    client.createTable(
-        b ->
-            b.tableName(name)
-                .attributeDefinitions(
-                    AttributeDefinition.builder()
-                        .attributeName(KEY_NAME)
-                        .attributeType(ScalarAttributeType.B)
-                        .build())
-                .billingMode(BillingMode.PAY_PER_REQUEST)
-                .keySchema(
-                    KeySchemaElement.builder()
-                        .attributeName(KEY_NAME)
-                        .keyType(KeyType.HASH)
-                        .build()));
+    client.createTable(b ->
+        b.tableName(name)
+            .attributeDefinitions(
+                AttributeDefinition.builder()
+                    .attributeName(KEY_NAME)
+                    .attributeType(ScalarAttributeType.B)
+                    .build())
+            .billingMode(BillingMode.PAY_PER_REQUEST)
+            .keySchema(
+                KeySchemaElement.builder().attributeName(KEY_NAME).keyType(KeyType.HASH).build()));
   }
 
   private static void verifyKeySchema(TableDescription description) {
@@ -217,52 +213,47 @@ public class DynamoDbBackend implements Backend {
       @Nonnull ReferenceScanCallback referenceConsumer, @Nonnull ObjScanCallback objConsumer) {
     client
         .scanPaginator(b -> b.tableName(tableRefs))
-        .forEach(
-            scanResponse ->
-                scanResponse
-                    .items()
-                    .forEach(
-                        i -> {
-                          try (var in = i.get(KEY_NAME).b().asInputStream();
-                              var data = new DataInputStream(in)) {
-                            var realmId = data.readUTF();
-                            var ref = data.readUTF();
-                            var createdAt = Long.parseLong(i.get(COL_REF_CREATED_AT).n());
-                            referenceConsumer.call(realmId, ref, createdAt);
-                          } catch (IOException e) {
-                            throw new RuntimeException(e);
-                          }
-                        }));
+        .forEach(scanResponse ->
+            scanResponse
+                .items()
+                .forEach(i -> {
+                  try (var in = i.get(KEY_NAME).b().asInputStream();
+                      var data = new DataInputStream(in)) {
+                    var realmId = data.readUTF();
+                    var ref = data.readUTF();
+                    var createdAt = Long.parseLong(i.get(COL_REF_CREATED_AT).n());
+                    referenceConsumer.call(realmId, ref, createdAt);
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                }));
     client
         .scanPaginator(b -> b.tableName(tableObjs))
-        .forEach(
-            scanResponse ->
-                scanResponse
-                    .items()
-                    .forEach(
-                        i -> {
-                          try (var in = i.get(KEY_NAME).b().asInputStream();
-                              var data = new DataInputStream(in)) {
-                            var realmId = data.readUTF();
-                            var id = data.readLong();
-                            var part = data.readInt();
-                            var createdAt = Long.parseLong(i.get(COL_REF_CREATED_AT).n());
-                            var type = i.get(COL_OBJ_TYPE).s();
-                            objConsumer.call(realmId, type, persistId(id, part), createdAt);
-                          } catch (IOException e) {
-                            throw new RuntimeException(e);
-                          }
-                        }));
+        .forEach(scanResponse ->
+            scanResponse
+                .items()
+                .forEach(i -> {
+                  try (var in = i.get(KEY_NAME).b().asInputStream();
+                      var data = new DataInputStream(in)) {
+                    var realmId = data.readUTF();
+                    var id = data.readLong();
+                    var part = data.readInt();
+                    var createdAt = Long.parseLong(i.get(COL_REF_CREATED_AT).n());
+                    var type = i.get(COL_OBJ_TYPE).s();
+                    objConsumer.call(realmId, type, persistId(id, part), createdAt);
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                }));
   }
 
   @Override
   public boolean createReference(@Nonnull String realmId, @Nonnull Reference newRef) {
     try {
-      client.putItem(
-          b ->
-              b.tableName(tableRefs)
-                  .conditionExpression("attribute_not_exists(" + COL_REF_POINTER + ")")
-                  .item(referenceAttributeValues(realmId, newRef)));
+      client.putItem(b ->
+          b.tableName(tableRefs)
+              .conditionExpression("attribute_not_exists(" + COL_REF_POINTER + ")")
+              .item(referenceAttributeValues(realmId, newRef)));
       return true;
     } catch (ConditionalCheckFailedException e) {
       throwIfAmbiguousConditionalCheckFailure(e);
@@ -286,12 +277,11 @@ public class DynamoDbBackend implements Backend {
       @Nonnull Optional<ObjRef> expectedPointer) {
     try {
       try {
-        client.putItem(
-            b ->
-                b.tableName(tableRefs)
-                    .conditionExpression("(" + COL_REF_POINTER + " = :pointer)")
-                    .expressionAttributeValues(Map.of(":pointer", pointerSdkBytes(expectedPointer)))
-                    .item(referenceAttributeValues(realmId, updatedRef)));
+        client.putItem(b ->
+            b.tableName(tableRefs)
+                .conditionExpression("(" + COL_REF_POINTER + " = :pointer)")
+                .expressionAttributeValues(Map.of(":pointer", pointerSdkBytes(expectedPointer)))
+                .item(referenceAttributeValues(realmId, updatedRef)));
       } catch (RuntimeException e) {
         throw unhandledException(e);
       }
@@ -373,22 +363,21 @@ public class DynamoDbBackend implements Backend {
           Map.of(
               tableObjs,
               batchWrites.stream()
-                  .map(
-                      w ->
-                          WriteRequest.builder()
-                              .putRequest(
-                                  PutRequest.builder()
-                                      .item(
-                                          objAttributeValues(
-                                              realmId,
-                                              PersistId.persistId(w.id(), w.part()),
-                                              w.type(),
-                                              w.partNum(),
-                                              w.createdAtMicros(),
-                                              w.serialized(),
-                                              null))
-                                      .build())
-                              .build())
+                  .map(w ->
+                      WriteRequest.builder()
+                          .putRequest(
+                              PutRequest.builder()
+                                  .item(
+                                      objAttributeValues(
+                                          realmId,
+                                          PersistId.persistId(w.id(), w.part()),
+                                          w.type(),
+                                          w.partNum(),
+                                          w.createdAtMicros(),
+                                          w.serialized(),
+                                          null))
+                                  .build())
+                          .build())
                   .toList()));
     }
   }
@@ -486,19 +475,18 @@ public class DynamoDbBackend implements Backend {
       @Nonnull String versionToken,
       @Nonnull byte[] serializedValue) {
     try {
-      client.putItem(
-          b ->
-              b.tableName(tableObjs)
-                  .conditionExpression("attribute_not_exists(" + COL_OBJ_CREATED_AT + ")")
-                  .item(
-                      objAttributeValues(
-                          realmId,
-                          persistId,
-                          objTypeId,
-                          1,
-                          createdAtMicros,
-                          serializedValue,
-                          versionToken)));
+      client.putItem(b ->
+          b.tableName(tableObjs)
+              .conditionExpression("attribute_not_exists(" + COL_OBJ_CREATED_AT + ")")
+              .item(
+                  objAttributeValues(
+                      realmId,
+                      persistId,
+                      objTypeId,
+                      1,
+                      createdAtMicros,
+                      serializedValue,
+                      versionToken)));
       return true;
     } catch (ConditionalCheckFailedException e) {
       throwIfAmbiguousConditionalCheckFailure(e);
@@ -518,13 +506,11 @@ public class DynamoDbBackend implements Backend {
       @Nonnull String expectedToken,
       @Nonnull byte[] serializedValue) {
     try {
-      client.updateItem(
-          b ->
-              b.tableName(tableObjs)
-                  .key(objKeyMap(realmId, persistId))
-                  .attributeUpdates(
-                      objAttributeUpdates(createdAtMicros, serializedValue, updateToken))
-                  .expected(conditionalUpdateExpectedValues(expectedToken)));
+      client.updateItem(b ->
+          b.tableName(tableObjs)
+              .key(objKeyMap(realmId, persistId))
+              .attributeUpdates(objAttributeUpdates(createdAtMicros, serializedValue, updateToken))
+              .expected(conditionalUpdateExpectedValues(expectedToken)));
       return true;
     } catch (ConditionalCheckFailedException e) {
       throwIfAmbiguousConditionalCheckFailure(e);
@@ -538,11 +524,10 @@ public class DynamoDbBackend implements Backend {
   public boolean conditionalDelete(
       @Nonnull String realmId, @Nonnull PersistId persistId, @Nonnull String expectedToken) {
     try {
-      client.deleteItem(
-          b ->
-              b.tableName(tableObjs)
-                  .key(objKeyMap(realmId, persistId))
-                  .expected(conditionalUpdateExpectedValues(expectedToken)));
+      client.deleteItem(b ->
+          b.tableName(tableObjs)
+              .key(objKeyMap(realmId, persistId))
+              .expected(conditionalUpdateExpectedValues(expectedToken)));
       return true;
     } catch (ConditionalCheckFailedException checkFailedException) {
       throwIfAmbiguousConditionalCheckFailure(checkFailedException);

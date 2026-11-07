@@ -45,7 +45,7 @@ public class MonotonicClockStress {
     @Outcome(id = ".*, -1", expect = FORBIDDEN, desc = "Clock must not go backwards"),
     @Outcome(expect = UNKNOWN, desc = "Not sure what happened"),
   })
-  @State()
+  @State
   public static class Nanos {
     long ref;
 
@@ -84,7 +84,7 @@ public class MonotonicClockStress {
     @Outcome(id = ".*, -1", expect = FORBIDDEN, desc = "Clock must not go backwards"),
     @Outcome(expect = UNKNOWN, desc = "Not sure what happened"),
   })
-  @State()
+  @State
   public static class Micros {
     long ref;
 
@@ -123,7 +123,7 @@ public class MonotonicClockStress {
     @Outcome(id = ".*, -1", expect = FORBIDDEN, desc = "Clock must not go backwards"),
     @Outcome(expect = UNKNOWN, desc = "Not sure what happened"),
   })
-  @State()
+  @State
   public static class Millis {
     long ref;
 
@@ -162,7 +162,7 @@ public class MonotonicClockStress {
     @Outcome(id = ".*, -1", expect = FORBIDDEN, desc = "Clock must not go backwards"),
     @Outcome(expect = UNKNOWN, desc = "Not sure what happened"),
   })
-  @State()
+  @State
   public static class Instants {
     Instant ref;
 

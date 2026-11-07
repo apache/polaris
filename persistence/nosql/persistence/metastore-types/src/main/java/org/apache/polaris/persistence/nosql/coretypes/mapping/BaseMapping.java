@@ -241,17 +241,15 @@ public abstract class BaseMapping<O extends ObjBase, B extends ObjBase.Builder<O
       CatalogStorageObj catalogStorageObj, HashMap<String, String> internalProperties) {
     catalogStorageObj
         .storageConfigurationInfo()
-        .ifPresent(
-            polarisStorageConfigInfo ->
-                internalProperties.put(
-                    PolarisEntityConstants.getStorageConfigInfoPropertyName(),
-                    polarisStorageConfigInfo.serialize()));
+        .ifPresent(polarisStorageConfigInfo ->
+            internalProperties.put(
+                PolarisEntityConstants.getStorageConfigInfoPropertyName(),
+                polarisStorageConfigInfo.serialize()));
     catalogStorageObj
         .storageIntegrationIdentifier()
-        .ifPresent(
-            ident ->
-                internalProperties.put(
-                    PolarisEntityConstants.getStorageIntegrationIdentifierPropertyName(), ident));
+        .ifPresent(ident ->
+            internalProperties.put(
+                PolarisEntityConstants.getStorageIntegrationIdentifierPropertyName(), ident));
   }
 
   /** Maps an {@link ObjBase} to a {@link PolarisBaseEntity} for the given catalog ID. */

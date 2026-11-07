@@ -367,7 +367,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             .build();
     AwsCredentialsStorageIntegration storageIntegration =
         new AwsCredentialsStorageIntegration(
-            (destination) -> stsClient,
+            destination -> stsClient,
             config -> Optional.empty(),
             storageCredentialCache,
             mockAwsConfig,
@@ -770,10 +770,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     // commit FILE_C
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).commit();
     CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, true);
-    Assertions.assertThatThrownBy(
-            () ->
-                catalogHandlerUtils.commit(
-                    ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
+    Assertions.assertThatThrownBy(() ->
+            catalogHandlerUtils.commit(
+                ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("Requirement failed: branch main has changed");
 
@@ -845,10 +844,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     // now add more files to non-main branch
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).toBranch("non-main").commit();
     CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, true);
-    Assertions.assertThatThrownBy(
-            () ->
-                catalogHandlerUtils.commit(
-                    ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
+    Assertions.assertThatThrownBy(() ->
+            catalogHandlerUtils.commit(
+                ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("Requirement failed: branch main has changed");
 
@@ -921,10 +919,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     // branch
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).toBranch("non-main").commit();
     CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, true);
-    Assertions.assertThatThrownBy(
-            () ->
-                catalogHandlerUtils.commit(
-                    ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
+    Assertions.assertThatThrownBy(() ->
+            catalogHandlerUtils.commit(
+                ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("Requirement failed: branch main has changed");
 
@@ -2464,21 +2461,17 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             IcebergExceptionMapper.getAccessDeniedHints().stream()
                 .map(hint -> Arguments.of(new RuntimeException(hint), false)),
             cloudCodeMappings.entrySet().stream()
-                .flatMap(
-                    entry ->
-                        Stream.of(
-                            Arguments.of(
-                                new HttpResponseException(
-                                    "", new FakeAzureHttpResponse(entry.getKey()), ""),
-                                entry.getValue()),
-                            Arguments.of(
-                                new StorageException(entry.getKey(), ""), entry.getValue()))),
-            IcebergExceptionMapper.RETRYABLE_AZURE_HTTP_CODES.stream()
-                .map(
-                    code ->
+                .flatMap(entry ->
+                    Stream.of(
                         Arguments.of(
-                            new HttpResponseException("", new FakeAzureHttpResponse(code), ""),
-                            true)))
+                            new HttpResponseException(
+                                "", new FakeAzureHttpResponse(entry.getKey()), ""),
+                            entry.getValue()),
+                        Arguments.of(new StorageException(entry.getKey(), ""), entry.getValue()))),
+            IcebergExceptionMapper.RETRYABLE_AZURE_HTTP_CODES.stream()
+                .map(code ->
+                    Arguments.of(
+                        new HttpResponseException("", new FakeAzureHttpResponse(code), ""), true)))
         .flatMap(Function.identity());
   }
 
@@ -2966,10 +2959,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
     testCatalog.createNamespace(TABLE.namespace());
 
-    Assertions.assertThatThrownBy(
-            () ->
-                testCatalog.registerTable(
-                    TABLE, "s3://other-bucket/path/to/table/metadata/v1.metadata.json"))
+    Assertions.assertThatThrownBy(() ->
+            testCatalog.registerTable(
+                TABLE, "s3://other-bucket/path/to/table/metadata/v1.metadata.json"))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
 
@@ -3604,11 +3596,10 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
       // Explicitly verify that the collector captured a cleanup targeting v1.
       assertThat(collected)
           .as("Collector should have captured cleanup for v1 metadata")
-          .anyMatch(
-              cleanup ->
-                  cleanup.baseMetadata().previousFiles().stream()
-                      .map(TableMetadata.MetadataLogEntry::file)
-                      .anyMatch(v1Location::equals));
+          .anyMatch(cleanup ->
+              cleanup.baseMetadata().previousFiles().stream()
+                  .map(TableMetadata.MetadataLogEntry::file)
+                  .anyMatch(v1Location::equals));
 
       // Replay the collected deletes (simulates success path after batch).
       for (MetadataFileCleanup cleanup : collected) {
@@ -3888,12 +3879,11 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
     String metadataPrefix = metadataDirectory + "/";
 
-    Assertions.assertThatThrownBy(
-            () ->
-                table
-                    .updateProperties()
-                    .set(TableProperties.WRITE_METADATA_LOCATION, metadataDirectory)
-                    .commit())
+    Assertions.assertThatThrownBy(() ->
+            table
+                .updateProperties()
+                .set(TableProperties.WRITE_METADATA_LOCATION, metadataDirectory)
+                .commit())
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("is not allowed outside of table location");
 
@@ -4021,10 +4011,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
     await()
         .atMost(Duration.ofSeconds(10))
-        .until(
-            () ->
-                testPolarisEventListener.hasEvent(PolarisEventType.BEFORE_REFRESH_TABLE)
-                    && testPolarisEventListener.hasEvent(PolarisEventType.AFTER_REFRESH_TABLE));
+        .until(() ->
+            testPolarisEventListener.hasEvent(PolarisEventType.BEFORE_REFRESH_TABLE)
+                && testPolarisEventListener.hasEvent(PolarisEventType.AFTER_REFRESH_TABLE));
 
     PolarisEvent beforeRefreshEvent =
         testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_TABLE);

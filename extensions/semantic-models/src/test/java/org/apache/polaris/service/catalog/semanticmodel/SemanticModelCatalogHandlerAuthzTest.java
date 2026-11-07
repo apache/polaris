@@ -122,10 +122,8 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
 
   @Test
   void createDeniedWithoutPrivilege() {
-    assertThatThrownBy(
-            () ->
-                enforcingHandler()
-                    .createSemanticModel(NS, createRequest("m2", modelJson("ns1.t1"))))
+    assertThatThrownBy(() ->
+            enforcingHandler().createSemanticModel(NS, createRequest("m2", modelJson("ns1.t1"))))
         .isInstanceOf(ForbiddenException.class);
   }
 
@@ -143,15 +141,14 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
 
   @Test
   void updateDeniedWithoutPrivilege() {
-    assertThatThrownBy(
-            () ->
-                enforcingHandler()
-                    .updateSemanticModel(
-                        identifier("m1"),
-                        UpdateSemanticModelRequest.builder()
-                            .setDocument(doc(modelJson("ns1.t1")))
-                            .setEntityVersion("1")
-                            .build()))
+    assertThatThrownBy(() ->
+            enforcingHandler()
+                .updateSemanticModel(
+                    identifier("m1"),
+                    UpdateSemanticModelRequest.builder()
+                        .setDocument(doc(modelJson("ns1.t1")))
+                        .setEntityVersion("1")
+                        .build()))
         .isInstanceOf(ForbiddenException.class);
   }
 
@@ -219,21 +216,19 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
             "update", PolarisPrivilege.SEMANTIC_MODEL_WRITE,
             "drop", PolarisPrivilege.SEMANTIC_MODEL_DROP);
     return required.entrySet().stream()
-        .flatMap(
-            operation ->
-                Stream.of(PolarisPrivilege.values())
-                    .filter(p -> p.name().startsWith("SEMANTIC_MODEL_"))
-                    .map(
-                        privilege ->
-                            Arguments.of(
-                                operation.getKey(),
-                                privilege,
-                                privilege == operation.getValue()
-                                    || privilege == PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA
-                                    || (operation.getKey().equals("list")
-                                        && privilege == PolarisPrivilege.SEMANTIC_MODEL_CREATE)
-                                    || (operation.getKey().equals("load")
-                                        && privilege == PolarisPrivilege.SEMANTIC_MODEL_WRITE))));
+        .flatMap(operation ->
+            Stream.of(PolarisPrivilege.values())
+                .filter(p -> p.name().startsWith("SEMANTIC_MODEL_"))
+                .map(privilege ->
+                    Arguments.of(
+                        operation.getKey(),
+                        privilege,
+                        privilege == operation.getValue()
+                            || privilege == PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA
+                            || (operation.getKey().equals("list")
+                                && privilege == PolarisPrivilege.SEMANTIC_MODEL_CREATE)
+                            || (operation.getKey().equals("load")
+                                && privilege == PolarisPrivilege.SEMANTIC_MODEL_WRITE))));
   }
 
   @ParameterizedTest

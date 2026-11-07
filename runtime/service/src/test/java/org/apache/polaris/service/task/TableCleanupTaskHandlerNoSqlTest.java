@@ -161,21 +161,19 @@ class TableCleanupTaskHandlerNoSqlTest {
             .getEntities();
     assertThat(created).isNotEmpty();
     assertThat(created)
-        .allSatisfy(
-            entity -> {
-              byte[] nameBytes = entity.getName().getBytes(StandardCharsets.UTF_8);
-              assertThat(nameBytes).hasSizeLessThanOrEqualTo(IndexKey.MAX_LENGTH);
-              assertThat(entity.getName()).doesNotContain(longSegment);
-              IndexKey.key(entity.getName());
-            });
+        .allSatisfy(entity -> {
+          byte[] nameBytes = entity.getName().getBytes(StandardCharsets.UTF_8);
+          assertThat(nameBytes).hasSizeLessThanOrEqualTo(IndexKey.MAX_LENGTH);
+          assertThat(entity.getName()).doesNotContain(longSegment);
+          IndexKey.key(entity.getName());
+        });
 
     assertThat(created)
         .filteredOn(
             entity -> TaskEntity.of(entity).getTaskType() == AsyncTaskType.MANIFEST_FILE_CLEANUP)
-        .map(
-            entity ->
-                TaskEntity.of(entity)
-                    .readData(ManifestFileCleanupTaskHandler.ManifestCleanupTask.class))
+        .map(entity ->
+            TaskEntity.of(entity)
+                .readData(ManifestFileCleanupTaskHandler.ManifestCleanupTask.class))
         .contains(
             ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
                 tableIdentifier, manifestFile),
@@ -186,17 +184,16 @@ class TableCleanupTaskHandlerNoSqlTest {
         .filteredOn(
             entity -> TaskEntity.of(entity).getTaskType() == AsyncTaskType.BATCH_FILE_CLEANUP)
         .singleElement()
-        .satisfies(
-            entity ->
-                assertThat(
-                        TaskEntity.of(entity)
-                            .readData(BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)
-                            .batchFiles())
-                    .contains(
-                        previousMetadataPath,
-                        manifestListPath,
-                        secondManifestListPath,
-                        statsPath,
-                        partitionStatsPath));
+        .satisfies(entity ->
+            assertThat(
+                    TaskEntity.of(entity)
+                        .readData(BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)
+                        .batchFiles())
+                .contains(
+                    previousMetadataPath,
+                    manifestListPath,
+                    secondManifestListPath,
+                    statsPath,
+                    partitionStatsPath));
   }
 }

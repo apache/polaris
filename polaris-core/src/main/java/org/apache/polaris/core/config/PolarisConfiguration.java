@@ -108,10 +108,9 @@ public abstract class PolarisConfiguration<T> {
   }
 
   public final String catalogConfig() {
-    return catalogConfigImpl.orElseThrow(
-        () ->
-            new IllegalStateException(
-                "Attempted to read a catalog config key from a configuration that doesn't have one."));
+    return catalogConfigImpl.orElseThrow(() ->
+        new IllegalStateException(
+            "Attempted to read a catalog config key from a configuration that doesn't have one."));
   }
 
   public final boolean hasCatalogConfigUnsafe() {
@@ -119,10 +118,9 @@ public abstract class PolarisConfiguration<T> {
   }
 
   public final String catalogConfigUnsafe() {
-    return catalogConfigUnsafeImpl.orElseThrow(
-        () ->
-            new IllegalStateException(
-                "Attempted to read an unsafe catalog config key from a configuration that doesn't have one."));
+    return catalogConfigUnsafeImpl.orElseThrow(() ->
+        new IllegalStateException(
+            "Attempted to read an unsafe catalog config key from a configuration that doesn't have one."));
   }
 
   T cast(Object value) {

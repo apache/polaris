@@ -458,19 +458,17 @@ public class TestMaintenance {
     var runId = createUnfinishedMaintenanceRun();
 
     soft.assertThatExceptionOfType(MaintenanceRunInProgressException.class)
-        .isThrownBy(
-            () ->
-                maintenance.performMaintenance(
-                    MaintenanceRunSpec.builder().includeSystemRealm(false).build(),
-                    OptionalLong.empty()))
+        .isThrownBy(() ->
+            maintenance.performMaintenance(
+                MaintenanceRunSpec.builder().includeSystemRealm(false).build(),
+                OptionalLong.empty()))
         .satisfies(e -> assertThat(e.runId()).isEqualTo(runId));
 
     soft.assertThatExceptionOfType(MaintenanceRunInProgressException.class)
-        .isThrownBy(
-            () ->
-                maintenance.performMaintenance(
-                    MaintenanceRunSpec.builder().includeSystemRealm(false).build(),
-                    OptionalLong.of(runId + 1)))
+        .isThrownBy(() ->
+            maintenance.performMaintenance(
+                MaintenanceRunSpec.builder().includeSystemRealm(false).build(),
+                OptionalLong.of(runId + 1)))
         .satisfies(e -> assertThat(e.runId()).isEqualTo(runId));
 
     var runInfo =
@@ -490,23 +488,22 @@ public class TestMaintenance {
             MaintenanceRunsObj.MAINTENANCE_RUNS_REF_NAME,
             MaintenanceRunsObj.class,
             MaintenanceRunObj.class)
-        .commitRuntimeException(
-            (state, refObjSupplier) -> {
-              var refObj = refObjSupplier.get();
-              var runObj =
-                  MaintenanceRunObj.builder()
-                      .id(systemPersistence.generateId())
-                      .runInformation(
-                          MaintenanceRunInformation.builder()
-                              .started(mutableMonotonicClock.currentInstant())
-                              .build())
-                      .build();
+        .commitRuntimeException((state, refObjSupplier) -> {
+          var refObj = refObjSupplier.get();
+          var runObj =
+              MaintenanceRunObj.builder()
+                  .id(systemPersistence.generateId())
+                  .runInformation(
+                      MaintenanceRunInformation.builder()
+                          .started(mutableMonotonicClock.currentInstant())
+                          .build())
+                  .build();
 
-              state.writeIfNew("unfinished-run", runObj, MaintenanceRunObj.class);
+          state.writeIfNew("unfinished-run", runObj, MaintenanceRunObj.class);
 
-              return state.commitResult(
-                  runObj, MaintenanceRunsObj.builder().maintenanceRunId(objRef(runObj)), refObj);
-            })
+          return state.commitResult(
+              runObj, MaintenanceRunsObj.builder().maintenanceRunId(objRef(runObj)), refObj);
+        })
         .orElseThrow()
         .id();
   }

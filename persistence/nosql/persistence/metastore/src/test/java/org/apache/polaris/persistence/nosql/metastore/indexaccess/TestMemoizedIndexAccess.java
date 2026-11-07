@@ -184,31 +184,29 @@ public class TestMemoizedIndexAccess {
 
   static Stream<Arguments> realmScopedEntityTypes() {
     return Stream.of(CATALOG, PRINCIPAL, PRINCIPAL_ROLE, TASK)
-        .flatMap(
-            t -> {
-              var subTypes =
-                  Arrays.stream(PolarisEntitySubType.values())
-                      .filter(s -> s.getParentType() == t)
-                      .toList();
+        .flatMap(t -> {
+          var subTypes =
+              Arrays.stream(PolarisEntitySubType.values())
+                  .filter(s -> s.getParentType() == t)
+                  .toList();
 
-              return subTypes.isEmpty()
-                  ? Stream.of(Arguments.of(t, NULL_SUBTYPE))
-                  : subTypes.stream().map(s -> Arguments.of(t, s));
-            });
+          return subTypes.isEmpty()
+              ? Stream.of(Arguments.of(t, NULL_SUBTYPE))
+              : subTypes.stream().map(s -> Arguments.of(t, s));
+        });
   }
 
   static Stream<Arguments> catalogScopedEntityTypes() {
     return Stream.of(CATALOG_ROLE, NAMESPACE, TABLE_LIKE, POLICY)
-        .flatMap(
-            t -> {
-              var subTypes =
-                  Arrays.stream(PolarisEntitySubType.values())
-                      .filter(s -> s.getParentType() == t)
-                      .toList();
+        .flatMap(t -> {
+          var subTypes =
+              Arrays.stream(PolarisEntitySubType.values())
+                  .filter(s -> s.getParentType() == t)
+                  .toList();
 
-              return subTypes.isEmpty()
-                  ? Stream.of(Arguments.of(t, NULL_SUBTYPE))
-                  : subTypes.stream().map(s -> Arguments.of(t, s));
-            });
+          return subTypes.isEmpty()
+              ? Stream.of(Arguments.of(t, NULL_SUBTYPE))
+              : subTypes.stream().map(s -> Arguments.of(t, s));
+        });
   }
 }

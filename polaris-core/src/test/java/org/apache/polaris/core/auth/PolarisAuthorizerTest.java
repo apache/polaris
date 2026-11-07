@@ -179,13 +179,12 @@ public class PolarisAuthorizerTest {
 
     List<Boolean> individual =
         batch.intents().stream()
-            .map(
-                intent ->
-                    new RecordingAuthorizer(Set.of("table2"))
-                        .authorize(
-                            new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                            new AuthorizationRequest(PRINCIPAL, List.of(intent)))
-                        .isAllowed())
+            .map(intent ->
+                new RecordingAuthorizer(Set.of("table2"))
+                    .authorize(
+                        new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                        new AuthorizationRequest(PRINCIPAL, List.of(intent)))
+                    .isAllowed())
             .toList();
 
     List<Boolean> batched =

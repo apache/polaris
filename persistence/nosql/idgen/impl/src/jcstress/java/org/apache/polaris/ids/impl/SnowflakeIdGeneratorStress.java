@@ -57,7 +57,7 @@ public class SnowflakeIdGeneratorStress {
     @Outcome(id = "0", expect = FORBIDDEN, desc = "Equal"),
     @Outcome(expect = UNKNOWN, desc = "Not sure what happened"),
   })
-  @State()
+  @State
   public static class SameThread {
     @Actor
     public void actor(I_Result r) {
@@ -75,7 +75,7 @@ public class SnowflakeIdGeneratorStress {
     @Outcome(id = "true", expect = FORBIDDEN, desc = "Equal"),
     @Outcome(expect = UNKNOWN, desc = "Not sure what happened"),
   })
-  @State()
+  @State
   public static class DifferentThreads {
     long v1;
     long v2;

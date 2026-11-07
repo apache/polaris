@@ -154,35 +154,29 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
   private Future<List<CacheInvalidationPeer>> updatePeerDiscovery() {
     var previous = new HashSet<>(resolvedPeers);
     return discoverPeers()
-        .map(
-            all ->
-                all.stream()
-                    // DNS peers use the sender's management port, so a locally bound address is
-                    // always this sender. Explicitly addressed peers can represent a different
-                    // process on the same host and are left to the receiver's instance-ID check.
-                    .filter(
-                        peer ->
-                            peer.managementPort().isPresent()
-                                || !LOCAL_ADDRESSES.contains(peer.host()))
-                    .toList())
-        .onSuccess(
-            all -> {
-              schedulePeerDiscovery();
+        .map(all ->
+            all.stream()
+                // DNS peers use the sender's management port, so a locally bound address is
+                // always this sender. Explicitly addressed peers can represent a different
+                // process on the same host and are left to the receiver's instance-ID check.
+                .filter(peer ->
+                    peer.managementPort().isPresent() || !LOCAL_ADDRESSES.contains(peer.host()))
+                .toList())
+        .onSuccess(all -> {
+          schedulePeerDiscovery();
 
-              var resolved = new HashSet<>(all);
-              if (!resolved.equals(previous)) {
-                LOGGER.info("Peers for remote cache invalidations now resolve to {}", all);
-              }
+          var resolved = new HashSet<>(all);
+          if (!resolved.equals(previous)) {
+            LOGGER.info("Peers for remote cache invalidations now resolve to {}", all);
+          }
 
-              updateResolvedPeers(all);
-            })
-        .onFailure(
-            t -> {
-              schedulePeerDiscovery();
+          updateResolvedPeers(all);
+        })
+        .onFailure(t -> {
+          schedulePeerDiscovery();
 
-              LOGGER.warn(
-                  "Failed to discover peers for remote cache invalidations: {}", t.toString());
-            });
+          LOGGER.warn("Failed to discover peers for remote cache invalidations: {}", t.toString());
+        });
   }
 
   @VisibleForTesting
@@ -279,11 +273,10 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
       futures.add(
           httpClient
               .request(HttpMethod.POST, peerManagementPort, address, invalidationUri)
-              .compose(
-                  req ->
-                      req.putHeader("Content-Type", APPLICATION_JSON)
-                          .putHeader(CACHE_INVALIDATION_TOKEN_HEADER, token)
-                          .send(json))
+              .compose(req ->
+                  req.putHeader("Content-Type", APPLICATION_JSON)
+                      .putHeader(CACHE_INVALIDATION_TOKEN_HEADER, token)
+                      .send(json))
               .compose(resp -> resp.body().map(b -> Map.entry(resp, b)))
               .timeout(requestTimeout, TimeUnit.MILLISECONDS)
               .onComplete(

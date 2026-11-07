@@ -151,10 +151,11 @@ public class QueryGenerator {
       @NonNull PolarisEntityCore entity, @NonNull String realmId) {
     String where =
         """
-             WHERE (
-                (grantee_id = ? AND grantee_catalog_id = ?) OR
-                (securable_id = ? AND securable_catalog_id = ?)
-            ) AND realm_id = ?""";
+         WHERE (
+            (grantee_id = ? AND grantee_catalog_id = ?) OR
+            (securable_id = ? AND securable_catalog_id = ?)
+        ) AND realm_id = ?\
+        """;
     List<Object> params =
         Arrays.asList(
             entity.getId(), entity.getCatalogId(), entity.getId(), entity.getCatalogId(), realmId);

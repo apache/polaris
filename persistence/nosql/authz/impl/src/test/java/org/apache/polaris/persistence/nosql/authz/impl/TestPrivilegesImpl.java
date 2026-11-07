@@ -44,19 +44,17 @@ public class TestPrivilegesImpl {
   @Test
   public void duplicateNames() {
     soft.assertThatIllegalStateException()
-        .isThrownBy(
-            () ->
-                testPrivileges(
-                    testPrivilegesProvider(
-                        "PROVIDER1", inheritablePrivilege("foo"), inheritablePrivilege("foo"))))
+        .isThrownBy(() ->
+            testPrivileges(
+                testPrivilegesProvider(
+                    "PROVIDER1", inheritablePrivilege("foo"), inheritablePrivilege("foo"))))
         .withMessage("Duplicate privilege definition for name 'foo'");
 
     soft.assertThatIllegalStateException()
-        .isThrownBy(
-            () ->
-                testPrivileges(
-                    testPrivilegesProvider("PROVIDER1", inheritablePrivilege("foo")),
-                    testPrivilegesProvider("PROVIDER2", inheritablePrivilege("foo"))))
+        .isThrownBy(() ->
+            testPrivileges(
+                testPrivilegesProvider("PROVIDER1", inheritablePrivilege("foo")),
+                testPrivilegesProvider("PROVIDER2", inheritablePrivilege("foo"))))
         .withMessage("Duplicate privilege definition for name 'foo'");
   }
 

@@ -63,13 +63,11 @@ public class TestRetryLoopImpl {
 
     var retryCounter = new AtomicInteger();
 
-    soft.assertThatThrownBy(
-            () ->
-                tryLoopState.retryLoop(
-                    (long nanosRemaining) -> {
-                      retryCounter.incrementAndGet();
-                      return Optional.empty();
-                    }))
+    soft.assertThatThrownBy(() ->
+            tryLoopState.retryLoop((long nanosRemaining) -> {
+              retryCounter.incrementAndGet();
+              return Optional.empty();
+            }))
         .isInstanceOf(RetryTimeoutException.class)
         .asInstanceOf(type(RetryTimeoutException.class))
         .extracting(RetryTimeoutException::getRetry, RetryTimeoutException::getTimeNanos)
@@ -88,14 +86,12 @@ public class TestRetryLoopImpl {
     var retryCounter = new AtomicInteger();
     var result = new AtomicReference<String>();
 
-    soft.assertThatCode(
-            () ->
-                result.set(
-                    tryLoopState.retryLoop(
-                        (long nanosRemaining) -> {
-                          retryCounter.incrementAndGet();
-                          return Optional.of("foo");
-                        })))
+    soft.assertThatCode(() ->
+            result.set(
+                tryLoopState.retryLoop((long nanosRemaining) -> {
+                  retryCounter.incrementAndGet();
+                  return Optional.of("foo");
+                })))
         .doesNotThrowAnyException();
 
     soft.assertThat(retryCounter).hasValue(1);
@@ -113,16 +109,14 @@ public class TestRetryLoopImpl {
     var retryCounter = new AtomicInteger();
     var result = new AtomicReference<String>();
 
-    soft.assertThatCode(
-            () ->
-                result.set(
-                    tryLoopState.retryLoop(
-                        (long nanosRemaining) -> {
-                          if (retryCounter.incrementAndGet() == 1) {
-                            return Optional.empty();
-                          }
-                          return Optional.of("foo");
-                        })))
+    soft.assertThatCode(() ->
+            result.set(
+                tryLoopState.retryLoop((long nanosRemaining) -> {
+                  if (retryCounter.incrementAndGet() == 1) {
+                    return Optional.empty();
+                  }
+                  return Optional.of("foo");
+                })))
         .doesNotThrowAnyException();
 
     soft.assertThat(retryCounter).hasValue(2);
@@ -139,16 +133,14 @@ public class TestRetryLoopImpl {
     var retryCounter = new AtomicInteger();
     var result = new AtomicReference<String>();
 
-    soft.assertThatCode(
-            () ->
-                result.set(
-                    tryLoopState.retryLoop(
-                        (long nanosRemaining) -> {
-                          if (retryCounter.incrementAndGet() == 1) {
-                            return Optional.empty();
-                          }
-                          return Optional.of("foo");
-                        })))
+    soft.assertThatCode(() ->
+            result.set(
+                tryLoopState.retryLoop((long nanosRemaining) -> {
+                  if (retryCounter.incrementAndGet() == 1) {
+                    return Optional.empty();
+                  }
+                  return Optional.of("foo");
+                })))
         .doesNotThrowAnyException();
 
     soft.assertThat(retryCounter).hasValue(2);

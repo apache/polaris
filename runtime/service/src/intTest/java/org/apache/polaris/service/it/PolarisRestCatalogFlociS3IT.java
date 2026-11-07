@@ -112,47 +112,47 @@ public class PolarisRestCatalogFlociS3IT extends PolarisRestCatalogIntegrationBa
 
   private static String trustPolicy() {
     return """
+    {
+      "Version": "2012-10-17",
+      "Statement": [
         {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Principal": {
-                "AWS": "arn:aws:iam::%s:root"
-              },
-              "Action": "sts:AssumeRole"
-            }
-          ]
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::%s:root"
+          },
+          "Action": "sts:AssumeRole"
         }
-        """
+      ]
+    }
+    """
         .formatted(flociAwsAccess.accountId());
   }
 
   private static String s3Policy() {
     return """
+    {
+      "Version": "2012-10-17",
+      "Statement": [
         {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject"
-              ],
-              "Resource": "arn:aws:s3:::%s/*"
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "s3:ListBucket",
-                "s3:GetBucketLocation"
-              ],
-              "Resource": "arn:aws:s3:::%s"
-            }
-          ]
+          "Effect": "Allow",
+          "Action": [
+            "s3:GetObject",
+            "s3:PutObject",
+            "s3:DeleteObject"
+          ],
+          "Resource": "arn:aws:s3:::%s/*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:ListBucket",
+            "s3:GetBucketLocation"
+          ],
+          "Resource": "arn:aws:s3:::%s"
         }
-        """
+      ]
+    }
+    """
         .formatted(flociAwsAccess.bucket(), flociAwsAccess.bucket());
   }
 }

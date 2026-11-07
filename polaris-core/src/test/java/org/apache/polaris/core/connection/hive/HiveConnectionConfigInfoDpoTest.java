@@ -103,14 +103,13 @@ class HiveConnectionConfigInfoDpoTest {
 
   @Test
   void testUriWithoutSchemeIsRejectedAsInvalid() {
-    assertThatThrownBy(
-            () ->
-                new HiveConnectionConfigInfoDpo(
-                    "hms-host/metastore",
-                    new ImplicitAuthenticationParametersDpo(),
-                    "s3://bucket/warehouse",
-                    null,
-                    Map.of()))
+    assertThatThrownBy(() ->
+            new HiveConnectionConfigInfoDpo(
+                "hms-host/metastore",
+                new ImplicitAuthenticationParametersDpo(),
+                "s3://bucket/warehouse",
+                null,
+                Map.of()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Invalid remote URI: hms-host/metastore");
   }

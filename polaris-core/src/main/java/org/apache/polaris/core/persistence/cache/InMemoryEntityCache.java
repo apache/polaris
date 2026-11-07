@@ -462,11 +462,10 @@ public class InMemoryEntityCache implements EntityCache {
     }
 
     return entityIds.stream()
-        .map(
-            id -> {
-              ResolvedPolarisEntity entity = resolvedEntities.get(id);
-              return entity == null ? null : new EntityCacheLookupResult(entity, true);
-            })
+        .map(id -> {
+          ResolvedPolarisEntity entity = resolvedEntities.get(id);
+          return entity == null ? null : new EntityCacheLookupResult(entity, true);
+        })
         .collect(Collectors.toList());
   }
 
@@ -489,12 +488,11 @@ public class InMemoryEntityCache implements EntityCache {
         LOGGER.debug("Resolved entities - validating cache");
         resolvedEntitiesResult.getResolvedEntities().stream()
             .filter(Objects::nonNull)
-            .forEach(
-                e -> {
-                  this.cacheNewEntry(e);
-                  resolvedEntities.put(
-                      new PolarisEntityId(e.getEntity().getCatalogId(), e.getEntity().getId()), e);
-                });
+            .forEach(e -> {
+              this.cacheNewEntry(e);
+              resolvedEntities.put(
+                  new PolarisEntityId(e.getEntity().getCatalogId(), e.getEntity().getId()), e);
+            });
       }
     }
 

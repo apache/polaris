@@ -300,11 +300,10 @@ public record TestServices(
             .when(authorizer)
             .resolveAuthorizationInputs(any(), any(AuthorizationBatchRequest.class));
         Mockito.when(authorizer.authorize(any(), any(AuthorizationBatchRequest.class)))
-            .thenAnswer(
-                invocation ->
-                    invocation.<AuthorizationBatchRequest>getArgument(1).intents().stream()
-                        .map(intent -> AuthorizationDecision.allow())
-                        .toList());
+            .thenAnswer(invocation ->
+                invocation.<AuthorizationBatchRequest>getArgument(1).intents().stream()
+                    .map(intent -> AuthorizationDecision.allow())
+                    .toList());
       }
 
       // Application level
@@ -318,7 +317,7 @@ public record TestServices(
       vendingMechanismsMap.put(
           S3CredentialVendingMechanism.STS,
           new StsCredentialVendingMechanism(
-              (destination) -> stsClient, Optional.empty(), storageCredentialCache, realmConfig));
+              destination -> stsClient, Optional.empty(), storageCredentialCache, realmConfig));
       vendingMechanismsMap.putAll(additionalVendingMechanisms);
       S3CredentialVendingMechanisms vendingMechanisms =
           new S3CredentialVendingMechanisms(vendingMechanismsMap);
@@ -410,7 +409,7 @@ public record TestServices(
       @SuppressWarnings("unchecked")
       Instance<ConnectionCredentialVendor> mockCredentialVendors = Mockito.mock(Instance.class);
       SigV4ConnectionCredentialVendor sigV4Vendor =
-          new SigV4ConnectionCredentialVendor((destination) -> stsClient, serviceIdentityProvider);
+          new SigV4ConnectionCredentialVendor(destination -> stsClient, serviceIdentityProvider);
       Mockito.when(
               mockCredentialVendors.select(
                   any(org.apache.polaris.service.credentials.connection.AuthType.Literal.class)))
@@ -486,16 +485,15 @@ public record TestServices(
             CatalogConfigEndpointContributor policyEndpoints =
                 new PolicyConfigEndpoints(realmConfig);
             Mockito.when(configEndpointContributors.handlesStream())
-                .thenAnswer(
-                    invocation ->
-                        Stream.of(
-                            endpointContributorHandle(
-                                GenericTableConfigEndpoints.class, genericTableEndpoints),
-                            endpointContributorHandle(PolicyConfigEndpoints.class, policyEndpoints),
-                            endpointContributorHandle(
-                                IcebergRestConfigEndpoints.class, icebergRestEndpoints),
-                            endpointContributorHandle(
-                                IcebergViewConfigEndpoints.class, icebergViewEndpoints)));
+                .thenAnswer(invocation ->
+                    Stream.of(
+                        endpointContributorHandle(
+                            GenericTableConfigEndpoints.class, genericTableEndpoints),
+                        endpointContributorHandle(PolicyConfigEndpoints.class, policyEndpoints),
+                        endpointContributorHandle(
+                            IcebergRestConfigEndpoints.class, icebergRestEndpoints),
+                        endpointContributorHandle(
+                            IcebergViewConfigEndpoints.class, icebergViewEndpoints)));
             return new CatalogConfigHandler(
                 new DefaultCatalogPrefixParser(),
                 resolutionManifestFactory,

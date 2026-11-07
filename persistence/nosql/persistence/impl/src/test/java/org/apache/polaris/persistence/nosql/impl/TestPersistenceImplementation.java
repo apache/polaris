@@ -44,14 +44,9 @@ public class TestPersistenceImplementation {
             .build();
 
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                new PersistenceImplementation(
-                    mock(Backend.class),
-                    params,
-                    "realm",
-                    mock(MonotonicClock.class),
-                    IdGenerator.NONE))
+        .isThrownBy(() ->
+            new PersistenceImplementation(
+                mock(Backend.class), params, "realm", mock(MonotonicClock.class), IdGenerator.NONE))
         .withMessage("referencePreviousHeadCount must be positive");
   }
 }

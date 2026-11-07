@@ -255,7 +255,7 @@ public abstract class AbstractPolicyCatalogTest {
             .build();
     AwsCredentialsStorageIntegration storageIntegration =
         new AwsCredentialsStorageIntegration(
-            (destination) -> stsClient,
+            destination -> stsClient,
             config -> java.util.Optional.empty(),
             storageCredentialCache,
             mockAwsConfig,
@@ -291,13 +291,12 @@ public abstract class AbstractPolicyCatalogTest {
   @Test
   public void testCreatePolicyDoesNotThrow() {
     icebergCatalog.createNamespace(NS);
-    assertThatCode(
-            () ->
-                policyCatalog.createPolicy(
-                    POLICY1,
-                    PredefinedPolicyTypes.DATA_COMPACTION.getName(),
-                    "test",
-                    "{\"enable\": false}"))
+    assertThatCode(() ->
+            policyCatalog.createPolicy(
+                POLICY1,
+                PredefinedPolicyTypes.DATA_COMPACTION.getName(),
+                "test",
+                "{\"enable\": false}"))
         .doesNotThrowAnyException();
   }
 
@@ -306,22 +305,20 @@ public abstract class AbstractPolicyCatalogTest {
     icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(
         POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
-    assertThatThrownBy(
-            () ->
-                policyCatalog.createPolicy(
-                    POLICY1,
-                    PredefinedPolicyTypes.DATA_COMPACTION.getName(),
-                    "test",
-                    "{\"enable\": false}"))
+    assertThatThrownBy(() ->
+            policyCatalog.createPolicy(
+                POLICY1,
+                PredefinedPolicyTypes.DATA_COMPACTION.getName(),
+                "test",
+                "{\"enable\": false}"))
         .isInstanceOf(AlreadyExistsException.class);
 
-    assertThatThrownBy(
-            () ->
-                policyCatalog.createPolicy(
-                    POLICY1,
-                    PredefinedPolicyTypes.SNAPSHOT_EXPIRY.getName(),
-                    "test",
-                    "{\"enable\": false}"))
+    assertThatThrownBy(() ->
+            policyCatalog.createPolicy(
+                POLICY1,
+                PredefinedPolicyTypes.SNAPSHOT_EXPIRY.getName(),
+                "test",
+                "{\"enable\": false}"))
         .isInstanceOf(AlreadyExistsException.class);
   }
 
@@ -437,10 +434,9 @@ public abstract class AbstractPolicyCatalogTest {
   public void testCreatePolicyWithInvalidContent() {
     icebergCatalog.createNamespace(NS);
 
-    assertThatThrownBy(
-            () ->
-                policyCatalog.createPolicy(
-                    POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "invalid"))
+    assertThatThrownBy(() ->
+            policyCatalog.createPolicy(
+                POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "invalid"))
         .isInstanceOf(InvalidPolicyException.class);
   }
 

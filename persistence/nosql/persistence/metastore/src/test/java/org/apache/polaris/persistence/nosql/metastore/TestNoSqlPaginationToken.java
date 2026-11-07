@@ -107,15 +107,13 @@ public class TestNoSqlPaginationToken {
 
     soft.assertThat(roundTripped.pageSize()).isEqualTo(OptionalInt.of(10));
     soft.assertThat(roundTripped.valueAs(NoSqlPaginationToken.class))
-        .hasValueSatisfying(
-            value -> {
-              soft.assertThat(value.containerObjRef()).isEqualTo(containerObjRef);
-              soft.assertThat(value.key()).isEqualTo(indexKey);
-              soft.assertThat(bytes(value.containerObjRefBytes()))
-                  .containsExactly(containerObjRef.toBytes());
-              soft.assertThat(bytes(value.keyBytes()))
-                  .containsExactly(bytes(indexKey.asByteBuffer()));
-            });
+        .hasValueSatisfying(value -> {
+          soft.assertThat(value.containerObjRef()).isEqualTo(containerObjRef);
+          soft.assertThat(value.key()).isEqualTo(indexKey);
+          soft.assertThat(bytes(value.containerObjRefBytes()))
+              .containsExactly(containerObjRef.toBytes());
+          soft.assertThat(bytes(value.keyBytes())).containsExactly(bytes(indexKey.asByteBuffer()));
+        });
   }
 
   private static Stream<Arguments> tokens() {

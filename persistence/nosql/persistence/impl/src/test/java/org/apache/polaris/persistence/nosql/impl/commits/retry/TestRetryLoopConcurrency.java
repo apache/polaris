@@ -78,43 +78,39 @@ public class TestRetryLoopConcurrency {
     try (var executor = Executors.newFixedThreadPool(threads)) {
       for (int i = 0; i < threads; i++) {
         futures.add(
-            executor.submit(
-                () -> {
+            executor.submit(() -> {
+              try {
+                startLatch.countDown();
+                try {
+                  runLatch.await();
+                } catch (InterruptedException e) {
+                  throw new RuntimeException(e);
+                }
+                while (!stop.get()) {
                   try {
-                    startLatch.countDown();
-                    try {
-                      runLatch.await();
-                    } catch (InterruptedException e) {
-                      throw new RuntimeException(e);
-                    }
-                    while (!stop.get()) {
-                      try {
-                        RetryLoop.newRetryLoop(retryConfig, clock)
-                            .setRetryStatsConsumer(
-                                ((result, retries, sleepTimeMillis, totalDurationNanos) -> {
-                                  totalRetries.addAndGet(retries);
-                                  totalSleepTime.addAndGet(sleepTimeMillis);
-                                }))
-                            .retryLoop(
-                                (long nanosRemaining) -> {
-                                  int v = value.get();
-                                  // Let other thread(s) continue to cause CAS failures.
-                                  Thread.yield();
-                                  return value.compareAndSet(v, v + 1)
-                                      ? Optional.of(v)
-                                      : Optional.empty();
-                                });
-                        successes.incrementAndGet();
-                      } catch (RetryTimeoutException timeoutException) {
-                        timeouts.incrementAndGet();
-                      } catch (Exception e) {
-                        throw new RuntimeException(e);
-                      }
-                    }
-                  } finally {
-                    doneLatch.countDown();
+                    RetryLoop.newRetryLoop(retryConfig, clock)
+                        .setRetryStatsConsumer(
+                            ((result, retries, sleepTimeMillis, totalDurationNanos) -> {
+                              totalRetries.addAndGet(retries);
+                              totalSleepTime.addAndGet(sleepTimeMillis);
+                            }))
+                        .retryLoop((long nanosRemaining) -> {
+                          int v = value.get();
+                          // Let other thread(s) continue to cause CAS failures.
+                          Thread.yield();
+                          return value.compareAndSet(v, v + 1) ? Optional.of(v) : Optional.empty();
+                        });
+                    successes.incrementAndGet();
+                  } catch (RetryTimeoutException timeoutException) {
+                    timeouts.incrementAndGet();
+                  } catch (Exception e) {
+                    throw new RuntimeException(e);
                   }
-                }));
+                }
+              } finally {
+                doneLatch.countDown();
+              }
+            }));
       }
 
       startLatch.await();
@@ -127,12 +123,12 @@ public class TestRetryLoopConcurrency {
 
       System.err.printf(
           """
-            Successes: %d
-            Timeouts: %d
-            Retries: %d
-            SleepTime: %d
+          Successes: %d
+          Timeouts: %d
+          Retries: %d
+          SleepTime: %d
 
-            """,
+          """,
           successes.get(), timeouts.get(), totalRetries.get(), totalSleepTime.get());
 
       soft.assertThat(timeouts).hasValue(0);

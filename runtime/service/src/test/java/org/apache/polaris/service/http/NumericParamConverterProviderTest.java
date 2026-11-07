@@ -95,9 +95,8 @@ public class NumericParamConverterProviderTest {
 
   @Test
   public void testAnUnreadableValueIsRejectedByName() {
-    assertThatThrownBy(
-            () ->
-                provider.getConverter(Integer.class, Integer.class, PAGE_SIZE).fromString("large"))
+    assertThatThrownBy(() ->
+            provider.getConverter(Integer.class, Integer.class, PAGE_SIZE).fromString("large"))
         .isInstanceOf(BadRequestException.class)
         .hasMessage("pageSize must be an integer");
     assertThatThrownBy(

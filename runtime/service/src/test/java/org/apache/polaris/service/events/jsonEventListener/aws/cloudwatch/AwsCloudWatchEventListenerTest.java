@@ -178,18 +178,17 @@ class AwsCloudWatchEventListenerTest {
           .atMost(Duration.ofSeconds(30))
           .pollDelay(Duration.ofMillis(100))
           .pollInterval(Duration.ofMillis(100))
-          .untilAsserted(
-              () -> {
-                GetLogEventsResponse resp =
-                    client
-                        .getLogEvents(
-                            GetLogEventsRequest.builder()
-                                .logGroupName(logGroup)
-                                .logStreamName(logStream)
-                                .build())
-                        .join();
-                assertThat(resp.events().size()).isGreaterThan(0);
-              });
+          .untilAsserted(() -> {
+            GetLogEventsResponse resp =
+                client
+                    .getLogEvents(
+                        GetLogEventsRequest.builder()
+                            .logGroupName(logGroup)
+                            .logStreamName(logStream)
+                            .build())
+                    .join();
+            assertThat(resp.events().size()).isGreaterThan(0);
+          });
       GetLogEventsResponse logEvents =
           client
               .getLogEvents(
@@ -202,14 +201,13 @@ class AwsCloudWatchEventListenerTest {
       assertThat(logEvents.events())
           .hasSize(1)
           .first()
-          .satisfies(
-              logEvent -> {
-                String message = logEvent.message();
-                assertThat(message).contains(REALM);
-                assertThat(message).contains(PolarisEventType.AFTER_REFRESH_TABLE.name());
-                assertThat(message).contains(TEST_USER);
-                assertThat(message).contains(testTable.toString());
-              });
+          .satisfies(logEvent -> {
+            String message = logEvent.message();
+            assertThat(message).contains(REALM);
+            assertThat(message).contains(PolarisEventType.AFTER_REFRESH_TABLE.name());
+            assertThat(message).contains(TEST_USER);
+            assertThat(message).contains(testTable.toString());
+          });
     } finally {
       // Clean up
       listener.shutdown();
@@ -241,18 +239,17 @@ class AwsCloudWatchEventListenerTest {
           .atMost(Duration.ofSeconds(30))
           .pollDelay(Duration.ofMillis(100))
           .pollInterval(Duration.ofMillis(100))
-          .untilAsserted(
-              () -> {
-                GetLogEventsResponse resp =
-                    client
-                        .getLogEvents(
-                            GetLogEventsRequest.builder()
-                                .logGroupName(logGroup)
-                                .logStreamName(logStream)
-                                .build())
-                        .join();
-                assertThat(resp.events().size()).isGreaterThan(0);
-              });
+          .untilAsserted(() -> {
+            GetLogEventsResponse resp =
+                client
+                    .getLogEvents(
+                        GetLogEventsRequest.builder()
+                            .logGroupName(logGroup)
+                            .logStreamName(logStream)
+                            .build())
+                    .join();
+            assertThat(resp.events().size()).isGreaterThan(0);
+          });
 
       GetLogEventsResponse logEvents =
           client
@@ -267,12 +264,11 @@ class AwsCloudWatchEventListenerTest {
 
       // Verify sync event
       assertThat(logEvents.events())
-          .anySatisfy(
-              logEvent -> {
-                String message = logEvent.message();
-                assertThat(message).contains("test_table_sync");
-                assertThat(message).contains("AFTER_REFRESH_TABLE");
-              });
+          .anySatisfy(logEvent -> {
+            String message = logEvent.message();
+            assertThat(message).contains("test_table_sync");
+            assertThat(message).contains("AFTER_REFRESH_TABLE");
+          });
     } finally {
       // Clean up
       syncListener.shutdown();
