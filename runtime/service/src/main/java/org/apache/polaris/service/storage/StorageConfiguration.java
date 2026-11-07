@@ -206,7 +206,8 @@ public interface StorageConfiguration extends S3AccessConfig {
   /**
    * Returns the named Azure credentials by storage name. Each credential is built on first use and
    * then shared, because its access tokens are cached inside the credential object. A failed build
-   * is retried on the next use.
+   * is retried on the next use. Each call builds a new map with new credentials, so call this once
+   * and keep the result.
    */
   default Map<String, AzureNamedCredential> azureNamedCredentials() {
     ImmutableMap.Builder<String, AzureNamedCredential> credentials = ImmutableMap.builder();
@@ -232,12 +233,14 @@ public interface StorageConfiguration extends S3AccessConfig {
           .clientSecret(storageConfig.clientSecret())
           .build();
     } catch (RuntimeException e) {
-      // Only the failure type is reported: this message can reach API clients.
+      // Only the failure type is in the message, which can reach API clients. The cause is kept for
+      // the server log.
       throw new IllegalStateException(
           "Failed to build Azure credentials for storage name '"
               + storageName
               + "': "
-              + e.getClass().getSimpleName());
+              + e.getClass().getSimpleName(),
+          e);
     }
   }
 }

@@ -389,7 +389,7 @@ class AzureNamedCredentialsTest {
         .hasMessageContaining("IllegalArgumentException")
         .hasMessageNotContaining(SECRET_A)
         .hasMessageNotContaining("not/a/tenant")
-        .hasNoCause();
+        .hasCauseInstanceOf(IllegalArgumentException.class);
     assertThat(named.get("team-b").credential().get()).isNotNull();
   }
 
