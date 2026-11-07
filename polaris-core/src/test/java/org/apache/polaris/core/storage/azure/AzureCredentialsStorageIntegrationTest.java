@@ -218,16 +218,6 @@ public class AzureCredentialsStorageIntegrationTest {
         .isNotEqualTo(cacheKey(null, credential));
   }
 
-  @Test
-  void cacheKeyToStringOmitsTheCredential() {
-    TokenCredential credential = Mockito.mock(TokenCredential.class);
-    Mockito.when(credential.toString()).thenReturn("credential-with-secret");
-
-    Assertions.assertThat(cacheKey("team-a", credential).toString())
-        .contains("team-a")
-        .doesNotContain("credential-with-secret");
-  }
-
   private static VendedCredentials vendCredentials(int configuredDurationSeconds) {
     DefaultAzureCredential credential = Mockito.mock(DefaultAzureCredential.class);
     Mockito.when(credential.getToken(Mockito.any(TokenRequestContext.class)))

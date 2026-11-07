@@ -43,7 +43,7 @@ import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.service.storage.StorageConfiguration.AzureNamedCredential;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Answers;
 import org.mockito.MockedConstruction;
@@ -114,7 +114,9 @@ class AzureNamedCredentialsProviderTest {
   }
 
   @ParameterizedTest
-  @CsvSource({"CATALOG", "TASK"})
+  @EnumSource(
+      value = PolarisEntityType.class,
+      names = {"CATALOG", "TASK"})
   void flagOnWithNameUsesOnlyTheNamedCredentials(PolarisEntityType type) {
     PolarisStorageIntegrationProviderImpl provider = provider(resolveByName());
 
@@ -166,7 +168,9 @@ class AzureNamedCredentialsProviderTest {
   }
 
   @ParameterizedTest
-  @CsvSource({"CATALOG", "TASK"})
+  @EnumSource(
+      value = PolarisEntityType.class,
+      names = {"CATALOG", "TASK"})
   void flagOnWithUnknownNameFailsWithoutFallback(PolarisEntityType type) {
     PolarisStorageIntegrationProviderImpl provider = provider(resolveByName());
 
