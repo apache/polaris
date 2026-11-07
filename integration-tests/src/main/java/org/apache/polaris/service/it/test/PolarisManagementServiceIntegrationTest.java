@@ -468,6 +468,60 @@ public class PolarisManagementServiceIntegrationTest {
   }
 
   @Test
+  public void testCreateExternalCatalogWithInvalidConnectionConfigReturnsBadRequest() {
+    // S3 storage is accepted by every test profile; the connection config is what is under test
+    String storage =
+        "\"storageConfigInfo\":{\"storageType\":\"S3\","
+            + "\"roleArn\":\"arn:aws:iam::123456789012:role/my-role\","
+            + "\"allowedLocations\":[\"s3://my-bucket/path/to/data\"]}";
+    String properties =
+        "\"properties\":{\"default-base-location\":\"s3://my-bucket/path/to/data\"}";
+
+    // authenticationParameters omitted: the spec only requires connectionType
+    String withoutAuthentication =
+        "{\"catalog\":{\"type\":\"EXTERNAL\",\"name\":\""
+            + client.newEntityName("ext-no-auth")
+            + "\","
+            + properties
+            + ","
+            + storage
+            + ",\"connectionConfigInfo\":{\"connectionType\":\"ICEBERG_REST\","
+            + "\"uri\":\"http://localhost:8182/api/catalog\",\"remoteCatalogName\":\"x\"}}}";
+    try (Response response =
+        managementApi.request("v1/catalogs").post(Entity.json(withoutAuthentication))) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+      ErrorResponse error = response.readEntity(ErrorResponse.class);
+      assertThat(error)
+          .isNotNull()
+          .returns(
+              "authenticationParameters is required for an external catalog",
+              ErrorResponse::message);
+    }
+
+    // connection type outside SUPPORTED_CATALOG_CONNECTION_TYPES (default: ICEBERG_REST only)
+    String unsupportedConnectionType =
+        "{\"catalog\":{\"type\":\"EXTERNAL\",\"name\":\""
+            + client.newEntityName("ext-unsupported")
+            + "\","
+            + properties
+            + ","
+            + storage
+            + ",\"connectionConfigInfo\":{\"connectionType\":\"HADOOP\","
+            + "\"uri\":\"http://localhost:8182/\",\"warehouse\":\"s3://my-bucket/path/to/data\","
+            + "\"authenticationParameters\":{\"authenticationType\":\"IMPLICIT\"}}}}";
+    try (Response response =
+        managementApi.request("v1/catalogs").post(Entity.json(unsupportedConnectionType))) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+      ErrorResponse error = response.readEntity(ErrorResponse.class);
+      assertThat(error)
+          .isNotNull()
+          .returns("Unsupported connection type: HADOOP", ErrorResponse::message);
+    }
+  }
+
+  @Test
   public void testCreateExternalCatalog() {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()

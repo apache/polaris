@@ -38,7 +38,7 @@ Each guide has detailed instructions.
 
 - [Docker](https://docs.docker.com/get-docker/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
-- [jq](https://stedolan.github.io/jq/download/) (for some examples)
+- [jq](https://jqlang.org/download/) (for some examples)
 
 ## Getting Started Examples
 

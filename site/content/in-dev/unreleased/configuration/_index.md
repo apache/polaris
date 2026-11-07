@@ -28,4 +28,5 @@ This section covers how to configure Apache Polaris.
 - [Configuring Polaris]({{% ref "configuring-polaris.md" %}}) - Learn how to configure Polaris using environment variables, configuration files, and other mechanisms.
 - [Configuration Reference]({{% ref "configuration-reference.md" %}}) - A comprehensive reference of all Polaris configuration options.
 - [Production Configuration]({{% ref "configuring-polaris-for-production" %}}) - Tips and best practices for deploying Polaris in production environments.
+- [Storage Layout]({{% ref "storage-layout.md" %}}) - Where Polaris places namespaces, tables, and views in storage, and the settings that change this layout.
 

@@ -29,6 +29,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLTimeoutException;
+import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
@@ -69,6 +72,14 @@ public class DatasourceOperations {
   // CHECK) all propagate
   private static final String UNIQUENESS_CONSTRAINT_VIOLATION_SQL_CODE = "23505";
   private static final String RELATION_DOES_NOT_EXIST = "42P01";
+
+  // SQLSTATE codes treated as ambiguous commit outcomes (the write may already have committed).
+  // Class 08 (connection exception) is SQL-standard and portable across databases.
+  private static final String CONNECTION_EXCEPTION_SQL_STATE_CLASS = "08";
+  // POSTGRES: query_canceled, e.g. statement_timeout (also CockroachDB via PG compatibility)
+  private static final String POSTGRES_QUERY_CANCELED_SQL_STATE = "57014";
+  // ODBC: timeout expired (used by some drivers, e.g. jTDS and older MySQL connectors)
+  private static final String ODBC_TIMEOUT_SQL_STATE = "HYT00";
 
   // H2 STATUS CODES
   // 90079 = Schema not found, 42S02 = Table or view not found, 42S04 = Table or view not found
@@ -254,6 +265,7 @@ public class DatasourceOperations {
     return withRetries(
         () -> {
           logQuery(preparedQuery);
+          boolean commitStarted = false;
           try (Connection connection = borrowConnection();
               PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
             List<Object> params = preparedQuery.parameters();
@@ -261,12 +273,29 @@ public class DatasourceOperations {
               statement.setObject(i + 1, params.get(i));
             }
             boolean autoCommit = connection.getAutoCommit();
-            connection.setAutoCommit(true);
+            // Drive the transaction explicitly so the ambiguity window is the commit() call alone:
+            // any failure before commit leaves the transaction uncommitted (a definite non-write).
+            connection.setAutoCommit(false);
+            int rowsUpdated;
             try {
-              return statement.executeUpdate();
+              try {
+                rowsUpdated = statement.executeUpdate();
+              } catch (SQLException | RuntimeException | Error executeFailure) {
+                // The statement failed before commit; roll back but keep the original failure,
+                // which is the exception callers classify. A failing rollback must not replace it.
+                // Catch RuntimeException/Error too: otherwise the finally below would restore
+                // autoCommit and commit the open transaction.
+                rollbackSuppressing(connection, executeFailure);
+                throw executeFailure;
+              }
+              commitStarted = true;
+              connection.commit();
             } finally {
               connection.setAutoCommit(autoCommit);
             }
+            return rowsUpdated;
+          } catch (SQLException e) {
+            throw classifyByPhase(e, commitStarted);
           }
         });
   }
@@ -288,41 +317,46 @@ public class DatasourceOperations {
     AtomicInteger successCount = new AtomicInteger();
     return withRetries(
         () -> {
+          boolean commitStarted = false;
           try (Connection connection = borrowConnection();
               PreparedStatement statement = connection.prepareStatement(preparedQueries.sql())) {
             boolean autoCommit = connection.getAutoCommit();
-            boolean success = false;
             connection.setAutoCommit(false);
 
             try {
-              for (int i = 1; i <= preparedQueries.parametersList().size(); i++) {
-                List<Object> params = preparedQueries.parametersList().get(i - 1);
-                for (int j = 0; j < params.size(); j++) {
-                  statement.setObject(j + 1, params.get(j));
-                }
-
-                statement.addBatch(); // Add to batch
-
-                if (i % batchSize == 0) {
-                  successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
-                }
-              }
-
-              // Execute remaining queries in the batch
-              successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
-              success = true;
-            } finally {
               try {
-                if (success) {
-                  connection.commit();
-                } else {
-                  connection.rollback();
-                  successCount.set(0);
+                for (int i = 1; i <= preparedQueries.parametersList().size(); i++) {
+                  List<Object> params = preparedQueries.parametersList().get(i - 1);
+                  for (int j = 0; j < params.size(); j++) {
+                    statement.setObject(j + 1, params.get(j));
+                  }
+
+                  statement.addBatch(); // Add to batch
+
+                  if (i % batchSize == 0) {
+                    successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
+                  }
                 }
-              } finally {
-                connection.setAutoCommit(autoCommit);
+
+                // Execute remaining queries in the batch
+                successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
+              } catch (SQLException | RuntimeException | Error batchFailure) {
+                // The batch is buffered until commit(); a failure here is uncommitted (a definite
+                // non-write). Roll back but keep the original failure, which callers classify.
+                // Catch RuntimeException/Error too: otherwise the finally below would restore
+                // autoCommit and commit the open transaction.
+                successCount.set(0);
+                rollbackSuppressing(connection, batchFailure);
+                throw batchFailure;
               }
+              // Only commit() can leave an ambiguous outcome.
+              commitStarted = true;
+              connection.commit();
+            } finally {
+              connection.setAutoCommit(autoCommit);
             }
+          } catch (SQLException e) {
+            throw classifyByPhase(e, commitStarted);
           }
           return successCount.get();
         });
@@ -337,23 +371,34 @@ public class DatasourceOperations {
   public void runWithinTransaction(TransactionCallback callback) throws SQLException {
     withRetries(
         () -> {
+          boolean commitStarted = false;
           try (Connection connection = borrowConnection()) {
             boolean autoCommit = connection.getAutoCommit();
-            boolean success = false;
             connection.setAutoCommit(false);
             try {
+              boolean success;
               try {
                 success = callback.execute(connection);
-              } finally {
-                if (success) {
-                  connection.commit();
-                } else {
-                  connection.rollback();
-                }
+              } catch (SQLException | RuntimeException | Error callbackFailure) {
+                // The callback failed against an uncommitted transaction (a definite non-write).
+                // Roll back but keep the original failure, which callers classify. Catch Error too:
+                // otherwise the finally below would restore autoCommit and commit the open
+                // transaction.
+                rollbackSuppressing(connection, callbackFailure);
+                throw callbackFailure;
+              }
+              if (success) {
+                // Only commit() can leave an ambiguous outcome.
+                commitStarted = true;
+                connection.commit();
+              } else {
+                connection.rollback();
               }
             } finally {
               connection.setAutoCommit(autoCommit);
             }
+          } catch (SQLException e) {
+            throw classifyByPhase(e, commitStarted);
           }
           return null;
         });
@@ -368,10 +413,93 @@ public class DatasourceOperations {
         statement.setObject(i + 1, params.get(i));
       }
       return statement.executeUpdate();
+    } catch (SQLException e) {
+      // This statement runs on a connection whose commit is owned by the enclosing
+      // runWithinTransaction; it never commits here, so any failure is before the commit boundary.
+      throw classifyByPhase(e, false);
     }
   }
 
+  /**
+   * Whether a failure is an ambiguous commit outcome: {@code commit()} was entered and the error
+   * looked like a connection or timeout failure.
+   *
+   * <p>Callers must not treat these as definite failures for cleanup or safe retry of CAS writes.
+   * The decision is made once, in {@link #classifyByPhase}, which wraps that failure as {@link
+   * AmbiguousCommitOutcomeException}. This method only looks for that marker.
+   *
+   * <p>{@link #withRetries} wraps the terminal failure in a plain {@link SQLException}, so the
+   * marker is on the cause chain rather than the top-level type. A connection or timeout error that
+   * was never marked — anything before {@code commit()} — is a definite failure.
+   */
+  public boolean isAmbiguousCommitOutcome(SQLException e) {
+    for (Throwable t = e; t != null; t = t.getCause()) {
+      if (t instanceof AmbiguousCommitOutcomeException) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean indicatesAmbiguousOutcome(SQLException e) {
+    return hasAmbiguousOutcomeType(e) || messageIndicatesAmbiguousOutcome(e);
+  }
+
+  /**
+   * Precise, non-fuzzy signals of an ambiguous outcome: a timeout/connection subtype or SQLSTATE.
+   */
+  private static boolean hasAmbiguousOutcomeType(SQLException e) {
+    if (e instanceof SQLTimeoutException) {
+      return true;
+    }
+    if (e instanceof SQLTransientConnectionException
+        || e instanceof SQLNonTransientConnectionException) {
+      return true;
+    }
+    String sqlState = e.getSQLState();
+    return sqlState != null
+        && (sqlState.startsWith(CONNECTION_EXCEPTION_SQL_STATE_CLASS)
+            || sqlState.equals(POSTGRES_QUERY_CANCELED_SQL_STATE)
+            || sqlState.equals(ODBC_TIMEOUT_SQL_STATE));
+  }
+
+  private static boolean messageIndicatesAmbiguousOutcome(SQLException e) {
+    return messageContainsAny(
+        e,
+        "connection reset",
+        "connection refused",
+        "connection is closed",
+        "broken pipe",
+        "query canceled",
+        "canceling statement due to statement timeout");
+  }
+
+  /**
+   * Whether the exception message contains any of the given lowercase needles. The message is
+   * lowercased once; a null message matches nothing.
+   */
+  private static boolean messageContainsAny(SQLException e, String... needles) {
+    String message = e.getMessage();
+    if (message == null) {
+      return false;
+    }
+    String lower = message.toLowerCase(Locale.ROOT);
+    for (String needle : needles) {
+      if (lower.contains(needle)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private boolean isRetryable(SQLException e) {
+    // An ambiguous commit() outcome may mean the commit was already applied, so retrying risks a
+    // double-apply or a misreported result. Only mutating operations reach commit(), so this is
+    // the only path on which such a marker can arise.
+    if (isAmbiguousCommitOutcome(e)) {
+      return false;
+    }
+
     String sqlState = e.getSQLState();
 
     if (sqlState != null) {
@@ -379,8 +507,7 @@ public class DatasourceOperations {
     }
 
     // Additionally, one might check for specific error messages or other conditions
-    return e.getMessage().toLowerCase(Locale.ROOT).contains("connection refused")
-        || e.getMessage().toLowerCase(Locale.ROOT).contains("connection reset");
+    return messageContainsAny(e, "connection refused", "connection reset");
   }
 
   // TODO: consider refactoring to use a retry library, inorder to have fair retries
@@ -531,6 +658,32 @@ public class DatasourceOperations {
 
   private Connection borrowConnection() throws SQLException {
     return datasource.getConnection();
+  }
+
+  /**
+   * Classifies a failure by execution phase. The only ambiguous point is {@code commit()}: when
+   * {@code commitStarted} is set and the error looks like a connection or timeout failure, it is
+   * wrapped as {@link AmbiguousCommitOutcomeException}. Any earlier failure leaves the transaction
+   * uncommitted and is returned unchanged.
+   */
+  private static SQLException classifyByPhase(SQLException e, boolean commitStarted) {
+    if (!commitStarted || e instanceof AmbiguousCommitOutcomeException) {
+      return e;
+    }
+    return indicatesAmbiguousOutcome(e) ? new AmbiguousCommitOutcomeException(e) : e;
+  }
+
+  /**
+   * Rolls back the transaction, attaching any rollback failure to {@code primary} as a suppressed
+   * exception. The original failure stays the thrown exception so callers classify the real cause
+   * (for example a constraint violation) rather than a secondary rollback error that would mask it.
+   */
+  private static void rollbackSuppressing(Connection connection, Throwable primary) {
+    try {
+      connection.rollback();
+    } catch (SQLException rollbackFailure) {
+      primary.addSuppressed(rollbackFailure);
+    }
   }
 
   private static void logQuery(QueryGenerator.PreparedQuery query) {

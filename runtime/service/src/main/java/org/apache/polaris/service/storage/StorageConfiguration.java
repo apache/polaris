@@ -20,7 +20,6 @@ package org.apache.polaris.service.storage;
 
 import com.azure.core.credential.TokenCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
-import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableMap;
@@ -30,7 +29,7 @@ import io.smallrye.config.WithParentName;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
-import java.util.Date;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -106,11 +105,25 @@ public interface StorageConfiguration extends S3AccessConfig {
   Optional<String> gcpAccessToken();
 
   /**
-   * The lifespan of the GCP access token. If not present, the {@linkplain #DEFAULT_TOKEN_LIFESPAN
-   * default token lifespan} will be used.
+   * How far in the future the configured GCP access token's expiry is stamped. The expiry is
+   * computed once, when the credential is created, and is returned unchanged on every refresh. If
+   * not present, the {@linkplain #DEFAULT_TOKEN_LIFESPAN default token lifespan} is used. Ignored
+   * when {@link #gcpAccessTokenExpiry()} is set. This does not extend the token's real validity on
+   * the provider side; it only controls the expiry Polaris reports for the configured token.
    */
   @WithName("gcp.lifespan")
   Optional<Duration> gcpAccessTokenLifespan();
+
+  /**
+   * A fixed expiry for the configured GCP access token, as an ISO-8601 instant (for example {@code
+   * 2027-01-01T00:00:00Z}). When present, this exact instant is reported as the token's expiry and
+   * is returned unchanged on every refresh, and {@link #gcpAccessTokenLifespan()} is ignored. When
+   * absent, the expiry is computed from the lifespan. Like the lifespan, this does not extend the
+   * token's real validity on the provider side; it only controls the expiry Polaris reports for the
+   * configured token.
+   */
+  @WithName("gcp.expiry")
+  Optional<Instant> gcpAccessTokenExpiry();
 
   @WithName("azure")
   AzureStorageConfig azure();
@@ -190,15 +203,21 @@ public interface StorageConfiguration extends S3AccessConfig {
               throw new RuntimeException("Failed to get GCP credentials", e);
             }
           } else {
-            AccessToken accessToken =
-                new AccessToken(
-                    gcpAccessToken().get(),
-                    new Date(
-                        clock
-                            .instant()
-                            .plus(gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN))
-                            .toEpochMilli()));
-            return GoogleCredentials.create(accessToken);
+            // A statically configured token has no token endpoint to call, and
+            // GoogleCredentials.create(..) returns a credential that cannot refresh. Vending calls
+            // refresh() on the source credential before downscoping, so with that credential the
+            // first vend fails with an IllegalStateException regardless of expiry (#2253). Wrap the
+            // token in a credential that supports refresh by returning it with a fixed expiry: the
+            // configured gcp.expiry if set, otherwise computed once here from the configured
+            // lifespan.
+            Instant expiry =
+                gcpAccessTokenExpiry()
+                    .orElseGet(
+                        () ->
+                            clock
+                                .instant()
+                                .plus(gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN)));
+            return new FixedGcpAccessTokenCredentials(gcpAccessToken().orElseThrow(), expiry);
           }
         });
   }
