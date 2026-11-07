@@ -151,8 +151,10 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         || !realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
       return defaultCredentials.get();
     }
-    // Attribution replaces the source credentials with a per-principal federated identity, so a
-    // storage name could not take effect. Refuse the combination rather than ignore either setting.
+    // Attribution may replace the source credentials with a per-principal federated identity: it
+    // does when the storage has a gcpServiceAccount and the request has a principal, and falls back
+    // to the source credentials otherwise. A storage name would then apply only to some requests,
+    // so refuse the combination rather than ignore either setting.
     if (realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_ENABLED)) {
       throw new IllegalStateException(
           "Storage name '"
