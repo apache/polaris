@@ -526,6 +526,9 @@ public class ProductionReadinessChecks {
   public ProductionReadinessCheck checkCatalogConfigAuthorization(
       FeaturesConfiguration featureConfiguration,
       AuthorizationConfiguration authorizationConfiguration) {
+    if (authorizationConfiguration.type().equals("ranger")) {
+      return checkRangerCatalogConfigAuthorization(featureConfiguration);
+    }
     if (!authorizationConfiguration.type().equals("internal")) {
       return ProductionReadinessCheck.OK;
     }
@@ -548,6 +551,42 @@ public class ProductionReadinessChecks {
             (realmId, overrides) -> {
               String value = overrides.overrides().get(flag.key());
               if (value != null && !Boolean.parseBoolean(value)) {
+                errors.add(
+                    Error.of(
+                        message,
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, flag.key())));
+              }
+            });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  /**
+   * Ranger Admin stores its own copy of {@code polaris-ranger-servicedef.json}. Enabling the
+   * catalog-config gate without re-importing that definition leaves {@code GET_CATALOG_CONFIG}
+   * mapped to an access type Ranger Admin does not know.
+   */
+  private ProductionReadinessCheck checkRangerCatalogConfigAuthorization(
+      FeaturesConfiguration featureConfiguration) {
+    var flag = FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION;
+    var message =
+        "ENFORCE_CATALOG_CONFIG_AUTHORIZATION is enabled with the Ranger authorizer. Re-import "
+            + "polaris-ranger-servicedef.json (PUT the service definition) so catalog-config-read "
+            + "exists in Ranger Admin. A git-only Polaris upgrade does not update Ranger Admin; "
+            + "without that access type, GET /v1/config 403s once enforcement is on.";
+    var errors = new ArrayList<Error>();
+    if (Boolean.parseBoolean(featureConfiguration.defaults().get(flag.key()))) {
+      errors.add(Error.of(message, format("polaris.features.\"%s\"", flag.key())));
+    }
+    featureConfiguration
+        .realmOverrides()
+        .forEach(
+            (realmId, overrides) -> {
+              String value = overrides.overrides().get(flag.key());
+              if (value != null && Boolean.parseBoolean(value)) {
                 errors.add(
                     Error.of(
                         message,
