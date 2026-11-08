@@ -57,6 +57,7 @@ class DistributionSbomTaskTest {
           org.apache.polaris.gradle.sbom.PackageKind.SHADED_JAR,
           providers.gradleProperty('subjectClassifier').getOrElse('')))
         document.set(layout.buildDirectory.file('document.json'))
+        vexUrl.set(providers.gradleProperty('vexUrl').orElse('https://assessments.invalid/polaris.vex.json'))
       }
     """
           .trimIndent() + "\n",
@@ -163,6 +164,12 @@ class DistributionSbomTaskTest {
     assertThat(root.version).isEqualTo("3")
     assertThat(root.purl)
       .isEqualTo("pkg:maven/another.group/another-bundle@3?classifier=tests&type=jar")
+    assertThat(run(*overrides.toTypedArray()).output)
+      .contains("Configuration cache entry reused", ":finalizeDocument UP-TO-DATE")
+    overrides += "-PvexUrl=https://assessments.invalid/updated.vex.json"
+    assertThat(run(*overrides.toTypedArray()).output).doesNotContain(":finalizeDocument UP-TO-DATE")
+    assertThat(SbomCore.readBom(output).externalReferences.single().url)
+      .isEqualTo("https://assessments.invalid/updated.vex.json")
     assertThat(run(*overrides.toTypedArray()).output)
       .contains("Configuration cache entry reused", ":finalizeDocument UP-TO-DATE")
   }

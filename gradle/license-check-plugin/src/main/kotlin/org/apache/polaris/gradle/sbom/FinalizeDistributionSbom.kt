@@ -36,6 +36,8 @@ abstract class FinalizeDistributionSbom : DefaultTask() {
 
   @get:Nested abstract val subject: Property<SbomSubject>
 
+  @get:Input @get:Optional abstract val vexUrl: Property<String>
+
   @get:InputFile
   @get:PathSensitive(PathSensitivity.NONE)
   abstract val subjectFile: RegularFileProperty
@@ -77,6 +79,7 @@ abstract class FinalizeDistributionSbom : DefaultTask() {
         SbomCore.hash(subjectFile.get().asFile),
       )
 
+    vexUrl.orNull?.let { SbomCore.addVexReference(result, it) }
     SbomCore.writeBomFile(document.get().asFile, result)
   }
 }

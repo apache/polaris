@@ -38,6 +38,9 @@ import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withType
 import org.gradle.plugins.signing.Sign
 
+private const val POLARIS_VEX_URL =
+  "https://polaris.apache.org/community/dependency-cves/polaris.vex.json"
+
 /** Polaris producer and publication wiring; keep separate. */
 @Suppress("unused")
 fun Project.configureDistributionSbom() {
@@ -59,6 +62,7 @@ fun Project.configureDistributionSbom() {
       group = "build"
       description = "Adds final subject identity and actual assembly inputs to the producer SBOM"
       this.subject.set(subject)
+      vexUrl.set(POLARIS_VEX_URL)
       dependsOn("createPolarisSparkJar")
       val sbomShadow = SbomShadow.sbomShadowFromExtra(shadowInputs)
       subjectFile.set(sbomShadow.archive)
@@ -131,6 +135,7 @@ fun Project.configureBinaryArchiveSboms() {
       tasks.register<FinalizeBinaryArchiveSbom>("finalizeDist${kind}Sbom") {
         group = "build"
         description = "Finalizes the SBOM for the actual binary $kind archive"
+        vexUrl.set(POLARIS_VEX_URL)
         dependsOn("checkDistributionLicenses")
         this.archive.set(archive.flatMap { it.archiveFile })
         adminTree.fileProvider(

@@ -29,6 +29,7 @@ import org.cyclonedx.model.Bom
 import org.cyclonedx.model.Component
 import org.cyclonedx.model.Composition
 import org.cyclonedx.model.Dependency
+import org.cyclonedx.model.ExternalReference
 import org.cyclonedx.model.Hash
 import org.cyclonedx.model.Metadata
 import org.cyclonedx.model.Property
@@ -39,6 +40,29 @@ import org.junit.jupiter.api.io.TempDir
 
 class SbomCoreTest {
   @TempDir lateinit var dir: File
+
+  @Test
+  fun vexDiscoveryPreservesProducerReferencesWithoutDuplicatingOrPinningTheLink() {
+    val website =
+      ExternalReference().apply {
+        type = ExternalReference.Type.WEBSITE
+        url = "https://producer.invalid/"
+      }
+    val bom = producer().apply { externalReferences = listOf(website) }
+    val url = "https://assessments.invalid/polaris.vex.json"
+    SbomCore.addVexReference(bom, url)
+    SbomCore.addVexReference(bom, url)
+    val output = File(dir, "document.json")
+    SbomCore.writeBomFile(output, bom)
+    val result = SbomCore.readBom(output)
+    assertThat(result.externalReferences.map { it.type to it.url })
+      .containsExactly(
+        ExternalReference.Type.WEBSITE to website.url,
+        ExternalReference.Type.EXPLOITABILITY_STATEMENT to url,
+      )
+    assertThat(result.externalReferences.last().hashes).isNullOrEmpty()
+    assertThat(result.vulnerabilities).isNullOrEmpty()
+  }
 
   @Test
   fun sparkBundleSubjectIsDistinctFromThinJar() {
