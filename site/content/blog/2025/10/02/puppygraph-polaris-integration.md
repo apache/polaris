@@ -104,6 +104,8 @@ cd polaris
 QUARKUS_HTTP_HOST=0.0.0.0 ./gradlew run
 ```
 
+Use this setup only in an isolated development environment. Polaris listens on all network interfaces and uses the default `root:s3cr3t` credentials; restrict access to port `8181` to the local host and the PuppyGraph container.
+
 Then use the provided spark shell to create a data catalog and prepare data. Start a different shell and run the following command in the polaris directory: 
 ```shell 
 ./regtests/run_spark_sql.sh
@@ -156,7 +158,7 @@ After logging in with the default credentials (username: “`puppygraph”` and 
 
 ### Connect to Your Data Source and Define Your Schema
 
-Next, we must connect to our data source to run graph queries against it. Users have a choice of how they would like to go about this. Firstly, you could use a JSON schema document to define your connectivity parameters and data mapping. The example below uses the PuppyGraph 1.x schema format. Replace the connection settings with those for your deployment:
+Next, we must connect to our data source to run graph queries against it. Users have a choice of how they would like to go about this. Firstly, you could use a JSON schema document to define your connectivity parameters and data mapping. The example below uses the PuppyGraph 1.x schema format. Replace the connection settings with those for your deployment. The `172.17.0.1` address is for the Linux Docker setup shown here; on Docker Desktop, use `http://host.docker.internal:8181/api/catalog` as the metastore URI:
 ```json
 {
   "catalog": [
