@@ -412,6 +412,26 @@ public class ConnectionConfigInfoDpoTest {
   }
 
   @Test
+  void testMissingUriIsRejectedForHive() {
+    ConnectionConfigInfo apiModel =
+        HiveConnectionConfigInfo.builder()
+            .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.HIVE)
+            .setWarehouse("hive-warehouse")
+            .setAuthenticationParameters(
+                ImplicitAuthenticationParameters.builder()
+                    .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT)
+                    .build())
+            .build();
+    IllegalArgumentException e =
+        Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                ConnectionConfigInfoDpo.fromConnectionConfigInfoModelWithSecrets(
+                    apiModel, Map.of()));
+    Assertions.assertEquals("uri is required for HIVE connections", e.getMessage());
+  }
+
+  @Test
   void testHiveConnectionConfigProperties() {
     Map<String, String> properties = Map.of("hive.custom-key", "custom-value");
 
