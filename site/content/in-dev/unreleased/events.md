@@ -109,8 +109,10 @@ for all listener settings.
 
 The persistence listener writes to the `events` table in the same database, and
 through the same datasource, as the catalog metastore. The table has a primary
-key on `event_id` and no other indexes. Polaris provides no retention, purge,
-or query API for it, and users with direct database access can modify it. The
+key on `event_id` and an index on `(realm_id, timestamp_ms)`. Polaris provides
+no query API for it, and users with direct database access can modify it. Old
+events can be deleted with the admin tool's
+[`purge-events` command]({{% ref "admin-tool#purging-old-events" %}}). The
 persistence listener is not available with NoSQL persistence. For an audit trail,
 forward events to an external system instead.
 
