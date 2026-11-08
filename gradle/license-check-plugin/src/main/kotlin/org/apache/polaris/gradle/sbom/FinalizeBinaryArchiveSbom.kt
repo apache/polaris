@@ -26,9 +26,11 @@ import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Nested
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -54,6 +56,7 @@ constructor(private val archives: ArchiveOperations) : DefaultTask() {
   @get:PathSensitive(PathSensitivity.RELATIVE)
   abstract val serverTree: DirectoryProperty
   @get:Nested abstract val subject: Property<SbomSubject>
+  @get:Input @get:Optional abstract val vexUrl: Property<String>
   @get:OutputFile abstract val document: RegularFileProperty
 
   @TaskAction
@@ -88,6 +91,7 @@ constructor(private val archives: ArchiveOperations) : DefaultTask() {
             },
         ),
       )
+    vexUrl.orNull?.let { SbomCore.addVexReference(result, it) }
     SbomCore.writeBomFile(document.get().asFile, result)
   }
 }

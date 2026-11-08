@@ -62,6 +62,14 @@ workflow clears the staging area before building and copies the sidecars into
 the existing Apache version directory.
 No public endpoint or embedded SBOM is enabled. Container SBOMs are separate.
 
+Every finalized SBOM links to the separately maintained CycloneDX VEX feed at
+`https://polaris.apache.org/community/dependency-cves/polaris.vex.json`, using a
+BOM-level `exploitability-statement` external reference. Generation writes only
+the URL; it does not fetch or embed assessments, or pin the mutable feed's hash.
+The link makes VEX discoverable. Consumers must establish product/version
+applicability before applying an assessment; the link does not itself establish
+that a finding can be suppressed, including for Spark artifacts.
+
 Verify the sidecar's detached signature against a trusted Polaris release key,
 then compare `metadata.component.hashes` SHA-256 with the downloaded JAR/ZIP/TAR.
 A signature authenticates the document; the subject hash binds it to those bytes.

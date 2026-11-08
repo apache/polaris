@@ -32,6 +32,7 @@ import org.cyclonedx.model.BomReference
 import org.cyclonedx.model.Component
 import org.cyclonedx.model.Composition
 import org.cyclonedx.model.Dependency
+import org.cyclonedx.model.ExternalReference
 import org.cyclonedx.model.Hash
 import org.cyclonedx.model.Metadata
 import org.cyclonedx.model.Property
@@ -72,6 +73,20 @@ object SbomCore {
   internal fun writeBomFile(file: File, bom: Bom) {
     file.parentFile.mkdirs()
     file.writeText(bomToJson(bom))
+  }
+
+  /** Discover mutable assessments without fetching or pinning a particular VEX revision. */
+  internal fun addVexReference(bom: Bom, url: String) {
+    val type = ExternalReference.Type.EXPLOITABILITY_STATEMENT
+    val references = bom.externalReferences.orEmpty()
+    if (references.none { it.type == type && it.url == url }) {
+      bom.externalReferences =
+        references +
+          ExternalReference().apply {
+            this.type = type
+            this.url = url
+          }
+    }
   }
 
   internal fun hash(file: File): String =

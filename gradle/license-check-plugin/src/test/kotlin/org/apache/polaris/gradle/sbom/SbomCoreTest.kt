@@ -44,6 +44,29 @@ class SbomCoreTest {
   @TempDir lateinit var dir: File
 
   @Test
+  fun vexDiscoveryPreservesProducerReferencesWithoutDuplicatingOrPinningTheLink() {
+    val website =
+      ExternalReference().apply {
+        type = ExternalReference.Type.WEBSITE
+        url = "https://producer.invalid/"
+      }
+    val bom = producer().apply { externalReferences = listOf(website) }
+    val url = "https://assessments.invalid/polaris.vex.json"
+    SbomCore.addVexReference(bom, url)
+    SbomCore.addVexReference(bom, url)
+    val output = File(dir, "document.json")
+    SbomCore.writeBomFile(output, bom)
+    val result = SbomCore.readBom(output)
+    assertThat(result.externalReferences.map { it.type to it.url })
+      .containsExactly(
+        ExternalReference.Type.WEBSITE to website.url,
+        ExternalReference.Type.EXPLOITABILITY_STATEMENT to url,
+      )
+    assertThat(result.externalReferences.last().hashes).isNullOrEmpty()
+    assertThat(result.vulnerabilities).isNullOrEmpty()
+  }
+
+  @Test
   fun sparkBundleSubjectIsDistinctFromThinJar() {
     val thin =
       SbomSubject("org.apache.polaris", "polaris-spark-3.5_2.12", "1", PackageKind.SHADED_JAR)
