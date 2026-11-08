@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.persistence.atomic.dynamodb;
 
+import java.util.Locale;
+
 /**
  * Attribute names, item-type markers, and key encodings for the single-table DynamoDB layout.
  *
@@ -101,6 +103,6 @@ public final class DynamoDbLayout {
    * relational-jdbc} does). Entity ids are non-negative.
    */
   public static String childrenGsiSk(long id) {
-    return String.format("%019d", id);
+    return String.format(Locale.ROOT, "%019d", id);
   }
 }
