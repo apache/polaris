@@ -59,10 +59,11 @@ Polaris administration & maintenance tool
   -h, --help      Show this help message and exit.
   -V, --version   Print version information and exit.
 Commands:
-  help       Display help information about the specified command.
-  bootstrap  Bootstraps realms and root principal credentials.
-  purge      Purge realms and all associated entities.
-  nosql      Sub-commands specific to NoSQL persistence.
+  help           Display help information about the specified command.
+  bootstrap      Bootstraps realms and root principal credentials.
+  purge          Purge realms and all associated entities.
+  purge-metrics  Delete scan and commit metrics reports older than a given age.
+  nosql          Sub-commands specific to NoSQL persistence.
 ```
 
 ## Configuration
@@ -216,6 +217,44 @@ docker run --rm -it \
 ```
 
 Again, the Polaris Admin Tool must be executed with appropriate configuration to connect to the same database used by the Polaris server. The configuration can be done via environment variables (as above) or system properties.
+
+## Purging Old Metrics Reports
+
+With the relational JDBC persistence, the `persisting` Iceberg metrics reporter writes scan and
+commit metrics reports to the `scan_metrics_report` and `commit_metrics_report` tables, which
+otherwise grow without bound. The `purge-metrics` command deletes the reports of the given realms
+that are older than a given age, from both tables:
+
+```
+Usage: polaris-admin-tool.jar purge-metrics [-hV] [--batch-size=<count>]
+       --older-than=<duration> -r=<realm> [-r=<realm>]...
+Delete scan and commit metrics reports older than a given age.
+Only supported with the relational-jdbc persistence.
+      --batch-size=<count>   The maximum number of reports deleted in a single
+                               transaction. Defaults to 1000.
+  -h, --help                 Show this help message and exit.
+      --older-than=<duration>
+                             Delete metrics reports older than this ISO-8601
+                               duration, such as P30D (30 days) or PT12H (12
+                               hours).
+  -r, --realm=<realm>        The name of a realm whose metrics reports to purge.
+  -V, --version              Print version information and exit.
+```
+
+For example, to delete the metrics reports of the `realm1` realm that are older than 30 days:
+
+```bash
+docker run --rm -it \
+  --env="polaris.persistence.type=relational-jdbc" \
+  --env="quarkus.datasource.username=<your-username>" \
+  --env="quarkus.datasource.password=<your-password>" \
+  --env="quarkus.datasource.jdbc.url=<jdbc-url-of-postgres>" \
+  apache/polaris-admin-tool:latest purge-metrics -r realm1 --older-than P30D
+```
+
+Reports are deleted in batches, each in its own transaction, so the command can run while Polaris
+is serving requests, and an interrupted run can be repeated. To enforce a retention period, run the
+command periodically, for example from a cron job.
 
 ## NoSQL Specific Operations
 
