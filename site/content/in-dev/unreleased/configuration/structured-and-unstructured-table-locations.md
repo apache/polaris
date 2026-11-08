@@ -67,6 +67,10 @@ table's own location, in these cases:
 A failed check returns HTTP 403 (`ForbiddenException`). Listing tables and loading a table without
 vended credentials are not affected.
 
+The overlap checks and the metadata file check described below also apply. Since every location is
+inside its namespace, comparing a new location with the entities under the same parent, including
+their write paths, is enough to detect overlaps.
+
 ## Unstructured locations
 
 With unstructured locations, the checks above only require locations and write paths to be inside
@@ -120,12 +124,13 @@ The effective value of a catalog changes from `true` to `false` in any of these 
 | The realm override is changed from `true` to `false`, or removed while the feature is `false` | Every catalog of that realm that does not set the catalog property |
 | The feature is changed from `true` to `false`, or removed | Every catalog that does not set the catalog property, in every realm without a realm override |
 
-### Example: operations that fail after the switch
+### Example: operations that may fail after the switch
 
 Any operation that involves a location check can fail for an entity whose locations do not follow
-the structured rules, including creating, updating, renaming, committing to, or vending credentials
-for it. The check is against the entity's current parent, so it fails whenever the parent's location
-does not contain the entity's locations.
+the structured rules, including updating, renaming, or vending credentials for it. The check is
+against the entity's current parent, so it fails whenever the parent's location does not contain the
+entity's locations. Creating a new entity is not affected by the switch itself as its locations are
+checked against the rules in effect when it is created, whichever mode that is.
 
 For example:
 
@@ -133,9 +138,11 @@ For example:
    inside the location of `ns1`, for example `s3://bucket/warehouse/ns1/t1/`.
 2. While unstructured locations are still enabled, rename the table to `ns2.t2`. The rename only
    changes the table's name and namespace: its metadata and data files stay under
-   `s3://bucket/warehouse/ns1/t1/`.
+   `s3://bucket/warehouse/ns1/t1/`. With structured locations, this rename would itself fail,
+   because the table's location is not inside `ns2`. It only succeeds here because unstructured
+   locations are enabled.
 3. Disable unstructured locations for the catalog. Nothing is checked at this point.
-4. From now on, loading `ns2.t2` with vended credentials, updating it (any commit), or renaming it
+4. From now on, loading `ns2.t2` with vended credentials, updating it, or renaming it
    again fails with HTTP 403, because its location is not inside the location of `ns2`.
 
 The same happens, for example, to a table created with an explicit location outside its namespace,
@@ -190,6 +197,21 @@ To fix an incompatible table or view:
 - Rename it back into a namespace whose location contains its files.
 - Copy the data to a location inside the namespace, for example with a `CREATE TABLE ... AS SELECT`
   statement, and drop the old table.
+- Move the table to a new location while keeping its history, using Iceberg's
+  [`rewrite_table_path`](https://iceberg.apache.org/docs/latest/spark-procedures/#rewrite_table_path)
+  Spark procedure. It writes copies of the table's metadata files, with every path that starts with
+  `source_prefix` replaced by `target_prefix`, to a staging location and produces a list of the files
+  to copy. It does not copy any file itself. Copy the listed files to the target location with a
+  tool such as DistCp, then register the table at the new location with the `register_table`
+  procedure, and drop the old table. For example:
+
+  ```sql
+  CALL catalog_name.system.rewrite_table_path(
+      table => 'ns2.t2',
+      source_prefix => 's3://bucket/warehouse/ns1/t1',
+      target_prefix => 's3://bucket/warehouse/ns2/t2'
+  );
+  ```
 - Keep unstructured locations enabled for the catalog that needs them, by setting the catalog
   property to `true`.
 - If the catalog uses the object storage prefix for default table locations, disable
