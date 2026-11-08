@@ -221,10 +221,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `uri` is now optional for `HADOOP` connection configurations and is no longer validated as a
   `java.net.URL`. The Hadoop catalog is initialized from `warehouse` and never uses `uri`, but
   values such as `hdfs://namenode:8020/warehouse` or `s3://bucket/warehouse` were rejected with
-  `400 Invalid remote URI`, and omitting the field failed with `500 Internal Server Error`. For the
-  other connection types a missing `uri` now returns `400 Bad Request` with the message
-  `uri is required for <TYPE> connections`. A `HADOOP` catalog created without `uri` cannot be
-  loaded by an older Polaris version, which matters only when downgrading.
+  `400 Invalid remote URI`, and omitting the field failed with `500 Internal Server Error`. For
+  `ICEBERG_REST` and `HIVE` connections a missing `uri` now returns `400 Bad Request` with the
+  message `uri is required for <TYPE> connections` (`BIGQUERY` keeps defaulting it). A `HADOOP`
+  catalog created without `uri` cannot be loaded by an older Polaris version, which matters only
+  when downgrading.
 - Helm chart: `helm test` now runs the chart's connection test. Previously the test was left out of
   the packaged chart, so `helm test` ran no tests.
 - Credential vending with a statically configured GCP access token (`polaris.storage.gcp.token`)

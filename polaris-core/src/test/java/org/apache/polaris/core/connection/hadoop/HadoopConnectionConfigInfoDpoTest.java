@@ -107,6 +107,14 @@ class HadoopConnectionConfigInfoDpoTest {
   }
 
   @Test
+  void testBlankUriIsNotForwarded() {
+    HadoopConnectionConfigInfoDpo dpo = createDpo(" ", null);
+
+    assertThat(dpo.asIcebergCatalogProperties(mockCredentialManager(dpo)))
+        .doesNotContainKey(CatalogProperties.URI);
+  }
+
+  @Test
   void testUriIsOptional() {
     HadoopConnectionConfigInfoDpo dpo = createDpo(null, null);
 

@@ -87,10 +87,11 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
    * The Hadoop catalog is initialized from {@link #getWarehouse()} and never connects to {@code
    * uri}, so the value is optional and only has to be a URI when present. This also admits schemes
    * such as {@code hdfs://} or {@code s3://} that the JVM has no {@link java.net.URL} handler for.
+   * A blank value is treated like a missing one.
    */
   @Override
   protected void validateUri(@Nullable String uri) {
-    if (uri == null) {
+    if (uri == null || uri.isBlank()) {
       return;
     }
     try {
@@ -116,7 +117,7 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
   public @NonNull Map<String, String> asIcebergCatalogProperties(
       PolarisCredentialManager credentialManager) {
     HashMap<String, String> properties = new HashMap<>();
-    if (getUri() != null) {
+    if (getUri() != null && !getUri().isBlank()) {
       properties.put(CatalogProperties.URI, getUri());
     }
     if (getWarehouse() != null) {
