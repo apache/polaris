@@ -88,7 +88,7 @@ cases are:
 
 | Requested mechanism | When it cannot be satisfied | Response |
 |---|---|---|
-| `vended-credentials` | The catalog cannot vend credentials for the table's storage, for example an S3-compatible store configured with `stsUnavailable: true`. | `400` with message `Credential vending was requested for table <namespace.table>, but no credentials are available` |
+| `vended-credentials` | The catalog cannot vend credentials for the table's storage, for example an S3-compatible store configured with `stsUnavailable: true`, Azure with `skipSasTokenGeneration: true`, or GCS with `skipCredentialDownscoping: true`. | `400` with message `Credential vending was requested for table <namespace.table>, but no credentials are available` |
 | `remote-signing`, alone or combined with `vended-credentials` when vending is not possible | Polaris does not implement remote signing. | `400` with message `This catalog cannot vend credentials or sign requests; request without X-Iceberg-Access-Delegation and configure storage credentials on the client` |
 
 Polaris fails fast here on purpose. Both conditions are static properties of the catalog (its

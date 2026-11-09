@@ -299,6 +299,9 @@ public class GcpCredentialsStorageIntegration
   /** Mint a fresh {@link StorageAccessConfig} for the given GCP cache key. */
   static StorageAccessConfig compute(GcpStorageCredentialCacheKey key) {
     GcpStorageConfigurationInfo gcpStorageConfig = key.storageConfig();
+    if (Boolean.TRUE.equals(gcpStorageConfig.getSkipCredentialDownscoping())) {
+      return StorageAccessConfig.builder().build();
+    }
     GoogleCredentials sourceCredentials = key.sourceCredentials();
     HttpTransportFactory transportFactory = key.transportFactory();
     GcpCredentialOps credentialOps = key.credentialOps();
