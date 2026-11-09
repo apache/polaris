@@ -79,8 +79,8 @@ When a release is cut, `./gradlew releaseChangelog --release-version=x.y.z` appe
 to the matching sections of `## [Unreleased]` in `CHANGELOG.md` and deletes them. It then turns that
 section into the one of the release, adds a new empty `## [Unreleased]` section, drops the
 subsections without entries from the release, and updates the links at the end of the file. Once the
-release vote has passed, the release manager propagates the new section of `CHANGELOG.md` and the
-deletion of the consumed fragments to `main`.
+release vote has passed, the release manager propagates these changes of `CHANGELOG.md`, including
+the links at the end of the file, and the deletion of the consumed fragments to `main`.
 
 For later release candidates, fragments added by cherry-picked changes are merged into the existing
 section of the release with `./gradlew mergeChangelogFragments --release-version=x.y.z`. The

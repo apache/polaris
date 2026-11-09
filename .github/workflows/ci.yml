@@ -112,6 +112,8 @@ jobs:
               - 'changelog.d/**'
             build_logic:
               - 'build-logic/**'
+              # build-logic imports this catalog, which has the dependencies of its tests
+              - 'gradle/baselibs.versions.toml'
             # 'some-with-excludes' makes exclusions final, so these generated-doc paths
             # can't be re-included within the 'backend'/'helm' filters above; they're
             # OR-ed into the job outputs instead (see `outputs:` above).

@@ -399,10 +399,18 @@ Then release the candidate repository on [Nexus](https://repository.apache.org/#
 
 ### Propagating the changelog to main
 
-Submit a PR against `main` that brings in the release section generated in `CHANGELOG.md` on the
-release branch, and deletes the changelog fragments that the release consumed from `changelog.d`.
-Only delete those fragments: fragments added to `main` after the release branch was created belong
-to the next release.
+Submit a PR against `main` that brings in the changes that the release made to `CHANGELOG.md` on the
+release branch:
+
+* the new `## [x.y.z]` section,
+* the `## [Unreleased]` section, emptied of the entries that moved into the release,
+* the links at the end of the file: the new `[x.y.z]: ...` definition, and the updated
+  `[Unreleased]: ...` link. Without them, the next `releaseChangelog` fails, because it expects the
+  `[Unreleased]` link to compare the latest release with `HEAD`.
+
+The PR also deletes the changelog fragments that the release consumed from `changelog.d`. Only
+delete those fragments: fragments added to `main` after the release branch was created belong to
+the next release.
 
 ### Publishing the Docker images
 
