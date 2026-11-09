@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.RealmContext;
@@ -49,6 +50,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -57,6 +59,8 @@ import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -146,9 +150,11 @@ class JdbcBasePersistenceImplTest {
         .withCause(nonUniqueViolation);
   }
 
-  @Test
-  void writeEntity_uniquenessViolationWithInvisibleConflict_throwsRetryOnConcurrencyException()
-      throws SQLException {
+  /** Covers both the insert path (no original entity) and the update path (rename). */
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void writeEntity_uniquenessViolationWithInvisibleConflict_throwsRetryOnConcurrencyException(
+      boolean update) throws SQLException {
     DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
     when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.H2);
     doThrow(new SQLException("Unique constraint violation", "23505"))
@@ -179,10 +185,78 @@ class JdbcBasePersistenceImplTest {
             .grantRecordsVersion(0)
             .createTimestamp(System.currentTimeMillis())
             .build();
+    PolarisBaseEntity originalEntity =
+        update
+            ? new PolarisBaseEntity.Builder(entity).name("original_name").entityVersion(0).build()
+            : null;
 
     assertThatExceptionOfType(RetryOnConcurrencyException.class)
-        .isThrownBy(() -> basePersistence.writeEntity(callCtx, entity, true, null))
+        .isThrownBy(() -> basePersistence.writeEntity(callCtx, entity, true, originalEntity))
         .withMessageContaining("not visible");
+  }
+
+  @Test
+  void writeEntity_renameOntoTakenName_throwsEntityAlreadyExistsException()
+      throws SQLException, IOException {
+    TestPersistence persistence = newTestPersistence(newH2DatasourceOperations("rename_taken"));
+    PolarisBaseEntity source = newTestEntity(201L, "source_principal", 1, 1);
+    PolarisBaseEntity taken = newTestEntity(202L, "taken_principal", 1, 1);
+    persistence.impl().writeEntity(persistence.callCtx(), source, false, null);
+    persistence.impl().writeEntity(persistence.callCtx(), taken, false, null);
+
+    PolarisBaseEntity renamed =
+        new PolarisBaseEntity.Builder(source).name(taken.getName()).entityVersion(2).build();
+
+    assertThatExceptionOfType(EntityAlreadyExistsException.class)
+        .isThrownBy(
+            () -> persistence.impl().writeEntity(persistence.callCtx(), renamed, true, source))
+        .satisfies(e -> assertThat(e.getExistingEntity().getId()).isEqualTo(taken.getId()));
+    assertThat(
+            persistence
+                .impl()
+                .lookupEntity(
+                    persistence.callCtx(),
+                    0L,
+                    source.getId(),
+                    PolarisEntityType.PRINCIPAL.getCode())
+                .getName())
+        .isEqualTo("source_principal");
+  }
+
+  @ParameterizedTest
+  @MethodSource("entityWriteFailures")
+  void writeEntityMapsSqlFailureByCommitPhase(
+      SQLException failure, Class<? extends RuntimeException> expectedType) throws SQLException {
+    DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
+    when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.H2);
+    doThrow(failure)
+        .when(datasourceOperations)
+        .executeUpdate(any(QueryGenerator.PreparedQuery.class));
+    doCallRealMethod().when(datasourceOperations).isAmbiguousCommitOutcome(any(SQLException.class));
+    TestPersistence tp = newTestPersistence(datasourceOperations);
+
+    PolarisBaseEntity original = newTestEntity(101L, "e1", 1, 1);
+    PolarisBaseEntity updated = newTestEntity(101L, "e1", 2, 1);
+
+    assertThatCode(() -> tp.impl().writeEntity(tp.callCtx(), updated, false, original))
+        .isExactlyInstanceOf(expectedType)
+        .hasCause(failure);
+  }
+
+  static Stream<Arguments> entityWriteFailures() {
+    return Stream.of(
+        // commit() lost the connection. withRetries wraps the marker in a plain SQLException.
+        Arguments.of(
+            new SQLException(
+                "Failed after retries",
+                "08006",
+                0,
+                new AmbiguousCommitOutcomeException(new SQLException("connection lost", "08006"))),
+            PersistenceCommitStateUnknownException.class),
+        // Connection could not be acquired. Class 08, but commit() never ran, so this is a plain
+        // failure.
+        Arguments.of(new SQLException("connection refused", "08001"), RuntimeException.class),
+        Arguments.of(new SQLException("not null violation", "23502"), RuntimeException.class));
   }
 
   @Test

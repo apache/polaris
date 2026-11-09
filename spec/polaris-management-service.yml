@@ -67,6 +67,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Catalog"
+        400:
+          description: "The request is invalid, for example an unsupported or incomplete storage or connection configuration"
         403:
           description: "The caller does not have permission to create a catalog"
         404:
@@ -1113,6 +1115,8 @@ components:
       type: object
       description: A connection configuration representing a remote catalog service. IMPORTANT - Specifying a
         ConnectionConfigInfo in an ExternalCatalog is currently an experimental API and is subject to change.
+        The authenticationParameters field is required when creating an external catalog; a request
+        without it is rejected with HTTP 400.
       properties:
         connectionType:
           type: string
@@ -2011,6 +2015,7 @@ components:
         - CATALOG_MANAGE_CONTENT
         - CATALOG_MANAGE_METADATA
         - CATALOG_READ_PROPERTIES
+        - CATALOG_READ_CONFIG
         - CATALOG_WRITE_PROPERTIES
         - NAMESPACE_CREATE
         - TABLE_CREATE

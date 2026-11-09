@@ -203,6 +203,13 @@ paths:
   /polaris/v1/{prefix}/storage-configurations/{storage-configuration-name}/namespaces/{namespace}/tables:
     $ref: './polaris-catalog-apis/storage-mappings-api.yaml#/paths/~1polaris~1v1~1{prefix}~1storage-configurations~1{storage-configuration-name}~1namespaces~1{namespace}~1tables'
 
+  #################################
+  # Polaris Catalog Discovery API #
+  #################################
+
+  /polaris/discovery/v1/catalogs:
+    $ref: './polaris-catalog-apis/catalog-discovery-api.yaml#/paths/~1polaris~1discovery~1v1~1catalogs'
+
 
 components:
   securitySchemes:

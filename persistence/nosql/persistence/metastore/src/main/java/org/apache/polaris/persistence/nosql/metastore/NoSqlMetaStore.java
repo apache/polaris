@@ -31,6 +31,7 @@ import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIAL
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.EntityIdSet.ENTITY_ID_SET_SERIALIZER;
+import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.checkCatalogId;
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.containerTypeForEntityType;
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.filterIsEntityType;
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.isCatalogContent;
@@ -120,6 +121,7 @@ import org.apache.polaris.persistence.nosql.metastore.committers.CatalogChangeCo
 import org.apache.polaris.persistence.nosql.metastore.committers.ChangeCommitter;
 import org.apache.polaris.persistence.nosql.metastore.committers.ChangeCommitterWrapper;
 import org.apache.polaris.persistence.nosql.metastore.committers.ChangeResult;
+import org.apache.polaris.persistence.nosql.metastore.committers.SupportsCatalogChangeCommit;
 import org.apache.polaris.persistence.nosql.metastore.indexaccess.IndexedContainerAccess;
 import org.apache.polaris.persistence.nosql.metastore.indexaccess.MemoizedIndexedAccess;
 import org.apache.polaris.persistence.nosql.metastore.mutation.EntityUpdate;
@@ -138,7 +140,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class NoSqlMetaStore extends NonFunctionalBasePersistence {
+class NoSqlMetaStore extends NonFunctionalBasePersistence implements SupportsCatalogChangeCommit {
   private static final Logger LOGGER = LoggerFactory.getLogger(NoSqlMetaStore.class);
 
   private final Persistence persistence;
@@ -528,6 +530,24 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     }
   }
 
+  @Override
+  public <T> T commitCatalogChange(
+      long catalogId, Class<T> resultType, CatalogChangeCommitterWrapper<T> wrapper) {
+    checkCatalogId(catalogId);
+    try {
+      var committer =
+          persistence
+              .createCommitter(
+                  format(CATALOG_STATE_REF_NAME_PATTERN, catalogId),
+                  CatalogStateObj.class,
+                  resultType)
+              .synchronizingLocally();
+      return committer.commitRuntimeException(wrapper).orElseThrow();
+    } finally {
+      memoizedIndexedAccess.invalidateCatalogContent(catalogId);
+    }
+  }
+
   private MutationResults performEntityMutations(
       UpdateKeyForCatalogAndEntityType updateKeyForCatalogAndEntityType,
       List<EntityUpdate> updates) {
@@ -574,34 +594,22 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     var mutationResults = (MutationResults) null;
 
     if (updateKeyForCatalogAndEntityType.catalogContent()) {
-      try {
-        var committer =
-            persistence
-                .createCommitter(
-                    format(
-                        CATALOG_STATE_REF_NAME_PATTERN,
-                        updateKeyForCatalogAndEntityType.catalogId()),
-                    CatalogStateObj.class,
-                    MutationResults.class)
-                .synchronizingLocally();
-        var commitRetryable =
-            new CatalogChangeCommitterWrapper<MutationResults>(
-                ((state, ref, byName, byId, changes, locations) ->
-                    new MutationAttempt(
-                            updateKeyForCatalogAndEntityType,
-                            updates,
-                            state,
-                            byName,
-                            byId,
-                            changes,
-                            locations,
-                            memoizedIndexedAccess)
-                        .apply()));
-        mutationResults = committer.commitRuntimeException(commitRetryable).orElseThrow();
-      } finally {
-        memoizedIndexedAccess.invalidateCatalogContent(
-            updateKeyForCatalogAndEntityType.catalogId());
-      }
+      mutationResults =
+          commitCatalogChange(
+              updateKeyForCatalogAndEntityType.catalogId(),
+              MutationResults.class,
+              new CatalogChangeCommitterWrapper<>(
+                  ((state, ref, byName, byId, changes, locations) ->
+                      new MutationAttempt(
+                              updateKeyForCatalogAndEntityType,
+                              updates,
+                              state,
+                              byName,
+                              byId,
+                              changes,
+                              locations,
+                              memoizedIndexedAccess)
+                          .apply())));
     } else {
       mutationResults =
           performChange(

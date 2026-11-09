@@ -523,6 +523,43 @@ public class ProductionReadinessChecks {
   }
 
   @Produces
+  public ProductionReadinessCheck checkCatalogConfigAuthorization(
+      FeaturesConfiguration featureConfiguration,
+      AuthorizationConfiguration authorizationConfiguration) {
+    if (!authorizationConfiguration.type().equals("internal")) {
+      return ProductionReadinessCheck.OK;
+    }
+    var flag = FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION;
+    var message =
+        "ENFORCE_CATALOG_CONFIG_AUTHORIZATION is disabled. Iceberg REST GET /v1/config is not "
+            + "authorization-gated. Consider granting CATALOG_READ_CONFIG to the roles that "
+            + "need access to catalogs and then enabling this flag. CATALOG_READ_CONFIG is "
+            + "subsumed by many stronger permissions at the catalog level, but not at entity levels.";
+    var errors = new ArrayList<Error>();
+    // Absent or false → warn (default is false). Explicit true → no warning for defaults.
+    if (!Boolean.parseBoolean(featureConfiguration.defaults().get(flag.key()))) {
+      errors.add(Error.of(message, format("polaris.features.\"%s\"", flag.key())));
+    }
+    featureConfiguration
+        .realmOverrides()
+        .forEach(
+            (realmId, overrides) -> {
+              String value = overrides.overrides().get(flag.key());
+              if (value != null && !Boolean.parseBoolean(value)) {
+                errors.add(
+                    Error.of(
+                        message,
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, flag.key())));
+              }
+            });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  @Produces
   public ProductionReadinessCheck checkSkipCredentialSubscopingIndirection(
       FeaturesConfiguration featureConfiguration) {
     var flag = FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION;

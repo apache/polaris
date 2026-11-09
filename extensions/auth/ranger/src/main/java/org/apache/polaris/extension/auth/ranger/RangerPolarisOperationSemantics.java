@@ -129,6 +129,10 @@ public record RangerPolarisOperationSemantics(
         PolarisAuthorizableOperation.LIST_NAMESPACES,
         new RangerPolarisOperationSemantics(toSet(NAMESPACE_LIST), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.LIST_NAMESPACE,
+        new RangerPolarisOperationSemantics(
+            toSet(NAMESPACE_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.CREATE_NAMESPACE,
         new RangerPolarisOperationSemantics(
             toSet(NAMESPACE_CREATE), null, ResolvedPathRooting.ROOT));
@@ -149,6 +153,10 @@ public record RangerPolarisOperationSemantics(
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.LIST_TABLES,
         new RangerPolarisOperationSemantics(toSet(TABLE_LIST), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.LIST_TABLE,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.CREATE_TABLE_DIRECT,
         new RangerPolarisOperationSemantics(toSet(TABLE_CREATE), null, ResolvedPathRooting.ROOT));
@@ -227,6 +235,10 @@ public record RangerPolarisOperationSemantics(
         PolarisAuthorizableOperation.LIST_VIEWS,
         new RangerPolarisOperationSemantics(toSet(VIEW_LIST), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.LIST_VIEW,
+        new RangerPolarisOperationSemantics(
+            toSet(VIEW_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.CREATE_VIEW,
         new RangerPolarisOperationSemantics(toSet(VIEW_CREATE), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
@@ -278,6 +290,12 @@ public record RangerPolarisOperationSemantics(
         new RangerPolarisOperationSemantics(toSet(CATALOG_CREATE), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.GET_CATALOG,
+        new RangerPolarisOperationSemantics(
+            toSet(CATALOG_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
+    // No dedicated Ranger access type for the catalog config endpoint yet; protect it with the
+    // existing catalog-properties-read access type.
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.GET_CATALOG_CONFIG,
         new RangerPolarisOperationSemantics(
             toSet(CATALOG_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(

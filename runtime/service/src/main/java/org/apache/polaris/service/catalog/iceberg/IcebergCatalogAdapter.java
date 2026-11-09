@@ -371,7 +371,10 @@ public class IcebergCatalogAdapter
       EnumSet<AccessDelegationMode> delegationModes,
       String prefix,
       TableIdentifier tableIdentifier) {
-    return delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)
+    // No refresh endpoint when the request does not require delegation (for example when it
+    // includes `none`): the client is not supposed to call /credentials in that case.
+    return AccessDelegationMode.requiresDelegation(delegationModes)
+            && delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)
         ? Optional.of(
             new PolarisResourcePaths(prefix, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED)
                 .credentialsPath(tableIdentifier))
