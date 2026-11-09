@@ -22,7 +22,6 @@ import com.azure.core.credential.TokenCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Suppliers;
-import com.google.common.collect.ImmutableMap;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithName;
 import io.smallrye.config.WithParentName;
@@ -151,9 +150,6 @@ public interface StorageConfiguration extends S3AccessConfig {
     String clientSecret();
   }
 
-  /** The tenant a named Azure credential belongs to, and the credential itself. */
-  record AzureNamedCredential(String tenantId, Supplier<TokenCredential> credential) {}
-
   default Supplier<StsClient> stsClientSupplier() {
     return stsClientSupplier(true);
   }
@@ -223,24 +219,16 @@ public interface StorageConfiguration extends S3AccessConfig {
   }
 
   /**
-   * Returns the named Azure credentials by storage name. Each credential is built on first use and
-   * then shared, because its access tokens are cached inside the credential object. A failed build
-   * is retried on the next use. Each call builds a new map with new credentials, so call this once
-   * and keep the result.
+   * Builds the Azure credential of one configured storage name. Every call builds a new credential,
+   * and its access tokens are cached inside it, so the caller keeps and shares the result.
    */
-  default Map<String, AzureNamedCredential> azureNamedCredentials() {
-    ImmutableMap.Builder<String, AzureNamedCredential> credentials = ImmutableMap.builder();
-    azure()
-        .storages()
-        .forEach(
-            (storageName, storageConfig) ->
-                credentials.put(
-                    storageName,
-                    new AzureNamedCredential(
-                        storageConfig.tenantId(),
-                        Suppliers.memoize(
-                            () -> buildAzureCredential(storageName, storageConfig)))));
-    return credentials.build();
+  default TokenCredential azureCredential(String storageName) {
+    AzureNamedStorageConfig storageConfig = azure().storages().get(storageName);
+    if (storageConfig == null) {
+      throw new IllegalArgumentException(
+          "Storage name '" + storageName + "' is not configured on the server");
+    }
+    return buildAzureCredential(storageName, storageConfig);
   }
 
   private static TokenCredential buildAzureCredential(

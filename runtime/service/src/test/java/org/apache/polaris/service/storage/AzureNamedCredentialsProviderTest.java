@@ -40,7 +40,8 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
-import org.apache.polaris.service.storage.StorageConfiguration.AzureNamedCredential;
+import org.apache.polaris.service.storage.StorageConfiguration.AzureNamedStorageConfig;
+import org.apache.polaris.service.storage.StorageConfiguration.AzureStorageConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -57,19 +58,25 @@ class AzureNamedCredentialsProviderTest {
   private static final String OTHER_TENANT = "22222222-2222-2222-2222-222222222222";
 
   private final AtomicInteger teamALoads = new AtomicInteger();
+  private boolean failNextBuild;
 
   private PolarisStorageIntegrationProviderImpl provider(Map<String, Object> flags) {
     StorageConfiguration storageConfiguration = mock(StorageConfiguration.class);
-    when(storageConfiguration.azureNamedCredentials())
-        .thenReturn(
-            Map.of(
-                "team-a",
-                new AzureNamedCredential(
-                    TENANT,
-                    () -> {
-                      teamALoads.incrementAndGet();
-                      return mock(TokenCredential.class);
-                    })));
+    AzureNamedStorageConfig teamA = mock(AzureNamedStorageConfig.class);
+    when(teamA.tenantId()).thenReturn(TENANT);
+    AzureStorageConfig azure = mock(AzureStorageConfig.class);
+    when(azure.storages()).thenReturn(Map.of("team-a", teamA));
+    when(storageConfiguration.azure()).thenReturn(azure);
+    when(storageConfiguration.azureCredential("team-a"))
+        .thenAnswer(
+            invocation -> {
+              teamALoads.incrementAndGet();
+              if (failNextBuild) {
+                failNextBuild = false;
+                throw new IllegalStateException("build failed");
+              }
+              return mock(TokenCredential.class);
+            });
     RealmConfig realmConfig = new RealmConfigImpl((rc, name) -> flags.get(name), REALM);
     return new PolarisStorageIntegrationProviderImpl(
         storageConfiguration,
@@ -216,5 +223,32 @@ class AzureNamedCredentialsProviderTest {
 
     assertThat(integration).isInstanceOf(AzureCredentialsStorageIntegration.class);
     assertThat(teamALoads).hasValue(1);
+  }
+
+  @Test
+  void aNameIsBuiltOnceAndSharedAcrossCalls() {
+    PolarisStorageIntegrationProviderImpl provider = provider(resolveByName());
+
+    provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
+    provider.getStorageIntegration(entityPath(PolarisEntityType.TASK, "team-a", TENANT));
+
+    assertThat(teamALoads).hasValue(1);
+  }
+
+  @Test
+  void aFailedBuildIsNotKeptAndIsRetriedOnTheNextUse() {
+    PolarisStorageIntegrationProviderImpl provider = provider(resolveByName());
+    failNextBuild = true;
+
+    assertThatThrownBy(
+            () ->
+                provider.getStorageIntegration(
+                    entityPath(PolarisEntityType.CATALOG, "team-a", TENANT)))
+        .isInstanceOf(IllegalStateException.class);
+    PolarisStorageIntegration integration =
+        provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
+
+    assertThat(integration).isInstanceOf(AzureCredentialsStorageIntegration.class);
+    assertThat(teamALoads).hasValue(2);
   }
 }

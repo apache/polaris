@@ -29,6 +29,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -83,8 +84,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         storageConfig ->
             new GcpCredentialsStorageIntegration(
                 gcpCredsProvider.get(), gcpTransportFactory, cache, storageConfig, realmConfig);
-    Map<String, StorageConfiguration.AzureNamedCredential> azureNamedCredentials =
-        storageConfiguration.azureNamedCredentials();
+    // Each named credential holds its own access token cache, so it is built once and shared.
+    Map<String, TokenCredential> azureNamedCredentials = new ConcurrentHashMap<>();
     this.azureFactory =
         storageConfig -> {
           String storageName = storageConfig.getStorageName();
@@ -93,7 +94,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
             return new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig);
           }
           return new AzureCredentialsStorageIntegration(
-              resolveAzureCredential(storageConfig, azureNamedCredentials),
+              resolveAzureCredential(storageConfig, storageConfiguration, azureNamedCredentials),
               cache,
               storageConfig,
               realmConfig);
@@ -146,9 +147,11 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
 
   private static TokenCredential resolveAzureCredential(
       AzureStorageConfigurationInfo storageConfig,
-      Map<String, StorageConfiguration.AzureNamedCredential> namedCredentials) {
+      StorageConfiguration storageConfiguration,
+      Map<String, TokenCredential> namedCredentials) {
     String storageName = storageConfig.getStorageName();
-    StorageConfiguration.AzureNamedCredential named = namedCredentials.get(storageName);
+    StorageConfiguration.AzureNamedStorageConfig named =
+        storageConfiguration.azure().storages().get(storageName);
     if (named == null) {
       throw new IllegalArgumentException(
           "Storage name '" + storageName + "' is not configured on the server");
@@ -162,7 +165,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
               + storageName
               + "'");
     }
-    return named.credential().get();
+    // A failed build stores nothing, so the next use builds it again.
+    return namedCredentials.computeIfAbsent(storageName, storageConfiguration::azureCredential);
   }
 
   /**

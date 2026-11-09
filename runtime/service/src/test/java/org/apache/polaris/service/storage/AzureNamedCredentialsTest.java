@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 
+import com.azure.core.credential.TokenCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import io.smallrye.config.ConfigValidationException;
 import io.smallrye.config.EnvConfigSource;
@@ -29,7 +30,6 @@ import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfigBuilder;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.polaris.service.storage.StorageConfiguration.AzureNamedCredential;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.mockito.MockedConstruction;
@@ -69,13 +69,13 @@ class AzureNamedCredentialsTest {
   }
 
   /** Builds the credential and returns the builder that built it, to check what it was given. */
-  private static ClientSecretCredentialBuilder builderOf(AzureNamedCredential named) {
+  private static ClientSecretCredentialBuilder builderOf(StorageConfiguration config, String name) {
     try (MockedConstruction<ClientSecretCredentialBuilder> builders =
         Mockito.mockConstruction(
             ClientSecretCredentialBuilder.class,
             Mockito.withSettings().defaultAnswer(Answers.RETURNS_SELF))) {
       // The mocked builder builds nothing; only the values it was given matter here.
-      assertThat(named.credential().get()).isNull();
+      assertThat(config.azureCredential(name)).isNull();
       assertThat(builders.constructed()).hasSize(1);
       return builders.constructed().get(0);
     }
@@ -83,40 +83,43 @@ class AzureNamedCredentialsTest {
 
   @Test
   void eachNameUsesItsOwnServicePrincipal() {
-    Map<String, AzureNamedCredential> named = configFrom(twoNames()).azureNamedCredentials();
+    StorageConfiguration config = configFrom(twoNames());
 
-    assertThat(named).containsOnlyKeys("team-a", "team-b");
-    assertThat(named.get("team-a").tenantId()).isEqualTo(TENANT);
-    ClientSecretCredentialBuilder builderA = builderOf(named.get("team-a"));
+    assertThat(config.azure().storages()).containsOnlyKeys("team-a", "team-b");
+    assertThat(config.azure().storages().get("team-a").tenantId()).isEqualTo(TENANT);
+    ClientSecretCredentialBuilder builderA = builderOf(config, "team-a");
     verify(builderA).tenantId(TENANT);
     verify(builderA).clientId("app-team-a");
     verify(builderA).clientSecret(SECRET_A);
-    ClientSecretCredentialBuilder builderB = builderOf(named.get("team-b"));
+    ClientSecretCredentialBuilder builderB = builderOf(config, "team-b");
     verify(builderB).clientId("app-team-b");
     verify(builderB).clientSecret(SECRET_B);
   }
 
   @Test
-  void nameIsBuiltOnceSoItsTokenCacheIsShared() {
-    AzureNamedCredential named =
-        configFrom(properties("team-a", SECRET_A)).azureNamedCredentials().get("team-a");
+  void unknownNameFailsToBuild() {
+    StorageConfiguration config = configFrom(properties("team-a", SECRET_A));
 
-    assertThat(named.credential().get()).isNotNull().isSameAs(named.credential().get());
+    assertThatThrownBy(() -> config.azureCredential("unknown"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("unknown")
+        .hasMessageContaining("not configured");
   }
 
   @Test
   void badEntryFailsOnlyItsOwnNameAndKeepsTheSecretOutOfTheError() {
     Map<String, String> properties = twoNames();
     properties.put("polaris.storage.azure.team-a.tenant-id", "not/a/tenant");
-    Map<String, AzureNamedCredential> named = configFrom(properties).azureNamedCredentials();
+    StorageConfiguration config = configFrom(properties);
 
-    assertThatThrownBy(() -> named.get("team-a").credential().get())
+    assertThatThrownBy(() -> config.azureCredential("team-a"))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("team-a")
         .hasMessageNotContaining(SECRET_A)
         .hasMessageNotContaining("not/a/tenant")
         .hasCauseInstanceOf(IllegalArgumentException.class);
-    assertThat(named.get("team-b").credential().get()).isNotNull();
+    TokenCredential teamB = config.azureCredential("team-b");
+    assertThat(teamB).isNotNull();
   }
 
   @Test
@@ -134,16 +137,15 @@ class AzureNamedCredentialsTest {
 
   @Test
   void environmentVariableSuppliesTheSecretOfANameDefinedByProperties() {
-    Map<String, AzureNamedCredential> named =
+    StorageConfiguration config =
         configFrom(
-                Map.of(
-                    "polaris.storage.azure.team-a.tenant-id",
-                    TENANT,
-                    "polaris.storage.azure.team-a.client-id",
-                    "app-team-a"),
-                Map.of("POLARIS_STORAGE_AZURE_TEAM_A_CLIENT_SECRET", SECRET_A))
-            .azureNamedCredentials();
+            Map.of(
+                "polaris.storage.azure.team-a.tenant-id",
+                TENANT,
+                "polaris.storage.azure.team-a.client-id",
+                "app-team-a"),
+            Map.of("POLARIS_STORAGE_AZURE_TEAM_A_CLIENT_SECRET", SECRET_A));
 
-    verify(builderOf(named.get("team-a"))).clientSecret(SECRET_A);
+    verify(builderOf(config, "team-a")).clientSecret(SECRET_A);
   }
 }
