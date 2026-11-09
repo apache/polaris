@@ -83,7 +83,14 @@ public class StorageUtil {
 
   /** Given a ViewMetadata, extracts the locations where the view's [meta]data might be found. */
   public static @NonNull Set<String> getLocationsUsedByTable(ViewMetadata viewMetadata) {
-    return Set.of(viewMetadata.location());
+    List<String> candidates = new ArrayList<>();
+    candidates.add(viewMetadata.location());
+    candidates.add(
+        viewMetadata
+            .properties()
+            .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
+    candidates.removeIf(Objects::isNull);
+    return removeRedundantLocations(candidates);
   }
 
   /**

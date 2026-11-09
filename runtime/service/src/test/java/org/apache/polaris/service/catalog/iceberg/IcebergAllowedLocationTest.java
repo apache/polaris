@@ -336,7 +336,11 @@ public class IcebergAllowedLocationTest {
     var viewId = TableIdentifier.of(namespace, "view");
     var services = getTestServices();
     var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
-    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    createCatalog(
+        services,
+        Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"),
+        catalogLocation,
+        List.of(catalogLocation));
     var namespaceLocation = catalogLocation + "/" + namespace;
     createNamespace(services, namespaceLocation);
 
@@ -1537,6 +1541,41 @@ public class IcebergAllowedLocationTest {
     // The view's location is under the parent namespace, but also under the child namespace, which
     // becomes the view's sibling.
     assertThatThrownBy(() -> renameView(services, source, TableIdentifier.of(parent, "v")))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+    newHandler(services).viewExists(source);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testRenameViewRejectsCustomMetadataPathOverlappingDestinationSibling(
+      boolean optimizedSiblingCheck, @TempDir Path tmpDir) {
+    var services = getRenameTestServices(optimizedSiblingCheck);
+    var catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    createCatalog(
+        services,
+        Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"),
+        catalogLocation,
+        List.of(catalogLocation));
+    newHandler(services)
+        .createNamespace(
+            CreateNamespaceRequest.builder().withNamespace(Namespace.of("src")).build());
+    String metadataPath = catalogLocation + "/" + catalog + "/dst/shared";
+    newHandler(services)
+        .createView(
+            Namespace.of("src"),
+            ImmutableCreateViewRequest.builder()
+                .name("v")
+                .schema(SCHEMA)
+                .viewVersion(VIEW_VERSION)
+                .properties(Map.of(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, metadataPath))
+                .build());
+    newHandler(services)
+        .createNamespace(
+            CreateNamespaceRequest.builder().withNamespace(Namespace.of("dst")).build());
+    createTable(services, "dst", "sibling", metadataPath + "/child");
+    TableIdentifier source = TableIdentifier.of("src", "v");
+    assertThatThrownBy(() -> renameView(services, source, TableIdentifier.of("dst", "v")))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
     newHandler(services).viewExists(source);

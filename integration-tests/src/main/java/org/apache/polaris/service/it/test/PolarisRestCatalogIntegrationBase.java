@@ -1856,6 +1856,37 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @Test
+  public void testCreateAndUpdateViewWithCustomMetadataLocation() {
+    TableIdentifier identifier = TableIdentifier.of("custom_metadata", "view");
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(identifier.namespace());
+    }
+    String metadataPath =
+        getStorageConfigInfo().getAllowedLocations().getFirst()
+            + "/view-metadata-"
+            + UUID.randomUUID();
+    var view =
+        catalog()
+            .buildView(identifier)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(identifier.namespace())
+            .withQuery("spark", "select 1")
+            .withProperty("write.metadata.path", metadataPath)
+            .create();
+    assertThat(
+            URI.create(((BaseView) view).operations().current().metadataFileLocation())
+                .resolve("."))
+        .isEqualTo(URI.create(metadataPath + "/"));
+    String updatedPath = metadataPath + "-updated";
+    view.updateProperties().set("write.metadata.path", updatedPath).commit();
+    var updated = catalog().loadView(identifier);
+    assertThat(
+            URI.create(((BaseView) updated).operations().current().metadataFileLocation())
+                .resolve("."))
+        .isEqualTo(URI.create(updatedPath + "/"));
+  }
+
+  @Test
   public void testViewExistsStatus() {
     String tableName = "tbl1";
     String viewName = "view1";

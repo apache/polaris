@@ -3199,6 +3199,99 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
+  public void testViewCustomMetadataLocation(boolean createWithCustomPath) {
+    Assumptions.assumeTrue(requiresNamespaceCreate());
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+    catalog.createNamespace(NS);
+    String metadataPath = STORAGE_LOCATION + "/custom-view-metadata/" + UUID.randomUUID();
+    var builder =
+        catalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", VIEW_QUERY);
+    if (createWithCustomPath) {
+      builder.withProperty("write.metadata.path", "s3://forbidden-bucket/metadata");
+      Assertions.assertThatThrownBy(builder::create).isInstanceOf(ForbiddenException.class);
+      builder.withProperty("write.metadata.path", metadataPath);
+    }
+    var view = builder.create();
+    if (!createWithCustomPath) {
+      view.updateProperties().set("write.metadata.path", metadataPath).commit();
+    }
+    ViewMetadata metadata = catalog.newViewOps(TABLE, false).current();
+    Assertions.assertThat(metadata.metadataFileLocation()).startsWith(metadataPath + "/");
+    Assertions.assertThat(fileIO.fileExists(metadata.metadataFileLocation())).isTrue();
+    Assertions.assertThatThrownBy(
+            () ->
+                view.updateProperties()
+                    .set("write.metadata.path", "s3://forbidden-bucket/metadata")
+                    .commit())
+        .isInstanceOf(ForbiddenException.class);
+    Assertions.assertThat(catalog.loadView(TABLE).properties())
+        .containsEntry("write.metadata.path", metadataPath);
+    view.updateProperties().remove("write.metadata.path").commit();
+    ViewMetadata withoutCustomPath = catalog.newViewOps(TABLE, false).current();
+    Assertions.assertThat(withoutCustomPath.metadataFileLocation())
+        .startsWith(LocationUtil.stripTrailingSlash(withoutCustomPath.location()) + "/metadata/");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testViewCustomMetadataLocationRespectsStructuredLocations(boolean legacyView) {
+    Assumptions.assumeTrue(requiresNamespaceCreate());
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false"));
+    catalog.createNamespace(NS);
+    var view =
+        catalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", VIEW_QUERY)
+            .create();
+    if (legacyView) {
+      IcebergTableLikeEntity entity =
+          IcebergTableLikeEntity.of(
+              metaStoreManager
+                  .readEntityByName(
+                      polarisContext,
+                      catalogPath(NS),
+                      PolarisEntityType.TABLE_LIKE,
+                      PolarisEntitySubType.ICEBERG_VIEW,
+                      TABLE.name())
+                  .getEntity());
+      Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
+      internalProperties.remove(IcebergTableLikeEntity.LOCATION);
+      assertThat(
+              metaStoreManager
+                  .updateEntityPropertiesIfNotChanged(
+                      polarisContext,
+                      catalogPath(NS),
+                      new IcebergTableLikeEntity.Builder(entity)
+                          .setBaseLocation(null)
+                          .setInternalProperties(internalProperties)
+                          .build())
+                  .isSuccess())
+          .isTrue();
+    }
+    Assertions.assertThatThrownBy(
+            () ->
+                view.updateProperties()
+                    .set(
+                        "write.metadata.path",
+                        LocationUtil.stripTrailingSlash(view.location()) + "-outside-view")
+                    .commit())
+        .isInstanceOf(ForbiddenException.class);
+    String metadataPath = LocationUtil.stripTrailingSlash(view.location()) + "/custom-metadata";
+    view.updateProperties().set("write.metadata.path", metadataPath).commit();
+    Assertions.assertThat(catalog.newViewOps(TABLE, false).current().metadataFileLocation())
+        .startsWith(metadataPath + "/");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
   public void testViewOperationsDoesNotRefreshAfterCommit(boolean updateMetadataOnCommit) {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),

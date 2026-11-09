@@ -1415,6 +1415,16 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       entityPath.add(
           virtualTableEntity(
               identifier, resolvedPath, tableLocation, resolvedStorageEntity.getRawLeafEntity()));
+    } else {
+      IcebergTableLikeEntity entity =
+          IcebergTableLikeEntity.of(resolvedStorageEntity.getRawLeafEntity());
+      if (entity.getBaseLocation() == null) {
+        // Older views have no stored base location. Apply structured restrictions before their
+        // first commit records it, just as for a newly created view.
+        entityPath.set(
+            entityPath.size() - 1,
+            new IcebergTableLikeEntity.Builder(entity).setBaseLocation(tableLocation).build());
+      }
     }
     CatalogUtils.validateLocationsForTableLike(realmConfig, identifier, locations, entityPath);
   }
@@ -1814,9 +1824,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
-   * Returns the locations used by a sibling entity: its base location and, for an Iceberg table,
-   * its {@code write.data.path} and {@code write.metadata.path}. Credentials vended for a table
-   * cover all of these locations.
+   * Returns the locations used by a sibling entity: its base location and, for Iceberg tables and
+   * views, its custom write paths. Credentials cover all of these locations.
    */
   private static Set<String> getLocationsUsedBySibling(PolarisEntity sibling) {
     String baseLocation =
@@ -1827,7 +1836,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       return Set.of();
     }
     if (sibling.getType() == PolarisEntityType.TABLE_LIKE
-        && sibling.getSubType() == PolarisEntitySubType.ICEBERG_TABLE) {
+        && (sibling.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
+            || sibling.getSubType() == PolarisEntitySubType.ICEBERG_VIEW)) {
       return StorageUtil.getLocationsUsedByTable(
           baseLocation, sibling.getInternalPropertiesAsMap());
     }
@@ -2754,13 +2764,17 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   .getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()))
                   .getRawFullPath()
               : resolvedEntities.getRawParentPath();
-      if (base == null || !metadata.location().equals(base.location())) {
-        // If location is changing then we must validate that the requested location is valid
-        // for the storage configuration inherited under this entity's path.
-        validateLocationForTableLike(identifier, metadata.location(), resolvedStorageEntity);
+      Set<String> requestedLocations = StorageUtil.getLocationsUsedByTable(metadata);
+      validateLocationsForTable(
+          identifier, metadata.location(), requestedLocations, resolvedStorageEntity);
+      if (base == null
+          || !metadata.location().equals(base.location())
+          || !Objects.equal(
+              base.properties().get(ViewProperties.WRITE_METADATA_LOCATION),
+              metadata.properties().get(ViewProperties.WRITE_METADATA_LOCATION))) {
         validateNoLocationsOverlap(
             identifier,
-            Set.of(metadata.location()),
+            requestedLocations,
             resolvedNamespace,
             resolvedStorageEntity.getRawLeafEntity());
       }
@@ -2770,7 +2784,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       viewFileIO =
           loadFileIOForTableLike(
               identifier,
-              StorageUtil.getLocationsUsedByTable(metadata),
+              requestedLocations,
               resolvedStorageEntity,
               tableDefaultProperties,
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));
@@ -2816,6 +2830,20 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   + "because it has been concurrently modified to %s",
               identifier, oldLocation, newLocation, existingLocation);
         }
+        Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
+        internalProperties.put(IcebergTableLikeEntity.LOCATION, metadata.location());
+        internalProperties.remove(
+            IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
+        if (metadata.properties().containsKey(ViewProperties.WRITE_METADATA_LOCATION)) {
+          internalProperties.put(
+              IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+              metadata.properties().get(ViewProperties.WRITE_METADATA_LOCATION));
+        }
+        entity =
+            new IcebergTableLikeEntity.Builder(entity)
+                .setBaseLocation(metadata.location())
+                .setInternalProperties(internalProperties)
+                .build();
         persistenceAttempted = true;
         if (null == existingLocation) {
           createTableLike(identifier, entity, true);
@@ -3199,7 +3227,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedNewParent) {
     Set<String> locations;
     if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
-      // Views do not persist their base location: it only exists in the view metadata.
+      // Read metadata so that views created before locations were persisted are also covered.
       String metadataLocation = entity.getMetadataLocation();
       FileIO fileIO =
           loadFileIOForTableLike(
@@ -3208,7 +3236,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               resolvedEntities,
               new HashMap<>(tableDefaultProperties),
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
-      locations = Set.of(ViewMetadataParser.read(fileIO, metadataLocation).location());
+      locations =
+          StorageUtil.getLocationsUsedByTable(ViewMetadataParser.read(fileIO, metadataLocation));
     } else {
       locations =
           StorageUtil.getLocationsUsedByTable(
