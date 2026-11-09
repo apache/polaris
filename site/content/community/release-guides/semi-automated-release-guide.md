@@ -166,7 +166,11 @@ Then submit a PR against `main` that brings in the changes that the release made
 * the `## [Unreleased]` section, emptied of the entries that moved into the release,
 * the links at the end of the file: the new `[x.y.z]: ...` definition, and the updated `[Unreleased]: ...` link. Without them, the next release fails to update the links, because it expects the `[Unreleased]` link to compare the latest release with `HEAD`.
 
-The PR also deletes the changelog fragments that the release consumed from `changelog.d`. Only delete those fragments: fragments added to `main` after the release branch was created belong to the next release. Do this only once the vote has passed, not for each release candidate.
+These propagation steps assume a release cut from `main`, rather than an independently maintained release line. Delete only fragments whose entries have moved into the release section on `main`; preserve fragments added after branching, and reconcile any fragments edited on `main` since then.
+
+For an independent maintenance release, review propagation separately: consuming a fragment there does not mean that `main` no longer needs it. Preserve notes still needed for `main`'s next release, and do not replace its `[Unreleased]` comparison base with an older maintenance release.
+
+Do this only once the vote has passed, not for each release candidate.
 
 ## Publish the release
 The final workflow to run is [`Release - 4 - Publish Release After Vote Success`](https://github.com/apache/polaris/actions/workflows/release-4-publish-release.yml). This workflow will:
