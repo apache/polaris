@@ -825,8 +825,8 @@ paths:
         Results are paginated. A client follows `nextPageToken` until it is absent. A server
         may return fewer results than `pageSize`, and may paginate even when `pageSize` is not set.
       parameters:
-        - $ref: "#/components/parameters/PageToken"
-        - $ref: "#/components/parameters/PageSize"
+        - $ref: "./polaris-pagination.yaml#/components/parameters/PolarisPageToken"
+        - $ref: "./polaris-pagination.yaml#/components/parameters/PolarisPageSize"
       responses:
         200:
           description: A page of the storage configurations in this catalog
@@ -897,8 +897,8 @@ paths:
         If the caller is not authorized to delete any one of the storage configurations, the call is
         forbidden and nothing is deleted.
       parameters:
-        - $ref: "#/components/parameters/PageToken"
-        - $ref: "#/components/parameters/PageSize"
+        - $ref: "./polaris-pagination.yaml#/components/parameters/PolarisPageToken"
+        - $ref: "./polaris-pagination.yaml#/components/parameters/PolarisPageSize"
         - name: dryRun
           in: query
           required: false
@@ -1004,21 +1004,6 @@ components:
       schema:
         type: string
         pattern: '^(?!orphans$)[a-zA-Z0-9_-]{1,128}$'
-    PageToken:
-      name: pageToken
-      in: query
-      required: false
-      description: The `nextPageToken` of the previous response. Omit it to get the first page.
-      schema:
-        type: string
-    PageSize:
-      name: pageSize
-      in: query
-      required: false
-      description: An upper bound on the number of storage configurations in the response.
-      schema:
-        type: integer
-        minimum: 1
 
   schemas:
     Catalogs:
@@ -1773,8 +1758,7 @@ components:
           items:
             $ref: "#/components/schemas/StorageConfiguration"
         nextPageToken:
-          type: string
-          description: Pass this value as `pageToken` to get the next page. Absent on the last page.
+          $ref: "./polaris-pagination.yaml#/components/schemas/PolarisPageToken"
       required:
         - storageConfigurations
 

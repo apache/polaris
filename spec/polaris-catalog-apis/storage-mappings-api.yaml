@@ -54,8 +54,8 @@ paths:
 
         Results are paginated. A client follows `next-page-token` until it is null or absent.
       parameters:
-        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
-        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
+        - $ref: '../polaris-pagination.yaml#/components/parameters/PolarisPageToken'
+        - $ref: '../polaris-pagination.yaml#/components/parameters/PolarisPageSize'
         - name: namespace
           in: query
           required: false
@@ -275,8 +275,8 @@ paths:
         names the namespaces and tables of those mappings, none of which exist at that moment, even
         if the caller could not otherwise list them.
       parameters:
-        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
-        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
+        - $ref: '../polaris-pagination.yaml#/components/parameters/PolarisPageToken'
+        - $ref: '../polaris-pagination.yaml#/components/parameters/PolarisPageSize'
         - name: namespace
           in: query
           required: false
@@ -544,7 +544,7 @@ components:
         - storage-mappings
       properties:
         next-page-token:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+          $ref: '../polaris-pagination.yaml#/components/schemas/PolarisPageToken'
         storage-mappings:
           type: array
           items:

@@ -2311,8 +2311,8 @@ paths:
 
         Results are paginated. A client follows `next-page-token` until it is null or absent.
       parameters:
-        - $ref: '#/components/parameters/page-token'
-        - $ref: '#/components/parameters/page-size'
+        - $ref: '#/components/parameters/PolarisPageToken'
+        - $ref: '#/components/parameters/PolarisPageSize'
         - name: namespace
           in: query
           required: false
@@ -2521,8 +2521,8 @@ paths:
         names the namespaces and tables of those mappings, none of which exist at that moment, even
         if the caller could not otherwise list them.
       parameters:
-        - $ref: '#/components/parameters/page-token'
-        - $ref: '#/components/parameters/page-size'
+        - $ref: '#/components/parameters/PolarisPageToken'
+        - $ref: '#/components/parameters/PolarisPageSize'
         - name: namespace
           in: query
           required: false
@@ -5688,6 +5688,19 @@ components:
       description: The name of a storage configuration in the catalog. Case sensitive. `orphans` is reserved.
       pattern: ^(?!orphans$)[a-zA-Z0-9_-]{1,128}$
       example: finance
+    PolarisPageToken:
+      description: |
+        An opaque token that continues a list operation. Clients must not interpret it.
+
+        - Any response may be paginated. A client must always check for a page token in the
+          response and, when one is present, send it unchanged as the `pageToken` query parameter
+          to get the next page. The server omits the page token from the last page. A client must
+          treat a missing or `null` page token as the end of the results.
+        - A client does not need to send `pageToken` or `pageSize` to start paginating. The server
+          may paginate a response to a request that has neither.
+        - The server decides the page size. A page may hold fewer results than `pageSize`.
+        - A server that does not paginate returns all results in one response, with no page token.
+      type: string
     StorageMappingTarget:
       type: object
       description: The namespace or table a storage mapping applies to.
@@ -5741,7 +5754,7 @@ components:
         - storage-mappings
       properties:
         next-page-token:
-          $ref: '#/components/schemas/PageToken'
+          $ref: '#/components/schemas/PolarisPageToken'
         storage-mappings:
           type: array
           items:
@@ -6455,6 +6468,23 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/SemanticModelName'
+    PolarisPageToken:
+      name: pageToken
+      in: query
+      required: false
+      description: |
+        The page token from the previous response of the same list operation, sent unchanged. Omit it to get the first page.
+      schema:
+        type: string
+    PolarisPageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: |
+        A hint for the largest number of results the client wants in one page. The server decides the actual page size, which may be smaller.
+      schema:
+        type: integer
+        minimum: 1
     storage-configuration-name:
       name: storage-configuration-name
       in: path
