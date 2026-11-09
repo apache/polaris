@@ -20,9 +20,12 @@ package org.apache.polaris.service.auth.external;
 
 import static org.apache.polaris.service.auth.external.OidcIdentityPreparer.getOidcTenantConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.quarkus.oidc.TokenIntrospection;
+import io.quarkus.oidc.runtime.OidcUtils;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.common.annotation.Identifier;
@@ -141,6 +144,34 @@ class OidcIdentityPreparerTest {
 
     // Then
     assertThat(result.getPrincipal()).isSameAs(oidcPrincipal);
+    assertThat(result.getCredential(PolarisCredential.class))
+        .isEqualTo(PolarisCredential.ofExternal("alice", Set.of("MAPPED_ROLE1")));
+    assertThat(result.getRoles()).containsExactlyInAnyOrder("ROLE1");
+  }
+
+  @Test
+  public void testPrepareIntrospectedPrincipal() {
+    // Given: an opaque token validated through token introspection; the principal is not a JWT
+    when(authConfig.credentialMode()).thenReturn(CredentialMode.EXTERNAL);
+    Principal oidcPrincipal = mock(Principal.class);
+    SecurityIdentity identity =
+        QuarkusSecurityIdentity.builder()
+            .setPrincipal(oidcPrincipal)
+            .addAttribute(
+                OidcUtils.INTROSPECTION_ATTRIBUTE,
+                new TokenIntrospection("{\"active\": true, \"username\": \"alice\"}"))
+            .addRole("ROLE1")
+            .build();
+    when(resolver.resolveConfig(identity)).thenReturn(config);
+    when(principalMapper.mapPrincipalName(any())).thenReturn(Optional.of("alice"));
+    when(principalRolesMapper.mapPrincipalRoles(any())).thenReturn(Set.of("MAPPED_ROLE1"));
+
+    // When
+    SecurityIdentity result = preparer.prepare(identity);
+
+    // Then
+    assertThat(result.getPrincipal()).isSameAs(oidcPrincipal);
+    assertThat(getOidcTenantConfig(result)).isSameAs(config);
     assertThat(result.getCredential(PolarisCredential.class))
         .isEqualTo(PolarisCredential.ofExternal("alice", Set.of("MAPPED_ROLE1")));
     assertThat(result.getRoles()).containsExactlyInAnyOrder("ROLE1");

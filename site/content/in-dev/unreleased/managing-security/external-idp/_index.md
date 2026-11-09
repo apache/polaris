@@ -157,8 +157,8 @@ polaris.oidc.oidc-tenant1.principal-mapper.id-claim-path=polaris/principal_id
 polaris.oidc.oidc-tenant1.principal-mapper.name-claim-path=polaris/principal_name
 ```
 
-{{< alert important >}}
-The default implementation of PrincipalMapper can only work with JWT tokens. If your IDP issues opaque tokens instead, you will need to provide a custom implementation.
+{{< alert note >}}
+The default implementation of PrincipalMapper works with both JWT tokens and opaque tokens. See [Opaque Tokens](#opaque-tokens) below.
 {{< /alert >}}
 
 `polaris.oidc.principal-mapper.id-claim-path` is optional. There is no way to know, ahead of time,
@@ -202,6 +202,40 @@ polaris.oidc.principal-roles-mapper.mappings[0].replacement=PRINCIPAL_ROLE:$1
 ```
 
 See more examples below. 
+
+### Opaque Tokens
+
+Some identity providers issue opaque (non-JWT) access tokens. Quarkus validates opaque tokens by
+calling the [token introspection](https://datatracker.ietf.org/doc/html/rfc7662) endpoint of the
+identity provider. In this case, the Principal Mapping and Role Mapping described above apply to
+the introspection response instead of the JWT claims:
+
+- `polaris.oidc.principal-mapper.id-claim-path` and `polaris.oidc.principal-mapper.name-claim-path`
+  are resolved against the fields of the introspection response, for example `username` or `sub`.
+- Quarkus derives the security roles from the `scope` field of the introspection response
+  (`quarkus.oidc.roles.role-claim-path` is not applied to the introspection response). The
+  `polaris.oidc.principal-roles-mapper.*` properties then apply as usual.
+
+Polaris must authenticate to the introspection endpoint, so the OIDC client credentials are
+usually required. For example:
+
+```properties
+quarkus.oidc.tenant-enabled=true
+quarkus.oidc.auth-server-url=https://auth.example.com/realms/polaris
+quarkus.oidc.client-id=polaris
+quarkus.oidc.credentials.secret=<client secret>
+polaris.oidc.principal-mapper.name-claim-path=username
+```
+
+Opaque token introspection is enabled by default in Quarkus; it can be disabled with
+`quarkus.oidc.token.allow-opaque-token-introspection=false`.
+
+{{< alert note >}}
+By default, every request authenticated with an opaque token triggers a call to the introspection
+endpoint. Enabling the Quarkus token cache (`quarkus.oidc.token-cache.max-size`, disabled by
+default) reduces the load on the identity provider, at the cost of revoked tokens being accepted
+until their cache entry expires (`quarkus.oidc.token-cache.time-to-live`).
+{{< /alert >}}
 
 ### External Principals
 

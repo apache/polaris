@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.auth.external;
 
+import io.quarkus.oidc.runtime.OidcUtils;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.common.annotation.Identifier;
@@ -37,7 +38,7 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 
 /**
  * Prepares an OIDC {@link SecurityIdentity} for authentication by resolving the OIDC tenant
- * configuration and mapping JWT claims to a {@link PolarisCredential}.
+ * configuration and mapping the token claims to a {@link PolarisCredential}.
  *
  * <p>This bean consolidates the OIDC-specific preparation that must happen before {@link
  * org.apache.polaris.service.auth.Authenticator} is invoked. It:
@@ -48,7 +49,8 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
  *       org.apache.polaris.service.auth.external.mapping.PrincipalMapper} and {@link
  *       org.apache.polaris.service.auth.external.mapping.PrincipalRolesMapper} implementations can
  *       access it.
- *   <li>Maps the JWT claims to a {@link PolarisCredential} and adds it to the identity.
+ *   <li>Maps the token claims (JWT claims or token introspection response) to a {@link
+ *       PolarisCredential} and adds it to the identity.
  * </ol>
  *
  * @see org.apache.polaris.service.auth.PolarisSecurityIdentityAugmentor
@@ -82,11 +84,13 @@ public class OidcIdentityPreparer {
 
   /**
    * Prepares the given identity for authentication. For OIDC identities (where the principal is a
-   * {@link JsonWebToken}), resolves the tenant configuration and maps JWT claims to a {@link
+   * {@link JsonWebToken}, or where the token was validated through token introspection, e.g. opaque
+   * tokens), resolves the tenant configuration and maps the token claims to a {@link
    * PolarisCredential}. Non-OIDC identities are returned unchanged.
    */
   public SecurityIdentity prepare(SecurityIdentity identity) {
-    if (!(identity.getPrincipal() instanceof JsonWebToken)) {
+    if (!(identity.getPrincipal() instanceof JsonWebToken)
+        && identity.getAttribute(OidcUtils.INTROSPECTION_ATTRIBUTE) == null) {
       return identity;
     }
     OidcTenantConfiguration config = resolver.resolveConfig(identity);

@@ -20,8 +20,8 @@ package org.apache.polaris.service.auth.external.mapping;
 
 import static org.apache.polaris.service.auth.external.OidcIdentityPreparer.TENANT_CONFIG_ATTRIBUTE;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -63,7 +63,7 @@ class DefaultPrincipalMapperTest {
   @ParameterizedTest
   @MethodSource
   public void mapPrincipalId(Object claim, long expected) {
-    when(claimsLocator.locateClaim(eq("id_path"), any())).thenReturn(claim);
+    when(claimsLocator.locateClaim(eq("id_path"), same(identity))).thenReturn(claim);
     long result = mapper.mapPrincipalId(identity).orElse(-1);
     assertThat(result).isEqualTo(expected);
   }
@@ -75,7 +75,7 @@ class DefaultPrincipalMapperTest {
   @ParameterizedTest
   @MethodSource
   public void mapPrincipalName(Object claim, String expected) {
-    when(claimsLocator.locateClaim(eq("name_path"), any())).thenReturn(claim);
+    when(claimsLocator.locateClaim(eq("name_path"), same(identity))).thenReturn(claim);
     String result = mapper.mapPrincipalName(identity).orElse(null);
     assertThat(result).isEqualTo(expected);
   }

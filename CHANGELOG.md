@@ -41,6 +41,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   are not compatible with internal authentication and internal authorization; you must configure an
   external IDP and an external PDP, such as OPA or Ranger.
 
+- External authentication now supports opaque (non-JWT) access tokens. Quarkus validates opaque
+  tokens through the token introspection endpoint of the identity provider, and the default
+  principal mapper now resolves `polaris.oidc.principal-mapper.*` claim paths against the
+  introspection response. Roles are derived from the `scope` field of the introspection response.
+
 - S3 storage configurations gain an optional string field, `credentialVendingMechanism`. A catalog
   that leaves it empty uses the server's default mechanism, STS AssumeRole, and management API
   responses omit the field for it; `STS` selects the same mechanism explicitly and is the only value
@@ -53,6 +58,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   with "S3 credential vending mechanism `<id>` is not available in this server".
 
 ### Upgrade notes
+
+- Custom `PrincipalMapper` and `PrincipalRolesMapper` implementations are now also invoked for
+  identities authenticated with opaque tokens, whose principal is not a `JsonWebToken`. Such
+  identities expose the token introspection response as a `TokenIntrospection` in the
+  `introspection` identity attribute. Implementations that cast the principal to `JsonWebToken`
+  must handle this case.
 
 - `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists the explicit mechanisms a realm accepts; an empty
   `credentialVendingMechanism` is always allowed. Startup reports a listed mechanism with no

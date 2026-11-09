@@ -56,7 +56,7 @@ See [Token Broker description]({{< relref "../external-idp#token-broker" >}}) fo
 ### External Authentication
 
 1. `OidcAuthenticationMechanism` (Quarkus) processes the auth header.
-2. [`PolarisSecurityIdentityAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/PolarisSecurityIdentityAugmentor.java) delegates to [`OidcIdentityPreparer`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/external/OidcIdentityPreparer.java), which resolves the OIDC tenant and extracts JWT claims into a `PolarisCredential`.
+2. [`PolarisSecurityIdentityAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/PolarisSecurityIdentityAugmentor.java) delegates to [`OidcIdentityPreparer`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/external/OidcIdentityPreparer.java), which resolves the OIDC tenant and extracts the token claims (JWT claims, or the token introspection response for opaque tokens) into a `PolarisCredential`.
 3. `PolarisSecurityIdentityAugmentor` then invokes `Authenticator.authenticate()`, which validates the claims, resolves the principal and principal roles, then creates the `PolarisPrincipal`.
 
 When [external principals]({{< relref "../external-idp#external-principals" >}}) are enabled for
