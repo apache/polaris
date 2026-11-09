@@ -22,10 +22,15 @@ import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.A_CA
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.A_ENTITY_VERSION;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.A_GRANT_RECORDS_VERSION;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.A_ID;
+import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.GSI1;
+import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.GSI1_PK;
+import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.GSI1_SK;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.PK;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK_ENTITY;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK_NAME;
+import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.childrenGsiPk;
+import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.childrenGsiSk;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.entityPk;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.sentinelPk;
 import static org.apache.polaris.persistence.atomic.dynamodb.TransactionFailures.conditionFailedAt;
@@ -37,8 +42,11 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.EventEntity;
@@ -52,6 +60,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.persistence.atomic.dynamodb.models.EntityItem;
@@ -65,6 +74,8 @@ import software.amazon.awssdk.services.dynamodb.model.Delete;
 import software.amazon.awssdk.services.dynamodb.model.Get;
 import software.amazon.awssdk.services.dynamodb.model.ItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.Put;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.TransactGetItem;
 import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
 import software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException;
@@ -86,7 +97,11 @@ import software.amazon.awssdk.services.dynamodb.model.TransactionConflictExcepti
  *   <li>Multi-entity lookups read with {@code TransactGetItems}, so they see one snapshot.
  * </ul>
  *
- * <p>This class currently covers entity writes and lookups. Listing, multi-entity writes, grant
+ * <p>Listing queries the children index ({@link DynamoDbLayout#GSI1}) in id order and pages with
+ * {@link EntityIdToken}, as {@code relational-jdbc} does. The index is eventually consistent, so
+ * listing is the one read that can briefly miss a just-written child.
+ *
+ * <p>This class currently covers entity writes, lookups and listing. Multi-entity writes, grant
  * records and realm teardown throw {@link UnsupportedOperationException} until they are
  * implemented.
  */
@@ -322,6 +337,118 @@ public class DynamoDbBasePersistence implements BasePersistence {
     return versions == null ? 0 : versions.grantRecordsVersion();
   }
 
+  // ---- Listing ---------------------------------------------------------------------------------
+
+  @Override
+  public @NonNull Page<EntityNameLookupRecord> listEntities(
+      @NonNull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull PageToken pageToken) {
+    // One more than the page size, so the page can still tell whether a next page exists.
+    OptionalInt pageSize = pageToken.pageSize();
+    Integer queryLimit =
+        pageSize.isPresent() && pageSize.getAsInt() < Integer.MAX_VALUE
+            ? pageSize.getAsInt() + 1
+            : null;
+    Stream<PolarisBaseEntity> children =
+        queryChildren(catalogId, parentId, entityType, entitySubType, pageToken, queryLimit);
+    return Page.mapped(pageToken, children, EntityNameLookupRecord::new, EntityIdToken::fromEntity);
+  }
+
+  @Override
+  public @NonNull <T> Page<T> listFullEntities(
+      @NonNull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull Predicate<PolarisBaseEntity> entityFilter,
+      @NonNull Function<PolarisBaseEntity, T> transformer,
+      PageToken pageToken) {
+    // No query limit: entityFilter runs after the read, so a limit could under-fill the page.
+    Stream<PolarisBaseEntity> children =
+        queryChildren(catalogId, parentId, entityType, entitySubType, pageToken, null)
+            .filter(entityFilter);
+    return Page.mapped(pageToken, children, transformer, EntityIdToken::fromEntity);
+  }
+
+  @Override
+  public boolean hasChildren(
+      @NonNull PolarisCallContext callContext,
+      @Nullable PolarisEntityType optionalEntityType,
+      long catalogId,
+      long parentId) {
+    // The children index is partitioned by type, so "any type" checks each type in turn.
+    List<PolarisEntityType> types =
+        optionalEntityType == null
+            ? List.of(PolarisEntityType.values())
+            : List.of(optionalEntityType);
+    for (PolarisEntityType type : types) {
+      QueryResponse response =
+          client.query(
+              b ->
+                  b.tableName(tableName)
+                      .indexName(GSI1)
+                      .keyConditionExpression("#pk = :pk")
+                      .expressionAttributeNames(Map.of("#pk", GSI1_PK))
+                      .expressionAttributeValues(
+                          Map.of(
+                              ":pk",
+                              AttributeValue.fromS(
+                                  childrenGsiPk(realmId, catalogId, parentId, type.getCode()))))
+                      .limit(1));
+      if (response.count() > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Streams a parent's children of one type from the children index, in id order. When the token
+   * requests pagination and carries an {@link EntityIdToken}, the stream starts after that id, as
+   * in {@code relational-jdbc}. Pages of the index are read lazily as the stream is consumed. The
+   * index is eventually consistent, so a just-written child may be missing for a moment.
+   */
+  private Stream<PolarisBaseEntity> queryChildren(
+      long catalogId,
+      long parentId,
+      PolarisEntityType entityType,
+      PolarisEntitySubType entitySubType,
+      PageToken pageToken,
+      @Nullable Integer queryLimit) {
+    Map<String, AttributeValue> values = new HashMap<>();
+    values.put(
+        ":pk",
+        AttributeValue.fromS(childrenGsiPk(realmId, catalogId, parentId, entityType.getCode())));
+    String keyCondition = "#pk = :pk";
+    Optional<EntityIdToken> after =
+        pageToken.paginationRequested() ? pageToken.valueAs(EntityIdToken.class) : Optional.empty();
+    if (after.isPresent()) {
+      keyCondition += " AND #sk > :sk";
+      values.put(":sk", AttributeValue.fromS(childrenGsiSk(after.get().entityId())));
+    }
+    QueryRequest request =
+        QueryRequest.builder()
+            .tableName(tableName)
+            .indexName(GSI1)
+            .keyConditionExpression(keyCondition)
+            .expressionAttributeNames(
+                after.isPresent() ? Map.of("#pk", GSI1_PK, "#sk", GSI1_SK) : Map.of("#pk", GSI1_PK))
+            .expressionAttributeValues(values)
+            .limit(queryLimit)
+            .build();
+    Stream<PolarisBaseEntity> children =
+        client.queryPaginator(request).items().stream().map(EntityItem::toEntity);
+    if (entitySubType == PolarisEntitySubType.ANY_SUBTYPE) {
+      return children;
+    }
+    return children.filter(e -> e.getSubTypeCode() == entitySubType.getCode());
+  }
+
   // ---- Not yet implemented ---------------------------------------------------------------------
 
   @Override
@@ -364,30 +491,6 @@ public class DynamoDbBasePersistence implements BasePersistence {
   }
 
   @Override
-  public @NonNull Page<EntityNameLookupRecord> listEntities(
-      @NonNull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @NonNull PolarisEntityType entityType,
-      @NonNull PolarisEntitySubType entitySubType,
-      @NonNull PageToken pageToken) {
-    throw notYetImplemented("listEntities");
-  }
-
-  @Override
-  public @NonNull <T> Page<T> listFullEntities(
-      @NonNull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @NonNull PolarisEntityType entityType,
-      @NonNull PolarisEntitySubType entitySubType,
-      @NonNull Predicate<PolarisBaseEntity> entityFilter,
-      @NonNull Function<PolarisBaseEntity, T> transformer,
-      PageToken pageToken) {
-    throw notYetImplemented("listFullEntities");
-  }
-
-  @Override
   public @Nullable PolarisGrantRecord lookupGrantRecord(
       @NonNull PolarisCallContext callCtx,
       long securableCatalogId,
@@ -408,15 +511,6 @@ public class DynamoDbBasePersistence implements BasePersistence {
   public @NonNull List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
       @NonNull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     throw notYetImplemented("loadAllGrantRecordsOnGrantee");
-  }
-
-  @Override
-  public boolean hasChildren(
-      @NonNull PolarisCallContext callContext,
-      @Nullable PolarisEntityType optionalEntityType,
-      long catalogId,
-      long parentId) {
-    throw notYetImplemented("hasChildren");
   }
 
   // ---- Helpers ---------------------------------------------------------------------------------
