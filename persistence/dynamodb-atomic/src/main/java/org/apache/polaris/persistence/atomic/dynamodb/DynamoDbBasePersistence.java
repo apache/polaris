@@ -367,7 +367,7 @@ public class DynamoDbBasePersistence implements BasePersistence {
       @NonNull PolarisEntitySubType entitySubType,
       @NonNull Predicate<PolarisBaseEntity> entityFilter,
       @NonNull Function<PolarisBaseEntity, T> transformer,
-      PageToken pageToken) {
+      @NonNull PageToken pageToken) {
     // No query limit: entityFilter runs after the read, so a limit could under-fill the page.
     Stream<PolarisBaseEntity> children =
         queryChildren(catalogId, parentId, entityType, entitySubType, pageToken, null)
