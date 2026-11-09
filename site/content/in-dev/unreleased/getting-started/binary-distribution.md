@@ -62,7 +62,7 @@ The binary distribution includes one configuration file for each component:
 
 All the properties in these files are commented out, so both components use their default
 configuration. To change a setting, uncomment the property and edit its value, then restart the
-server.
+server or re-run the admin tool.
 
 Each release extracts to a new directory, so changes made to these files are not carried over when
 you upgrade. To keep your configuration across upgrades, store it in a file outside the
