@@ -20,6 +20,7 @@
 package changelog
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
@@ -97,5 +98,42 @@ abstract class MergeChangelogFragmentsTask : DefaultTask() {
         releaseVersion.orNull,
       )
     logger.lifecycle("Merged ${consumed.size} changelog fragment(s) into CHANGELOG.md")
+  }
+}
+
+/**
+ * Merges the changelog fragments into the changelog file, and turns its Unreleased section into the
+ * section of the new release, see [ChangelogFragments.promote].
+ */
+@UntrackedTask(
+  because =
+    "Rewrites its own input (the changelog file) and deletes the fragments it consumes, so it must " +
+      "never be considered up to date or restored from the build cache",
+)
+abstract class ReleaseChangelogTask : DefaultTask() {
+
+  @get:Internal abstract val fragmentsDirectory: DirectoryProperty
+
+  @get:Internal abstract val changelogFile: RegularFileProperty
+
+  /** The version of the new release. */
+  @get:Internal
+  @get:Option(option = "release-version", description = "The version of the new release")
+  abstract val releaseVersion: Property<String>
+
+  @TaskAction
+  fun release() {
+    val version =
+      releaseVersion.orNull ?: throw GradleException("The release version option is required")
+    val consumed =
+      ChangelogFragments.merge(
+        fragmentsDirectory.get().asFile,
+        changelogFile.get().asFile,
+        version,
+        release = true,
+      )
+    logger.lifecycle(
+      "Created the CHANGELOG.md section of $version, with ${consumed.size} changelog fragment(s)",
+    )
   }
 }

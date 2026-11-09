@@ -160,18 +160,17 @@ and commit/push the version bump:
 git commit -m "Bump version to x.y.z" version.txt helm/polaris/Chart.yaml helm/polaris/README.md helm/polaris/values.yaml helm/polaris/values.schema.json
 ```
 
-Merge the changelog fragments from `changelog.d` into `CHANGELOG.md`, then update `CHANGELOG.md`.
-The two Gradle commands must be run separately:
+Merge the changelog fragments from `changelog.d` into `CHANGELOG.md`, and turn its Unreleased section
+into the one of the release:
 ```
-./gradlew mergeChangelogFragments
-./gradlew patchChangelog
+./gradlew releaseChangelog --release-version=x.y.z
 git add CHANGELOG.md changelog.d
 git commit -m "Update CHANGELOG for x.y.z release"
 git push
 ```
 
 If more changes are cherry-picked for the next RC, and those changes introduce changelog fragments,
-merge the fragments into the existing section of the release, instead of running `patchChangelog`
+merge the fragments into the existing section of the release, instead of running `releaseChangelog`
 again:
 ```
 ./gradlew mergeChangelogFragments --release-version=x.y.z

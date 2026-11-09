@@ -19,6 +19,7 @@
 
 import changelog.CheckChangelogFragmentsTask
 import changelog.MergeChangelogFragmentsTask
+import changelog.ReleaseChangelogTask
 import java.net.URI
 import org.nosphere.apache.rat.RatTask
 
@@ -29,7 +30,6 @@ plugins {
   id("eclipse")
   id("polaris-root")
   alias(libs.plugins.rat)
-  alias(libs.plugins.jetbrains.changelog)
 }
 
 val projectName = rootProject.file("ide-name.txt").readText().trim()
@@ -248,26 +248,6 @@ copiedCodeChecks {
   }
 }
 
-changelog {
-  repositoryUrl.set("https://github.com/apache/polaris")
-  title.set("Apache Polaris Changelog")
-  versionPrefix.set("apache-polaris-")
-  header.set(provider { "${version.get()}" })
-  groups.set(
-    listOf(
-      "Highlights",
-      "Upgrade notes",
-      "Breaking changes",
-      "New Features",
-      "Changes",
-      "Deprecations",
-      "Fixes",
-      "Commits",
-    ),
-  )
-  version.set(provider { project.version.toString() })
-}
-
 // Changelog fragments, see changelog.d/README.md
 val checkChangelogFragments =
   tasks.register<CheckChangelogFragmentsTask>("checkChangelogFragments") {
@@ -279,11 +259,20 @@ val checkChangelogFragments =
 
 tasks.named("check") { dependsOn(checkChangelogFragments) }
 
-// Must run in a separate Gradle invocation before patchChangelog, which reads CHANGELOG.md during
-// configuration when the configuration cache is enabled.
+tasks.register<ReleaseChangelogTask>("releaseChangelog") {
+  group = "changelog"
+  description =
+    "Merges the changelog fragments in changelog.d into CHANGELOG.md, deletes them, and turns " +
+      "the Unreleased section into the one of the release given by --release-version"
+  fragmentsDirectory = layout.projectDirectory.dir("changelog.d")
+  changelogFile = layout.projectDirectory.file("CHANGELOG.md")
+}
+
 tasks.register<MergeChangelogFragmentsTask>("mergeChangelogFragments") {
   group = "changelog"
-  description = "Merges the changelog fragments in changelog.d into CHANGELOG.md and deletes them"
+  description =
+    "Merges the changelog fragments in changelog.d into CHANGELOG.md and deletes them, into the " +
+      "Unreleased section, or the one of the release given by --release-version"
   fragmentsDirectory = layout.projectDirectory.dir("changelog.d")
   changelogFile = layout.projectDirectory.file("CHANGELOG.md")
 }

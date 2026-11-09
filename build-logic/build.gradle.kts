@@ -55,11 +55,6 @@ testing {
           // The fixture projects use the task classes of this project
           dependsOn(tasks.jar)
           systemProperty("build-logic.jar", tasks.jar.get().archiveFile.get().asFile.absolutePath)
-          // The tests apply the same version of the changelog plugin as the root build
-          systemProperty(
-            "libs.versions.toml",
-            layout.projectDirectory.file("../gradle/libs.versions.toml").asFile.absolutePath,
-          )
         }
       }
     }

@@ -52,6 +52,8 @@ object ChangelogFragments {
 
   private val FRAGMENT_NAME = Regex("[a-z0-9][a-z0-9-]*\\.md")
   private val HEADING = Regex("^#{1,6}(\\s|$)")
+  private val VERSION = Regex("[0-9]+\\.[0-9]+\\.[0-9]+(-[A-Za-z0-9.]+)?")
+  private val RELEASE_HEADING = Regex("## \\[(.+)]")
   private val LINK_REFERENCE = Regex("\\[[^]]+]:.*")
 
   /** Lists the files of a directory, ignoring hidden files like `.DS_Store`, which Git ignores. */
@@ -194,6 +196,9 @@ object ChangelogFragments {
    * branch after the changelog section of that version was created, i.e. for later release
    * candidates.
    *
+   * With [release], [version] is a new release: the Unreleased section is then turned into the
+   * section of that version, see [promote], instead of the section of that version being updated.
+   *
    * Invalid fragments and missing headings are reported before the changelog is written. Deletion
    * is also pre-checked for obvious problems (for example, when a fragment directory is not
    * writable).
@@ -207,12 +212,17 @@ object ChangelogFragments {
     directory: File,
     changelog: File,
     version: String? = null,
+    release: Boolean = false,
     delete: (File) -> Unit = { Files.delete(it.toPath()) },
   ): List<File> {
+    val newRelease = if (release) requireNotNull(version) { "A release needs a version" } else null
     val fragments = collect(directory)
     val consumed = fragments.map { it.file }
     val lines = changelog.readLines()
-    val merged = appendFragments(lines, fragments, version)
+    val merged =
+      appendFragments(lines, fragments, if (release) null else version).let {
+        if (newRelease != null) promote(it, newRelease) else it
+      }
 
     val undeletable = consumed.filter { !Files.isWritable(it.parentFile.toPath()) }
     if (undeletable.isNotEmpty()) {
@@ -244,6 +254,87 @@ object ChangelogFragments {
       )
     }
     return consumed
+  }
+
+  /**
+   * Turns the Unreleased section into the section of the new release [version]: a new, empty
+   * Unreleased section is added before it, the subsections that have no entries are removed from
+   * it, and the links at the end of the file are updated. Everything else is kept as it is.
+   *
+   * The links are the `[Unreleased]` one, which compares the previous release, the first one after
+   * the Unreleased section, with `HEAD`, and one for each release, which compares it with its
+   * previous one. The repository and the prefix of the tags are taken from the `[Unreleased]` link.
+   */
+  internal fun promote(changelog: List<String>, version: String): List<String> {
+    if (!VERSION.matches(version)) {
+      throw GradleException("'$version' is not a release version like 1.2.3")
+    }
+    val unreleased = changelog.indexOf("## [Unreleased]")
+    if (unreleased < 0) throw GradleException("Section '## [Unreleased]' not found")
+    if ("## [$version]" in changelog) {
+      throw GradleException(
+        "Section '## [$version]' already exists, fragments for a later release candidate are " +
+          "merged into it with the release version option of the merge task",
+      )
+    }
+    val end =
+      (unreleased + 1 until changelog.size).firstOrNull { changelog[it].startsWith("## ") }
+        ?: throw GradleException("No section of a previous release found after '## [Unreleased]'")
+    val previous =
+      RELEASE_HEADING.matchEntire(changelog[end])?.groupValues?.get(1)
+        ?: throw GradleException("Cannot find the previous release in '${changelog[end]}'")
+
+    val skeleton =
+      listOf("## [Unreleased]", "") + (SECTIONS + "Commits").flatMap { listOf("### $it", "") }
+    val promoted = buildList {
+      addAll(changelog.subList(0, unreleased))
+      addAll(skeleton)
+      add("## [$version]")
+      addAll(this@ChangelogFragments.removeEmptySubsections(changelog.subList(unreleased + 1, end)))
+      addAll(changelog.subList(end, changelog.size))
+    }
+    return updateLinks(promoted, version, previous)
+  }
+
+  private fun removeEmptySubsections(section: List<String>): List<String> {
+    val result = mutableListOf<String>()
+    var i = 0
+    while (i < section.size) {
+      if (section[i].startsWith("### ")) {
+        var next = i + 1
+        while (next < section.size && !section[next].startsWith("### ")) next++
+        if (section.subList(i + 1, next).all { it.isBlank() }) {
+          i = next
+          continue
+        }
+      }
+      result.add(section[i++])
+    }
+    if (result.isNotEmpty() && result.last().isNotBlank()) result.add("")
+    return result
+  }
+
+  private fun updateLinks(
+    changelog: List<String>,
+    version: String,
+    previous: String,
+  ): List<String> {
+    val index = changelog.indexOfFirst { it.startsWith("[Unreleased]: ") }
+    val match =
+      Regex("\\[Unreleased]: (.+)/compare/(.*?)${Regex.escape(previous)}\\.\\.\\.HEAD")
+        .matchEntire(changelog.getOrElse(index) { "" })
+        ?: throw GradleException(
+          "Cannot update the links at the end of the file, expected " +
+            "'[Unreleased]: <repository URL>/compare/<tag prefix>$previous...HEAD'",
+        )
+    val (repository, prefix) = match.destructured
+    val result = changelog.toMutableList()
+    result[index] = "[Unreleased]: $repository/compare/$prefix$version...HEAD"
+    result.add(
+      index + 1,
+      "[$version]: $repository/compare/$prefix$previous...$prefix$version",
+    )
+    return result
   }
 
   internal fun appendFragments(

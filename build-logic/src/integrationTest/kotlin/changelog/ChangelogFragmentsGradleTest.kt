@@ -30,7 +30,7 @@ import org.junit.jupiter.api.io.TempDir
 
 /**
  * Runs real Gradle builds on a fixture project that wires the changelog fragments tasks like the
- * root build does, together with the same `org.jetbrains.changelog` plugin.
+ * root build does.
  */
 class ChangelogFragmentsGradleTest {
 
@@ -41,11 +41,6 @@ class ChangelogFragmentsGradleTest {
 
   @BeforeEach
   fun setUp() {
-    val pluginVersion =
-      Regex("""jetbrains-changelog\s*=\s*\{[^}]*version\s*=\s*"([^"]+)"""")
-        .find(File(System.getProperty("libs.versions.toml")).readText())!!
-        .groupValues[1]
-
     val buildLogicJar = File(System.getProperty("build-logic.jar")).invariantSeparatorsPath
 
     // The build cache directory is local to the fixture, to not share it with other builds
@@ -57,32 +52,24 @@ class ChangelogFragmentsGradleTest {
         """
           .trimIndent(),
       )
-    // Keep the changelog configuration and the tasks in sync with the root build.gradle.kts
+    // Keep the tasks in sync with the root build.gradle.kts
     File(project, "build.gradle.kts")
       .writeText(
         """
         import changelog.CheckChangelogFragmentsTask
         import changelog.MergeChangelogFragmentsTask
+        import changelog.ReleaseChangelogTask
 
         buildscript { dependencies { classpath(files("$buildLogicJar")) } }
-
-        plugins { id("org.jetbrains.changelog") version "$pluginVersion" }
-
-        version = "1.1.0"
-
-        changelog {
-          repositoryUrl.set("https://github.com/apache/polaris")
-          title.set("Apache Polaris Changelog")
-          versionPrefix.set("apache-polaris-")
-          header.set(provider { "${'$'}{version.get()}" })
-          groups.set(listOf("Highlights", "Upgrade notes", "Breaking changes", "New Features",
-            "Changes", "Deprecations", "Fixes", "Commits"))
-          version.set(provider { project.version.toString() })
-        }
 
         tasks.register<CheckChangelogFragmentsTask>("checkChangelogFragments") {
           fragmentsDirectory = layout.projectDirectory.dir("changelog.d")
           successMarker = layout.buildDirectory.file("changelog-fragments-check/success")
+        }
+
+        tasks.register<ReleaseChangelogTask>("releaseChangelog") {
+          fragmentsDirectory = layout.projectDirectory.dir("changelog.d")
+          changelogFile = layout.projectDirectory.file("CHANGELOG.md")
         }
 
         tasks.register<MergeChangelogFragmentsTask>("mergeChangelogFragments") {
@@ -121,6 +108,9 @@ class ChangelogFragmentsGradleTest {
       ### Fixes
 
       - Old fix.
+
+      [Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.0.0...HEAD
+      [1.0.0]: https://github.com/apache/polaris/compare/apache-polaris-0.9.0...apache-polaris-1.0.0
       """
         .trimIndent() + "\n",
     )
@@ -160,12 +150,11 @@ class ChangelogFragmentsGradleTest {
     File(project, "changelog.d").walkTopDown().filter { it.isFile }.map { it.name }.toSet()
 
   @Test
-  fun mergeThenPatchChangelogProducesTheReleaseSection() {
+  fun releaseChangelogProducesTheReleaseSection() {
     fragment("new-fix.md", "Fixes" to "New fix.")
     fragment("feature.md", "New Features" to "New feature.", "Upgrade notes" to "New note.")
 
-    run("mergeChangelogFragments")
-    run("patchChangelog")
+    run("releaseChangelog", "--release-version=1.1.0")
 
     assertThat(section("## [1.1.0]"))
       .contains("### New Features", "- New feature.")
@@ -173,14 +162,18 @@ class ChangelogFragmentsGradleTest {
       .contains("### Upgrade notes", "- New note.")
     assertThat(section("## [Unreleased]")).doesNotContain("New fix.", "Existing fix.")
     assertThat(section("## [1.0.0]")).contains("- Old fix.").doesNotContain("New fix.")
+    assertThat(changelog.readText())
+      .contains(
+        "[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.1.0...HEAD\n" +
+          "[1.1.0]: https://github.com/apache/polaris/compare/apache-polaris-1.0.0...apache-polaris-1.1.0\n",
+      )
     assertThat(fragmentFiles()).isEmpty()
   }
 
   @Test
   fun laterReleaseCandidateFragmentsGoIntoTheExistingReleaseSection() {
     fragment("new-fix.md", "Fixes" to "New fix.")
-    run("mergeChangelogFragments")
-    run("patchChangelog")
+    run("releaseChangelog", "--release-version=1.1.0")
 
     fragment("rc1.md", "Fixes" to "RC1 fix.", "Deprecations" to "RC1 deprecation.")
     run("mergeChangelogFragments", "--release-version=1.1.0")
@@ -190,6 +183,29 @@ class ChangelogFragmentsGradleTest {
       .contains("- RC1 deprecation.")
     assertThat(section("## [Unreleased]")).doesNotContain("RC1")
     assertThat(fragmentFiles()).isEmpty()
+  }
+
+  @Test
+  fun releaseChangelogRequiresAVersionThatDoesNotExistYetAndIsNeverUpToDate() {
+    fragment("new-fix.md", "Fixes" to "New fix.")
+
+    val withoutVersion = runner(false, "releaseChangelog").buildAndFail()
+    assertThat(withoutVersion.output).contains("The release version option is required")
+    assertThat(changelog.readText()).doesNotContain("## [1.1.0]")
+
+    assertThat(
+        run("releaseChangelog", "--release-version=1.1.0").task(":releaseChangelog")?.outcome,
+      )
+      .isEqualTo(TaskOutcome.SUCCESS)
+    val afterRelease = changelog.readText()
+
+    // Running it again is not up to date, and the release exists now: it fails and changes nothing
+    fragment("other-fix.md", "Fixes" to "Other fix.")
+    val again = runner(false, "releaseChangelog", "--release-version=1.1.0").buildAndFail()
+    assertThat(again.task(":releaseChangelog")?.outcome).isEqualTo(TaskOutcome.FAILED)
+    assertThat(again.output).contains("Section '## [1.1.0]' already exists")
+    assertThat(changelog.readText()).isEqualTo(afterRelease)
+    assertThat(fragmentFiles()).containsExactly("other-fix.md")
   }
 
   @Test

@@ -34,6 +34,7 @@ import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.Arguments.arguments
+import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.MethodSource
 
 class ChangelogFragmentsTest {
@@ -625,5 +626,263 @@ class ChangelogFragmentsTest {
     ChangelogFragments.merge(fragments, changelog)
 
     assertThat(changelog.readText()).contains("- Existing fix.\n- Fix.\n")
+  }
+
+  private val toRelease =
+    """
+    # Changelog
+
+    ## [Unreleased]
+
+    ### Highlights
+
+    ### Upgrade notes
+
+    - Existing note.
+
+    [Link]: https://example.com
+
+    ### Deprecations
+
+    ### Fixes
+
+    - Existing fix.
+
+    ### Commits
+
+    ## [1.0.0]
+
+    ### Fixes
+
+    - Old fix.
+
+    [Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.0.0...HEAD
+    [1.0.0]: https://github.com/apache/polaris/compare/apache-polaris-0.9.0...apache-polaris-1.0.0
+    """
+      .trimIndent() + "\n"
+
+  @Test
+  fun releaseTurnsUnreleasedIntoTheReleaseWithTheEntriesOfTheFragments() {
+    changelog.writeText(toRelease)
+    fragment("fix.md", "Fixes", "New fix.")
+    fragment("highlight.md", "Highlights", "New highlight.")
+
+    val consumed = ChangelogFragments.merge(fragments, changelog, "1.1.0", release = true)
+
+    assertThat(consumed.map { it.name }).containsExactlyInAnyOrder("fix.md", "highlight.md")
+    assertThat(fragmentFiles()).containsExactly("README.md")
+    assertThat(changelog.readText())
+      .isEqualTo(
+        """
+        # Changelog
+
+        ## [Unreleased]
+
+        ### Highlights
+
+        ### Upgrade notes
+
+        ### Breaking changes
+
+        ### New Features
+
+        ### Changes
+
+        ### Deprecations
+
+        ### Fixes
+
+        ### Commits
+
+        ## [1.1.0]
+
+        ### Highlights
+
+        - New highlight.
+
+        ### Upgrade notes
+
+        - Existing note.
+
+        [Link]: https://example.com
+
+        ### Fixes
+
+        - Existing fix.
+        - New fix.
+
+        ## [1.0.0]
+
+        ### Fixes
+
+        - Old fix.
+
+        [Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.1.0...HEAD
+        [1.1.0]: https://github.com/apache/polaris/compare/apache-polaris-1.0.0...apache-polaris-1.1.0
+        [1.0.0]: https://github.com/apache/polaris/compare/apache-polaris-0.9.0...apache-polaris-1.0.0
+        """
+          .trimIndent() + "\n",
+      )
+  }
+
+  @Test
+  fun promoteKeepsTheFormattingAndOnlyRemovesEmptySubsections() {
+    val before =
+      """
+      ## [Unreleased]
+
+      ### Highlights
+      - First item, right under the heading.
+
+      - Second item,
+        wrapped.
+
+      ### Upgrade notes
+
+      ### Fixes
+
+      - A fix.
+
+      [Inline link]: https://example.com/inline
+
+      ### Commits
+
+      ## [1.0.0]
+
+      [Unreleased]: https://example.com/compare/v1.0.0...HEAD
+      """
+        .trimIndent()
+
+    val promoted = ChangelogFragments.promote(before.lines(), "1.1.0").joinToString("\n")
+
+    assertThat(promoted)
+      .contains(
+        """
+        ## [1.1.0]
+
+        ### Highlights
+        - First item, right under the heading.
+
+        - Second item,
+          wrapped.
+
+        ### Fixes
+
+        - A fix.
+
+        [Inline link]: https://example.com/inline
+
+        ## [1.0.0]
+        """
+          .trimIndent(),
+      )
+    assertThat(promoted.substringAfter("## [1.1.0]")).doesNotContain("Upgrade notes", "Commits")
+    // The repository and the prefix of the tags come from the existing link
+    assertThat(promoted)
+      .contains(
+        "[Unreleased]: https://example.com/compare/v1.1.0...HEAD\n" +
+          "[1.1.0]: https://example.com/compare/v1.0.0...v1.1.0",
+      )
+  }
+
+  @Test
+  fun releaseWorksWithoutFragments() {
+    changelog.writeText(toRelease)
+
+    assertThat(ChangelogFragments.merge(fragments, changelog, "1.1.0", release = true)).isEmpty()
+
+    assertThat(changelog.readText()).contains("## [1.1.0]\n\n### Upgrade notes\n\n- Existing note.")
+  }
+
+  @Test
+  fun laterReleaseCandidateFragmentsGoIntoThePromotedSection() {
+    changelog.writeText(toRelease)
+    ChangelogFragments.merge(fragments, changelog, "1.1.0", release = true)
+
+    fragment("rc1.md", "Fixes" to "RC1 fix.", "Deprecations" to "RC1 deprecation.")
+    ChangelogFragments.merge(fragments, changelog, "1.1.0")
+
+    val text = changelog.readText()
+    val release = text.substring(text.indexOf("## [1.1.0]"), text.indexOf("## [1.0.0]"))
+    assertThat(release)
+      .contains("- Existing fix.\n- RC1 fix.", "### Deprecations\n\n- RC1 deprecation.")
+    assertThat(text.substringBefore("## [1.1.0]")).doesNotContain("RC1")
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+    "1.1,                  is not a release version",
+    "v1.1.0,               is not a release version",
+    "1.0.0,                Section '## [1.0.0]' already exists",
+  )
+  fun releaseFailsForAnInvalidOrExistingVersionAndChangesNothing(
+    version: String,
+    message: String,
+  ) {
+    changelog.writeText(toRelease)
+    fragment("fix.md", "Fixes", "New fix.")
+
+    assertThatThrownBy { ChangelogFragments.merge(fragments, changelog, version, release = true) }
+      .isInstanceOf(GradleException::class.java)
+      .hasMessageContaining(message)
+
+    assertThat(changelog.readText()).isEqualTo(toRelease)
+    assertThat(fragmentFiles()).contains("fix.md")
+  }
+
+  private fun assertPromoteFails(broken: String, message: String) {
+    changelog.writeText(broken)
+    fragment("fix.md", "Fixes", "New fix.")
+
+    assertThatThrownBy { ChangelogFragments.merge(fragments, changelog, "1.1.0", release = true) }
+      .isInstanceOf(GradleException::class.java)
+      .hasMessageContaining(message)
+
+    assertThat(changelog.readText()).isEqualTo(broken)
+    assertThat(fragmentFiles()).contains("fix.md")
+  }
+
+  @Test
+  fun releaseFailsWithoutAnUnreleasedSection() =
+    assertPromoteFails(
+      toRelease.replace("## [Unreleased]", "## [Draft]"),
+      "Section '## [Unreleased]' not found",
+    )
+
+  @Test
+  fun releaseFailsWhenThePreviousReleaseHasNoVersion() =
+    assertPromoteFails(
+      toRelease.replace("## [1.0.0]\n", "## Old release\n"),
+      "Cannot find the previous release",
+    )
+
+  @Test
+  fun releaseFailsWhenTheUnreleasedLinkIsForAnotherVersion() =
+    assertPromoteFails(
+      toRelease.replace("apache-polaris-1.0.0...HEAD", "apache-polaris-0.9.0...HEAD"),
+      "Cannot update the links",
+    )
+
+  @Test
+  fun releaseFailsWithoutTheUnreleasedLink() =
+    assertPromoteFails(
+      toRelease.replace(Regex("\\[Unreleased]: .*\\n"), ""),
+      "Cannot update the links",
+    )
+
+  @Test
+  fun releaseFailsWithoutAPreviousRelease() {
+    changelog.writeText("## [Unreleased]\n\n### Fixes\n\n- A fix.\n")
+
+    assertThatThrownBy { ChangelogFragments.merge(fragments, changelog, "1.1.0", release = true) }
+      .isInstanceOf(GradleException::class.java)
+      .hasMessageContaining("No section of a previous release found")
+  }
+
+  @Test
+  fun releaseWithoutAVersionIsRejected() {
+    assertThatThrownBy { ChangelogFragments.merge(fragments, changelog, release = true) }
+      .isInstanceOf(IllegalArgumentException::class.java)
+      .hasMessageContaining("A release needs a version")
   }
 }

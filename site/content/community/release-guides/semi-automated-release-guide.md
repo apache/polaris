@@ -77,7 +77,7 @@ Once the workflow has run, the run details page contains a recap of the main inf
 ## Release candidate tag creation workflow
 The second Github workflow to run is [`Release - 2 - Update version and Changelog for Release Candidate`](https://github.com/apache/polaris/actions/workflows/release-2-update-release-candidate.yml). This workflow will:
 * Verify that all Github checks are green for the release branch.
-* For RC0 only: update the project version files with the final version number, merge the changelog fragments from `changelog.d` into `CHANGELOG.md`, update the changelog, and commit the changes to the release branch.
+* For RC0 only: update the project version files with the final version number, create the section of the release in `CHANGELOG.md` from the changelog fragments in `changelog.d`, and commit the changes to the release branch.
 * Create the `apache-polaris-[major].[minor].[patch]-rc[N]` tag
 
 The rules to create the `[major].[minor].[patch]-rc[N]` tag are as follows:

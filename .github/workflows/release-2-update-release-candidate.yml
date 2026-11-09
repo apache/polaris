@@ -168,13 +168,11 @@ jobs:
         if: env.rc_number == '0'
         run: |
           source "${LIBS_DIR}/_exec.sh"
-          # Merging the changelog fragments must be a separate Gradle invocation, see build.gradle.kts
-          exec_process ./gradlew mergeChangelogFragments
-          exec_process ./gradlew patchChangelog
+          exec_process ./gradlew releaseChangelog --release-version="${version_without_rc}"
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Changelog
-          Changelog patched successfully
+          Changelog updated successfully
           EOT
 
       - name: Generate Helm schema and documentation

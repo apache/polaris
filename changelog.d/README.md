@@ -75,17 +75,18 @@ pull requests can edit or delete fragments added by earlier ones.
 
 ## Releasing
 
-When a release is cut, `./gradlew mergeChangelogFragments` appends the fragments to the matching
-sections of `## [Unreleased]` in `CHANGELOG.md` and deletes them, before `./gradlew patchChangelog`
-turns that section into the release's section. Once the release vote has passed, the release
-manager propagates the new section of `CHANGELOG.md` and the deletion of the consumed fragments to
-`main`.
+When a release is cut, `./gradlew releaseChangelog --release-version=x.y.z` appends the fragments
+to the matching sections of `## [Unreleased]` in `CHANGELOG.md` and deletes them. It then turns that
+section into the one of the release, adds a new empty `## [Unreleased]` section, drops the
+subsections without entries from the release, and updates the links at the end of the file. Once the
+release vote has passed, the release manager propagates the new section of `CHANGELOG.md` and the
+deletion of the consumed fragments to `main`.
 
 For later release candidates, fragments added by cherry-picked changes are merged into the existing
 section of the release with `./gradlew mergeChangelogFragments --release-version=x.y.z`. The
 release workflow does this automatically and fails if any fragment remains.
 
-`mergeChangelogFragments` validates everything before it writes anything, then replaces
-`CHANGELOG.md` atomically and deletes the fragments. If a fragment cannot be deleted, the task
-fails and lists the remaining fragments: `CHANGELOG.md` already contains their entries, so delete
-those files manually and do not run the task again, which would add the entries twice.
+Both tasks validate everything before they write anything, then replace `CHANGELOG.md` atomically
+and delete the fragments. If a fragment cannot be deleted, the task fails and lists the remaining
+fragments: `CHANGELOG.md` already contains their entries, so delete those files manually and do not
+run the task again, which would add the entries twice.
