@@ -103,7 +103,7 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"opa", "custom"})
+  @ValueSource(strings = {"opa", "ranger", "custom"})
   void nonInternalAuthorizerReturnsOk(String type) {
     FeaturesConfiguration config = mock(FeaturesConfiguration.class);
 
@@ -112,62 +112,6 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
 
     assertThat(result.ready()).isTrue();
     verifyNoInteractions(config);
-  }
-
-  @Test
-  void rangerFlagUnsetReturnsOk() {
-    FeaturesConfiguration config = mockConfig(Map.of(), Map.of());
-
-    ProductionReadinessCheck result =
-        checks.checkCatalogConfigAuthorization(config, authorizationConfig("ranger"));
-
-    assertThat(result.ready()).isTrue();
-  }
-
-  @Test
-  void rangerFlagExplicitlyFalseReturnsOk() {
-    FeaturesConfiguration config = mockConfig(Map.of(FLAG_KEY, "false"), Map.of());
-
-    ProductionReadinessCheck result =
-        checks.checkCatalogConfigAuthorization(config, authorizationConfig("ranger"));
-
-    assertThat(result.ready()).isTrue();
-  }
-
-  @Test
-  void rangerFlagExplicitlyTrueReturnsWarning() {
-    FeaturesConfiguration config = mockConfig(Map.of(FLAG_KEY, "true"), Map.of());
-
-    ProductionReadinessCheck result =
-        checks.checkCatalogConfigAuthorization(config, authorizationConfig("ranger"));
-
-    assertThat(result.ready()).isFalse();
-    assertThat(result.getErrors())
-        .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.offendingProperty()).contains(FLAG_KEY);
-              assertThat(error.severe()).isFalse();
-              assertThat(error.message()).contains("catalog-config-read");
-            });
-  }
-
-  @Test
-  void rangerRealmOverrideTrueReturnsWarning() {
-    FeaturesConfiguration config =
-        mockConfig(
-            Map.of(FLAG_KEY, "false"),
-            Map.of("test-realm", mockRealmOverrides(Map.of(FLAG_KEY, "true"))));
-
-    ProductionReadinessCheck result =
-        checks.checkCatalogConfigAuthorization(config, authorizationConfig("ranger"));
-
-    assertThat(result.ready()).isFalse();
-    assertThat(result.getErrors())
-        .singleElement()
-        .satisfies(
-            error ->
-                assertThat(error.offendingProperty()).contains("test-realm").contains(FLAG_KEY));
   }
 
   private static AuthorizationConfiguration authorizationConfig(String type) {

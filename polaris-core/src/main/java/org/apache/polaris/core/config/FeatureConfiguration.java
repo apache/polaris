@@ -86,12 +86,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "for GET_CATALOG_CONFIG. Ranger maps GET_CATALOG_CONFIG to catalog-config-read; "
                   + "catalog-properties-read implies catalog-config-read. Ranger operators must "
                   + "re-import polaris-ranger-servicedef.json (PUT the service definition) so the "
-                  + "new access type exists in Ranger Admin. This flag is temporary. The default "
-                  + "will not flip until client-facing catalog configuration is defined. A "
-                  + "production-readiness warning is emitted while the flag remains false only when "
-                  + "using the internal Polaris authorizer (`polaris.authorization.type=internal`). "
-                  + "When the flag is true under Ranger, a production-readiness warning reminds "
-                  + "operators to re-import the service definition.")
+                  + "new access type exists in Ranger Admin; a Polaris upgrade does not update "
+                  + "Ranger Admin. This flag is temporary. The default will not flip until "
+                  + "client-facing catalog configuration is defined. A production-readiness warning "
+                  + "is emitted while the flag remains false only when using the internal Polaris "
+                  + "authorizer (`polaris.authorization.type=internal`).")
           .defaultValue(false)
           .buildFeatureConfiguration();
 

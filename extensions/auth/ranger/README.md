@@ -54,7 +54,7 @@ curl -u <ranger-admin-user>:<ranger-admin-password> -X POST \
    authorizer.
 
    To add or change access types / `impliedGrants` on an already-registered service type, PUT the
-   same file (Ranger Admin does not pick up git-only Polaris upgrades):
+   same file (a Polaris upgrade does not update Ranger Admin):
 ```
 curl -u <ranger-admin-user>:<ranger-admin-password> -X PUT \
   -H "Content-Type: application/json" \
