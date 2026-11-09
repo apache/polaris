@@ -22,6 +22,7 @@ import com.google.common.base.Strings;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
@@ -93,24 +94,29 @@ public class BigLakeCatalogValidator implements CatalogConfigValidator {
 
   private static void validateBigLakeHeaders(
       Map<String, String> connectionProperties, Map<String, String> catalogProperties) {
-    // Prefer the canonical catalog key, including a blank value, over case variants.
-    String quotaProject = catalogProperties.get(QUOTA_PROJECT_HEADER);
-    if (!catalogProperties.containsKey(QUOTA_PROJECT_HEADER)) {
-      // Iceberg's property prefix is case-sensitive, but HTTP header names are not.
-      quotaProject =
-          catalogProperties.entrySet().stream()
-              .filter(
-                  entry ->
-                      entry.getKey().startsWith("header.")
-                          && QUOTA_PROJECT_HEADER.equalsIgnoreCase(entry.getKey()))
-              .findFirst()
-              .map(Map.Entry::getValue)
-              .orElse(null);
-    }
-    // Match the factory merge: a present connection property overrides the catalog value.
+    Map<String, String> quotaProjectProperties = new HashMap<>();
+    catalogProperties.forEach(
+        (key, value) -> {
+          // Iceberg's property prefix is case-sensitive, but HTTP header names are not.
+          if (key.startsWith("header.") && QUOTA_PROJECT_HEADER.equalsIgnoreCase(key)) {
+            quotaProjectProperties.put(key, value);
+          }
+        });
+    // Only the exact connection key is forwarded, and it overrides only the same spelling.
     if (connectionProperties != null && connectionProperties.containsKey(QUOTA_PROJECT_HEADER)) {
-      quotaProject = connectionProperties.get(QUOTA_PROJECT_HEADER);
+      quotaProjectProperties.put(
+          QUOTA_PROJECT_HEADER, connectionProperties.get(QUOTA_PROJECT_HEADER));
     }
+    if (quotaProjectProperties.size() > 1) {
+      throw new IllegalArgumentException(
+          "Invalid BigLake quota project: multiple case variants of '"
+              + QUOTA_PROJECT_HEADER
+              + "' remain after merging catalog and connection properties."
+              + " Remove duplicate properties so only one header spelling remains.");
+    }
+
+    String quotaProject =
+        quotaProjectProperties.isEmpty() ? null : quotaProjectProperties.values().iterator().next();
     if (Strings.isNullOrEmpty(quotaProject) || quotaProject.trim().isEmpty()) {
       throw new IllegalArgumentException(
           "Invalid BigLake catalog properties entry '"
