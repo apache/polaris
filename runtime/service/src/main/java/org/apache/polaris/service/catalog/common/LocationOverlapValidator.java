@@ -39,6 +39,7 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -55,8 +56,8 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -144,37 +145,35 @@ public final class LocationOverlapValidator {
 
     List<TableIdentifier> siblingTables =
         parentNamespace
-            .map(
-                ns -> {
-                  ListEntitiesResult siblingTablesResult =
-                      metaStoreManager.listEntities(
-                          callCtx,
-                          PolarisEntity.toCoreList(parentPath),
-                          PolarisEntityType.TABLE_LIKE,
-                          PolarisEntitySubType.ANY_SUBTYPE,
-                          PageToken.readEverything());
-                  if (!siblingTablesResult.isSuccess()) {
-                    throw new IllegalStateException(
-                        "Unable to resolve siblings entities to validate location - could not list tables");
-                  }
-                  return siblingTablesResult.getEntities().stream()
-                      .map(tbl -> TableIdentifier.of(ns.asNamespace(), tbl.getName()))
-                      .collect(Collectors.toList());
-                })
+            .map(ns -> {
+              ListEntitiesResult siblingTablesResult =
+                  metaStoreManager.listEntities(
+                      callCtx,
+                      PolarisEntity.toCoreList(parentPath),
+                      PolarisEntityType.TABLE_LIKE,
+                      PolarisEntitySubType.ANY_SUBTYPE,
+                      PageToken.readEverything());
+              if (!siblingTablesResult.isSuccess()) {
+                throw new IllegalStateException(
+                    "Unable to resolve siblings entities to validate location - could not list tables");
+              }
+              return siblingTablesResult.getEntities().stream()
+                  .map(tbl -> TableIdentifier.of(ns.asNamespace(), tbl.getName()))
+                  .collect(Collectors.toList());
+            })
             .orElse(List.of());
 
     List<Namespace> siblingNamespaces =
         siblingNamespacesResult.getEntities().stream()
-            .map(
-                ns -> {
-                  String[] nsLevels =
-                      parentNamespace
-                          .map(parent -> parent.asNamespace().levels())
-                          .orElse(new String[0]);
-                  String[] newLevels = Arrays.copyOf(nsLevels, nsLevels.length + 1);
-                  newLevels[nsLevels.length] = ns.getName();
-                  return Namespace.of(newLevels);
-                })
+            .map(ns -> {
+              String[] nsLevels =
+                  parentNamespace
+                      .map(parent -> parent.asNamespace().levels())
+                      .orElse(new String[0]);
+              String[] newLevels = Arrays.copyOf(nsLevels, nsLevels.length + 1);
+              newLevels[nsLevels.length] = ns.getName();
+              return Namespace.of(newLevels);
+            })
             .toList();
     List<ResolvedPathKey> pathsToResolve =
         new ArrayList<>(siblingTables.size() + siblingNamespaces.size());
@@ -214,15 +213,14 @@ public final class LocationOverlapValidator {
           .map(LocationBasedEntity::getBaseLocation)
           .filter(loc -> loc != null && !loc.isBlank())
           .map(StorageLocation::of)
-          .ifPresent(
-              ancestorLocation -> {
-                if (targetLocation.isSameLocation(ancestorLocation)) {
-                  throw new ForbiddenException(
-                      "Unable to create entity at location '%s' because it conflicts with existing table or namespace at "
-                          + "location '%s'",
-                      targetLocation, ancestorLocation);
-                }
-              });
+          .ifPresent(ancestorLocation -> {
+            if (targetLocation.isSameLocation(ancestorLocation)) {
+              throw new ForbiddenException(
+                  "Unable to create entity at location '%s' because it conflicts with existing table or namespace at "
+                      + "location '%s'",
+                  targetLocation, ancestorLocation);
+            }
+          });
     }
 
     for (PolarisEntity entityToCheck :
@@ -289,12 +287,30 @@ public final class LocationOverlapValidator {
         }
       }
 
-      // A table may live outside its logical namespace's storage location.
-      for (PolarisBaseEntity namespace :
-          metaStoreManager.listFullEntitiesAll(
-              callCtx, path, PolarisEntityType.NAMESPACE, PolarisEntitySubType.ANY_SUBTYPE)) {
+      // A table may live outside its logical namespace's storage location. Only the namespace
+      // identity is needed to visit its children.
+      ListEntitiesResult childNamespaces =
+          metaStoreManager.listEntities(
+              callCtx,
+              path,
+              PolarisEntityType.NAMESPACE,
+              PolarisEntitySubType.ANY_SUBTYPE,
+              PageToken.readEverything());
+      if (!childNamespaces.isSuccess()) {
+        throw new IllegalStateException(
+            "Unable to validate Generic Table locations - could not list namespaces: "
+                + childNamespaces.getReturnStatus());
+      }
+      for (EntityNameLookupRecord namespace : childNamespaces.getEntities()) {
         List<PolarisEntityCore> childPath = new ArrayList<>(path);
-        childPath.add(PolarisEntity.toCore(namespace));
+        childPath.add(
+            new PolarisEntityCore.Builder<>()
+                .catalogId(namespace.getCatalogId())
+                .id(namespace.getId())
+                .parentId(namespace.getParentId())
+                .typeCode(namespace.getTypeCode())
+                .name(namespace.getName())
+                .build());
         pending.add(childPath);
       }
     }
@@ -306,10 +322,9 @@ public final class LocationOverlapValidator {
     PolarisResolutionManifest resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(principal, catalogName);
 
-    keys.forEach(
-        k -> {
-          resolutionManifest.addPath(new ResolverPath(k, true)); // optional path
-        });
+    keys.forEach(k -> {
+      resolutionManifest.addPath(new ResolverPath(k, true)); // optional path
+    });
 
     ResolverStatus status =
         resolutionManifest.resolveSelections(
@@ -334,16 +349,15 @@ public final class LocationOverlapValidator {
     }
 
     List<PolarisEntity> result = new ArrayList<>(keys.size());
-    keys.forEach(
-        k -> {
-          PolarisResolvedPathWrapper path = resolutionManifest.getResolvedPath(k);
-          if (path != null) {
-            PolarisEntity entity = path.getRawLeafEntity();
-            if (entity != null) {
-              result.add(entity);
-            }
-          }
-        });
+    keys.forEach(k -> {
+      PolarisResolvedPathWrapper path = resolutionManifest.getResolvedPath(k);
+      if (path != null) {
+        PolarisEntity entity = path.getRawLeafEntity();
+        if (entity != null) {
+          result.add(entity);
+        }
+      }
+    });
 
     return result;
   }

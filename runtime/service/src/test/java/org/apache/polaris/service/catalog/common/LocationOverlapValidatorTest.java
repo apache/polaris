@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.common;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,14 +34,23 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.exceptions.CommitConflictException;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
-import org.apache.polaris.core.persistence.resolver.Resolvable;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -59,6 +69,8 @@ class LocationOverlapValidatorTest {
   @Mock Resolver resolver;
   @Mock CallContext callContext;
   @Mock RealmContext realmContext;
+  @Mock RealmConfig realmConfig;
+  @Mock PolarisMetaStoreManager metaStoreManager;
   @Mock PolarisDiagnostics diagnostics;
   @Mock PolarisEntity ns1;
   @Mock PolarisEntity ns2;
@@ -71,7 +83,7 @@ class LocationOverlapValidatorTest {
 
   @BeforeEach
   void setUp() {
-    when(resolverFactory.createResolver(any(), any())).thenReturn(resolver);
+    lenient().when(resolverFactory.createResolver(any(), any())).thenReturn(resolver);
     lenient()
         .when(resolver.resolveSelections(any()))
         .thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
@@ -83,6 +95,35 @@ class LocationOverlapValidatorTest {
             callContext,
             new ResolutionManifestFactoryImpl(diagnostics, realmContext, resolverFactory),
             PolarisPrincipal.of("test", AttributeMap.EMPTY, Set.of()));
+  }
+
+  @Test
+  void testOptimizedOverlapCheckFailsWhenChildNamespaceListingFails() {
+    when(callContext.getRealmConfig()).thenReturn(realmConfig);
+    when(realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK)).thenReturn(true);
+    when(metaStoreManager.hasOverlappingSiblings(any(), any(), any(), any()))
+        .thenReturn(new LocationOverlapResult.NoOverlap());
+    when(metaStoreManager.listEntities(
+            any(),
+            any(),
+            eq(PolarisEntityType.NAMESPACE),
+            eq(PolarisEntitySubType.ANY_SUBTYPE),
+            any()))
+        .thenReturn(
+            new ListEntitiesResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null));
+
+    CatalogEntity catalog = new CatalogEntity.Builder().setName("catalog").setId(1L).build();
+    NamespaceEntity target =
+        new NamespaceEntity.Builder(Namespace.of("target"))
+            .setCatalogId(catalog.getId())
+            .setParentId(catalog.getId())
+            .setBaseLocation("s3://bucket/target")
+            .build();
+
+    Assertions.assertThatThrownBy(
+            () -> validator.validate(metaStoreManager, target, List.of(catalog), null))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("could not list namespaces");
   }
 
   @Test

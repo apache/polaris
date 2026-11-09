@@ -534,22 +534,20 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
               polarisContext, resolutionManifestFactory, authenticatedRoot);
       var monitoredMetastore =
           Mockito.mock(PolarisMetaStoreManager.class, delegatesTo(metaStoreManager));
-      assertThatCode(
-              () ->
-                  validator.validate(
-                      monitoredMetastore,
-                      candidate,
-                      destinationPath.getRawFullPath(),
-                      StorageLocation.of(STORAGE_LOCATION + "/legacy/")))
+      assertThatCode(() ->
+              validator.validate(
+                  monitoredMetastore,
+                  candidate,
+                  destinationPath.getRawFullPath(),
+                  StorageLocation.of(STORAGE_LOCATION + "/legacy/")))
           .doesNotThrowAnyException();
       verify(monitoredMetastore, never()).listFullEntitiesAll(any(), any(), any(), any());
-      assertThatThrownBy(
-              () ->
-                  validator.validate(
-                      metaStoreManager,
-                      candidate,
-                      destinationPath.getRawFullPath(),
-                      StorageLocation.of(STORAGE_LOCATION + "/destination/")))
+      assertThatThrownBy(() ->
+              validator.validate(
+                  metaStoreManager,
+                  candidate,
+                  destinationPath.getRawFullPath(),
+                  StorageLocation.of(STORAGE_LOCATION + "/destination/")))
           .isInstanceOf(ForbiddenException.class);
     } else {
       // List mode checks only siblings under the same parent.
@@ -600,12 +598,11 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
     assertThat(loadTableLocation(empty, true)).isEmpty();
     assertThatThrownBy(() -> createTable(explicit, "s3://disallowed/orders/", true))
         .isInstanceOf(AlreadyExistsException.class);
-    assertThatThrownBy(
-            () ->
-                createTable(
-                    TableIdentifier.of(ns, "namespace_root"),
-                    STORAGE_LOCATION + "/optional-location/",
-                    true))
+    assertThatThrownBy(() ->
+            createTable(
+                TableIdentifier.of(ns, "namespace_root"),
+                STORAGE_LOCATION + "/optional-location/",
+                true))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }
