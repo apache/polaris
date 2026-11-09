@@ -19,11 +19,13 @@
 package org.apache.polaris.core.storage;
 
 import java.util.Map;
+import org.apache.iceberg.view.ViewMetadata;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
 
 public class StorageUtilTest {
 
@@ -106,6 +108,32 @@ public class StorageUtilTest {
                     IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, "/2/",
                     IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, "/3/")))
         .contains("/1/", "/2/", "/3/");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"s3://bucket", "gs://bucket", "abfss://container@account.dfs.core.windows.net"})
+  public void getLocationsUsedByView(String root) {
+    ViewMetadata metadata = Mockito.mock(ViewMetadata.class);
+    Mockito.when(metadata.location()).thenReturn(root + "/view");
+    Mockito.when(metadata.properties()).thenReturn(Map.of());
+    Assertions.assertThat(StorageUtil.getLocationsUsedByTable(metadata))
+        .containsExactly(root + "/view");
+    Mockito.when(metadata.properties())
+        .thenReturn(
+            Map.of(
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                    root + "/metadata",
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, root + "/ignored"));
+    Assertions.assertThat(StorageUtil.getLocationsUsedByTable(metadata))
+        .containsExactlyInAnyOrder(root + "/view", root + "/metadata");
+    Mockito.when(metadata.properties())
+        .thenReturn(
+            Map.of(
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                root + "/view/metadata"));
+    Assertions.assertThat(StorageUtil.getLocationsUsedByTable(metadata))
+        .containsExactly(root + "/view");
   }
 
   @Test
