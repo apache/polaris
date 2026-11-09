@@ -40,7 +40,7 @@ class LoggingMetricsReporterTest {
             "cat",
             1L,
             TableIdentifier.of(Namespace.of("ns"), "t"),
-            2L,
+            null,
             MetricType.SCAN,
             mock(MetricsReport.class),
             Instant.ofEpochMilli(123L));
