@@ -90,7 +90,7 @@ class LocalIcebergCatalogTest {
     when(resolvedEntityView.getResolvedCatalogEntity()).thenReturn(catalogEntity);
     lenient().when(resolverFactory.createResolver(any(), any())).thenReturn(resolver);
     lenient()
-        .when(resolver.resolveAll())
+        .when(resolver.resolveSelections(any()))
         .thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
 
     rns1 = new ResolvedPolarisEntity(ns1, List.of(), List.of());
@@ -137,7 +137,7 @@ class LocalIcebergCatalogTest {
 
   @Test
   void testFailedLocationSiblingResolutionException() {
-    when(resolver.resolveAll())
+    when(resolver.resolveSelections(any()))
         .thenReturn(new ResolverStatus(PolarisEntityType.TABLE_LIKE, "test-name"));
     Assertions.assertThatThrownBy(() -> catalog.resolveOptionalPaths(List.of(), "test"))
         .isInstanceOf(CommitConflictException.class)
@@ -145,7 +145,7 @@ class LocalIcebergCatalogTest {
         .hasMessageContaining("test-name")
         .hasMessageContaining(ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED.name());
 
-    when(resolver.resolveAll())
+    when(resolver.resolveSelections(any()))
         .thenReturn(
             new ResolverStatus(
                 new ResolverPath(

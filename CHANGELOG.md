@@ -138,6 +138,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `resolveSelections()` may be incompatible with the new Polaris code, because in some cases the
   REST API implementation code requests additional selections via `AuthorizationState`.
   All implementations should call `AuthorizationState.resolve()` now.
+- When external principals are enabled, `PolarisAuthorizer` implementations must not call
+  `PolarisResolutionManifest.resolveAll()`, nor resolve the caller principal or its roles in any
+  other way: external principals have no entity in the Polaris metastore, and such resolution now
+  fails. Implementations should call `AuthorizationState.resolve()` and only select the securables
+  that are actually needed for authorization.
 - The event attribute `EventAttributes.ACCESS_DELEGATION_MODE` (`String`) has been replaced with
   `EventAttributes.ACCESS_DELEGATION_MODES` (`List<String>`). Accordingly, the OpenTelemetry event
   listener now emits `polaris.access_delegation_modes` instead of `polaris.access_delegation_mode`.
