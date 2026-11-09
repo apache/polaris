@@ -18,17 +18,26 @@
  */
 package org.apache.polaris.service.storage;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.auth.oauth2.ExternalAccountCredentials;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.common.base.Suppliers;
+import com.google.common.collect.ImmutableMap;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithName;
 import io.smallrye.config.WithParentName;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.docs.ConfigDocs;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
@@ -44,6 +53,13 @@ import software.amazon.awssdk.services.sts.StsClientBuilder;
 public interface StorageConfiguration extends S3AccessConfig {
 
   Duration DEFAULT_TOKEN_LIFESPAN = Duration.ofHours(1);
+
+  /**
+   * Names that cannot select GCP credentials, because they are the property names of the default
+   * GCP credentials: {@code polaris.storage.gcp.token}, {@code polaris.storage.gcp.lifespan} and
+   * {@code polaris.storage.gcp.expiry}.
+   */
+  Set<String> RESERVED_GCP_STORAGE_NAMES = Set.of("token", "lifespan", "expiry");
 
   @WithName("aws")
   AwsStorageConfig aws();
@@ -122,6 +138,27 @@ public interface StorageConfiguration extends S3AccessConfig {
   @WithName("gcp.expiry")
   Optional<Instant> gcpAccessTokenExpiry();
 
+  @WithName("gcp")
+  GcpStorageConfig gcp();
+
+  interface GcpStorageConfig {
+    @WithParentName
+    @ConfigDocs.ConfigPropertyName("storage")
+    Map<String, GcpNamedStorageConfig> storages();
+  }
+
+  interface GcpNamedStorageConfig {
+    /**
+     * Path to the GCP credentials file to use for authentication when using named storages. This is
+     * the same JSON format that the {@code GOOGLE_APPLICATION_CREDENTIALS} environment variable
+     * points to for the default credentials. Service account key files and Workload Identity
+     * Federation configuration files are accepted. The names {@code token}, {@code lifespan} and
+     * {@code expiry} are reserved: configuring one of them stops the server from starting.
+     */
+    @WithName("credentials-file")
+    Path credentialsFile();
+  }
+
   default Supplier<StsClient> stsClientSupplier() {
     return stsClientSupplier(true);
   }
@@ -188,5 +225,59 @@ public interface StorageConfiguration extends S3AccessConfig {
             return new FixedGcpAccessTokenCredentials(gcpAccessToken().orElseThrow(), expiry);
           }
         });
+  }
+
+  /**
+   * Returns one supplier per configured GCP storage name. Each supplier loads its credentials file
+   * on first use and shares the result, like {@link #gcpCredentialsSupplier(Clock)} does for the
+   * default credentials. A failed load is retried on the next use.
+   *
+   * @throws IllegalStateException if a reserved name is configured
+   */
+  default Map<String, Supplier<GoogleCredentials>> gcpNamedCredentialsSuppliers() {
+    ImmutableMap.Builder<String, Supplier<GoogleCredentials>> suppliers = ImmutableMap.builder();
+    gcp()
+        .storages()
+        .forEach(
+            (storageName, storageConfig) -> {
+              if (RESERVED_GCP_STORAGE_NAMES.contains(storageName)) {
+                throw new IllegalStateException(
+                    "'"
+                        + storageName
+                        + "' cannot be used as a GCP storage name, because polaris.storage.gcp."
+                        + storageName
+                        + " is a property of the default GCP credentials");
+              }
+              suppliers.put(
+                  storageName,
+                  Suppliers.memoize(
+                      () -> loadGcpCredentials(storageName, storageConfig.credentialsFile())));
+            });
+    return suppliers.build();
+  }
+
+  private static GoogleCredentials loadGcpCredentials(String storageName, Path credentialsFile) {
+    try {
+      byte[] content = Files.readAllBytes(credentialsFile);
+      String type = new ObjectMapper().readTree(content).path("type").asText();
+      InputStream stream = new ByteArrayInputStream(content);
+      if ("service_account".equals(type)) {
+        return ServiceAccountCredentials.fromStream(stream);
+      }
+      if ("external_account".equals(type)) {
+        return ExternalAccountCredentials.fromStream(stream);
+      }
+    } catch (IOException | RuntimeException e) {
+      // Only the failure type is reported: parser and library messages can repeat file content.
+      throw new IllegalStateException(
+          "Failed to load GCP credentials for storage name '"
+              + storageName
+              + "': "
+              + e.getClass().getSimpleName());
+    }
+    throw new IllegalStateException(
+        "Unsupported GCP credentials file for storage name '"
+            + storageName
+            + "': only service_account and external_account files are accepted");
   }
 }

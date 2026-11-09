@@ -22,13 +22,16 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
+import io.quarkus.runtime.Startup;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -54,6 +57,9 @@ import org.jspecify.annotations.Nullable;
  * credentials supplier, Google HTTP transport factory, request-scope realm config).
  */
 @ApplicationScoped
+// Created at startup, so that invalid named GCP credentials stop the server instead of failing the
+// first request.
+@Startup
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
   private final S3CredentialVendingMechanisms mechanisms;
@@ -74,12 +80,19 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     this.mechanisms = mechanisms;
     Supplier<GoogleCredentials> gcpCredsProvider =
         storageConfiguration.gcpCredentialsSupplier(clock);
+    Map<String, Supplier<GoogleCredentials>> gcpNamedCredsProviders =
+        storageConfiguration.gcpNamedCredentialsSuppliers();
     HttpTransportFactory gcpTransportFactory =
         ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new);
     this.gcpFactory =
         storageConfig ->
             new GcpCredentialsStorageIntegration(
-                gcpCredsProvider.get(), gcpTransportFactory, cache, storageConfig, realmConfig);
+                resolveGcpCredentials(
+                    storageConfig, realmConfig, gcpCredsProvider, gcpNamedCredsProviders),
+                gcpTransportFactory,
+                cache,
+                storageConfig,
+                realmConfig);
     this.azureFactory =
         storageConfig -> new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig);
   }
@@ -126,6 +139,34 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       case AZURE -> azureFactory.apply((AzureStorageConfigurationInfo) storageConfig);
       case FILE -> FILE_INTEGRATION;
     };
+  }
+
+  private static GoogleCredentials resolveGcpCredentials(
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig,
+      Supplier<GoogleCredentials> defaultCredentials,
+      Map<String, Supplier<GoogleCredentials>> namedCredentials) {
+    String storageName = storageConfig.getStorageName();
+    if (storageName == null
+        || !realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
+      return defaultCredentials.get();
+    }
+    // Attribution may replace the source credentials with a per-principal federated identity: it
+    // does when the storage has a gcpServiceAccount and the request has a principal, and falls back
+    // to the source credentials otherwise. A storage name would then apply only to some requests,
+    // so refuse the combination rather than ignore either setting.
+    if (realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_ENABLED)) {
+      throw new IllegalStateException(
+          "Storage name '"
+              + storageName
+              + "' cannot be used while GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true");
+    }
+    Supplier<GoogleCredentials> credentials = namedCredentials.get(storageName);
+    if (credentials == null) {
+      throw new IllegalArgumentException(
+          "Storage name '" + storageName + "' is not configured on the server");
+    }
+    return credentials.get();
   }
 
   /**
