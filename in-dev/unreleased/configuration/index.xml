@@ -24,12 +24,21 @@ well as for Polaris binary distributions.&lt;/p&gt;
 &lt;/ul&gt;
 &lt;h2 id="features--behavior" id="features--behavior"&gt;Features &amp;amp; Behavior&lt;a class="heading-anchor" href="#features--behavior" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
-&lt;h3 id="polarisfeatures" id="polarisfeatures"&gt;&lt;code&gt;polaris.features&lt;/code&gt;&lt;a class="heading-anchor" href="#polarisfeatures" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;h3 id="how-the-effective-value-of-a-feature-is-determined" id="how-the-effective-value-of-a-feature-is-determined"&gt;How the effective value of a feature is determined&lt;a class="heading-anchor" href="#how-the-effective-value-of-a-feature-is-determined" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h3&gt;
-&lt;p&gt;Feature configurations for Polaris. These are stable, user-facing settings.&lt;/p&gt;
-&lt;h5 id="polarisfeaturesadd_trailing_slash_to_location" id="polarisfeaturesadd_trailing_slash_to_location"&gt;&lt;code&gt;polaris.features.&amp;quot;ADD_TRAILING_SLASH_TO_LOCATION&amp;quot;&lt;/code&gt;&lt;a class="heading-anchor" href="#polarisfeaturesadd_trailing_slash_to_location" aria-label="Anchor"&gt;🔗&lt;/a&gt;
-&lt;/h5&gt;
-&lt;p&gt;Deprecated and ignored: Polaris always appends a trailing slash to table and namespace base locations. Retained so existing configuration remains accepted rather than rejected.&lt;/p&gt;</description></item><item><title>Storage Layout</title><link>https://polaris.apache.org/in-dev/unreleased/configuration/storage-layout/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/configuration/storage-layout/</guid><description>&lt;p&gt;This page explains where Polaris places namespaces, tables, and views in object storage, and how
+&lt;p&gt;For a given catalog, the value of a feature is resolved in this order, and the first value that is
+set wins:&lt;/p&gt;</description></item><item><title>Structured and Unstructured Table Locations</title><link>https://polaris.apache.org/in-dev/unreleased/configuration/structured-and-unstructured-table-locations/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/configuration/structured-and-unstructured-table-locations/</guid><description>&lt;p&gt;Polaris supports two modes that decide where Iceberg tables and views may be located in a catalog:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Structured locations&lt;/strong&gt;, the default. A table&amp;rsquo;s or view&amp;rsquo;s location must be inside the location of
+its namespace, and a table&amp;rsquo;s &lt;code&gt;write.data.path&lt;/code&gt; and &lt;code&gt;write.metadata.path&lt;/code&gt; must be inside the
+table&amp;rsquo;s own location.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Unstructured locations&lt;/strong&gt;. Table and view locations, and write paths, may be anywhere inside the
+catalog&amp;rsquo;s allowed locations.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;In both modes, all locations must be inside the catalog&amp;rsquo;s allowed locations. Unstructured locations
+are enabled by setting the feature
+&lt;a href="https://polaris.apache.org/in-dev/unreleased/configuration/configuration-reference/#polarisfeaturesallow_unstructured_table_location"&gt;&lt;code&gt;ALLOW_UNSTRUCTURED_TABLE_LOCATION&lt;/code&gt;&lt;/a&gt;
+or the catalog property &lt;code&gt;polaris.config.allow.unstructured.table.location&lt;/code&gt; to &lt;code&gt;true&lt;/code&gt;.&lt;/p&gt;</description></item><item><title>Storage Layout</title><link>https://polaris.apache.org/in-dev/unreleased/configuration/storage-layout/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/configuration/storage-layout/</guid><description>&lt;p&gt;This page explains where Polaris places namespaces, tables, and views in object storage, and how
 the settings that change this layout interact. Several of these settings have overlapping effects,
 and some combinations are rejected, so it is worth reading this page before changing any of them.&lt;/p&gt;
 &lt;p&gt;This page covers internal catalogs. Federated catalogs are served by a remote catalog, which owns
