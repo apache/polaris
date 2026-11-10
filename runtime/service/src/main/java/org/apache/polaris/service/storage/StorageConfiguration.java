@@ -219,15 +219,33 @@ public interface StorageConfiguration extends S3AccessConfig {
   }
 
   /**
-   * Builds the Azure credential of one configured storage name. Every call builds a new credential,
-   * and its access tokens are cached inside it, so the caller keeps and shares the result.
+   * Returns the configuration of one Azure storage name, after checking that it exists and that its
+   * tenant is the one the storage configuration asks for. A client secret credential only obtains
+   * tokens for its own tenant. The messages can reach API clients, so they do not include the
+   * tenant configured on the server.
    */
-  default TokenCredential azureCredential(String storageName) {
+  default AzureNamedStorageConfig azureStorage(String storageName, String tenantId) {
     AzureNamedStorageConfig storageConfig = azure().storages().get(storageName);
     if (storageConfig == null) {
       throw new IllegalArgumentException(
           "Storage name '" + storageName + "' is not configured on the server");
     }
+    if (!storageConfig.tenantId().equalsIgnoreCase(tenantId)) {
+      throw new IllegalArgumentException(
+          "The tenantId of this storage configuration does not match the tenant configured for"
+              + " storage name '"
+              + storageName
+              + "'");
+    }
+    return storageConfig;
+  }
+
+  /**
+   * Builds the Azure credential of one configured storage name. Every call builds a new credential,
+   * and its access tokens are cached inside it, so the caller keeps and shares the result.
+   */
+  default TokenCredential azureCredential(
+      String storageName, AzureNamedStorageConfig storageConfig) {
     return buildAzureCredential(storageName, storageConfig);
   }
 

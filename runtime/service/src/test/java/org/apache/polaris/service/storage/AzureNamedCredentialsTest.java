@@ -29,8 +29,12 @@ import io.smallrye.config.EnvConfigSource;
 import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfigBuilder;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import org.apache.polaris.service.storage.StorageConfiguration.AzureNamedStorageConfig;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Answers;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
@@ -38,6 +42,7 @@ import org.mockito.Mockito;
 class AzureNamedCredentialsTest {
 
   private static final String TENANT = "11111111-1111-1111-1111-111111111111";
+  private static final String OTHER_TENANT = "22222222-2222-2222-2222-222222222222";
   private static final String SECRET_A = "secret-value-of-team-a";
   private static final String SECRET_B = "secret-value-of-team-b";
 
@@ -68,6 +73,11 @@ class AzureNamedCredentialsTest {
     return properties;
   }
 
+  private static TokenCredential credentialOf(StorageConfiguration config, String name) {
+    AzureNamedStorageConfig named = config.azure().storages().get(name);
+    return config.azureCredential(name, config.azureStorage(name, named.tenantId()));
+  }
+
   /** Builds the credential and returns the builder that built it, to check what it was given. */
   private static ClientSecretCredentialBuilder builderOf(StorageConfiguration config, String name) {
     try (MockedConstruction<ClientSecretCredentialBuilder> builders =
@@ -75,7 +85,7 @@ class AzureNamedCredentialsTest {
             ClientSecretCredentialBuilder.class,
             Mockito.withSettings().defaultAnswer(Answers.RETURNS_SELF))) {
       // The mocked builder builds nothing; only the values it was given matter here.
-      assertThat(config.azureCredential(name)).isNull();
+      assertThat(credentialOf(config, name)).isNull();
       assertThat(builders.constructed()).hasSize(1);
       return builders.constructed().get(0);
     }
@@ -100,10 +110,30 @@ class AzureNamedCredentialsTest {
   void unknownNameFailsToBuild() {
     StorageConfiguration config = configFrom(properties("team-a", SECRET_A));
 
-    assertThatThrownBy(() -> config.azureCredential("unknown"))
+    assertThatThrownBy(() -> config.azureStorage("unknown", TENANT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("unknown")
         .hasMessageContaining("not configured");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {OTHER_TENANT, "contoso.onmicrosoft.com"})
+  void tenantMismatchFailsWithoutRevealingTheConfiguredTenant(String requestedTenant) {
+    StorageConfiguration config = configFrom(properties("team-a", SECRET_A));
+
+    assertThatThrownBy(() -> config.azureStorage("team-a", requestedTenant))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("team-a")
+        .hasMessageContaining("tenant")
+        .hasMessageNotContaining(TENANT);
+  }
+
+  @Test
+  void tenantComparisonIgnoresCase() {
+    StorageConfiguration config = configFrom(properties("team-a", SECRET_A));
+
+    assertThat(config.azureStorage("team-a", TENANT.toUpperCase(Locale.ROOT)).clientId())
+        .isEqualTo("app-team-a");
   }
 
   @Test
@@ -112,13 +142,13 @@ class AzureNamedCredentialsTest {
     properties.put("polaris.storage.azure.team-a.tenant-id", "not/a/tenant");
     StorageConfiguration config = configFrom(properties);
 
-    assertThatThrownBy(() -> config.azureCredential("team-a"))
+    assertThatThrownBy(() -> credentialOf(config, "team-a"))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("team-a")
         .hasMessageNotContaining(SECRET_A)
         .hasMessageNotContaining("not/a/tenant")
         .hasCauseInstanceOf(IllegalArgumentException.class);
-    TokenCredential teamB = config.azureCredential("team-b");
+    TokenCredential teamB = credentialOf(config, "team-b");
     assertThat(teamB).isNotNull();
   }
 

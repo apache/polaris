@@ -48,6 +48,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
+import org.apache.polaris.service.storage.StorageConfiguration.AzureNamedStorageConfig;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -150,23 +151,12 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       StorageConfiguration storageConfiguration,
       Map<String, TokenCredential> namedCredentials) {
     String storageName = storageConfig.getStorageName();
-    StorageConfiguration.AzureNamedStorageConfig named =
-        storageConfiguration.azure().storages().get(storageName);
-    if (named == null) {
-      throw new IllegalArgumentException(
-          "Storage name '" + storageName + "' is not configured on the server");
-    }
-    // A client secret credential only obtains tokens for its own tenant. This message can reach API
-    // clients, so it does not include the tenant configured on the server.
-    if (!named.tenantId().equalsIgnoreCase(storageConfig.getTenantId())) {
-      throw new IllegalArgumentException(
-          "The tenantId of this storage configuration does not match the tenant configured for"
-              + " storage name '"
-              + storageName
-              + "'");
-    }
+    // The checks run on every use. Only the credential, which belongs to the name alone, is shared.
+    AzureNamedStorageConfig named =
+        storageConfiguration.azureStorage(storageName, storageConfig.getTenantId());
     // A failed build stores nothing, so the next use builds it again.
-    return namedCredentials.computeIfAbsent(storageName, storageConfiguration::azureCredential);
+    return namedCredentials.computeIfAbsent(
+        storageName, name -> storageConfiguration.azureCredential(name, named));
   }
 
   /**

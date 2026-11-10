@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 import com.azure.core.credential.TokenCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import java.time.Clock;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -61,14 +62,15 @@ class AzureNamedCredentialsProviderTest {
   private boolean failNextBuild;
 
   private PolarisStorageIntegrationProviderImpl provider(Map<String, Object> flags) {
-    StorageConfiguration storageConfiguration = mock(StorageConfiguration.class);
+    // The real name lookup and tenant check run; only the credential build is replaced.
+    StorageConfiguration storageConfiguration =
+        mock(StorageConfiguration.class, Mockito.CALLS_REAL_METHODS);
     AzureNamedStorageConfig teamA = mock(AzureNamedStorageConfig.class);
     when(teamA.tenantId()).thenReturn(TENANT);
     AzureStorageConfig azure = mock(AzureStorageConfig.class);
     when(azure.storages()).thenReturn(Map.of("team-a", teamA));
     when(storageConfiguration.azure()).thenReturn(azure);
-    when(storageConfiguration.azureCredential("team-a"))
-        .thenAnswer(
+    Mockito.doAnswer(
             invocation -> {
               teamALoads.incrementAndGet();
               if (failNextBuild) {
@@ -76,7 +78,9 @@ class AzureNamedCredentialsProviderTest {
                 throw new IllegalStateException("build failed");
               }
               return mock(TokenCredential.class);
-            });
+            })
+        .when(storageConfiguration)
+        .azureCredential("team-a", teamA);
     RealmConfig realmConfig = new RealmConfigImpl((rc, name) -> flags.get(name), REALM);
     return new PolarisStorageIntegrationProviderImpl(
         storageConfiguration,
@@ -232,6 +236,30 @@ class AzureNamedCredentialsProviderTest {
     provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
     provider.getStorageIntegration(entityPath(PolarisEntityType.TASK, "team-a", TENANT));
 
+    assertThat(teamALoads).hasValue(1);
+  }
+
+  @Test
+  void theFlagIsReadPerRealmWhileTheBuiltCredentialIsSharedByName() {
+    Map<String, Object> flags = new HashMap<>();
+    PolarisStorageIntegrationProviderImpl provider = provider(flags);
+
+    int defaultBuilds =
+        defaultCredentialBuilds(
+            () -> {
+              flags.put(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true);
+              provider.getStorageIntegration(
+                  entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
+              flags.put(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), false);
+              provider.getStorageIntegration(
+                  entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
+              flags.put(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true);
+              provider.getStorageIntegration(
+                  entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
+            });
+
+    // The realm with the flag off gets the default credential; the two realms with it on share one.
+    assertThat(defaultBuilds).isEqualTo(1);
     assertThat(teamALoads).hasValue(1);
   }
 

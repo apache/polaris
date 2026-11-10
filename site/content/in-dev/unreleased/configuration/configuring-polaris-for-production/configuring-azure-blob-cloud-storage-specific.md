@@ -124,9 +124,9 @@ environment, use the literal property names as the variable names
 
 Named credentials apply to the whole deployment, not to one realm. An administrator who can set
 `storageName` on a catalog in any realm where `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` is enabled can
-select any configured name, and can set the catalog's allowed locations. Polaris then uses that service principal directly on those locations. Only
-configure names whose access is appropriate for everyone who can administer catalogs on this
-server.
+select any configured name, and can set the catalog's allowed locations. Polaris then uses that
+service principal directly on those locations. Only configure names whose access is appropriate for
+everyone who can administer catalogs on this server.
 
 ## Storage account requirements
 
