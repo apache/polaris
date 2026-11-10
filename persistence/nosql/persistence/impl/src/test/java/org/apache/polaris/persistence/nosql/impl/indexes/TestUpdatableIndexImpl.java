@@ -210,7 +210,8 @@ public class TestUpdatableIndexImpl {
 
     var indexed = updatable.toIndexed("idx-", (name, obj) -> soft.fail("Unexpected obj persist"));
     var deserialized =
-        (UpdatableIndexImpl<ObjRef>) indexed.asUpdatableIndex(persistence, OBJ_REF_SERIALIZER);
+        ((LazyUpdatableIndex<ObjRef>) indexed.asUpdatableIndex(persistence, OBJ_REF_SERIALIZER))
+            .getOrCreate();
 
     soft.assertThat(deserialized.embedded.asKeyList()).containsExactly(baz);
     soft.assertThat(deserialized.embedded.getElement(baz))
@@ -274,7 +275,8 @@ public class TestUpdatableIndexImpl {
 
     var indexed = updatable.toIndexed("idx-", (name, obj) -> soft.fail("Unexpected obj persist"));
     var deserialized =
-        (UpdatableIndexImpl<ObjRef>) indexed.asUpdatableIndex(persistence, OBJ_REF_SERIALIZER);
+        ((LazyUpdatableIndex<ObjRef>) indexed.asUpdatableIndex(persistence, OBJ_REF_SERIALIZER))
+            .getOrCreate();
 
     soft.assertThat(deserialized.embedded.asKeyList()).containsExactly(baz);
     soft.assertThat(deserialized.embedded.getElement(baz))
@@ -330,8 +332,9 @@ public class TestUpdatableIndexImpl {
     // add more
 
     updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
-            indexed.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+        ((LazyUpdatableIndex<ObjTestValue>)
+                indexed.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER))
+            .getOrCreate();
     for (int i = 0; i < numValues; i++) {
       updatable.put(key("k" + i + "b"), value1kB);
     }
@@ -357,8 +360,9 @@ public class TestUpdatableIndexImpl {
     // check that empty splits are removed
 
     updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
-            indexed.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+        ((LazyUpdatableIndex<ObjTestValue>)
+                indexed.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER))
+            .getOrCreate();
 
     var stripeToEmpty = indexed.stripes().get(1);
     var stripeObj =
@@ -374,8 +378,9 @@ public class TestUpdatableIndexImpl {
         updatable.toIndexed("idx-", (n, o) -> soft.fail("Unexpected obj persist %s / %s", n, o));
     soft.assertThat(indexed2.stripes()).containsExactlyElementsOf(indexed.stripes());
     var deserializedRemoved =
-        (UpdatableIndexImpl<ObjTestValue>)
-            indexed2.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+        ((LazyUpdatableIndex<ObjTestValue>)
+                indexed2.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER))
+            .getOrCreate();
     // Index-API functions on 'StoreIndex' do not expose the removed keys
     soft.assertThat(stripeObj.asKeyList())
         .allMatch(k -> deserializedRemoved.get(k) == null)
@@ -391,8 +396,9 @@ public class TestUpdatableIndexImpl {
 
     // Force spill-out (otherwise the above removes will just be carried over in the embedded index)
     updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
-            indexed2.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+        ((LazyUpdatableIndex<ObjTestValue>)
+                indexed2.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER))
+            .getOrCreate();
     for (var i = 0; i < numValues / 5; i++) {
       var k = key("sp1_" + i);
       updatable.put(k, value1kB);
@@ -406,8 +412,9 @@ public class TestUpdatableIndexImpl {
     // Verify that the whole stripe with the keys removed above is no longer part of the index
     soft.assertThat(indexed2.stripes()).doesNotContain(stripeToEmpty);
     var deserializedRemovedSpilled =
-        (UpdatableIndexImpl<ObjTestValue>)
-            indexed2.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+        ((LazyUpdatableIndex<ObjTestValue>)
+                indexed2.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER))
+            .getOrCreate();
     soft.assertThat(stripeObj.asKeyList())
         .allMatch(k -> deserializedRemovedSpilled.get(k) == null, "get(k)")
         .allMatch(k -> !deserializedRemovedSpilled.contains(k), "contains(k)")
@@ -529,11 +536,12 @@ public class TestUpdatableIndexImpl {
     legacyEmbedded.add(indexElement(key, value));
 
     var updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
-            ImmutableIndexContainer.<ObjTestValue>builder()
-                .embedded(legacyEmbedded.serialize())
-                .build()
-                .asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+        ((LazyUpdatableIndex<ObjTestValue>)
+                ImmutableIndexContainer.<ObjTestValue>builder()
+                    .embedded(legacyEmbedded.serialize())
+                    .build()
+                    .asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER))
+            .getOrCreate();
 
     var indexed = updatable.toIndexed("idx-", (n, o) -> soft.fail("Unexpected obj persist"));
     soft.assertThat(indexed.stripes()).isEmpty();
@@ -573,8 +581,9 @@ public class TestUpdatableIndexImpl {
         .isEqualTo(value);
 
     var updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
-            indexed.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+        ((LazyUpdatableIndex<ObjTestValue>)
+                indexed.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER))
+            .getOrCreate();
     var forceSpillKey = key("legacy-reference-spill");
     var forceSpillValue =
         objTestValueOfSize(
@@ -649,8 +658,9 @@ public class TestUpdatableIndexImpl {
             .build();
 
     var updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
-            legacyIndexContainer.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+        ((LazyUpdatableIndex<ObjTestValue>)
+                legacyIndexContainer.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER))
+            .getOrCreate();
     updatable.put(forceSpillKey, forceSpillValue);
 
     var toPersist = new ArrayList<Map.Entry<String, Obj>>();
@@ -728,8 +738,9 @@ public class TestUpdatableIndexImpl {
             .build();
 
     var updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
-            legacyIndexContainer.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+        ((LazyUpdatableIndex<ObjTestValue>)
+                legacyIndexContainer.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER))
+            .getOrCreate();
     updatable.put(forceSpillKey, forceSpillValue);
 
     var toPersist = new ArrayList<Map.Entry<String, Obj>>();
@@ -822,8 +833,9 @@ public class TestUpdatableIndexImpl {
           IndexStripe.indexStripe(reference.first(), reference.last(), objRef(stripeObj)));
     }
 
-    return (UpdatableIndexImpl<V>)
-        indexContainerBuilder.build().asUpdatableIndex(persistence, serializer);
+    return ((LazyUpdatableIndex<V>)
+            indexContainerBuilder.build().asUpdatableIndex(persistence, serializer))
+        .getOrCreate();
   }
 
   <V> UpdatableIndexImpl<V> updatableIndexForTest(

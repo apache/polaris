@@ -53,6 +53,16 @@ public final class IndexesProvider {
       @Nullable IndexContainer<V> indexContainer,
       @NonNull Persistence persistence,
       @NonNull IndexValueSerializer<V> indexValueSerializer) {
+    if (indexContainer != null) {
+      return new LazyUpdatableIndex<>(indexContainer, persistence, indexValueSerializer);
+    }
+    return buildEagerWriteIndex(null, persistence, indexValueSerializer);
+  }
+
+  static <V> UpdatableIndexImpl<V> buildEagerWriteIndex(
+      @Nullable IndexContainer<V> indexContainer,
+      @NonNull Persistence persistence,
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     var embedded =
         indexContainer != null
             ? deserializeStoreIndex(indexContainer.embedded(), indexValueSerializer)
