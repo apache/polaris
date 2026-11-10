@@ -1091,6 +1091,14 @@ components:
             credentials inherit the full permissions of the assumed role.
           examples:
             - '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["glue:*","s3:GetObject","s3:ListBucket"],"Resource":"*"}]}'
+        stsEndpoint:
+          type: string
+          description: >-
+            An optional STS endpoint URI used by Polaris to call AWS STS AssumeRole for this connection.
+            When omitted, the default AWS STS endpoint for the signing region is used.
+            Requires the ALLOW_SETTING_S3_ENDPOINTS realm feature to be enabled.
+          examples:
+            - "https://sts.example.com:1234"
       required:
         - roleArn
         - signingRegion

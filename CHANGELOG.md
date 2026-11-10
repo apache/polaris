@@ -198,6 +198,7 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   `fair-retries` does not apply to locally synchronized commits, which use FIFO admission;
   conflict retry backoff still applies.
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
+- Added optional `stsEndpoint` field to `SigV4AuthenticationParameters` for catalog federation. When set, Polaris calls AWS STS AssumeRole for the connection against this endpoint instead of the SDK default. Setting it requires `ALLOW_SETTING_S3_ENDPOINTS` to be enabled.
 
 ### Changes
 

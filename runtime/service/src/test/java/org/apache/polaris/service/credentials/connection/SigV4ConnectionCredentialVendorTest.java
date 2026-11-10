@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.net.URI;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -111,6 +112,7 @@ public class SigV4ConnectionCredentialVendorTest {
             "external-id-123",
             "us-west-2",
             "glue",
+            null,
             null);
 
     // Create connection config with service identity and auth params
@@ -156,7 +158,13 @@ public class SigV4ConnectionCredentialVendorTest {
     // SigV4 auth without explicit session name
     SigV4AuthenticationParametersDpo authParams =
         new SigV4AuthenticationParametersDpo(
-            "arn:aws:iam::123456789012:role/customer-role", null, null, "us-west-2", "glue", null);
+            "arn:aws:iam::123456789012:role/customer-role",
+            null,
+            null,
+            "us-west-2",
+            "glue",
+            null,
+            null);
 
     // Create connection config with service identity and auth params
     IcebergRestConnectionConfigInfoDpo connectionConfig =
@@ -195,6 +203,7 @@ public class SigV4ConnectionCredentialVendorTest {
             "external-id-123",
             "eu-west-1",
             "glue",
+            null,
             null);
 
     IcebergRestConnectionConfigInfoDpo connectionConfig =
@@ -205,6 +214,33 @@ public class SigV4ConnectionCredentialVendorTest {
     // Verify the STS client was created with the correct region from sigV4 params
     Assertions.assertThat(capturedDestination.get().region()).isPresent().hasValue("eu-west-1");
     Assertions.assertThat(capturedDestination.get().endpoint()).isEmpty();
+  }
+
+  @Test
+  public void testStsDestinationUsesStsEndpointWhenSet() {
+    ServiceIdentityInfoDpo serviceIdentity =
+        new AwsIamServiceIdentityInfoDpo(
+            new SecretReference("urn:polaris-secret:test:my-realm:AWS_IAM", Map.of()));
+
+    SigV4AuthenticationParametersDpo authParams =
+        new SigV4AuthenticationParametersDpo(
+            "arn:aws:iam::123456789012:role/customer-role",
+            null,
+            null,
+            "us-west-2",
+            "glue",
+            null,
+            "https://sts.example.internal");
+
+    IcebergRestConnectionConfigInfoDpo connectionConfig =
+        createConnectionConfig(authParams, serviceIdentity);
+
+    vendor.getConnectionCredentials(connectionConfig);
+
+    Assertions.assertThat(capturedDestination.get().endpoint())
+        .isPresent()
+        .hasValue(URI.create("https://sts.example.internal"));
+    Assertions.assertThat(capturedDestination.get().region()).isPresent().hasValue("us-west-2");
   }
 
   @Test
@@ -225,7 +261,8 @@ public class SigV4ConnectionCredentialVendorTest {
             "external-id-123",
             "us-west-2",
             "glue",
-            customPolicy);
+            customPolicy,
+            null);
 
     IcebergRestConnectionConfigInfoDpo connectionConfig =
         createConnectionConfig(authParams, serviceIdentity);
@@ -252,6 +289,7 @@ public class SigV4ConnectionCredentialVendorTest {
             null,
             null,
             "ap-southeast-1",
+            null,
             null,
             null);
 
