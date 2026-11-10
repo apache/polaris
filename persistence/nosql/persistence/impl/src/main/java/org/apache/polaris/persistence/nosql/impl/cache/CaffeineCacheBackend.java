@@ -61,15 +61,20 @@ import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.cache.CacheBackend;
 import org.apache.polaris.persistence.nosql.api.cache.CacheConfig;
 import org.apache.polaris.persistence.nosql.api.cache.ImmutableCacheSizing;
+import org.apache.polaris.persistence.nosql.api.obj.ImmutableObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.apache.polaris.persistence.nosql.api.ref.ImmutableReference;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.apache.polaris.persistence.nosql.impl.indexes.ImmutableIndexStripeObj;
+import org.apache.polaris.persistence.nosql.impl.indexes.IndexStripeObj;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.ObjectWriter;
 import tools.jackson.dataformat.smile.SmileMapper;
+import tools.jackson.dataformat.smile.SmileWriteFeature;
 
 class CaffeineCacheBackend implements CacheBackend {
 
@@ -78,6 +83,7 @@ class CaffeineCacheBackend implements CacheBackend {
   private static final byte KIND_FLAG_NUM_PARTS = 2;
   private static final byte KIND_FLAG_CREATED = 4;
   private static final byte KIND_FLAG_VERSION = 8;
+  private static final byte KIND_FLAG_RAW_STRIPE = 16;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CaffeineCacheBackend.class);
 
@@ -244,7 +250,7 @@ class CaffeineCacheBackend implements CacheBackend {
     if (value == null) {
       return null;
     }
-    if (value.serialized == null) {
+    if (value.data == null) {
       return NOT_FOUND_OBJ_SENTINEL;
     }
     return value.getObj();
@@ -349,9 +355,23 @@ class CaffeineCacheBackend implements CacheBackend {
       return;
     }
     var expiresAtNanos = config.clockNanos().getAsLong() + refCacheTtlNanos;
+    var snapshot = ImmutableReference.copyOf(reference);
+    var size =
+        REFERENCE_SIZE
+            + stringHeapSize(snapshot.name())
+            + ARRAY_OVERHEAD
+            + Long.BYTES * snapshot.previousPointers().length;
+    if (snapshot.pointer().isPresent()) {
+      var pointer = snapshot.pointer().orElseThrow();
+      var pointerSnapshot = ImmutableObjRef.copyOf(pointer);
+      if (pointer != pointerSnapshot) {
+        snapshot = snapshot.withPointer(pointerSnapshot);
+      }
+      size += OBJ_REF_SIZE + stringHeapSize(pointerSnapshot.type());
+    }
     cachePut(
         cacheKeyReferenceRead(realmId, reference.name()),
-        new CacheValue(null, expiresAtNanos, serializeReference(reference)));
+        new CacheValue(null, expiresAtNanos, snapshot, size));
   }
 
   @Override
@@ -373,13 +393,27 @@ class CaffeineCacheBackend implements CacheBackend {
     if (value == null) {
       return null;
     }
-    if (value.serialized == null) {
+    if (value.data == null) {
       return NON_EXISTENT_REFERENCE_SENTINEL;
     }
     return value.getReference();
   }
 
   private static CacheValue cacheValueObj(@NonNull Obj obj, long expiresAtNanos) {
+    if (obj instanceof IndexStripeObj stripe) {
+      var metadata = cacheKeyObj(obj);
+      metadata[0] |= KIND_FLAG_RAW_STRIPE;
+      var buffer = stripe.index();
+      byte[] bytes;
+      if (buffer.hasArray()) {
+        var start = buffer.arrayOffset() + buffer.position();
+        bytes = Arrays.copyOfRange(buffer.array(), start, start + buffer.remaining());
+      } else {
+        bytes = new byte[buffer.remaining()];
+        buffer.duplicate().get(bytes);
+      }
+      return new CacheValue(metadata, expiresAtNanos, bytes);
+    }
     return new CacheValue(cacheKeyObj(obj), expiresAtNanos, serializeObj(obj));
   }
 
@@ -516,11 +550,20 @@ class CaffeineCacheBackend implements CacheBackend {
   }
 
   /** All replaceable state belongs to the value, including object deserialization metadata. */
-  record CacheValue(byte[] objectMetadata, long expiresAtNanosEpoch, byte[] serialized) {
+  record CacheValue(
+      byte[] objectMetadata, long expiresAtNanosEpoch, Object data, int dataHeapSize) {
+    CacheValue(byte[] objectMetadata, long expiresAtNanosEpoch, byte[] serialized) {
+      this(
+          objectMetadata,
+          expiresAtNanosEpoch,
+          serialized,
+          serialized != null ? ARRAY_OVERHEAD + serialized.length : 0);
+    }
+
     int heapSize() {
       return CACHE_VALUE_SIZE
           + (objectMetadata != null ? ARRAY_OVERHEAD + objectMetadata.length : 0)
-          + (serialized != null ? ARRAY_OVERHEAD + serialized.length : 0);
+          + dataHeapSize;
     }
 
     Obj getObj() {
@@ -541,20 +584,38 @@ class CaffeineCacheBackend implements CacheBackend {
                   objectMetadata, buf.position(), objectMetadata.length - buf.position(), UTF_8)
               : null;
 
+      if ((kind & KIND_FLAG_RAW_STRIPE) != 0) {
+        // Keep the cache's snapshot isolated from writable buffers returned to callers.
+        return ImmutableIndexStripeObj.builder()
+            .id(id)
+            .numParts(numParts)
+            .createdAtMicros(createdAtMicros)
+            .versionToken(versionToken)
+            .index(ByteBuffer.wrap(((byte[]) data).clone()))
+            .build();
+      }
       return contextualReader(SMILE_MAPPER, type, id, numParts, versionToken, createdAtMicros)
-          .readValue(serialized);
+          .readValue((byte[]) data);
     }
 
     Reference getReference() {
-      return SMILE_MAPPER.readValue(serialized, Reference.class);
+      return (Reference) data;
     }
   }
 
   // Conservative instance sizes with uncompressed references and 8-byte alignment:
   // key: 16-byte header, two references, int hash, padding;
-  // value: 16-byte header, two references, long expiry.
+  // value: 16-byte header, two references, long expiry, int data size, padding.
   static final int CACHE_KEY_SIZE = 40;
-  static final int CACHE_VALUE_SIZE = 40;
+  static final int CACHE_VALUE_SIZE = 48;
+  // Generated immutable reference: three references, long timestamp, cached hash, padding.
+  static final int REFERENCE_SIZE = 56;
+  // Generated immutable object reference: type reference, long ID, two ints.
+  static final int OBJ_REF_SIZE = 40;
+
+  private static int stringHeapSize(String value) {
+    return STRING_SIZE + ARRAY_OVERHEAD + ((2 * value.length() + 7) & ~7);
+  }
 
   /**
    * Worst layout of {@code java.lang.String}: <code><pre>
@@ -581,6 +642,8 @@ class CaffeineCacheBackend implements CacheBackend {
   static final ObjectMapper SMILE_MAPPER =
       SmileMapper.builder()
           .findAndAddModules()
+          .addModule(new CacheTimeModule())
+          .disable(SmileWriteFeature.ENCODE_BINARY_AS_7BIT)
           .disable(FAIL_ON_UNKNOWN_PROPERTIES)
           .enable(DEFAULT_VIEW_INCLUSION)
           .build();
@@ -588,9 +651,5 @@ class CaffeineCacheBackend implements CacheBackend {
 
   static byte[] serializeObj(Obj obj) {
     return OBJ_WRITER.writeValueAsBytes(obj);
-  }
-
-  static byte[] serializeReference(Reference ref) {
-    return SMILE_MAPPER.writeValueAsBytes(ref);
   }
 }
