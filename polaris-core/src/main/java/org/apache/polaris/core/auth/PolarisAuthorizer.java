@@ -99,8 +99,9 @@ public interface PolarisAuthorizer {
   default @NonNull List<AuthorizationDecision> authorize(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationBatchRequest batch) {
     return batch.intents().stream()
-        .map(intent ->
-            authorize(authzState, new AuthorizationRequest(batch.principal(), List.of(intent))))
+        .map(
+            intent ->
+                authorize(authzState, new AuthorizationRequest(batch.principal(), List.of(intent))))
         .toList();
   }
 }
