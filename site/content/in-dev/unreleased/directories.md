@@ -139,6 +139,10 @@ Returns the list of directory identifiers in the given namespace.
 Creates a new directory and its corresponding Iceberg table. The request body must contain the
 directory configuration (see [Configuration](#configuration)).
 
+The [directory table](#directory-table) is always created, empty, with the directory, and its identifier is
+returned in the `inventory-table` field. Creating a directory doesn't scan the `base-location`: the directory
+table is populated by the [external scanning services](#external-services-scanning-services).
+
 ### Get directory details
 
 **GET** `/polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}`
@@ -159,7 +163,8 @@ The directory table and its history are preserved, and the new scanner configura
 
 **DELETE** `/polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}`
 
-Removes the directory and its associated Iceberg table from the namespace.
+Removes the directory and its associated Iceberg table from the namespace. The directory table is dropped
+without purging its data and metadata files. The objects under the directory `base-location` are never deleted.
 
 ## Directory table
 
@@ -176,6 +181,9 @@ field when the directory is loaded. The table uses the following schema:
 | 5 | `checksum` | `string` | No | The object checksum value computed with the algorithm specified in `checksum_algorithm`. |
 | 6 | `last_modified` | `timestamptz` | Yes | The last modification timestamp of the object as reported by the object store. |
 | 7 | `metadata` | `map<string, string>` | No | Additional labels and tags from the object store (for example S3 user-defined metadata, storage class, or content encoding). |
+
+This schema is part of the Directories API specification. Its fields are not renamed or removed, and new fields
+are only added as optional fields, so existing clients can keep reading the directory table.
 
 Clients (query engines, analytics tools, etc.) interact with the directory table as a regular Iceberg
 table. For instance, you can query it with Spark SQL:
