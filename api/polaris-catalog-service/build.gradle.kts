@@ -49,16 +49,7 @@ val policyManagementModels =
     "ListPoliciesResponse",
   )
 
-val storageMappingModels =
-  listOf(
-    "StorageMappingTarget",
-    "StorageMapping",
-    "CreateStorageMappingRequest",
-    "RemoveStorageMappingRequest",
-    "ListStorageMappingsResponse",
-  )
-
-val models = (genericTableModels + policyManagementModels + storageMappingModels).joinToString(",")
+val models = (genericTableModels + policyManagementModels).joinToString(",")
 
 dependencies {
   implementation(project(":polaris-core"))
@@ -85,12 +76,6 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-databind")
 
   compileOnly(libs.microprofile.fault.tolerance.api)
-
-  testImplementation(platform(libs.junit.bom))
-  testImplementation("org.junit.jupiter:junit-jupiter")
-  testImplementation(libs.assertj.core)
-  testImplementation(platform(libs.jackson3.bom))
-  testImplementation("tools.jackson.core:jackson-databind")
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))

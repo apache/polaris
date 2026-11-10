@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.types;
+package org.apache.polaris.core.admin.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -50,9 +50,11 @@ public class StorageMappingSerializationTest {
     assertThat(json)
         .isEqualTo(
             "{\"target\":{\"type\":\"table\",\"path\":[\"finance\",\"ledger\"]},"
-                + "\"storage-configuration-name\":\"finance\","
-                + "\"target-exists\":false}");
-    assertThat(mapper.readValue(json, StorageMapping.class)).isEqualTo(mapping);
+                + "\"storageConfigurationName\":\"finance\","
+                + "\"targetExists\":false}");
+    assertThat(mapper.readValue(json, StorageMapping.class))
+        .usingRecursiveComparison()
+        .isEqualTo(mapping);
   }
 
   @Test
@@ -68,15 +70,19 @@ public class StorageMappingSerializationTest {
     assertThat(createJson)
         .isEqualTo(
             "{\"target\":{\"type\":\"namespace\",\"path\":[\"eu\",\"gdpr\"]},"
-                + "\"storage-configuration-name\":\"gdpr-vault\"}");
+                + "\"storageConfigurationName\":\"gdpr-vault\"}");
     assertThat(removeJson)
         .isEqualTo("{\"target\":{\"type\":\"namespace\",\"path\":[\"eu\",\"gdpr\"]}}");
-    assertThat(mapper.readValue(createJson, CreateStorageMappingRequest.class)).isEqualTo(create);
-    assertThat(mapper.readValue(removeJson, RemoveStorageMappingRequest.class)).isEqualTo(remove);
+    assertThat(mapper.readValue(createJson, CreateStorageMappingRequest.class))
+        .usingRecursiveComparison()
+        .isEqualTo(create);
+    assertThat(mapper.readValue(removeJson, RemoveStorageMappingRequest.class))
+        .usingRecursiveComparison()
+        .isEqualTo(remove);
   }
 
   @Test
-  public void testListResponseJsonFormat() {
+  public void testListJsonFormat() {
     StorageMapping dropped =
         new StorageMapping(
             new StorageMappingTarget(
@@ -84,30 +90,30 @@ public class StorageMappingSerializationTest {
             "finance",
             false);
 
-    ListStorageMappingsResponse empty = new ListStorageMappingsResponse(List.of());
-    assertThat(
-            mapper.readValue(mapper.writeValueAsString(empty), ListStorageMappingsResponse.class))
-        .isEqualTo(empty);
+    assertThat(mapper.writeValueAsString(new StorageMappings(List.of())))
+        .isEqualTo("{\"storageMappings\":[]}");
 
-    ListStorageMappingsResponse page = new ListStorageMappingsResponse("token-1", List.of(dropped));
+    StorageMappings page = new StorageMappings(List.of(dropped), "token-1");
     String json = mapper.writeValueAsString(page);
 
     assertThat(json)
         .isEqualTo(
-            "{\"next-page-token\":\"token-1\",\"storage-mappings\":[{"
+            "{\"storageMappings\":[{"
                 + "\"target\":{\"type\":\"table\",\"path\":[\"finance\",\"old\"]},"
-                + "\"storage-configuration-name\":\"finance\","
-                + "\"target-exists\":false}]}");
-    assertThat(mapper.readValue(json, ListStorageMappingsResponse.class)).isEqualTo(page);
+                + "\"storageConfigurationName\":\"finance\","
+                + "\"targetExists\":false}],"
+                + "\"nextPageToken\":\"token-1\"}");
+    assertThat(mapper.readValue(json, StorageMappings.class))
+        .usingRecursiveComparison()
+        .isEqualTo(page);
   }
 
   @Test
-  public void testListResponseWithoutPageToken() {
-    ListStorageMappingsResponse response =
-        mapper.readValue("{\"storage-mappings\":[]}", ListStorageMappingsResponse.class);
+  public void testListWithoutNextPageToken() {
+    StorageMappings mappings = mapper.readValue("{\"storageMappings\":[]}", StorageMappings.class);
 
-    assertThat(response.getNextPageToken()).isNull();
-    assertThat(response.getStorageMappings()).isEmpty();
+    assertThat(mappings.getStorageMappings()).isEmpty();
+    assertThat(mappings.getNextPageToken()).isNull();
   }
 
   @Test
