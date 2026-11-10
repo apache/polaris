@@ -62,13 +62,18 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
   @JsonProperty(value = "sessionPolicy")
   private final String sessionPolicy;
 
+  // An optional STS endpoint URI used for AssumeRole calls; null means the SDK default endpoint
+  @JsonProperty(value = "stsEndpoint")
+  private final String stsEndpoint;
+
   public SigV4AuthenticationParametersDpo(
       @JsonProperty(value = "roleArn", required = true) String roleArn,
       @JsonProperty(value = "roleSessionName", required = false) String roleSessionName,
       @JsonProperty(value = "externalId", required = false) String externalId,
       @JsonProperty(value = "signingRegion", required = true) String signingRegion,
       @JsonProperty(value = "signingName", required = false) String signingName,
-      @JsonProperty(value = "sessionPolicy", required = false) String sessionPolicy) {
+      @JsonProperty(value = "sessionPolicy", required = false) String sessionPolicy,
+      @JsonProperty(value = "stsEndpoint", required = false) String stsEndpoint) {
     super(AuthenticationType.SIGV4.getCode());
     this.roleArn = roleArn;
     this.roleSessionName = roleSessionName;
@@ -76,6 +81,7 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
     this.signingRegion = signingRegion;
     this.signingName = signingName;
     this.sessionPolicy = sessionPolicy;
+    this.stsEndpoint = stsEndpoint;
   }
 
   public @NonNull String getRoleArn() {
@@ -102,6 +108,10 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
     return sessionPolicy;
   }
 
+  public @Nullable String getStsEndpoint() {
+    return stsEndpoint;
+  }
+
   @NonNull
   @Override
   public Map<String, String> asIcebergCatalogProperties(
@@ -126,6 +136,7 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
         .setSigningRegion(getSigningRegion())
         .setSigningName(getSigningName())
         .setSessionPolicy(getSessionPolicy())
+        .setStsEndpoint(getStsEndpoint())
         .build();
   }
 
@@ -139,6 +150,7 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
         .add("signingRegion", getSigningRegion())
         .add("signingName", getSigningName())
         .add("hasSessionPolicy", StringUtils.isNotEmpty(getSessionPolicy()))
+        .add("stsEndpoint", getStsEndpoint())
         .toString();
   }
 }
