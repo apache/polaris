@@ -542,4 +542,11 @@ public class QueryGeneratorTest {
                 ModelEntity.TABLE_NAME,
                 Map.of("not_a_column", 1)));
   }
+
+  @Test
+  void testGenerateDeleteEventsBeforeQueryDeletesOldestFirst() {
+    var query = QueryGenerator.generateDeleteEventsBeforeQuery("realm1", 42L, 10);
+    assertTrue(query.sql().contains("ORDER BY timestamp_ms LIMIT ?"), query.sql());
+    assertEquals(List.of("realm1", "realm1", 42L, 10), query.parameters());
+  }
 }

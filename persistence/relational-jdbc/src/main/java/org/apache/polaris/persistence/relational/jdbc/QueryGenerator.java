@@ -351,8 +351,9 @@ public class QueryGenerator {
 
   /**
    * Generates a DELETE query that removes at most {@code limit} events of a realm whose timestamp
-   * is strictly before {@code timestampMs}. The limit is applied in a subquery because PostgreSQL
-   * does not support {@code DELETE ... LIMIT}.
+   * is strictly before {@code timestampMs}, oldest first, so that an interrupted purge leaves only
+   * the newest events. The limit is applied in a subquery because PostgreSQL does not support
+   * {@code DELETE ... LIMIT}.
    */
   public static PreparedQuery generateDeleteEventsBeforeQuery(
       @NonNull String realmId, long timestampMs, int limit) {
@@ -363,7 +364,8 @@ public class QueryGenerator {
             + table
             + " WHERE realm_id = ? AND event_id IN (SELECT event_id FROM "
             + table
-            + " WHERE realm_id = ? AND timestamp_ms < ? LIMIT ?)";
+            + " WHERE realm_id = ? AND timestamp_ms < ?"
+            + " ORDER BY timestamp_ms LIMIT ?)";
     return new PreparedQuery(sql, List.of(realmId, realmId, timestampMs, limit));
   }
 

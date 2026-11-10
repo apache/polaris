@@ -21,7 +21,9 @@ package org.apache.polaris.admintool;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.time.Clock;
+import java.time.DateTimeException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import org.apache.polaris.admintool.config.QuarkusPersistenceConfiguration;
 import org.apache.polaris.persistence.relational.jdbc.JdbcEventsPurger;
@@ -86,9 +88,15 @@ public class PurgeEventsCommand extends BaseCommand {
       return EXIT_CODE_USAGE;
     }
 
-    var cutoff = clock.instant().minus(olderThan);
+    Instant cutoff;
     try {
-      for (String realm : realms) {
+      cutoff = clock.instant().minus(olderThan);
+    } catch (DateTimeException | ArithmeticException e) {
+      err.println("--older-than is too large.");
+      return EXIT_CODE_USAGE;
+    }
+    try {
+      for (String realm : realms.stream().distinct().toList()) {
         long deleted = eventsPurger.get().purgeEventsBefore(realm, cutoff, batchSize);
         out.printf("Purged %d events older than %s from realm %s.%n", deleted, cutoff, realm);
       }

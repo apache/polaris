@@ -101,6 +101,20 @@ public abstract class PurgeEventsCommandTestBase {
   }
 
   @Test
+  @Launch(value = {"purge-events", "-r", REALM1, "-r", REALM1, "--older-than", "P1D"})
+  public void testDuplicateRealmIsPurgedOnce(LaunchResult result) {
+    assertThat(result.getOutput().split("from realm " + REALM1, -1)).hasSize(2);
+  }
+
+  @Test
+  @Launch(
+      value = {"purge-events", "-r", REALM1, "--older-than", "P999999999999D"},
+      exitCode = BaseCommand.EXIT_CODE_USAGE)
+  public void testTooLargeOlderThan(LaunchResult result) {
+    assertThat(result.getErrorOutput()).contains("--older-than is too large.");
+  }
+
+  @Test
   @Launch(
       value = {"purge-events", "-r", REALM1, "--older-than", "PT0S"},
       exitCode = BaseCommand.EXIT_CODE_USAGE)
