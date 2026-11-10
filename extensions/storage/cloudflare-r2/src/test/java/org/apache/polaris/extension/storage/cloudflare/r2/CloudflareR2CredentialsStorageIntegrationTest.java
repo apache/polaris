@@ -224,9 +224,10 @@ class CloudflareR2CredentialsStorageIntegrationTest {
   }
 
   /**
-   * Vends with a log capture at WARN and expects the refusal for a missing parent token. The
-   * exception message reaches the client, so it must hold the given text and no property name. One
-   * WARN event names the property that the operator has to set.
+   * Vends with a log capture at WARN and expects the refusal for a missing parent token. It is a
+   * server-side failure, because the catalog passed the token check at create. The exception
+   * message reaches the client, so it must hold the given text and no property name. One WARN event
+   * names the property that the operator has to set.
    */
   private static void assertRefusedForMissingToken(
       CloudflareR2CredentialsStorageIntegration integration,
@@ -239,7 +240,7 @@ class CloudflareR2CredentialsStorageIntegrationTest {
       events = logs.events();
     }
 
-    assertThat(thrown).isInstanceOf(IllegalArgumentException.class).hasMessage(expectedMessage);
+    assertThat(thrown).isInstanceOf(IllegalStateException.class).hasMessage(expectedMessage);
     assertThat(thrown.getMessage()).doesNotContain("polaris.storage");
     assertThat(events)
         .filteredOn(event -> event.getLevel() == Level.WARN)

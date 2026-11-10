@@ -125,17 +125,21 @@ public class CloudflareR2CredentialsStorageIntegration
   }
 
   /**
-   * Reports a vend attempt against a storage name the server holds no parent token for. The
-   * exception message reaches the client, so it names no server property. The WARN line holds the
-   * detailed message, which names the properties an operator has to set.
+   * Reports a vend attempt against a storage name the server holds no parent token for. The catalog
+   * passed a parent token check at create and update, so the server configuration changed
+   * afterwards, for example a removed token or a changed {@code
+   * RESOLVE_CREDENTIALS_BY_STORAGE_NAME}. That is a server-side failure, not a bad request, so this
+   * is an {@link IllegalStateException}. The exception message reaches the client, so it names no
+   * server property. The WARN line holds the detailed message, which names the properties an
+   * operator has to set.
    */
-  private static IllegalArgumentException noParentToken(
+  private static IllegalStateException noParentToken(
       @Nullable String storageName, CredentialVendingContext context) {
     LOGGER.warn(
         "{} (catalog {})",
         CloudflareR2ParentTokenResolver.missingTokenMessage(storageName),
         context.catalogName().orElse("<none>"));
-    return new IllegalArgumentException(
+    return new IllegalStateException(
         storageName == null
             ? "No Cloudflare R2 parent token is configured on the server"
             : "Storage name '"

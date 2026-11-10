@@ -143,10 +143,10 @@ class R2LocalSigningVendingFlowTest {
     Throwable thrown = catchThrowable(() -> loadTableResponse(svc, cat, "ns", "t1", null).close());
 
     assertThat(thrown)
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(IllegalStateException.class)
         .hasMessage("No Cloudflare R2 parent token is configured on the server");
     assertThat(thrown.getMessage()).doesNotContain("polaris.storage");
-    assertThat(statusOf(thrown)).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+    assertThat(statusOf(thrown)).isEqualTo(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
   }
 
   /**
