@@ -26,12 +26,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Optional;
 import java.util.OptionalLong;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 
 /**
  * A default implementation of {@link PrincipalMapper}. It maps the {@link SecurityIdentity} to a
- * Polaris principal by extracting the ID and name from the JWT claims, based on the configuration
- * provided in the OIDC tenant.
+ * Polaris principal by extracting the ID and name from the token claims (JWT claims or token
+ * introspection response), based on the configuration provided in the OIDC tenant.
  */
 @ApplicationScoped
 @Identifier("default")
@@ -46,11 +45,10 @@ class DefaultPrincipalMapper implements PrincipalMapper {
 
   @Override
   public OptionalLong mapPrincipalId(SecurityIdentity identity) {
-    var jwt = (JsonWebToken) identity.getPrincipal();
     var principalMapper = getOidcTenantConfig(identity).principalMapper();
     return principalMapper
         .idClaimPath()
-        .map(claimPath -> claimsLocator.locateClaim(claimPath, jwt))
+        .map(claimPath -> claimsLocator.locateClaim(claimPath, identity))
         .map(id -> id instanceof Number number ? number.longValue() : Long.parseLong(id.toString()))
         .map(OptionalLong::of)
         .orElse(OptionalLong.empty());
@@ -58,11 +56,10 @@ class DefaultPrincipalMapper implements PrincipalMapper {
 
   @Override
   public Optional<String> mapPrincipalName(SecurityIdentity identity) {
-    var jwt = (JsonWebToken) identity.getPrincipal();
     var principalMapper = getOidcTenantConfig(identity).principalMapper();
     return principalMapper
         .nameClaimPath()
-        .map(claimPath -> claimsLocator.locateClaim(claimPath, jwt))
+        .map(claimPath -> claimsLocator.locateClaim(claimPath, identity))
         .map(Object::toString);
   }
 }

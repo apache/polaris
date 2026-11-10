@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service.auth.external.mapping;
 
+import io.quarkus.oidc.TokenIntrospection;
+import io.quarkus.oidc.runtime.OidcUtils;
+import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.json.JsonNumber;
 import jakarta.json.JsonString;
@@ -30,12 +33,16 @@ import java.util.stream.Collectors;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.jspecify.annotations.Nullable;
 
-/** A utility class for locating claims in a JWT token by path. */
+/** A utility class for locating claims in the token of an OIDC identity by path. */
 @ApplicationScoped
 class ClaimsLocator {
 
   /**
-   * Locates a claim, possibly a nested one, in a JWT token by path.
+   * Locates a claim, possibly a nested one, in the token of an OIDC identity by path.
+   *
+   * <p>If the identity principal is a {@link JsonWebToken}, the claims are read from the JWT token.
+   * Otherwise, the claims are read from the token introspection response, if available; this is the
+   * case for opaque tokens.
    *
    * <p>The path is a string with segments separated by '/' characters. For example,
    * "resource_access/client1/roles" would look for the "roles" field inside the "client1" object
@@ -50,12 +57,12 @@ class ClaimsLocator {
    * {@code "https://namespace/claim"}, and {@code "bar"}.
    *
    * @param claimPath the path to the claim, with segments separated by '/' characters
-   * @param token the JWT token
+   * @param identity the OIDC identity
    * @return the claim value, or null if the claim is not found or any segment in the path is null
    */
   @Nullable
-  public Object locateClaim(String claimPath, JsonWebToken token) {
-    if (claimPath == null || claimPath.isEmpty() || token == null) {
+  public Object locateClaim(String claimPath, SecurityIdentity identity) {
+    if (claimPath == null || claimPath.isEmpty() || identity == null) {
       throw new IllegalArgumentException("Claim path cannot be empty");
     }
 
@@ -64,7 +71,7 @@ class ClaimsLocator {
       throw new IllegalArgumentException("Claim path cannot be empty");
     }
 
-    Object currentValue = token.getClaim(segments[0]);
+    Object currentValue = getClaim(identity, segments[0]);
     for (int i = 1; i < segments.length; i++) {
       if (currentValue instanceof Map<?, ?> map) {
         currentValue = map.get(segments[i]);
@@ -74,6 +81,15 @@ class ClaimsLocator {
       }
     }
     return currentValue instanceof JsonValue jsonValue ? convert(jsonValue) : currentValue;
+  }
+
+  @Nullable
+  private static Object getClaim(SecurityIdentity identity, String claimName) {
+    if (identity.getPrincipal() instanceof JsonWebToken jwt) {
+      return jwt.getClaim(claimName);
+    }
+    TokenIntrospection introspection = identity.getAttribute(OidcUtils.INTROSPECTION_ATTRIBUTE);
+    return introspection != null ? introspection.getJsonObject().get(claimName) : null;
   }
 
   /**
