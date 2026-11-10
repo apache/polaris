@@ -2295,13 +2295,15 @@ paths:
         operation. A request replayed with the same `Idempotency-Key` has no additional effects, on
         the namespace or on the storage mapping.
 
-        The call maps the namespace name to the storage configuration, as `createStorageMapping` in the
-        Polaris management API does,
-        then creates the namespace as the Iceberg REST `createNamespace` operation would. If the name
-        is already mapped to this storage configuration, the existing mapping is used. If the namespace
-        is not created, the server removes a mapping created by this call. This is best effort: after
-        a server failure the mapping can remain. `listStorageMappings` in the management API then
-        shows it with `targetExists` set to false, and `removeStorageMapping` removes it.
+        The call maps the namespace name to the storage configuration, as `createStorageMapping` in
+        the Polaris management API does, then creates the namespace as the Iceberg REST
+        `createNamespace` operation would. If the name is already mapped to this storage
+        configuration, the existing mapping is used. Unlike `createStorageMapping`, the call does
+        not replace a mapping to a different storage configuration; it is refused (409). If the
+        namespace is not created, the server removes a mapping created by this call. This is best
+        effort: after a server failure the mapping can remain. `listStorageMappings` in the
+        management API then shows it with `targetExists` set to false, and `removeStorageMapping`
+        removes it.
       parameters:
         - $ref: '#/components/parameters/idempotency-key'
       requestBody:
@@ -2355,15 +2357,14 @@ paths:
         same `Idempotency-Key` has no additional effects, on the table or on the storage mapping.
 
         The call maps the table name to the storage configuration, as `createStorageMapping` in the
-        Polaris management API does,
-        then creates the table as the Iceberg REST `createTable` operation would. If the name is
-        already mapped to this storage configuration, the existing mapping is used. If the table is not
-        created, the server removes a mapping created by this call. This is best effort: after a
-        server failure the mapping can remain. `listStorageMappings` in the management API then
-        shows it with `targetExists` set to false, and `removeStorageMapping` removes it. With
-        `stage-create`, the mapping is kept, so that the commit that creates the table uses the storage
-        configuration; `targetExists` is false until that commit, and stays false if the commit never
-        happens.
+        Polaris management API does, then creates the table as the Iceberg REST `createTable`
+        operation would. If the name is already mapped to this storage configuration, the existing
+        mapping is used. If the table is not created, the server removes a mapping created by this
+        call. This is best effort: after a server failure the mapping can remain.
+        `listStorageMappings` in the management API then shows it with `targetExists` set to false,
+        and `removeStorageMapping` removes it. With `stage-create`, the mapping is kept, so that the
+        commit that creates the table uses the storage configuration; `targetExists` is false until
+        that commit, and stays false if the commit never happens.
       parameters:
         - $ref: '#/components/parameters/data-access'
         - $ref: '#/components/parameters/idempotency-key'
