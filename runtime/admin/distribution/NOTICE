@@ -761,13 +761,6 @@ This product bundles AWS Java SDK with the following in its NOTICE file:
 
 --------------------------------------------------------------------------------
 
-This product bundles AWS EventStream for Java with the following in its NOTICE file:
-|
-| AWS EventStream for Java
-| Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved. 
-
---------------------------------------------------------------------------------
-
 This product bundles Apache Iceberg, which includes code from Kite, developed at
 Cloudera, Inc. with the following copyright notice:
 |
