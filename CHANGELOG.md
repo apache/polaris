@@ -28,11 +28,29 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ## [Unreleased]
 
 ### Highlights
+
+### Upgrade notes
+
+### Breaking changes
+
+### New Features
+
+### Changes
+
+### Deprecations
+
+### Fixes
+
+### Commits
+
+## [1.9.0]
+
+### Highlights
+
 - Table and view commits no longer delete newly written metadata when the metastore write outcome
   is unknown (e.g. a dropped connection during `commit()`); they still clean up on known failures.
   JDBC reports that unknown outcome as `PersistenceCommitStateUnknownException` (HTTP 500). A
   connection failure before `commit()` is a plain failure and the new metadata file is kept.
-
 - Polaris now fully supports "external" principals, that is, principals that are not backed by an 
   entity in Polaris metastore. By enabling external principals, either globally or per-realm,
   Polaris now skips the principal entity metastore lookup. This means that synchronizing principals 
@@ -40,7 +58,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   set the `polaris.authentication.credential-mode` option to `external`. Note: external principals
   are not compatible with internal authentication and internal authorization; you must configure an
   external IDP and an external PDP, such as OPA or Ranger.
-
 - S3 storage configurations gain an optional string field, `credentialVendingMechanism`. A catalog
   that leaves it empty uses the server's default mechanism, STS AssumeRole, and management API
   responses omit the field for it; `STS` selects the same mechanism explicitly and is the only value
@@ -99,8 +116,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   taken from the table metadata, since they were not recorded on the entity. Purge tasks that were
   queued by an older version only carry the table's base location: files under a custom
   `write.data.path` or `write.metadata.path` outside of it are not deleted by those tasks.
-
-[Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 
 ### Breaking changes
 
@@ -201,8 +216,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   In the Ranger service definition, the corresponding access types (`table-structure-manage`,
   `table-uuid-assign`, etc.) now imply `table-properties-read`; the service definition must be
   re-imported into Ranger for this to take effect.
-
-### Deprecations
 
 ### Fixes
 
@@ -382,8 +395,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
 - Iceberg REST: creating a namespace with a request that omits `namespace` now returns
   `400 Bad Request` instead of `500 Internal Server Error`.
-
-### Commits
 
 ## [1.8.0]
 
@@ -1002,7 +1013,8 @@ Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
 
 Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release. Only the source distribution is available for this release.
 
-[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.8.0...HEAD
+[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.9.0...HEAD
+[1.9.0]: https://github.com/apache/polaris/compare/apache-polaris-1.8.0...apache-polaris-1.9.0
 [1.8.0]: https://github.com/apache/polaris/compare/apache-polaris-1.7.0...apache-polaris-1.8.0
 [1.7.0]: https://github.com/apache/polaris/compare/apache-polaris-1.6.0...apache-polaris-1.7.0
 [1.6.0]: https://github.com/apache/polaris/compare/apache-polaris-1.5.0...apache-polaris-1.6.0
@@ -1014,6 +1026,7 @@ Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release
 [1.0.1-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.0.0-incubating...apache-polaris-1.0.1-incubating
 [1.0.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-0.9.0-incubating...apache-polaris-1.0.0-incubating
 [0.9.0-incubating]: https://github.com/apache/polaris/commits/apache-polaris-0.9.0-incubating
+[Relational JDBC metastore documentation]: https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 [Open Policy Agent (OPA)]: https://www.openpolicyagent.org/
 [Iceberg Metrics Reporting]: https://iceberg.apache.org/docs/latest/metrics-reporting/
 [Apache Ranger Authorization]: https://ranger.apache.org/
