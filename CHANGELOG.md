@@ -60,7 +60,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   the catalog create and update requests it serves. Keep S3 storage configurations unchanged during
   the upgrade. A node without the Cloudflare R2 extension cannot vend credentials for an
   `R2_LOCAL_SIGNING` catalog, so create such catalogs only after every node runs a build that
-  includes the extension.
+  includes the extension. A node without the extension also fails to start when a
+  `polaris.storage.cloudflare-r2.*` system property is set (`SRCFG00050`), so add those properties
+  only to nodes that run such a build.
 - Polaris-managed AWS SDK clients now use Apache HttpClient 5, which disables HTTP
   `Expect: 100-continue` by default. Set `polaris.storage.expect-continue-enabled=true`
   to preserve the previous behavior. Iceberg S3 clients continue to use Apache HttpClient 4
@@ -106,7 +108,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   with `polaris.storage.cloudflare-r2.<storage>.access-key` and `.secret-key`. Named tokens
   apply only when `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` is true. A realm opts in by adding
   `R2_LOCAL_SIGNING` to `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS`, whose default stays `[STS]`.
-  The server bundle includes the module.
+  Every realm that opts in shares the parent token, and anyone with `CATALOG_CREATE` or
+  `CATALOG_WRITE_PROPERTIES` can point a catalog at any bucket the token reaches, so scope the
+  parent token to only the buckets those realms need. The server bundle includes the module.
 
 ### Changes
 
