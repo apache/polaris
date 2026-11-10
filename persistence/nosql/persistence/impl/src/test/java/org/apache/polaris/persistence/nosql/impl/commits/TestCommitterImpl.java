@@ -18,7 +18,51 @@
  */
 package org.apache.polaris.persistence.nosql.impl.commits;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import org.apache.polaris.ids.api.MonotonicClock;
+import org.apache.polaris.persistence.nosql.api.Persistence;
+import org.apache.polaris.persistence.nosql.api.PersistenceParams;
+import org.apache.polaris.persistence.nosql.api.commit.RetryConfig;
+import org.apache.polaris.persistence.nosql.api.obj.CommitTestObj;
 import org.apache.polaris.persistence.nosql.testextension.BackendSpec;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @BackendSpec
-public class TestCommitterImpl extends BaseTestCommitterImpl {}
+public class TestCommitterImpl extends BaseTestCommitterImpl {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void localSynchronizationOverridesFairnessAndReleasesPermit(boolean synchronizing)
+      throws Exception {
+    var config = spy(RetryConfig.BuildableRetryConfig.builder().build());
+    var params = PersistenceParams.BuildablePersistenceParams.builder().retryConfig(config).build();
+    var persistence = mock(Persistence.class);
+    when(persistence.params()).thenReturn(params);
+    when(persistence.monotonicClock()).thenReturn(mock(MonotonicClock.class));
+    when(persistence.realmId()).thenReturn("fairness-policy-test");
+    var committer =
+        new CommitterImpl<>(persistence, "fairness-policy-test", CommitTestObj.class, String.class);
+    if (synchronizing) {
+      committer.synchronizingLocally();
+    }
+    clearInvocations(config);
+    var failure = new IllegalStateException("attempt failed");
+    assertThatThrownBy(
+            () ->
+                committer.commit(
+                    (state, reference) -> {
+                      throw failure;
+                    }))
+        .isSameAs(failure);
+    assertThat(committer.commit((state, reference) -> state.noCommit("done"))).contains("done");
+    verify(config, times(synchronizing ? 0 : 2)).fairRetries();
+  }
+}

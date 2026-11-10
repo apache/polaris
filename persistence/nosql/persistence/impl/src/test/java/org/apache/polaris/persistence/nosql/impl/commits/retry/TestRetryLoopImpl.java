@@ -26,15 +26,19 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.persistence.nosql.api.commit.CommitException;
@@ -48,12 +52,88 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentMatcher;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestRetryLoopImpl {
   @InjectSoftAssertions SoftAssertions soft;
+
+  @ParameterizedTest
+  @CsvSource({"false, SLEEPING", "true, UNFAIR"})
+  public void effectiveFairnessPolicy(boolean override, FairRetriesType expected) throws Exception {
+    var config = mockedConfig(3, 1000);
+    when(config.fairRetries()).thenReturn(FairRetriesType.SLEEPING);
+    var clock = mockedClock(3);
+    var fairness = mock(FairRetries.class);
+    when(fairness.beforeAttempt(0, -1)).thenReturn(0);
+    when(fairness.beforeAttempt(1, 0)).thenReturn(1);
+    try (var factory = mockStatic(FairRetries.class)) {
+      factory.when(() -> FairRetries.create(expected)).thenReturn(fairness);
+      var loop =
+          override
+              ? RetryLoop.<String>newRetryLoop(config, clock, FairRetriesType.UNFAIR)
+              : RetryLoop.<String>newRetryLoop(config, clock);
+      var attempts = new AtomicInteger();
+      soft.assertThat(
+              loop.retryLoop(
+                  remaining ->
+                      attempts.incrementAndGet() == 1 ? Optional.empty() : Optional.of("done")))
+          .isEqualTo("done");
+      factory.verify(() -> FairRetries.create(expected));
+      verify(fairness).done(1);
+      verify(clock).sleepMillis(longThat(millis -> millis >= 5 && millis < 25));
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(longs = {25, 100, 125})
+  public void fairnessWaitConsumesTimeout(long fairnessMillis) throws Exception {
+    var config = mockedConfig(3, 100);
+    var clock = mock(MonotonicClock.class);
+    var now = new AtomicLong();
+    when(clock.nanoTime()).thenAnswer(invocation -> now.get());
+    var fairness = mock(FairRetries.class);
+    when(fairness.beforeAttempt(0, -1))
+        .thenAnswer(
+            invocation -> {
+              now.addAndGet(MILLISECONDS.toNanos(fairnessMillis));
+              return 0;
+            });
+    var stats = mock(RetryStatsConsumer.class);
+    var attempts = new AtomicInteger();
+    try (var factory = mockStatic(FairRetries.class)) {
+      factory.when(() -> FairRetries.create(FairRetriesType.UNFAIR)).thenReturn(fairness);
+      var loop = RetryLoop.<String>newRetryLoop(config, clock).setRetryStatsConsumer(stats);
+      Retryable<String> retryable =
+          remaining -> {
+            attempts.incrementAndGet();
+            soft.assertThat(remaining).isEqualTo(MILLISECONDS.toNanos(100 - fairnessMillis));
+            return Optional.of("done");
+          };
+      if (fairnessMillis < 100) {
+        soft.assertThat(loop.retryLoop(retryable)).isEqualTo("done");
+        soft.assertThat(attempts).hasValue(1);
+        verify(stats)
+            .retryLoopFinished(
+                RetryStatsConsumer.Result.SUCCESS, 0, 0, MILLISECONDS.toNanos(fairnessMillis));
+      } else {
+        soft.assertThatThrownBy(() -> loop.retryLoop(retryable))
+            .isInstanceOf(RetryTimeoutException.class)
+            .asInstanceOf(type(RetryTimeoutException.class))
+            .extracting(RetryTimeoutException::getRetry, RetryTimeoutException::getTimeNanos)
+            .containsExactly(0, MILLISECONDS.toNanos(fairnessMillis));
+        soft.assertThat(attempts).hasValue(0);
+        verify(stats)
+            .retryLoopFinished(
+                RetryStatsConsumer.Result.TIMEOUT, 0, 0, MILLISECONDS.toNanos(fairnessMillis));
+      }
+      verify(fairness).done(0);
+      verify(clock, never()).sleepMillis(anyLong());
+      verifyNoMoreInteractions(stats);
+    }
+  }
 
   @Test
   public void retryTimeout() {

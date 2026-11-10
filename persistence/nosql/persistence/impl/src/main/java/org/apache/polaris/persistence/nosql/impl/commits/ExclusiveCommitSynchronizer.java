@@ -29,7 +29,7 @@ final class ExclusiveCommitSynchronizer implements CommitSynchronizer {
   private static final Map<SyncKey, CommitSynchronizer> LOCAL_COMMIT_SYNC =
       new ConcurrentHashMap<>();
 
-  private final Semaphore semaphore = new Semaphore(1);
+  private final Semaphore semaphore = new Semaphore(1, true);
 
   static CommitSynchronizer forKey(String realmId, String refName) {
     return LOCAL_COMMIT_SYNC.computeIfAbsent(

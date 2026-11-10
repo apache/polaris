@@ -27,6 +27,7 @@ import static org.apache.polaris.persistence.nosql.impl.commits.retry.RetryStats
 import java.util.concurrent.ThreadLocalRandom;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.persistence.nosql.api.commit.CommitException;
+import org.apache.polaris.persistence.nosql.api.commit.FairRetriesType;
 import org.apache.polaris.persistence.nosql.api.commit.RetryConfig;
 import org.apache.polaris.persistence.nosql.api.commit.RetryTimeoutException;
 import org.apache.polaris.persistence.nosql.api.exceptions.UnknownOperationResultException;
@@ -45,13 +46,17 @@ final class RetryLoopImpl<RESULT> implements RetryLoop<RESULT> {
   private RetryStatsConsumer retryStatsConsumer;
 
   RetryLoopImpl(RetryConfig config, MonotonicClock monotonicClock) {
+    this(config, monotonicClock, config.fairRetries());
+  }
+
+  RetryLoopImpl(RetryConfig config, MonotonicClock monotonicClock, FairRetriesType fairRetries) {
     this.maxTime = config.timeout().toNanos();
     this.maxRetries = config.retries();
     this.monotonicClock = monotonicClock;
     this.lowerBound = config.initialSleepLower().toMillis();
     this.upperBound = config.initialSleepUpper().toMillis();
     this.maxSleep = config.maxSleep().toMillis();
-    this.fairRetries = FairRetries.create(config.fairRetries());
+    this.fairRetries = FairRetries.create(fairRetries);
   }
 
   @Override
@@ -70,8 +75,13 @@ final class RetryLoopImpl<RESULT> implements RetryLoop<RESULT> {
     try {
       for (var attempt = 0; true; attempt++, timeAttemptStarted = currentNanos()) {
         prio = fairRetries.beforeAttempt(attempt, prio);
+        var nanosRemaining = timeoutAt - currentNanos();
+        if (nanosRemaining <= 0) {
+          reportEnd(TIMEOUT, timeAttemptStarted);
+          throw new RetryTimeoutException(attempt, currentNanos() - timeLoopStarted);
+        }
         try {
-          var r = retryable.attempt(timeoutAt - timeAttemptStarted);
+          var r = retryable.attempt(nanosRemaining);
           if (r.isPresent()) {
             reportEnd(SUCCESS, timeLoopStarted);
             return r.get();

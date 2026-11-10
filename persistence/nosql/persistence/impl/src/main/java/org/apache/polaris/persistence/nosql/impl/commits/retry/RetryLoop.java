@@ -20,13 +20,20 @@ package org.apache.polaris.persistence.nosql.impl.commits.retry;
 
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.persistence.nosql.api.commit.CommitException;
+import org.apache.polaris.persistence.nosql.api.commit.FairRetriesType;
 import org.apache.polaris.persistence.nosql.api.commit.RetryConfig;
 import org.apache.polaris.persistence.nosql.api.commit.RetryTimeoutException;
 
 public interface RetryLoop<RESULT> {
   static <RESULT> RetryLoop<RESULT> newRetryLoop(
       RetryConfig retryConfig, MonotonicClock monotonicClock) {
-    return new RetryLoopImpl<>(retryConfig, monotonicClock);
+    return newRetryLoop(retryConfig, monotonicClock, retryConfig.fairRetries());
+  }
+
+  /** Creates a retry loop using the given fairness policy instead of the configured policy. */
+  static <RESULT> RetryLoop<RESULT> newRetryLoop(
+      RetryConfig retryConfig, MonotonicClock monotonicClock, FairRetriesType fairRetries) {
+    return new RetryLoopImpl<>(retryConfig, monotonicClock, fairRetries);
   }
 
   RetryLoop<RESULT> setRetryStatsConsumer(RetryStatsConsumer retryStatsConsumer);
