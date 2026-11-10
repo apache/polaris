@@ -1251,7 +1251,7 @@ For general information on persistence in Polaris, see the &lt;a href="https://p
  &lt;td&gt;persistence.type&lt;/td&gt;
  &lt;td&gt;string&lt;/td&gt;
  &lt;td&gt;&lt;code&gt;&amp;quot;in-memory&amp;quot;&lt;/code&gt;&lt;/td&gt;
- &lt;td&gt;The type of persistence to use. Three built-in types are supported: in-memory, relational-jdbc, and nosql (beta).&lt;/td&gt;
+ &lt;td&gt;The type of persistence to use. Three built-in types are supported: in-memory, relational-jdbc, and nosql.&lt;/td&gt;
  &lt;/tr&gt;
  &lt;tr&gt;
  &lt;td&gt;persistence.relationalJdbc.additionalProperties&lt;/td&gt;
