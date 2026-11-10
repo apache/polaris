@@ -136,6 +136,7 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.storage.LocationRestrictions;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -1213,7 +1214,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         storageInfoEntity.map(PolarisEntity::getInternalPropertiesAsMap).ifPresent(clone::putAll);
         clone.put(
             PolarisTaskConstants.STORAGE_LOCATIONS,
-            TaskUtils.encodeStorageLocations(Set.of(lastMetadata.location())));
+            TaskUtils.encodeStorageLocations(StorageUtil.getLocationsUsedByTable(lastMetadata)));
 
         storageProperties = clone;
       }
@@ -2765,18 +2766,34 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   .getRawFullPath()
               : resolvedEntities.getRawParentPath();
       Set<String> requestedLocations = StorageUtil.getLocationsUsedByTable(metadata);
-      validateLocationsForTable(
-          identifier, metadata.location(), requestedLocations, resolvedStorageEntity);
+      Set<String> locationsToValidate = new HashSet<>(requestedLocations);
+      locationsToValidate.add(
+          metadata.metadataFileLocation() != null
+              ? metadata.metadataFileLocation()
+              : metadataFileLocation(metadata, "metadata.json"));
       if (base == null
           || !metadata.location().equals(base.location())
           || !Objects.equal(
               base.properties().get(ViewProperties.WRITE_METADATA_LOCATION),
               metadata.properties().get(ViewProperties.WRITE_METADATA_LOCATION))) {
+        validateLocationsForTable(
+            identifier, metadata.location(), locationsToValidate, resolvedStorageEntity);
         validateNoLocationsOverlap(
             identifier,
             requestedLocations,
             resolvedNamespace,
             resolvedStorageEntity.getRawLeafEntity());
+      } else {
+        // Preserve existing view layouts on ordinary commits, but still enforce allowed locations.
+        PolarisStorageConfigurationInfo.findStorageConfigFromHierarchy(
+                resolvedStorageEntity.getRawFullPath())
+            .ifPresentOrElse(
+                config ->
+                    new LocationRestrictions(config)
+                        .validate(realmConfig, identifier, locationsToValidate),
+                () ->
+                    validateLocationsForTableLike(
+                        identifier, locationsToValidate, resolvedStorageEntity));
       }
 
       // Catalog table-default.* only — not metadata.properties() (caller-controlled FileIO keys).
@@ -2846,9 +2863,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                 .build();
         persistenceAttempted = true;
         if (null == existingLocation) {
-          createTableLike(identifier, entity, true);
+          createTableLike(identifier, entity, false);
         } else {
-          updateTableLike(identifier, entity, true);
+          updateTableLike(identifier, entity, false);
         }
         if (makeMetadataCurrentOnCommit) {
           currentMetadata =

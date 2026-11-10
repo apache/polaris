@@ -2100,8 +2100,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         .isInstanceOf(InMemoryFileIO.class);
   }
 
-  @Test
-  public void testDropViewWithPurge() {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testDropViewWithPurge(boolean customMetadataPath) {
     MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
     LocalIcebergCatalog viewCatalog = newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured);
     viewCatalog.initialize(
@@ -2110,12 +2111,17 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
 
     viewCatalog.createNamespace(NS);
-    viewCatalog
-        .buildView(TABLE)
-        .withSchema(SCHEMA)
-        .withDefaultNamespace(NS)
-        .withQuery("spark", "SELECT * FROM ns.tbl")
-        .create();
+    String metadataPath = STORAGE_LOCATION + "/view-metadata-" + UUID.randomUUID();
+    var builder =
+        viewCatalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", "SELECT * FROM ns.tbl");
+    if (customMetadataPath) {
+      builder.withProperty("write.metadata.path", metadataPath);
+    }
+    var view = builder.create();
 
     Assertions.assertThat(viewCatalog.dropView(TABLE)).as("Drop should succeed").isTrue();
 
@@ -2125,6 +2131,12 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
                 .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
                 .getEntities()
                 .getFirst());
+    assertThat(TaskUtils.storageLocations(taskEntity.getInternalPropertiesAsMap()))
+        .contains(view.location());
+    if (customMetadataPath) {
+      assertThat(TaskUtils.storageLocations(taskEntity.getInternalPropertiesAsMap()))
+          .contains(metadataPath);
+    }
     Map<String, String> properties = taskEntity.getInternalPropertiesAsMap();
     properties.put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO");
     taskEntity =
@@ -3244,6 +3256,16 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     updateCatalogProperties(
         Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false"));
     catalog.createNamespace(NS);
+    assertThatThrownBy(
+            () ->
+                catalog
+                    .buildView(TABLE)
+                    .withSchema(SCHEMA)
+                    .withDefaultNamespace(NS)
+                    .withQuery("spark", VIEW_QUERY)
+                    .withProperty("write.metadata.path", STORAGE_LOCATION + "/outside-view")
+                    .create())
+        .isInstanceOf(ForbiddenException.class);
     var view =
         catalog
             .buildView(TABLE)
@@ -3288,6 +3310,71 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     view.updateProperties().set("write.metadata.path", metadataPath).commit();
     Assertions.assertThat(catalog.newViewOps(TABLE, false).current().metadataFileLocation())
         .startsWith(metadataPath + "/");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testViewUnchangedLegacyMetadataPathRemainsWritable(boolean missingStoredBase) {
+    Assumptions.assumeTrue(requiresNamespaceCreate());
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+    catalog.createNamespace(NS);
+    var view =
+        catalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", VIEW_QUERY)
+            .create();
+    String metadataPath = LocationUtil.stripTrailingSlash(view.location()) + "-metadata";
+    view.updateProperties().set("write.metadata.path", metadataPath).commit();
+    if (missingStoredBase) {
+      IcebergTableLikeEntity entity =
+          IcebergTableLikeEntity.of(
+              metaStoreManager
+                  .readEntityByName(
+                      polarisContext,
+                      catalogPath(NS),
+                      PolarisEntityType.TABLE_LIKE,
+                      PolarisEntitySubType.ICEBERG_VIEW,
+                      TABLE.name())
+                  .getEntity());
+      Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
+      internalProperties.remove(IcebergTableLikeEntity.LOCATION);
+      internalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
+      assertThat(
+              metaStoreManager
+                  .updateEntityPropertiesIfNotChanged(
+                      polarisContext,
+                      catalogPath(NS),
+                      new IcebergTableLikeEntity.Builder(entity)
+                          .setBaseLocation(null)
+                          .setInternalProperties(internalProperties)
+                          .build())
+                  .isSuccess())
+          .isTrue();
+    }
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false"));
+    view.updateProperties().set("comment", "updated").commit();
+    var replaced =
+        catalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", "SELECT 1")
+            .withProperty("write.metadata.path", metadataPath)
+            .createOrReplace();
+    replaced.updateProperties().set("comment", "updated again").commit();
+    assertThat(catalog.newViewOps(TABLE, false).current().metadataFileLocation())
+        .startsWith(metadataPath + "/");
+    assertThatThrownBy(
+            () ->
+                replaced
+                    .updateProperties()
+                    .set("write.metadata.path", metadataPath + "-changed")
+                    .commit())
+        .isInstanceOf(ForbiddenException.class);
   }
 
   @ParameterizedTest

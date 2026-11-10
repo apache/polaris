@@ -70,7 +70,9 @@ With the default settings, Polaris also enforces the following rules:
 - A client may also set the `write.data.path` and `write.metadata.path` table properties, but they
   must be inside the table's own location and inside the catalog's allowed locations.
 - A view may set `write.metadata.path` on create or update under the same location restrictions
-  as a table. Polaris scopes the credentials used to write view metadata to include this path.
+  as a table. Existing views with metadata outside their base location may still commit updates
+  that leave both locations unchanged. Allowed-location restrictions continue to apply.
+  Polaris scopes the credentials used to write or purge view metadata to include this path.
 - A table's metadata files must be inside the table's location.
 - A new table, view, or namespace location may not overlap the location of a sibling, that is,
   another table, view, or namespace directly under the same parent. Sibling tables' `write.data.path`

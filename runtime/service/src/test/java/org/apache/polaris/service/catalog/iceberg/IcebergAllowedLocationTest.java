@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.iceberg.CatalogProperties.FILE_IO_IMPL;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION;
 import static org.apache.polaris.core.config.FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;
@@ -79,6 +80,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.TestServices;
@@ -336,17 +338,13 @@ public class IcebergAllowedLocationTest {
     var viewId = TableIdentifier.of(namespace, "view");
     var services = getTestServices();
     var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
-    createCatalog(
-        services,
-        Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"),
-        catalogLocation,
-        List.of(catalogLocation));
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
     var namespaceLocation = catalogLocation + "/" + namespace;
     createNamespace(services, namespaceLocation);
 
     // create a view with allowed locations
     String customAllowedLocation1 = Paths.get(namespaceLocation, "custom-location1").toString();
-    String customAllowedLocation2 = Paths.get(namespaceLocation, "custom-location2").toString();
+    String customAllowedLocation2 = Paths.get(customAllowedLocation1, "metadata2").toString();
 
     CreateViewRequest createViewRequest =
         getCreateViewRequest(customAllowedLocation2, viewId.name(), customAllowedLocation1);
@@ -363,7 +361,7 @@ public class IcebergAllowedLocationTest {
     assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
 
     // update the view with allowed locations
-    String customAllowedLocation3 = Paths.get(namespaceLocation, "custom-location3").toString();
+    String customAllowedLocation3 = Paths.get(customAllowedLocation1, "metadata3").toString();
 
     Map<String, String> updatedProperties = new HashMap<>();
     updatedProperties.put(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, customAllowedLocation3);
@@ -380,6 +378,64 @@ public class IcebergAllowedLocationTest {
     assertEquals(
         updateResponse.metadata().properties().get(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY),
         customAllowedLocation3);
+  }
+
+  @Test
+  void testUnchangedViewWithoutStorageConfigRejectsDisabledFileStorage(@TempDir Path tmpDir) {
+    Map<String, Object> config =
+        new HashMap<>(
+            Map.of(
+                "ALLOW_INSECURE_STORAGE_TYPES",
+                "true",
+                "ALLOW_SPECIFYING_FILE_IO_IMPL",
+                "true",
+                "SUPPORTED_CATALOG_STORAGE_TYPES",
+                List.of("FILE")));
+    var services = TestServices.builder().config(config).build();
+    // Seed an older catalog without storage configuration; the current REST API requires one.
+    var callContext = services.newCallContext();
+    CatalogEntity catalogEntity =
+        new CatalogEntity.Builder()
+            .setName(catalog)
+            .addProperty(FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .setCatalogType(Catalog.TypeEnum.INTERNAL.name())
+            .setCreateTimestamp(services.clock().millis())
+            .setDefaultBaseLocation(tmpDir.toAbsolutePath().toUri().toString())
+            .setId(services.metaStoreManager().generateNewEntityId(callContext).getId())
+            .build();
+    assertThat(
+            services
+                .metaStoreManager()
+                .createCatalog(callContext, catalogEntity, List.of())
+                .isSuccess())
+        .isTrue();
+    newHandler(services)
+        .createNamespace(
+            CreateNamespaceRequest.builder().withNamespace(Namespace.of(namespace)).build());
+    newHandler(services)
+        .createView(
+            Namespace.of(namespace),
+            ImmutableCreateViewRequest.builder()
+                .name("v")
+                .schema(SCHEMA)
+                .viewVersion(VIEW_VERSION)
+                .build());
+    TableIdentifier viewId = TableIdentifier.of(namespace, "v");
+    UpdateTableRequest update =
+        UpdateTableRequest.create(
+            viewId,
+            List.of(),
+            List.of(new MetadataUpdate.SetProperties(Map.of("comment", "updated"))));
+    newHandler(services).replaceView(viewId, update);
+    config.put("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3"));
+    UpdateTableRequest secondUpdate =
+        UpdateTableRequest.create(
+            viewId,
+            List.of(),
+            List.of(new MetadataUpdate.SetProperties(Map.of("comment", "updated again"))));
+    assertThatThrownBy(() -> newHandler(services).replaceView(viewId, secondUpdate))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("File locations are not allowed");
   }
 
   @Test

@@ -132,6 +132,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -1947,16 +1948,24 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  public void testDropViewWithPurge(boolean purgeViewMetadataOnDrop) {
+  @CsvSource({"true,false", "false,false", "true,true", "false,true"})
+  public void testDropViewWithPurge(boolean purgeViewMetadataOnDrop, boolean customMetadataPath) {
     restCatalog.createNamespace(Namespace.of("ns1"));
     TableIdentifier id = TableIdentifier.of(Namespace.of("ns1"), "view1");
-    restCatalog
-        .buildView(id)
-        .withSchema(SCHEMA)
-        .withDefaultNamespace(Namespace.of("ns1"))
-        .withQuery("spark", VIEW_QUERY)
-        .create();
+    var builder =
+        restCatalog
+            .buildView(id)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(Namespace.of("ns1"))
+            .withQuery("spark", VIEW_QUERY);
+    if (customMetadataPath) {
+      builder.withProperty(
+          "write.metadata.path",
+          getStorageConfigInfo().getAllowedLocations().getFirst()
+              + "/purge-view-metadata-"
+              + UUID.randomUUID());
+    }
+    builder.create();
 
     String metadataLocation =
         ((BaseView) restCatalog.loadView(id)).operations().current().metadataFileLocation();
