@@ -929,7 +929,7 @@ features:
 
 # Polaris persistence configuration.
 persistence:
-  # -- The type of persistence to use. Three built-in types are supported: in-memory, relational-jdbc, and nosql (beta).
+  # -- The type of persistence to use. Three built-in types are supported: in-memory, relational-jdbc, and nosql.
   # @section -- Persistence
   type: in-memory  # relational-jdbc, nosql
   # The configuration for the relational-jdbc persistence manager.
@@ -960,7 +960,7 @@ persistence:
       # -- The secret key holding the database JDBC connection URL
       # @section -- Persistence
       jdbcUrl: jdbcUrl
-  # The configuration for the NoSQL persistence manager (currently in beta).
+  # The configuration for the NoSQL persistence manager.
   nosql:
     # -- The NoSQL backend to use. Two built-in types are supported: MongoDb and InMemory.
     # Only MongoDb is supported for production use.
