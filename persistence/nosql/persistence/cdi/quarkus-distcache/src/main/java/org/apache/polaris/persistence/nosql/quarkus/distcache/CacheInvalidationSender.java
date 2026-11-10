@@ -50,11 +50,15 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.CacheInvalidation;
 import org.apache.polaris.persistence.nosql.api.cache.DistributedCacheInvalidation;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.apache.polaris.persistence.nosql.quarkus.distcache.CacheInvalidationMetrics.DiscoveryOutcome;
+import org.apache.polaris.persistence.nosql.quarkus.distcache.CacheInvalidationMetrics.SendOutcome;
+import org.apache.polaris.persistence.nosql.quarkus.distcache.CacheInvalidationMetrics.SkipReason;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
@@ -74,6 +78,7 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
   private static final Logger LOGGER = LoggerFactory.getLogger(CacheInvalidationSender.class);
 
   private final Vertx vertx;
+  private final CacheInvalidationMetrics metrics;
   private final long peerDiscoveryIntervalMillis;
 
   private final HttpClient httpClient;
@@ -100,8 +105,11 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
       @SuppressWarnings("CdiInjectionPointsInspection") Vertx vertx,
       QuarkusDistributedCacheInvalidationsConfig config,
       ServerInstanceId serverInstanceId,
-      CacheInvalidationPeerDiscovery peerDiscovery) {
+      CacheInvalidationPeerDiscovery peerDiscovery,
+      CacheInvalidationMetrics metrics) {
     this.vertx = vertx;
+    this.metrics = metrics;
+    metrics.registerQueue(invalidations);
 
     this.peerDiscovery = peerDiscovery;
     this.peerDiscoveryConfigured = peerDiscovery.isConfigured();
@@ -143,17 +151,17 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
     }
   }
 
-  @VisibleForTesting
-  CacheInvalidationSender(
-      Vertx vertx,
-      QuarkusDistributedCacheInvalidationsConfig config,
-      ServerInstanceId serverInstanceId) {
-    this(vertx, config, serverInstanceId, new DnsCacheInvalidationPeerDiscovery(vertx, config));
-  }
-
   private Future<List<CacheInvalidationPeer>> updatePeerDiscovery() {
+    var sample = metrics.start();
     var previous = new HashSet<>(resolvedPeers);
-    return discoverPeers()
+    Future<List<CacheInvalidationPeer>> discovery;
+    try {
+      discovery = discoverPeers();
+    } catch (RuntimeException e) {
+      metrics.discoveryCompleted(sample, DiscoveryOutcome.FAILURE);
+      throw e;
+    }
+    return discovery
         .map(
             all ->
                 all.stream()
@@ -167,6 +175,7 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
                     .toList())
         .onSuccess(
             all -> {
+              metrics.discoveryCompleted(sample, DiscoveryOutcome.SUCCESS);
               schedulePeerDiscovery();
 
               var resolved = new HashSet<>(all);
@@ -178,6 +187,7 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
             })
         .onFailure(
             t -> {
+              metrics.discoveryCompleted(sample, DiscoveryOutcome.FAILURE);
               schedulePeerDiscovery();
 
               LOGGER.warn(
@@ -188,6 +198,7 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
   @VisibleForTesting
   void updateResolvedPeers(List<CacheInvalidationPeer> all) {
     resolvedPeers = all;
+    metrics.peers(all.size());
   }
 
   private void schedulePeerDiscovery() {
@@ -201,6 +212,7 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
 
   void enqueue(CacheInvalidation invalidation) {
     if (!peerDiscoveryConfigured || token == null) {
+      metrics.skipped(!peerDiscoveryConfigured ? SkipReason.NO_DISCOVERY : SkipReason.NO_TOKEN, 1);
       // Don't do anything if there are no targets to send invalidations to or whether no token has
       // been configured.
       return;
@@ -209,6 +221,7 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
     lock.lock();
     try {
       invalidations.add(invalidation);
+      metrics.enqueued(invalidation);
 
       if (!triggered && quarkusManagementPort() != 0) {
         LOGGER.trace("Triggered invalidation submission");
@@ -269,6 +282,10 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
       List<CacheInvalidation> batch, List<CacheInvalidationPeer> resolvedPeers, int httpPort) {
     LOGGER.trace("Submitting {} invalidations", batch.size());
 
+    metrics.batch(batch.size());
+    if (resolvedPeers.isEmpty()) {
+      metrics.skipped(SkipReason.NO_PEERS, batch.size());
+    }
     String json = objectMapper.writeValueAsString(cacheInvalidations(batch));
 
     var futures =
@@ -276,56 +293,72 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
     for (var peer : resolvedPeers) {
       var address = peer.host();
       var peerManagementPort = peer.managementPortOrDefault(httpPort);
-      futures.add(
-          httpClient
-              .request(HttpMethod.POST, peerManagementPort, address, invalidationUri)
-              .compose(
-                  req ->
-                      req.putHeader("Content-Type", APPLICATION_JSON)
-                          .putHeader(CACHE_INVALIDATION_TOKEN_HEADER, token)
-                          .send(json))
-              .compose(resp -> resp.body().map(b -> Map.entry(resp, b)))
-              .timeout(requestTimeout, TimeUnit.MILLISECONDS)
-              .onComplete(
-                  success -> {
-                    var resp = success.getKey();
-                    var statusCode = resp.statusCode();
-                    if (statusCode != 200 && statusCode != 204) {
-                      LOGGER.warn(
-                          "{} cache invalidations could not be sent to {}:{}{} - HTTP {}/{} - body: {}",
-                          batch.size(),
-                          address,
-                          peerManagementPort,
-                          invalidationUri,
-                          statusCode,
-                          resp.statusMessage(),
-                          success.getValue());
-                    } else {
-                      LOGGER.trace(
-                          "{} cache invalidations sent to {}:{}",
-                          batch.size(),
-                          address,
-                          peerManagementPort);
-                    }
-                  },
-                  failure -> {
-                    if (failure instanceof SocketException
-                        || failure instanceof UnknownHostException) {
-                      LOGGER.warn(
-                          "Technical network issue sending cache invalidations to {}:{}{} : {}",
-                          address,
-                          peerManagementPort,
-                          invalidationUri,
-                          failure.getMessage());
-                    } else {
-                      LOGGER.error(
-                          "Technical failure sending cache invalidations to {}:{}{}",
-                          address,
-                          peerManagementPort,
-                          invalidationUri,
-                          failure);
-                    }
-                  }));
+      var sample = metrics.sendStarted();
+      try {
+        futures.add(
+            httpClient
+                .request(HttpMethod.POST, peerManagementPort, address, invalidationUri)
+                .compose(
+                    req ->
+                        req.putHeader("Content-Type", APPLICATION_JSON)
+                            .putHeader(CACHE_INVALIDATION_TOKEN_HEADER, token)
+                            .send(json))
+                .compose(resp -> resp.body().map(b -> Map.entry(resp, b)))
+                .timeout(requestTimeout, TimeUnit.MILLISECONDS)
+                .onComplete(
+                    success -> {
+                      var resp = success.getKey();
+                      var statusCode = resp.statusCode();
+                      metrics.sendCompleted(
+                          sample,
+                          statusCode == 200 || statusCode == 204
+                              ? SendOutcome.SUCCESS
+                              : SendOutcome.HTTP_REJECTED);
+                      if (statusCode != 200 && statusCode != 204) {
+                        LOGGER.warn(
+                            "{} cache invalidations could not be sent to {}:{}{} - HTTP {}/{} - body: {}",
+                            batch.size(),
+                            address,
+                            peerManagementPort,
+                            invalidationUri,
+                            statusCode,
+                            resp.statusMessage(),
+                            success.getValue());
+                      } else {
+                        LOGGER.trace(
+                            "{} cache invalidations sent to {}:{}",
+                            batch.size(),
+                            address,
+                            peerManagementPort);
+                      }
+                    },
+                    failure -> {
+                      metrics.sendCompleted(
+                          sample,
+                          failure instanceof TimeoutException
+                              ? SendOutcome.TIMEOUT
+                              : SendOutcome.TRANSPORT_ERROR);
+                      if (failure instanceof SocketException
+                          || failure instanceof UnknownHostException) {
+                        LOGGER.warn(
+                            "Technical network issue sending cache invalidations to {}:{}{} : {}",
+                            address,
+                            peerManagementPort,
+                            invalidationUri,
+                            failure.getMessage());
+                      } else {
+                        LOGGER.error(
+                            "Technical failure sending cache invalidations to {}:{}{}",
+                            address,
+                            peerManagementPort,
+                            invalidationUri,
+                            failure);
+                      }
+                    }));
+      } catch (RuntimeException e) {
+        metrics.sendCompleted(sample, SendOutcome.TRANSPORT_ERROR);
+        throw e;
+      }
     }
     return futures;
   }

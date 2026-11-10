@@ -81,6 +81,44 @@ polaris.metrics.http-server-requests.histogram-slos=10ms,50ms,100ms,1s,5s
 
 These buckets can be used by Prometheus `histogram_quantile` to estimate p95/p99; accuracy depends on the configured bucket boundaries.
 
+### NoSQL Distributed Cache Invalidation
+
+The NoSQL distributed cache invalidation sender and receiver publish the following Micrometer
+meters when a `MeterRegistry` is available. Names below share the prefix
+`polaris.cache.invalidation.`; Prometheus converts dots to underscores and adds the usual counter,
+summary, and duration suffixes.
+
+| Meter suffix | Type | Labels | Meaning |
+| --- | --- | --- | --- |
+| `entries` | Counter | `stage=enqueued,dispatched`, `type=obj,ref` | Entries accepted into the sender queue, or entries whose local eviction handler returned successfully on the receiver. |
+| `skipped` | Counter | `reason=no_discovery,no_token,no_peers` | Entries skipped before any peer delivery attempt. When neither discovery nor a token is configured, `no_discovery` takes precedence. |
+| `batch.size` | Distribution summary | None | Number of entries in a submitted batch, recorded once before fan-out, including batches with no peers. |
+| `queue.depth` | Gauge | None | Entries waiting for submission; excludes outstanding HTTP requests. |
+| `send.inflight` | Gauge | None | Outstanding peer HTTP requests, including waiting for the response body, until completion, failure, or timeout. |
+| `send.duration` | Timer | `outcome=success,timeout,transport_error,http_rejected` | Duration and count of delivery attempts, once per destination peer. Only HTTP 200 and 204 count as success. |
+| `receive.duration` | Timer | `outcome=processed,self,invalid_token,invalid_content_type,invalid_payload,handler_error` | Duration and count of requests handled by the receiver, including parsing and local dispatch. |
+| `discovery.duration` | Timer | `outcome=success,failure` | Duration and count of peer discovery attempts, including initial discovery. |
+| `discovery.peers` | Gauge | None | Usable peers from the last successful discovery after local-address filtering. Failures retain the previous value. |
+| `discovery.last_success.timestamp` | Gauge | None | Unix timestamp in seconds of the last successful discovery, or zero before any success. |
+
+These meters use fixed label values and do not include peer addresses, sender instance IDs, realms,
+object IDs, or reference names. Use scrape target labels to locate an affected instance and logs to
+identify individual failing peers. Histogram buckets and precomputed percentiles are disabled by
+default. Timers provide event counts, total durations, and maximum durations without separate
+request counters.
+
+Monitor queue depth together with in-flight requests and send outcomes: the sender drains batches
+without waiting for HTTP completion, so an empty queue does not establish delivery health. Zero
+peers can be normal in a single-instance deployment. The last-success timestamp helps distinguish
+an empty discovery result from a stale retained peer list.
+
+Sender success describes HTTP delivery, while receiver outcomes describe processing. In particular,
+malformed JSON currently produces an empty batch and an HTTP 204 response; the receiver records
+`invalid_payload` rather than `processed`. Handler exceptions record `handler_error` and continue
+to propagate as before. Successfully dispatched entries preceding a handler failure remain counted.
+A dispatched entry does not establish that the entry was present in the cache, and these metrics do
+not prove cluster-wide cache freshness. Failed asynchronous sends are not retried by this mechanism.
+
 ## Traces
 
 Traces are published using [OpenTelemetry].

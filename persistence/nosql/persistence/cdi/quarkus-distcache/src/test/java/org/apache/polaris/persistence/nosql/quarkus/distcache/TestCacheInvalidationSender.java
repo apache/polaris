@@ -33,6 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -47,6 +48,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -75,10 +77,14 @@ public class TestCacheInvalidationSender {
   @InjectSoftAssertions protected SoftAssertions soft;
 
   protected Vertx vertx;
+  private SimpleMeterRegistry registry;
+  private CacheInvalidationMetrics metrics;
 
   @BeforeEach
   void setUp() {
     vertx = Vertx.builder().build();
+    registry = new SimpleMeterRegistry();
+    metrics = new CacheInvalidationMetrics(Optional.of(registry));
   }
 
   @AfterEach
@@ -87,6 +93,7 @@ public class TestCacheInvalidationSender {
       vertx.close().toCompletionStage().toCompletableFuture().get(1, TimeUnit.MINUTES);
     } finally {
       vertx = null;
+      registry.close();
     }
   }
 
@@ -106,7 +113,12 @@ public class TestCacheInvalidationSender {
 
     soft.assertThatThrownBy(
             () ->
-                new CacheInvalidationSender(vertx, config, senderId) {
+                new CacheInvalidationSender(
+                    vertx,
+                    config,
+                    senderId,
+                    new DnsCacheInvalidationPeerDiscovery(vertx, config),
+                    metrics) {
                   @Override
                   Future<List<CacheInvalidationPeer>> discoverPeers() {
                     return failedFuture(new RuntimeException("foo"));
@@ -150,7 +162,12 @@ public class TestCacheInvalidationSender {
 
     try {
       CacheInvalidationSender sender =
-          new CacheInvalidationSender(vertx, config, senderId) {
+          new CacheInvalidationSender(
+              vertx,
+              config,
+              senderId,
+              new DnsCacheInvalidationPeerDiscovery(vertx, config),
+              metrics) {
             @Override
             Future<List<CacheInvalidationPeer>> discoverPeers() {
               try {
@@ -235,6 +252,29 @@ public class TestCacheInvalidationSender {
       sender.evictObj("repo", SOME_OBJ_REF);
       assertThat(submittedSemaphore.tryAcquire(30, TimeUnit.SECONDS)).isTrue();
       soft.assertThat(submitResolvedPeers.get()).containsExactlyInAnyOrderElementsOf(currentPeers);
+      soft.assertThat(
+              registry.get(CacheInvalidationMetrics.PREFIX + "discovery.peers").gauge().value())
+          .isEqualTo(currentPeers.size());
+      soft.assertThat(
+              registry
+                  .get(CacheInvalidationMetrics.PREFIX + "discovery.duration")
+                  .tag("outcome", "success")
+                  .timer()
+                  .count())
+          .isEqualTo(3);
+      soft.assertThat(
+              registry
+                  .get(CacheInvalidationMetrics.PREFIX + "discovery.duration")
+                  .tag("outcome", "failure")
+                  .timer()
+                  .count())
+          .isEqualTo(1);
+      soft.assertThat(
+              registry
+                  .get(CacheInvalidationMetrics.PREFIX + "discovery.last_success.timestamp")
+                  .gauge()
+                  .value())
+          .isPositive();
     } finally {
       // Permit a lot, the test might otherwise "hang" in discoverPeers()
       resolveSemaphore.release(10_000_000);
@@ -252,7 +292,12 @@ public class TestCacheInvalidationSender {
         buildConfig(tokens, Optional.empty(), Duration.ofSeconds(10), Duration.ofSeconds(10));
 
     var sender =
-        new CacheInvalidationSender(vertx, config, senderId) {
+        new CacheInvalidationSender(
+            vertx,
+            config,
+            senderId,
+            new DnsCacheInvalidationPeerDiscovery(vertx, config),
+            metrics) {
           @Override
           Future<List<CacheInvalidationPeer>> discoverPeers() {
             return succeededFuture(List.of());
@@ -279,6 +324,21 @@ public class TestCacheInvalidationSender {
     verify(senderSpy).evictObj("repo", SOME_OBJ_REF);
     verify(senderSpy).enqueue(cacheInvalidationEvictObj("repo", SOME_OBJ_REF));
     verifyNoMoreInteractions(senderSpy);
+    assertThat(
+            registry
+                .get(CacheInvalidationMetrics.PREFIX + "skipped")
+                .tag("reason", "no_discovery")
+                .counter()
+                .count())
+        .isEqualTo(1);
+    assertThat(
+            registry
+                .get(CacheInvalidationMetrics.PREFIX + "entries")
+                .tag("stage", "enqueued")
+                .tag("type", "obj")
+                .counter()
+                .count())
+        .isZero();
   }
 
   @Test
@@ -307,7 +367,7 @@ public class TestCacheInvalidationSender {
         };
 
     var sender =
-        new CacheInvalidationSender(vertx, config, senderId, peerDiscovery) {
+        new CacheInvalidationSender(vertx, config, senderId, peerDiscovery, metrics) {
           @Override
           List<Future<Map.Entry<HttpClientResponse, Buffer>>> submit(
               List<CacheInvalidation> batch,
@@ -353,7 +413,8 @@ public class TestCacheInvalidationSender {
           }
         };
 
-    soft.assertThatCode(() -> new CacheInvalidationSender(vertx, config, senderId, peerDiscovery))
+    soft.assertThatCode(
+            () -> new CacheInvalidationSender(vertx, config, senderId, peerDiscovery, metrics))
         .doesNotThrowAnyException();
   }
 
@@ -376,7 +437,12 @@ public class TestCacheInvalidationSender {
 
     var sem = new Semaphore(0);
     var sender =
-        new CacheInvalidationSender(vertx, config, senderId) {
+        new CacheInvalidationSender(
+            vertx,
+            config,
+            senderId,
+            new DnsCacheInvalidationPeerDiscovery(vertx, config),
+            metrics) {
           @Override
           Future<List<CacheInvalidationPeer>> discoverPeers() {
             return succeededFuture(resolvedPeers);
@@ -422,7 +488,12 @@ public class TestCacheInvalidationSender {
     var sem = new Semaphore(0);
     var received = new ConcurrentLinkedQueue<>();
     var sender =
-        new CacheInvalidationSender(vertx, config, senderId) {
+        new CacheInvalidationSender(
+            vertx,
+            config,
+            senderId,
+            new DnsCacheInvalidationPeerDiscovery(vertx, config),
+            metrics) {
           @Override
           Future<List<CacheInvalidationPeer>> discoverPeers() {
             return succeededFuture(resolvedPeers);
@@ -481,7 +552,12 @@ public class TestCacheInvalidationSender {
     var batchSizes = new CopyOnWriteArrayList<Integer>();
 
     var sender =
-        new CacheInvalidationSender(vertx, config, senderId) {
+        new CacheInvalidationSender(
+            vertx,
+            config,
+            senderId,
+            new DnsCacheInvalidationPeerDiscovery(vertx, config),
+            metrics) {
           private volatile int managementPort;
 
           @Override
@@ -552,7 +628,12 @@ public class TestCacheInvalidationSender {
       var uri = receiver.getUri();
 
       var sender =
-          new CacheInvalidationSender(vertx, config, senderId) {
+          new CacheInvalidationSender(
+              vertx,
+              config,
+              senderId,
+              new DnsCacheInvalidationPeerDiscovery(vertx, config),
+              metrics) {
             @Override
             Future<List<CacheInvalidationPeer>> discoverPeers() {
               return succeededFuture(List.of(peer(uri.getHost(), uri.getPort())));
@@ -579,6 +660,18 @@ public class TestCacheInvalidationSender {
       soft.assertThat(reqUri.get())
           .extracting(URI::getQuery)
           .isEqualTo("sender=" + senderId.instanceId());
+      assertThat(
+              registry
+                  .get(CacheInvalidationMetrics.PREFIX + "send.duration")
+                  .tag("outcome", "success")
+                  .timer()
+                  .count())
+          .isEqualTo(1);
+      assertThat(registry.get(CacheInvalidationMetrics.PREFIX + "send.inflight").gauge().value())
+          .isZero();
+      assertThat(
+              registry.get(CacheInvalidationMetrics.PREFIX + "batch.size").summary().totalAmount())
+          .isEqualTo(1);
     }
   }
 
@@ -617,7 +710,12 @@ public class TestCacheInvalidationSender {
       var uri = receiver.getUri();
 
       var sender =
-          new CacheInvalidationSender(vertx, config, senderId) {
+          new CacheInvalidationSender(
+              vertx,
+              config,
+              senderId,
+              new DnsCacheInvalidationPeerDiscovery(vertx, config),
+              metrics) {
             @Override
             Future<List<CacheInvalidationPeer>> discoverPeers() {
               return succeededFuture(List.of(peer(uri.getHost(), uri.getPort())));
@@ -670,7 +768,12 @@ public class TestCacheInvalidationSender {
       var uri = receiver.getUri();
 
       var sender =
-          new CacheInvalidationSender(vertx, config, senderId) {
+          new CacheInvalidationSender(
+              vertx,
+              config,
+              senderId,
+              new DnsCacheInvalidationPeerDiscovery(vertx, config),
+              metrics) {
             @Override
             Future<List<CacheInvalidationPeer>> discoverPeers() {
               return succeededFuture(List.of(peer(uri.getHost(), uri.getPort())));
@@ -688,7 +791,187 @@ public class TestCacheInvalidationSender {
           .failsWithin(30, TimeUnit.SECONDS)
           .withThrowableOfType(ExecutionException.class)
           .withMessageContaining("Timeout 1 (ms) fired");
+      assertThat(
+              registry
+                  .get(CacheInvalidationMetrics.PREFIX + "send.duration")
+                  .tag("outcome", "timeout")
+                  .timer()
+                  .count())
+          .isEqualTo(1);
+      assertThat(registry.get(CacheInvalidationMetrics.PREFIX + "send.inflight").gauge().value())
+          .isZero();
     }
+  }
+
+  @ParameterizedTest
+  @MethodSource("deliveryStatuses")
+  public void deliveryMetricsCountEachPeerAttempt(int status, String outcome) throws Exception {
+    var config =
+        buildConfig(
+            singletonList("token"), Optional.empty(), Duration.ofDays(1), Duration.ofSeconds(30));
+    var discovery = mock(CacheInvalidationPeerDiscovery.class);
+    var sender =
+        new CacheInvalidationSender(
+            vertx, config, ServerInstanceId.of("sender"), discovery, metrics);
+    var received = new CountDownLatch(1);
+    var release = new CountDownLatch(1);
+    try (var receiver =
+        new HttpTestServer(
+            config.cacheInvalidationUri(),
+            exchange -> {
+              received.countDown();
+              try {
+                if (!release.await(30, TimeUnit.SECONDS)) {
+                  throw new IllegalStateException("Test did not release HTTP response");
+                }
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+              }
+              exchange.sendResponseHeaders(status, -1);
+              exchange.close();
+            })) {
+      var uri = receiver.getUri();
+      var peer = peer(uri.getHost(), uri.getPort());
+      var futures =
+          sender.submit(
+              List.of(cacheInvalidationEvictObj("realm", SOME_OBJ_REF)), List.of(peer, peer), 1);
+      try {
+        assertThat(received.await(30, TimeUnit.SECONDS)).isTrue();
+        assertThat(registry.get(CacheInvalidationMetrics.PREFIX + "send.inflight").gauge().value())
+            .isEqualTo(2);
+        assertThat(
+                registry
+                    .get(CacheInvalidationMetrics.PREFIX + "send.duration")
+                    .tag("outcome", outcome)
+                    .timer()
+                    .count())
+            .isZero();
+      } finally {
+        release.countDown();
+      }
+      Future.all(futures).toCompletionStage().toCompletableFuture().get(30, TimeUnit.SECONDS);
+      assertThat(registry.get(CacheInvalidationMetrics.PREFIX + "send.inflight").gauge().value())
+          .isZero();
+      assertThat(
+              registry
+                  .get(CacheInvalidationMetrics.PREFIX + "send.duration")
+                  .tag("outcome", outcome)
+                  .timer()
+                  .count())
+          .isEqualTo(2);
+      assertThat(registry.get(CacheInvalidationMetrics.PREFIX + "batch.size").summary().count())
+          .isEqualTo(1);
+    } finally {
+      release.countDown();
+    }
+  }
+
+  static Stream<Arguments> deliveryStatuses() {
+    return Stream.of(
+        arguments(200, "success"), arguments(204, "success"), arguments(503, "http_rejected"));
+  }
+
+  @Test
+  public void queuedAndSkippedMetrics() {
+    var config =
+        buildConfig(
+            singletonList("token"),
+            Optional.of(List.of("service")),
+            Duration.ofDays(1),
+            Duration.ofSeconds(1));
+    var discovery = mock(CacheInvalidationPeerDiscovery.class);
+    when(discovery.isConfigured()).thenReturn(true);
+    when(discovery.discoverPeers()).thenReturn(succeededFuture(List.of()));
+    var sender =
+        new CacheInvalidationSender(
+            vertx, config, ServerInstanceId.of("sender"), discovery, metrics) {
+          @Override
+          int quarkusManagementPort() {
+            return 0;
+          }
+        };
+    sender.evictObj("realm", SOME_OBJ_REF);
+    sender.evictReference("realm", "reference");
+    assertThat(registry.get(CacheInvalidationMetrics.PREFIX + "queue.depth").gauge().value())
+        .isEqualTo(2);
+    for (var type : List.of("obj", "ref")) {
+      assertThat(
+              registry
+                  .get(CacheInvalidationMetrics.PREFIX + "entries")
+                  .tags("stage", "enqueued", "type", type)
+                  .counter()
+                  .count())
+          .isEqualTo(1);
+    }
+    sender.submit(List.of(cacheInvalidationEvictObj("realm", SOME_OBJ_REF)), List.of(), 1);
+    assertThat(
+            registry
+                .get(CacheInvalidationMetrics.PREFIX + "skipped")
+                .tag("reason", "no_peers")
+                .counter()
+                .count())
+        .isEqualTo(1);
+    assertThat(registry.get(CacheInvalidationMetrics.PREFIX + "send.duration").timers())
+        .allSatisfy(timer -> assertThat(timer.count()).isZero());
+  }
+
+  @Test
+  public void missingTokenMetrics() {
+    var config =
+        buildConfig(
+            singletonList("token"),
+            Optional.of(List.of("service")),
+            Duration.ofDays(1),
+            Duration.ofSeconds(1));
+    when(config.cacheInvalidationValidTokens()).thenReturn(Optional.empty());
+    var discovery = mock(CacheInvalidationPeerDiscovery.class);
+    when(discovery.isConfigured()).thenReturn(true);
+    when(discovery.discoverPeers()).thenReturn(succeededFuture(List.of()));
+    var sender =
+        new CacheInvalidationSender(
+            vertx, config, ServerInstanceId.of("sender"), discovery, metrics);
+    sender.evictObj("realm", SOME_OBJ_REF);
+    assertThat(
+            registry
+                .get(CacheInvalidationMetrics.PREFIX + "skipped")
+                .tag("reason", "no_token")
+                .counter()
+                .count())
+        .isEqualTo(1);
+    assertThat(registry.get(CacheInvalidationMetrics.PREFIX + "queue.depth").gauge().value())
+        .isZero();
+  }
+
+  @Test
+  public void transportFailureMetrics() throws Exception {
+    var config =
+        buildConfig(
+            singletonList("token"), Optional.empty(), Duration.ofDays(1), Duration.ofSeconds(1));
+    var sender =
+        new CacheInvalidationSender(
+            vertx,
+            config,
+            ServerInstanceId.of("sender"),
+            mock(CacheInvalidationPeerDiscovery.class),
+            metrics);
+    var future =
+        sender
+            .submit(
+                List.of(cacheInvalidationEvictObj("realm", SOME_OBJ_REF)),
+                List.of(peer("invalid host", 1)),
+                1)
+            .getFirst();
+    assertThat(future.toCompletionStage().toCompletableFuture()).failsWithin(30, TimeUnit.SECONDS);
+    assertThat(
+            registry
+                .get(CacheInvalidationMetrics.PREFIX + "send.duration")
+                .tag("outcome", "transport_error")
+                .timer()
+                .count())
+        .isEqualTo(1);
+    assertThat(registry.get(CacheInvalidationMetrics.PREFIX + "send.inflight").gauge().value())
+        .isZero();
   }
 
   static Stream<Arguments> invalidations() {
