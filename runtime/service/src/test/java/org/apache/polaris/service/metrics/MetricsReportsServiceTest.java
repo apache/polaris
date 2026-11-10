@@ -43,6 +43,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -187,7 +188,7 @@ class MetricsReportsServiceTest {
   private static CatalogObject object(List<String> namespace, String table, Long snapshotId) {
     List<String> identifier = new ArrayList<>(namespace);
     identifier.add(table);
-    return new CatalogObject(identifier, null, snapshotId);
+    return new CatalogObject(identifier, null, snapshotId == null ? null : snapshotId.toString());
   }
 
   private List<MetricsQuerySpi.TableSelector> querySelectors(List<CatalogObject> objects) {
@@ -218,33 +219,56 @@ class MetricsReportsServiceTest {
   }
 
   @Test
-  void unauthorizedTableIsOmittedLikeAMissingOne() {
+  void requestWithNoReadableTableIsForbidden() {
     when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.deny("denied"));
     MetricsQuerySpi provider = queryProvider.get();
 
-    Response response =
-        service.queryTableMetrics(
-            CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext);
-
-    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-    assertThat(((ListMetricsResponse) response.getEntity()).getReports()).isEmpty();
+    assertThatThrownBy(
+            () ->
+                service.queryTableMetrics(
+                    CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext))
+        .isInstanceOf(ForbiddenException.class);
     verify(provider, never()).listReports(any(), anyLong(), any(), any(), any(), any());
   }
 
   @Test
-  void missingTableIsOmittedWithoutError() {
+  void requestForOnlyMissingTablesIsForbiddenLikeADeniedOne() {
     when(manifest.getResolvedPath(
             any(ResolvedPathKey.class), eq(PolarisEntitySubType.ICEBERG_TABLE), eq(true)))
         .thenReturn(null);
     MetricsQuerySpi provider = queryProvider.get();
 
-    Response response =
-        service.queryTableMetrics(
-            CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext);
-
-    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-    assertThat(((ListMetricsResponse) response.getEntity()).getReports()).isEmpty();
+    assertThatThrownBy(
+            () ->
+                service.queryTableMetrics(
+                    CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext))
+        .isInstanceOf(ForbiddenException.class);
     verify(provider, never()).listReports(any(), anyLong(), any(), any(), any(), any());
+  }
+
+  @Test
+  void invertedTimestampRangeIsRejected() {
+    QueryMetricsRequest request =
+        new QueryMetricsRequest(
+            List.of(SCAN), List.of(object(NAMESPACE, TABLE, null)), null, null, 2000L, 2000L);
+
+    assertThatThrownBy(
+            () -> service.queryTableMetrics(CATALOG, request, realmContext, securityContext))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("timestampFrom");
+  }
+
+  @Test
+  void nonNumericIcebergSnapshotIdIsRejected() {
+    QueryMetricsRequest request =
+        new QueryMetricsRequest(
+            List.of(SCAN),
+            List.of(new CatalogObject(List.of("db", "schema", TABLE), null, "not-a-number")));
+
+    assertThatThrownBy(
+            () -> service.queryTableMetrics(CATALOG, request, realmContext, securityContext))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("snapshot-id");
   }
 
   @Test
@@ -343,6 +367,7 @@ class MetricsReportsServiceTest {
 
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     assertThat(((ListMetricsResponse) response.getEntity()).getReports()).isEmpty();
+    verify(authorizer, never()).authorize(any(), any());
     verify(provider, never()).listReports(any(), anyLong(), any(), any(), any(), any());
   }
 
@@ -414,7 +439,7 @@ class MetricsReportsServiceTest {
     MetricsReport report = reports.getFirst();
     assertThat(report.getMetricType()).isEqualTo(SCAN);
     assertThat(report.getObject())
-        .isEqualTo(new CatalogObject(List.of("db", "schema", TABLE), "iceberg-table", 99L));
+        .isEqualTo(new CatalogObject(List.of("db", "schema", TABLE), "iceberg-table", "99"));
     assertThat(report.getTimestampMs()).isEqualTo(1_000L);
     assertThat(report.getPayload())
         .containsEntry("type", "iceberg.metrics.scan")
@@ -486,7 +511,7 @@ class MetricsReportsServiceTest {
     MetricsReport report = reports.getFirst();
     assertThat(report.getMetricType()).isEqualTo(COMMIT);
     assertThat(report.getTimestampMs()).isEqualTo(2_000L);
-    assertThat(report.getObject().getSnapshotId()).isEqualTo(100L);
+    assertThat(report.getObject().getSnapshotId()).isEqualTo("100");
     assertThat(report.getPayload()).doesNotContainKey("request");
     assertThat(report.getPayload()).containsEntry("type", "iceberg.metrics.commit");
     @SuppressWarnings("unchecked")

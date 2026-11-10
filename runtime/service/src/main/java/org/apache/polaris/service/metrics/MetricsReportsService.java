@@ -44,6 +44,7 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -147,6 +148,11 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
     if (request.getPageSize() != null && request.getPageSize() < 1) {
       throw new IllegalArgumentException("pageSize must be at least 1");
     }
+    if (request.getTimestampFrom() != null
+        && request.getTimestampTo() != null
+        && request.getTimestampFrom() >= request.getTimestampTo()) {
+      throw new IllegalArgumentException("timestampFrom must be before timestampTo");
+    }
 
     // Unsupported metric types and object types yield no reports.
     Set<MetricsQuerySpi.MetricType> types = EnumSet.noneOf(MetricsQuerySpi.MetricType.class);
@@ -169,13 +175,16 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
       Set<Long> snapshots = snapshotsByTable.get(identifier);
       if (object.getSnapshotId() == null) {
         snapshotsByTable.put(identifier, Set.of());
-      } else if (snapshots == null) {
-        snapshotsByTable.put(identifier, new LinkedHashSet<>(List.of(object.getSnapshotId())));
-      } else if (!snapshots.isEmpty()) {
-        snapshots.add(object.getSnapshotId());
+      } else {
+        long snapshotId = parseIcebergSnapshotId(object.getSnapshotId());
+        if (snapshots == null) {
+          snapshotsByTable.put(identifier, new LinkedHashSet<>(List.of(snapshotId)));
+        } else if (!snapshots.isEmpty()) {
+          snapshots.add(snapshotId);
+        }
       }
     }
-    if (snapshotsByTable.isEmpty()) {
+    if (types.isEmpty() || snapshotsByTable.isEmpty()) {
       return toResponse(null, List.of());
     }
 
@@ -192,11 +201,14 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
 
     ResolvedTables resolved =
         resolveAndAuthorizeTableMetrics(catalogName, List.copyOf(snapshotsByTable.keySet()));
-    if (types.isEmpty() || resolved.tableIdToIdentifier().isEmpty()) {
-      return toResponse(null, List.of());
+    Map<Long, TableIdentifier> tableIdToIdentifier = resolved.tableIdToIdentifier();
+    if (tableIdToIdentifier.isEmpty()) {
+      // Missing and denied tables are indistinguishable, so this does not reveal which exist.
+      throw new ForbiddenException(
+          "Principal '%s' is not authorized to read metrics of any of the requested tables",
+          polarisPrincipal.getName());
     }
     CatalogEntity catalogEntity = resolved.catalogEntity();
-    Map<Long, TableIdentifier> tableIdToIdentifier = resolved.tableIdToIdentifier();
 
     List<MetricsQuerySpi.TableSelector> selectors = new ArrayList<>();
     tableIdToIdentifier.forEach(
@@ -300,7 +312,8 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
 
     Hasher hasher = Hashing.sha256().newHasher();
     putField(hasher, catalogName);
-    putField(hasher, types.toString());
+    hasher.putInt(types.size());
+    types.stream().map(Enum::name).sorted().forEach(name -> putField(hasher, name));
     putField(hasher, String.valueOf(timestampFrom));
     putField(hasher, String.valueOf(timestampTo));
     tables.forEach(table -> putField(hasher, table));
@@ -342,6 +355,16 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
           "Page token was issued for a different query; repeat the original request parameters");
     }
     return new ResumedPage(timestampFrom, parts[2]);
+  }
+
+  /** Iceberg snapshot IDs are 64-bit integers; the API carries them as opaque strings. */
+  private static long parseIcebergSnapshotId(String snapshotId) {
+    try {
+      return Long.parseLong(snapshotId);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException(
+          "Invalid snapshot-id for an iceberg-table: " + snapshotId, e);
+    }
   }
 
   private static TableIdentifier toTableIdentifier(List<String> identifier) {
@@ -531,6 +554,7 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
   private static CatalogObject toCatalogObject(TableIdentifier identifier, Long snapshotId) {
     List<String> levels = new ArrayList<>(Arrays.asList(identifier.namespace().levels()));
     levels.add(identifier.name());
-    return new CatalogObject(levels, OBJECT_TYPE_ICEBERG_TABLE, snapshotId);
+    return new CatalogObject(
+        levels, OBJECT_TYPE_ICEBERG_TABLE, snapshotId == null ? null : snapshotId.toString());
   }
 }

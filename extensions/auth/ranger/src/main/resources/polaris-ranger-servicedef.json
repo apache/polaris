@@ -184,6 +184,7 @@
           "table-drop",
           "table-list",
           "table-data-read",
+          "table-metrics-read",
           "table-data-write",
           "table-metadata-full",
           "table-properties-read",

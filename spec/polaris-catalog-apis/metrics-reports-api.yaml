@@ -40,11 +40,11 @@ paths:
         Requires the TABLE_READ_METRICS privilege on each requested table. Reports are returned for
         the requested tables that exist and for which the caller holds that privilege. Other
         requested tables are omitted without error, so the response does not reveal whether they
-        exist. A 404 is returned only when the catalog itself does not exist.
+        exist. A 403 is returned when none of the requested tables is readable by the caller,
+        whether because they do not exist or because the caller lacks the privilege. A 404 is
+        returned only when the catalog itself does not exist.
 
-        Results are always paginated. The number of entries in `objects` and the page size are
-        bounded by server configuration; requests above those bounds are rejected or reduced as
-        described on the individual properties.
+        Results are always paginated.
       requestBody:
         required: true
         content:
@@ -108,19 +108,20 @@ components:
             The catalog object type. Combined with identifier, identifies the exact catalog object.
             Defaults to `iceberg-table` when omitted. Currently, only `iceberg-table` is supported;
             entries with unsupported values are ignored.
-        snapshotId:
-          type: integer
-          format: int64
+        snapshot-id:
+          type: string
           description: >
-            Optional snapshot filter for this object. If omitted, no snapshot filter is applied.
+            Optional snapshot filter for this object. An opaque identifier whose format depends on
+            the object's table format; for `iceberg-table` it is the decimal Iceberg snapshot ID. If
+            omitted, no snapshot filter is applied.
 
     QueryMetricsRequest:
       type: object
       required:
-        - metricTypes
+        - metric-types
         - objects
       properties:
-        metricTypes:
+        metric-types:
           type: array
           minItems: 1
           description: >
@@ -133,49 +134,45 @@ components:
           minItems: 1
           description: >
             Catalog objects to query, all belonging to the catalog identified by prefix in the
-            path. Entries are combined with OR semantics. Omitting `snapshotId` on an entry applies
+            path. Entries are combined with OR semantics. Omitting `snapshot-id` on an entry applies
             no snapshot filter; the other query filters still apply. If the same object appears
             both with and without a snapshot ID, the entry without a snapshot ID takes precedence.
             Overlapping entries do not duplicate reports. The server limits the number of entries
-            per request (`METRICS_QUERY_MAX_OBJECTS`, 100 by default) and rejects larger requests
-            with a 400. Entries naming a table that does not exist, or one the caller may not read
-            metrics of, are omitted from the result.
+            per request and rejects larger requests with a 400. Entries naming a table that does
+            not exist, or one the caller may not read metrics of, are omitted from the result.
           items:
             $ref: '#/components/schemas/CatalogObject'
-        pageToken:
+        page-token:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
-        pageSize:
+        page-size:
           type: integer
           minimum: 1
-          description: >
-            Maximum number of results to return per page. When omitted, the server selects the page
-            size (`METRICS_QUERY_DEFAULT_PAGE_SIZE`, 100 by default). Values above the server maximum
-            (`METRICS_QUERY_MAX_PAGE_SIZE`, 1000 by default) are reduced to it.
-        timestampFrom:
+        timestamp-from:
           type: integer
           format: int64
           description: >
             Inclusive lower bound on report timestamp (Unix epoch milliseconds). When omitted, the
-            server applies a default window (`METRICS_QUERY_DEFAULT_TIME_WINDOW_DAYS`, 7 days by
-            default) that ends at `timestampTo`, or at the time of the request when `timestampTo` is
-            also omitted.
-        timestampTo:
+            server applies a default window that ends at `timestamp-to`, or at the time of the
+            request when `timestamp-to` is also omitted.
+        timestamp-to:
           type: integer
           format: int64
-          description: Exclusive upper bound on report timestamp (Unix epoch milliseconds)
+          description: >
+            Exclusive upper bound on report timestamp (Unix epoch milliseconds). Must be greater
+            than `timestamp-from` when both are given.
 
     ListMetricsResponse:
       type: object
       required:
         - reports
       properties:
-        nextPageToken:
+        next-page-token:
           type: string
           nullable: true
           description: >
             Opaque cursor for fetching the next page. Null or absent when no further pages exist. A
-            cursor is valid only with the same `metricTypes`, `objects`, `timestampFrom` and
-            `timestampTo` as the request that produced it; the server rejects it with a 400
+            cursor is valid only with the same `metric-types`, `objects`, `timestamp-from` and
+            `timestamp-to` as the request that produced it; the server rejects it with a 400
             otherwise.
         reports:
           type: array
@@ -188,16 +185,16 @@ components:
         Envelope for a single persisted metrics report. The `payload` is an opaque JSON object so
         fields can be added without requiring a change to this API's schema.
       required:
-        - metricType
+        - metric-type
         - object
-        - timestampMs
+        - timestamp-ms
         - payload
       properties:
-        metricType:
+        metric-type:
           $ref: '#/components/schemas/MetricType'
         object:
           $ref: '#/components/schemas/CatalogObject'
-        timestampMs:
+        timestamp-ms:
           type: integer
           format: int64
           description: Server-side timestamp when the report was received (Unix epoch milliseconds)

@@ -69,6 +69,10 @@ public interface MetricsQuerySpi {
    * (keyset pagination). Backing stores should index the lookup columns followed by the timestamp
    * and the report ID so that the keyset query stays index-driven.
    *
+   * <p>Implementations must apply the page size of {@code pageToken} in the backing query itself,
+   * rather than fetching more rows than one page and truncating them, so that a request cannot make
+   * the backend read an unbounded number of reports.
+   *
    * <p>Selectors are combined with OR semantics, and a report matched by more than one selector is
    * returned only once. Each item of the returned page is a {@link ScanMetricsRecord} for {@link
    * MetricType#SCAN} or a {@link CommitMetricsRecord} for {@link MetricType#COMMIT}.
