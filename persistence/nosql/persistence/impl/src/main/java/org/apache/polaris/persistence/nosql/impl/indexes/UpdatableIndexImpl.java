@@ -80,10 +80,16 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
     checkNotFinalized();
     finalized = true;
 
+    var spillRequired =
+        embedded.estimatedSerializedSize() > params.maxEmbeddedIndexSize().asLong()
+            || hasOversizedEmbeddedEntry;
+    if (indexContainer != null && !spillRequired && !isModified()) {
+      return indexContainer;
+    }
+
     var indexContainerBuilder = ImmutableIndexContainer.<V>builder();
 
-    if (embedded.estimatedSerializedSize() > params.maxEmbeddedIndexSize().asLong()
-        || hasOversizedEmbeddedEntry) {
+    if (spillRequired) {
       // The serialized representation of the embedded index is probably bigger than the configured
       // limit. Spill out the embedded index.
       spillOutEmbedded(prefix, persistObj, indexContainerBuilder);
