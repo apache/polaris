@@ -98,7 +98,7 @@ public class StorageConfigurationTest {
 
       @Override
       public AzureStorageConfig azure() {
-        return Map::of;
+        return mock(AzureStorageConfig.class);
       }
 
       @Override
@@ -182,7 +182,7 @@ public class StorageConfigurationTest {
 
       @Override
       public AzureStorageConfig azure() {
-        return Map::of;
+        return mock(AzureStorageConfig.class);
       }
 
       @Override
@@ -278,7 +278,7 @@ public class StorageConfigurationTest {
 
       @Override
       public AzureStorageConfig azure() {
-        return Map::of;
+        return mock(AzureStorageConfig.class);
       }
 
       @Override

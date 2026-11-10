@@ -50,11 +50,26 @@ export AZURE_CLIENT_ID=<appId>
 export AZURE_CLIENT_SECRET=<password>
 ```
 
+You can set the same service principal with Polaris properties instead:
+
+```properties
+polaris.storage.azure.tenant-id=<tenant>
+polaris.storage.azure.client-id=<appId>
+polaris.storage.azure.client-secret=<password>
+```
+
+When all three properties are set, Polaris uses them instead of the `DefaultAzureCredential` chain.
+Set all three or none: if only some are set, Azure storage access fails with an error that names the
+missing properties. The `tenantId` of each Azure storage configuration must match
+`polaris.storage.azure.tenant-id`.
+
 In a Kubernetes deployment, do not embed `AZURE_CLIENT_SECRET` in the pod spec as plain text.
 Store the client secret in a Kubernetes `Secret` (or an external secret store referenced by an
 operator like the Azure Key Vault provider) and project it into the Polaris container with
 `envFrom`/`valueFrom: secretKeyRef`. The same applies to the bootstrap credentials in
-`POLARIS_BOOTSTRAP_CREDENTIALS`.
+`POLARIS_BOOTSTRAP_CREDENTIALS`. With the Helm chart, set `storage.secret.name` and the
+`storage.secret.azureTenantId`, `azureClientId` and `azureClientSecret` keys to load the three
+`polaris.storage.azure.*` properties from a `Secret`.
 
 The `Storage Blob Data Contributor` role at storage-account scope lets Polaris issue SAS tokens
 for any container under that account; scope the role narrower (single container) when you want to
@@ -90,7 +105,8 @@ tokens with a user delegation key, which requires a Microsoft Entra identity.
 
 The following rules apply:
 
-- A storage without a `storageName` uses the default credentials.
+- A storage without a `storageName` uses the credentials described in
+  [Service principal and Polaris credentials](#service-principal-and-polaris-credentials).
 - A `storageName` with no matching properties fails. Polaris does not fall back to the default
   credentials. Names are case-sensitive.
 - When the feature flag is disabled, `storageName` is ignored for credential selection.
@@ -109,18 +125,15 @@ advancedConfig:
   polaris.storage.azure.team-a.tenant-id: <tenant>
   polaris.storage.azure.team-a.client-id: <appId>
 extraEnv:
-  - name: POLARIS_STORAGE_AZURE_TEAM_A_CLIENT_SECRET
+  - name: polaris.storage.azure.team-a.client-secret
     valueFrom:
       secretKeyRef:
         name: polaris-azure-team-a
         key: client-secret
 ```
 
-Environment variables alone cannot define a name containing a dash, because the name cannot be
-recovered from the variable. `POLARIS_STORAGE_AZURE_TEAM_A_CLIENT_SECRET` works in the example above
-because `advancedConfig` already defines `team-a`. To set all three properties through the
-environment, use the literal property names as the variable names
-(`polaris.storage.azure.team-a.client-secret`), or a name without a dash.
+Kubernetes accepts the property name as the variable name. In a shell, use the uppercase form
+described in [Configuring Polaris]({{% ref "../configuring-polaris.md" %}}).
 
 Named credentials apply to the whole deployment, not to one realm. An administrator who can set
 `storageName` on a catalog in any realm where `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` is enabled can

@@ -22,10 +22,14 @@ import static org.apache.polaris.core.config.FeatureConfiguration.RESOLVE_CREDEN
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.azure.core.credential.TokenCredential;
+import com.azure.identity.ClientSecretCredential;
+import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.identity.DefaultAzureCredentialBuilder;
+import io.smallrye.config.PropertiesConfigSource;
+import io.smallrye.config.SmallRyeConfigBuilder;
 import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
@@ -41,13 +45,14 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
-import org.apache.polaris.service.storage.StorageConfiguration.AzureNamedStorageConfig;
-import org.apache.polaris.service.storage.StorageConfiguration.AzureStorageConfig;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Answers;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 
@@ -58,29 +63,64 @@ class AzureNamedCredentialsProviderTest {
   private static final String TENANT = "aaaaaaaa-1111-1111-1111-111111111111";
   private static final String OTHER_TENANT = "22222222-2222-2222-2222-222222222222";
 
-  private final AtomicInteger teamALoads = new AtomicInteger();
+  private static final String UNNAMED_CLIENT_ID = "app-unnamed";
+
+  private final AtomicInteger builds = new AtomicInteger();
   private boolean failNextBuild;
+  private MockedConstruction<ClientSecretCredentialBuilder> builders;
+
+  @BeforeEach
+  void mockCredentialBuilds() {
+    // The real selection and checks run; only the credential build is replaced.
+    builders =
+        Mockito.mockConstruction(
+            ClientSecretCredentialBuilder.class,
+            Mockito.withSettings().defaultAnswer(Answers.RETURNS_SELF),
+            (builder, context) ->
+                when(builder.build())
+                    .thenAnswer(
+                        invocation -> {
+                          builds.incrementAndGet();
+                          if (failNextBuild) {
+                            failNextBuild = false;
+                            throw new IllegalStateException("build failed");
+                          }
+                          return mock(ClientSecretCredential.class);
+                        }));
+  }
+
+  @AfterEach
+  void closeBuilders() {
+    builders.close();
+  }
+
+  private static Map<String, String> teamA() {
+    return Map.of(
+        "polaris.storage.azure.team-a.tenant-id", TENANT,
+        "polaris.storage.azure.team-a.client-id", "app-team-a",
+        "polaris.storage.azure.team-a.client-secret", "secret-a");
+  }
+
+  private static Map<String, String> teamAAndUnnamed() {
+    Map<String, String> properties = new HashMap<>(teamA());
+    properties.put("polaris.storage.azure.tenant-id", TENANT);
+    properties.put("polaris.storage.azure.client-id", UNNAMED_CLIENT_ID);
+    properties.put("polaris.storage.azure.client-secret", "secret-unnamed");
+    return properties;
+  }
 
   private PolarisStorageIntegrationProviderImpl provider(Map<String, Object> flags) {
-    // The real name lookup and tenant check run; only the credential build is replaced.
+    return provider(flags, teamA());
+  }
+
+  private PolarisStorageIntegrationProviderImpl provider(
+      Map<String, Object> flags, Map<String, String> properties) {
     StorageConfiguration storageConfiguration =
-        mock(StorageConfiguration.class, Mockito.CALLS_REAL_METHODS);
-    AzureNamedStorageConfig teamA = mock(AzureNamedStorageConfig.class);
-    when(teamA.tenantId()).thenReturn(TENANT);
-    AzureStorageConfig azure = mock(AzureStorageConfig.class);
-    when(azure.storages()).thenReturn(Map.of("team-a", teamA));
-    when(storageConfiguration.azure()).thenReturn(azure);
-    Mockito.doAnswer(
-            invocation -> {
-              teamALoads.incrementAndGet();
-              if (failNextBuild) {
-                failNextBuild = false;
-                throw new IllegalStateException("build failed");
-              }
-              return mock(TokenCredential.class);
-            })
-        .when(storageConfiguration)
-        .azureCredential("team-a", teamA);
+        new SmallRyeConfigBuilder()
+            .withMapping(StorageConfiguration.class)
+            .withSources(new PropertiesConfigSource(properties, "test", 100))
+            .build()
+            .getConfigMapping(StorageConfiguration.class);
     RealmConfig realmConfig = new RealmConfigImpl((rc, name) -> flags.get(name), REALM);
     return new PolarisStorageIntegrationProviderImpl(
         storageConfiguration,
@@ -88,6 +128,18 @@ class AzureNamedCredentialsProviderTest {
         realmConfig,
         Clock.systemUTC(),
         null);
+  }
+
+  /** The client IDs of the credentials built so far, in build order. */
+  private List<String> builtClientIds() {
+    return builders.constructed().stream()
+        .map(
+            builder -> {
+              ArgumentCaptor<String> clientId = ArgumentCaptor.forClass(String.class);
+              verify(builder).clientId(clientId.capture());
+              return clientId.getValue();
+            })
+        .toList();
   }
 
   /** A catalog, or a cleanup task: both carry the configuration in their internal properties. */
@@ -139,7 +191,7 @@ class AzureNamedCredentialsProviderTest {
               assertThat(integration).isInstanceOf(AzureCredentialsStorageIntegration.class);
             });
 
-    assertThat(teamALoads).hasValue(1);
+    assertThat(builds).hasValue(1);
     assertThat(defaultBuilds).isZero();
   }
 
@@ -154,7 +206,7 @@ class AzureNamedCredentialsProviderTest {
                     entityPath(PolarisEntityType.CATALOG, null, TENANT)));
 
     assertThat(defaultBuilds).isEqualTo(1);
-    assertThat(teamALoads).hasValue(0);
+    assertThat(builds).hasValue(0);
   }
 
   @Test
@@ -175,7 +227,7 @@ class AzureNamedCredentialsProviderTest {
             });
 
     assertThat(defaultBuilds).isEqualTo(3);
-    assertThat(teamALoads).hasValue(0);
+    assertThat(builds).hasValue(0);
   }
 
   @ParameterizedTest
@@ -214,7 +266,7 @@ class AzureNamedCredentialsProviderTest {
                     .hasMessageContaining("tenant")
                     .hasMessageNotContaining(TENANT));
 
-    assertThat(teamALoads).hasValue(0);
+    assertThat(builds).hasValue(0);
     assertThat(defaultBuilds).isZero();
   }
 
@@ -226,7 +278,7 @@ class AzureNamedCredentialsProviderTest {
                 entityPath(PolarisEntityType.CATALOG, "team-a", TENANT.toUpperCase(Locale.ROOT)));
 
     assertThat(integration).isInstanceOf(AzureCredentialsStorageIntegration.class);
-    assertThat(teamALoads).hasValue(1);
+    assertThat(builds).hasValue(1);
   }
 
   @Test
@@ -236,7 +288,7 @@ class AzureNamedCredentialsProviderTest {
     provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
     provider.getStorageIntegration(entityPath(PolarisEntityType.TASK, "team-a", TENANT));
 
-    assertThat(teamALoads).hasValue(1);
+    assertThat(builds).hasValue(1);
   }
 
   @Test
@@ -260,7 +312,7 @@ class AzureNamedCredentialsProviderTest {
 
     // The realm with the flag off gets the default credential; the two realms with it on share one.
     assertThat(defaultBuilds).isEqualTo(1);
-    assertThat(teamALoads).hasValue(1);
+    assertThat(builds).hasValue(1);
   }
 
   @Test
@@ -277,6 +329,89 @@ class AzureNamedCredentialsProviderTest {
         provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
 
     assertThat(integration).isInstanceOf(AzureCredentialsStorageIntegration.class);
-    assertThat(teamALoads).hasValue(2);
+    assertThat(builds).hasValue(2);
+  }
+
+  @Test
+  void unnamedPropertiesReplaceTheDefaultWithoutAName() {
+    PolarisStorageIntegrationProviderImpl provider = provider(resolveByName(), teamAAndUnnamed());
+
+    int defaultBuilds =
+        defaultCredentialBuilds(
+            () -> {
+              provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, null, TENANT));
+              provider.getStorageIntegration(entityPath(PolarisEntityType.TASK, null, TENANT));
+            });
+
+    assertThat(defaultBuilds).isZero();
+    assertThat(builtClientIds()).containsExactly(UNNAMED_CLIENT_ID);
+  }
+
+  @Test
+  void unnamedPropertiesAreUsedWhenTheFlagIsOff() {
+    PolarisStorageIntegrationProviderImpl provider = provider(Map.of(), teamAAndUnnamed());
+
+    int defaultBuilds =
+        defaultCredentialBuilds(
+            () ->
+                provider.getStorageIntegration(
+                    entityPath(PolarisEntityType.CATALOG, "team-a", TENANT)));
+
+    assertThat(defaultBuilds).isZero();
+    assertThat(builtClientIds()).containsExactly(UNNAMED_CLIENT_ID);
+  }
+
+  @Test
+  void aStorageNameWinsOverTheUnnamedProperties() {
+    PolarisStorageIntegrationProviderImpl provider = provider(resolveByName(), teamAAndUnnamed());
+
+    provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
+
+    assertThat(builtClientIds()).containsExactly("app-team-a");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {OTHER_TENANT, "contoso.onmicrosoft.com"})
+  void unnamedTenantMismatchFailsWithoutRevealingTheConfiguredTenant(String catalogTenant) {
+    PolarisStorageIntegrationProviderImpl provider = provider(resolveByName(), teamAAndUnnamed());
+
+    int defaultBuilds =
+        defaultCredentialBuilds(
+            () ->
+                assertThatThrownBy(
+                        () ->
+                            provider.getStorageIntegration(
+                                entityPath(PolarisEntityType.CATALOG, null, catalogTenant)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("polaris.storage.azure.tenant-id")
+                    .hasMessageNotContaining(TENANT));
+
+    assertThat(defaultBuilds).isZero();
+    assertThat(builds).hasValue(0);
+  }
+
+  @Test
+  void incompleteUnnamedPropertiesFailNamingOnlyTheMissingOnes() {
+    Map<String, String> properties = new HashMap<>(teamA());
+    properties.put("polaris.storage.azure.tenant-id", TENANT);
+    properties.put("polaris.storage.azure.client-secret", "secret-unnamed");
+    PolarisStorageIntegrationProviderImpl provider = provider(resolveByName(), properties);
+
+    int defaultBuilds =
+        defaultCredentialBuilds(
+            () ->
+                assertThatThrownBy(
+                        () ->
+                            provider.getStorageIntegration(
+                                entityPath(PolarisEntityType.CATALOG, null, TENANT)))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("polaris.storage.azure.client-id")
+                    .hasMessageNotContaining("tenant-id")
+                    .hasMessageNotContaining("secret-unnamed"));
+
+    assertThat(defaultBuilds).isZero();
+    // A named credential is unaffected.
+    provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
+    assertThat(builtClientIds()).containsExactly("app-team-a");
   }
 }

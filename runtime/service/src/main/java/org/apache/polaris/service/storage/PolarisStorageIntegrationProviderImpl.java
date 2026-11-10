@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.storage;
 
-import com.azure.core.credential.TokenCredential;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -27,9 +26,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -48,7 +45,6 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
-import org.apache.polaris.service.storage.StorageConfiguration.AzureNamedStorageConfig;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -85,21 +81,20 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         storageConfig ->
             new GcpCredentialsStorageIntegration(
                 gcpCredsProvider.get(), gcpTransportFactory, cache, storageConfig, realmConfig);
-    // Each named credential holds its own access token cache, so it is built once and shared.
-    Map<String, TokenCredential> azureNamedCredentials = new ConcurrentHashMap<>();
+    AzureCredentialsFactory azureCredentials = new AzureCredentialsFactory(storageConfiguration);
     this.azureFactory =
-        storageConfig -> {
-          String storageName = storageConfig.getStorageName();
-          if (storageName == null
-              || !realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
-            return new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig);
-          }
-          return new AzureCredentialsStorageIntegration(
-              resolveAzureCredential(storageConfig, storageConfiguration, azureNamedCredentials),
-              cache,
-              storageConfig,
-              realmConfig);
-        };
+        storageConfig ->
+            azureCredentials
+                .credential(
+                    storageConfig,
+                    realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME))
+                .map(
+                    credential ->
+                        new AzureCredentialsStorageIntegration(
+                            credential, cache, storageConfig, realmConfig))
+                .orElseGet(
+                    () ->
+                        new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig));
   }
 
   public PolarisStorageIntegrationProviderImpl(
@@ -144,19 +139,6 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       case AZURE -> azureFactory.apply((AzureStorageConfigurationInfo) storageConfig);
       case FILE -> FILE_INTEGRATION;
     };
-  }
-
-  private static TokenCredential resolveAzureCredential(
-      AzureStorageConfigurationInfo storageConfig,
-      StorageConfiguration storageConfiguration,
-      Map<String, TokenCredential> namedCredentials) {
-    String storageName = storageConfig.getStorageName();
-    // The checks run on every use. Only the credential, which belongs to the name alone, is shared.
-    AzureNamedStorageConfig named =
-        storageConfiguration.azureStorage(storageName, storageConfig.getTenantId());
-    // A failed build stores nothing, so the next use builds it again.
-    return namedCredentials.computeIfAbsent(
-        storageName, name -> storageConfiguration.azureCredential(name, named));
   }
 
   /**

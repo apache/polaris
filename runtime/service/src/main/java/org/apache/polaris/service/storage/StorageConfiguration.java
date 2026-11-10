@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.storage;
 
-import com.azure.core.credential.TokenCredential;
-import com.azure.identity.ClientSecretCredentialBuilder;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Suppliers;
 import io.smallrye.config.ConfigMapping;
@@ -128,6 +126,30 @@ public interface StorageConfiguration extends S3AccessConfig {
   AzureStorageConfig azure();
 
   interface AzureStorageConfig {
+    /**
+     * The Microsoft Entra tenant of the service principal to use for authentication. If the tenant,
+     * client ID and client secret are not present, the {@code DefaultAzureCredential} chain is
+     * used. It must match the {@code tenantId} of every storage configuration that uses these
+     * credentials.
+     */
+    @WithName("tenant-id")
+    Optional<String> tenantId();
+
+    /**
+     * The application (client) ID of the service principal to use for authentication. If the
+     * tenant, client ID and client secret are not present, the {@code DefaultAzureCredential} chain
+     * is used.
+     */
+    @WithName("client-id")
+    Optional<String> clientId();
+
+    /**
+     * The client secret of the service principal to use for authentication. If the tenant, client
+     * ID and client secret are not present, the {@code DefaultAzureCredential} chain is used.
+     */
+    @WithName("client-secret")
+    Optional<String> clientSecret();
+
     @WithParentName
     @ConfigDocs.ConfigPropertyName("storage")
     Map<String, AzureNamedStorageConfig> storages();
@@ -216,56 +238,5 @@ public interface StorageConfiguration extends S3AccessConfig {
             return new FixedGcpAccessTokenCredentials(gcpAccessToken().orElseThrow(), expiry);
           }
         });
-  }
-
-  /**
-   * Returns the configuration of one Azure storage name, after checking that it exists and that its
-   * tenant is the one the storage configuration asks for. A client secret credential only obtains
-   * tokens for its own tenant. The messages can reach API clients, so they do not include the
-   * tenant configured on the server.
-   */
-  default AzureNamedStorageConfig azureStorage(String storageName, String tenantId) {
-    AzureNamedStorageConfig storageConfig = azure().storages().get(storageName);
-    if (storageConfig == null) {
-      throw new IllegalArgumentException(
-          "Storage name '" + storageName + "' is not configured on the server");
-    }
-    if (!storageConfig.tenantId().equalsIgnoreCase(tenantId)) {
-      throw new IllegalArgumentException(
-          "The tenantId of this storage configuration does not match the tenant configured for"
-              + " storage name '"
-              + storageName
-              + "'");
-    }
-    return storageConfig;
-  }
-
-  /**
-   * Builds the Azure credential of one configured storage name. Every call builds a new credential,
-   * and its access tokens are cached inside it, so the caller keeps and shares the result.
-   */
-  default TokenCredential azureCredential(
-      String storageName, AzureNamedStorageConfig storageConfig) {
-    return buildAzureCredential(storageName, storageConfig);
-  }
-
-  private static TokenCredential buildAzureCredential(
-      String storageName, AzureNamedStorageConfig storageConfig) {
-    try {
-      return new ClientSecretCredentialBuilder()
-          .tenantId(storageConfig.tenantId())
-          .clientId(storageConfig.clientId())
-          .clientSecret(storageConfig.clientSecret())
-          .build();
-    } catch (RuntimeException e) {
-      // Only the failure type is in the message, which can reach API clients. The cause is kept for
-      // the server log.
-      throw new IllegalStateException(
-          "Failed to build Azure credentials for storage name '"
-              + storageName
-              + "': "
-              + e.getClass().getSimpleName(),
-          e);
-    }
   }
 }
