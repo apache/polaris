@@ -194,9 +194,6 @@ paths:
   /polaris/v1/{prefix}/storage-mappings/remove:
     $ref: './polaris-catalog-apis/storage-mappings-api.yaml#/paths/~1polaris~1v1~1{prefix}~1storage-mappings~1remove'
 
-  /polaris/v1/{prefix}/storage-mappings/orphans:
-    $ref: './polaris-catalog-apis/storage-mappings-api.yaml#/paths/~1polaris~1v1~1{prefix}~1storage-mappings~1orphans'
-
   /polaris/v1/{prefix}/storage-configurations/{storage-configuration-name}/namespaces:
     $ref: './polaris-catalog-apis/storage-mappings-api.yaml#/paths/~1polaris~1v1~1{prefix}~1storage-configurations~1{storage-configuration-name}~1namespaces'
 

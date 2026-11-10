@@ -47,10 +47,12 @@ paths:
         mappings of the catalog.
         Setting both `namespace` and `storage-configuration-name` is a bad request (400).
 
-        A mapping whose namespace or table has been dropped keeps being listed, with `target-exists` set
-        to false. Listing with `namespace` requires that namespace to exist, so the mappings left behind
-        by a dropped namespace are found with `storage-configuration-name`, or with `dry-run` on
-        `removeOrphanStorageMappings`.
+        A mapping whose namespace or table does not exist is listed too, with `target-exists` set to
+        false: a mapping created ahead of its target, or one whose target has been dropped. With the
+        `target-exists` filter, only the mappings whose target exists (true) or does not exist (false)
+        are listed. Listing with `namespace` requires that namespace to exist, so the mappings left
+        behind by a dropped namespace are found with `storage-configuration-name`. A client removes the
+        mappings it no longer wants one at a time, with `removeStorageMapping`.
 
         Results are paginated. A client follows `next-page-token` until it is null or absent.
       parameters:
@@ -74,6 +76,14 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/StorageConfigurationName'
+        - name: target-exists
+          in: query
+          required: false
+          description: >-
+            If set, only list the mappings whose target namespace or table exists (true) or does not
+            exist (false). If not set, list both.
+          schema:
+            type: boolean
       responses:
         200:
           $ref: '#/components/responses/ListStorageMappingsResponse'
@@ -140,9 +150,8 @@ paths:
 
         A storage mapping stays when its namespace or table is dropped, so a namespace or table created
         again under the same name uses the same storage configuration. Dropping a namespace does NOT
-        remove the mappings inside it. All child mappings inside a dropped namespace remain as orphan
-        mappings (`target-exists` is false and `target-ever-existed` is true) until they are
-        explicitly removed with `removeOrphanStorageMappings`.
+        remove the mappings inside it. They remain, with `target-exists` set to false, until they are
+        removed with `removeStorageMapping`.
 
         A rename can't be used to get around these rules. It does not change the storage
         configuration a table uses, so it can't put a table on a different storage configuration. It
@@ -196,9 +205,9 @@ paths:
         backward-incompatible way.
 
         Remove the storage mapping of a namespace or table. The target must not exist; drop it first.
-        A namespace or table created under the name afterwards uses the storage configuration of its
-        parent. To remove the mappings left behind by dropped namespaces and tables in bulk, or when the
-        parent namespace has been dropped as well, use `removeOrphanStorageMappings`.
+        Its parent namespace need not exist, so this also removes the mappings left behind inside a
+        dropped namespace. A namespace or table created under the name afterwards uses the storage
+        configuration of its parent.
       requestBody:
         required: true
         content:
@@ -233,99 +242,6 @@ paths:
         5XX:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
-  /polaris/v1/{prefix}/storage-mappings/orphans:
-    parameters:
-      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
-
-    delete:
-      tags:
-        - Storage Mapping API
-      summary: Remove orphan storage mappings
-      operationId: removeOrphanStorageMappings
-      description: |
-        **Beta:** The storage mapping API is under active development and may change in a
-        backward-incompatible way.
-
-        Remove the storage mappings that no namespace or table uses any more. Dropping a namespace or
-        table never removes a storage mapping, so this is the way to clean up what it leaves behind.
-        A mapping whose namespace or table does not exist (`target-exists` is false) is either:
-        - an orphan mapping: the namespace or table existed and was dropped (`target-ever-existed` is
-          true). Removed by default.
-        - a pending mapping: the namespace or table has not existed since the mapping was created
-          (`target-ever-existed` is false). Created ahead of its target with `createStorageMapping`,
-          left by a failed `createNamespaceOnStorageConfiguration` or
-          `createTableOnStorageConfiguration`, or kept for a
-          staged table create that has not been committed. Removed only with `include-pending`, since
-          a pending mapping is usually still wanted.
-
-        Without `namespace`, the whole catalog is considered. With it, only the mappings below that
-        namespace, at any depth; the namespace must exist (404 otherwise).
-
-        With `dry-run` set to true, nothing is changed and the response lists the mappings a call
-        without `dry-run` would remove at that moment. Otherwise a call removes at most one page of
-        them, all together or not at all, and the response lists those removed. The response has a
-        `next-page-token` when more candidates were left: call again, with or without the token, until
-        it is absent. A mapping is removed only if its namespace or table does not exist when the
-        removal takes effect, so a target created concurrently keeps its mapping, and a call can remove
-        fewer mappings than the same call with `dry-run` listed.
-
-        If the caller is not authorized to remove any one of the mappings, the call is forbidden and
-        nothing is removed, so the call never removes a mapping the caller could not remove with
-        `removeStorageMapping` (apart from the parent namespace having been dropped). The response
-        names the namespaces and tables of those mappings, none of which exist at that moment, even
-        if the caller could not otherwise list them.
-      parameters:
-        - $ref: '../polaris-pagination.yaml#/components/parameters/PolarisPageToken'
-        - $ref: '../polaris-pagination.yaml#/components/parameters/PolarisPageSize'
-        - name: namespace
-          in: query
-          required: false
-          description:
-            A namespace identifier as a single string, limiting the removal to the mappings below
-            it. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
-          schema:
-            type: string
-          examples:
-            singlepart_namespace:
-              value: "accounting"
-            multipart_namespace:
-              value: "accounting%1Ftax"
-        - name: dry-run
-          in: query
-          required: false
-          description: If true, only list the storage mappings and don't remove them.
-          schema:
-            type: boolean
-            default: false
-        - name: include-pending
-          in: query
-          required: false
-          description: >-
-            If true, also remove the pending mappings, those whose target has not existed since the
-            mapping was created.
-          schema:
-            type: boolean
-            default: false
-      responses:
-        200:
-          $ref: '#/components/responses/ListStorageMappingsResponse'
-        400:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
-        401:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
-        403:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
-        404:
-          description: Not Found - The namespace does not exist
-          content:
-            application/json:
-              schema:
-                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
-        503:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
-        5XX:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
-
   /polaris/v1/{prefix}/storage-configurations/{storage-configuration-name}/namespaces:
     parameters:
       - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
@@ -349,9 +265,8 @@ paths:
         then creates the namespace as the Iceberg REST `createNamespace` operation would. If the name
         is already mapped to this storage configuration, the existing mapping is used. If the namespace
         is not created, the server removes a mapping created by this call. This is best effort: after
-        a server failure the mapping can remain. It is then a pending mapping (`target-exists` and
-        `target-ever-existed` are false), shown by `listStorageMappings` and removed by
-        `removeOrphanStorageMappings` with `include-pending`.
+        a server failure the mapping can remain. `listStorageMappings` then shows it with
+        `target-exists` set to false, and `removeStorageMapping` removes it.
       parameters:
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/idempotency-key'
       requestBody:
@@ -412,11 +327,10 @@ paths:
         then creates the table as the Iceberg REST `createTable` operation would. If the name is
         already mapped to this storage configuration, the existing mapping is used. If the table is not
         created, the server removes a mapping created by this call. This is best effort: after a
-        server failure the mapping can remain. It is then a pending mapping (`target-exists` and
-        `target-ever-existed` are false), shown by `listStorageMappings` and removed by
-        `removeOrphanStorageMappings` with `include-pending`. With `stage-create`, the mapping is kept,
-        so that the commit that creates the table uses the storage configuration; it is a pending
-        mapping until that commit, and also if the commit never happens.
+        server failure the mapping can remain. `listStorageMappings` then shows it with
+        `target-exists` set to false, and `removeStorageMapping` removes it. With `stage-create`, the
+        mapping is kept, so that the commit that creates the table uses the storage configuration;
+        `target-exists` is false until that commit, and stays false if the commit never happens.
       parameters:
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/data-access'
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/idempotency-key'
@@ -468,8 +382,8 @@ components:
 
     StorageConfigurationName:
       type: string
-      description: The name of a storage configuration in the catalog. Case sensitive. `orphans` is reserved.
-      pattern: '^(?!orphans$)[a-zA-Z0-9_-]{1,128}$'
+      description: The name of a storage configuration in the catalog. Case sensitive.
+      pattern: '^[a-zA-Z0-9_-]{1,128}$'
       example: 'finance'
 
     StorageMappingTarget:
@@ -503,7 +417,6 @@ components:
         - target
         - storage-configuration-name
         - target-exists
-        - target-ever-existed
       properties:
         target:
           $ref: '#/components/schemas/StorageMappingTarget'
@@ -512,12 +425,6 @@ components:
         target-exists:
           type: boolean
           description: Whether the target namespace or table currently exists.
-        target-ever-existed:
-          type: boolean
-          description: |
-            Whether the target namespace or table has existed since the mapping was created. False for
-            a mapping created ahead of its target (a pending mapping), true once the target has been
-            created, and it stays true after the target is dropped (an orphan mapping).
 
     CreateStorageMappingRequest:
       type: object
