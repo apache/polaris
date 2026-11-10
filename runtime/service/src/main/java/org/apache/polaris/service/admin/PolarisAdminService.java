@@ -178,6 +178,7 @@ public class PolarisAdminService {
   private final ServiceIdentityProvider serviceIdentityProvider;
   private final ReservedProperties reservedProperties;
   private final S3CredentialVendingMechanisms vendingMechanisms;
+  private final CatalogConfigValidators catalogConfigValidators;
 
   @Inject
   public PolarisAdminService(
@@ -189,7 +190,8 @@ public class PolarisAdminService {
       @NonNull PolarisPrincipal principal,
       @NonNull PolarisAuthorizer authorizer,
       @NonNull ReservedProperties reservedProperties,
-      @NonNull S3CredentialVendingMechanisms vendingMechanisms) {
+      @NonNull S3CredentialVendingMechanisms vendingMechanisms,
+      @NonNull CatalogConfigValidators catalogConfigValidators) {
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
@@ -199,6 +201,7 @@ public class PolarisAdminService {
     this.userSecretsManager = userSecretsManager;
     this.serviceIdentityProvider = serviceIdentityProvider;
     this.reservedProperties = reservedProperties;
+    this.catalogConfigValidators = catalogConfigValidators;
     this.vendingMechanisms = vendingMechanisms;
   }
 
@@ -842,6 +845,7 @@ public class PolarisAdminService {
         validateS3CredentialVendingMechanism(catalog.getStorageConfigInfo());
 
     CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, catalog);
+    catalogConfigValidators.validate(catalog);
     if (mechanism != null) {
       // Safe: CatalogEntity.Builder.processStorageConfigurationInfo always converts an
       // AwsStorageConfigInfo request to an AwsStorageConfigurationInfo.
@@ -1095,6 +1099,7 @@ public class PolarisAdminService {
     }
     CatalogEntity updatedEntity = updateBuilder.build();
 
+    catalogConfigValidators.validate(updatedEntity.asCatalog(getServiceIdentityProvider()));
     validateUpdateCatalogDiffOrThrow(currentCatalogEntity, updatedEntity);
 
     if (mechanism != null) {
