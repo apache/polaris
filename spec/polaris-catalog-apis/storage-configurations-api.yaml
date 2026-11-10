@@ -162,6 +162,6 @@ components:
 
     StorageConfigurationName:
       type: string
-      description: The name of a storage configuration in the catalog. Case sensitive.
+      description: The name of a storage configuration, unique within its catalog. Case sensitive.
       pattern: '^[a-zA-Z0-9_-]{1,128}$'
       example: 'finance'

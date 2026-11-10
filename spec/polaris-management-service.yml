@@ -1952,7 +1952,7 @@ components:
           type: string
           pattern: '^[a-zA-Z0-9_-]{1,128}$'
           description: >-
-            The name of the storage configuration. Unique within the catalog and case sensitive.
+            The name of the storage configuration, unique within its catalog. Case sensitive.
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
           description: >-
