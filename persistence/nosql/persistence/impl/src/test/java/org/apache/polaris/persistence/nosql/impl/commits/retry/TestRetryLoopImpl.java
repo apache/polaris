@@ -141,6 +141,7 @@ public class TestRetryLoopImpl {
             MILLISECONDS.toNanos(110),
             MILLISECONDS.toNanos(113),
             MILLISECONDS.toNanos(120),
+            // Mockito repeats this value for the TIMEOUT path's extra clock reads.
             MILLISECONDS.toNanos(123));
     var stats = mock(RetryStatsConsumer.class);
     var loop =
