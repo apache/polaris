@@ -1097,7 +1097,6 @@ components:
             An optional STS endpoint URI used by Polaris to call AWS STS AssumeRole for this connection.
             When omitted, the default AWS STS endpoint for the signing region is used.
             Must be an absolute https URI without user info, query or fragment.
-            Allowed by default. Operators can set the ALLOW_SETTING_S3_ENDPOINTS realm feature (default true) to false to reject this field.
           examples:
             - "https://sts.example.com:1234"
       required:

@@ -222,7 +222,7 @@ public class SigV4ConnectionCredentialVendorTest {
             "us-west-2",
             "glue",
             null,
-            "https://sts.example.internal");
+            "https://sts.example.com");
 
     IcebergRestConnectionConfigInfoDpo connectionConfig =
         createConnectionConfig(authParams, serviceIdentity);
@@ -231,7 +231,7 @@ public class SigV4ConnectionCredentialVendorTest {
 
     Assertions.assertThat(capturedDestination.get().endpoint())
         .isPresent()
-        .hasValue(URI.create("https://sts.example.internal"));
+        .hasValue(URI.create("https://sts.example.com"));
     Assertions.assertThat(capturedDestination.get().region()).isPresent().hasValue("us-west-2");
   }
 
