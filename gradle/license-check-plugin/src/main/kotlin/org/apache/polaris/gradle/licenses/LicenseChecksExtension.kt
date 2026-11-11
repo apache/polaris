@@ -40,6 +40,7 @@ constructor(
   abstract val licenseFile: RegularFileProperty
   abstract val noticeFile: RegularFileProperty
   abstract val projectGroup: Property<String>
+  abstract val allowUnusedLicenseMarkers: Property<Boolean>
 
   /** Loads shared policy at configuration time. Later Licensee DSL calls can add allowances. */
   fun policyFrom(file: RegularFile) {

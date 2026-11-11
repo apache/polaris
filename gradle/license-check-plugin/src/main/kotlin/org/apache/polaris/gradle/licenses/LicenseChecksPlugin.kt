@@ -54,6 +54,7 @@ class LicenseChecksPlugin : Plugin<Project> {
     extension.licenseFile.convention(project.layout.projectDirectory.file("distribution/LICENSE"))
     extension.noticeFile.convention(project.layout.projectDirectory.file("distribution/NOTICE"))
     extension.projectGroup.convention("org.apache.polaris")
+    extension.allowUnusedLicenseMarkers.convention(false)
 
     project.pluginManager.withPlugin("io.quarkus") {
       project.tasks.named("quarkusAppPartsBuild") {
@@ -82,6 +83,7 @@ class LicenseChecksPlugin : Plugin<Project> {
         noticeFile.set(extension.noticeFile)
         projectGroup.set(extension.projectGroup)
         generatedComponentNames.set(extension.generatedComponentNames)
+        allowUnusedLicenseMarkers.set(extension.allowUnusedLicenseMarkers)
         validationReport.set(
           project.layout.buildDirectory.file("reports/licensee/attribution-validation.txt"),
         )

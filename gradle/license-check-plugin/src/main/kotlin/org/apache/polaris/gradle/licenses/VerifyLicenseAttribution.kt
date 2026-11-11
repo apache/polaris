@@ -53,6 +53,8 @@ abstract class VerifyLicenseAttribution : DefaultTask() {
 
   @get:Input abstract val generatedComponentNames: SetProperty<String>
 
+  @get:Input abstract val allowUnusedLicenseMarkers: Property<Boolean>
+
   @get:OutputFile abstract val validationReport: RegularFileProperty
 
   @TaskAction
@@ -107,6 +109,7 @@ abstract class VerifyLicenseAttribution : DefaultTask() {
     val shippedGroupArtifacts = shippedCoordinates.map { it.substringBeforeLast(':') }.toSortedSet()
     val missingLicensee = shippedCoordinates - licenseeCoordinates
     val missingMarkers = shippedGroupArtifacts - licenseMarkers
+    val staleMarkers = licenseMarkers - shippedGroupArtifacts
     val licenseeOnly = licenseeCoordinates - shippedCoordinates
     val noticeExists = noticeFile.get().asFile.readText().isNotBlank()
 
@@ -117,6 +120,7 @@ abstract class VerifyLicenseAttribution : DefaultTask() {
       appendLine("NOTICE is non-empty: $noticeExists")
       appendSection("Shipped components not checked by Licensee", missingLicensee)
       appendSection("Shipped components missing LICENSE markers", missingMarkers)
+      appendSection("LICENSE markers not present in the shipped inventory", staleMarkers)
       appendSection("Licensee artifacts not present in the shipped inventory", licenseeOnly)
       appendSection(
         "Generated files outside Maven inventory",
@@ -128,7 +132,12 @@ abstract class VerifyLicenseAttribution : DefaultTask() {
       writeText(report)
     }
 
-    if (!noticeExists || missingLicensee.isNotEmpty() || missingMarkers.isNotEmpty()) {
+    if (
+      !noticeExists ||
+        missingLicensee.isNotEmpty() ||
+        missingMarkers.isNotEmpty() ||
+        (!allowUnusedLicenseMarkers.get() && staleMarkers.isNotEmpty())
+    ) {
       throw GradleException(
         "License attribution validation failed; see ${validationReport.get().asFile}",
       )

@@ -96,6 +96,52 @@ class LicenseChecksPluginTest {
       .contains("Shipped components missing LICENSE markers (1):\n- example:apache")
   }
 
+  @Test
+  fun droppedShippedDependencyRequiresRemovingItsLicenseMarkerWhenConfigurationCacheIsReused() {
+    fixture()
+    runner().build()
+    projectDir
+      .resolve("sbom.json")
+      .writeText(
+        """{"components": [
+        {"group": "example", "name": "apache", "version": "1.0", "purl": "pkg:maven/example/apache@1.0"}
+      ]}""",
+      )
+
+    val rejected = runner().buildAndFail()
+    assertThat(rejected.output).contains("Configuration cache entry reused")
+    assertThat(rejected.task(":verifyLicenseAttribution")?.outcome).isEqualTo(TaskOutcome.FAILED)
+    assertThat(projectDir.resolve("build/reports/licensee/attribution-validation.txt").readText())
+      .contains("LICENSE markers not present in the shipped inventory (1):\n- example:mit")
+      .contains("Licensee artifacts not present in the shipped inventory (1):\n- example:mit:1.0")
+
+    projectDir.resolve("LICENSE").writeText("* Maven group:artifact IDs: example:apache\n")
+    val accepted = runner().build()
+    assertThat(accepted.output).contains("Configuration cache entry reused")
+    assertThat(accepted.task(":verifyLicenseAttribution")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+  }
+
+  @Test
+  fun sharedLicenseCanRetainUnusedMarkersForOtherVariants() {
+    fixture()
+    projectDir
+      .resolve("LICENSE")
+      .toFile()
+      .appendText("* Maven group:artifact IDs: example:other-variant\n")
+    projectDir
+      .resolve("build.gradle.kts")
+      .toFile()
+      .appendText(
+        "\nlicenseChecks { allowUnusedLicenseMarkers.set(true) }\n",
+      )
+    val accepted = runner().build()
+    assertThat(accepted.task(":verifyLicenseAttribution")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(projectDir.resolve("build/reports/licensee/attribution-validation.txt").readText())
+      .contains(
+        "LICENSE markers not present in the shipped inventory (1):\n- example:other-variant",
+      )
+  }
+
   @ParameterizedTest
   @ValueSource(strings = ["NOTICE", "sbom.json"])
   fun changedVerificationInputFailsWhenConfigurationCacheIsReused(input: String) {

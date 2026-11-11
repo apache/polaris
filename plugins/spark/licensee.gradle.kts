@@ -39,6 +39,9 @@ extensions.configure<LicenseChecksExtension>("licenseChecks") {
   sbom.set(layout.buildDirectory.file("reports/licensee/shadow-inputs.json"))
   licenseFile.set(layout.projectDirectory.file("BUNDLE-LICENSE"))
   noticeFile.set(layout.projectDirectory.file("BUNDLE-NOTICE"))
+  // Spark LICENSE files may cover multiple Scala variants. Keep unused markers diagnostic;
+  // every dependency actually shipped in this variant still requires its own marker.
+  allowUnusedLicenseMarkers.set(true)
   policyFrom(layout.settingsDirectory.file("gradle/license-policy.json"))
 }
 

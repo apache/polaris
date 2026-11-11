@@ -104,6 +104,7 @@ class VerifyLicenseAttributionTest {
     task.validationReport.set(directory.resolve("validation.txt").toFile())
     task.projectGroup.set("org.apache.polaris")
     task.generatedComponentNames.set(setOf("generated-bytecode.jar"))
+    task.allowUnusedLicenseMarkers.set(false)
     directory
       .resolve("artifacts.json")
       .writeText("""[{"groupId":"example","artifactId":"library","version":"1"}]""")
