@@ -114,8 +114,8 @@ an empty discovery result from a stale retained peer list.
 
 Sender success describes HTTP delivery, while receiver outcomes describe processing. In particular,
 malformed JSON currently produces an empty batch and an HTTP 204 response; the receiver records
-`invalid_payload` rather than `processed`. Handler exceptions record `handler_error` and continue
-to propagate as before. Successfully dispatched entries preceding a handler failure remain counted.
+`invalid_payload` rather than `processed`. Unhandled exceptions during request processing, including
+handler and response-writing failures, record `handler_error` and continue to propagate as before. Successfully dispatched entries preceding a handler failure remain counted.
 A dispatched entry does not establish that the entry was present in the cache, and these metrics do
 not prove cluster-wide cache freshness. Failed asynchronous sends are not retried by this mechanism.
 

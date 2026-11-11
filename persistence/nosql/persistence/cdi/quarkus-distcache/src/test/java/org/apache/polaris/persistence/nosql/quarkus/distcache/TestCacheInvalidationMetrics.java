@@ -22,12 +22,17 @@ import static org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.
 import static org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.CacheInvalidationEvictReference.cacheInvalidationEvictReference;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.MockClock;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleConfig;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import jakarta.enterprise.inject.Instance;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -49,6 +54,7 @@ class TestCacheInvalidationMetrics {
         metrics.enqueued(cacheInvalidationEvictObj("realm-" + i, ObjRef.objRef("object-" + i, i)));
         metrics.dispatched(cacheInvalidationEvictReference("realm-" + i, "reference-" + i));
       }
+      // 4 entries + 3 skipped + 4 send + 6 receive + 2 discovery + batch + 4 gauges.
       assertThat(registry.getMeters()).hasSize(24);
       assertThat(registry.getMeters().stream().map(meter -> meter.getId().getName()).distinct())
           .hasSize(10);
@@ -111,10 +117,47 @@ class TestCacheInvalidationMetrics {
   }
 
   @Test
+  void defaultCompositeRegistryRecordsOncePerExporter() {
+    var first = new SimpleMeterRegistry();
+    var second = new SimpleMeterRegistry();
+    var composite = new CompositeMeterRegistry();
+    try {
+      composite.add(first).add(second);
+      Instance<MeterRegistry> registries = mock();
+      when(registries.get()).thenReturn(composite);
+      var metrics = new CacheInvalidationMetrics(registries);
+      metrics.enqueued(cacheInvalidationEvictReference("realm", "reference"));
+      metrics.sendCompleted(metrics.sendStarted(), SendOutcome.SUCCESS);
+      for (var registry : new MeterRegistry[] {first, second}) {
+        assertThat(
+                registry
+                    .get(CacheInvalidationMetrics.PREFIX + "entries")
+                    .tags("stage", "enqueued", "type", "ref")
+                    .counter()
+                    .count())
+            .isEqualTo(1);
+        assertThat(
+                registry
+                    .get(CacheInvalidationMetrics.PREFIX + "send.duration")
+                    .tag("outcome", "success")
+                    .timer()
+                    .count())
+            .isEqualTo(1);
+      }
+    } finally {
+      composite.close();
+      first.close();
+      second.close();
+    }
+  }
+
+  @Test
   void metricsAreOptional() {
     assertThatCode(
             () -> {
-              var metrics = new CacheInvalidationMetrics(Optional.empty());
+              Instance<MeterRegistry> registries = mock();
+              when(registries.isUnsatisfied()).thenReturn(true);
+              var metrics = new CacheInvalidationMetrics(registries);
               metrics.registerQueue(new LinkedBlockingQueue<CacheInvalidation>());
               metrics.enqueued(cacheInvalidationEvictReference("realm", "reference"));
               metrics.sendCompleted(metrics.sendStarted(), SendOutcome.SUCCESS);

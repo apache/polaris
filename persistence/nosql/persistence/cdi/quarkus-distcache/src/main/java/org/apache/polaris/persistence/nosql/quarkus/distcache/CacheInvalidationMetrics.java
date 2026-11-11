@@ -25,7 +25,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.EnumMap;
@@ -84,8 +83,9 @@ class CacheInvalidationMetrics {
   private final AtomicLong lastDiscoverySuccess = new AtomicLong();
 
   @Inject
-  CacheInvalidationMetrics(@Any Instance<MeterRegistry> registries) {
-    this(registries.stream().findAny());
+  CacheInvalidationMetrics(Instance<MeterRegistry> registries) {
+    // Quarkus's default registry is the composite that fans out to all configured exporters.
+    this(registries.isUnsatisfied() ? Optional.empty() : Optional.of(registries.get()));
   }
 
   CacheInvalidationMetrics(Optional<MeterRegistry> registry) {
