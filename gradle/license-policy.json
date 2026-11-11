@@ -119,13 +119,13 @@
     {
       "group": "com.microsoft.azure",
       "artifact": "msal4j",
-      "version": "1.23.1",
+      "version": "1.26.0",
       "reason": "POM declares MIT License without a URL"
     },
     {
       "group": "com.microsoft.azure",
       "artifact": "msal4j",
-      "version": "1.26.0",
+      "version": "1.26.1",
       "reason": "Server POM declares MIT License without a URL"
     },
     {
