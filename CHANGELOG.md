@@ -104,6 +104,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Breaking changes
 
+- With `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false` (default), creating a view or changing its
+  location or `write.metadata.path` now rejects metadata paths outside the view's own location
+  with 403 Forbidden. Enable `ALLOW_UNSTRUCTURED_TABLE_LOCATION` to allow such paths within the
+  catalog's allowed locations. Existing views can still commit updates that leave both paths
+  unchanged; allowed-location restrictions continue to apply.
 - Creating a Generic Table with an explicit, non-empty `base-location` now validates that
   location against the catalog's allowed locations and, unless `ALLOW_UNSTRUCTURED_TABLE_LOCATION`
   is enabled, the parent namespace location. Requests that previously stored disallowed locations
