@@ -40,19 +40,30 @@ import org.apache.polaris.persistence.nosql.api.commit.CommitterState;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.index.UpdatableIndex;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.LocalNamespaceObj;
+import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalObj;
 import org.apache.polaris.persistence.nosql.metastore.committers.ChangeResult;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 
 public class TestMutationAttempt {
   @ParameterizedTest
-  @ValueSource(booleans = {false, true})
-  public void updatePreservesTechnicalAttributeSemantics(boolean changed) {
+  @CsvSource({"false,false", "true,false", "false,true", "true,true"})
+  public void updatePreservesTechnicalAttributeSemantics(boolean changed, boolean principal) {
+    ObjBase.Builder<?, ?> originalBuilder =
+        principal
+            ? PrincipalObj.builder()
+                .clientId("test-client")
+                .mainSecretHash("test-main-hash")
+                .secondarySecretHash("test-secondary-hash")
+                .secretSalt("test-salt")
+                .credentialRotationRequired(true)
+            : LocalNamespaceObj.builder();
     var original =
-        LocalNamespaceObj.builder()
+        originalBuilder
             .id(123)
             .stableId(42)
             .parentStableId(10)
@@ -64,7 +75,7 @@ public class TestMutationAttempt {
             .putProperty("property", "original")
             .build();
     var entity =
-        new PolarisBaseEntity.Builder(mapToEntity(original, 10))
+        new PolarisBaseEntity.Builder(mapToEntity(original, principal ? 0 : 10))
             .createTimestamp(5000)
             .propertiesAsMap(Map.of("property", changed ? "updated" : "original"))
             .build();
@@ -75,7 +86,8 @@ public class TestMutationAttempt {
     UpdatableIndex<IndexKey> byId = mock();
     when(state.persistence()).thenReturn(persistence);
     when(persistence.currentInstant()).thenReturn(now);
-    when(persistence.fetch(objRef(original), LocalNamespaceObj.class)).thenReturn(original);
+    when(persistence.fetch(objRef(original), original.type().targetClass()))
+        .thenAnswer(ignored -> original);
     when(byId.get(key(original.stableId()))).thenReturn(key(original.name()));
     when(byName.get(key(original.name()))).thenReturn(objRef(original));
     if (changed) {
@@ -96,12 +108,15 @@ public class TestMutationAttempt {
 
     if (changed) {
       assertThat(result).isInstanceOf(ChangeResult.CommitChange.class);
-      var written = ArgumentCaptor.forClass(LocalNamespaceObj.class);
+      var written = ArgumentCaptor.forClass(ObjBase.class);
+      ObjBase.Builder<?, ?> expectedBuilder =
+          original instanceof PrincipalObj principalObj
+              ? PrincipalObj.builder().from(principalObj)
+              : LocalNamespaceObj.builder().from((LocalNamespaceObj) original);
       verify(state).writeOrReplace(anyString(), written.capture());
       assertThat(written.getValue())
           .isEqualTo(
-              LocalNamespaceObj.builder()
-                  .from(original)
+              expectedBuilder
                   .id(456)
                   .numParts(1)
                   .createTimestamp(Instant.ofEpochMilli(5000))

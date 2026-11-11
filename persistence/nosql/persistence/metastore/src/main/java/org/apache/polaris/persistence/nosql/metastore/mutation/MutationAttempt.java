@@ -416,7 +416,8 @@ public record MutationAttempt(
       if (!unchangedCompareObj.equals(originalObj)) {
         var entityObj =
             entityObjBuilder
-                // Restore mapped creation time and the default part count after comparison.
+                // objForChangeComparison overrides createTimestamp and numParts; restore their
+                // mapped values before writing. The other overridden fields are assigned below.
                 .createTimestamp(Instant.ofEpochMilli(entity.getCreateTimestamp()))
                 .numParts(1)
                 .id(persistence.generateId())
