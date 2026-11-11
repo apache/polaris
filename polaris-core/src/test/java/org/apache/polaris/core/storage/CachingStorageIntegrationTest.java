@@ -81,6 +81,41 @@ class CachingStorageIntegrationTest {
     assertThat(firstClientConfig.supportsCredentialVending()).isFalse();
   }
 
+  /**
+   * The refresh endpoint is only meaningful when credentials were vended. When the backend returns
+   * no credentials (for example because vending is disabled for the storage configuration), the
+   * endpoint must not be advertised to the client even if the caller offered one.
+   */
+  @ParameterizedTest
+  @MethodSource("storageConfigurationsAndRefreshEndpointProperties")
+  void omitsRefreshEndpointWhenNoCredentialsWereVended(
+      PolarisStorageConfigurationInfo storageConfig,
+      StorageAccessProperty refreshEndpointProperty) {
+    StorageCredentialCacheConfig cacheConfig = () -> 10_000;
+    AtomicInteger loadCount = new AtomicInteger();
+    TestCachingStorageIntegration integration =
+        new TestCachingStorageIntegration(
+            new StorageCredentialCache(cacheConfig),
+            storageConfig,
+            refreshEndpointProperty,
+            loadCount,
+            false);
+
+    StorageAccessConfig firstClientConfig =
+        integration.getStorageAccessConfig(
+            List.of(), Optional.of("/v1/first/credentials"), CredentialVendingContext.empty());
+    StorageAccessConfig secondClientConfig =
+        integration.getStorageAccessConfig(
+            List.of(), Optional.of("/v1/second/credentials"), CredentialVendingContext.empty());
+
+    assertThat(loadCount).hasValue(1);
+    for (StorageAccessConfig clientConfig : List.of(firstClientConfig, secondClientConfig)) {
+      assertThat(clientConfig.credentials()).isEmpty();
+      assertThat(clientConfig.get(refreshEndpointProperty)).isNull();
+      assertThat(clientConfig.extraProperties()).containsEntry("extra", "value");
+    }
+  }
+
   private static Stream<Arguments> storageConfigurationsAndRefreshEndpointProperties() {
     return Stream.of(
         Arguments.of(
@@ -102,21 +137,32 @@ class CachingStorageIntegrationTest {
 
     private final AtomicInteger loadCount;
     private final StorageAccessProperty refreshEndpointProperty;
+    private final boolean vendCredentials;
 
     private TestCachingStorageIntegration(
         StorageCredentialCache cache,
         PolarisStorageConfigurationInfo storageConfig,
         StorageAccessProperty refreshEndpointProperty,
         AtomicInteger loadCount) {
+      this(cache, storageConfig, refreshEndpointProperty, loadCount, true);
+    }
+
+    private TestCachingStorageIntegration(
+        StorageCredentialCache cache,
+        PolarisStorageConfigurationInfo storageConfig,
+        StorageAccessProperty refreshEndpointProperty,
+        AtomicInteger loadCount,
+        boolean vendCredentials) {
       super(cache, REALM_CONFIG, storageConfig);
       this.refreshEndpointProperty = refreshEndpointProperty;
       this.loadCount = loadCount;
+      this.vendCredentials = vendCredentials;
     }
 
     @Override
     protected StorageCredentialCacheKey buildCacheKey(
         @NonNull List<LocationGrant> grants, @NonNull CredentialVendingContext context) {
-      return new TestStorageCredentialCacheKey(REALM_CONFIG, loadCount);
+      return new TestStorageCredentialCacheKey(REALM_CONFIG, loadCount, vendCredentials);
     }
 
     @Override
@@ -128,14 +174,18 @@ class CachingStorageIntegrationTest {
     }
   }
 
-  private record TestStorageCredentialCacheKey(RealmConfig realmConfig, AtomicInteger loadCount)
+  private record TestStorageCredentialCacheKey(
+      RealmConfig realmConfig, AtomicInteger loadCount, boolean vendCredentials)
       implements StorageCredentialCacheKey {
 
     @Override
     public StorageAccessConfig load() {
       loadCount.incrementAndGet();
-      return StorageAccessConfig.builder()
-          .putCredential("key", "value")
+      StorageAccessConfig.Builder builder = StorageAccessConfig.builder();
+      if (vendCredentials) {
+        builder.putCredential("key", "value");
+      }
+      return builder
           .putExtraProperty("extra", "value")
           .putInternalProperty("internal", "value")
           .expiresAt(EXPIRES_AT)
