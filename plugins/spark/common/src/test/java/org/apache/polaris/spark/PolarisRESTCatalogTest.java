@@ -39,7 +39,7 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
-import org.apache.polaris.core.rest.GenericTableEndpoints;
+import org.apache.polaris.catalog.common.GenericTableEndpoints;
 import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.polaris.spark.rest.ListGenericTablesRESTResponse;
 import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;

@@ -16,15 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.rest;
+package org.apache.polaris.catalog.common;
 
-import com.google.common.collect.ImmutableSet;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
 
-// TODO: This is a temporary hack to share generic-table endpoint constants with clients.
-// Endpoint definitions should not be exposed from polaris-core; move these to a dedicated
-// shared API module when one exists.
 public class GenericTableEndpoints {
   private GenericTableEndpoints() {}
 
@@ -38,10 +37,11 @@ public class GenericTableEndpoints {
       Endpoint.create("DELETE", PolarisResourcePaths.V1_GENERIC_TABLE);
 
   public static final Set<Endpoint> GENERIC_TABLE_ENDPOINTS =
-      ImmutableSet.<Endpoint>builder()
-          .add(V1_LIST_GENERIC_TABLES)
-          .add(V1_CREATE_GENERIC_TABLE)
-          .add(V1_DELETE_GENERIC_TABLE)
-          .add(V1_LOAD_GENERIC_TABLE)
-          .build();
+      Collections.unmodifiableSet(
+          new LinkedHashSet<>(
+              List.of(
+                  V1_LIST_GENERIC_TABLES,
+                  V1_CREATE_GENERIC_TABLE,
+                  V1_DELETE_GENERIC_TABLE,
+                  V1_LOAD_GENERIC_TABLE)));
 }
