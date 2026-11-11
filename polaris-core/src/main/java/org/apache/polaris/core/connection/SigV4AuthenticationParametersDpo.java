@@ -67,6 +67,16 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
   private final String stsEndpoint;
 
   public SigV4AuthenticationParametersDpo(
+      String roleArn,
+      String roleSessionName,
+      String externalId,
+      String signingRegion,
+      String signingName,
+      String sessionPolicy) {
+    this(roleArn, roleSessionName, externalId, signingRegion, signingName, sessionPolicy, null);
+  }
+
+  public SigV4AuthenticationParametersDpo(
       @JsonProperty(value = "roleArn", required = true) String roleArn,
       @JsonProperty(value = "roleSessionName", required = false) String roleSessionName,
       @JsonProperty(value = "externalId", required = false) String externalId,

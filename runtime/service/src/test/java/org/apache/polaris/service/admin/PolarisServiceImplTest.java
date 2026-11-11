@@ -349,7 +349,17 @@ public class PolarisServiceImplTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"sts.us-west-2.amazonaws.com", "ftp://sts.example.com", "", "not a uri"})
+  @ValueSource(
+      strings = {
+        "sts.us-west-2.amazonaws.com",
+        "ftp://sts.example.com",
+        "http://sts.example.com",
+        "https://user@sts.example.com",
+        "https://sts.example.com/?token=1",
+        "https://sts.example.com/#fragment",
+        "",
+        "not a uri"
+      })
   void testValidateExternalCatalog_SigV4InvalidStsEndpointRejected(String stsEndpoint) {
     when(realmConfig.getConfig(
             FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))

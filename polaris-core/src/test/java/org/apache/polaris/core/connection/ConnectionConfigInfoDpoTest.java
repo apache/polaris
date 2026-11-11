@@ -27,6 +27,7 @@ import org.apache.polaris.core.admin.model.HadoopConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HiveConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ImplicitAuthenticationParameters;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
+import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.junit.jupiter.api.Assertions;
@@ -206,7 +207,8 @@ public class ConnectionConfigInfoDpoTest {
             + "    \"roleSessionName\": \"polaris-catalog-federation\","
             + "    \"externalId\": \"external-id\","
             + "    \"signingRegion\": \"us-west-2\","
-            + "    \"signingName\": \"glue\""
+            + "    \"signingName\": \"glue\","
+            + "    \"stsEndpoint\": \"https://sts.example.internal\""
             + "  },"
             + "  \"serviceIdentity\": {"
             + "    \"identityTypeCode\": 1,"
@@ -240,7 +242,8 @@ public class ConnectionConfigInfoDpoTest {
             + "    \"roleSessionName\": \"polaris-catalog-federation\","
             + "    \"externalId\": \"external-id\","
             + "    \"signingRegion\": \"us-west-2\","
-            + "    \"signingName\": \"glue\""
+            + "    \"signingName\": \"glue\","
+            + "    \"stsEndpoint\": \"https://sts.example.internal\""
             + "  },"
             + "  \"serviceIdentity\": {"
             + "    \"identityType\": \"AWS_IAM\","
@@ -250,6 +253,46 @@ public class ConnectionConfigInfoDpoTest {
     Assertions.assertEquals(
         objectMapper.readValue(expectedApiModelJson, ConnectionConfigInfo.class),
         connectionConfigInfoApiModel);
+  }
+
+  @Test
+  void testSigV4AuthenticationParametersWithoutStsEndpointDeserializesToNull() {
+    // Persisted SigV4 connections written before stsEndpoint existed have no such field.
+    String json =
+        ""
+            + "{"
+            + "  \"connectionTypeCode\": 1,"
+            + "  \"uri\": \"https://glue.us-west-2.amazonaws.com/iceberg\","
+            + "  \"remoteCatalogName\": \"123456789012\","
+            + "  \"authenticationParameters\": {"
+            + "    \"authenticationTypeCode\": 4,"
+            + "    \"roleArn\": \"arn:aws:iam::123456789012:role/glue-catalog-role\","
+            + "    \"roleSessionName\": \"polaris-catalog-federation\","
+            + "    \"externalId\": \"external-id\","
+            + "    \"signingRegion\": \"us-west-2\","
+            + "    \"signingName\": \"glue\""
+            + "  },"
+            + "  \"serviceIdentity\": {"
+            + "    \"identityTypeCode\": 1,"
+            + "    \"identityInfoReference\": {"
+            + "      \"urn\": \"urn:polaris-secret:default-identity-provider:my-realm:AWS_IAM\","
+            + "      \"referencePayload\": {"
+            + "        \"key\": \"value\""
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}";
+
+    ConnectionConfigInfoDpo connectionConfigInfoDpo = ConnectionConfigInfoDpo.deserialize(json);
+    SigV4AuthenticationParametersDpo authParams =
+        (SigV4AuthenticationParametersDpo) connectionConfigInfoDpo.getAuthenticationParameters();
+    Assertions.assertNull(authParams.getStsEndpoint());
+
+    ConnectionConfigInfo connectionConfigInfoApiModel =
+        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityProvider);
+    Assertions.assertNull(
+        ((SigV4AuthenticationParameters) connectionConfigInfoApiModel.getAuthenticationParameters())
+            .getStsEndpoint());
   }
 
   @Test
