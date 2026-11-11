@@ -112,7 +112,6 @@ public class SigV4ConnectionCredentialVendorTest {
             "external-id-123",
             "us-west-2",
             "glue",
-            null,
             null);
 
     // Create connection config with service identity and auth params
@@ -158,13 +157,7 @@ public class SigV4ConnectionCredentialVendorTest {
     // SigV4 auth without explicit session name
     SigV4AuthenticationParametersDpo authParams =
         new SigV4AuthenticationParametersDpo(
-            "arn:aws:iam::123456789012:role/customer-role",
-            null,
-            null,
-            "us-west-2",
-            "glue",
-            null,
-            null);
+            "arn:aws:iam::123456789012:role/customer-role", null, null, "us-west-2", "glue", null);
 
     // Create connection config with service identity and auth params
     IcebergRestConnectionConfigInfoDpo connectionConfig =
@@ -203,7 +196,6 @@ public class SigV4ConnectionCredentialVendorTest {
             "external-id-123",
             "eu-west-1",
             "glue",
-            null,
             null);
 
     IcebergRestConnectionConfigInfoDpo connectionConfig =
@@ -261,8 +253,7 @@ public class SigV4ConnectionCredentialVendorTest {
             "external-id-123",
             "us-west-2",
             "glue",
-            customPolicy,
-            null);
+            customPolicy);
 
     IcebergRestConnectionConfigInfoDpo connectionConfig =
         createConnectionConfig(authParams, serviceIdentity);
@@ -289,7 +280,6 @@ public class SigV4ConnectionCredentialVendorTest {
             null,
             null,
             "ap-southeast-1",
-            null,
             null,
             null);
 
