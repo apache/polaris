@@ -54,6 +54,7 @@ import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -210,6 +211,11 @@ class MaintenanceServiceImpl implements MaintenanceService {
     var config = maintenanceConfig;
     checkConfig(config);
 
+    var objectReadLimit = RateLimit.create(config.objectScanRateLimitPerSecond().orElse(-1));
+    var referenceReadLimit = RateLimit.create(config.referenceScanRateLimitPerSecond().orElse(-1));
+    Function<Backend, Backend> backendWrapper =
+        backend -> new ThrottledBackend(backend, objectReadLimit, referenceReadLimit);
+
     var allRetained = constructAllRetained(config);
 
     var runObj = initMaintenanceRunObj(overrideRunId);
@@ -223,12 +229,13 @@ class MaintenanceServiceImpl implements MaintenanceService {
     var info = (MaintenanceRunInformation) null;
     try {
       try {
-        var realmsToProcess = processRealms(maintenanceRunSpec, allRetained, descriptionWriter);
+        var realmsToProcess =
+            processRealms(maintenanceRunSpec, allRetained, descriptionWriter, backendWrapper);
         var realmsToPurge = purgeRealms(maintenanceRunSpec, descriptionWriter);
 
         if (maintenanceRunSpec.includeSystemRealm()) {
           realmsToProcess.add(SYSTEM_REALM_ID);
-          identifyAgainstRealm(SYSTEM_REALM_ID, allRetained);
+          identifyAgainstRealm(SYSTEM_REALM_ID, allRetained, backendWrapper);
         }
 
         if (!realmsToPurge.isEmpty() && backend.supportsRealmDeletion()) {
@@ -400,13 +407,14 @@ class MaintenanceServiceImpl implements MaintenanceService {
   private Set<String> processRealms(
       MaintenanceRunSpec maintenanceRunSpec,
       AllRetained allRetained,
-      PrintWriter descriptionWriter) {
+      PrintWriter descriptionWriter,
+      Function<Backend, Backend> backendWrapper) {
     var realmsToProcess = new HashSet<String>();
     for (var realmId : maintenanceRunSpec.realmsToProcess()) {
       var currentRealmStatus =
           realmManagement.get(realmId).map(RealmDefinition::status).orElse(ACTIVE);
       if ((currentRealmStatus == ACTIVE || currentRealmStatus == INACTIVE)
-          && identifyAgainstRealm(realmId, allRetained)) {
+          && identifyAgainstRealm(realmId, allRetained, backendWrapper)) {
         realmsToProcess.add(realmId);
       }
     }
@@ -534,10 +542,17 @@ class MaintenanceServiceImpl implements MaintenanceService {
     return LongMath.divide(bits, 64, RoundingMode.CEILING);
   }
 
-  private boolean identifyAgainstRealm(String realmId, AllRetained allRetained) {
+  private boolean identifyAgainstRealm(
+      String realmId, AllRetained allRetained, Function<Backend, Backend> backendWrapper) {
     LOGGER.info("Identifying referenced data in realm '{}'", realmId);
 
-    var pers = realmPersistenceFactory.newBuilder().realmId(realmId).skipDecorators().build();
+    var pers =
+        realmPersistenceFactory
+            .newBuilder()
+            .realmId(realmId)
+            .skipDecorators()
+            .backendWrapper(backendWrapper)
+            .build();
     var collector = new RetainedCollectorImpl(pers, allRetained, objTypeRetainedIdentifiers);
 
     boolean any = false;

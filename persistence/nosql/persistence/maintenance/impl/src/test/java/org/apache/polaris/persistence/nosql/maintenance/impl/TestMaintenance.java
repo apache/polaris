@@ -18,13 +18,28 @@
  */
 package org.apache.polaris.persistence.nosql.maintenance.impl;
 
+import static org.apache.polaris.persistence.nosql.api.Realms.SYSTEM_REALM_ID;
+import static org.apache.polaris.persistence.nosql.api.index.IndexKey.key;
+import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.apache.polaris.persistence.nosql.maintenance.impl.MutableMaintenanceConfig.GRACE_TIME;
 import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.ACTIVE;
 import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.INITIALIZING;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import jakarta.inject.Inject;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.OptionalLong;
@@ -37,6 +52,8 @@ import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
 import org.apache.polaris.persistence.nosql.api.SystemPersistence;
 import org.apache.polaris.persistence.nosql.api.exceptions.ReferenceNotFoundException;
+import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
+import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceConfig;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInProgressException;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInformation;
@@ -108,6 +125,109 @@ public class TestMaintenance {
             .realmsToPurge(Set.of(realmOne, realmTwo))
             .build(),
         latestUnfinishedMaintenanceRunId());
+  }
+
+  @Test
+  public void identificationSharesRateLimitsAcrossRealmsAndIdentifiers() {
+    MutableMaintenanceConfig.setCurrent(
+        MaintenanceConfig.builder()
+            .createdAtGraceTime(GRACE_TIME)
+            .objectScanRateLimitPerSecond(100)
+            .referenceScanRateLimitPerSecond(200)
+            .build());
+    var objects = mock(RateLimit.class);
+    var references = mock(RateLimit.class);
+    var scannedObjects = mock(RateLimit.class);
+    var scannedReferences = mock(RateLimit.class);
+    var seenRealms = new HashSet<String>();
+    RealmIdentOne.testCallback =
+        collector -> {
+          seenRealms.add(collector.realm());
+          var persistence = collector.realmPersistence();
+          assertThatThrownBy(() -> persistence.fetchReference("missing-throttled-reference"))
+              .isInstanceOf(ReferenceNotFoundException.class);
+          assertThat(persistence.fetch(objRef(ObjOne.TYPE.id(), 1L, 1), ObjOne.class)).isNull();
+          return true;
+        };
+    RealmIdentTwo.testCallback = RealmIdentOne.testCallback;
+
+    try (var limits = mockStatic(RateLimit.class)) {
+      limits.when(() -> RateLimit.create(100)).thenReturn(objects, scannedObjects);
+      limits.when(() -> RateLimit.create(200)).thenReturn(references, scannedReferences);
+      var result =
+          maintenance.performMaintenance(
+              MaintenanceRunSpec.builder()
+                  .includeSystemRealm(true)
+                  .realmsToProcess(Set.of(realmOne, realmTwo))
+                  .build(),
+              OptionalLong.empty());
+      assertThat(result.success()).as(result.detailedInformation().orElse("")).isTrue();
+      assertThat(seenRealms).containsExactlyInAnyOrder(realmOne, realmTwo, SYSTEM_REALM_ID);
+      verify(objects, atLeast(6)).acquire(1);
+      verify(references, atLeast(6)).acquire();
+      limits.verify(() -> RateLimit.create(100), times(2));
+      limits.verify(() -> RateLimit.create(200), times(2));
+    }
+  }
+
+  @Test
+  public void throttledPersistenceCoversNestedIdentificationReads() {
+    var objectLimit = mock(RateLimit.class);
+    var referenceLimit = mock(RateLimit.class);
+    var persistence =
+        realmPersistenceFactory
+            .newBuilder()
+            .realmId(realmOne)
+            .skipDecorators()
+            .backendWrapper(backend -> new ThrottledBackend(backend, objectLimit, referenceLimit))
+            .build();
+    var retained = new AllRetained(100, 100_000, 0.00001, 1);
+    var collector = new RetainedCollectorImpl(persistence, retained, Map.of());
+    var obj =
+        persOne.write(
+            ObjOne.builder().id(persOne.generateId()).text("x".repeat(1_000_000)).build(),
+            ObjOne.class);
+    assertThat(obj.numParts()).isGreaterThan(1);
+    persOne.createReference("throttled", Optional.of(objRef(obj)));
+
+    assertThat(collector.realmPersistence().fetchReferenceHead("throttled", ObjOne.class))
+        .contains(obj);
+    verify(referenceLimit).acquire();
+    verify(objectLimit).acquire(obj.numParts());
+
+    clearInvocations(objectLimit, referenceLimit);
+    var nonRecording = collector.nonRecordingRealmPersistence();
+    var recorded = retained.objAdds();
+    assertThat(nonRecording.fetch(objRef(obj), ObjOne.class)).isEqualTo(obj);
+    assertThat(retained.objAdds()).isEqualTo(recorded);
+    verify(objectLimit).acquire(obj.numParts());
+
+    // Force a spilled index so iteration has to fetch persisted segments lazily.
+    var index = IndexContainer.newUpdatableIndex(persOne, OBJ_REF_SERIALIZER);
+    for (var i = 0; i < 5000; i++) {
+      index.put(key("entry-" + i + "-suffix"), objRef(obj));
+    }
+    var container =
+        index.toIndexed("throttled-index", (name, segment) -> persOne.write(segment, Obj.class));
+    clearInvocations(objectLimit, referenceLimit);
+    assertThat(container.indexForRead(collector.realmPersistence(), OBJ_REF_SERIALIZER))
+        .hasSize(5000);
+    verify(objectLimit, atLeastOnce()).acquire(anyInt());
+    verifyNoInteractions(referenceLimit);
+
+    clearInvocations(objectLimit, referenceLimit);
+    nonRecording.createReferenceSilent("cleanup");
+    nonRecording
+        .createCommitter("cleanup", MaintenanceRunsObj.class, Long.class)
+        .commitRuntimeException(
+            (state, head) -> {
+              var current = head.get();
+              assertThat(state.persistence().fetch(objRef(obj), ObjOne.class)).isEqualTo(obj);
+              return state.commitResult(
+                  1L, MaintenanceRunsObj.builder().maintenanceRunId(objRef(obj)), current);
+            });
+    verify(referenceLimit, atLeastOnce()).acquire();
+    verify(objectLimit, atLeastOnce()).acquire(obj.numParts());
   }
 
   @Test
