@@ -31,6 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestVarInt {
@@ -75,6 +76,21 @@ public class TestVarInt {
         .isThrownBy(() -> VarInt.readVarInt(ByteBuffer.wrap(buf)));
     soft.assertThatIllegalArgumentException()
         .isThrownBy(() -> VarInt.skipVarInt(ByteBuffer.wrap(buf)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(longs = {-1L, Long.MIN_VALUE})
+  public void negativeLength(long value) {
+    soft.assertThatIllegalArgumentException().isThrownBy(() -> VarInt.varIntLen(value));
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {7, 14, 21, 28, 35, 42, 49, 56})
+  public void lengthBoundaries(int bits) {
+    var boundary = 1L << bits;
+    soft.assertThat(VarInt.varIntLen(boundary - 1)).isEqualTo(bits / 7);
+    soft.assertThat(VarInt.varIntLen(boundary)).isEqualTo(bits / 7 + 1);
+    soft.assertThat(VarInt.varIntLen(boundary + 1)).isEqualTo(bits / 7 + 1);
   }
 
   static Stream<Arguments> varInt() {
