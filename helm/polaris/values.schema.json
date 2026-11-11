@@ -1207,7 +1207,7 @@
                     }
                 },
                 "type": {
-                    "description": "The type of persistence to use. Three built-in types are supported: in-memory, relational-jdbc, and nosql (beta).",
+                    "description": "The type of persistence to use. Three built-in types are supported: in-memory, relational-jdbc, and nosql.",
                     "type": "string"
                 }
             }
