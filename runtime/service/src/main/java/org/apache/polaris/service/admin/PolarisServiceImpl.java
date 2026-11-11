@@ -232,8 +232,7 @@ public class PolarisServiceImpl
 
   /**
    * The SigV4 STS endpoint receives requests signed with Polaris's service identity, so setting it
-   * is gated by the same realm feature as custom S3 endpoints. Only https is accepted so that
-   * session tokens are never sent in cleartext.
+   * is gated by the same realm feature as custom S3 endpoints.
    */
   private void validateStsEndpoint(String stsEndpoint) {
     if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)) {
@@ -245,13 +244,15 @@ public class PolarisServiceImpl
     } catch (URISyntaxException e) {
       throw new IllegalArgumentException("Invalid stsEndpoint URI.", e);
     }
-    if (!"https".equalsIgnoreCase(uri.getScheme())
-        || uri.getHost() == null
-        || uri.getRawUserInfo() != null
-        || uri.getRawQuery() != null
-        || uri.getRawFragment() != null) {
-      throw new IllegalArgumentException(
-          "stsEndpoint must be an absolute https URI without user info, query or fragment.");
+    String scheme = uri.getScheme();
+    if (!("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme))
+        || uri.getHost() == null) {
+      throw new IllegalArgumentException("stsEndpoint must be an absolute http or https URI.");
+    }
+    if ("http".equalsIgnoreCase(scheme)) {
+      LOGGER.warn(
+          "SigV4 connection stsEndpoint uses plain http; AssumeRole requests and session "
+              + "credentials will be sent unencrypted.");
     }
   }
 

@@ -319,17 +319,23 @@ public class PolarisServiceImplTest {
         .doesNotThrowAnyException();
   }
 
-  @Test
-  void testValidateExternalCatalog_SigV4StsEndpointAllowed() {
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "https://sts.us-west-2.amazonaws.com",
+        "http://sts.example.com:9000",
+        "https://user@sts.example.com",
+        "https://sts.example.com/?token=1",
+        "https://sts.example.com/#fragment"
+      })
+  void testValidateExternalCatalog_SigV4StsEndpointAllowed(String stsEndpoint) {
     when(realmConfig.getConfig(
             FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
         .thenReturn(List.of("SIGV4"));
     when(realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)).thenReturn(true);
 
     assertThatCode(
-            () ->
-                invokeValidateExternalCatalog(
-                    polarisService, sigV4ExternalCatalog("https://sts.us-west-2.amazonaws.com")))
+            () -> invokeValidateExternalCatalog(polarisService, sigV4ExternalCatalog(stsEndpoint)))
         .doesNotThrowAnyException();
   }
 
@@ -353,10 +359,7 @@ public class PolarisServiceImplTest {
       strings = {
         "sts.us-west-2.amazonaws.com",
         "ftp://sts.example.com",
-        "http://sts.example.com",
-        "https://user@sts.example.com",
-        "https://sts.example.com/?token=1",
-        "https://sts.example.com/#fragment",
+        "file:///tmp/sts",
         "",
         "not a uri"
       })
