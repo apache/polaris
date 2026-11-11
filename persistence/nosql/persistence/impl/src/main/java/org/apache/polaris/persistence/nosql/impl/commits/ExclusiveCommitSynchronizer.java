@@ -36,6 +36,10 @@ final class ExclusiveCommitSynchronizer implements CommitSynchronizer {
         new SyncKey(realmId, refName), k -> new ExclusiveCommitSynchronizer());
   }
 
+  boolean hasQueuedThreads() {
+    return semaphore.hasQueuedThreads();
+  }
+
   @Override
   public void after() {
     semaphore.release();

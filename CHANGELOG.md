@@ -178,7 +178,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added `register` support for both `tables` and `views` commands
 - Python CLI: `setup export` and `setup apply` now support both Iceberg tables and views as register entries.
 - Python CLI: added `namespaces update` to set and remove namespace properties
-- NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
+- NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`.
+  `fair-retries` does not apply to locally synchronized commits, which use FIFO admission;
+  conflict retry backoff still applies.
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
 
 ### Changes

@@ -113,7 +113,9 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
     Exception failure = null;
     try {
       var retryConfig = persistence.params().retryConfig();
-      // The local semaphore provides fair admission without additional fairness sleeps.
+      // The local semaphore provides FIFO admission without retry-count priority or fairness
+      // sleeps.
+      // After a remote conflict, attempts back off and rejoin the local queue.
       var fairRetries = synchronizingLocally ? FairRetriesType.UNFAIR : retryConfig.fairRetries();
       var loop =
           RetryLoop.<RESULT>newRetryLoop(retryConfig, persistence.monotonicClock(), fairRetries);

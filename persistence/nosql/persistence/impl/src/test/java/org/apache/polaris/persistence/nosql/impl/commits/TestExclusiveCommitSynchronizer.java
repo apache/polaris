@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
@@ -31,10 +30,6 @@ public class TestExclusiveCommitSynchronizer {
   @Test
   public void queuedCommitAcquiresBeforeNewArrival() throws Exception {
     var sync = new ExclusiveCommitSynchronizer();
-    var field = ExclusiveCommitSynchronizer.class.getDeclaredField("semaphore");
-    field.setAccessible(true);
-    var semaphore = (Semaphore) field.get(sync);
-    assertThat(semaphore.isFair()).isTrue();
     assertThat(sync.before(0)).isTrue();
     var releaseWaiter = new CountDownLatch(1);
     var waiterEntered = new CountDownLatch(1);
@@ -55,10 +50,10 @@ public class TestExclusiveCommitSynchronizer {
                 return true;
               });
       var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-      while (!semaphore.hasQueuedThreads() && System.nanoTime() < deadline) {
+      while (!sync.hasQueuedThreads() && System.nanoTime() < deadline) {
         Thread.sleep(1);
       }
-      assertThat(semaphore.hasQueuedThreads()).isTrue();
+      assertThat(sync.hasQueuedThreads()).isTrue();
       sync.after();
       // A timed zero-wait acquisition must not barge ahead of the queued waiter.
       var barged = sync.before(0);

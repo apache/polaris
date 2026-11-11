@@ -23,6 +23,7 @@ import static org.assertj.core.api.InstanceOfAssertFactories.type;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.longThat;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -53,6 +54,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentMatcher;
 
@@ -133,6 +135,37 @@ public class TestRetryLoopImpl {
       verify(clock, never()).sleepMillis(anyLong());
       verifyNoMoreInteractions(stats);
     }
+  }
+
+  @ParameterizedTest
+  @EnumSource(FairRetriesType.class)
+  public void backoffAtDeadlineDoesNotStartAnotherAttempt(FairRetriesType policy) {
+    var config = mockedConfig(3, 100, 10, 10, 10);
+    when(config.fairRetries()).thenReturn(policy);
+    var clock = mock(MonotonicClock.class);
+    var now = new AtomicLong();
+    when(clock.nanoTime()).thenAnswer(ignored -> now.get());
+    var attempts = new AtomicInteger();
+    doAnswer(
+            ignored -> {
+              now.set(MILLISECONDS.toNanos(100));
+              return null;
+            })
+        .when(clock)
+        .sleepMillis(10);
+    var loop = RetryLoop.<String>newRetryLoop(config, clock);
+
+    soft.assertThatThrownBy(
+            () ->
+                loop.retryLoop(
+                    remaining -> {
+                      attempts.incrementAndGet();
+                      return Optional.empty();
+                    }))
+        .isInstanceOf(RetryTimeoutException.class);
+
+    soft.assertThat(attempts).hasValue(1);
+    verify(clock).sleepMillis(10);
   }
 
   @Test

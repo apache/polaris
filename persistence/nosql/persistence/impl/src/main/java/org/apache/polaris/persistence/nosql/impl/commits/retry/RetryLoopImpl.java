@@ -76,6 +76,7 @@ final class RetryLoopImpl<RESULT> implements RetryLoop<RESULT> {
       for (var attempt = 0; true; attempt++, timeAttemptStarted = currentNanos()) {
         prio = fairRetries.beforeAttempt(attempt, prio);
         var nanosRemaining = timeoutAt - currentNanos();
+        // Enforce the deadline for all commits, including backoff that rounds past it.
         if (nanosRemaining <= 0) {
           reportEnd(TIMEOUT, timeAttemptStarted);
           throw new RetryTimeoutException(attempt, currentNanos() - timeLoopStarted);
