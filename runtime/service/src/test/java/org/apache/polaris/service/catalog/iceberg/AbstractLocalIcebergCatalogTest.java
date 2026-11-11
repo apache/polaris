@@ -115,6 +115,7 @@ import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewMetadataParser;
 import org.apache.iceberg.view.ViewOperations;
+import org.apache.iceberg.view.ViewProperties;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -155,6 +156,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -202,6 +204,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
@@ -2121,7 +2124,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     if (customMetadataPath) {
       builder.withProperty("write.metadata.path", metadataPath);
     }
-    var view = builder.create();
+    builder.create();
+    String storedBase = readViewEntity(TABLE).getBaseLocation();
 
     Assertions.assertThat(viewCatalog.dropView(TABLE)).as("Drop should succeed").isTrue();
 
@@ -2132,7 +2136,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
                 .getEntities()
                 .getFirst());
     assertThat(TaskUtils.storageLocations(taskEntity.getInternalPropertiesAsMap()))
-        .contains(view.location());
+        .contains(storedBase);
     if (customMetadataPath) {
       assertThat(TaskUtils.storageLocations(taskEntity.getInternalPropertiesAsMap()))
           .contains(metadataPath);
@@ -2156,6 +2160,125 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThat(measured.getNumDeletedFiles())
         .as("View metadata file should be deleted")
         .isGreaterThan(0);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"location", "addedMetadataPath", "removedMetadataPath", "changedMetadataPath"})
+  public void testViewPurgeRejectsLocationsDifferentFromEntity(String mismatch) throws IOException {
+    catalog.createNamespace(NS);
+    String metadataPath = STORAGE_LOCATION + "/view-purge-metadata-" + UUID.randomUUID();
+    var builder =
+        catalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", VIEW_QUERY)
+            .withProperty(ViewProperties.METADATA_COMPRESSION, "none");
+    if (!mismatch.equals("addedMetadataPath")) {
+      builder.withProperty(TableProperties.WRITE_METADATA_LOCATION, metadataPath);
+    }
+    builder.create();
+    ViewMetadata metadata = catalog.newViewOps(TABLE, false).current();
+    ObjectNode json = (ObjectNode) JsonUtil.mapper().readTree(ViewMetadataParser.toJson(metadata));
+    ObjectNode properties = (ObjectNode) json.get("properties");
+    switch (mismatch) {
+      case "location" -> json.put("location", metadata.location() + "changed");
+      case "removedMetadataPath" -> properties.remove(TableProperties.WRITE_METADATA_LOCATION);
+      case "addedMetadataPath", "changedMetadataPath" ->
+          properties.put(TableProperties.WRITE_METADATA_LOCATION, metadataPath + "-changed");
+      default -> throw new IllegalArgumentException("Unexpected mismatch: " + mismatch);
+    }
+    fileIO.addFile(metadata.metadataFileLocation(), JsonUtil.mapper().writeValueAsBytes(json));
+
+    assertThatThrownBy(() -> catalog.dropView(TABLE))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("does not match its stored");
+    assertThat(catalog.viewExists(TABLE)).isTrue();
+    assertThat(fileIO.fileExists(metadata.metadataFileLocation())).isTrue();
+    assertThat(
+            metaStoreManager
+                .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+                .getEntities())
+        .isEmpty();
+  }
+
+  @Test
+  public void testViewPurgeUsesRecordedLocationsWithEquivalentMetadata() throws IOException {
+    catalog.createNamespace(NS);
+    String metadataPath = STORAGE_LOCATION + "/view-purge-metadata-" + UUID.randomUUID();
+    catalog
+        .buildView(TABLE)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(NS)
+        .withQuery("spark", VIEW_QUERY)
+        .withProperty(ViewProperties.METADATA_COMPRESSION, "none")
+        .withProperty(TableProperties.WRITE_METADATA_LOCATION, metadataPath)
+        .create();
+    ViewMetadata metadata = catalog.newViewOps(TABLE, false).current();
+    IcebergTableLikeEntity entity = readViewEntity(TABLE);
+    ObjectNode json = (ObjectNode) JsonUtil.mapper().readTree(ViewMetadataParser.toJson(metadata));
+    json.put("location", LocationUtil.stripTrailingSlash(metadata.location()));
+    String ignoredDataPath = STORAGE_LOCATION + "/ignored-view-data";
+    ((ObjectNode) json.get("properties"))
+        .put(TableProperties.WRITE_METADATA_LOCATION, metadataPath + "/")
+        .put(TableProperties.WRITE_DATA_LOCATION, ignoredDataPath);
+    fileIO.addFile(metadata.metadataFileLocation(), JsonUtil.mapper().writeValueAsBytes(json));
+
+    assertThat(catalog.dropView(TABLE)).isTrue();
+    TaskEntity task =
+        TaskEntity.of(
+            metaStoreManager
+                .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+                .getEntities()
+                .getFirst());
+    assertThat(TaskUtils.storageLocations(task.getInternalPropertiesAsMap()))
+        .containsExactlyInAnyOrder(entity.getBaseLocation(), metadataPath)
+        .doesNotContain(ignoredDataPath);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"false,false", "false,true", "true,false", "true,true"})
+  public void testViewPurgeFallsBackToMetadataForLegacyEntity(
+      boolean missingStoredBase, boolean customMetadataPath) {
+    catalog.createNamespace(NS);
+    String metadataPath = STORAGE_LOCATION + "/legacy-view-metadata-" + UUID.randomUUID();
+    var builder =
+        catalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", VIEW_QUERY);
+    if (customMetadataPath) {
+      builder.withProperty(TableProperties.WRITE_METADATA_LOCATION, metadataPath);
+    }
+    builder.create();
+    ViewMetadata metadata = catalog.newViewOps(TABLE, false).current();
+    IcebergTableLikeEntity entity = readViewEntity(TABLE);
+    Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
+    internalProperties.remove(IcebergTableLikeEntity.LOCATION);
+    internalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
+    assertThat(
+            metaStoreManager
+                .updateEntityPropertiesIfNotChanged(
+                    polarisContext,
+                    catalogPath(NS),
+                    new IcebergTableLikeEntity.Builder(entity)
+                        .setBaseLocation(missingStoredBase ? null : entity.getBaseLocation())
+                        .setInternalProperties(internalProperties)
+                        .build())
+                .isSuccess())
+        .isTrue();
+
+    assertThat(catalog.dropView(TABLE)).isTrue();
+    TaskEntity task =
+        TaskEntity.of(
+            metaStoreManager
+                .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+                .getEntities()
+                .getFirst());
+    assertThat(TaskUtils.storageLocations(task.getInternalPropertiesAsMap()))
+        .containsExactlyInAnyOrderElementsOf(StorageUtil.getLocationsUsedByTable(metadata));
   }
 
   @Test
@@ -3930,6 +4053,18 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             PolarisEntitySubType.NULL_SUBTYPE,
             namespace.toString());
     return List.of(catalogEntity, namespaceResult.getEntity());
+  }
+
+  private IcebergTableLikeEntity readViewEntity(TableIdentifier identifier) {
+    return IcebergTableLikeEntity.of(
+        metaStoreManager
+            .readEntityByName(
+                polarisContext,
+                catalogPath(identifier.namespace()),
+                PolarisEntityType.TABLE_LIKE,
+                PolarisEntitySubType.ICEBERG_VIEW,
+                identifier.name())
+            .getEntity());
   }
 
   private IcebergTableLikeEntity readTableEntity(TableIdentifier identifier) {
