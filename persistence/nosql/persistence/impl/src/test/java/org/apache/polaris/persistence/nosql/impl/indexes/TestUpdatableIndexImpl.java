@@ -128,6 +128,28 @@ public class TestUpdatableIndexImpl {
   }
 
   @Test
+  public void modifiedContainerPreservesNewValue() {
+    var embedded = newStoreIndex(OBJ_REF_SERIALIZER);
+    var originalValue = randomObjId();
+    embedded.put(key("original"), originalValue);
+    var container =
+        ImmutableIndexContainer.<ObjRef>builder().embedded(embedded.serialize()).build();
+    var updatable = container.asUpdatableIndex(persistence, OBJ_REF_SERIALIZER);
+    var newValue = randomObjId();
+    soft.assertThat(updatable.put(key("new"), newValue)).isTrue();
+
+    var indexed = updatable.toIndexed("idx-", (name, obj) -> soft.fail("Unexpected obj persist"));
+
+    soft.assertThat(indexed).isNotSameAs(container);
+    soft.assertThat(indexed.indexForRead(persistence, OBJ_REF_SERIALIZER))
+        .containsExactly(
+            Index.Element.of(key("new"), newValue),
+            Index.Element.of(key("original"), originalValue));
+    soft.assertThat(container.indexForRead(persistence, OBJ_REF_SERIALIZER))
+        .containsExactly(Index.Element.of(key("original"), originalValue));
+  }
+
+  @Test
   public void untouchedOversizedEmbeddedIndexStillSpills() {
     var embedded = newStoreIndex(OBJ_TEST_SERIALIZER);
     var entryKey = key("oversized");

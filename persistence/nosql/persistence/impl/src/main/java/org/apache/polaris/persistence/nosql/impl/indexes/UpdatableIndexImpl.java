@@ -84,6 +84,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
         embedded.estimatedSerializedSize() > params.maxEmbeddedIndexSize().asLong()
             || hasOversizedEmbeddedEntry;
     if (indexContainer != null && !spillRequired && !isModified()) {
+      // Preserve existing tombstones; unchanged containers need no removal-marker cleanup.
       return indexContainer;
     }
 
