@@ -123,10 +123,10 @@ namespaces created later in that namespace are placed under its custom location.
 ## Unstructured table locations
 
 Setting `ALLOW_UNSTRUCTURED_TABLE_LOCATION` to `true` lets table and view locations, and the
-`write.data.path` and `write.metadata.path` table properties, be anywhere inside the catalog's
-allowed locations, instead of only inside their namespace's location or, for write paths, the
-table's own location. Generated locations still follow the default layout unless the object storage
-prefix described below is enabled.
+`write.data.path` and `write.metadata.path` table properties and the `write.metadata.path` view
+property, be anywhere inside the catalog's allowed locations, instead of only inside their
+namespace's location or, for write paths, the table's or view's own location. Generated locations
+still follow the default layout unless the object storage prefix described below is enabled.
 
 Switching `ALLOW_UNSTRUCTURED_TABLE_LOCATION` from `true` to `false` does not check existing tables
 and views, and can cause unexpected location check failures later, for example when updating or
