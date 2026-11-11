@@ -20,6 +20,8 @@ package org.apache.polaris.persistence.nosql.impl.indexes;
 
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.key;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
+import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
+import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.indexElement;
 import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.newStoreIndex;
 import static org.apache.polaris.persistence.nosql.impl.indexes.ObjTestValue.OBJ_TEST_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.impl.indexes.ObjTestValue.objTestValueOfSize;
@@ -35,10 +37,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.ImmutableIndexContainer;
 import org.apache.polaris.persistence.nosql.api.index.Index;
@@ -96,7 +94,7 @@ public class TestLazyUpdatableIndex {
   }
 
   @Test
-  public void concurrentFirstAccessCreatesOneDelegate() throws Exception {
+  public void repeatedAccessCreatesOneDelegate() {
     var embedded = newStoreIndex(OBJ_REF_SERIALIZER);
     var value = randomObjId();
     embedded.put(key("entry"), value);
@@ -104,25 +102,40 @@ public class TestLazyUpdatableIndex {
         ImmutableIndexContainer.<ObjRef>builder().embedded(embedded.serialize()).build();
     var serializer = spy(OBJ_REF_SERIALIZER);
     var index = (LazyUpdatableIndex<ObjRef>) container.asUpdatableIndex(persistence, serializer);
-    var barrier = new CyclicBarrier(4);
-    try (var executor = Executors.newFixedThreadPool(4)) {
-      var futures =
-          IntStream.range(0, 4)
-              .mapToObj(
-                  ignored ->
-                      executor.submit(
-                          () -> {
-                            barrier.await(10, TimeUnit.SECONDS);
-                            return index.getOrCreate();
-                          }))
-              .toList();
-      var delegate = futures.getFirst().get(10, TimeUnit.SECONDS);
-      for (var future : futures) {
-        assertThat(future.get(10, TimeUnit.SECONDS)).isSameAs(delegate);
-      }
-    }
+    var delegate = index.getOrCreate();
+    assertThat(index.getOrCreate()).isSameAs(delegate);
     verify(serializer, times(1)).skip(any());
     assertThat(index.get(key("entry"))).isEqualTo(value);
+  }
+
+  @Test
+  public void untouchedTombstoneStillHidesReferenceEntry() {
+    var hiddenKey = key("hidden");
+    var visibleKey = key("visible");
+    var value = randomObjId();
+    var stripe = newStoreIndex(OBJ_REF_SERIALIZER);
+    stripe.put(hiddenKey, value);
+    stripe.put(visibleKey, value);
+    var stripeObj =
+        persistence.write(
+            IndexStripeObj.indexStripeObj(persistence.generateId(), stripe.serialize()),
+            IndexStripeObj.class);
+    var embedded = newStoreIndex(OBJ_REF_SERIALIZER);
+    embedded.add(indexElement(hiddenKey, null));
+    var container =
+        ImmutableIndexContainer.<ObjRef>builder()
+            .embedded(embedded.serialize())
+            .addStripe(IndexStripe.indexStripe(hiddenKey, visibleKey, objRef(stripeObj)))
+            .build();
+    var index = container.asUpdatableIndex(persistence, OBJ_REF_SERIALIZER);
+
+    var indexed = index.toIndexed("idx-", (name, obj) -> unexpectedWrite());
+
+    assertThat(indexed).isSameAs(container);
+    var read = indexed.indexForRead(persistence, OBJ_REF_SERIALIZER);
+    assertThat(read.get(hiddenKey)).isNull();
+    assertThat(read.contains(hiddenKey)).isFalse();
+    assertThat(read).containsExactly(Index.Element.of(visibleKey, value));
   }
 
   @Test

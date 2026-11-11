@@ -33,11 +33,12 @@ import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+/** Like its mutable delegate, this index is not thread-safe. */
 final class LazyUpdatableIndex<V> implements UpdatableIndex<V> {
   private final IndexContainer<V> container;
   private final Persistence persistence;
   private final IndexValueSerializer<V> serializer;
-  private volatile @Nullable UpdatableIndexImpl<V> delegate;
+  private @Nullable UpdatableIndexImpl<V> delegate;
   private boolean finalized;
 
   LazyUpdatableIndex(
@@ -49,18 +50,10 @@ final class LazyUpdatableIndex<V> implements UpdatableIndex<V> {
 
   UpdatableIndexImpl<V> getOrCreate() {
     checkNotFinalized();
-    var index = delegate;
-    return index != null ? index : create();
-  }
-
-  private synchronized UpdatableIndexImpl<V> create() {
-    checkNotFinalized();
-    var index = delegate;
-    if (index == null) {
-      index = IndexesProvider.buildEagerWriteIndex(container, persistence, serializer);
-      delegate = index;
+    if (delegate == null) {
+      delegate = IndexesProvider.buildEagerWriteIndex(container, persistence, serializer);
     }
-    return index;
+    return delegate;
   }
 
   @Override
@@ -110,6 +103,8 @@ final class LazyUpdatableIndex<V> implements UpdatableIndex<V> {
     if (delegate == null
         && container.embedded().remaining()
             <= persistence.params().maxEmbeddedIndexSize().asLong()) {
+      // Reuse serialized bytes and existing tombstones without canonicalizing an untouched index.
+      // Oversized entries only force a spill when put() introduces them into the embedded index.
       finalized = true;
       return container;
     }
