@@ -88,8 +88,7 @@ public class TestCacheReplacement {
     // An equal-key replacement must not retain the old payload via the stored key.
     assertThat(entry.getKey()).isNotSameAs(originalValue);
     assertThat(backend.currentWeightReported() - originalWeight)
-        .isEqualTo(
-            ((byte[]) entry.getValue().data()).length - ((byte[]) originalValue.data()).length);
+        .isEqualTo(entry.getValue().data().length - originalValue.data().length);
     var cached = backend.get("realm", objRef(original));
     assertThat(cached).isEqualTo(replacement);
     // Creation time is auxiliary and is not covered by object equality.

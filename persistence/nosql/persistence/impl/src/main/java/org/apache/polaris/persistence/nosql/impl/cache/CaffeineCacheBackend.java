@@ -393,7 +393,7 @@ class CaffeineCacheBackend implements CacheBackend {
     if (value == null) {
       return null;
     }
-    if (value.data == null) {
+    if (value.reference == null) {
       return NON_EXISTENT_REFERENCE_SENTINEL;
     }
     return value.getReference();
@@ -551,12 +551,22 @@ class CaffeineCacheBackend implements CacheBackend {
 
   /** All replaceable state belongs to the value, including object deserialization metadata. */
   record CacheValue(
-      byte[] objectMetadata, long expiresAtNanosEpoch, Object data, int dataHeapSize) {
+      byte[] objectMetadata,
+      long expiresAtNanosEpoch,
+      byte[] data,
+      Reference reference,
+      int dataHeapSize) {
+    CacheValue(
+        byte[] objectMetadata, long expiresAtNanosEpoch, Reference reference, int dataHeapSize) {
+      this(objectMetadata, expiresAtNanosEpoch, null, reference, dataHeapSize);
+    }
+
     CacheValue(byte[] objectMetadata, long expiresAtNanosEpoch, byte[] serialized) {
       this(
           objectMetadata,
           expiresAtNanosEpoch,
           serialized,
+          null,
           serialized != null ? ARRAY_OVERHEAD + serialized.length : 0);
     }
 
@@ -591,23 +601,25 @@ class CaffeineCacheBackend implements CacheBackend {
             .numParts(numParts)
             .createdAtMicros(createdAtMicros)
             .versionToken(versionToken)
-            .index(ByteBuffer.wrap(((byte[]) data).clone()))
+            .index(ByteBuffer.wrap(data.clone()))
             .build();
       }
       return contextualReader(SMILE_MAPPER, type, id, numParts, versionToken, createdAtMicros)
-          .readValue((byte[]) data);
+          .readValue(data);
     }
 
     Reference getReference() {
-      return (Reference) data;
+      return reference;
     }
   }
 
   // Conservative instance sizes with uncompressed references and 8-byte alignment:
   // key: 16-byte header, two references, int hash, padding;
-  // value: 16-byte header, two references, long expiry, int data size, padding.
+  // value: 16-byte header, three references, long expiry, int data size, padding.
   static final int CACHE_KEY_SIZE = 40;
-  static final int CACHE_VALUE_SIZE = 48;
+  static final int CACHE_VALUE_SIZE = 56;
+  // These estimates track the generated ImmutableReference / ImmutableObjRef layouts;
+  // revisit them when their fields or @PolarisImmutable settings change.
   // Generated immutable reference: three references, long timestamp, cached hash, padding.
   static final int REFERENCE_SIZE = 56;
   // Generated immutable object reference: type reference, long ID, two ints.
