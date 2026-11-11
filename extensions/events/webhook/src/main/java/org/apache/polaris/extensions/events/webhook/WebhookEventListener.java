@@ -350,6 +350,7 @@ public class WebhookEventListener implements PolarisEventListener {
     pending.decrementAndGet();
   }
 
+  @SuppressWarnings("FutureReturnValueIgnored") // retries complete in-task; shutdownNow cancels
   private void scheduleDelivery(String payload, String eventType, int attempt, long delayMs) {
     ScheduledExecutorService exec = executor;
     if (exec == null || exec.isShutdown()) {
@@ -358,12 +359,11 @@ public class WebhookEventListener implements PolarisEventListener {
       return;
     }
     Runnable task = () -> deliverWithConcurrency(payload, eventType, attempt);
-    // Retries are best-effort; the Future is not joined (delivery completion is handled in-task).
     try {
       if (delayMs <= 0) {
         exec.execute(task);
       } else {
-        var unused = exec.schedule(task, delayMs, TimeUnit.MILLISECONDS);
+        exec.schedule(task, delayMs, TimeUnit.MILLISECONDS);
       }
     } catch (RuntimeException e) {
       releaseAccepted();
