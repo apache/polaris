@@ -128,6 +128,24 @@ class TestIndexKeyBuffers {
   }
 
   @ParameterizedTest
+  @EnumSource(BufferType.class)
+  void unescapedPrefixWithFinalEscapeAtLengthBoundary(BufferType type) {
+    var bytes = new byte[IndexKey.MAX_LENGTH];
+    Arrays.fill(bytes, (byte) 'a');
+    bytes[bytes.length - 1] = 1;
+    var indexKey = key(ByteBuffer.wrap(bytes));
+    var wire = ByteBuffer.allocate(indexKey.serializedSize());
+    indexKey.serialize(wire);
+    var buffer = type.buffer(wire.array());
+
+    assertThat(IndexKey.deserializeKey(buffer)).isEqualTo(indexKey);
+    assertThat(buffer.remaining()).isZero();
+    buffer.position(3);
+    IndexKey.skip(buffer);
+    assertThat(buffer.remaining()).isZero();
+  }
+
+  @ParameterizedTest
   @MethodSource("malformedKeys")
   void malformedInputPreservesConsumedPosition(
       BufferType type, byte[] wire, Class<? extends Exception> exception) {

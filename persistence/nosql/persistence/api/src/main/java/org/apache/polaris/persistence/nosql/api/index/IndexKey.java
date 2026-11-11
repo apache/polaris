@@ -56,6 +56,9 @@ import tools.jackson.databind.annotation.JsonSerialize;
  *
  * <p>{@link IndexKey}s are comparable, the results reflect the outcome of the <em>unsigned</em>
  * comparison of the respective byte representations.
+ *
+ * <p>Array-backed fast paths and generic buffer paths must preserve the same encoding, length
+ * checks, and buffer-position behavior.
  */
 @JsonSerialize(using = IndexKey.IndexKeySerializer.class)
 @JsonDeserialize(using = IndexKey.IndexKeyDeserializer.class)
@@ -204,6 +207,7 @@ public final class IndexKey implements Comparable<IndexKey> {
       if (b == ESC) {
         switch (escaped) {
           case NULL_ESCAPED -> {
+            // The check above handles the first escape; this handles later escapes in the key.
             checkState(l == 0, "NULL escape position");
             return null;
           }
