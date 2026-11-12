@@ -26,6 +26,7 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isA;
@@ -139,6 +140,7 @@ import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -3050,6 +3052,139 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> update.commit())
         .isInstanceOf(CommitConflictException.class)
         .hasMessageContaining("conflict_table");
+  }
+
+  static Stream<Arguments> ambiguousCommitOutcomes() {
+    return Stream.of(false, true)
+        .flatMap(
+            view ->
+                Stream.of("confirmed", "mismatch", "readFailure", "notFound")
+                    .map(outcome -> Arguments.of(view, outcome)));
+  }
+
+  @ParameterizedTest
+  @MethodSource("ambiguousCommitOutcomes")
+  public void testAmbiguousCommitReconciliation(boolean view, String outcome) {
+    PolarisMetaStoreManager manager = spy(metaStoreManager);
+    LocalIcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, manager);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    catalog.createNamespace(NS);
+    if (view) {
+      catalog
+          .buildView(TABLE)
+          .withSchema(SCHEMA)
+          .withDefaultNamespace(NS)
+          .withQuery("spark", VIEW_QUERY)
+          .create();
+    } else {
+      catalog.buildTable(TABLE, SCHEMA).create();
+    }
+
+    List<IcebergTableLikeEntity> attempted = new ArrayList<>();
+    PersistenceCommitStateUnknownException unknown =
+        new PersistenceCommitStateUnknownException("Lost commit response");
+    doAnswer(
+            invocation -> {
+              attempted.add(new IcebergTableLikeEntity(invocation.getArgument(2)));
+              if (!outcome.equals("mismatch")) {
+                invocation.callRealMethod();
+              }
+              // Install read failures only after persistence, leaving pre-commit reads intact.
+              if (outcome.equals("readFailure")) {
+                doThrow(new RuntimeException("database unavailable"))
+                    .when(manager)
+                    .loadEntity(any(), anyLong(), anyLong(), any());
+              } else if (outcome.equals("notFound")) {
+                doReturn(new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null))
+                    .when(manager)
+                    .loadEntity(any(), anyLong(), anyLong(), any());
+              }
+              throw unknown;
+            })
+        .when(manager)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+
+    Runnable commit =
+        () -> {
+          if (view) {
+            catalog.loadView(TABLE).updateProperties().set("reconciliation", "test").commit();
+          } else {
+            catalog.loadTable(TABLE).updateProperties().set("reconciliation", "test").commit();
+          }
+        };
+    if (outcome.equals("confirmed")) {
+      commit.run();
+    } else {
+      Assertions.assertThatThrownBy(commit::run).isSameAs(unknown);
+    }
+    Assertions.assertThat(attempted).hasSize(1);
+    String location = attempted.get(0).getMetadataLocation();
+    // Even a failed read after an applied write must leave the published metadata readable.
+    if (view) {
+      Assertions.assertThat(ViewMetadataParser.read(fileIO.newInputFile(location)).properties())
+          .containsEntry("reconciliation", "test");
+    } else {
+      Assertions.assertThat(TableMetadataParser.read(fileIO, location).properties())
+          .containsEntry("reconciliation", "test");
+    }
+    if (outcome.equals("readFailure")) {
+      Assertions.assertThat(unknown.getSuppressed())
+          .singleElement()
+          .satisfies(failure -> Assertions.assertThat(failure).hasMessage("database unavailable"));
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testAmbiguousNotificationConfirmsTimestamp(boolean applied) {
+    Assumptions.assumeTrue(supportsNotifications());
+    PolarisMetaStoreManager manager = spy(metaStoreManager);
+    LocalIcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, manager);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    TableMetadata metadata = ((BaseTable) table).operations().current();
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.UPDATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setTableName(TABLE.name());
+    update.setTableUuid(metadata.uuid());
+    update.setMetadataLocation(metadata.metadataFileLocation());
+    update.setTimestamp(10L);
+    request.setPayload(update);
+    catalog.sendNotification(TABLE, request);
+    Mockito.clearInvocations(manager);
+
+    PersistenceCommitStateUnknownException unknown =
+        new PersistenceCommitStateUnknownException("Lost notification response");
+    doAnswer(
+            invocation -> {
+              if (applied) {
+                invocation.callRealMethod();
+              }
+              throw unknown;
+            })
+        .when(manager)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+    update.setTimestamp(30L);
+    if (applied) {
+      Assertions.assertThat(catalog.sendNotification(TABLE, request)).isTrue();
+      update.setTimestamp(20L);
+      Assertions.assertThatThrownBy(() -> catalog.sendNotification(TABLE, request))
+          .isInstanceOf(AlreadyExistsException.class);
+    } else {
+      Assertions.assertThatThrownBy(() -> catalog.sendNotification(TABLE, request))
+          .isSameAs(unknown);
+    }
+    Assertions.assertThat(readTableEntity(TABLE).getLastAdmittedNotificationTimestamp())
+        .contains(applied ? 30L : 10L);
+    Mockito.verify(manager).updateEntityPropertiesIfNotChanged(any(), any(), any());
   }
 
   static Stream<Arguments> renameFailureStatuses() {

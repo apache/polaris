@@ -102,7 +102,14 @@ public class CommitMetadataCleanupTest {
                           invocation -> {
                             Object result = invocation.callRealMethod();
                             if (shouldFail.get()) {
-                              // Simulate: DB applied the CAS, then client lost the ack.
+                              // Simulate an applied CAS whose outcome cannot be confirmed.
+                              Mockito.doThrow(new RuntimeException("Reconciliation unavailable"))
+                                  .when(spy)
+                                  .loadEntity(
+                                      Mockito.any(),
+                                      Mockito.anyLong(),
+                                      Mockito.anyLong(),
+                                      Mockito.any());
                               throw failure;
                             }
                             return result;
@@ -213,6 +220,9 @@ public class CommitMetadataCleanupTest {
     Answer<Object> commitOutcomeUnknown =
         invocation -> {
           invocation.callRealMethod();
+          Mockito.doThrow(new RuntimeException("Reconciliation unavailable"))
+              .when((PolarisMetaStoreManager) invocation.getMock())
+              .loadEntity(Mockito.any(), Mockito.anyLong(), Mockito.anyLong(), Mockito.any());
           throw new PersistenceCommitStateUnknownException(
               "boom", new SQLException("Connection reset", "08006"));
         };
