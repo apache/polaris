@@ -105,6 +105,7 @@ Once the pull requests have been merged, run the [`Release - 2 - Update version 
 ## Build and publish release artifacts
 The third Github workflow to run is [`Release - 3 - Build and publish release artifacts`](https://github.com/apache/polaris/actions/workflows/release-3-build-and-publish-artifacts.yml). This workflow will:
 * Build the source and binary artifacts
+* Generate and sign a standalone build-environment JSON record for the source/binary/Maven job, and show its contents in the workflow summary
 * Stage artifacts to the Apache dist dev repository
 * Publish the source and binary artifacts to the Apache Nexus repository
 * Close the Apache Nexus repository
@@ -113,6 +114,13 @@ The third Github workflow to run is [`Release - 3 - Build and publish release ar
 * Create signature and checksum for all package files
 * Copy package files to Apache dist dev repository
 * Generate an e-mail to notify the community of the availability of the release candidate
+
+The release workflow pins a full Temurin JDK build and Helm version.
+Renovate proposes updates to the `setup-java` versions in release-3 and release-4 together, staying on Java 21 and including JDK build-number updates.
+Review these updates before creating a release candidate tag.
+Renovate also manages the pinned Helm version through its built-in support for `azure/setup-helm`.
+The build-environment record is staged with the distribution files and later attached to the GitHub release; it is not included inside the source or binary archives.
+Ordinary contributor builds do not require the exact release JDK.
 
 This workflow must be run from an RC tag (e.g., `apache-polaris-1.3.0-rc0`). Select the tag from the `Use workflow from` dropdown in the Github Actions UI. Selecting any other reference in the Github Actions UI will result in a failure.
 

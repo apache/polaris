@@ -23,6 +23,9 @@ import asf.AsfProject
 import io.github.gradlenexus.publishplugin.NexusPublishExtension
 import io.github.gradlenexus.publishplugin.NexusPublishPlugin
 import io.github.gradlenexus.publishplugin.internal.StagingRepositoryDescriptorRegistryBuildService
+import java.nio.charset.Charset
+import java.util.Locale
+import java.util.TimeZone
 import org.gradle.api.Project
 import org.gradle.api.services.BuildServiceRegistration
 import org.gradle.api.tasks.Exec
@@ -76,6 +79,63 @@ internal fun configureOnRootProject(project: Project) = project.run {
   digestTaskOutputs(sourceTarball)
 
   signTaskOutputs(sourceTarball)
+
+  val releaseBuildEnvironment =
+    tasks.register<ReleaseBuildEnvironment>("releaseBuildEnvironment") {
+      group = "publishing"
+      description =
+        "Record the release build environment as a standalone, optionally signed JSON asset"
+      val recordedVersion = project.version.toString()
+      releaseVersion.set(recordedVersion)
+      gradleVersion.set(project.gradle.gradleVersion)
+      gradleJvm.set(
+        mapOf(
+          "vendor" to providers.systemProperty("java.vendor").get(),
+          "runtimeVersion" to providers.systemProperty("java.runtime.version").get(),
+          "vmVersion" to providers.systemProperty("java.vm.version").get(),
+          "languageVersion" to providers.systemProperty("java.specification.version").get(),
+        ),
+      )
+      environment.set(
+        mapOf(
+          "osName" to providers.systemProperty("os.name").get(),
+          "osVersion" to providers.systemProperty("os.version").get(),
+          "architecture" to providers.systemProperty("os.arch").get(),
+          "locale" to Locale.getDefault().toLanguageTag(),
+          "timezone" to TimeZone.getDefault().id,
+          "encoding" to Charset.defaultCharset().name(),
+        ),
+      )
+      listOf(
+          "GITHUB_REPOSITORY",
+          "GITHUB_RUN_ID",
+          "GITHUB_RUN_ATTEMPT",
+          "GITHUB_JOB",
+          "GITHUB_WORKFLOW",
+          "GITHUB_WORKFLOW_REF",
+          "ImageOS",
+          "ImageVersion",
+        )
+        .forEach { name ->
+          ci.put(name, providers.environmentVariable(name).orElse(""))
+        }
+      buildFlags.set(
+        mapOf(
+          "release" to isRelease.toString(),
+          "jarWithGitInfo" to providers.gradleProperty("jarWithGitInfo").isPresent.toString(),
+          "buildCacheEnabled" to project.gradle.startParameter.isBuildCacheEnabled.toString(),
+        ),
+      )
+      requestedTasks.set(project.gradle.startParameter.taskNames)
+      val publishingHelper = project.extensions.getByType(PublishingHelperExtension::class.java)
+      outputFile.set(
+        publishingHelper.distributionDir.map {
+          it.file("polaris-build-environment-$recordedVersion.json")
+        },
+      )
+    }
+  digestTaskOutputs(releaseBuildEnvironment)
+  signTaskOutputs(releaseBuildEnvironment)
 
   val releaseEmailTemplate = tasks.register("releaseEmailTemplate")
   releaseEmailTemplate.configure {

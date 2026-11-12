@@ -216,7 +216,7 @@ jobs:
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '21.0.13+9'
 
       - name: Log in to Docker Hub
         if: env.DRY_RUN == '0'
@@ -307,6 +307,7 @@ jobs:
               -name "*.tar.gz" -o \
               -name "*.tgz" -o \
               -name "*.zip" -o \
+              -name "polaris-build-environment-*.json" -o \
               -name "*.asc" -o \
               -name "*.sha512" -o \
               -name "*.prov" \

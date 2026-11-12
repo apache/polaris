@@ -117,6 +117,15 @@ With `--reproducible-builds`, the tool may report known reproducible build issue
 That script requires a couple of tools installed and will check that those are available
 and report those that need to be installed.
 
+Candidates since 1.10 also publish a signed `polaris-build-environment-<version>.json` file next to the distribution archives.
+When `jq` is available, the script checks this record's integrity and release identity and compares it with the local build environment.
+JDK and Gradle mismatches produce warnings; platform, locale, timezone and encoding differences are informational.
+These diagnostics do not waive artifact comparison failures.
+Older releases without the record remain supported.
+The record describes the source/binary/Maven build job, not the separate Docker, Helm or Python build jobs.
+The locally generated record describes the verification run and is expected to differ from the candidate's record.
+Evidence JSON files and their signatures/checksums are not compared byte-for-byte; selected environment fields are compared separately.
+
 To run the script, you need the following pieces of information from the release-vote email:
 * The *full* Git SHA of the corresponding source commit.
 * The version number of the release, something like `1.3.0`

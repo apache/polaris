@@ -21,19 +21,25 @@ import java.util.Properties
 import kotlin.jvm.java
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
+import org.gradle.api.Task
 import org.gradle.api.file.FileCollection
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Provider
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.api.tasks.scala.ScalaCompile
+import org.gradle.api.tasks.scala.ScalaDoc
 import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.tasks.Jar
+import org.gradle.jvm.toolchain.JavaInstallationMetadata
 import org.gradle.kotlin.dsl.named
 import org.gradle.process.CommandLineArgumentProvider
 import org.kordamp.gradle.plugin.jandex.JandexExtension
 import org.kordamp.gradle.plugin.jandex.JandexPlugin
 import publishing.PublishingHelperPlugin
+import publishing.ReleaseBuildEnvironment
 
 plugins {
   jacoco
@@ -49,6 +55,48 @@ plugins {
 }
 
 apply<PublishingHelperPlugin>()
+
+/**
+ * Makes the "tracked" task's inputs dependent on JDK vendor and runtime-version. Different Java
+ * patch versions can produce different byte code and different Javadoc content. Making the task
+ * depend on the exact Java version and vendor helps especially Polaris reproducible build
+ * verifications.
+ */
+fun Task.trackJdk(role: String, metadata: Provider<JavaInstallationMetadata>) {
+  inputs.property("jdkRuntimeVersion", metadata.map { it.javaRuntimeVersion })
+  inputs.property("jdkVendor", metadata.map { it.vendor })
+
+  val toolTaskPath = path
+  rootProject.tasks.named<ReleaseBuildEnvironment>("releaseBuildEnvironment").configure {
+    configuredToolchains.add(
+      metadata.map {
+        mapOf(
+          "task" to toolTaskPath,
+          "role" to role,
+          "vendor" to it.vendor,
+          "runtimeVersion" to it.javaRuntimeVersion,
+          "languageVersion" to it.languageVersion.toString(),
+        )
+      },
+    )
+  }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+  trackJdk("javaCompiler", javaCompiler.map { it.metadata })
+}
+
+tasks.withType<ScalaCompile>().configureEach {
+  trackJdk("scalaCompiler", javaLauncher.map { it.metadata })
+}
+
+tasks.withType<Javadoc>().configureEach {
+  trackJdk("javadoc", javadocTool.map { it.metadata })
+}
+
+tasks.withType<ScalaDoc>().configureEach {
+  trackJdk("scaladoc", javaLauncher.map { it.metadata })
+}
 
 private val libs: VersionCatalog by lazy { versionCatalogs.named("libs") }
 
