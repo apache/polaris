@@ -73,7 +73,7 @@ final class RetryLoopImpl<RESULT> implements RetryLoop<RESULT> {
         try {
           var r = retryable.attempt(timeoutAt - timeAttemptStarted);
           if (r.isPresent()) {
-            reportEnd(SUCCESS, timeAttemptStarted);
+            reportEnd(SUCCESS, timeLoopStarted);
             return r.get();
           }
           retryOrFail(timeLoopStarted, timeAttemptStarted, attempt);
@@ -82,10 +82,10 @@ final class RetryLoopImpl<RESULT> implements RetryLoop<RESULT> {
         }
       }
     } catch (CommitException e) {
-      reportEnd(CONFLICT, timeAttemptStarted);
+      reportEnd(CONFLICT, timeLoopStarted);
       throw e;
     } catch (RuntimeException e) {
-      reportEnd(ERROR, timeAttemptStarted);
+      reportEnd(ERROR, timeLoopStarted);
       throw e;
     } finally {
       if (prio != -1) {
@@ -94,10 +94,10 @@ final class RetryLoopImpl<RESULT> implements RetryLoop<RESULT> {
     }
   }
 
-  private void reportEnd(RetryStatsConsumer.Result result, long timeAttemptStarted) {
+  private void reportEnd(RetryStatsConsumer.Result result, long timeLoopStarted) {
     var c = retryStatsConsumer;
     if (c != null) {
-      c.retryLoopFinished(result, retries, sleepTime, currentNanos() - timeAttemptStarted);
+      c.retryLoopFinished(result, retries, sleepTime, currentNanos() - timeLoopStarted);
     }
   }
 
@@ -106,7 +106,7 @@ final class RetryLoopImpl<RESULT> implements RetryLoop<RESULT> {
     if (canRetry(timeLoopStarted, timeAttemptStarted)) {
       return;
     }
-    reportEnd(TIMEOUT, timeAttemptStarted);
+    reportEnd(TIMEOUT, timeLoopStarted);
     throw new RetryTimeoutException(attempt, currentNanos() - timeLoopStarted);
   }
 
