@@ -20,6 +20,7 @@
 import com.github.erizo.gradle.JcstressTask
 import java.io.FileOutputStream
 import java.nio.file.Files
+import java.util.zip.ZipFile
 
 plugins {
   id("org.kordamp.gradle.jandex")
@@ -102,12 +103,94 @@ dependencies {
   testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   jmhImplementation(libs.jmh.core)
+  jmhImplementation(project(":polaris-persistence-nosql-metastore-types"))
   jmhAnnotationProcessor(libs.jmh.generator.annprocess)
 
   jcstressRuntime(libs.jcstress.core)
 }
 
 tasks.named("jcstressJar") { dependsOn("jandex") }
+
+/** Merges benchmark service providers without changing the normal publication. */
+abstract class MergeJmhServices : DefaultTask() {
+  @get:Classpath abstract val classpath: ConfigurableFileCollection
+  @get:OutputDirectory abstract val destination: DirectoryProperty
+
+  @TaskAction
+  fun merge() {
+    val services = sortedMapOf<String, MutableSet<String>>()
+    fun add(name: String, lines: List<String>) {
+      val providers = services.getOrPut(name) { linkedSetOf() }
+      lines
+        .map { it.substringBefore('#').trim() }
+        .filter { it.isNotEmpty() }
+        .forEach(providers::add)
+    }
+    classpath.forEach { entry ->
+      if (entry.isDirectory) {
+        entry
+          .resolve("META-INF/services")
+          .listFiles()
+          ?.filter { it.isFile }
+          ?.forEach {
+            add(it.name, it.readLines())
+          }
+      } else if (entry.isFile && entry.extension == "jar") {
+        ZipFile(entry).use { jar ->
+          jar
+            .entries()
+            .asSequence()
+            .filter {
+              !it.isDirectory && it.name.startsWith("META-INF/services/")
+            }
+            .forEach { service ->
+              jar.getInputStream(service).bufferedReader().use {
+                add(service.name.removePrefix("META-INF/services/"), it.readLines())
+              }
+            }
+        }
+      }
+    }
+    val output = destination.get().asFile
+    output.deleteRecursively()
+    services.forEach { (name, providers) ->
+      output.resolve("META-INF/services/$name").apply {
+        parentFile.mkdirs()
+        writeText(providers.joinToString("\n", postfix = "\n"))
+      }
+    }
+  }
+}
+
+val mergeJmhServices =
+  tasks.register<MergeJmhServices>("mergeJmhServices") {
+    classpath.from(configurations.named("jmhRuntimeClasspath"))
+    classpath.from(sourceSets.main.map { it.output })
+    val testOutput = sourceSets.test.get().output
+    classpath.from(jmh.includeTests.map { if (it) testOutput else emptyList<File>() })
+    classpath.from(sourceSets.named("jmh").map { it.output })
+    destination.set(layout.buildDirectory.dir("generated/jmh-services"))
+  }
+
+tasks.named<Jar>("jmhJar") {
+  val mergedServices = mergeJmhServices.flatMap { it.destination }
+  from(mergedServices)
+  dependsOn(mergeJmhServices)
+  eachFile {
+    if (
+      path.startsWith("META-INF/services/") &&
+        !file.toPath().startsWith(mergedServices.get().asFile.toPath())
+    ) {
+      exclude()
+    }
+  }
+  isZip64 = true
+}
+
+jmh {
+  duplicateClassesStrategy.set(DuplicatesStrategy.EXCLUDE)
+  failOnError.set(true)
+}
 
 tasks.named("compileJcstressJava") { dependsOn("jandex") }
 
