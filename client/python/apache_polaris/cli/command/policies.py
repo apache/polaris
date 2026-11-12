@@ -94,6 +94,10 @@ class PoliciesCommand(Command):
                 raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.POLICY_FILE)}"
                 )
+        if self.policies_subcommand == Subcommands.CREATE and not self.policy_type:
+            raise CliError(
+                f"Missing required argument: {Argument.to_flag_name(Arguments.POLICY_TYPE)}"
+            )
         if self.policies_subcommand in [Subcommands.ATTACH, Subcommands.DETACH]:
             if not self.attachment_type:
                 raise CliError(
