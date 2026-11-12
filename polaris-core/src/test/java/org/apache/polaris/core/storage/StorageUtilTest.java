@@ -127,6 +127,7 @@ public class StorageUtilTest {
                 IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, root + "/ignored"));
     Assertions.assertThat(StorageUtil.getLocationsUsedByTable(metadata))
         .containsExactlyInAnyOrder(root + "/view", root + "/metadata");
+    // Metadata under the view's base is already covered, so no separate credential scope is needed.
     Mockito.when(metadata.properties())
         .thenReturn(
             Map.of(

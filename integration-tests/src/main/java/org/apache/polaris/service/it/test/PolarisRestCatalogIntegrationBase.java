@@ -1859,9 +1859,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   @Test
   public void testCreateAndUpdateViewWithCustomMetadataLocation() {
     TableIdentifier identifier = TableIdentifier.of("custom_metadata", "view");
-    if (requiresNamespaceCreate()) {
-      catalog().createNamespace(identifier.namespace());
-    }
+    catalog().createNamespace(identifier.namespace());
     String metadataPath =
         getStorageConfigInfo().getAllowedLocations().getFirst()
             + "/view-metadata-"

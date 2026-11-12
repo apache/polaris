@@ -2203,12 +2203,23 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         .isEmpty();
   }
 
-  @Test
-  public void testViewPurgeUsesRecordedLocationsWithEquivalentMetadata() throws IOException {
+  @ParameterizedTest
+  @ValueSource(strings = {"separate", "nested", "ancestor", "equivalent"})
+  public void testViewPurgeUsesRecordedLocationsWithEquivalentMetadata(String layout)
+      throws IOException {
     catalog.createNamespace(NS);
-    String metadataPath = STORAGE_LOCATION + "/view-purge-metadata-" + UUID.randomUUID();
+    String viewLocation = STORAGE_LOCATION + "/view-purge-" + UUID.randomUUID();
+    String metadataPath =
+        switch (layout) {
+          case "separate" -> viewLocation + "-metadata";
+          case "nested" -> viewLocation + "/metadata";
+          case "ancestor" -> STORAGE_LOCATION;
+          case "equivalent" -> viewLocation;
+          default -> throw new IllegalArgumentException("Unexpected layout: " + layout);
+        };
     catalog
         .buildView(TABLE)
+        .withLocation(viewLocation)
         .withSchema(SCHEMA)
         .withDefaultNamespace(NS)
         .withQuery("spark", VIEW_QUERY)
@@ -2233,7 +2244,12 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
                 .getEntities()
                 .getFirst());
     assertThat(TaskUtils.storageLocations(task.getInternalPropertiesAsMap()))
-        .containsExactlyInAnyOrder(entity.getBaseLocation(), metadataPath)
+        .containsExactlyInAnyOrderElementsOf(
+            switch (layout) {
+              case "separate" -> Set.of(entity.getBaseLocation(), metadataPath);
+              case "ancestor" -> Set.of(metadataPath);
+              default -> Set.of(entity.getBaseLocation());
+            })
         .doesNotContain(ignoredDataPath);
   }
 
