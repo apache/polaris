@@ -25,6 +25,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -52,12 +53,11 @@ public class StorageCredentialCache {
             .expireAfter(
                 Expiry.creating(
                     (StorageCredentialCacheKey key, StorageCredentialCacheEntry entry) -> {
+                      long remainingMs = entry.getExpirationTime() - System.currentTimeMillis();
+                      long bufferMs = entry.refreshBufferMs();
+                      long effectiveTtl = bufferMs > 0 ? remainingMs - bufferMs : remainingMs / 2;
                       long expireAfterMillis =
-                          Math.max(
-                              0,
-                              Math.min(
-                                  (entry.getExpirationTime() - System.currentTimeMillis()) / 2,
-                                  entry.maxCacheDurationMs()));
+                          Math.max(0, Math.min(effectiveTtl, entry.maxCacheDurationMs()));
                       return Duration.ofMillis(expireAfterMillis);
                     }))
             .build(
@@ -65,7 +65,9 @@ public class StorageCredentialCache {
                   LOGGER.atDebug().log("StorageCredentialCache::load");
                   StorageAccessConfig accessConfig = key.load();
                   return new StorageCredentialCacheEntry(
-                      accessConfig, maxCacheDurationMs(key.realmConfig()));
+                      accessConfig,
+                      maxCacheDurationMs(key.realmConfig()),
+                      refreshBufferMs(key.realmConfig()));
                 });
   }
 
@@ -86,12 +88,63 @@ public class StorageCredentialCache {
     }
   }
 
+  /** Minimum buffer to keep between credential expiry and cache eviction. */
+  private long refreshBufferMs(RealmConfig realmConfig) {
+    var refreshBufferSeconds =
+        realmConfig.getConfig(FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS);
+    var credentialDurationSeconds =
+        realmConfig.getConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+    if (refreshBufferSeconds < 0 || refreshBufferSeconds >= credentialDurationSeconds) {
+      throw new IllegalArgumentException(
+          String.format(
+              "%s must be >= 0 and less than %s",
+              FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.key(),
+              FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key()));
+    }
+    return refreshBufferSeconds * 1000L;
+  }
+
   /**
    * Return the cached {@link StorageAccessConfig} for {@code key}, loading it via {@link
    * StorageCredentialCacheKey#load()} on miss.
+   *
+   * <p>The refresh buffer (when non-zero) is enforced on every call, not just on cache hits: a
+   * freshly loaded credential can itself already be within the buffer of expiring (e.g. a
+   * credential provider issuing a short-lived token), in which case Caffeine's {@code expireAfter}
+   * would give it a zero TTL but still hand it back on this same call. To honor the "clients always
+   * receive credentials with at least this much validity left" contract, such an entry is discarded
+   * and reloaded once, bypassing the stale copy.
+   *
+   * <p>If the reload is <em>still</em> under the buffer, the contract cannot be honored at all, so
+   * this throws rather than silently handing back an under-buffer credential -- a provider that
+   * can't clear its own configured buffer after a fresh fetch is a configuration problem the caller
+   * needs to see, not something to mask with a log line. It is not retried a third time: a provider
+   * issuing credentials shorter than the configured buffer will keep doing so, and hot-looping
+   * against it doesn't help.
    */
   public StorageAccessConfig getOrLoad(StorageCredentialCacheKey key) {
-    return cache.get(key).toAccessConfig();
+    StorageCredentialCacheEntry entry = cache.get(key);
+    if (isUnderRefreshBuffer(entry)) {
+      cache.invalidate(key);
+      entry = cache.get(key);
+      if (isUnderRefreshBuffer(entry)) {
+        throw new UnprocessableEntityException(
+            "Storage credential provider returned a credential with only %d ms of validity left, "
+                + "which is still under the configured refresh buffer of %d ms, even after a "
+                + "reload. The credential provider may be issuing credentials shorter than "
+                + "STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.",
+            entry.getExpirationTime() - System.currentTimeMillis(), entry.refreshBufferMs());
+      }
+    }
+    return entry.toAccessConfig();
+  }
+
+  private static boolean isUnderRefreshBuffer(StorageCredentialCacheEntry entry) {
+    if (entry.refreshBufferMs() <= 0) {
+      return false;
+    }
+    long remainingMs = entry.getExpirationTime() - System.currentTimeMillis();
+    return remainingMs < entry.refreshBufferMs();
   }
 
   @VisibleForTesting
