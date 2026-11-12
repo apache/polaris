@@ -166,6 +166,49 @@ public class ResolverTest extends BaseResolverTest {
   }
 
   @Test
+  public void testResolveExternalCallerPrincipalWithInternalRoles() {
+    // PR1 is a stored principal role created in setupTest(), which activates catalog roles R1 and
+    // R2 in the "test" catalog.
+    Resolver resolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of(
+                "ext-user",
+                ImmutableAttributeMap.builder()
+                    .put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true)
+                    .put(PolarisPrincipalAttributes.INTERNAL_PRINCIPAL_ROLES_ATTRIBUTE_KEY, true)
+                    .build(),
+                Set.of("PR1", "NOT_EXISTING")),
+            null,
+            "test");
+
+    ResolverStatus status = resolver.resolveAll();
+    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+
+    // The external principal does not exist in the metastore and is still synthetic.
+    ResolvedPolarisEntity principal = resolver.getResolvedCallerPrincipal();
+    Assertions.assertThat(principal.getEntity().getName()).isEqualTo("ext-user");
+    Assertions.assertThat(principal.getEntity().getId()).isNegative();
+
+    // Its roles are resolved from the metastore, along with their grants; unknown roles are
+    // ignored.
+    Assertions.assertThat(resolver.getResolvedCallerPrincipalRoles())
+        .singleElement()
+        .satisfies(
+            role -> {
+              Assertions.assertThat(role.getEntity().getName()).isEqualTo("PR1");
+              Assertions.assertThat(role.getEntity().getId()).isPositive();
+              Assertions.assertThat(role.getGrantRecordsAsGrantee()).isNotEmpty();
+            });
+    Assertions.assertThat(resolver.getResolvedCatalogRoles())
+        .isNotNull()
+        .extractingFromEntries(e -> e.getValue().getEntity().getName())
+        .containsExactlyInAnyOrder("R1", "R2");
+  }
+
+  @Test
   public void testResolveSelectionsSkipsCallerPrincipalForReferenceCatalog() {
     Resolver resolver =
         new Resolver(

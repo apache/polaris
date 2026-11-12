@@ -245,6 +245,53 @@ requirements, both enforced at startup (the service refuses to boot otherwise):
    polaris.authorization.type=opa
    ```
 
+### External Principals with Internal Roles
+
+External principals can also be combined with the default authorizer, when the identity provider
+is the source of truth for principals and their role membership, but Polaris remains the source of
+truth for authorization: principal roles, catalog roles and grants are still managed with the
+Polaris Management API, and only the principals are external.
+
+This mode is enabled per realm:
+
+```properties
+# Global default
+polaris.authentication.credential-mode=external-with-internal-roles
+# Per-realm override
+polaris.authentication.realm1.credential-mode=external-with-internal-roles
+```
+
+In this mode:
+
+* As with external principals, the caller is authenticated entirely from the token: no principal
+  lookup is performed, and principals do not need to be created in Polaris.
+* The roles emitted by the role mapper name principal roles managed in Polaris, and must follow the
+  `PRINCIPAL_ROLE:<role name>` convention, as for internal principals. Roles without this prefix are
+  ignored. Principal roles that do not exist in Polaris are ignored too.
+* Each principal role found in Polaris is activated, along with the catalog roles granted to it.
+  Role membership comes from the token: principal roles are never assigned to external principals in
+  Polaris.
+* The `PRINCIPAL_ROLE:ALL` pseudo-role is not supported, since an external principal has no grants
+  to expand; tokens containing it are rejected.
+* An external principal is never the Polaris `root` principal, even if its name is `root`.
+  Operations reserved to the `root` principal, such as resetting the credentials of another
+  principal, are denied.
+
+As with external principals, the realm's authentication `type` must not be `internal`. The
+authorizer, however, can be the default (`internal`) one.
+
+For example, with the role mapping configuration from the [Role Mapping](#role-mapping) section, a
+token carrying the role `analyst` activates the Polaris principal role `analyst`, and the caller
+gets the privileges of the catalog roles granted to it. To administer the realm, map an identity
+provider role to the `service_admin` principal role created when bootstrapping the realm.
+
+{{< alert warning >}}
+In this mode, the identity provider is trusted to decide which principal roles each caller has.
+For example, any caller whose token roles are mapped to `PRINCIPAL_ROLE:service_admin` gets full
+administrative privileges. Configure the role mapper `filter` to only let through the roles meant
+for Polaris.
+{{< /alert >}}
+
 ### Example JWT Mappings 
 
 #### Example 1: Custom Claim Paths 

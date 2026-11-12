@@ -32,7 +32,8 @@ public interface AuthenticationRealmConfiguration {
   AuthenticationType type();
 
   /**
-   * The credential mode to use. Valid values are {@code INTERNAL} and {@code EXTERNAL}.
+   * The credential mode to use. Valid values are {@code INTERNAL}, {@code EXTERNAL} and {@code
+   * EXTERNAL_WITH_INTERNAL_ROLES}.
    *
    * <p>Internal mode is the default. When internal mode is used, callers must have a corresponding
    * principal in the Polaris metastore, which serves as the authoritative source of truth for
@@ -43,10 +44,15 @@ public interface AuthenticationRealmConfiguration {
    * that when the presented credentials were issued by Polaris itself, a backing principal entity
    * is always required, regardless of the credential mode.
    *
-   * <p>External credential mode is only meaningful when an external IDP is used, that is, when the
-   * {@linkplain #type() authentication type} is {@link AuthenticationType#EXTERNAL} or {@link
-   * AuthenticationType#MIXED}. Also, this mode is not compatible with the default, built-in Polaris
-   * authorizer; an external authorizer (e.g., OPA or Ranger) must be configured.
+   * <p>When external-with-internal-roles mode is used, callers are authenticated as in external
+   * mode, but the roles in the presented credentials name principal roles managed in the Polaris
+   * metastore. Roles that do not exist in the metastore are ignored.
+   *
+   * <p>External credential modes are only meaningful when an external IDP is used, that is, when
+   * the {@linkplain #type() authentication type} is {@link AuthenticationType#EXTERNAL} or {@link
+   * AuthenticationType#MIXED}. Also, external mode is not compatible with the default, built-in
+   * Polaris authorizer; an external authorizer (e.g., OPA or Ranger) must be configured.
+   * External-with-internal-roles mode, on the other hand, can be used with the default authorizer.
    */
   @WithDefault("internal")
   CredentialMode credentialMode();

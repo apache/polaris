@@ -91,11 +91,11 @@ class ProductionReadinessChecksTest {
             });
   }
 
-  @Test
-  void externalPrincipalsWithExternalTypeReturnsOk() {
+  @ParameterizedTest
+  @EnumSource(value = CredentialMode.class, mode = EnumSource.Mode.EXCLUDE, names = "INTERNAL")
+  void externalPrincipalsWithExternalTypeReturnsOk(CredentialMode mode) {
     ProductionReadinessCheck result =
-        checks.checkExternalPrincipals(
-            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL));
+        checks.checkExternalPrincipals(authenticationConfig(AuthenticationType.EXTERNAL, mode));
 
     assertThat(result.ready()).isTrue();
   }
@@ -109,11 +109,11 @@ class ProductionReadinessChecksTest {
     assertThat(result.ready()).isTrue();
   }
 
-  @Test
-  void externalPrincipalsWithInternalAuthenticationReturnsSevereError() {
+  @ParameterizedTest
+  @EnumSource(value = CredentialMode.class, mode = EnumSource.Mode.EXCLUDE, names = "INTERNAL")
+  void externalPrincipalsWithInternalAuthenticationReturnsSevereError(CredentialMode mode) {
     ProductionReadinessCheck result =
-        checks.checkExternalPrincipals(
-            authenticationConfig(AuthenticationType.INTERNAL, CredentialMode.EXTERNAL));
+        checks.checkExternalPrincipals(authenticationConfig(AuthenticationType.INTERNAL, mode));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
@@ -132,6 +132,17 @@ class ProductionReadinessChecksTest {
     ProductionReadinessCheck result =
         checks.checkExternalPrincipalsAuthorizer(
             authenticationConfig(type, CredentialMode.INTERNAL), authorizationConfig("internal"));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void externalPrincipalsWithInternalRolesAndInternalAuthorizerReturnsOk() {
+    ProductionReadinessCheck result =
+        checks.checkExternalPrincipalsAuthorizer(
+            authenticationConfig(
+                AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL_WITH_INTERNAL_ROLES),
+            authorizationConfig("internal"));
 
     assertThat(result.ready()).isTrue();
   }
@@ -193,11 +204,12 @@ class ProductionReadinessChecksTest {
     assertThat(result.ready()).isTrue();
   }
 
-  @Test
-  void oidcMappingExternalModeWithoutNameClaimPathReturnsSevereError() {
+  @ParameterizedTest
+  @EnumSource(value = CredentialMode.class, mode = EnumSource.Mode.EXCLUDE, names = "INTERNAL")
+  void oidcMappingExternalModeWithoutNameClaimPathReturnsSevereError(CredentialMode mode) {
     ProductionReadinessCheck result =
         checks.checkOidcPrincipalMapping(
-            authenticationConfig(AuthenticationType.EXTERNAL, CredentialMode.EXTERNAL),
+            authenticationConfig(AuthenticationType.EXTERNAL, mode),
             oidcConfig(
                 OidcConfiguration.DEFAULT_TENANT_KEY,
                 "default",

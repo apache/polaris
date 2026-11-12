@@ -585,8 +585,69 @@ public class DefaultAuthenticatorTest {
         .isFalse();
     assertThat(attributes.get(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY))
         .isTrue();
+    assertThat(
+            attributes.containsKey(
+                PolarisPrincipalAttributes.INTERNAL_PRINCIPAL_ROLES_ATTRIBUTE_KEY))
+        .isFalse();
     assertThat(attributes.get(PolarisPrincipalAttributes.JWT_ATTRIBUTE_KEY))
         .isEqualTo("raw.jwt.token");
+    Mockito.verifyNoInteractions(metaStoreManagerSpy);
+  }
+
+  @Test
+  void testExternalPrincipalWithInternalRoles() {
+    // Given: an external credential in a realm whose external principals have internal roles
+    PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
+    DefaultAuthenticator sa =
+        newStandaloneAuthenticator(
+            metaStoreManagerSpy, CredentialMode.EXTERNAL_WITH_INTERNAL_ROLES);
+    PolarisCredential credentials =
+        PolarisCredential.ofExternal(
+            "ext-user",
+            Set.of(
+                DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE1,
+                DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + "unknown_role",
+                "unprefixed_role"));
+
+    // When: authenticating
+    PolarisPrincipal result = sa.authenticate(identityFor(credentials));
+
+    // Then: an external principal is built with no metastore lookup; its prefixed roles are
+    // stripped of their prefix but not validated (unknown roles are ignored by the resolver), and
+    // unprefixed roles are ignored
+    assertThat(result.getName()).isEqualTo("ext-user");
+    assertThat(result.getRoles()).containsExactlyInAnyOrder(PRINCIPAL_ROLE1, "unknown_role");
+    ImmutableAttributeMap attributes = result.getAttributes();
+    assertThat(attributes.containsKey(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY))
+        .isFalse();
+    assertThat(attributes.containsKey(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY))
+        .isFalse();
+    assertThat(attributes.get(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY))
+        .isTrue();
+    assertThat(attributes.get(PolarisPrincipalAttributes.INTERNAL_PRINCIPAL_ROLES_ATTRIBUTE_KEY))
+        .isTrue();
+    Mockito.verifyNoInteractions(metaStoreManagerSpy);
+  }
+
+  @Test
+  void testExternalPrincipalWithInternalRolesRejectsAllRolesRequested() {
+    // Given: an external principal with internal roles has no grants, so the pseudo-role
+    // PRINCIPAL_ROLE:ALL cannot be expanded
+    PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
+    DefaultAuthenticator sa =
+        newStandaloneAuthenticator(
+            metaStoreManagerSpy, CredentialMode.EXTERNAL_WITH_INTERNAL_ROLES);
+    PolarisCredential credentials =
+        PolarisCredential.ofExternal(
+            "ext-user",
+            Set.of(
+                DefaultAuthenticator.PRINCIPAL_ROLE_ALL,
+                DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE1));
+
+    // When / Then: authentication fails, with no metastore lookup
+    assertThatThrownBy(() -> sa.authenticate(identityFor(credentials)))
+        .isInstanceOf(AuthenticationFailedException.class)
+        .hasMessageContaining("Unable to authenticate");
     Mockito.verifyNoInteractions(metaStoreManagerSpy);
   }
 
@@ -708,10 +769,19 @@ public class DefaultAuthenticatorTest {
   }
 
   private DefaultAuthenticator newStandaloneAuthenticator(PolarisMetaStoreManager msm) {
+    return newStandaloneAuthenticator(msm, CredentialMode.EXTERNAL);
+  }
+
+  private DefaultAuthenticator newStandaloneAuthenticator(
+      PolarisMetaStoreManager msm, CredentialMode credentialMode) {
+    AuthenticationRealmConfiguration authConfig =
+        Mockito.mock(AuthenticationRealmConfiguration.class);
+    when(authConfig.credentialMode()).thenReturn(credentialMode);
     DefaultAuthenticator sa = new DefaultAuthenticator();
     sa.metaStoreManager = msm;
     sa.callContext = callContext;
     sa.diagnostics = diagnostics;
+    sa.authConfig = authConfig;
     return sa;
   }
 

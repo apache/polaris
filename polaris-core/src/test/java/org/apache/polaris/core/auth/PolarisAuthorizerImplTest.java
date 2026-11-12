@@ -35,7 +35,9 @@ import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationIntentResolver.ResolvedIntent;
 import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -46,6 +48,7 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentMatchers;
 
 public class PolarisAuthorizerImplTest {
@@ -406,6 +409,39 @@ public class PolarisAuthorizerImplTest {
 
     assertThat(decision.isAllowed()).isFalse();
     assertThat(decision.getMessage().orElseThrow()).contains("is not authorized");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void authorizeResetCredentialsOnlyAllowsInternalRootPrincipal(boolean external) {
+    // An external principal named "root" is not the root principal stored in the metastore.
+    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl();
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState(manifest);
+    PolarisPrincipal principal =
+        PolarisPrincipal.of(
+            PolarisEntityConstants.getRootPrincipalName(),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, external)
+                .build(),
+            Set.of());
+
+    when(manifest.getResolvedTopLevelEntity("principal", PolarisEntityType.PRINCIPAL))
+        .thenReturn(mock(PolarisResolvedPathWrapper.class));
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.RESET_CREDENTIALS,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.PRINCIPAL, "principal")))));
+
+    AuthorizationDecision decision = authorizer.authorize(authzState, request);
+
+    assertThat(decision.isAllowed()).isEqualTo(!external);
   }
 
   // ----- Tests for server-side missing privilege logging -----

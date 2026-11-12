@@ -93,6 +93,7 @@ public class DefaultAuthenticator implements Authenticator {
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject CallContext callContext;
   @Inject PolarisDiagnostics diagnostics;
+  @Inject AuthenticationRealmConfiguration authConfig;
 
   @Override
   public PolarisPrincipal authenticate(SecurityIdentity identity) {
@@ -196,6 +197,10 @@ public class DefaultAuthenticator implements Authenticator {
           .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, allRolesRequested);
     } else {
       principalAttributes.put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true);
+      if (hasInternalRoles()) {
+        principalAttributes.put(
+            PolarisPrincipalAttributes.INTERNAL_PRINCIPAL_ROLES_ATTRIBUTE_KEY, true);
+      }
     }
     return principalAttributes.build();
   }
@@ -206,7 +211,12 @@ public class DefaultAuthenticator implements Authenticator {
    * <p>When no entity is available, the method assumes that the principal is not backed by an
    * entity in the Polaris metastore and resolves the roles from the credentials directly. In this
    * case, no special treatment is applied to role names, and the pseudo-role {@link
-   * #PRINCIPAL_ROLE_ALL} is ignored.
+   * #PRINCIPAL_ROLE_ALL} is ignored, unless the credential mode is {@link
+   * CredentialMode#EXTERNAL_WITH_INTERNAL_ROLES}: the roles then name principal roles managed in
+   * the metastore, so they are extracted as described in {@link #extractRequestedRoles}. Since such
+   * a principal has no grants, the pseudo-role {@link #PRINCIPAL_ROLE_ALL} cannot be expanded and
+   * causes authentication to fail. The requested roles are not validated here: roles that do not
+   * exist in the metastore are later ignored when resolving them.
    *
    * <p>When an entity is available, this method checks the credentials for requested roles and
    * loads the principal's grants to determine which roles are currently active for the principal.
@@ -219,7 +229,21 @@ public class DefaultAuthenticator implements Authenticator {
       PolarisCredential credentials, @Nullable PrincipalEntity principal) {
 
     if (principal == null) {
-      return new PrincipalRoleSelection(credentials.getPrincipalRoles(), false);
+      if (!hasInternalRoles()) {
+        return new PrincipalRoleSelection(credentials.getPrincipalRoles(), false);
+      }
+      PrincipalRoleSelection requestedRoles = extractRequestedRoles(credentials);
+      if (requestedRoles.allRolesRequested()) {
+        LOGGER
+            .atWarn()
+            .addKeyValue(StructuredLogKeys.CREDENTIALS, credentials)
+            .log(
+                "Credentials of an external principal contain the pseudo-role '{}', "
+                    + "which cannot be expanded since external principals have no grants.",
+                PRINCIPAL_ROLE_ALL);
+        throw new AuthenticationFailedException("Unable to authenticate");
+      }
+      return requestedRoles;
     }
 
     PrincipalRoleSelection requestedRoles = extractRequestedRoles(credentials);
@@ -281,6 +305,11 @@ public class DefaultAuthenticator implements Authenticator {
             .map(s -> s.substring(PRINCIPAL_ROLE_PREFIX.length()))
             .collect(Collectors.toSet()),
         false);
+  }
+
+  /** Whether the roles of external principals are backed by principal roles in the metastore. */
+  private boolean hasInternalRoles() {
+    return authConfig.credentialMode() == CredentialMode.EXTERNAL_WITH_INTERNAL_ROLES;
   }
 
   /**

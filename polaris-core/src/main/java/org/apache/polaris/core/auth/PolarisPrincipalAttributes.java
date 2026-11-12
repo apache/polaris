@@ -43,6 +43,20 @@ public final class PolarisPrincipalAttributes {
       new AttributeKey<>("org.apache.polaris.core.auth.EXTERNAL_PRINCIPAL");
 
   /**
+   * Attribute key, of type {@link Boolean}, used to mark the roles of an external principal as
+   * internal, that is, backed by principal role entities in the Polaris metastore.
+   *
+   * <p>Only meaningful when {@link #EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY} is present and true. When
+   * present and true, the resolver resolves the roles returned by {@link
+   * PolarisPrincipal#getRoles()} from the metastore, along with their grants, instead of
+   * synthesizing them; roles that do not exist in the metastore are ignored.
+   *
+   * <p>Note: Callers must not assume that this attribute is always present.
+   */
+  public static final AttributeKey<Boolean> INTERNAL_PRINCIPAL_ROLES_ATTRIBUTE_KEY =
+      new AttributeKey<>("org.apache.polaris.core.auth.INTERNAL_PRINCIPAL_ROLES");
+
+  /**
    * Attribute key for the principal entity attribute, of type {@link PrincipalEntity}.
    *
    * <p>Note: callers must never assume that this attribute is present.

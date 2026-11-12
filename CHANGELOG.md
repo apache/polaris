@@ -41,6 +41,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   are not compatible with internal authentication and internal authorization; you must configure an
   external IDP and an external PDP, such as OPA or Ranger.
 
+- External principals can now be combined with the default Polaris authorizer, by setting the
+  `polaris.authentication.credential-mode` option to `external-with-internal-roles`. In this mode,
+  principals are not backed by entities in the Polaris metastore, but the roles mapped from their
+  tokens name principal roles managed in Polaris, which are authorized through the grants made to
+  them. Principal roles that do not exist in Polaris are ignored.
+
 - S3 storage configurations gain an optional string field, `credentialVendingMechanism`. A catalog
   that leaves it empty uses the server's default mechanism, STS AssumeRole, and management API
   responses omit the field for it; `STS` selects the same mechanism explicitly and is the only value

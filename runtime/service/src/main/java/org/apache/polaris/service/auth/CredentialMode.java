@@ -34,4 +34,13 @@ public enum CredentialMode {
    * compatible with the built-in Polaris authorizer.
    */
   EXTERNAL,
+
+  /**
+   * The principal represented by this credential is not backed by an entity in the Polaris
+   * metastore and is authenticated entirely from the presented credentials, but its roles name
+   * principal roles that are backed by entities in the Polaris metastore. Those principal roles,
+   * and the grants made to them, serve as the source of truth for authorization; therefore, this
+   * mode is compatible with the built-in Polaris authorizer.
+   */
+  EXTERNAL_WITH_INTERNAL_ROLES,
 }
