@@ -27,7 +27,6 @@ description =
 
 dependencies {
   implementation(project(":polaris-persistence-nosql-api"))
-  compileOnly(project(":polaris-persistence-nosql-maintenance-cel"))
 
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jspecify)
