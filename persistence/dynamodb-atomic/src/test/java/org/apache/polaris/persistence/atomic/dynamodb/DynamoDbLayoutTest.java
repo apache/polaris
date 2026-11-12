@@ -19,6 +19,7 @@
 package org.apache.polaris.persistence.atomic.dynamodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
@@ -54,6 +55,13 @@ class DynamoDbLayoutTest {
     assertThat(DynamoDbLayout.childrenGsiSk(0L)).isEqualTo("0000000000000000000");
     assertThat(DynamoDbLayout.childrenGsiSk(42L)).isEqualTo("0000000000000000042");
     assertThat(DynamoDbLayout.childrenGsiSk(Long.MAX_VALUE)).isEqualTo("9223372036854775807");
+  }
+
+  @Test
+  void childrenGsiSkRejectsNegativeIds() {
+    assertThatThrownBy(() -> DynamoDbLayout.childrenGsiSk(-42L))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("-42");
   }
 
   @Test

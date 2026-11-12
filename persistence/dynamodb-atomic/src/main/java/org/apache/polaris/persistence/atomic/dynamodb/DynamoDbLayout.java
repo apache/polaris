@@ -100,9 +100,14 @@ public final class DynamoDbLayout {
   /**
    * Children GSI sort key: the entity id, zero-padded to 19 digits so that string order matches
    * numeric order. This lists children in id order, the order Polaris pages by (as {@code
-   * relational-jdbc} does). Entity ids are non-negative.
+   * relational-jdbc} does).
+   *
+   * @throws IllegalArgumentException if {@code id} is negative, since it would not sort in order
    */
   public static String childrenGsiSk(long id) {
+    if (id < 0) {
+      throw new IllegalArgumentException("Entity id must be non-negative, got " + id);
+    }
     return String.format(Locale.ROOT, "%019d", id);
   }
 }
