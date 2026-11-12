@@ -42,7 +42,6 @@ import software.amazon.awssdk.services.sts.StsClientBuilder;
 
 /** Maintains a pool of STS clients. */
 public class StsClientsPool implements StsClientProvider {
-  // CODE_COPIED_TO_POLARIS from Project Nessie 0.104.2
 
   private static final String CACHE_NAME = "sts-clients";
 
