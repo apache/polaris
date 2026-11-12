@@ -957,7 +957,15 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       @NonNull Set<PolarisBaseEntity> activatedEntities,
       @NonNull PolarisAuthorizableOperation authzOp,
       @NonNull ResolvedIntent resolvedIntent) {
-    boolean isRoot = getRootPrincipalName().equals(polarisPrincipal.getName());
+    // An external principal is never the root principal, even if its name matches: the name is
+    // asserted by the external IDP, not backed by the root principal entity in the metastore.
+    boolean externalPrincipal =
+        polarisPrincipal
+            .getAttributes()
+            .getOptional(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY)
+            .orElse(false);
+    boolean isRoot =
+        !externalPrincipal && getRootPrincipalName().equals(polarisPrincipal.getName());
     if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
       if (!isRoot) {
         throw new ForbiddenException("Only Root principal(service-admin) can perform %s", authzOp);

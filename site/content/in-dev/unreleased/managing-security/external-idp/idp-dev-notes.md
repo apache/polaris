@@ -66,6 +66,12 @@ the credentials. Downstream, the
 [`Resolver`](https://github.com/apache/polaris/blob/main/polaris-core/src/main/java/org/apache/polaris/core/persistence/resolver/Resolver.java)
 synthesizes the caller principal and its roles instead of loading them from the backend.
 
+When [external principals with internal roles]({{< relref "../external-idp#external-principals-with-internal-roles" >}})
+are enabled for the realm, `DefaultAuthenticator` also skips the principal lookup, but strips the
+`PRINCIPAL_ROLE:` prefix from the roles and marks them as internal. The `Resolver` then synthesizes
+only the caller principal, and loads its principal roles by name from the backend, along with their
+grants, so that the default authorizer can use them.
+
 ### Mixed Authentication
 
 1. [`InternalAuthenticationMechanism`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/internal/InternalAuthenticationMechanism.java) tries decoding.

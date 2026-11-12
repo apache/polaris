@@ -58,9 +58,9 @@ public interface OidcTenantConfiguration {
      * <p>Optional when using internal credential mode, in which case either this option or {@link
      * #idClaimPath()} must be provided.
      *
-     * <p>Required when using external credential mode ({@code
-     * polaris.authentication.credential-mode=EXTERNAL}), since external principals are identified
-     * exclusively by name.
+     * <p>Required when using an external credential mode ({@code
+     * polaris.authentication.credential-mode=EXTERNAL} or {@code EXTERNAL_WITH_INTERNAL_ROLES}),
+     * since external principals are identified exclusively by name.
      */
     Optional<String> nameClaimPath();
 

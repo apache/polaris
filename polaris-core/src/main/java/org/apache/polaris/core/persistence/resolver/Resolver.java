@@ -790,15 +790,16 @@ public class Resolver {
   private ResolverStatus resolveCallerPrincipalAndPrincipalRoles(
       List<ResolvedPolarisEntity> toValidate, boolean resolvePrincipalRoles) {
 
-    // External principals are not backed by the metastore: synthesize the caller principal and its
-    // roles directly from the authenticated principal instead of resolving them from the backend.
+    // External principals are not backed by the metastore: synthesize the caller principal (and its
+    // roles, unless they are internal) directly from the authenticated principal instead of
+    // resolving them from the backend.
     boolean externalPrincipal =
         polarisPrincipal
             .getAttributes()
             .getOptional(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY)
             .orElse(false);
     if (externalPrincipal) {
-      return resolveExternalCallerPrincipalAndPrincipalRoles(resolvePrincipalRoles);
+      return resolveExternalCallerPrincipalAndPrincipalRoles(toValidate, resolvePrincipalRoles);
     }
 
     // resolve the principal, by name or id
@@ -837,6 +838,11 @@ public class Resolver {
    * metastore. Synthetic entities carry negative sentinel ids (so they never collide with real,
    * positive entity ids) and empty grant records.
    *
+   * <p>If the principal's roles are marked as internal (see {@link
+   * PolarisPrincipalAttributes#INTERNAL_PRINCIPAL_ROLES_ATTRIBUTE_KEY}), they are not synthesized
+   * but resolved by name from the metastore, along with their grants; roles that do not exist are
+   * ignored.
+   *
    * <p>TODO: synthetic principal and roles are a temporary workaround for external principals,
    * until external authorizers change their implementation of {@link
    * org.apache.polaris.core.auth.PolarisAuthorizer#resolveAuthorizationInputs(AuthorizationState,
@@ -845,7 +851,7 @@ public class Resolver {
    * PolarisResolutionManifest#resolveSelections(Set)}.
    */
   private ResolverStatus resolveExternalCallerPrincipalAndPrincipalRoles(
-      boolean resolvePrincipalRoles) {
+      List<ResolvedPolarisEntity> toValidate, boolean resolvePrincipalRoles) {
     PrincipalEntity syntheticPrincipal =
         new PrincipalEntity.Builder()
             .setId(EXTERNAL_PRINCIPAL_ID)
@@ -857,8 +863,16 @@ public class Resolver {
     // real stored entities with the same name in subsequent resolveByName() lookups.
     this.resolvedEntriesById.put(EXTERNAL_PRINCIPAL_ID, this.resolvedCallerPrincipal);
 
+    boolean internalRoles =
+        polarisPrincipal
+            .getAttributes()
+            .getOptional(PolarisPrincipalAttributes.INTERNAL_PRINCIPAL_ROLES_ATTRIBUTE_KEY)
+            .orElse(false);
     this.resolvedCallerPrincipalRoles = new ArrayList<>();
-    if (resolvePrincipalRoles) {
+    if (resolvePrincipalRoles && internalRoles) {
+      this.resolvedCallerPrincipalRoles =
+          resolvePrincipalRolesByName(toValidate, polarisPrincipal.getRoles());
+    } else if (resolvePrincipalRoles) {
       long roleId = EXTERNAL_PRINCIPAL_ROLE_ID_BASE;
       for (String roleName : polarisPrincipal.getRoles()) {
         PrincipalRoleEntity syntheticRole =
