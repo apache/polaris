@@ -623,7 +623,7 @@ jobs:
         run: |
           ./gradlew \
             :publishToMavenLocal \
-            :polaris-core:publishToMavenLocal \
+            :polaris-api-catalog-common:publishToMavenLocal \
             :polaris-spark-3.5_2.12:publishToMavenLocal \
             :polaris-spark-3.5_2.12:createPolarisSparkJar
       - name: Spark Plugin Regression Test
