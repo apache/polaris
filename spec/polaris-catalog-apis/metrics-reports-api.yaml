@@ -44,7 +44,11 @@ paths:
         whether because they do not exist or because the caller lacks the privilege. A 404 is
         returned only when the catalog itself does not exist.
 
-        Results are always paginated.
+        The response may be paginated: clients should always check `next-page-token` and, when
+        present, pass it as `page-token` to fetch the next page. Neither `page-token` nor
+        `page-size` is required on the first request. The server decides the actual page size,
+        which may be smaller than the `page-size` hint. Clients cannot request that all results be
+        returned in a single response.
       requestBody:
         required: true
         content:
@@ -143,10 +147,17 @@ components:
           items:
             $ref: '#/components/schemas/CatalogObject'
         page-token:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+          type: string
+          description: >
+            Opaque token returned as `next-page-token` by a previous response. Omit it to request
+            the first page. Any response may be paginated, whether or not the request carried a
+            `page-token` or a `page-size`.
         page-size:
           type: integer
           minimum: 1
+          description: >
+            A hint for the maximum number of reports per page. The server decides the actual page
+            size and may return fewer reports than requested.
         timestamp-from:
           type: integer
           format: int64
