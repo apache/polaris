@@ -602,16 +602,23 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       return StorageUtil.getLocationsUsedByTable(metadata);
     }
     validateLocationsMatchEntity(identifier, entity, metadata);
+    String storedLocation = entity.getBaseLocation();
     String metadataPath =
         entity
             .getInternalPropertiesAsMap()
             .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
-    Map<String, String> storedProperties =
-        metadataPath == null
-            ? Map.of()
-            : Map.of(
-                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, metadataPath);
-    return StorageUtil.getLocationsUsedByTable(entity.getBaseLocation(), storedProperties);
+    if (metadataPath == null) {
+      return Set.of(storedLocation);
+    }
+    StorageLocation baseLocation = StorageLocation.of(storedLocation);
+    StorageLocation metadataLocation = StorageLocation.of(metadataPath);
+    if (metadataLocation.isChildOf(baseLocation)) {
+      return Set.of(storedLocation);
+    }
+    if (baseLocation.isChildOf(metadataLocation)) {
+      return Set.of(metadataPath);
+    }
+    return Set.of(storedLocation, metadataPath);
   }
 
   @Override
