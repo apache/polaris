@@ -72,11 +72,8 @@ public class StsCredentialVendingMechanism implements S3CredentialVendingMechani
     this.stsClientProvider = stsClientProvider;
     this.cache = cache;
     this.realmConfig = realmConfig;
-    // Without static keys, stsCredentials() builds a new DefaultCredentialsProvider, and a new
-    // provider fetches the base credentials again from their source (IMDS, STS web identity, ...).
-    // Build it once so that every AssumeRole call shares one provider and its cached credentials.
-    // Named storages get the same treatment: one provider per configured storage name. An unknown
-    // name throws in stsCredentials(name), so nothing is stored for it.
+    // stsCredentials() may build a new DefaultCredentialsProvider on every call, and each new one
+    // fetches the base credentials again (IMDS, STS web identity, ...). Reuse one per bean.
     Supplier<AwsCredentialsProvider> defaultCredentials =
         Suppliers.memoize(storageConfiguration::stsCredentials);
     Map<String, AwsCredentialsProvider> namedCredentials = new ConcurrentHashMap<>();

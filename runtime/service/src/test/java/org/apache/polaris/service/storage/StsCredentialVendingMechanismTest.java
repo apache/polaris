@@ -21,6 +21,7 @@ package org.apache.polaris.service.storage;
 import static org.apache.polaris.core.config.FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -228,6 +229,33 @@ class StsCredentialVendingMechanismTest {
     assertThat(captor.getAllValues())
         .extracting(request -> request.overrideConfiguration().get().credentialsProvider().get())
         .containsExactly(aCredentials, bCredentials, aCredentials, bCredentials);
+  }
+
+  @Test
+  void unknownStorageNameThrowsOnEveryCall() {
+    StorageConfiguration storageConfiguration = mock(StorageConfiguration.class);
+    when(storageConfiguration.stsCredentials("missing"))
+        .thenThrow(new IllegalArgumentException("Storage name 'missing' is not configured"));
+
+    StsClient stsClient = mock(StsClient.class);
+    StsClientProvider stsClientProvider = destination -> stsClient;
+
+    RealmConfig realmConfig = realmConfig(Map.of(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true));
+    StsCredentialVendingMechanism mechanism =
+        new StsCredentialVendingMechanism(
+            storageConfiguration, stsClientProvider, null, realmConfig);
+
+    for (int i = 0; i < 2; i++) {
+      assertThatThrownBy(() ->
+              mechanism
+                  .integrationFor(storageConfigWithName("missing"))
+                  .getStorageAccessConfig(
+                      grants(), Optional.empty(), CredentialVendingContext.empty()))
+          .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    verify(storageConfiguration, times(2)).stsCredentials("missing");
+    verify(stsClient, never()).assumeRole(any(AssumeRoleRequest.class));
   }
 
   @Test
