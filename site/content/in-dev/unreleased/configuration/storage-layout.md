@@ -77,6 +77,12 @@ With the default settings, Polaris also enforces the following rules:
   Polaris scopes the credentials used to write or purge view metadata to include this path.
   Purge checks metadata against the view's recorded locations and uses those recorded locations
   for cleanup credentials. Legacy views without recorded locations use metadata-derived locations.
+
+  Depending on the configured overlap checks and their scope, recording a legacy view's locations
+  can cause later requests to create tables or views at overlapping locations to be rejected.
+  Commits that leave both paths unchanged continue to skip overlap checks while enforcing allowed
+  locations. An overlap error may therefore appear on the new object's creation request while the
+  existing view can still commit.
 - A table's metadata files must be inside the table's location.
 - A new table, view, or namespace location may not overlap the location of a sibling, that is,
   another table, view, or namespace directly under the same parent. Sibling tables' `write.data.path`

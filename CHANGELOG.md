@@ -86,6 +86,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Tables last committed by a Polaris version older than 1.3.0 have all their locations validated on
   their next commit. That commit fails if the locations do not satisfy the current location rules,
   for example the catalog's allowed locations.
+  Views intentionally behave differently for compatibility: commits that leave the base location
+  and `write.metadata.path` unchanged enforce allowed locations but skip structured-location and
+  overlap checks. This includes the first commit that records a legacy view's locations and
+  continues while both paths remain unchanged. New views and changes to either path are validated
+  under all applicable configured location rules.
 - Loading a table whose metadata location or `write.data.path` / `write.metadata.path` differs from
   the values recorded in Polaris now fails with a `ForbiddenException`, without any commit being
   attempted. Tables last committed before 1.3.0 have no recorded values and are not affected until
