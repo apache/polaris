@@ -668,8 +668,6 @@ class CaffeineCacheBackend implements CacheBackend {
   private static final ClassValue<ObjectReader> OBJ_READERS = readersFor(SMILE_MAPPER);
   private static final ObjectWriter OBJ_WRITER = SMILE_MAPPER.writer().withView(Object.class);
 
-  private static final ClassValue<ObjectReader> OBJ_READERS = readersFor(SMILE_MAPPER);
-
   static byte[] serializeObj(Obj obj) {
     return OBJ_WRITER.writeValueAsBytes(obj);
   }
