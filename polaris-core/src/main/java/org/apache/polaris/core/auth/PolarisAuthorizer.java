@@ -33,6 +33,11 @@ public interface PolarisAuthorizer {
    * <p>Implementations should invoke {@link AuthorizationState#select(Resolvable)} or {@link
    * AuthorizationState#selectAll()} as appropriate.
    *
+   * <p>Note: {@link AuthorizationState#selectAll()} resolves the caller principal and its roles,
+   * which do not exist in the metastore for external principals. Authorizers that support external
+   * principals must not use that method, nor select {@link Resolvable#CALLER_PRINCIPAL}, {@link
+   * Resolvable#CALLER_PRINCIPAL_ROLES} or {@link Resolvable#CALLER_CATALOG_ROLES}.
+   *
    * <p>Implementations should be aware that the provided {@link AuthorizationState} may already
    * have some selectors injected by the caller before invoking this method.
    *

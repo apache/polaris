@@ -132,6 +132,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -1840,7 +1841,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       resolutionManifest.addPath(new ResolverPath(k, true)); // optional path
     });
 
-    ResolverStatus status = resolutionManifest.resolveAll();
+    ResolverStatus status =
+        resolutionManifest.resolveSelections(
+            Set.of(Resolvable.REFERENCE_CATALOG, Resolvable.REQUESTED_PATHS));
 
     if (status.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
       String message =

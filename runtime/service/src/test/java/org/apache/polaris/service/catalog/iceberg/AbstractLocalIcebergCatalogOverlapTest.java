@@ -33,6 +33,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableProperties;
@@ -47,6 +48,8 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -248,6 +251,14 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
 
   protected LocalIcebergCatalog newIcebergCatalog(
       String catalogName, PolarisMetaStoreManager metaStoreManager, FileIOFactory fileIOFactory) {
+    return newIcebergCatalog(catalogName, metaStoreManager, fileIOFactory, authenticatedRoot);
+  }
+
+  private LocalIcebergCatalog newIcebergCatalog(
+      String catalogName,
+      PolarisMetaStoreManager metaStoreManager,
+      FileIOFactory fileIOFactory,
+      PolarisPrincipal catalogPrincipal) {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, authenticatedRoot, catalogName);
@@ -258,12 +269,46 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         metaStoreManager,
         polarisContext,
         passthroughView,
-        authenticatedRoot,
+        catalogPrincipal,
         taskExecutor,
         storageAccessConfigProvider,
         fileIOFactory,
         polarisEventDispatcher,
         eventMetadataFactory);
+  }
+
+  @Test
+  public void testSiblingWritePathCheckForExternalPrincipal() {
+    Namespace ns = Namespace.of("ns");
+    catalog().createNamespace(ns);
+    String writePath = STORAGE_LOCATION + "/ns/t2";
+    catalog()
+        .buildTable(TableIdentifier.of(ns, "t1"), SCHEMA)
+        .withProperty(TableProperties.WRITE_DATA_LOCATION, writePath)
+        .create();
+
+    // The caller is an external principal that does not exist in the metastore: sibling location
+    // validation must not try to resolve it.
+    PolarisPrincipal externalPrincipal =
+        PolarisPrincipal.of(
+            "external-user",
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true)
+                .build(),
+            Set.of("external-role"));
+    LocalIcebergCatalog externalCatalog =
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, fileIOFactory, externalPrincipal);
+    externalCatalog.setCatalogFileIo(fileIO);
+    externalCatalog.initialize(
+        CATALOG_NAME,
+        Map.of(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    // t2's default location is t1's write path.
+    assertThatThrownBy(
+            () -> externalCatalog.buildTable(TableIdentifier.of(ns, "t2"), SCHEMA).create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(writePath);
   }
 
   @ParameterizedTest
