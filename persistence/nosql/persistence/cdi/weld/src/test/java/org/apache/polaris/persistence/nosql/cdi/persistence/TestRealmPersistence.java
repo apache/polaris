@@ -53,24 +53,22 @@ class TestRealmPersistence {
     var calls = new AtomicInteger();
 
     when(injectedBackend.newPersistence(any(), eq(params), eq("realm"), eq(clock), eq(idGenerator)))
-        .thenAnswer(
-            invocation -> {
-              Function<Backend, Backend> wrapper = invocation.getArgument(0);
-              assertThat(wrapper.apply(concreteBackend)).isSameAs(wrappedBackend);
-              return persistence;
-            });
+        .thenAnswer(invocation -> {
+          Function<Backend, Backend> wrapper = invocation.getArgument(0);
+          assertThat(wrapper.apply(concreteBackend)).isSameAs(wrappedBackend);
+          return persistence;
+        });
     when(decorators.decorate(persistence)).thenReturn(decoratedPersistence);
 
     var builder =
         new RealmPersistence(params, injectedBackend, idGenerator, clock, decorators)
             .newBuilder()
             .realmId("realm")
-            .backendWrapper(
-                backend -> {
-                  assertThat(backend).isSameAs(injectedBackend);
-                  calls.incrementAndGet();
-                  return wrappedBackend;
-                });
+            .backendWrapper(backend -> {
+              assertThat(backend).isSameAs(injectedBackend);
+              calls.incrementAndGet();
+              return wrappedBackend;
+            });
     if (skipDecorators) {
       builder.skipDecorators();
     }
@@ -96,12 +94,11 @@ class TestRealmPersistence {
     var ids = mock(IdGenerator.class);
     var decorators = mock(PersistenceDecorators.class);
     when(backend.newPersistence(any(), eq(params), eq("realm"), eq(clock), eq(ids)))
-        .thenAnswer(
-            invocation -> {
-              Function<Backend, Backend> wrapper = invocation.getArgument(0);
-              assertThat(wrapper.apply(concreteBackend)).isSameAs(backend);
-              return persistence;
-            });
+        .thenAnswer(invocation -> {
+          Function<Backend, Backend> wrapper = invocation.getArgument(0);
+          assertThat(wrapper.apply(concreteBackend)).isSameAs(backend);
+          return persistence;
+        });
     when(decorators.decorate(persistence)).thenReturn(persistence);
     var builder =
         new RealmPersistence(params, backend, ids, clock, decorators).newBuilder().realmId("realm");

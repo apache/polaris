@@ -219,13 +219,12 @@ public class TestMaintenance {
     nonRecording.createReferenceSilent("cleanup");
     nonRecording
         .createCommitter("cleanup", MaintenanceRunsObj.class, Long.class)
-        .commitRuntimeException(
-            (state, head) -> {
-              var current = head.get();
-              assertThat(state.persistence().fetch(objRef(obj), ObjOne.class)).isEqualTo(obj);
-              return state.commitResult(
-                  1L, MaintenanceRunsObj.builder().maintenanceRunId(objRef(obj)), current);
-            });
+        .commitRuntimeException((state, head) -> {
+          var current = head.get();
+          assertThat(state.persistence().fetch(objRef(obj), ObjOne.class)).isEqualTo(obj);
+          return state.commitResult(
+              1L, MaintenanceRunsObj.builder().maintenanceRunId(objRef(obj)), current);
+        });
     verify(referenceLimit, atLeastOnce()).acquire();
     verify(objectLimit, atLeastOnce()).acquire(obj.numParts());
   }
