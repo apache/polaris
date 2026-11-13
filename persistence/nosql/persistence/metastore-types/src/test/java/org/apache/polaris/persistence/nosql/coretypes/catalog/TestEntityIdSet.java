@@ -118,7 +118,16 @@ public class TestEntityIdSet {
   }
 
   @Test
-  void truncatedLargeCountDoesNotReserveUnboundedCapacity() {
+  void deserializeRejectsTenByteCount() {
+    var buffer = ByteBuffer.wrap(new byte[] {-1, -1, -1, -1, -1, -1, -1, -1, -1, 1});
+    soft.assertThatIllegalArgumentException()
+        .isThrownBy(() -> ENTITY_ID_SET_SERIALIZER.deserialize(buffer))
+        .withMessage("Illegal variable length integer representation");
+    soft.assertThat(buffer.position()).isEqualTo(9);
+  }
+
+  @Test
+  void truncatedLargeCountUnderflows() {
     var buffer = putVarInt(ByteBuffer.allocate(16), Integer.MAX_VALUE).flip();
     var limit = buffer.limit();
     soft.assertThatThrownBy(() -> ENTITY_ID_SET_SERIALIZER.deserialize(buffer))
