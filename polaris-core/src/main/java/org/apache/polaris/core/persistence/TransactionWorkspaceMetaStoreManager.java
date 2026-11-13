@@ -38,6 +38,8 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWriteResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
@@ -89,6 +91,10 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   // pendingUpdates that ultimately need to be applied in order within the real MetaStoreManager.
   private final List<EntityWithPath> pendingUpdates = new ArrayList<>();
 
+  // Entities the transaction read and depends on but does not update. They are checked, and not
+  // written, atomically with the pendingUpdates.
+  private final List<EntityWithPath> pendingUnchanged = new ArrayList<>();
+
   public TransactionWorkspaceMetaStoreManager(
       PolarisDiagnostics diagnostics, PolarisMetaStoreManager delegate) {
     this.diagnostics = diagnostics;
@@ -101,6 +107,19 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   public List<EntityWithPath> getPendingUpdates() {
     return ImmutableList.copyOf(pendingUpdates);
+  }
+
+  /**
+   * Records an entity the transaction depends on but does not update: when the pending updates are
+   * applied, the entity must still be at this version. It is not written.
+   */
+  public void addUnchangedEntity(
+      @Nullable List<PolarisEntityCore> catalogPath, @NonNull PolarisBaseEntity entity) {
+    pendingUnchanged.add(new EntityWithPath(catalogPath, entity));
+  }
+
+  public List<EntityWithPath> getPendingUnchanged() {
+    return ImmutableList.copyOf(pendingUnchanged);
   }
 
   @Override
@@ -230,9 +249,9 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public @NonNull EntitiesResult updateEntitiesPropertiesIfNotChanged(
-      @NonNull PolarisCallContext callCtx, @NonNull List<EntityWithPath> entities) {
-    throw illegalMethodError("updateEntitiesPropertiesIfNotChanged");
+  public @NonNull ConditionalEntityWriteResult writeEntitiesIfConditionsHold(
+      @NonNull PolarisCallContext callCtx, @NonNull ConditionalEntityWrite batch) {
+    throw illegalMethodError("writeEntitiesIfConditionsHold");
   }
 
   @Override

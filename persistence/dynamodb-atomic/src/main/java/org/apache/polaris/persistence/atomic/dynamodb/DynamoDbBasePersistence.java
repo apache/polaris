@@ -52,6 +52,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.persistence.atomic.dynamodb.models.EntityItem;
@@ -334,6 +335,14 @@ public class DynamoDbBasePersistence implements BasePersistence {
       @NonNull List<PolarisBaseEntity> entities,
       @Nullable List<PolarisBaseEntity> originalEntities) {
     throw notYetImplemented("writeEntities");
+  }
+
+  @Override
+  public void checkAndWriteEntities(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<ConditionalEntityWrite.Condition> conditions,
+      @NonNull List<EntityChange> changes) {
+    throw notYetImplemented("checkAndWriteEntities");
   }
 
   @Override

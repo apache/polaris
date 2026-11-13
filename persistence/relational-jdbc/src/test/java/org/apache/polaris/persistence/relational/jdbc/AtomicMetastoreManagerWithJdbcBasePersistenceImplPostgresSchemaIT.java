@@ -19,13 +19,19 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import javax.sql.DataSource;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
+import org.junit.jupiter.api.Test;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -109,5 +115,65 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplPostgresSchemaIT
       throw new IllegalStateException("Unexpected JDBC URL: " + baseUrl);
     }
     return baseUrl.substring(0, lastSlash + 1) + databaseName;
+  }
+
+  /**
+   * On PostgreSQL the check of a conditional write takes a shared row lock: while one transaction
+   * holds it, another transaction can check the same row without waiting, but cannot update it.
+   */
+  @Test
+  void checkLocksTheRowInSharedMode() throws SQLException {
+    TwoTables tables = createTwoTables("shared_lock");
+    PolarisBaseEntity a = tables.a();
+    QueryGenerator.PreparedQuery check =
+        QueryGenerator.generateCheckEntityQuery(
+            "REALM", a.getCatalogId(), a.getId(), DatabaseType.POSTGRES);
+
+    try (Connection holder = createDataSource().getConnection();
+        Connection other = createDataSource().getConnection()) {
+      holder.setAutoCommit(false);
+      other.setAutoCommit(false);
+      try {
+        assertThat(versionOf(holder, check)).isEqualTo(a.getEntityVersion());
+
+        try (Statement statement = other.createStatement()) {
+          statement.execute("SET LOCAL lock_timeout = '500ms'");
+        }
+        // A second check of the same row does not wait for the first.
+        assertThat(versionOf(other, check)).isEqualTo(a.getEntityVersion());
+        // An update of the row waits for the check, until the lock timeout.
+        assertThatThrownBy(
+                () -> {
+                  try (PreparedStatement update =
+                      other.prepareStatement(
+                          "UPDATE entities SET entity_version = entity_version"
+                              + " WHERE catalog_id = ? AND id = ? AND realm_id = ?")) {
+                    update.setLong(1, a.getCatalogId());
+                    update.setLong(2, a.getId());
+                    update.setString(3, "REALM");
+                    update.executeUpdate();
+                  }
+                })
+            .isInstanceOfSatisfying(
+                SQLException.class,
+                e -> assertThat(e.getSQLState()).as("lock_not_available").isEqualTo("55P03"));
+      } finally {
+        other.rollback();
+        holder.rollback();
+      }
+    }
+  }
+
+  private static int versionOf(Connection connection, QueryGenerator.PreparedQuery query)
+      throws SQLException {
+    try (PreparedStatement statement = connection.prepareStatement(query.sql())) {
+      for (int i = 0; i < query.parameters().size(); i++) {
+        statement.setObject(i + 1, query.parameters().get(i));
+      }
+      try (ResultSet rows = statement.executeQuery()) {
+        assertThat(rows.next()).isTrue();
+        return rows.getInt("entity_version");
+      }
+    }
   }
 }

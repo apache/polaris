@@ -46,6 +46,7 @@ import static org.apache.polaris.persistence.nosql.coretypes.refs.References.cat
 import static org.apache.polaris.persistence.nosql.metastore.ContentIdentifier.identifierFromLocationString;
 import static org.apache.polaris.persistence.nosql.metastore.ContentIdentifier.indexKeyToIdentifier;
 import static org.apache.polaris.persistence.nosql.metastore.indexaccess.MemoizedIndexedAccess.newMemoizedIndexedAccess;
+import static org.apache.polaris.persistence.nosql.metastore.mutation.EntityUpdate.Operation.CHECK;
 import static org.apache.polaris.persistence.nosql.metastore.mutation.EntityUpdate.Operation.CREATE;
 import static org.apache.polaris.persistence.nosql.metastore.mutation.EntityUpdate.Operation.UPDATE;
 import static org.apache.polaris.persistence.nosql.metastore.mutation.UpdateKeyForCatalogAndEntityType.updateKeyForCatalogAndEntityType;
@@ -78,12 +79,16 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite.Condition;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite.Write;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWriteResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
@@ -358,13 +363,79 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence implements SupportsCat
     return createOrUpdateEntity(UPDATE, entity);
   }
 
-  EntitiesResult updateEntities(List<EntityWithPath> entities) {
+  /**
+   * Applies the batch in a single commit of the catalog state: the checks and the updates are
+   * evaluated against one consistent state, and the commit is retried against the new state if a
+   * concurrent commit moved the state.
+   *
+   * <p>All entities of a batch must be of the same entity type and catalog.
+   */
+  ConditionalEntityWriteResult writeEntitiesIfConditionsHold(ConditionalEntityWrite batch) {
+    var updates = new ArrayList<EntityUpdate>();
+    for (var condition : batch.conditions()) {
+      if (!(condition instanceof Condition.Unchanged unchanged)) {
+        throw new IllegalArgumentException("Unsupported condition " + condition);
+      }
+      updates.add(new EntityUpdate(CHECK, identityOf(unchanged.entity())));
+    }
+    var checks = updates.size();
+    for (var write : batch.writes()) {
+      if (!(write instanceof Write.Update update)) {
+        throw new IllegalArgumentException("Unsupported write " + write);
+      }
+      updates.add(new EntityUpdate(UPDATE, update.entity()));
+    }
+    if (updates.isEmpty()) {
+      return new ConditionalEntityWriteResult(List.of());
+    }
+
     LOGGER
         .atDebug()
-        .addArgument(() -> logEntitiesInfo(entities.stream().map(EntityWithPath::entity).toList()))
-        .log("update entities: {}");
+        .addArgument(checks)
+        .addArgument(updates.size() - checks)
+        .log("write entity batch: {} checks, {} updates");
 
-    return createOrUpdateEntities(entities.stream().map(EntityWithPath::entity), UPDATE);
+    var byCatalogAndEntityType =
+        updates.stream()
+            .collect(Collectors.groupingBy(u -> updateKeyForCatalogAndEntityType(u.entity())));
+    checkArgument(
+        byCatalogAndEntityType.size() == 1,
+        "Cannot atomically write entities against multiple targets: %s",
+        byCatalogAndEntityType.keySet());
+
+    var results =
+        performEntityMutations(byCatalogAndEntityType.keySet().iterator().next(), updates);
+
+    // Each update yields exactly one result, in order.
+    var all = results.results();
+    for (int i = 0; i < all.size(); i++) {
+      var result = all.get(i);
+      if (result.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+        var status =
+            result.getReturnStatus() == BaseResult.ReturnStatus.ENTITY_NOT_FOUND
+                ? BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED
+                : result.getReturnStatus();
+        return new ConditionalEntityWriteResult(
+            status, result.getExtraInformation(), updates.get(i).entity());
+      }
+    }
+    return new ConditionalEntityWriteResult(
+        all.subList(checks, all.size()).stream()
+            .map(EntityResult.class::cast)
+            .map(EntityResult::getEntity)
+            .collect(Collectors.toList()));
+  }
+
+  /** An entity that carries nothing but the identity and the version of {@code core}. */
+  private static PolarisBaseEntity identityOf(PolarisEntityCore core) {
+    return new PolarisBaseEntity.Builder()
+        .catalogId(core.getCatalogId())
+        .id(core.getId())
+        .parentId(core.getParentId())
+        .typeCode(core.getTypeCode())
+        .name(core.getName())
+        .entityVersion(core.getEntityVersion())
+        .build();
   }
 
   private EntityResult createOrUpdateEntity(EntityUpdate.Operation op, PolarisBaseEntity entity) {
