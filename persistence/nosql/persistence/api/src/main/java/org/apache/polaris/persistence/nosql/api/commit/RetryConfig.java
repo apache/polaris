@@ -64,6 +64,9 @@ public interface RetryConfig {
    *
    * <p>The default "fair retries type" helps in these scenarios with sacrificing the overall
    * throughput too much.
+   *
+   * <p>Locally synchronized commits use a fair semaphore instead of fairness sleeps; conflict retry
+   * backoff still applies.
    */
   @WithDefault("SLEEPING")
   FairRetriesType fairRetries();

@@ -36,6 +36,7 @@ import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.commit.CommitException;
 import org.apache.polaris.persistence.nosql.api.commit.CommitRetryable;
 import org.apache.polaris.persistence.nosql.api.commit.CommitterState;
+import org.apache.polaris.persistence.nosql.api.commit.FairRetriesType;
 import org.apache.polaris.persistence.nosql.api.commit.RetryTimeoutException;
 import org.apache.polaris.persistence.nosql.api.exceptions.UnknownOperationResultException;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
@@ -112,7 +113,12 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
     Exception failure = null;
     try {
       var retryConfig = persistence.params().retryConfig();
-      var loop = RetryLoop.<RESULT>newRetryLoop(retryConfig, persistence.monotonicClock());
+      // The local semaphore provides FIFO admission without retry-count priority or fairness
+      // sleeps.
+      // After a remote conflict, attempts back off and rejoin the local queue.
+      var fairRetries = synchronizingLocally ? FairRetriesType.UNFAIR : retryConfig.fairRetries();
+      var loop =
+          RetryLoop.<RESULT>newRetryLoop(retryConfig, persistence.monotonicClock(), fairRetries);
       if (retryStatsConsumer != null) {
         loop.setRetryStatsConsumer(retryStatsConsumer);
       }
