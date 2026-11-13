@@ -17,6 +17,9 @@
  * under the License.
  */
 
+import changelog.CheckChangelogFragmentsTask
+import changelog.MergeChangelogFragmentsTask
+import changelog.ReleaseChangelogTask
 import java.net.URI
 import org.nosphere.apache.rat.RatTask
 
@@ -27,7 +30,6 @@ plugins {
   id("eclipse")
   id("polaris-root")
   alias(libs.plugins.rat)
-  alias(libs.plugins.jetbrains.changelog)
 }
 
 val projectName = rootProject.file("ide-name.txt").readText().trim()
@@ -93,6 +95,10 @@ tasks.named<RatTask>("rat").configure {
   // Git & GitHub
   excludes.add(".git")
   excludes.add(".github/pull_request_template.md")
+
+  // Changelog fragments are plain Markdown merged into CHANGELOG.md and deleted at release time.
+  // This includes README.md, which has a header anyway.
+  excludes.add("changelog.d/*.md")
 
   // AI agents
   excludes.add(".claude/**")
@@ -242,24 +248,33 @@ copiedCodeChecks {
   }
 }
 
-changelog {
-  repositoryUrl.set("https://github.com/apache/polaris")
-  title.set("Apache Polaris Changelog")
-  versionPrefix.set("apache-polaris-")
-  header.set(provider { "${version.get()}" })
-  groups.set(
-    listOf(
-      "Highlights",
-      "Upgrade notes",
-      "Breaking changes",
-      "New Features",
-      "Changes",
-      "Deprecations",
-      "Fixes",
-      "Commits",
-    ),
-  )
-  version.set(provider { project.version.toString() })
+// Changelog fragments, see changelog.d/README.md
+val checkChangelogFragments =
+  tasks.register<CheckChangelogFragmentsTask>("checkChangelogFragments") {
+    group = "verification"
+    description = "Validates the changelog fragments in changelog.d"
+    fragmentsDirectory = layout.projectDirectory.dir("changelog.d")
+    successMarker = layout.buildDirectory.file("changelog-fragments-check/success")
+  }
+
+tasks.named("check") { dependsOn(checkChangelogFragments) }
+
+tasks.register<ReleaseChangelogTask>("releaseChangelog") {
+  group = "changelog"
+  description =
+    "Merges the changelog fragments in changelog.d into CHANGELOG.md, deletes them, and turns " +
+      "the Unreleased section into the one of the release given by --release-version"
+  fragmentsDirectory = layout.projectDirectory.dir("changelog.d")
+  changelogFile = layout.projectDirectory.file("CHANGELOG.md")
+}
+
+tasks.register<MergeChangelogFragmentsTask>("mergeChangelogFragments") {
+  group = "changelog"
+  description =
+    "Merges the changelog fragments in changelog.d into CHANGELOG.md and deletes them, into the " +
+      "Unreleased section, or the one of the release given by --release-version"
+  fragmentsDirectory = layout.projectDirectory.dir("changelog.d")
+  changelogFile = layout.projectDirectory.file("CHANGELOG.md")
 }
 
 tasks.register("showVersion") {
