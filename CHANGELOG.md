@@ -93,6 +93,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   mapping). A production-readiness warning is emitted while the flag remains false. The default will
   not flip until client-facing catalog configuration is defined. Table- or namespace-scoped grants
   alone do not satisfy the catalog-path check used for `CATALOG_READ_CONFIG` once enforcement is on.
+- Iceberg REST `GET /v1/config` `defaults` now include only Iceberg REST client keys when they are
+  set on the catalog: `rest-page-size` and `rest-metrics-reporting-enabled`. `prefix` and
+  `namespace-separator` remain in `overrides`. Catalog entity properties such as
+  `default-base-location`, `polaris.config.*`, registered catalog config keys (including legacy
+  unprefixed names), `table-default.*`, leftover custom keys, and catalog-level FileIO keys are
+  omitted from Iceberg defaults and remain available on Management `GET` catalog.
 - Tables last committed by a Polaris version older than 1.3.0 have all their locations validated on
   their next commit. That commit fails if the locations do not satisfy the current location rules,
   for example the catalog's allowed locations.
@@ -114,6 +120,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Breaking changes
 
+- Iceberg REST `GET /v1/config` no longer copies the catalog entity public property map into
+  `defaults`. Clients that previously received `default-base-location`, `polaris.config.*`,
+  `table-default.*`, leftover custom keys, or catalog-level FileIO settings from this endpoint
+  will no longer see them there. Set `rest-page-size` or `rest-metrics-reporting-enabled` on the
+  catalog when Iceberg clients should receive those values. Other catalog properties remain on
+  Management `GET` catalog.
 - Creating a Generic Table with an explicit, non-empty `base-location` now validates that
   location against the catalog's allowed locations and, unless `ALLOW_UNSTRUCTURED_TABLE_LOCATION`
   is enabled, the parent namespace location. Requests that previously stored disallowed locations
