@@ -137,7 +137,9 @@ final class ChangeSerializer implements IndexValueSerializer<Change> {
     return null;
   }
 
-  // Initialize after Change's serializer field to avoid recursive interface initialization.
+  // Keep these encodings lazy: eager ChangeAdd initialization can re-enter Change while
+  // Change.CHANGE_SERIALIZER is still null. The holder breaks the
+  // ChangeSerializer -> ChangeAdd -> Change -> CHANGE_SERIALIZER initialization cycle.
   private static final class Encodings {
     private static final byte[] ADD = MAPPER.writeValueAsBytes(ChangeAdd.builder().build());
     private static final byte[] UPDATE = MAPPER.writeValueAsBytes(ChangeUpdate.builder().build());
