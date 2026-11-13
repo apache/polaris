@@ -45,24 +45,23 @@ class TestObjSerializationHelper {
               .writeValueAsBytes(SimpleTestObj.builder().id(0).text("payload").build());
       IntStream.range(1, 129)
           .parallel()
-          .forEach(
-              id -> {
-                var token = id % 2 == 0 ? null : "version-" + id;
-                SimpleTestObj obj =
-                    contextualReader(
-                            readers.get(SimpleTestObj.class),
-                            SimpleTestObj.TYPE,
-                            id,
-                            id + 1,
-                            token,
-                            id + 1000L)
-                        .readValue(payload);
-                assertThat(obj.id()).isEqualTo(id);
-                assertThat(obj.numParts()).isEqualTo(id + 1);
-                assertThat(obj.createdAtMicros()).isEqualTo(id + 1000L);
-                assertThat(obj.versionToken()).isEqualTo(token);
-                assertThat(obj.text()).isEqualTo("payload");
-              });
+          .forEach(id -> {
+            var token = id % 2 == 0 ? null : "version-" + id;
+            SimpleTestObj obj =
+                contextualReader(
+                        readers.get(SimpleTestObj.class),
+                        SimpleTestObj.TYPE,
+                        id,
+                        id + 1,
+                        token,
+                        id + 1000L)
+                    .readValue(payload);
+            assertThat(obj.id()).isEqualTo(id);
+            assertThat(obj.numParts()).isEqualTo(id + 1);
+            assertThat(obj.createdAtMicros()).isEqualTo(id + 1000L);
+            assertThat(obj.versionToken()).isEqualTo(token);
+            assertThat(obj.text()).isEqualTo("payload");
+          });
     }
   }
 }
