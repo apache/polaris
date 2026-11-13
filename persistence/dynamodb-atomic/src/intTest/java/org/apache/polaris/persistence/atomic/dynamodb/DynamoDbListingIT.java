@@ -35,6 +35,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Listing reads the children index right after the writes. These tests rely on the Floci emulator
+ * updating the index immediately; real DynamoDB updates it a moment later.
+ */
 class DynamoDbListingIT extends AbstractDynamoDbTest {
 
   private static final long CATALOG = 7L;
@@ -175,6 +179,24 @@ class DynamoDbListingIT extends AbstractDynamoDbTest {
   }
 
   @Test
+  void listAndHasChildrenIgnoreOtherRealms() {
+    write(10L, NAMESPACE, "sales", PolarisEntitySubType.ICEBERG_TABLE);
+    // Another realm in the same table, under the same catalog and parent ids.
+    DynamoDbBasePersistence otherRealm = new DynamoDbBasePersistence(client, table, "realm2");
+    PolarisCallContext otherCtx = new PolarisCallContext(() -> "realm2", otherRealm);
+    otherRealm.writeEntity(
+        otherCtx, entity(20L, NAMESPACE, "other", PolarisEntitySubType.ICEBERG_TABLE), false, null);
+    otherRealm.writeEntity(
+        otherCtx, entity(30L, 99L, "lonely", PolarisEntitySubType.ICEBERG_TABLE), false, null);
+
+    assertThat(list(PolarisEntitySubType.ANY_SUBTYPE, PageToken.readEverything()).items())
+        .extracting(EntityNameLookupRecord::getName)
+        .containsExactly("sales");
+    assertThat(persistence.hasChildren(callCtx, null, CATALOG, 99L)).isFalse();
+    assertThat(otherRealm.hasChildren(otherCtx, null, CATALOG, 99L)).isTrue();
+  }
+
+  @Test
   void deletedChildIsNoLongerListed() {
     PolarisBaseEntity sales = write(10L, NAMESPACE, "sales", PolarisEntitySubType.ICEBERG_TABLE);
     persistence.deleteEntity(callCtx, sales);
@@ -190,20 +212,24 @@ class DynamoDbListingIT extends AbstractDynamoDbTest {
 
   private PolarisBaseEntity write(
       long id, long parentId, String name, PolarisEntitySubType subType) {
-    PolarisBaseEntity entity =
-        new PolarisBaseEntity.Builder()
-            .id(id)
-            .catalogId(CATALOG)
-            .parentId(parentId)
-            .typeCode(TABLE.getCode())
-            .subTypeCode(subType.getCode())
-            .name(name)
-            .entityVersion(1)
-            .grantRecordsVersion(1)
-            .propertiesAsMap(Map.of())
-            .internalPropertiesAsMap(Map.of())
-            .build();
+    PolarisBaseEntity entity = entity(id, parentId, name, subType);
     persistence.writeEntity(callCtx, entity, false, null);
     return entity;
+  }
+
+  private static PolarisBaseEntity entity(
+      long id, long parentId, String name, PolarisEntitySubType subType) {
+    return new PolarisBaseEntity.Builder()
+        .id(id)
+        .catalogId(CATALOG)
+        .parentId(parentId)
+        .typeCode(TABLE.getCode())
+        .subTypeCode(subType.getCode())
+        .name(name)
+        .entityVersion(1)
+        .grantRecordsVersion(1)
+        .propertiesAsMap(Map.of())
+        .internalPropertiesAsMap(Map.of())
+        .build();
   }
 }

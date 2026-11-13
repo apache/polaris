@@ -37,6 +37,7 @@ import static org.apache.polaris.persistence.atomic.dynamodb.TransactionFailures
 import static org.apache.polaris.persistence.atomic.dynamodb.TransactionFailures.onlyConflicts;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -347,14 +348,8 @@ public class DynamoDbBasePersistence implements BasePersistence {
       @NonNull PolarisEntityType entityType,
       @NonNull PolarisEntitySubType entitySubType,
       @NonNull PageToken pageToken) {
-    // One more than the page size, so the page can still tell whether a next page exists.
-    OptionalInt pageSize = pageToken.pageSize();
-    Integer queryLimit =
-        pageSize.isPresent() && pageSize.getAsInt() < Integer.MAX_VALUE
-            ? pageSize.getAsInt() + 1
-            : null;
     Stream<PolarisBaseEntity> children =
-        queryChildren(catalogId, parentId, entityType, entitySubType, pageToken, queryLimit);
+        queryChildren(catalogId, parentId, entityType, entitySubType, pageToken);
     return Page.mapped(pageToken, children, EntityNameLookupRecord::new, EntityIdToken::fromEntity);
   }
 
@@ -368,9 +363,8 @@ public class DynamoDbBasePersistence implements BasePersistence {
       @NonNull Predicate<PolarisBaseEntity> entityFilter,
       @NonNull Function<PolarisBaseEntity, T> transformer,
       @NonNull PageToken pageToken) {
-    // No query limit: entityFilter runs after the read, so a limit could under-fill the page.
     Stream<PolarisBaseEntity> children =
-        queryChildren(catalogId, parentId, entityType, entitySubType, pageToken, null)
+        queryChildren(catalogId, parentId, entityType, entitySubType, pageToken)
             .filter(entityFilter);
     return Page.mapped(pageToken, children, transformer, EntityIdToken::fromEntity);
   }
@@ -381,10 +375,13 @@ public class DynamoDbBasePersistence implements BasePersistence {
       @Nullable PolarisEntityType optionalEntityType,
       long catalogId,
       long parentId) {
-    // The children index is partitioned by type, so "any type" checks each type in turn.
+    // The children index is partitioned by type, so "any type" checks each type in turn. NULL_TYPE
+    // and ROOT are never stored as children.
     List<PolarisEntityType> types =
         optionalEntityType == null
-            ? List.of(PolarisEntityType.values())
+            ? Arrays.stream(PolarisEntityType.values())
+                .filter(t -> t != PolarisEntityType.NULL_TYPE && t != PolarisEntityType.ROOT)
+                .toList()
             : List.of(optionalEntityType);
     for (PolarisEntityType type : types) {
       QueryResponse response =
@@ -412,14 +409,23 @@ public class DynamoDbBasePersistence implements BasePersistence {
    * requests pagination and carries an {@link EntityIdToken}, the stream starts after that id, as
    * in {@code relational-jdbc}. Pages of the index are read lazily as the stream is consumed. The
    * index is eventually consistent, so a just-written child may be missing for a moment.
+   *
+   * <p>Each request reads at most one more than the page size. That bound is per request, not per
+   * stream: the paginator keeps fetching while the caller wants more, so a filter applied
+   * afterwards cannot leave a page short.
    */
   private Stream<PolarisBaseEntity> queryChildren(
       long catalogId,
       long parentId,
       PolarisEntityType entityType,
       PolarisEntitySubType entitySubType,
-      PageToken pageToken,
-      @Nullable Integer queryLimit) {
+      PageToken pageToken) {
+    // One more than the page size, so the page can still tell whether a next page exists.
+    OptionalInt pageSize = pageToken.pageSize();
+    Integer queryLimit =
+        pageSize.isPresent() && pageSize.getAsInt() < Integer.MAX_VALUE
+            ? pageSize.getAsInt() + 1
+            : null;
     Map<String, AttributeValue> values = new HashMap<>();
     values.put(
         ":pk",
