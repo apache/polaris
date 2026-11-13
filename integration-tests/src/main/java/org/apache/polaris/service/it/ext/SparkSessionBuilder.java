@@ -22,6 +22,7 @@ import com.google.common.base.Preconditions;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.spark.sql.SparkSession;
 
@@ -123,6 +124,14 @@ public class SparkSessionBuilder {
 
   public SparkSessionBuilder withConfig(String key, String value) {
     this.additionalConfigs.add(new ConfigPair(key, value));
+    return this;
+  }
+
+  /** Spark catalog client properties, including Iceberg REST FileIO keys. */
+  public SparkSessionBuilder withCatalogProperties(
+      String catalogName, Map<String, String> properties) {
+    properties.forEach((key, value) ->
+        withConfig(String.format("spark.sql.catalog.%s.%s", catalogName, key), value));
     return this;
   }
 
