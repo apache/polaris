@@ -67,6 +67,9 @@ tasks.register<GenerateShadowLicenseInventory>("generateLicenseInventory") {
   inventory.set(layout.buildDirectory.file("reports/licensee/shadow-inputs.json"))
 }
 
+// Cross-classloader contract with configureDistributionSbom() in the isolated license-check plugin:
+// sbomShadow contains Gradle providers only. The plugin registers finalizeDistributionSbom;
+// GenerateDigest is only visible on this classpath; its outputs return via sbomShadow["digests"].
 extra["sbomShadow"] =
   mapOf(
     "selected" to shadowSelected,

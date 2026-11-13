@@ -29,6 +29,7 @@ import org.cyclonedx.model.Bom
 import org.cyclonedx.model.Component
 import org.cyclonedx.model.Composition
 import org.cyclonedx.model.Dependency
+import org.cyclonedx.model.ExternalReference
 import org.cyclonedx.model.Hash
 import org.cyclonedx.model.Metadata
 import org.cyclonedx.model.Property
@@ -36,6 +37,8 @@ import org.cyclonedx.model.metadata.ToolInformation
 import org.cyclonedx.parsers.JsonParser
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 
 class SbomCoreTest {
   @TempDir lateinit var dir: File
@@ -117,13 +120,128 @@ class SbomCoreTest {
       )
     val bom = JsonParser().parse(SbomCore.bomToJson(result).reader())
     assertThat(bom.serialNumber).isEqualTo("urn:uuid:12345678-1234-1234-1234-123456789abc")
-    assertThat(bom.metadata.timestamp.toInstant()).isEqualTo(timestamp)
+    assertThat(SbomCore.mapper.readTree(SbomCore.bomToJson(result))["metadata"].has("timestamp"))
+      .isFalse()
     assertThat(bom.metadata.component.description).isEqualTo("Keep producer description")
     assertThat(bom.metadata.toolChoice.components.single().name).isEqualTo("native-producer")
     assertThat(SbomCore.components(bom).map { it.name })
       .containsExactly("bundle", "first-party", "opaque-runtime")
     assertThat(bom.dependencies).hasSize(1)
     assertThat(bom.compositions.single().aggregate).isEqualTo(Composition.Aggregate.UNKNOWN)
+  }
+
+  @Test
+  fun publishedDocumentDoesNotDependOnProducerTimestamp() {
+    val documents =
+      listOf("2026-10-23T12:00:00Z", "2026-11-13T18:00:00Z").map { timestamp ->
+        val source = producer().apply { metadata.timestamp = Date.from(Instant.parse(timestamp)) }
+        SbomCore.bomToJson(
+          SbomCore.forDistribution(
+            source,
+            SbomSubject("example", "bundle", "1", PackageKind.SHADED_JAR),
+            listOf(input("first-party")),
+            "b".repeat(64),
+          ),
+        )
+      }
+    assertThat(documents[0]).isEqualTo(documents[1])
+  }
+
+  @Test
+  fun publishedDocumentDoesNotDependOnProducerGraphOrdering() {
+    val results =
+      listOf(false, true).map { reverse ->
+        val source = producer()
+        val (a, b, c) = source.components
+        val targets = listOf(Dependency(b.bomRef), Dependency(c.bomRef))
+        val edges =
+          listOf(
+            Dependency(a.bomRef).apply {
+              dependencies = if (reverse) targets.reversed() else targets
+            },
+            Dependency(b.bomRef).apply { dependencies = emptyList() },
+            Dependency(c.bomRef),
+          )
+        source.dependencies = if (reverse) edges.reversed() else edges
+        if (reverse) source.components = source.components.reversed()
+        val selected = listOf(input("first-party"), input("opaque-runtime"), input("provided"))
+        SbomCore.forDistribution(
+          source,
+          SbomSubject("example", "bundle", "1", PackageKind.SHADED_JAR),
+          if (reverse) selected.reversed() else selected,
+          "b".repeat(64),
+        )
+      }
+    assertThat(SbomCore.bomToJson(results[0])).isEqualTo(SbomCore.bomToJson(results[1]))
+    val edges = results[0].dependencies
+    assertThat(edges.map { it.ref })
+      .containsExactly(input("first-party").component.purl, input("opaque-runtime").component.purl)
+    assertThat(edges[0].dependencies.map { it.ref })
+      .containsExactly(input("opaque-runtime").component.purl, input("provided").component.purl)
+    assertThat(edges[1].dependencies).isEmpty()
+  }
+
+  @Test
+  fun publishedSubjectVcsDoesNotDependOnProducerEnvironment() {
+    val dependencyVcs =
+      ExternalReference().apply {
+        type = ExternalReference.Type.VCS
+        url = "https://github.com/example/dependency"
+      }
+    val results =
+      listOf("https://github.com/example/polaris.git", "ssh://git@github.com/apache/polaris.git")
+        .map { url ->
+          val source =
+            producer().apply {
+              metadata.component.externalReferences =
+                listOf(
+                  ExternalReference().apply {
+                    type = ExternalReference.Type.VCS
+                    this.url = url
+                  },
+                )
+              components.first().externalReferences = listOf(dependencyVcs)
+            }
+          SbomCore.forDistribution(
+            source,
+            SbomSubject("example", "bundle", "1", PackageKind.SHADED_JAR),
+            listOf(input("first-party")),
+            "b".repeat(64),
+          )
+        }
+    assertThat(SbomCore.bomToJson(results[0])).isEqualTo(SbomCore.bomToJson(results[1]))
+    assertThat(results[0].metadata.component.components.single().externalReferences)
+      .containsExactly(dependencyVcs)
+  }
+
+  @ParameterizedTest
+  @EnumSource(PackageKind::class)
+  fun subjectUsesCanonicalVcsAndPreservesOtherReferences(kind: PackageKind) {
+    val website =
+      ExternalReference().apply {
+        type = ExternalReference.Type.WEBSITE
+        url = "https://polaris.apache.org"
+      }
+    val root =
+      component("application").apply {
+        externalReferences =
+          listOf(
+            ExternalReference().apply {
+              type = ExternalReference.Type.VCS
+              url = "https://github.com/example/polaris.git"
+            },
+            website,
+          )
+      }
+    val subject = SbomSubject("org.apache.polaris", "distribution", "1", kind)
+    subject.applyToComponent(root)
+    subject.applyToComponent(root)
+    assertThat(root.externalReferences.filter { it.type == ExternalReference.Type.WEBSITE })
+      .containsExactly(website)
+    assertThat(
+        root.externalReferences.filter { it.type == ExternalReference.Type.VCS }.map { it.url },
+      )
+      .containsExactly("https://github.com/apache/polaris")
   }
 
   @Test

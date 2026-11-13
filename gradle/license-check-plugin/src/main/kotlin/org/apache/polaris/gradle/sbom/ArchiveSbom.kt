@@ -97,6 +97,9 @@ internal object ArchiveSbom {
           val kept = all.filter(::packaged)
           val top = kept.filter { it.bomRef !in parents }
           val refs = kept.associate { it.bomRef to "$appRef:${it.bomRef}" }
+          kept.forEach { component ->
+            component.components = component.components?.filter { it.bomRef in refs }
+          }
           bom.dependencies.orEmpty().forEach { edge ->
             val ref = if (edge.ref == root.bomRef) appRef else refs[edge.ref]
             if (ref != null && edge.dependencies != null) {
@@ -123,7 +126,6 @@ internal object ArchiveSbom {
                   ),
                 )
               }
-              component.components = component.components?.filter { it.bomRef in refs }
               component.bomRef = refs.getValue(component.bomRef)
               if (component === root) component.type = Component.Type.FILE
             }
@@ -153,8 +155,13 @@ internal object ArchiveSbom {
         addProperty(Property("distribution:subject:digest-kind", "final archive SHA-256"))
       }
     return Bom().apply {
-      metadata = Metadata().apply { component = root }
+      metadata =
+        Metadata().apply {
+          component = root
+          timestamp = null
+        }
       this.dependencies = dependencies
+      SbomCore.sortDependencies(this)
       compositions =
         listOf(
           Composition().apply {

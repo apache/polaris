@@ -21,6 +21,7 @@ package org.apache.polaris.gradle.sbom
 
 import com.github.packageurl.PackageURLBuilder.aPackageURL
 import org.cyclonedx.model.Component
+import org.cyclonedx.model.ExternalReference
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
 
@@ -39,6 +40,13 @@ constructor(
     component.version = version
     component.purl = purl
     component.bomRef = purl
+    // The subject's source repository must not depend on the checkout remote or GIT_URL.
+    component.externalReferences =
+      component.externalReferences.orEmpty().filter { it.type != ExternalReference.Type.VCS } +
+        ExternalReference().apply {
+          type = ExternalReference.Type.VCS
+          url = "https://github.com/apache/polaris"
+        }
   }
 
   @get:Internal

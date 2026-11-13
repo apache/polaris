@@ -49,6 +49,13 @@ class QuarkusInputsTest {
   }
 
   @Test
+  fun rejectsMissingProducerLocationWithContext() {
+    assertThatThrownBy { QuarkusInputs.bind(producer("missing.jar"), directory) }
+      .isInstanceOf(IllegalArgumentException::class.java)
+      .hasMessage("Invalid producer location: missing.jar")
+  }
+
+  @Test
   fun rejectsLocationsOutsideApplication() {
     assertThatThrownBy { QuarkusInputs.bind(producer("../outside.jar"), directory) }
       .hasMessageContaining("Invalid producer location")

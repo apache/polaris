@@ -20,6 +20,7 @@
 package org.apache.polaris.gradle.sbom
 
 import java.io.File
+import java.nio.file.Files
 import org.cyclonedx.model.Bom
 import org.cyclonedx.model.Component
 import org.cyclonedx.model.Hash
@@ -38,7 +39,9 @@ internal object QuarkusInputs {
             locations
               .map { location ->
                 val path = root.resolve(location).normalize()
-                require(path.startsWith(root) && path.toRealPath().startsWith(root)) {
+                require(
+                  path.startsWith(root) && Files.exists(path) && path.toRealPath().startsWith(root),
+                ) {
                   "Invalid producer location: $location"
                 }
                 SbomCore.hash(path.toFile())

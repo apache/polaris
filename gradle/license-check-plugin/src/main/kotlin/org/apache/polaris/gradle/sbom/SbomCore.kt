@@ -129,6 +129,16 @@ object SbomCore {
     }
   }
 
+  /**
+   * Producer dependency collections have no ordering semantics. Keep their serialization stable.
+   */
+  internal fun sortDependencies(bom: Bom) {
+    bom.dependencies = bom.dependencies?.sortedBy { it.ref }
+    bom.dependencies.orEmpty().forEach { edge ->
+      edge.dependencies = edge.dependencies?.sortedBy { it.ref }
+    }
+  }
+
   private fun componentJson(component: Component): String =
     bomToJson(Bom().apply { metadata = Metadata().apply { this.component = component } })
 
@@ -205,6 +215,8 @@ object SbomCore {
     }
 
     bom.components = null
+    // Producer metadata defaults to wall-clock time; published artifacts must be reproducible.
+    bom.metadata.timestamp = null
     bom.compositions =
       listOf(
         Composition().apply {
@@ -224,6 +236,7 @@ object SbomCore {
         else Dependency(ref).apply { dependencies = targets }
       }
 
+    sortDependencies(bom)
     // validate the generated bom via readBom()
     readBom(bomToJson(bom).reader())
     checkBomReferences(bom)

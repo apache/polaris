@@ -109,7 +109,11 @@ private class SbomShadow(
   companion object {
     @Suppress("UNCHECKED_CAST")
     fun sbomShadowFromExtra(extra: ExtraPropertiesExtension): SbomShadow {
-      // Produced in build-logic/src/main/kotlin/polaris-spark-license-checks.gradle.kts
+      // Cross-classloader contract with polaris-spark-license-checks.gradle.kts: sbomShadow
+      // contains
+      // Gradle providers only. This plugin registers finalizeDistributionSbom; GenerateDigest is
+      // only visible to build-logic, which returns digestDistributionSbom outputs via
+      // sbomShadow["digests"].
       val sbomShadow = extra["sbomShadow"] as Map<String, Any>
       return SbomShadow(
         sbomShadow["archive"] as Provider<RegularFile>,
