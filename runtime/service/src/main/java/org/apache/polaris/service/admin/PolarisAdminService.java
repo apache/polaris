@@ -39,7 +39,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -71,7 +70,6 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.SemanticModelGrant;
 import org.apache.polaris.core.admin.model.SemanticModelPrivilege;
-import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
@@ -904,13 +902,6 @@ public class PolarisAdminService {
                     AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT.name()),
                 "Implicit authentication based catalog federation is not supported.");
           }
-          if (connectionConfigInfo.getAuthenticationParameters()
-                  instanceof SigV4AuthenticationParameters sigV4AuthenticationParameters
-              && StringUtils.isNotEmpty(sigV4AuthenticationParameters.getStorageName())) {
-            FeatureConfiguration.enforceFeatureEnabledOrThrow(
-                realmConfig, FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME);
-          }
-
           // Allocate service identity if needed for the authentication type.
           // The provider will determine if a service identity is required based on the connection
           // config.

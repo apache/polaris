@@ -52,14 +52,14 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
  *
  * <p>Two forms, chosen by which authentication parameters are set.
  *
- * <p><b>Role assumption</b> — for AWS services such as Glue. Polaris uses its own {@link
- * AwsIamServiceIdentityCredential} to assume the customer's role via AWS STS, and returns the
- * temporary access key, secret key and session token.
+ * <p><b>Role assumption</b> — Polaris uses its own {@link AwsIamServiceIdentityCredential} to
+ * assume the customer's role via AWS STS, and returns the temporary access key, secret key and
+ * session token. Typical for AWS services such as Glue.
  *
- * <p><b>Named server-side credentials</b> — for SigV4-compatible catalogs that are not AWS, which
- * have neither a role to assume nor an STS endpoint. The static keys configured under {@code
- * polaris.storage.aws.<storage-name>} are handed to the signer directly; STS is not involved. This
- * requires {@link FeatureConfiguration#RESOLVE_CREDENTIALS_BY_STORAGE_NAME}.
+ * <p><b>Named server-side credentials</b> — the static keys configured under {@code
+ * polaris.storage.aws.<storage-name>} are handed to the signer directly; STS is not involved. Works
+ * for any SigV4 Iceberg REST catalog, including AWS services, when the operator prefers named keys.
+ * Requires {@link FeatureConfiguration#RESOLVE_CREDENTIALS_BY_STORAGE_NAME}.
  *
  * <p>This is the default implementation with {@code @Priority(CredentialVendorPriorities.DEFAULT)}.
  * Custom implementations can override this by providing a higher priority value.

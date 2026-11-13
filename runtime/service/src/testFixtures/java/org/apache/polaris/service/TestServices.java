@@ -83,6 +83,7 @@ import org.apache.polaris.service.admin.BigLakeCatalogValidator;
 import org.apache.polaris.service.admin.CatalogConfigValidators;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
+import org.apache.polaris.service.admin.SigV4CatalogValidator;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.catalog.DefaultAccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
@@ -414,7 +415,7 @@ public record TestServices(
       Instance<ConnectionCredentialVendor> mockCredentialVendors = Mockito.mock(Instance.class);
       SigV4ConnectionCredentialVendor sigV4Vendor =
           new SigV4ConnectionCredentialVendor(
-              (destination) -> stsClient,
+              destination -> stsClient,
               serviceIdentityProvider,
               Mockito.mock(StorageConfiguration.class),
               realmConfig);
@@ -618,7 +619,10 @@ public record TestServices(
           };
 
       CatalogConfigValidators catalogConfigValidators =
-          new CatalogConfigValidators(List.of(new BigLakeCatalogValidator(realmConfig)));
+          new CatalogConfigValidators(
+              List.of(
+                  new BigLakeCatalogValidator(realmConfig),
+                  new SigV4CatalogValidator(realmConfig)));
       Supplier<PolarisCatalogsApi> catalogsApiSupplier =
           () -> {
             PolarisAdminService adminService =
