@@ -150,7 +150,8 @@ class MetricsReportsServiceTest {
         .thenReturn(otherTableWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
     when(factory.createResolutionManifest(eq(principal), eq(CATALOG))).thenReturn(manifest);
-    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
+    when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
+        .thenReturn(AuthorizationDecision.allow());
 
     // By default the no-op query provider is active (durable backend absent) and returns
     // empty pages, mirroring the @DefaultBean NoOpMetricsQuery in
@@ -220,7 +221,8 @@ class MetricsReportsServiceTest {
 
   @Test
   void requestWithNoReadableTableIsForbidden() {
-    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.deny("denied"));
+    when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
+        .thenReturn(AuthorizationDecision.deny("denied"));
     MetricsQuerySpi provider = queryProvider.get();
 
     assertThatThrownBy(
@@ -279,7 +281,7 @@ class MetricsReportsServiceTest {
             eq(true)))
         .thenReturn(null);
     // TABLE (id 42) is allowed; OTHER_TABLE (id 43) is denied.
-    when(authorizer.authorize(any(), any()))
+    when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
         .thenAnswer(
             invocation -> {
               AuthorizationRequest authorizationRequest = invocation.getArgument(1);
@@ -367,7 +369,7 @@ class MetricsReportsServiceTest {
 
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     assertThat(((ListMetricsResponse) response.getEntity()).getReports()).isEmpty();
-    verify(authorizer, never()).authorize(any(), any());
+    verify(authorizer, never()).authorize(any(), any(AuthorizationRequest.class));
     verify(provider, never()).listReports(any(), anyLong(), any(), any(), any(), any());
   }
 
