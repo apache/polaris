@@ -63,12 +63,112 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith({PersistenceTestExtension.class, SoftAssertionsExtension.class})
 @BackendSpec
 public class TestUpdatableIndexImpl {
   @InjectSoftAssertions SoftAssertions soft;
   @PolarisPersistence protected Persistence persistence;
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 1, 2})
+  public void reuseUntouchedContainerAfterReadsAndMissingKeyRemoval(int stripeCount) {
+    var embedded = newStoreIndex(OBJ_REF_SERIALIZER);
+    var value = randomObjId();
+    embedded.put(key("embedded"), value);
+    var containerBuilder = ImmutableIndexContainer.<ObjRef>builder().embedded(embedded.serialize());
+    for (var i = 0; i < stripeCount; i++) {
+      var stripeKey = key("stripe-" + i);
+      var stripe = newStoreIndex(OBJ_REF_SERIALIZER);
+      stripe.put(stripeKey, value);
+      var stripeObj =
+          persistence.write(
+              IndexStripeObj.indexStripeObj(persistence.generateId(), stripe.serialize()),
+              IndexStripeObj.class);
+      containerBuilder.addStripe(IndexStripe.indexStripe(stripeKey, stripeKey, objRef(stripeObj)));
+    }
+    var container = containerBuilder.build();
+    soft.assertThat(
+            container
+                .asUpdatableIndex(persistence, OBJ_REF_SERIALIZER)
+                .toIndexed("idx-", (name, obj) -> soft.fail("Unexpected obj persist")))
+        .isSameAs(container);
+    var updatable = container.asUpdatableIndex(persistence, OBJ_REF_SERIALIZER);
+
+    soft.assertThat(updatable.get(key("embedded"))).isEqualTo(value);
+    for (var i = 0; i < stripeCount; i++) {
+      soft.assertThat(updatable.get(key("stripe-" + i))).isEqualTo(value);
+    }
+    soft.assertThat(updatable.remove(key("missing"))).isFalse();
+
+    var indexed =
+        updatable.toOptionalIndexed("idx-", (name, obj) -> soft.fail("Unexpected obj persist"));
+    soft.assertThat(indexed).hasValueSatisfying(c -> assertThat(c).isSameAs(container));
+    soft.assertThatThrownBy(() -> updatable.get(key("embedded")))
+        .isInstanceOf(IllegalStateException.class);
+    soft.assertThatThrownBy(() -> updatable.toIndexed("idx-", (name, obj) -> {}))
+        .isInstanceOf(IllegalStateException.class);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void emptyOptionalIndexRetainsExistingRepresentation(boolean existingContainer) {
+    var updatable = IndexesProvider.buildWriteIndex(null, persistence, OBJ_REF_SERIALIZER);
+    if (existingContainer) {
+      var container =
+          updatable.toIndexed("idx-", (name, obj) -> soft.fail("Unexpected obj persist"));
+      updatable = container.asUpdatableIndex(persistence, OBJ_REF_SERIALIZER);
+    }
+
+    soft.assertThat(
+            updatable.toOptionalIndexed("idx-", (name, obj) -> soft.fail("Unexpected obj persist")))
+        .hasValueSatisfying(
+            c -> assertThat(c.indexForRead(persistence, OBJ_REF_SERIALIZER)).isEmpty());
+  }
+
+  @Test
+  public void modifiedContainerPreservesNewValue() {
+    var embedded = newStoreIndex(OBJ_REF_SERIALIZER);
+    var originalValue = randomObjId();
+    embedded.put(key("original"), originalValue);
+    var container =
+        ImmutableIndexContainer.<ObjRef>builder().embedded(embedded.serialize()).build();
+    var updatable = container.asUpdatableIndex(persistence, OBJ_REF_SERIALIZER);
+    var newValue = randomObjId();
+    soft.assertThat(updatable.put(key("new"), newValue)).isTrue();
+
+    var indexed = updatable.toIndexed("idx-", (name, obj) -> soft.fail("Unexpected obj persist"));
+
+    soft.assertThat(indexed).isNotSameAs(container);
+    soft.assertThat(indexed.indexForRead(persistence, OBJ_REF_SERIALIZER))
+        .containsExactly(
+            Index.Element.of(key("new"), newValue),
+            Index.Element.of(key("original"), originalValue));
+    soft.assertThat(container.indexForRead(persistence, OBJ_REF_SERIALIZER))
+        .containsExactly(Index.Element.of(key("original"), originalValue));
+  }
+
+  @Test
+  public void untouchedOversizedEmbeddedIndexStillSpills() {
+    var embedded = newStoreIndex(OBJ_TEST_SERIALIZER);
+    var entryKey = key("oversized");
+    var value = objTestValueOfSize((int) persistence.params().maxEmbeddedIndexSize().asLong() + 1);
+    embedded.put(entryKey, value);
+    var container =
+        ImmutableIndexContainer.<ObjTestValue>builder().embedded(embedded.serialize()).build();
+    var updatable = container.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+    var toPersist = new ArrayList<Obj>();
+
+    var indexed = updatable.toIndexed("idx-", (name, obj) -> toPersist.add(obj));
+
+    soft.assertThat(indexed).isNotSameAs(container);
+    soft.assertThat(indexed.stripes()).hasSize(1);
+    soft.assertThat(toPersist).hasSize(1);
+    toPersist.forEach(obj -> persistence.write(obj, Obj.class));
+    soft.assertThat(indexed.indexForRead(persistence, OBJ_TEST_SERIALIZER).get(entryKey))
+        .isEqualTo(value);
+  }
 
   @Test
   public void emptyReferenceRemove() {
@@ -210,7 +310,7 @@ public class TestUpdatableIndexImpl {
 
     var indexed = updatable.toIndexed("idx-", (name, obj) -> soft.fail("Unexpected obj persist"));
     var deserialized =
-        (UpdatableIndexImpl<ObjRef>) indexed.asUpdatableIndex(persistence, OBJ_REF_SERIALIZER);
+        IndexesProvider.buildEagerWriteIndex(indexed, persistence, OBJ_REF_SERIALIZER);
 
     soft.assertThat(deserialized.embedded.asKeyList()).containsExactly(baz);
     soft.assertThat(deserialized.embedded.getElement(baz))
@@ -218,6 +318,11 @@ public class TestUpdatableIndexImpl {
         .extracting(InternalIndexElement::valueNullable)
         .isNull();
     soft.assertThat(deserialized.reference.asKeyList()).containsExactly(bar, baz, foo);
+    soft.assertThat(deserialized.get(baz)).isNull();
+    soft.assertThat(deserialized.remove(baz)).isFalse();
+    soft.assertThat(
+            deserialized.toIndexed("idx-", (name, obj) -> soft.fail("Unexpected obj persist")))
+        .isSameAs(indexed);
   }
 
   @Test
@@ -274,7 +379,7 @@ public class TestUpdatableIndexImpl {
 
     var indexed = updatable.toIndexed("idx-", (name, obj) -> soft.fail("Unexpected obj persist"));
     var deserialized =
-        (UpdatableIndexImpl<ObjRef>) indexed.asUpdatableIndex(persistence, OBJ_REF_SERIALIZER);
+        IndexesProvider.buildEagerWriteIndex(indexed, persistence, OBJ_REF_SERIALIZER);
 
     soft.assertThat(deserialized.embedded.asKeyList()).containsExactly(baz);
     soft.assertThat(deserialized.embedded.getElement(baz))
@@ -329,9 +434,7 @@ public class TestUpdatableIndexImpl {
 
     // add more
 
-    updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
-            indexed.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+    updatable = IndexesProvider.buildEagerWriteIndex(indexed, persistence, OBJ_TEST_SERIALIZER);
     for (int i = 0; i < numValues; i++) {
       updatable.put(key("k" + i + "b"), value1kB);
     }
@@ -356,9 +459,7 @@ public class TestUpdatableIndexImpl {
 
     // check that empty splits are removed
 
-    updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
-            indexed.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+    updatable = IndexesProvider.buildEagerWriteIndex(indexed, persistence, OBJ_TEST_SERIALIZER);
 
     var stripeToEmpty = indexed.stripes().get(1);
     var stripeObj =
@@ -374,8 +475,7 @@ public class TestUpdatableIndexImpl {
         updatable.toIndexed("idx-", (n, o) -> soft.fail("Unexpected obj persist %s / %s", n, o));
     soft.assertThat(indexed2.stripes()).containsExactlyElementsOf(indexed.stripes());
     var deserializedRemoved =
-        (UpdatableIndexImpl<ObjTestValue>)
-            indexed2.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+        IndexesProvider.buildEagerWriteIndex(indexed2, persistence, OBJ_TEST_SERIALIZER);
     // Index-API functions on 'StoreIndex' do not expose the removed keys
     soft.assertThat(stripeObj.asKeyList())
         .allMatch(k -> deserializedRemoved.get(k) == null)
@@ -390,9 +490,7 @@ public class TestUpdatableIndexImpl {
             "getElement(k)");
 
     // Force spill-out (otherwise the above removes will just be carried over in the embedded index)
-    updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
-            indexed2.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+    updatable = IndexesProvider.buildEagerWriteIndex(indexed2, persistence, OBJ_TEST_SERIALIZER);
     for (var i = 0; i < numValues / 5; i++) {
       var k = key("sp1_" + i);
       updatable.put(k, value1kB);
@@ -406,8 +504,7 @@ public class TestUpdatableIndexImpl {
     // Verify that the whole stripe with the keys removed above is no longer part of the index
     soft.assertThat(indexed2.stripes()).doesNotContain(stripeToEmpty);
     var deserializedRemovedSpilled =
-        (UpdatableIndexImpl<ObjTestValue>)
-            indexed2.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+        IndexesProvider.buildEagerWriteIndex(indexed2, persistence, OBJ_TEST_SERIALIZER);
     soft.assertThat(stripeObj.asKeyList())
         .allMatch(k -> deserializedRemovedSpilled.get(k) == null, "get(k)")
         .allMatch(k -> !deserializedRemovedSpilled.contains(k), "contains(k)")
@@ -529,11 +626,12 @@ public class TestUpdatableIndexImpl {
     legacyEmbedded.add(indexElement(key, value));
 
     var updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
+        IndexesProvider.buildEagerWriteIndex(
             ImmutableIndexContainer.<ObjTestValue>builder()
                 .embedded(legacyEmbedded.serialize())
-                .build()
-                .asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+                .build(),
+            persistence,
+            OBJ_TEST_SERIALIZER);
 
     var indexed = updatable.toIndexed("idx-", (n, o) -> soft.fail("Unexpected obj persist"));
     soft.assertThat(indexed.stripes()).isEmpty();
@@ -572,9 +670,7 @@ public class TestUpdatableIndexImpl {
     soft.assertThat(indexed.indexForRead(persistence, OBJ_TEST_SERIALIZER).get(key))
         .isEqualTo(value);
 
-    var updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
-            indexed.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+    var updatable = IndexesProvider.buildEagerWriteIndex(indexed, persistence, OBJ_TEST_SERIALIZER);
     var forceSpillKey = key("legacy-reference-spill");
     var forceSpillValue =
         objTestValueOfSize(
@@ -649,8 +745,8 @@ public class TestUpdatableIndexImpl {
             .build();
 
     var updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
-            legacyIndexContainer.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+        IndexesProvider.buildEagerWriteIndex(
+            legacyIndexContainer, persistence, OBJ_TEST_SERIALIZER);
     updatable.put(forceSpillKey, forceSpillValue);
 
     var toPersist = new ArrayList<Map.Entry<String, Obj>>();
@@ -727,8 +823,8 @@ public class TestUpdatableIndexImpl {
             .build();
 
     var updatable =
-        (UpdatableIndexImpl<ObjTestValue>)
-            legacyIndexContainer.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+        IndexesProvider.buildEagerWriteIndex(
+            legacyIndexContainer, persistence, OBJ_TEST_SERIALIZER);
     updatable.put(forceSpillKey, forceSpillValue);
 
     var toPersist = new ArrayList<Map.Entry<String, Obj>>();
@@ -820,8 +916,8 @@ public class TestUpdatableIndexImpl {
           IndexStripe.indexStripe(reference.first(), reference.last(), objRef(stripeObj)));
     }
 
-    return (UpdatableIndexImpl<V>)
-        indexContainerBuilder.build().asUpdatableIndex(persistence, serializer);
+    return IndexesProvider.buildEagerWriteIndex(
+        indexContainerBuilder.build(), persistence, serializer);
   }
 
   <V> UpdatableIndexImpl<V> updatableIndexForTest(

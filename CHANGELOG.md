@@ -54,6 +54,16 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- BigLake Iceberg REST catalogs using GCP authentication are now validated on creation and update,
+  including catalogs created before this release. A non-empty effective warehouse is required:
+  `connectionConfigInfo.remoteCatalogName` takes precedence when non-null; otherwise the catalog's
+  `warehouse` property is used. A non-empty `header.x-goog-user-project` property is also required in
+  the connection or catalog properties. Use a single spelling for that header across both maps.
+  When Polaris-managed credential vending is enabled, GCS storage configuration and
+  `default-base-location` are required. The optional
+  `storageConfigInfo.gcsServiceAccount` selects service-account impersonation and must be non-empty
+  when supplied; omit it to downscope ambient GCS credentials directly. Updates to existing catalogs
+  that do not meet these requirements are rejected until the configuration is corrected.
 - `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists the explicit mechanisms a realm accepts; an empty
   `credentialVendingMechanism` is always allowed. Startup reports a listed mechanism with no
   installed bean as a non-severe readiness warning. Startup fails (a severe readiness issue) when no
@@ -157,6 +167,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- The `X-Iceberg-Access-Delegation` header now accepts `none`, as defined by the Iceberg REST
+  specification, meaning the client can operate without delegated access. A request that includes
+  `none`, alone or together with other values, is handled like a request without the header: the
+  table is returned without credentials and no delegation privilege is required.
 - Shared CloudEvents 1.0 JSON mapper for Polaris events (`CloudEventsEventJsonMapper` next to
   the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
   lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners
@@ -433,6 +447,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   depend on the previous combined-intent input shape may need to be updated. Same applies to other
   PolarisAuthorizer implementations.
 - Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
+- Custom Ranger authorizer integrations: the principal attributes copied onto `RangerUserInfo`
+  are now prefixed keys (for example `polaris.system.client_id`) instead of the bare internal
+  names (for example `client_id`). Apache Ranger 2.9.0's embedded plugin does not evaluate these
+  attributes, so built-in behavior is unchanged, but any custom code reading `RangerUserInfo`
+  attributes must use the new keys.
 
 ### New Features
 
@@ -452,6 +471,16 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
+- After authentication, a `SecurityIdentityAugmentor` projects selected principal facts onto
+  namespaced `PolarisPrincipal` attributes. External authorizers consume those derived keys rather
+  than walking `PrincipalEntity`: `polaris.user.*` for user-defined principal properties,
+  `polaris.system.client_id` and `polaris.system.credential-rotation-required` for selected
+  internal facts, and `polaris.auth.*` when an authenticator has asserted them. OPA receives the
+  keys as `actor.attributes`. Ranger copies them onto `RangerUserInfo`, but Apache Ranger 2.9.0's
+  embedded plugin evaluates only user name, groups, and roles, so `polaris.user.*` cannot currently
+  change a Ranger policy decision. The raw `PrincipalEntity` is not included in the external PDP
+  payload. A user property cannot shadow a system key because the prefix is part of the
+  attribute name. Empty-string user property values are forwarded as empty attributes, not omitted.
 - A metastore failure during authentication now returns a fixed `Service unavailable` message
   instead of naming the lookup that failed; the principal lookup previously returned `Unable to
   fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which

@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.iceberg;
 import static org.apache.polaris.core.config.FeatureConfiguration.ENABLE_ENTITY_LEVEL_LIST_FILTERING;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE;
+import static org.apache.polaris.service.catalog.AccessDelegationMode.NONE;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,6 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -270,6 +272,53 @@ class IcebergCatalogHandlerTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("This catalog cannot vend credentials or sign requests")
         .hasMessageContaining("request without X-Iceberg-Access-Delegation");
+  }
+
+  /**
+   * The resolver is mocked, so these tests do not cover what is vended. They cover the handler's
+   * own decision that a request including {@code none} is authorized as a plain metadata operation
+   * rather than with the delegation privileges, for the two authorization paths involved.
+   */
+  @Test
+  void noneRequestedRegisterTableIsAuthorizedWithoutDelegation() {
+    Catalog catalog = mockRegisterTableCatalog(false);
+    EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE, VENDED_CREDENTIALS);
+    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(Optional.empty());
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    handler.registerTable(NS1, registerTableRequest(false), modes, Optional.empty());
+
+    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
+    assertThat(authorizedOperations()).containsExactly(PolarisAuthorizableOperation.REGISTER_TABLE);
+  }
+
+  @Test
+  void noneRequestedLoadTableIsAuthorizedWithoutDelegation() {
+    Catalog catalog = mock(Catalog.class);
+    BaseTable table = baseTable();
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.loadTable(TABLE2)).thenReturn(table);
+    EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE, VENDED_CREDENTIALS);
+    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(Optional.empty());
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    handler.loadTable(TABLE2, null, null, modes, Optional.empty());
+
+    assertThat(authorizedOperations()).containsExactly(PolarisAuthorizableOperation.LOAD_TABLE);
+  }
+
+  private List<PolarisAuthorizableOperation> authorizedOperations() {
+    ArgumentCaptor<AuthorizationRequest> captor =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
+    verify(authorizer, atLeastOnce()).authorize(any(), captor.capture());
+    return captor.getAllValues().stream()
+        .flatMap(request -> request.intents().stream())
+        .map(intent -> intent.operation())
+        .toList();
   }
 
   @Test

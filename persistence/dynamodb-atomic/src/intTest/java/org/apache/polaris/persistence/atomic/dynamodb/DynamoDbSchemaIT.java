@@ -38,7 +38,7 @@ import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 class DynamoDbSchemaIT extends AbstractDynamoDbTest {
 
   @Test
-  void createIfAbsentProvisionsTableAndByNameGsi() {
+  void createIfAbsentProvisionsTableAndChildrenGsi() {
     String table = uniqueTableName();
     DynamoDbSchema.createIfAbsent(client, table);
     try {
@@ -75,13 +75,15 @@ class DynamoDbSchemaIT extends AbstractDynamoDbTest {
   }
 
   @Test
-  void byNameGsiReturnsSiblingsWrittenThroughTheMappers() {
+  void childrenGsiReturnsSiblingsInIdOrder() {
     String table = uniqueTableName();
     DynamoDbSchema.createIfAbsent(client, table);
     try {
       String realmId = "realm1";
-      PolarisBaseEntity sales = entity(1L, 7L, 3L, 2, "sales");
-      PolarisBaseEntity orders = entity(2L, 7L, 3L, 2, "orders");
+      // Name order (orders, sales) and id order (sales, orders) differ on purpose. Id 200 also
+      // checks the padding: unpadded, "200" would sort before "30".
+      PolarisBaseEntity sales = entity(30L, 7L, 3L, 2, "sales");
+      PolarisBaseEntity orders = entity(200L, 7L, 3L, 2, "orders");
 
       client.putItem(b -> b.tableName(table).item(EntityItem.toItem(realmId, sales)));
       client.putItem(b -> b.tableName(table).item(EntityItem.toItem(realmId, orders)));
@@ -94,17 +96,17 @@ class DynamoDbSchemaIT extends AbstractDynamoDbTest {
                       .key(
                           Map.of(
                               DynamoDbLayout.PK,
-                              AttributeValue.fromS(DynamoDbLayout.entityPk(realmId, 1L)),
+                              AttributeValue.fromS(DynamoDbLayout.entityPk(realmId, 30L)),
                               DynamoDbLayout.SK,
                               AttributeValue.fromS(DynamoDbLayout.SK_ENTITY))))
               .item();
       PolarisBaseEntity roundTripped = EntityItem.toEntity(stored);
-      assertThat(roundTripped.getId()).isEqualTo(1L);
+      assertThat(roundTripped.getId()).isEqualTo(30L);
       assertThat(roundTripped.getName()).isEqualTo("sales");
       assertThat(roundTripped.getParentId()).isEqualTo(3L);
 
-      // The by-name GSI lists both children of the same parent.
-      String gsiPk = DynamoDbLayout.byNameGsiPk(realmId, 7L, 3L, 2);
+      // The children GSI lists both children of the same parent, in id order.
+      String gsiPk = DynamoDbLayout.childrenGsiPk(realmId, 7L, 3L, 2);
       QueryResponse response =
           client.query(b ->
               b.tableName(table)
@@ -113,8 +115,8 @@ class DynamoDbSchemaIT extends AbstractDynamoDbTest {
                   .expressionAttributeNames(Map.of("#pk", DynamoDbLayout.GSI1_PK))
                   .expressionAttributeValues(Map.of(":pk", AttributeValue.fromS(gsiPk))));
       assertThat(response.items())
-          .extracting(item -> item.get(DynamoDbLayout.GSI1_SK).s())
-          .containsExactlyInAnyOrder("sales", "orders");
+          .extracting(item -> item.get(DynamoDbLayout.A_NAME).s())
+          .containsExactly("sales", "orders");
     } finally {
       DynamoDbSchema.deleteIfExists(client, table);
     }

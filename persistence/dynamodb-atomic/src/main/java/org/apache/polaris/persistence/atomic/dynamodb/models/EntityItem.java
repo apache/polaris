@@ -38,7 +38,8 @@ import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.GSI1
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.PK;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK_ENTITY;
-import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.byNameGsiPk;
+import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.childrenGsiPk;
+import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.childrenGsiSk;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.entityPk;
 
 import java.util.HashMap;
@@ -50,7 +51,7 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 /**
  * Maps a {@link PolarisBaseEntity} to and from its DynamoDB "entity item" representation.
  *
- * <p>The item is keyed by {@code PK = realmId#id}, {@code SK = "ENTITY"}, and carries the by-name
+ * <p>The item is keyed by {@code PK = realmId#id}, {@code SK = "ENTITY"}, and carries the children
  * GSI keys so a parent's children can be listed.
  */
 public final class EntityItem {
@@ -79,11 +80,11 @@ public final class EntityItem {
     item.put(A_PROPERTIES, mapAttr(e.getPropertiesAsMap()));
     item.put(A_INTERNAL_PROPERTIES, mapAttr(e.getInternalPropertiesAsMap()));
 
-    // by-name GSI keys (sparse: only entity items carry them) -> serve "list children".
+    // children GSI keys (sparse: only entity items carry them) -> list children in id order.
     item.put(
         GSI1_PK,
-        stringAttr(byNameGsiPk(realmId, e.getCatalogId(), e.getParentId(), e.getTypeCode())));
-    item.put(GSI1_SK, stringAttr(e.getName()));
+        stringAttr(childrenGsiPk(realmId, e.getCatalogId(), e.getParentId(), e.getTypeCode())));
+    item.put(GSI1_SK, stringAttr(childrenGsiSk(e.getId())));
     return Map.copyOf(item);
   }
 

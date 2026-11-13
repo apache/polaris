@@ -44,6 +44,7 @@ import static org.apache.polaris.persistence.nosql.metastore.ContentIdentifier.i
 import static org.apache.polaris.persistence.nosql.metastore.indexaccess.IndexUtils.hasChildren;
 import static org.apache.polaris.persistence.nosql.metastore.mutation.MutationResults.newMutableMutationResults;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -96,7 +97,12 @@ public record MutationAttempt(
       PolarisBaseEntity entity,
       Optional<PolarisPrincipalSecrets> currentSecrets,
       ObjBase originalObj) {
-    return mapToObj(entity, currentSecrets)
+    return objForChangeComparison(mapToObj(entity, currentSecrets), originalObj);
+  }
+
+  private static ObjBase objForChangeComparison(
+      ObjBase.Builder<?, ?> entityObjBuilder, ObjBase originalObj) {
+    return entityObjBuilder
         .updateTimestamp(originalObj.updateTimestamp())
         .id(originalObj.id())
         .numParts(originalObj.numParts())
@@ -403,10 +409,15 @@ public record MutationAttempt(
     } else {
       // no rename/move
 
-      var unchangedCompareObj = objForChangeComparison(entity, currentSecrets, originalObj);
+      var entityObjBuilder = mapToObj(entity, currentSecrets);
+      var unchangedCompareObj = objForChangeComparison(entityObjBuilder, originalObj);
       if (!unchangedCompareObj.equals(originalObj)) {
         var entityObj =
-            mapToObj(entity, currentSecrets)
+            entityObjBuilder
+                // objForChangeComparison overrides createTimestamp and numParts; restore their
+                // mapped values before writing. The other overridden fields are assigned below.
+                .createTimestamp(Instant.ofEpochMilli(entity.getCreateTimestamp()))
+                .numParts(1)
                 .id(persistence.generateId())
                 .updateTimestamp(now)
                 .entityVersion(originalObj.entityVersion() + 1)
