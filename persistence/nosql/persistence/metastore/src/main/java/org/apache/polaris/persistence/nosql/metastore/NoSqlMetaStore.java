@@ -50,6 +50,7 @@ import static org.apache.polaris.persistence.nosql.metastore.mutation.EntityUpda
 import static org.apache.polaris.persistence.nosql.metastore.mutation.EntityUpdate.Operation.UPDATE;
 import static org.apache.polaris.persistence.nosql.metastore.mutation.UpdateKeyForCatalogAndEntityType.updateKeyForCatalogAndEntityType;
 
+import com.google.common.base.Suppliers;
 import com.google.common.collect.Streams;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -682,8 +683,11 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence implements SupportsCat
                   .map(i -> i.indexForRead(persistence, ENTITY_ID_SET_SERIALIZER))
                   .orElseGet(Index::empty);
           var byId =
-              catalogStateObj.stableIdToName().indexForRead(persistence, INDEX_KEY_SERIALIZER);
-          var byName = catalogStateObj.nameToObjRef().indexForRead(persistence, OBJ_REF_SERIALIZER);
+              Suppliers.memoize(() ->
+                  catalogStateObj.stableIdToName().indexForRead(persistence, INDEX_KEY_SERIALIZER));
+          var byName =
+              Suppliers.memoize(() ->
+                  catalogStateObj.nameToObjRef().indexForRead(persistence, OBJ_REF_SERIALIZER));
 
           // Check for children and exact matches first using forward iteration (preserves
           // existing test expectations on which conflicting location is reported).
@@ -701,9 +705,9 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence implements SupportsCat
                 elem.value().entityIds().stream()
                     .filter(id -> id != entityId)
                     .map(IndexKey::key)
-                    .map(byId::get)
+                    .map(key -> byId.get().get(key))
                     .filter(Objects::nonNull)
-                    .map(byName::get)
+                    .map(key -> byName.get().get(key))
                     .filter(Objects::nonNull)
                     .map(objRef -> persistence.fetch(objRef, ContentObj.class))
                     .filter(Objects::nonNull)
@@ -744,9 +748,9 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence implements SupportsCat
                       .filter(id -> id != entityId)
                       .filter(id -> !strictPrefix || !ancestorIds.contains(id))
                       .map(IndexKey::key)
-                      .map(byId::get)
+                      .map(key -> byId.get().get(key))
                       .filter(Objects::nonNull)
-                      .map(byName::get)
+                      .map(key -> byName.get().get(key))
                       .filter(Objects::nonNull)
                       .map(objRef -> persistence.fetch(objRef, ContentObj.class))
                       .filter(Objects::nonNull)
