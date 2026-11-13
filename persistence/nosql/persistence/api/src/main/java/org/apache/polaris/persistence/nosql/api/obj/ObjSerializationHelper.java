@@ -45,7 +45,11 @@ public final class ObjSerializationHelper {
 
   static final String OBJ_CREATED_AT_KEY = "polaris.persistence.ObjCreatedAt";
 
-  /** Reusable typed readers scoped to one mapper. */
+  /**
+   * Creates a cache of reusable typed readers scoped to one mapper. Each call returns a new cache;
+   * callers should retain it, for example in a static field alongside the mapper, and reuse it
+   * across reads.
+   */
   public static ClassValue<ObjectReader> readersFor(@NonNull ObjectMapper mapper) {
     return new ClassValue<>() {
       @Override

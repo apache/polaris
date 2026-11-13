@@ -21,15 +21,45 @@ package org.apache.polaris.persistence.nosql.api.obj;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjSerializationHelper.contextualReader;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjSerializationHelper.readersFor;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static tools.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
 
+import com.fasterxml.jackson.annotation.JacksonInject;
+import java.util.Map;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import tools.jackson.databind.InjectableValues;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.exc.MissingInjectableValueException;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.dataformat.smile.SmileMapper;
 
 class TestObjSerializationHelper {
+  @ParameterizedTest
+  @MethodSource("mappers")
+  void unknownInjectionKeyFailsLikeStandardProvider(ObjectMapper mapper) {
+    var payload = mapper.writeValueAsBytes(Map.of());
+    var reader = readersFor(mapper).get(UnknownInjection.class);
+    var contextual = contextualReader(reader, SimpleTestObj.TYPE, 1L, 0, null, 0L);
+    var standard = reader.with(new InjectableValues.Std());
+
+    for (var candidate : new ObjectReader[] {contextual, standard}) {
+      assertThatThrownBy(() -> candidate.readValue(payload))
+          .isInstanceOf(MissingInjectableValueException.class)
+          .hasMessageContaining("No injectable value with id 'unknown' found");
+    }
+  }
+
+  static Stream<ObjectMapper> mappers() {
+    return Stream.of(JsonMapper.builder().build(), SmileMapper.builder().build());
+  }
+
+  private record UnknownInjection(@JacksonInject("unknown") String value) {}
+
   @Test
   void concurrentReadsKeepMetadataAndMapperConfigurationIsolated() {
     ObjectMapper[] mappers = {
