@@ -113,14 +113,13 @@ public class ManagementServiceTest {
             .setProperties(new CatalogProperties("file:///tmp/path/to/data"))
             .setStorageConfigInfo(fileStorage)
             .build();
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogsApi()
-                    .createCatalog(
-                        new CreateCatalogRequest(catalog),
-                        services.realmContext(),
-                        services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .catalogsApi()
+                .createCatalog(
+                    new CreateCatalogRequest(catalog),
+                    services.realmContext(),
+                    services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported storage type: FILE");
   }
@@ -230,15 +229,14 @@ public class ManagementServiceTest {
             fileStorage);
 
     // failure to update
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogsApi()
-                    .updateCatalog(
-                        catalogName,
-                        updateRequest,
-                        services.realmContext(),
-                        services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .catalogsApi()
+                .updateCatalog(
+                    catalogName,
+                    updateRequest,
+                    services.realmContext(),
+                    services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported storage type: FILE");
 
@@ -251,12 +249,11 @@ public class ManagementServiceTest {
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
                 .setEndpoint("http://example.com")
                 .build());
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogsApi()
-                    .updateCatalog(
-                        catalogName, update2, services.realmContext(), services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .catalogsApi()
+                .updateCatalog(
+                    catalogName, update2, services.realmContext(), services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Explicitly setting S3 endpoints is not allowed.");
   }
@@ -373,12 +370,11 @@ public class ManagementServiceTest {
             .setProperties(
                 Map.of("polaris.config.enable-sub-catalog-rbac-for-federated-catalogs", "true"))
             .build();
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogsApi()
-                    .updateCatalog(
-                        catalogName, update, services.realmContext(), services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .catalogsApi()
+                .updateCatalog(
+                    catalogName, update, services.realmContext(), services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Explicitly setting polaris.config.enable-sub-catalog-rbac-for-federated-catalogs is not allowed because ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS is set to false.");
@@ -514,10 +510,9 @@ public class ManagementServiceTest {
 
   private static Stream<Arguments> validBigLakeConfigurations() {
     return Stream.of("my-remote-catalog", null)
-        .flatMap(
-            remoteCatalogName ->
-                Stream.of("test-sa@my-project.iam.gserviceaccount.com", null)
-                    .map(serviceAccount -> Arguments.of(remoteCatalogName, serviceAccount)));
+        .flatMap(remoteCatalogName ->
+            Stream.of("test-sa@my-project.iam.gserviceaccount.com", null)
+                .map(serviceAccount -> Arguments.of(remoteCatalogName, serviceAccount)));
   }
 
   private PolarisAdminService setupPolarisAdminService(
@@ -767,15 +762,14 @@ public class ManagementServiceTest {
                 .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::999999999999:role/other-role")
                 .build());
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogsApi()
-                    .updateCatalog(
-                        catalogName,
-                        updateRequest,
-                        services.realmContext(),
-                        services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .catalogsApi()
+                .updateCatalog(
+                    catalogName,
+                    updateRequest,
+                    services.realmContext(),
+                    services.securityContext()))
         .isInstanceOf(BadRequestException.class)
         .hasMessageStartingWith("Cannot modify AWS account ID");
   }
@@ -877,15 +871,14 @@ public class ManagementServiceTest {
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
                 .setExternalId("different-external-id")
                 .build());
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogsApi()
-                    .updateCatalog(
-                        catalogName,
-                        updateRequest,
-                        services.realmContext(),
-                        services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .catalogsApi()
+                .updateCatalog(
+                    catalogName,
+                    updateRequest,
+                    services.realmContext(),
+                    services.securityContext()))
         .isInstanceOf(BadRequestException.class)
         .hasMessageStartingWith("Cannot modify ExternalId");
   }
@@ -1143,15 +1136,14 @@ public class ManagementServiceTest {
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/empty-stay"),
             secondMechanismConfig().build());
-    assertThatThrownBy(
-            () ->
-                stsOnlyUnrestricted
-                    .catalogsApi()
-                    .updateCatalog(
-                        "empty-stay",
-                        toSecond,
-                        stsOnlyUnrestricted.realmContext(),
-                        stsOnlyUnrestricted.securityContext()))
+    assertThatThrownBy(() ->
+            stsOnlyUnrestricted
+                .catalogsApi()
+                .updateCatalog(
+                    "empty-stay",
+                    toSecond,
+                    stsOnlyUnrestricted.realmContext(),
+                    stsOnlyUnrestricted.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(
             "S3 credential vending mechanism " + TEST_MECHANISM + " is not enabled in this realm");
@@ -1183,11 +1175,9 @@ public class ManagementServiceTest {
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/stays-empty"),
             namesDefault);
-    assertThatThrownBy(
-            () ->
-                svc.catalogsApi()
-                    .updateCatalog(
-                        "stays-empty", toEmpty, svc.realmContext(), svc.securityContext()))
+    assertThatThrownBy(() ->
+            svc.catalogsApi()
+                .updateCatalog("stays-empty", toEmpty, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(refused);
   }
@@ -1399,11 +1389,10 @@ public class ManagementServiceTest {
                 .setCredentialVendingMechanism("UNINSTALLED_MECHANISM")
                 .setAllowedLocations(List.of("s3://second-bucket/base/"))
                 .build());
-    assertThatThrownBy(
-            () ->
-                svc.catalogsApi()
-                    .updateCatalog(
-                        "empty-stays", toUninstalled, svc.realmContext(), svc.securityContext()))
+    assertThatThrownBy(() ->
+            svc.catalogsApi()
+                .updateCatalog(
+                    "empty-stays", toUninstalled, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "S3 credential vending mechanism UNINSTALLED_MECHANISM is not available in this server");
@@ -1465,11 +1454,10 @@ public class ManagementServiceTest {
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://second-bucket/base/needs-endpoint"),
             base.setEndpoint(null).build());
-    assertThatThrownBy(
-            () ->
-                svc.catalogsApi()
-                    .updateCatalog(
-                        "needs-endpoint", dropEndpoint, svc.realmContext(), svc.securityContext()))
+    assertThatThrownBy(() ->
+            svc.catalogsApi()
+                .updateCatalog(
+                    "needs-endpoint", dropEndpoint, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("endpoint is required for the TEST_MECHANISM mechanism");
     assertThat(mechanism.currents).hasSize(3);

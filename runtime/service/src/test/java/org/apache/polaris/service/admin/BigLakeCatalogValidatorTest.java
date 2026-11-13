@@ -96,16 +96,15 @@ class BigLakeCatalogValidatorTest {
 
   @Test
   void validBigLakeConfigurationPasses() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "my-remote-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "my-remote-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    validGcsStorage("gs://bucket/path/to/data"))))
         .doesNotThrowAnyException();
   }
 
@@ -141,136 +140,127 @@ class BigLakeCatalogValidatorTest {
 
   @Test
   void validBigLakeBlCatalogIdentifierPasses() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "bl://projects/123456789/catalogs/my-biglake-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "bl://projects/123456789/catalogs/my-biglake-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    validGcsStorage("gs://bucket/path/to/data"))))
         .doesNotThrowAnyException();
   }
 
   @Test
   void validBigLakeBlCatalogIdentifierWithProjectIdPasses() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "bl://projects/my-project-id/catalogs/my-biglake-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "bl://projects/my-project-id/catalogs/my-biglake-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    validGcsStorage("gs://bucket/path/to/data"))))
         .doesNotThrowAnyException();
   }
 
   @Test
   void validBigLakeWarehouseIdentifierPasses() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "gs://bucket/path/to/warehouse",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "gs://bucket/path/to/warehouse",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    validGcsStorage("gs://bucket/path/to/data"))))
         .doesNotThrowAnyException();
   }
 
   @Test
   void skipsValidationForNonBigLakeGcpRestEndpoint() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://catalog-gateway.example.com/iceberg/v1",
-                        null,
-                        Map.of(),
-                        true,
-                        "s3://bucket/path/to/data",
-                        null)))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://catalog-gateway.example.com/iceberg/v1",
+                    null,
+                    Map.of(),
+                    true,
+                    "s3://bucket/path/to/data",
+                    null)))
         .doesNotThrowAnyException();
   }
 
   @Test
   void skipsValidationForNonCanonicalEndpoints() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "http://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "my-remote-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "http://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "my-remote-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    validGcsStorage("gs://bucket/path/to/data"))))
         .doesNotThrowAnyException();
   }
 
   @Test
   void skipsValidationForUnsupportedEndpointPath() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/not-biglake",
-                        "my-remote-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/not-biglake",
+                    "my-remote-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    validGcsStorage("gs://bucket/path/to/data"))))
         .doesNotThrowAnyException();
   }
 
   @Test
   void skipsValidationForEndpointWithQueryString() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog?warehouse=test",
-                        "my-remote-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog?warehouse=test",
+                    "my-remote-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    validGcsStorage("gs://bucket/path/to/data"))))
         .doesNotThrowAnyException();
   }
 
   @Test
   void skipsValidationForEndpointWithFragment() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog#fragment",
-                        "my-remote-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog#fragment",
+                    "my-remote-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    validGcsStorage("gs://bucket/path/to/data"))))
         .doesNotThrowAnyException();
   }
 
   @Test
   void skipsValidationForEndpointWithCustomPort() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com:8443/iceberg/v1/restcatalog",
-                        "my-remote-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com:8443/iceberg/v1/restcatalog",
+                    "my-remote-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    validGcsStorage("gs://bucket/path/to/data"))))
         .doesNotThrowAnyException();
   }
 
@@ -295,16 +285,15 @@ class BigLakeCatalogValidatorTest {
 
   @Test
   void rejectsMissingQuotaProjectHeader() {
-    assertThatThrownBy(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "my-remote-catalog",
-                        Map.of(),
-                        true,
-                        "gs://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+    assertThatThrownBy(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "my-remote-catalog",
+                    Map.of(),
+                    true,
+                    "gs://bucket/path/to/data",
+                    validGcsStorage("gs://bucket/path/to/data"))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("a quota project is required");
   }
@@ -312,11 +301,9 @@ class BigLakeCatalogValidatorTest {
   @ParameterizedTest
   @ValueSource(strings = {"HEADER.X-GOOG-USER-PROJECT", "header.X-Goog-User-Project"})
   void rejectsNonCanonicalConnectionQuotaProjectKey(String propertyName) {
-    assertThatThrownBy(
-            () ->
-                validator.validate(
-                    bigLakeCatalogWithProperties(
-                        Map.of(propertyName, "connection-project"), Map.of())))
+    assertThatThrownBy(() ->
+            validator.validate(
+                bigLakeCatalogWithProperties(Map.of(propertyName, "connection-project"), Map.of())))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("header.x-goog-user-project");
   }
@@ -324,11 +311,9 @@ class BigLakeCatalogValidatorTest {
   @ParameterizedTest
   @ValueSource(strings = {"HEADER.X-GOOG-USER-PROJECT", "Header.x-goog-user-project"})
   void rejectsNonCanonicalCatalogQuotaProjectPrefix(String propertyName) {
-    assertThatThrownBy(
-            () ->
-                validator.validate(
-                    bigLakeCatalogWithProperties(
-                        Map.of(), Map.of(propertyName, "catalog-project"))))
+    assertThatThrownBy(() ->
+            validator.validate(
+                bigLakeCatalogWithProperties(Map.of(), Map.of(propertyName, "catalog-project"))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("header.x-goog-user-project");
   }
@@ -336,11 +321,9 @@ class BigLakeCatalogValidatorTest {
   @ParameterizedTest
   @ValueSource(strings = {"header.X-Goog-User-Project", "header.X-GOOG-USER-PROJECT"})
   void acceptsCatalogQuotaProjectWithCaseInsensitiveHeaderName(String propertyName) {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalogWithProperties(
-                        Map.of(), Map.of(propertyName, "catalog-project"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalogWithProperties(Map.of(), Map.of(propertyName, "catalog-project"))))
         .doesNotThrowAnyException();
   }
 
@@ -361,14 +344,13 @@ class BigLakeCatalogValidatorTest {
 
   @Test
   void rejectsCatalogQuotaProjectCaseVariantsWithoutCanonicalSpelling() {
-    assertThatThrownBy(
-            () ->
-                validator.validate(
-                    bigLakeCatalogWithProperties(
-                        Map.of(),
-                        Map.of(
-                            "header.X-GOOG-USER-PROJECT", "catalog-project",
-                            "header.X-Goog-User-Project", "other-project"))))
+    assertThatThrownBy(() ->
+            validator.validate(
+                bigLakeCatalogWithProperties(
+                    Map.of(),
+                    Map.of(
+                        "header.X-GOOG-USER-PROJECT", "catalog-project",
+                        "header.X-Goog-User-Project", "other-project"))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("multiple case variants");
   }
@@ -376,12 +358,11 @@ class BigLakeCatalogValidatorTest {
   @ParameterizedTest
   @ValueSource(strings = {"", "connection-project"})
   void rejectsConnectionQuotaProjectWithCatalogCaseVariant(String connectionQuotaProject) {
-    assertThatThrownBy(
-            () ->
-                validator.validate(
-                    bigLakeCatalogWithProperties(
-                        Map.of("header.x-goog-user-project", connectionQuotaProject),
-                        Map.of("header.X-Goog-User-Project", "catalog-project"))))
+    assertThatThrownBy(() ->
+            validator.validate(
+                bigLakeCatalogWithProperties(
+                    Map.of("header.x-goog-user-project", connectionQuotaProject),
+                    Map.of("header.X-Goog-User-Project", "catalog-project"))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("multiple case variants");
   }
@@ -393,12 +374,10 @@ class BigLakeCatalogValidatorTest {
     Map<String, String> connectionProperties = new HashMap<>();
     connectionProperties.put("header.x-goog-user-project", quotaProject);
 
-    assertThatThrownBy(
-            () ->
-                validator.validate(
-                    bigLakeCatalogWithProperties(
-                        connectionProperties,
-                        Map.of("header.x-goog-user-project", "catalog-project"))))
+    assertThatThrownBy(() ->
+            validator.validate(
+                bigLakeCatalogWithProperties(
+                    connectionProperties, Map.of("header.x-goog-user-project", "catalog-project"))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("a quota project is required");
   }
@@ -406,12 +385,11 @@ class BigLakeCatalogValidatorTest {
   @ParameterizedTest
   @ValueSource(strings = {"HEADER.X-GOOG-USER-PROJECT", "header.X-Goog-User-Project"})
   void ignoresNonCanonicalConnectionQuotaProjectOverride(String propertyName) {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalogWithProperties(
-                        Map.of(propertyName, " "),
-                        Map.of("header.x-goog-user-project", "catalog-project"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalogWithProperties(
+                    Map.of(propertyName, " "),
+                    Map.of("header.x-goog-user-project", "catalog-project"))))
         .doesNotThrowAnyException();
   }
 
@@ -422,163 +400,152 @@ class BigLakeCatalogValidatorTest {
     Map<String, String> catalogProperties = new HashMap<>();
     catalogProperties.put("header.x-goog-user-project", catalogQuotaProject);
 
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalogWithProperties(
-                        Map.of("header.x-goog-user-project", "connection-project"),
-                        catalogProperties)))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalogWithProperties(
+                    Map.of("header.x-goog-user-project", "connection-project"), catalogProperties)))
         .doesNotThrowAnyException();
   }
 
   @Test
   void acceptsCatalogQuotaProjectWithoutConnectionProperties() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalogWithProperties(
-                        null, Map.of("header.x-goog-user-project", "catalog-project"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalogWithProperties(
+                    null, Map.of("header.x-goog-user-project", "catalog-project"))))
         .doesNotThrowAnyException();
   }
 
   @Test
   void acceptsOtherHeaderProperties() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "my-remote-catalog",
-                        Map.of(
-                            "header.x-goog-user-project",
-                            "my-billing-project",
-                            "header.authorization",
-                            "Bearer secret"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "my-remote-catalog",
+                    Map.of(
+                        "header.x-goog-user-project",
+                        "my-billing-project",
+                        "header.authorization",
+                        "Bearer secret"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    validGcsStorage("gs://bucket/path/to/data"))))
         .doesNotThrowAnyException();
   }
 
   @Test
   void acceptsAdditionalHeaderProperties() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "my-remote-catalog",
-                        Map.of(
-                            "header.x-goog-user-project",
-                            "my-billing-project",
-                            "header.x-custom-header",
-                            "value"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "my-remote-catalog",
+                    Map.of(
+                        "header.x-goog-user-project",
+                        "my-billing-project",
+                        "header.x-custom-header",
+                        "value"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    validGcsStorage("gs://bucket/path/to/data"))))
         .doesNotThrowAnyException();
   }
 
   @Test
   void rejectsMissingGcsStorageWhenCredentialVendingEnabled() {
-    assertThatThrownBy(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "my-remote-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        null)))
+    assertThatThrownBy(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "my-remote-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    null)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("GCS storage configuration is required");
   }
 
   @Test
   void requiresBaseLocationButDoesNotValidateItsFormat() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "my-remote-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "s3://bucket/path/to/data",
-                        validGcsStorage("gs://bucket/path/to/data"))))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "my-remote-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "s3://bucket/path/to/data",
+                    validGcsStorage("gs://bucket/path/to/data"))))
         .doesNotThrowAnyException();
   }
 
   @Test
   void doesNotValidateAllowedLocationFormat() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "my-remote-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        invalidAllowedLocationStorage())))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "my-remote-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    invalidAllowedLocationStorage())))
         .doesNotThrowAnyException();
   }
 
   @Test
   void doesNotValidateServiceAccountFormat() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "my-remote-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        GcpStorageConfigInfo.builder()
-                            .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
-                            .setGcsServiceAccount("not-a-service-account")
-                            .setAllowedLocations(List.of("gs://bucket/path/to/data"))
-                            .build())))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "my-remote-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    GcpStorageConfigInfo.builder()
+                        .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+                        .setGcsServiceAccount("not-a-service-account")
+                        .setAllowedLocations(List.of("gs://bucket/path/to/data"))
+                        .build())))
         .doesNotThrowAnyException();
   }
 
   @Test
   void acceptsMissingServiceAccountWhenCredentialVendingEnabled() {
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "my-remote-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        GcpStorageConfigInfo.builder()
-                            .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
-                            .setAllowedLocations(List.of("gs://bucket/path/to/data"))
-                            .build())))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "my-remote-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    GcpStorageConfigInfo.builder()
+                        .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+                        .setAllowedLocations(List.of("gs://bucket/path/to/data"))
+                        .build())))
         .doesNotThrowAnyException();
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"", " ", "\t"})
   void rejectsBlankServiceAccountWhenCredentialVendingEnabled(String serviceAccount) {
-    assertThatThrownBy(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "my-remote-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        GcpStorageConfigInfo.builder()
-                            .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
-                            .setGcsServiceAccount(serviceAccount)
-                            .setAllowedLocations(List.of("gs://bucket/path/to/data"))
-                            .build())))
+    assertThatThrownBy(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "my-remote-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    GcpStorageConfigInfo.builder()
+                        .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+                        .setGcsServiceAccount(serviceAccount)
+                        .setAllowedLocations(List.of("gs://bucket/path/to/data"))
+                        .build())))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("storageConfigInfo.gcsServiceAccount")
         .hasMessageContaining("omit this field");
@@ -599,16 +566,15 @@ class BigLakeCatalogValidatorTest {
             .setAllowedLocations(List.of("gs://bucket/path/to/data"))
             .build();
 
-    assertThatCode(
-            () ->
-                validator.validate(
-                    bigLakeCatalog(
-                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
-                        "my-remote-catalog",
-                        Map.of("header.x-goog-user-project", "my-billing-project"),
-                        true,
-                        "gs://bucket/path/to/data",
-                        storageConfigInfo)))
+    assertThatCode(() ->
+            validator.validate(
+                bigLakeCatalog(
+                    "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                    "my-remote-catalog",
+                    Map.of("header.x-goog-user-project", "my-billing-project"),
+                    true,
+                    "gs://bucket/path/to/data",
+                    storageConfigInfo)))
         .doesNotThrowAnyException();
   }
 

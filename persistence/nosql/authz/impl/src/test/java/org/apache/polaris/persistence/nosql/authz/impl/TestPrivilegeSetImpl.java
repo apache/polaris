@@ -284,14 +284,13 @@ public class TestPrivilegeSetImpl {
   }
 
   static Stream<Arguments> bothMappers(Stream<Arguments> in) {
-    return in.flatMap(
-        args -> {
-          var argsArray = args.get();
-          var jsonArgs = Arrays.copyOf(argsArray, argsArray.length + 1);
-          jsonArgs[argsArray.length] = jsonMapper;
-          var smileArgs = Arrays.copyOf(argsArray, argsArray.length + 1);
-          smileArgs[argsArray.length] = smileMapper;
-          return Stream.of(arguments(jsonArgs), arguments(smileArgs));
-        });
+    return in.flatMap(args -> {
+      var argsArray = args.get();
+      var jsonArgs = Arrays.copyOf(argsArray, argsArray.length + 1);
+      jsonArgs[argsArray.length] = jsonMapper;
+      var smileArgs = Arrays.copyOf(argsArray, argsArray.length + 1);
+      smileArgs[argsArray.length] = smileMapper;
+      return Stream.of(arguments(jsonArgs), arguments(smileArgs));
+    });
   }
 }

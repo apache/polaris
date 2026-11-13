@@ -48,14 +48,11 @@ public final class EventToJsonMapper {
     event
         .attributes()
         .getOptional(EventAttributes.RENAME_TABLE_REQUEST)
-        .ifPresent(
-            renameTableRequest -> {
-              rootNode.set(
-                  "source", MAPPER.valueToTree(tableIdToList(renameTableRequest.source())));
-              rootNode.set(
-                  "destination",
-                  MAPPER.valueToTree(tableIdToList(renameTableRequest.destination())));
-            });
+        .ifPresent(renameTableRequest -> {
+          rootNode.set("source", MAPPER.valueToTree(tableIdToList(renameTableRequest.source())));
+          rootNode.set(
+              "destination", MAPPER.valueToTree(tableIdToList(renameTableRequest.destination())));
+        });
     event
         .attributes()
         .getOptional(EventAttributes.TABLE_NAME)
@@ -91,11 +88,10 @@ public final class EventToJsonMapper {
     event
         .metadata()
         .user()
-        .ifPresent(
-            user -> {
-              rootNode.put("principal", user.getName());
-              rootNode.set("activated_roles", MAPPER.valueToTree(user.getRoles()));
-            });
+        .ifPresent(user -> {
+          rootNode.put("principal", user.getName());
+          rootNode.set("activated_roles", MAPPER.valueToTree(user.getRoles()));
+        });
     event.metadata().requestId().ifPresent(id -> rootNode.put("request_id", id));
 
     return MAPPER.writeValueAsString(rootNode);

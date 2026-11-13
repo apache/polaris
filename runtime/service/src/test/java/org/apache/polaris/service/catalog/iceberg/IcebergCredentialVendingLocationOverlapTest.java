@@ -204,29 +204,23 @@ public class IcebergCredentialVendingLocationOverlapTest {
     assertThatThrownBy(() -> handler().loadCredentials(T1, Optional.empty()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("overlaps another table or namespace");
-    assertThatThrownBy(
-            () ->
-                handler()
-                    .loadTable(
-                        T1,
-                        "all",
-                        null,
-                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
-                        Optional.empty()))
+    assertThatThrownBy(() ->
+            handler()
+                .loadTable(
+                    T1,
+                    "all",
+                    null,
+                    EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                    Optional.empty()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("overlaps another table or namespace");
 
     // Loading the table without credentials, and vending credentials for the other table, still
     // work.
-    assertThatCode(
-            () ->
-                handler()
-                    .loadTable(
-                        T1,
-                        "all",
-                        null,
-                        EnumSet.noneOf(AccessDelegationMode.class),
-                        Optional.empty()))
+    assertThatCode(() ->
+            handler()
+                .loadTable(
+                    T1, "all", null, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty()))
         .doesNotThrowAnyException();
     assertThatCode(() -> handler().loadCredentials(T2, Optional.empty()))
         .doesNotThrowAnyException();
@@ -308,17 +302,16 @@ public class IcebergCredentialVendingLocationOverlapTest {
             .metadataFileLocation();
     handler().dropTableWithoutPurge(T1);
 
-    assertThatCode(
-            () ->
-                handler()
-                    .registerTable(
-                        NAMESPACE,
-                        ImmutableRegisterTableRequest.builder()
-                            .name(T1.name())
-                            .metadataLocation(metadataLocation)
-                            .build(),
-                        vended,
-                        Optional.empty()))
+    assertThatCode(() ->
+            handler()
+                .registerTable(
+                    NAMESPACE,
+                    ImmutableRegisterTableRequest.builder()
+                        .name(T1.name())
+                        .metadataLocation(metadataLocation)
+                        .build(),
+                    vended,
+                    Optional.empty()))
         .doesNotThrowAnyException();
   }
 }

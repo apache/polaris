@@ -71,28 +71,27 @@ public class TestCacheStripes {
 
   static Stream<Arguments> buffers() {
     return Stream.of(0, 256)
-        .flatMap(
-            size -> {
-              byte[] expected = new byte[size];
-              for (int i = 0; i < size; i++) {
-                expected[i] = (byte) i;
-              }
-              var heap = ByteBuffer.wrap(expected.clone());
-              var slice = ByteBuffer.allocate(size + 32).position(5).slice();
-              slice.position(7).put(expected).flip().position(7);
-              var readOnly = ByteBuffer.allocate(size + 32).position(5).slice();
-              readOnly.position(7).put(expected).flip().position(7);
-              var direct = ByteBuffer.allocateDirect(size + 32);
-              direct.position(7).put(expected).flip().position(7);
-              var directReadOnly = ByteBuffer.allocateDirect(size + 32);
-              directReadOnly.position(7).put(expected).flip().position(7);
-              return Stream.of(
-                  arguments(heap, expected),
-                  arguments(slice, expected),
-                  arguments(readOnly.asReadOnlyBuffer(), expected),
-                  arguments(direct, expected),
-                  arguments(directReadOnly.asReadOnlyBuffer(), expected));
-            });
+        .flatMap(size -> {
+          byte[] expected = new byte[size];
+          for (int i = 0; i < size; i++) {
+            expected[i] = (byte) i;
+          }
+          var heap = ByteBuffer.wrap(expected.clone());
+          var slice = ByteBuffer.allocate(size + 32).position(5).slice();
+          slice.position(7).put(expected).flip().position(7);
+          var readOnly = ByteBuffer.allocate(size + 32).position(5).slice();
+          readOnly.position(7).put(expected).flip().position(7);
+          var direct = ByteBuffer.allocateDirect(size + 32);
+          direct.position(7).put(expected).flip().position(7);
+          var directReadOnly = ByteBuffer.allocateDirect(size + 32);
+          directReadOnly.position(7).put(expected).flip().position(7);
+          return Stream.of(
+              arguments(heap, expected),
+              arguments(slice, expected),
+              arguments(readOnly.asReadOnlyBuffer(), expected),
+              arguments(direct, expected),
+              arguments(directReadOnly.asReadOnlyBuffer(), expected));
+        });
   }
 
   @ParameterizedTest

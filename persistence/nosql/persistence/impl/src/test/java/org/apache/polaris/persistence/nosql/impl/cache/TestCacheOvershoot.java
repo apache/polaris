@@ -110,14 +110,13 @@ public class TestCacheOvershoot {
     var stop = new AtomicBoolean();
     try (var executor = Executors.newFixedThreadPool(numThreads)) {
       for (int i = 0; i < numThreads; i++) {
-        executor.execute(
-            () -> {
-              while (!stop.get()) {
-                cache.put(
-                    "repo", SimpleTestObj.builder().id(idGen.incrementAndGet()).text(str).build());
-                Thread.yield();
-              }
-            });
+        executor.execute(() -> {
+          while (!stop.get()) {
+            cache.put(
+                "repo", SimpleTestObj.builder().id(idGen.incrementAndGet()).text(str).build());
+            Thread.yield();
+          }
+        });
       }
 
       for (int i = 0; i < 50; i++) {

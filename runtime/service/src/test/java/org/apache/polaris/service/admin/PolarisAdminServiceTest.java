@@ -177,9 +177,8 @@ public class PolarisAdminServiceTest {
     when(metaStoreManager.createCatalog(any(), any(), any()))
         .thenReturn(new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null));
 
-    assertThatThrownBy(
-            () ->
-                adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog())))
+    assertThatThrownBy(() ->
+            adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog())))
         .isInstanceOf(AlreadyExistsException.class);
 
     verify(userSecretsManager).deleteSecret(secretReference);
@@ -194,9 +193,8 @@ public class PolarisAdminServiceTest {
     when(metaStoreManager.createCatalog(any(), any(), any()))
         .thenReturn(new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null));
 
-    assertThatThrownBy(
-            () ->
-                adminService.createCatalog(new CreateCatalogRequest(createExternalBearerCatalog())))
+    assertThatThrownBy(() ->
+            adminService.createCatalog(new CreateCatalogRequest(createExternalBearerCatalog())))
         .isInstanceOf(AlreadyExistsException.class);
 
     verify(userSecretsManager).deleteSecret(secretReference);
@@ -213,9 +211,8 @@ public class PolarisAdminServiceTest {
     when(metaStoreManager.createCatalog(any(), any(), any())).thenReturn(resultWithError);
     doThrow(new RuntimeException("cleanup failed")).when(userSecretsManager).deleteSecret(any());
 
-    assertThatThrownBy(
-            () ->
-                adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog())))
+    assertThatThrownBy(() ->
+            adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog())))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage(
             String.format(
@@ -461,10 +458,9 @@ public class PolarisAdminServiceTest {
             eq(ResolvedPathKey.of(List.of(namespace.levels()), PolarisEntityType.NAMESPACE))))
         .thenReturn(null);
 
-    assertThatThrownBy(
-            () ->
-                adminService.grantPrivilegeOnNamespaceToRole(
-                    catalogName, catalogRoleName, namespace, privilege))
+    assertThatThrownBy(() ->
+            adminService.grantPrivilegeOnNamespaceToRole(
+                catalogName, catalogRoleName, namespace, privilege))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("Namespace " + namespace + " not found");
   }
@@ -505,10 +501,9 @@ public class PolarisAdminServiceTest {
     when(resolvedPathWrapper.isFullyResolvedNamespace(eq(catalogName), eq(namespace)))
         .thenReturn(false);
 
-    assertThatThrownBy(
-            () ->
-                adminService.grantPrivilegeOnNamespaceToRole(
-                    catalogName, catalogRoleName, namespace, privilege))
+    assertThatThrownBy(() ->
+            adminService.grantPrivilegeOnNamespaceToRole(
+                catalogName, catalogRoleName, namespace, privilege))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("Namespace " + namespace + " not found");
   }
@@ -559,10 +554,9 @@ public class PolarisAdminServiceTest {
             eq(ResolvedPathKey.of(List.of(namespace.levels()), PolarisEntityType.NAMESPACE))))
         .thenReturn(null);
 
-    assertThatThrownBy(
-            () ->
-                adminService.revokePrivilegeOnNamespaceFromRole(
-                    catalogName, catalogRoleName, namespace, privilege))
+    assertThatThrownBy(() ->
+            adminService.revokePrivilegeOnNamespaceFromRole(
+                catalogName, catalogRoleName, namespace, privilege))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("Namespace " + namespace + " not found");
   }
@@ -597,10 +591,9 @@ public class PolarisAdminServiceTest {
     when(resolvedPathWrapper.isFullyResolvedNamespace(eq(catalogName), eq(namespace)))
         .thenReturn(false);
 
-    assertThatThrownBy(
-            () ->
-                adminService.revokePrivilegeOnNamespaceFromRole(
-                    catalogName, catalogRoleName, namespace, privilege))
+    assertThatThrownBy(() ->
+            adminService.revokePrivilegeOnNamespaceFromRole(
+                catalogName, catalogRoleName, namespace, privilege))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("Namespace " + namespace + " not found");
   }
@@ -706,10 +699,9 @@ public class PolarisAdminServiceTest {
         .thenReturn(unresolvedWrapper);
 
     // Should throw NotFoundException because feature is disabled and it's passthrough facade
-    assertThatThrownBy(
-            () ->
-                adminService.grantPrivilegeOnNamespaceToRole(
-                    catalogName, catalogRoleName, namespace, privilege))
+    assertThatThrownBy(() ->
+            adminService.grantPrivilegeOnNamespaceToRole(
+                catalogName, catalogRoleName, namespace, privilege))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("Namespace " + namespace + " not found");
   }
@@ -760,10 +752,9 @@ public class PolarisAdminServiceTest {
             eq(ResolvedPathKey.of(List.of("org-ns", "team-ns"), PolarisEntityType.NAMESPACE))))
         .thenReturn(partialPathWrapper);
 
-    assertThatThrownBy(
-            () ->
-                adminService.grantPrivilegeOnNamespaceToRole(
-                    catalogName, catalogRoleName, namespace, privilege))
+    assertThatThrownBy(() ->
+            adminService.grantPrivilegeOnNamespaceToRole(
+                catalogName, catalogRoleName, namespace, privilege))
         .isInstanceOf(RuntimeException.class)
         .hasMessage(
             "Failed to create or find namespace entity 'team-ns' in federated catalog 'test-catalog'");
@@ -974,10 +965,9 @@ public class PolarisAdminServiceTest {
         .thenReturn(null);
 
     // Should throw NoSuchTableException because feature is disabled
-    assertThatThrownBy(
-            () ->
-                adminService.grantPrivilegeOnTableToRole(
-                    catalogName, catalogRoleName, identifier, privilege))
+    assertThatThrownBy(() ->
+            adminService.grantPrivilegeOnTableToRole(
+                catalogName, catalogRoleName, identifier, privilege))
         .isInstanceOf(NoSuchTableException.class)
         .hasMessageContaining("Table does not exist");
   }
@@ -1035,10 +1025,9 @@ public class PolarisAdminServiceTest {
     when(resolutionManifest.getPassthroughResolvedPath(eq(ResolvedPathKey.ofTableLike(identifier))))
         .thenReturn(null);
 
-    assertThatThrownBy(
-            () ->
-                adminService.grantPrivilegeOnTableToRole(
-                    catalogName, catalogRoleName, identifier, privilege))
+    assertThatThrownBy(() ->
+            adminService.grantPrivilegeOnTableToRole(
+                catalogName, catalogRoleName, identifier, privilege))
         .isInstanceOf(RuntimeException.class)
         .hasMessage(
             "Failed to create or find table entity 'test-table' in federated catalog 'test-catalog'");

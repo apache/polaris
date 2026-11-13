@@ -77,10 +77,9 @@ class SemanticModelCatalogHandlerCrudTest extends AbstractSemanticModelCatalogHa
 
   @Test
   void createRejectsUnknownSource() {
-    assertThatThrownBy(
-            () ->
-                passthroughHandler()
-                    .createSemanticModel(NS, createRequest("m2", modelJson("ns1.missing"))))
+    assertThatThrownBy(() ->
+            passthroughHandler()
+                .createSemanticModel(NS, createRequest("m2", modelJson("ns1.missing"))))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("ns1.missing");
   }

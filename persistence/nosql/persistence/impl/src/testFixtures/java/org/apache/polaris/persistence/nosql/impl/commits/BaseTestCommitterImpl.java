@@ -177,15 +177,13 @@ public abstract class BaseTestCommitterImpl {
     var committed =
         persistence
             .createCommitter(referenceName, CommitTestObj.class, String.class)
-            .commit(
-                (state, refObjSupplier) -> {
-                  var refObj = refObjSupplier.get();
-                  soft.assertThat(refObj).get().isEqualTo(initialObj).isNotSameAs(initialObj);
+            .commit((state, refObjSupplier) -> {
+              var refObj = refObjSupplier.get();
+              soft.assertThat(refObj).get().isEqualTo(initialObj).isNotSameAs(initialObj);
 
-                  // Commit attempt works here
-                  return state.commitResult(
-                      "foo", CommitTestObj.builder().text("result text"), refObj);
-                });
+              // Commit attempt works here
+              return state.commitResult("foo", CommitTestObj.builder().text("result text"), refObj);
+            });
 
     soft.assertThat(committed).contains("foo");
     var newHead = persistence.fetchReferenceHead(referenceName, CommitTestObj.class);
@@ -197,14 +195,13 @@ public abstract class BaseTestCommitterImpl {
     var notCommitted =
         persistence
             .createCommitter(referenceName, CommitTestObj.class, String.class)
-            .commit(
-                (state, refObjSupplier) -> {
-                  var refObj = refObjSupplier.get();
-                  soft.assertThat(refObj).get().isNotEqualTo(initialObj);
+            .commit((state, refObjSupplier) -> {
+              var refObj = refObjSupplier.get();
+              soft.assertThat(refObj).get().isNotEqualTo(initialObj);
 
-                  // Commit attempt works here
-                  return state.noCommit();
-                });
+              // Commit attempt works here
+              return state.noCommit();
+            });
     soft.assertThat(notCommitted).isEmpty();
 
     var checkHead = persistence.fetchReferenceHead(referenceName, CommitTestObj.class);
@@ -213,14 +210,13 @@ public abstract class BaseTestCommitterImpl {
     var notCommittedWithResult =
         persistence
             .createCommitter(referenceName, CommitTestObj.class, String.class)
-            .commit(
-                (state, refObjSupplier) -> {
-                  var refObj = refObjSupplier.get();
-                  soft.assertThat(refObj).get().isNotEqualTo(initialObj);
+            .commit((state, refObjSupplier) -> {
+              var refObj = refObjSupplier.get();
+              soft.assertThat(refObj).get().isNotEqualTo(initialObj);
 
-                  // Commit attempt works here
-                  return state.noCommit("not committed");
-                });
+              // Commit attempt works here
+              return state.noCommit("not committed");
+            });
     soft.assertThat(notCommittedWithResult).contains("not committed");
 
     var checkHead2 = persistence.fetchReferenceHead(referenceName, CommitTestObj.class);
@@ -232,20 +228,15 @@ public abstract class BaseTestCommitterImpl {
   public void nonExistingReferenceThrows(TestInfo testInfo) {
     var referenceName = testInfo.getTestMethod().orElseThrow().getName();
 
-    soft.assertThatThrownBy(
-            () ->
-                persistence
-                    .createCommitter(referenceName, CommitTestObj.class, String.class)
-                    .commit(
-                        (state, refObjSupplier) -> {
-                          refObjSupplier.get();
-                          soft.fail("Must not be call");
-                          return Optional.of(
-                              CommitTestObj.builder()
-                                  .id(persistence.generateId())
-                                  .text("initial")
-                                  .build());
-                        }))
+    soft.assertThatThrownBy(() ->
+            persistence
+                .createCommitter(referenceName, CommitTestObj.class, String.class)
+                .commit((state, refObjSupplier) -> {
+                  refObjSupplier.get();
+                  soft.fail("Must not be call");
+                  return Optional.of(
+                      CommitTestObj.builder().id(persistence.generateId()).text("initial").build());
+                }))
         .isInstanceOf(ReferenceNotFoundException.class);
   }
 
@@ -280,17 +271,13 @@ public abstract class BaseTestCommitterImpl {
     soft.assertThat(
             persistence
                 .createCommitter(referenceName, CommitTestObj.class, String.class)
-                .commit(
-                    (state, refObjSupplier) -> {
-                      var refObj = refObjSupplier.get();
-                      soft.assertThat(refObj).get().isEqualTo(initialObj).isNotSameAs(initialObj);
-                      soft.assertThat(state.writeIfNew("another 1", anotherObj1))
-                          .isSameAs(anotherObj1);
-                      soft.assertThat(state.writeIfNew("another 2", anotherObj2))
-                          .isSameAs(anotherObj2);
-                      return state.commitResult(
-                          "foo", CommitTestObj.builder().text("result"), refObj);
-                    }))
+                .commit((state, refObjSupplier) -> {
+                  var refObj = refObjSupplier.get();
+                  soft.assertThat(refObj).get().isEqualTo(initialObj).isNotSameAs(initialObj);
+                  soft.assertThat(state.writeIfNew("another 1", anotherObj1)).isSameAs(anotherObj1);
+                  soft.assertThat(state.writeIfNew("another 2", anotherObj2)).isSameAs(anotherObj2);
+                  return state.commitResult("foo", CommitTestObj.builder().text("result"), refObj);
+                }))
         .contains("foo");
 
     soft.assertThat(
@@ -354,24 +341,23 @@ public abstract class BaseTestCommitterImpl {
         new CommitterImpl<>(
             partiallyFailingPersistence, referenceName, CommitTestObj.class, CommitTestObj.class);
     var result =
-        committer.commit(
-            (state, refObjSupplier) -> {
-              var refObj = refObjSupplier.get();
-              state.writeIfNew("child", child);
-              if (writeAttempts.get() > 0) {
-                state.writeIfNew("second child", secondChild);
-              }
-              if (reuseHead) {
-                return Optional.of(reusedHead);
-              }
-              return Optional.of(
-                  CommitTestObj.builder()
-                      .id(persistence.generateId())
-                      .seq(refObj.map(CommitTestObj::seq).orElse(0L) + 1)
-                      .tail(new long[0])
-                      .text("result-" + writeAttempts.get())
-                      .build());
-            });
+        committer.commit((state, refObjSupplier) -> {
+          var refObj = refObjSupplier.get();
+          state.writeIfNew("child", child);
+          if (writeAttempts.get() > 0) {
+            state.writeIfNew("second child", secondChild);
+          }
+          if (reuseHead) {
+            return Optional.of(reusedHead);
+          }
+          return Optional.of(
+              CommitTestObj.builder()
+                  .id(persistence.generateId())
+                  .seq(refObj.map(CommitTestObj::seq).orElse(0L) + 1)
+                  .tail(new long[0])
+                  .text("result-" + writeAttempts.get())
+                  .build());
+        });
 
     soft.assertThat(writeAttempts).hasValue(failedWrites + 1);
     soft.assertThat(pointerUpdates).hasValue(1);
@@ -425,14 +411,12 @@ public abstract class BaseTestCommitterImpl {
     var committer =
         new CommitterImpl<>(
             unknownResultPersistence, referenceName, CommitTestObj.class, String.class);
-    soft.assertThatThrownBy(
-            () ->
-                committer.commit(
-                    (state, refObjSupplier) -> {
-                      state.writeIfNew("child", child);
-                      return state.commitResult(
-                          "result", CommitTestObj.builder().text("result"), refObjSupplier.get());
-                    }))
+    soft.assertThatThrownBy(() ->
+            committer.commit((state, refObjSupplier) -> {
+              state.writeIfNew("child", child);
+              return state.commitResult(
+                  "result", CommitTestObj.builder().text("result"), refObjSupplier.get());
+            }))
         .isInstanceOf(RetryTimeoutException.class);
 
     soft.assertThat(updateAttempts).hasValue(2);
@@ -482,14 +466,10 @@ public abstract class BaseTestCommitterImpl {
     var committer =
         new CommitterImpl<>(
             failingCleanupPersistence, referenceName, CommitTestObj.class, String.class);
-    soft.assertThatThrownBy(
-            () ->
-                committer.commit(
-                    (state, refObjSupplier) ->
-                        state.commitResult(
-                            "result",
-                            CommitTestObj.builder().text("result"),
-                            refObjSupplier.get())))
+    soft.assertThatThrownBy(() ->
+            committer.commit((state, refObjSupplier) ->
+                state.commitResult(
+                    "result", CommitTestObj.builder().text("result"), refObjSupplier.get())))
         .isInstanceOfSatisfying(
             RetryTimeoutException.class,
             e -> soft.assertThat(e.getSuppressed()).containsExactly(cleanupFailure));
@@ -538,10 +518,9 @@ public abstract class BaseTestCommitterImpl {
         new CommitterImpl<>(
             failingCleanupPersistence, referenceName, CommitTestObj.class, String.class);
     soft.assertThat(
-            committer.commit(
-                (state, refObjSupplier) ->
-                    state.commitResult(
-                        "result", CommitTestObj.builder().text("result"), refObjSupplier.get())))
+            committer.commit((state, refObjSupplier) ->
+                state.commitResult(
+                    "result", CommitTestObj.builder().text("result"), refObjSupplier.get())))
         .contains("result");
 
     soft.assertThat(updateAttempts).hasValue(2);
@@ -579,50 +558,43 @@ public abstract class BaseTestCommitterImpl {
     var executor = Executors.newFixedThreadPool(2);
     try {
       var first =
-          executor.submit(
-              () ->
-                  committer.commit(
-                      (state, refObjSupplier) -> {
-                        firstEntered.countDown();
-                        try {
-                          if (!releaseFirst.await(5, TimeUnit.SECONDS)) {
-                            throw new AssertionError("Timed out waiting to release first commit");
-                          }
-                        } catch (InterruptedException e) {
-                          Thread.currentThread().interrupt();
-                          throw new RuntimeException(e);
-                        }
-                        var result =
-                            state.commitResult(
-                                "first",
-                                CommitTestObj.builder().text("first"),
-                                refObjSupplier.get());
-                        firstReleased.set(true);
-                        return result;
-                      }));
+          executor.submit(() ->
+              committer.commit((state, refObjSupplier) -> {
+                firstEntered.countDown();
+                try {
+                  if (!releaseFirst.await(5, TimeUnit.SECONDS)) {
+                    throw new AssertionError("Timed out waiting to release first commit");
+                  }
+                } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                  throw new RuntimeException(e);
+                }
+                var result =
+                    state.commitResult(
+                        "first", CommitTestObj.builder().text("first"), refObjSupplier.get());
+                firstReleased.set(true);
+                return result;
+              }));
       soft.assertThat(firstEntered.await(5, TimeUnit.SECONDS)).isTrue();
 
       var second =
-          executor.submit(
-              () ->
-                  committer.commit(
-                      (state, refObjSupplier) -> {
-                        secondEntered.countDown();
-                        if (!firstReleased.get()) {
-                          throw new AssertionError(
-                              "Second synchronized commit started before first commit finished");
-                        }
-                        return state.commitResult(
-                            "second", CommitTestObj.builder().text("second"), refObjSupplier.get());
-                      }));
+          executor.submit(() ->
+              committer.commit((state, refObjSupplier) -> {
+                secondEntered.countDown();
+                if (!firstReleased.get()) {
+                  throw new AssertionError(
+                      "Second synchronized commit started before first commit finished");
+                }
+                return state.commitResult(
+                    "second", CommitTestObj.builder().text("second"), refObjSupplier.get());
+              }));
 
       soft.assertThat(secondEntered.await(200, TimeUnit.MILLISECONDS)).isFalse();
       var third =
-          executor.submit(
-              () -> {
-                thirdEntered.countDown();
-                return "third";
-              });
+          executor.submit(() -> {
+            thirdEntered.countDown();
+            return "third";
+          });
       soft.assertThat(thirdEntered.await(200, TimeUnit.MILLISECONDS)).isFalse();
       releaseFirst.countDown();
       soft.assertThat(first.get(5, TimeUnit.SECONDS)).contains("first");
@@ -656,54 +628,53 @@ public abstract class BaseTestCommitterImpl {
     soft.assertThat(
             persistence
                 .createCommitter(referenceName, CommitTestObj.class, String.class)
-                .commit(
-                    (state, refObjSupplier) -> {
-                      var refObj = refObjSupplier.get();
-                      soft.assertThat(refObj).get().isEqualTo(initialObj).isNotSameAs(initialObj);
+                .commit((state, refObjSupplier) -> {
+                  var refObj = refObjSupplier.get();
+                  soft.assertThat(refObj).get().isEqualTo(initialObj).isNotSameAs(initialObj);
 
-                      var attempt = iteration.incrementAndGet();
+                  var attempt = iteration.incrementAndGet();
 
-                      if (attempt == 1) {
+                  if (attempt == 1) {
 
-                        var anotherObj1 =
-                            AnotherTestObj.builder()
-                                .id(persistence.generateId())
-                                .text("another 1, attempt " + attempt)
-                                .build();
-                        var anotherObj2 =
-                            AnotherTestObj.builder()
-                                .id(persistence.generateId())
-                                .text("another 2, attempt " + attempt)
-                                .build();
+                    var anotherObj1 =
+                        AnotherTestObj.builder()
+                            .id(persistence.generateId())
+                            .text("another 1, attempt " + attempt)
+                            .build();
+                    var anotherObj2 =
+                        AnotherTestObj.builder()
+                            .id(persistence.generateId())
+                            .text("another 2, attempt " + attempt)
+                            .build();
 
-                        createdObjs.add(objRef(anotherObj1));
-                        createdObjs.add(objRef(anotherObj2));
+                    createdObjs.add(objRef(anotherObj1));
+                    createdObjs.add(objRef(anotherObj2));
 
-                        soft.assertThat(state.getWrittenByKey("another 1")).isNull();
-                        soft.assertThat(state.getWrittenByKey("another 2")).isNull();
+                    soft.assertThat(state.getWrittenByKey("another 1")).isNull();
+                    soft.assertThat(state.getWrittenByKey("another 2")).isNull();
 
-                        soft.assertThatCode(() -> state.writeIntent("another 1", anotherObj1))
-                            .doesNotThrowAnyException();
-                        soft.assertThatCode(() -> state.writeIntent("another 2", anotherObj2))
-                            .doesNotThrowAnyException();
-                        expectedObjs.add(objRef(anotherObj1));
-                        expectedObjs.add(objRef(anotherObj2));
-                      } else {
-                        soft.assertThat(state.getWrittenByKey("another 1")).isNotNull();
-                        soft.assertThat(state.getWrittenByKey("another 2")).isNotNull();
-                      }
+                    soft.assertThatCode(() -> state.writeIntent("another 1", anotherObj1))
+                        .doesNotThrowAnyException();
+                    soft.assertThatCode(() -> state.writeIntent("another 2", anotherObj2))
+                        .doesNotThrowAnyException();
+                    expectedObjs.add(objRef(anotherObj1));
+                    expectedObjs.add(objRef(anotherObj2));
+                  } else {
+                    soft.assertThat(state.getWrittenByKey("another 1")).isNotNull();
+                    soft.assertThat(state.getWrittenByKey("another 2")).isNotNull();
+                  }
 
-                      if (attempt < 4) {
-                        // retry
-                        return Optional.empty();
-                      }
+                  if (attempt < 4) {
+                    // retry
+                    return Optional.empty();
+                  }
 
-                      var resultObj = CommitTestObj.builder().text("result");
+                  var resultObj = CommitTestObj.builder().text("result");
 
-                      var r = state.commitResult("foo", resultObj, refObj);
-                      expectedObjs.add(objRef(r.orElseThrow()));
-                      return r;
-                    }))
+                  var r = state.commitResult("foo", resultObj, refObj);
+                  expectedObjs.add(objRef(r.orElseThrow()));
+                  return r;
+                }))
         .contains("foo");
 
     soft.assertThat(expectedObjs).hasSize(3).doesNotHaveDuplicates();
@@ -745,58 +716,57 @@ public abstract class BaseTestCommitterImpl {
     soft.assertThat(
             persistence
                 .createCommitter(referenceName, CommitTestObj.class, String.class)
-                .commit(
-                    (state, refObjSupplier) -> {
-                      var refObj = refObjSupplier.get();
-                      soft.assertThat(refObj).get().isEqualTo(initialObj).isNotSameAs(initialObj);
+                .commit((state, refObjSupplier) -> {
+                  var refObj = refObjSupplier.get();
+                  soft.assertThat(refObj).get().isEqualTo(initialObj).isNotSameAs(initialObj);
 
-                      var attempt = iteration.incrementAndGet();
+                  var attempt = iteration.incrementAndGet();
 
-                      var anotherObj1 =
-                          AnotherTestObj.builder()
-                              .id(persistence.generateId())
-                              .text("another 1, attempt " + attempt)
-                              .build();
-                      var anotherObj2 =
-                          AnotherTestObj.builder()
-                              .id(persistence.generateId())
-                              .text("another 2, attempt " + attempt)
-                              .build();
+                  var anotherObj1 =
+                      AnotherTestObj.builder()
+                          .id(persistence.generateId())
+                          .text("another 1, attempt " + attempt)
+                          .build();
+                  var anotherObj2 =
+                      AnotherTestObj.builder()
+                          .id(persistence.generateId())
+                          .text("another 2, attempt " + attempt)
+                          .build();
 
-                      createdObjs.add(objRef(anotherObj1));
-                      createdObjs.add(objRef(anotherObj2));
+                  createdObjs.add(objRef(anotherObj1));
+                  createdObjs.add(objRef(anotherObj2));
 
-                      if (attempt == 1) {
-                        soft.assertThat(state.getWrittenByKey("another 1")).isNull();
-                        soft.assertThat(state.getWrittenByKey("another 2")).isNull();
+                  if (attempt == 1) {
+                    soft.assertThat(state.getWrittenByKey("another 1")).isNull();
+                    soft.assertThat(state.getWrittenByKey("another 2")).isNull();
 
-                        soft.assertThat(state.writeIfNew("another 1", anotherObj1))
-                            .isSameAs(anotherObj1);
-                        soft.assertThat(state.writeIfNew("another 2", anotherObj2))
-                            .isSameAs(anotherObj2);
-                        expectedObjs.add(objRef(anotherObj1));
-                        expectedObjs.add(objRef(anotherObj2));
-                      } else {
-                        soft.assertThat(state.getWrittenByKey("another 1")).isNotNull();
-                        soft.assertThat(state.getWrittenByKey("another 2")).isNotNull();
+                    soft.assertThat(state.writeIfNew("another 1", anotherObj1))
+                        .isSameAs(anotherObj1);
+                    soft.assertThat(state.writeIfNew("another 2", anotherObj2))
+                        .isSameAs(anotherObj2);
+                    expectedObjs.add(objRef(anotherObj1));
+                    expectedObjs.add(objRef(anotherObj2));
+                  } else {
+                    soft.assertThat(state.getWrittenByKey("another 1")).isNotNull();
+                    soft.assertThat(state.getWrittenByKey("another 2")).isNotNull();
 
-                        soft.assertThat(state.writeIfNew("another 1", anotherObj1))
-                            .isNotEqualTo(anotherObj1);
-                        soft.assertThat(state.writeIfNew("another 2", anotherObj2))
-                            .isNotEqualTo(anotherObj2);
-                      }
+                    soft.assertThat(state.writeIfNew("another 1", anotherObj1))
+                        .isNotEqualTo(anotherObj1);
+                    soft.assertThat(state.writeIfNew("another 2", anotherObj2))
+                        .isNotEqualTo(anotherObj2);
+                  }
 
-                      if (attempt < 4) {
-                        // retry
-                        return Optional.empty();
-                      }
+                  if (attempt < 4) {
+                    // retry
+                    return Optional.empty();
+                  }
 
-                      var resultObj = CommitTestObj.builder().text("result");
+                  var resultObj = CommitTestObj.builder().text("result");
 
-                      var r = state.commitResult("foo", resultObj, refObj);
-                      expectedObjs.add(objRef(r.orElseThrow()));
-                      return r;
-                    }))
+                  var r = state.commitResult("foo", resultObj, refObj);
+                  expectedObjs.add(objRef(r.orElseThrow()));
+                  return r;
+                }))
         .contains("foo");
 
     soft.assertThat(expectedObjs).hasSize(3).doesNotHaveDuplicates();
@@ -841,57 +811,56 @@ public abstract class BaseTestCommitterImpl {
     soft.assertThat(
             persistence
                 .createCommitter(referenceName, CommitTestObj.class, String.class)
-                .commit(
-                    (state, refObjSupplier) -> {
-                      var refObj = refObjSupplier.get();
-                      soft.assertThat(refObj).get().isEqualTo(initialObj).isNotSameAs(initialObj);
+                .commit((state, refObjSupplier) -> {
+                  var refObj = refObjSupplier.get();
+                  soft.assertThat(refObj).get().isEqualTo(initialObj).isNotSameAs(initialObj);
 
-                      var attempt = iteration.incrementAndGet();
+                  var attempt = iteration.incrementAndGet();
 
-                      var anotherObj1 =
-                          AnotherTestObj.builder()
-                              .id(persistence.generateId())
-                              .text("another 1, attempt " + attempt)
-                              .build();
-                      var anotherObj2 =
-                          AnotherTestObj.builder()
-                              .id(persistence.generateId())
-                              .text("another 2, attempt " + attempt)
-                              .build();
+                  var anotherObj1 =
+                      AnotherTestObj.builder()
+                          .id(persistence.generateId())
+                          .text("another 1, attempt " + attempt)
+                          .build();
+                  var anotherObj2 =
+                      AnotherTestObj.builder()
+                          .id(persistence.generateId())
+                          .text("another 2, attempt " + attempt)
+                          .build();
 
-                      createdObjs.add(objRef(anotherObj1));
-                      createdObjs.add(objRef(anotherObj2));
+                  createdObjs.add(objRef(anotherObj1));
+                  createdObjs.add(objRef(anotherObj2));
 
-                      if (attempt == 1) {
-                        soft.assertThat(state.getWrittenByKey("another 1")).isNull();
-                        soft.assertThat(state.getWrittenByKey("another 2")).isNull();
-                      } else {
-                        soft.assertThat(state.getWrittenByKey("another 1")).isNotNull();
-                        soft.assertThat(state.getWrittenByKey("another 2")).isNotNull();
-                      }
+                  if (attempt == 1) {
+                    soft.assertThat(state.getWrittenByKey("another 1")).isNull();
+                    soft.assertThat(state.getWrittenByKey("another 2")).isNull();
+                  } else {
+                    soft.assertThat(state.getWrittenByKey("another 1")).isNotNull();
+                    soft.assertThat(state.getWrittenByKey("another 2")).isNotNull();
+                  }
 
-                      state.writeOrReplace("another 1", anotherObj1);
-                      state.writeOrReplace("another 2", anotherObj2);
+                  state.writeOrReplace("another 1", anotherObj1);
+                  state.writeOrReplace("another 2", anotherObj2);
 
-                      soft.assertThat(state.getWrittenByKey("another 1")).isNotNull();
-                      soft.assertThat(state.getWrittenByKey("another 2")).isNotNull();
+                  soft.assertThat(state.getWrittenByKey("another 1")).isNotNull();
+                  soft.assertThat(state.getWrittenByKey("another 2")).isNotNull();
 
-                      if (attempt < 4) {
-                        // retry
-                        return Optional.empty();
-                      }
+                  if (attempt < 4) {
+                    // retry
+                    return Optional.empty();
+                  }
 
-                      var resultObj = CommitTestObj.builder().text("result");
+                  var resultObj = CommitTestObj.builder().text("result");
 
-                      expectedObjs.add(objRef(anotherObj1));
-                      expectedObjs.add(objRef(anotherObj2));
+                  expectedObjs.add(objRef(anotherObj1));
+                  expectedObjs.add(objRef(anotherObj2));
 
-                      var r = state.commitResult("foo", resultObj, refObj);
+                  var r = state.commitResult("foo", resultObj, refObj);
 
-                      expectedObjs.add(objRef(r.orElseThrow()));
+                  expectedObjs.add(objRef(r.orElseThrow()));
 
-                      return r;
-                    }))
+                  return r;
+                }))
         .contains("foo");
 
     soft.assertThat(expectedObjs).hasSize(3).doesNotHaveDuplicates();
@@ -932,43 +901,41 @@ public abstract class BaseTestCommitterImpl {
     persistence.write(initialObj, CommitTestObj.class);
     persistence.createReference(referenceName, Optional.of(objRef(initialObj)));
 
-    soft.assertThatThrownBy(
-            () ->
-                persistence
-                    .createCommitter(referenceName, CommitTestObj.class, String.class)
-                    .commit(
-                        (state, refObjSupplier) -> {
-                          soft.assertThat(refObjSupplier.get())
-                              .get()
-                              .isEqualTo(initialObj)
-                              .isNotSameAs(initialObj);
+    soft.assertThatThrownBy(() ->
+            persistence
+                .createCommitter(referenceName, CommitTestObj.class, String.class)
+                .commit((state, refObjSupplier) -> {
+                  soft.assertThat(refObjSupplier.get())
+                      .get()
+                      .isEqualTo(initialObj)
+                      .isNotSameAs(initialObj);
 
-                          var attempt = iteration.incrementAndGet();
+                  var attempt = iteration.incrementAndGet();
 
-                          var anotherObj1 =
-                              AnotherTestObj.builder()
-                                  .id(persistence.generateId())
-                                  .text("another 1, attempt " + attempt)
-                                  .build();
-                          var anotherObj2 =
-                              AnotherTestObj.builder()
-                                  .id(persistence.generateId())
-                                  .text("another 2, attempt " + attempt)
-                                  .build();
+                  var anotherObj1 =
+                      AnotherTestObj.builder()
+                          .id(persistence.generateId())
+                          .text("another 1, attempt " + attempt)
+                          .build();
+                  var anotherObj2 =
+                      AnotherTestObj.builder()
+                          .id(persistence.generateId())
+                          .text("another 2, attempt " + attempt)
+                          .build();
 
-                          createdObjs.add(objRef(anotherObj1));
-                          createdObjs.add(objRef(anotherObj2));
+                  createdObjs.add(objRef(anotherObj1));
+                  createdObjs.add(objRef(anotherObj2));
 
-                          state.writeOrReplace("another 1 / " + attempt, anotherObj1);
-                          state.writeOrReplace("another 2 / " + attempt, anotherObj2);
+                  state.writeOrReplace("another 1 / " + attempt, anotherObj1);
+                  state.writeOrReplace("another 2 / " + attempt, anotherObj2);
 
-                          if (attempt < 4) {
-                            // retry
-                            return Optional.empty();
-                          }
+                  if (attempt < 4) {
+                    // retry
+                    return Optional.empty();
+                  }
 
-                          throw new CommitException("failed commit") {};
-                        }))
+                  throw new CommitException("failed commit") {};
+                }))
         .isInstanceOf(CommitException.class)
         .hasMessage("failed commit");
 
@@ -1002,43 +969,41 @@ public abstract class BaseTestCommitterImpl {
     persistence.createReference(referenceName, Optional.of(objRef(initialObj)));
 
     soft.assertThatIllegalStateException()
-        .isThrownBy(
-            () ->
-                persistence
-                    .createCommitter(referenceName, CommitTestObj.class, String.class)
-                    .commit(
-                        (state, refObjSupplier) -> {
-                          soft.assertThat(refObjSupplier.get())
-                              .get()
-                              .isEqualTo(initialObj)
-                              .isNotSameAs(initialObj);
+        .isThrownBy(() ->
+            persistence
+                .createCommitter(referenceName, CommitTestObj.class, String.class)
+                .commit((state, refObjSupplier) -> {
+                  soft.assertThat(refObjSupplier.get())
+                      .get()
+                      .isEqualTo(initialObj)
+                      .isNotSameAs(initialObj);
 
-                          var attempt = iteration.incrementAndGet();
+                  var attempt = iteration.incrementAndGet();
 
-                          var anotherObj1 =
-                              AnotherTestObj.builder()
-                                  .id(persistence.generateId())
-                                  .text("another 1, attempt " + attempt)
-                                  .build();
-                          var anotherObj2 =
-                              AnotherTestObj.builder()
-                                  .id(persistence.generateId())
-                                  .text("another 2, attempt " + attempt)
-                                  .build();
+                  var anotherObj1 =
+                      AnotherTestObj.builder()
+                          .id(persistence.generateId())
+                          .text("another 1, attempt " + attempt)
+                          .build();
+                  var anotherObj2 =
+                      AnotherTestObj.builder()
+                          .id(persistence.generateId())
+                          .text("another 2, attempt " + attempt)
+                          .build();
 
-                          createdObjs.add(objRef(anotherObj1));
-                          createdObjs.add(objRef(anotherObj2));
+                  createdObjs.add(objRef(anotherObj1));
+                  createdObjs.add(objRef(anotherObj2));
 
-                          state.writeOrReplace("another 1 / " + attempt, anotherObj1);
-                          state.writeOrReplace("another 2 / " + attempt, anotherObj2);
+                  state.writeOrReplace("another 1 / " + attempt, anotherObj1);
+                  state.writeOrReplace("another 2 / " + attempt, anotherObj2);
 
-                          if (attempt < 4) {
-                            // retry
-                            return Optional.empty();
-                          }
+                  if (attempt < 4) {
+                    // retry
+                    return Optional.empty();
+                  }
 
-                          return Optional.of(initialObj);
-                        }))
+                  return Optional.of(initialObj);
+                }))
         .withMessage(
             "CommitRetryable.attempt() returned the current reference's pointer, in this case it must not attempt to persist any objects");
 
@@ -1071,30 +1036,25 @@ public abstract class BaseTestCommitterImpl {
     persistence.createReference(referenceName, Optional.of(objRef(initialObj)));
 
     soft.assertThatIllegalStateException()
-        .isThrownBy(
-            () ->
-                persistence
-                    .createCommitter(referenceName, CommitTestObj.class, String.class)
-                    .commit(
-                        (state, refObjSupplier) -> {
-                          soft.assertThat(refObjSupplier.get())
-                              .get()
-                              .isEqualTo(initialObj)
-                              .isNotSameAs(initialObj);
+        .isThrownBy(() ->
+            persistence
+                .createCommitter(referenceName, CommitTestObj.class, String.class)
+                .commit((state, refObjSupplier) -> {
+                  soft.assertThat(refObjSupplier.get())
+                      .get()
+                      .isEqualTo(initialObj)
+                      .isNotSameAs(initialObj);
 
-                          var attempt = iteration.incrementAndGet();
+                  var attempt = iteration.incrementAndGet();
 
-                          if (attempt < 4) {
-                            // retry
-                            return Optional.empty();
-                          }
+                  if (attempt < 4) {
+                    // retry
+                    return Optional.empty();
+                  }
 
-                          return Optional.of(
-                              CommitTestObj.builder()
-                                  .from(initialObj)
-                                  .optional("some optional")
-                                  .build());
-                        }))
+                  return Optional.of(
+                      CommitTestObj.builder().from(initialObj).optional("some optional").build());
+                }))
         .withMessage(
             "CommitRetryable.attempt() must not modify the returned object when using the same ID");
   }
@@ -1117,26 +1077,24 @@ public abstract class BaseTestCommitterImpl {
     persistence.write(initialObj, CommitTestObj.class);
     persistence.createReference(referenceName, Optional.of(objRef(initialObj)));
 
-    soft.assertThatCode(
-            () ->
-                persistence
-                    .createCommitter(referenceName, CommitTestObj.class, CommitTestObj.class)
-                    .commit(
-                        (state, refObjSupplier) -> {
-                          soft.assertThat(refObjSupplier.get())
-                              .get()
-                              .isEqualTo(initialObj)
-                              .isNotSameAs(initialObj);
+    soft.assertThatCode(() ->
+            persistence
+                .createCommitter(referenceName, CommitTestObj.class, CommitTestObj.class)
+                .commit((state, refObjSupplier) -> {
+                  soft.assertThat(refObjSupplier.get())
+                      .get()
+                      .isEqualTo(initialObj)
+                      .isNotSameAs(initialObj);
 
-                          var attempt = iteration.incrementAndGet();
+                  var attempt = iteration.incrementAndGet();
 
-                          if (attempt < 4) {
-                            // retry
-                            return Optional.empty();
-                          }
+                  if (attempt < 4) {
+                    // retry
+                    return Optional.empty();
+                  }
 
-                          return Optional.of(initialObj);
-                        }))
+                  return Optional.of(initialObj);
+                }))
         .doesNotThrowAnyException();
 
     soft.assertThat(persistence.fetch(objRef(initialObj), CommitTestObj.class))

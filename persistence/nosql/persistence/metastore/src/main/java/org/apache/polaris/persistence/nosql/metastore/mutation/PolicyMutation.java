@@ -71,110 +71,104 @@ public record PolicyMutation(
                   POLICY_MAPPINGS_REF_NAME, PolicyMappingsObj.class, PolicyAttachmentResult.class)
               .synchronizingLocally();
       return committer
-          .commitRuntimeException(
-              (state, refObjSupplier) -> {
-                var refObj = refObjSupplier.get();
-                var index =
-                    refObj
-                        .map(
-                            ref ->
-                                ref.policyMappings()
-                                    .asUpdatableIndex(
-                                        state.persistence(), POLICY_MAPPING_SERIALIZER))
-                        .orElseGet(
-                            () ->
-                                IndexContainer.newUpdatableIndex(
-                                    persistence, POLICY_MAPPING_SERIALIZER));
-                var builder = PolicyMappingsObj.builder();
-                refObj.ifPresent(builder::from);
+          .commitRuntimeException((state, refObjSupplier) -> {
+            var refObj = refObjSupplier.get();
+            var index =
+                refObj
+                    .map(ref ->
+                        ref.policyMappings()
+                            .asUpdatableIndex(state.persistence(), POLICY_MAPPING_SERIALIZER))
+                    .orElseGet(() ->
+                        IndexContainer.newUpdatableIndex(persistence, POLICY_MAPPING_SERIALIZER));
+            var builder = PolicyMappingsObj.builder();
+            refObj.ifPresent(builder::from);
 
-                var policyCatalogAccess = memoizedIndexedAccess.catalogContent(policyCatalogId);
+            var policyCatalogAccess = memoizedIndexedAccess.catalogContent(policyCatalogId);
 
-                var policyOptional = policyCatalogAccess.byId(policyId);
-                if (policyOptional.isEmpty()) {
-                  return state.noCommit(new PolicyAttachmentResult(POLICY_MAPPING_NOT_FOUND, null));
-                }
-                if (targetCatalogId != 0L && targetCatalogId != targetId) {
-                  // catalog content, check whether the entity exists
-                  var targetCatalogAccess =
-                      targetCatalogId == policyCatalogId
-                          ? policyCatalogAccess
-                          : memoizedIndexedAccess.catalogContent(targetCatalogId);
-                  var targetOptional = targetCatalogAccess.byId(targetId);
-                  if (targetOptional.isEmpty()) {
-                    return state.noCommit(new PolicyAttachmentResult(ENTITY_NOT_FOUND, null));
-                  }
-                }
-                // else: against catalog, assume that it exists
+            var policyOptional = policyCatalogAccess.byId(policyId);
+            if (policyOptional.isEmpty()) {
+              return state.noCommit(new PolicyAttachmentResult(POLICY_MAPPING_NOT_FOUND, null));
+            }
+            if (targetCatalogId != 0L && targetCatalogId != targetId) {
+              // catalog content, check whether the entity exists
+              var targetCatalogAccess =
+                  targetCatalogId == policyCatalogId
+                      ? policyCatalogAccess
+                      : memoizedIndexedAccess.catalogContent(targetCatalogId);
+              var targetOptional = targetCatalogAccess.byId(targetId);
+              if (targetOptional.isEmpty()) {
+                return state.noCommit(new PolicyAttachmentResult(ENTITY_NOT_FOUND, null));
+              }
+            }
+            // else: against catalog, assume that it exists
 
-                var result =
-                    new PolicyAttachmentResult(
-                        new PolarisPolicyMappingRecord(
-                            targetCatalogId,
-                            targetId,
-                            policyCatalogId,
-                            policyId,
-                            policyType.getCode(),
-                            parameters));
+            var result =
+                new PolicyAttachmentResult(
+                    new PolarisPolicyMappingRecord(
+                        targetCatalogId,
+                        targetId,
+                        policyCatalogId,
+                        policyId,
+                        policyType.getCode(),
+                        parameters));
 
-                var keyByPolicy =
-                    new PolicyMappingsObj.KeyByPolicy(
-                        policyCatalogId, policyId, policyType.getCode(), targetCatalogId, targetId);
-                var keyByEntity =
-                    new PolicyMappingsObj.KeyByEntity(
-                        targetCatalogId, targetId, policyType.getCode(), policyCatalogId, policyId);
+            var keyByPolicy =
+                new PolicyMappingsObj.KeyByPolicy(
+                    policyCatalogId, policyId, policyType.getCode(), targetCatalogId, targetId);
+            var keyByEntity =
+                new PolicyMappingsObj.KeyByEntity(
+                    targetCatalogId, targetId, policyType.getCode(), policyCatalogId, policyId);
 
-                if (doAttach) {
-                  if (policyType.isInheritable()) {
-                    // The contract says that at max one policy of the same inheritable policy type
-                    // must
-                    // be attached to a single entity.
-                    var policyPrefixKey = keyByEntity.toPolicyTypePartialIndexKey();
-                    var iter = index.iterator(policyPrefixKey, policyPrefixKey, false);
-                    if (iter.hasNext()) {
-                      var key = fromIndexKey(iter.next().key());
-                      if (!(key instanceof PolicyMappingsObj.KeyByEntity existing
-                          && existing.policyCatalogId() == policyCatalogId
-                          && existing.policyId() == policyId)) {
-                        // same policy-type attached, error-out
-                        return state.noCommit(
-                            new PolicyAttachmentResult(
-                                POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS, null));
-                      }
-                    }
-                  }
-
-                  var policyMapping = PolicyMapping.builder().parameters(parameters).build();
-                  var serializedPolicyMappingSize =
-                      POLICY_MAPPING_SERIALIZER.serializedSize(policyMapping);
-                  if (serializedPolicyMappingSize > MAX_POLICY_MAPPING_INDEX_VALUE_SIZE) {
+            if (doAttach) {
+              if (policyType.isInheritable()) {
+                // The contract says that at max one policy of the same inheritable policy type
+                // must
+                // be attached to a single entity.
+                var policyPrefixKey = keyByEntity.toPolicyTypePartialIndexKey();
+                var iter = index.iterator(policyPrefixKey, policyPrefixKey, false);
+                if (iter.hasNext()) {
+                  var key = fromIndexKey(iter.next().key());
+                  if (!(key instanceof PolicyMappingsObj.KeyByEntity existing
+                      && existing.policyCatalogId() == policyCatalogId
+                      && existing.policyId() == policyId)) {
+                    // same policy-type attached, error-out
                     return state.noCommit(
                         new PolicyAttachmentResult(
-                            UNEXPECTED_ERROR_SIGNALED,
-                            "Serialized policy-mapping index value size "
-                                + serializedPolicyMappingSize
-                                + " exceeds maximum allowed size "
-                                + MAX_POLICY_MAPPING_INDEX_VALUE_SIZE));
-                  }
-
-                  // note: parameters are only added to the "by entity" entry
-                  index.put(keyByPolicy.toIndexKey(), PolicyMapping.EMPTY);
-                  index.put(keyByEntity.toIndexKey(), policyMapping);
-                } else {
-                  var removedByPolicy = index.remove(keyByPolicy.toIndexKey());
-                  var removedByEntity = index.remove(keyByEntity.toIndexKey());
-                  if (!removedByPolicy && !removedByEntity) {
-                    // Nothing to detach: the policy was never attached to this target.
-                    return state.noCommit(
-                        new PolicyAttachmentResult(POLICY_MAPPING_NOT_FOUND, null));
+                            POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS, null));
                   }
                 }
+              }
 
-                // Replacing this inline index leaves older mapping objects and stripes stale
-                // until a later maintenance purge.
-                builder.policyMappings(index.toIndexed("mappings", state::writeOrReplace));
-                return state.commitResult(result, builder, refObj);
-              })
+              var policyMapping = PolicyMapping.builder().parameters(parameters).build();
+              var serializedPolicyMappingSize =
+                  POLICY_MAPPING_SERIALIZER.serializedSize(policyMapping);
+              if (serializedPolicyMappingSize > MAX_POLICY_MAPPING_INDEX_VALUE_SIZE) {
+                return state.noCommit(
+                    new PolicyAttachmentResult(
+                        UNEXPECTED_ERROR_SIGNALED,
+                        "Serialized policy-mapping index value size "
+                            + serializedPolicyMappingSize
+                            + " exceeds maximum allowed size "
+                            + MAX_POLICY_MAPPING_INDEX_VALUE_SIZE));
+              }
+
+              // note: parameters are only added to the "by entity" entry
+              index.put(keyByPolicy.toIndexKey(), PolicyMapping.EMPTY);
+              index.put(keyByEntity.toIndexKey(), policyMapping);
+            } else {
+              var removedByPolicy = index.remove(keyByPolicy.toIndexKey());
+              var removedByEntity = index.remove(keyByEntity.toIndexKey());
+              if (!removedByPolicy && !removedByEntity) {
+                // Nothing to detach: the policy was never attached to this target.
+                return state.noCommit(new PolicyAttachmentResult(POLICY_MAPPING_NOT_FOUND, null));
+              }
+            }
+
+            // Replacing this inline index leaves older mapping objects and stripes stale
+            // until a later maintenance purge.
+            builder.policyMappings(index.toIndexed("mappings", state::writeOrReplace));
+            return state.commitResult(result, builder, refObj);
+          })
           .orElseThrow();
     } finally {
       memoizedIndexedAccess.invalidateReferenceHead(POLICY_MAPPINGS_REF_NAME);

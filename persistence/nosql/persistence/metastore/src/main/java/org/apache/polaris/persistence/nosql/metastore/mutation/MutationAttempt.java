@@ -243,20 +243,19 @@ public record MutationAttempt(
             var numCatalogRoles =
                 catalogRolesAccess
                     .nameIndex()
-                    .map(
-                        idx -> {
-                          var iter = idx.iterator();
-                          var cnt = 0;
-                          if (iter.hasNext()) {
-                            iter.next();
-                            cnt++;
-                          }
-                          if (iter.hasNext()) {
-                            iter.next();
-                            cnt++;
-                          }
-                          return cnt;
-                        })
+                    .map(idx -> {
+                      var iter = idx.iterator();
+                      var cnt = 0;
+                      if (iter.hasNext()) {
+                        iter.next();
+                        cnt++;
+                      }
+                      if (iter.hasNext()) {
+                        iter.next();
+                        cnt++;
+                      }
+                      return cnt;
+                    })
                     .orElse(0);
 
             // If we have 2, we cannot drop the catalog.
@@ -275,28 +274,27 @@ public record MutationAttempt(
           case POLICY ->
               memoizedIndexedAccess
                   .referenceHead(POLICY_MAPPINGS_REF_NAME, PolicyMappingsObj.class)
-                  .map(
-                      policyMappingsObj -> {
-                        var index =
-                            policyMappingsObj
-                                .policyMappings()
-                                .indexForRead(persistence, POLICY_MAPPING_SERIALIZER);
+                  .map(policyMappingsObj -> {
+                    var index =
+                        policyMappingsObj
+                            .policyMappings()
+                            .indexForRead(persistence, POLICY_MAPPING_SERIALIZER);
 
-                        var prefixKey = policyIndexPrefixKey((PolicyObj) originalObj, entity);
+                    var prefixKey = policyIndexPrefixKey((PolicyObj) originalObj, entity);
 
-                        var iter = index.iterator(prefixKey, prefixKey, false);
+                    var iter = index.iterator(prefixKey, prefixKey, false);
 
-                        if (iter.hasNext() && !update.cleanup()) {
-                          mutationResults.dropResult(POLICY_HAS_MAPPINGS);
-                          return false;
-                        }
+                    if (iter.hasNext() && !update.cleanup()) {
+                      mutationResults.dropResult(POLICY_HAS_MAPPINGS);
+                      return false;
+                    }
 
-                        // Policy-mapping cleanup happens as a separate maintenance workflow,
-                        // because entity drops and policy-mappings updates cannot be made atomic
-                        // across multiple refs in the NoSQL model.
+                    // Policy-mapping cleanup happens as a separate maintenance workflow,
+                    // because entity drops and policy-mappings updates cannot be made atomic
+                    // across multiple refs in the NoSQL model.
 
-                        return true;
-                      })
+                    return true;
+                  })
                   .orElse(true);
           default -> true;
         };

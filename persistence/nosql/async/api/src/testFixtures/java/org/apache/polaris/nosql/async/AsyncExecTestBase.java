@@ -124,15 +124,12 @@ public abstract class AsyncExecTestBase {
     var sem = new Semaphore(0);
     var completableFutures =
         IntStream.range(0, numTasks)
-            .mapToObj(
-                i ->
-                    executor.submit(
-                        () -> {
-                          soft.assertThat(sem.tryAcquire(asyncTimeout.toMillis(), MILLISECONDS))
-                              .isTrue();
-                          threadAssertion();
-                          return "foo";
-                        }))
+            .mapToObj(i ->
+                executor.submit(() -> {
+                  soft.assertThat(sem.tryAcquire(asyncTimeout.toMillis(), MILLISECONDS)).isTrue();
+                  threadAssertion();
+                  return "foo";
+                }))
             .map(Cancelable::completionStage)
             .map(CompletionStage::toCompletableFuture)
             .toList();
@@ -153,18 +150,17 @@ public abstract class AsyncExecTestBase {
     var interrupted = new AtomicBoolean();
 
     var cancelable =
-        executor.submit(
-            () -> {
-              started.release();
-              try {
-                allowFinish.acquire();
-              } catch (InterruptedException e) {
-                interrupted.set(true);
-              } finally {
-                finished.release();
-              }
-              return null;
-            });
+        executor.submit(() -> {
+          started.release();
+          try {
+            allowFinish.acquire();
+          } catch (InterruptedException e) {
+            interrupted.set(true);
+          } finally {
+            finished.release();
+          }
+          return null;
+        });
 
     soft.assertThat(started.tryAcquire(asyncTimeout.toMillis(), MILLISECONDS)).isTrue();
 
@@ -182,15 +178,12 @@ public abstract class AsyncExecTestBase {
     var sem = new Semaphore(0);
     var completableFutures =
         IntStream.range(0, numTasks)
-            .mapToObj(
-                i ->
-                    executor.submit(
-                        () -> {
-                          soft.assertThat(sem.tryAcquire(asyncTimeout.toMillis(), MILLISECONDS))
-                              .isTrue();
-                          threadAssertion();
-                          throw new RuntimeException("FAILED");
-                        }))
+            .mapToObj(i ->
+                executor.submit(() -> {
+                  soft.assertThat(sem.tryAcquire(asyncTimeout.toMillis(), MILLISECONDS)).isTrue();
+                  threadAssertion();
+                  throw new RuntimeException("FAILED");
+                }))
             .map(Cancelable::completionStage)
             .map(CompletionStage::toCompletableFuture)
             .toList();
@@ -200,15 +193,14 @@ public abstract class AsyncExecTestBase {
     sem.release(numTasks);
 
     soft.assertThat(completableFutures)
-        .allSatisfy(
-            cf ->
-                assertThat(cf)
-                    .failsWithin(asyncTimeout)
-                    .withThrowableThat()
-                    .isInstanceOf(ExecutionException.class)
-                    .havingCause()
-                    .isInstanceOf(RuntimeException.class)
-                    .withMessage("FAILED"));
+        .allSatisfy(cf ->
+            assertThat(cf)
+                .failsWithin(asyncTimeout)
+                .withThrowableThat()
+                .isInstanceOf(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(RuntimeException.class)
+                .withMessage("FAILED"));
   }
 
   @Test
@@ -217,16 +209,15 @@ public abstract class AsyncExecTestBase {
     var sem = new Semaphore(0);
     var completableFutures =
         IntStream.range(0, numTasks)
-            .mapToObj(
-                i ->
-                    executor.schedule(
-                        () -> {
-                          soft.assertThat(sem.tryAcquire(asyncTimeout.toMillis(), MILLISECONDS))
-                              .isTrue();
-                          threadAssertion();
-                          return "foo";
-                        },
-                        Duration.ofMillis(1)))
+            .mapToObj(i ->
+                executor.schedule(
+                    () -> {
+                      soft.assertThat(sem.tryAcquire(asyncTimeout.toMillis(), MILLISECONDS))
+                          .isTrue();
+                      threadAssertion();
+                      return "foo";
+                    },
+                    Duration.ofMillis(1)))
             .map(Cancelable::completionStage)
             .map(CompletionStage::toCompletableFuture)
             .toList();
@@ -262,36 +253,35 @@ public abstract class AsyncExecTestBase {
     var stop = new AtomicBoolean();
     var completableFutures =
         IntStream.range(0, numTasks)
-            .mapToObj(
-                i -> {
-                  var task = new PeriodicPerTask();
-                  task.c =
-                      executor.schedulePeriodic(
-                          () -> {
-                            threadAssertion();
-                            try {
-                              soft.assertThat(
-                                      task.before.tryAcquire(asyncTimeout.toMillis(), MILLISECONDS))
-                                  .isTrue();
-                            } catch (InterruptedException e) {
-                              throw new RuntimeException(e);
-                            }
-                            try {
-                              if (stop.get()) {
-                                return;
-                              }
-                              var iter = task.runs.getAndIncrement();
-                              if (iter == failAfter) {
-                                throw new RuntimeException("FAILED");
-                              }
-                            } finally {
-                              task.after.release(1);
-                            }
-                          },
-                          Duration.ofMillis(1));
-                  task.f = task.c.completionStage().toCompletableFuture();
-                  return task;
-                })
+            .mapToObj(i -> {
+              var task = new PeriodicPerTask();
+              task.c =
+                  executor.schedulePeriodic(
+                      () -> {
+                        threadAssertion();
+                        try {
+                          soft.assertThat(
+                                  task.before.tryAcquire(asyncTimeout.toMillis(), MILLISECONDS))
+                              .isTrue();
+                        } catch (InterruptedException e) {
+                          throw new RuntimeException(e);
+                        }
+                        try {
+                          if (stop.get()) {
+                            return;
+                          }
+                          var iter = task.runs.getAndIncrement();
+                          if (iter == failAfter) {
+                            throw new RuntimeException("FAILED");
+                          }
+                        } finally {
+                          task.after.release(1);
+                        }
+                      },
+                      Duration.ofMillis(1));
+              task.f = task.c.completionStage().toCompletableFuture();
+              return task;
+            })
             .toList();
 
     var iterations = dontFail ? 10 : (failAfter + 1);
@@ -318,20 +308,19 @@ public abstract class AsyncExecTestBase {
     completableFutures.forEach(s -> s.before.release(1000));
 
     soft.assertThat(completableFutures)
-        .allSatisfy(
-            t -> {
-              if (dontFail) {
-                cancelledAssert(assertThat(t.f));
-              } else {
-                assertThat(t.f)
-                    .completesExceptionallyWithin(asyncTimeout)
-                    .withThrowableThat()
-                    .isInstanceOf(ExecutionException.class)
-                    .havingCause()
-                    .isInstanceOf(RuntimeException.class)
-                    .withMessage("FAILED");
-              }
-            });
+        .allSatisfy(t -> {
+          if (dontFail) {
+            cancelledAssert(assertThat(t.f));
+          } else {
+            assertThat(t.f)
+                .completesExceptionallyWithin(asyncTimeout)
+                .withThrowableThat()
+                .isInstanceOf(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(RuntimeException.class)
+                .withMessage("FAILED");
+          }
+        });
 
     soft.assertThat(completableFutures).allMatch(t -> t.f.isDone());
     if (dontFail) {

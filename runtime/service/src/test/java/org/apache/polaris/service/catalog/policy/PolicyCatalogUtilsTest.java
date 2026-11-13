@@ -98,11 +98,10 @@ class PolicyCatalogUtilsTest {
   void testResolvePolicyTypeFilterRejectionListsEveryValidType() {
     assertThatThrownBy(() -> PolicyCatalogUtils.resolvePolicyTypeFilter("not-a-policy-type"))
         .isInstanceOf(BadRequestException.class)
-        .satisfies(
-            e -> {
-              for (PredefinedPolicyTypes policyType : PredefinedPolicyTypes.values()) {
-                assertThat(e).hasMessageContaining(policyType.getName());
-              }
-            });
+        .satisfies(e -> {
+          for (PredefinedPolicyTypes policyType : PredefinedPolicyTypes.values()) {
+            assertThat(e).hasMessageContaining(policyType.getName());
+          }
+        });
   }
 }

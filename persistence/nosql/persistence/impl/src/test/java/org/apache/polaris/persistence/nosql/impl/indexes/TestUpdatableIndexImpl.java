@@ -755,12 +755,11 @@ public class TestUpdatableIndexImpl {
     soft.assertThat(toPersist).hasSize(1);
     soft.assertThat(indexed.stripes()).hasSize(2);
     soft.assertThat(indexed.stripes())
-        .anySatisfy(
-            stripe -> {
-              assertThat(stripe.firstKey()).isEqualTo(firstPrefixKey);
-              assertThat(stripe.lastKey()).isEqualTo(lastPrefixKey);
-              assertThat(stripe.segment()).isEqualTo(objRef(prefixStripeObj));
-            });
+        .anySatisfy(stripe -> {
+          assertThat(stripe.firstKey()).isEqualTo(firstPrefixKey);
+          assertThat(stripe.lastKey()).isEqualTo(lastPrefixKey);
+          assertThat(stripe.segment()).isEqualTo(objRef(prefixStripeObj));
+        });
 
     toPersist.stream().map(Map.Entry::getValue).forEach(o -> persistence.write(o, Obj.class));
 
@@ -834,11 +833,10 @@ public class TestUpdatableIndexImpl {
     soft.assertThat(toPersist).hasSizeGreaterThan(1);
     soft.assertThat(indexed.stripes()).hasSizeGreaterThan(2);
     soft.assertThat(indexed.stripes())
-        .anySatisfy(
-            stripe -> {
-              assertThat(stripe.firstKey()).isEqualTo(largeKey);
-              assertThat(stripe.lastKey()).isEqualTo(largeKey);
-            });
+        .anySatisfy(stripe -> {
+          assertThat(stripe.firstKey()).isEqualTo(largeKey);
+          assertThat(stripe.lastKey()).isEqualTo(largeKey);
+        });
 
     toPersist.stream().map(Map.Entry::getValue).forEach(o -> persistence.write(o, Obj.class));
 

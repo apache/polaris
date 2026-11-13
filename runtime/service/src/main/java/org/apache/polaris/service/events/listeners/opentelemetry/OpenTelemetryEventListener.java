@@ -168,11 +168,10 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
         .ifPresent(requestId -> attributes.put(REQUEST_ID_ATTRIBUTE_KEY, requestId));
     metadata
         .user()
-        .ifPresent(
-            principal -> {
-              attributes.put(ACTOR_NAME_ATTRIBUTE_KEY, principal.getName());
-              attributes.put(ACTOR_ROLES_ATTRIBUTE_KEY, List.copyOf(principal.getRoles()));
-            });
+        .ifPresent(principal -> {
+          attributes.put(ACTOR_NAME_ATTRIBUTE_KEY, principal.getName());
+          attributes.put(ACTOR_ROLES_ATTRIBUTE_KEY, List.copyOf(principal.getRoles()));
+        });
     if (includeOpenTelemetryContext) {
       putOpenTelemetryContextAttributes(attributes, metadata.openTelemetryContext());
     }

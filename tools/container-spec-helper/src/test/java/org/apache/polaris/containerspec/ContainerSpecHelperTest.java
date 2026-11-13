@@ -105,30 +105,26 @@ class ContainerSpecHelperTest {
 
   @Test
   void dockerImageNameRejectsImageWithoutTag() {
-    assertThatThrownBy(
-            () ->
-                testHelper(Map.of("polaris.testing.test.image", "docker.io/custom/image"), Map.of())
-                    .dockerImageName(null))
+    assertThatThrownBy(() ->
+            testHelper(Map.of("polaris.testing.test.image", "docker.io/custom/image"), Map.of())
+                .dockerImageName(null))
         .hasRootCauseInstanceOf(IllegalArgumentException.class)
         .hasRootCauseMessage(EXPECTED_PARTIAL_CONFIG_MESSAGE);
   }
 
   @Test
   void dockerImageNameRejectsTagWithoutImage() {
-    assertThatThrownBy(
-            () ->
-                testHelper(Map.of("polaris.testing.test.tag", "9.9.9"), Map.of())
-                    .dockerImageName(null))
+    assertThatThrownBy(() ->
+            testHelper(Map.of("polaris.testing.test.tag", "9.9.9"), Map.of()).dockerImageName(null))
         .hasRootCauseInstanceOf(IllegalArgumentException.class)
         .hasRootCauseMessage(EXPECTED_PARTIAL_CONFIG_MESSAGE);
   }
 
   @Test
   void dockerImageNameRejectsImageWithoutTagFromEnvironmentVariable() {
-    assertThatThrownBy(
-            () ->
-                testHelper(Map.of(), Map.of("TEST_DOCKER_IMAGE", "docker.io/env/image"))
-                    .dockerImageName(null))
+    assertThatThrownBy(() ->
+            testHelper(Map.of(), Map.of("TEST_DOCKER_IMAGE", "docker.io/env/image"))
+                .dockerImageName(null))
         .hasRootCauseInstanceOf(IllegalArgumentException.class)
         .hasRootCauseMessage(EXPECTED_PARTIAL_CONFIG_MESSAGE);
   }
@@ -144,10 +140,9 @@ class ContainerSpecHelperTest {
   @ParameterizedTest
   @ValueSource(strings = {"it.polaris.container.test.image", "polaris.testing.test.image"})
   void dockerImageNameRejectsPartialImageOverrideFromAnySystemPropertyPrefix(String imageProperty) {
-    assertThatThrownBy(
-            () ->
-                testHelper(Map.of(imageProperty, "docker.io/custom/image"), Map.of())
-                    .dockerImageName(null))
+    assertThatThrownBy(() ->
+            testHelper(Map.of(imageProperty, "docker.io/custom/image"), Map.of())
+                .dockerImageName(null))
         .hasRootCauseInstanceOf(IllegalArgumentException.class)
         .hasRootCauseMessage(EXPECTED_PARTIAL_CONFIG_MESSAGE);
   }

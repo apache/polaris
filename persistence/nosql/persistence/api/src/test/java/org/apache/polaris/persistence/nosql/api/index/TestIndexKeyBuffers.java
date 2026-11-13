@@ -166,19 +166,18 @@ class TestIndexKeyBuffers {
 
   static Stream<Arguments> malformedKeys() {
     return Arrays.stream(BufferType.values())
-        .flatMap(
-            type ->
-                Stream.of(
-                    arguments(type, new byte[0], BufferUnderflowException.class),
-                    arguments(type, new byte[] {'a'}, BufferUnderflowException.class),
-                    arguments(type, new byte[] {2}, BufferUnderflowException.class),
-                    arguments(type, new byte[] {2, 3}, BufferUnderflowException.class),
-                    arguments(type, new byte[] {2, 4}, BufferUnderflowException.class),
-                    arguments(type, new byte[] {'a', 2, 3}, BufferUnderflowException.class),
-                    arguments(type, new byte[] {2, 0}, IllegalArgumentException.class),
-                    arguments(type, new byte[] {'a', 2, 5}, IllegalStateException.class),
-                    arguments(type, tooLong(false), IllegalArgumentException.class),
-                    arguments(type, tooLong(true), IllegalArgumentException.class)));
+        .flatMap(type ->
+            Stream.of(
+                arguments(type, new byte[0], BufferUnderflowException.class),
+                arguments(type, new byte[] {'a'}, BufferUnderflowException.class),
+                arguments(type, new byte[] {2}, BufferUnderflowException.class),
+                arguments(type, new byte[] {2, 3}, BufferUnderflowException.class),
+                arguments(type, new byte[] {2, 4}, BufferUnderflowException.class),
+                arguments(type, new byte[] {'a', 2, 3}, BufferUnderflowException.class),
+                arguments(type, new byte[] {2, 0}, IllegalArgumentException.class),
+                arguments(type, new byte[] {'a', 2, 5}, IllegalStateException.class),
+                arguments(type, tooLong(false), IllegalArgumentException.class),
+                arguments(type, tooLong(true), IllegalArgumentException.class)));
   }
 
   private static byte[] tooLong(boolean escaped) {

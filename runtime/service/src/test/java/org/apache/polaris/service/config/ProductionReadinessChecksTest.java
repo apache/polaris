@@ -84,11 +84,10 @@ class ProductionReadinessChecksTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.offendingProperty()).isEqualTo(REFLECTION_FREE_SERIALIZERS_PROPERTY);
-              assertThat(error.severe()).isTrue();
-            });
+        .satisfies(error -> {
+          assertThat(error.offendingProperty()).isEqualTo(REFLECTION_FREE_SERIALIZERS_PROPERTY);
+          assertThat(error.severe()).isTrue();
+        });
   }
 
   @Test
@@ -118,12 +117,10 @@ class ProductionReadinessChecksTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.offendingProperty())
-                  .isEqualTo("polaris.authentication.credential-mode");
-              assertThat(error.severe()).isTrue();
-            });
+        .satisfies(error -> {
+          assertThat(error.offendingProperty()).isEqualTo("polaris.authentication.credential-mode");
+          assertThat(error.severe()).isTrue();
+        });
   }
 
   @ParameterizedTest
@@ -156,12 +153,10 @@ class ProductionReadinessChecksTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.offendingProperty())
-                  .isEqualTo("polaris.authentication.credential-mode");
-              assertThat(error.severe()).isTrue();
-            });
+        .satisfies(error -> {
+          assertThat(error.offendingProperty()).isEqualTo("polaris.authentication.credential-mode");
+          assertThat(error.severe()).isTrue();
+        });
   }
 
   @Test
@@ -207,12 +202,11 @@ class ProductionReadinessChecksTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.offendingProperty())
-                  .isEqualTo("polaris.oidc.principal-mapper.name-claim-path");
-              assertThat(error.severe()).isTrue();
-            });
+        .satisfies(error -> {
+          assertThat(error.offendingProperty())
+              .isEqualTo("polaris.oidc.principal-mapper.name-claim-path");
+          assertThat(error.severe()).isTrue();
+        });
   }
 
   @Test
@@ -230,12 +224,11 @@ class ProductionReadinessChecksTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.offendingProperty())
-                  .isEqualTo("polaris.oidc.principal-mapper.id-claim-path");
-              assertThat(error.severe()).isFalse();
-            });
+        .satisfies(error -> {
+          assertThat(error.offendingProperty())
+              .isEqualTo("polaris.oidc.principal-mapper.id-claim-path");
+          assertThat(error.severe()).isFalse();
+        });
   }
 
   @Test
@@ -280,12 +273,11 @@ class ProductionReadinessChecksTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.offendingProperty())
-                  .isEqualTo("polaris.oidc.principal-mapper.name-claim-path");
-              assertThat(error.severe()).isTrue();
-            });
+        .satisfies(error -> {
+          assertThat(error.offendingProperty())
+              .isEqualTo("polaris.oidc.principal-mapper.name-claim-path");
+          assertThat(error.severe()).isTrue();
+        });
   }
 
   @Test
@@ -299,12 +291,11 @@ class ProductionReadinessChecksTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.offendingProperty())
-                  .isEqualTo("polaris.oidc.idp1.principal-mapper.name-claim-path");
-              assertThat(error.severe()).isFalse();
-            });
+        .satisfies(error -> {
+          assertThat(error.offendingProperty())
+              .isEqualTo("polaris.oidc.idp1.principal-mapper.name-claim-path");
+          assertThat(error.severe()).isFalse();
+        });
   }
 
   @Test
@@ -336,12 +327,11 @@ class ProductionReadinessChecksTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.offendingProperty())
-                  .isEqualTo("polaris.oidc.principal-mapper.name-claim-path");
-              assertThat(error.severe()).isTrue();
-            });
+        .satisfies(error -> {
+          assertThat(error.offendingProperty())
+              .isEqualTo("polaris.oidc.principal-mapper.name-claim-path");
+          assertThat(error.severe()).isTrue();
+        });
   }
 
   private static OidcConfiguration oidcConfig(
@@ -433,13 +423,12 @@ class ProductionReadinessChecksTest {
             installed("STS"));
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.severe()).isFalse();
-              assertThat(error.offendingProperty())
-                  .isEqualTo("polaris.features.\"" + MECHANISMS_KEY + "\"");
-              assertThat(error.message()).contains("BOGUS").contains("STS");
-            });
+        .satisfies(error -> {
+          assertThat(error.severe()).isFalse();
+          assertThat(error.offendingProperty())
+              .isEqualTo("polaris.features.\"" + MECHANISMS_KEY + "\"");
+          assertThat(error.message()).contains("BOGUS").contains("STS");
+        });
   }
 
   @Test
@@ -450,12 +439,11 @@ class ProductionReadinessChecksTest {
     assertThat(result.getErrors())
         .filteredOn(error -> !error.severe())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.offendingProperty())
-                  .isEqualTo("polaris.features.\"" + MECHANISMS_KEY + "\"");
-              assertThat(error.message()).contains("STS");
-            });
+        .satisfies(error -> {
+          assertThat(error.offendingProperty())
+              .isEqualTo("polaris.features.\"" + MECHANISMS_KEY + "\"");
+          assertThat(error.message()).contains("STS");
+        });
   }
 
   @Test
@@ -474,12 +462,11 @@ class ProductionReadinessChecksTest {
             installed("STS"));
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.severe()).isFalse();
-              assertThat(error.offendingProperty()).contains("r1").contains(MECHANISMS_KEY);
-              assertThat(error.message()).contains("NOPE").contains("STS");
-            });
+        .satisfies(error -> {
+          assertThat(error.severe()).isFalse();
+          assertThat(error.offendingProperty()).contains("r1").contains(MECHANISMS_KEY);
+          assertThat(error.message()).contains("NOPE").contains("STS");
+        });
   }
 
   @Test
@@ -490,12 +477,11 @@ class ProductionReadinessChecksTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.severe()).isTrue();
-              assertThat(error.message()).contains("STS");
-              assertThat(error.offendingProperty())
-                  .isEqualTo("S3CredentialVendingMechanism @Identifier(\"STS\")");
-            });
+        .satisfies(error -> {
+          assertThat(error.severe()).isTrue();
+          assertThat(error.message()).contains("STS");
+          assertThat(error.offendingProperty())
+              .isEqualTo("S3CredentialVendingMechanism @Identifier(\"STS\")");
+        });
   }
 }

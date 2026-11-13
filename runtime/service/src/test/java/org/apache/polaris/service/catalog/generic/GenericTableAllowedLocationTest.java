@@ -154,17 +154,16 @@ public class GenericTableAllowedLocationTest {
         assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       }
     } else {
-      assertThatThrownBy(
-              () ->
-                  services
-                      .genericTableApi()
-                      .createGenericTable(
-                          CATALOG,
-                          NAMESPACE,
-                          outsideNamespace,
-                          null,
-                          services.realmContext(),
-                          services.securityContext()))
+      assertThatThrownBy(() ->
+              services
+                  .genericTableApi()
+                  .createGenericTable(
+                      CATALOG,
+                      NAMESPACE,
+                      outsideNamespace,
+                      null,
+                      services.realmContext(),
+                      services.securityContext()))
           .isInstanceOf(ForbiddenException.class)
           .hasMessageContaining("Invalid locations");
     }
@@ -176,17 +175,16 @@ public class GenericTableAllowedLocationTest {
             .setBaseLocation(outsideDir.resolve("table").toUri().toString())
             .setProperties(Map.of())
             .build();
-    assertThatThrownBy(
-            () ->
-                services
-                    .genericTableApi()
-                    .createGenericTable(
-                        CATALOG,
-                        NAMESPACE,
-                        outsideAllowedLocations,
-                        null,
-                        services.realmContext(),
-                        services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .genericTableApi()
+                .createGenericTable(
+                    CATALOG,
+                    NAMESPACE,
+                    outsideAllowedLocations,
+                    null,
+                    services.realmContext(),
+                    services.securityContext()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
   }

@@ -59,23 +59,20 @@ class TestCacheInvalidationMetrics {
       assertThat(registry.getMeters().stream().map(meter -> meter.getId().getName()).distinct())
           .hasSize(10);
       assertThat(registry.getMeters())
-          .allSatisfy(
-              meter -> {
-                assertThat(meter.getId().getTags())
-                    .allSatisfy(
-                        tag -> {
-                          assertThat(tag.getKey()).isIn("stage", "type", "reason", "outcome");
-                          assertThat(tag.getValue())
-                              .doesNotContain("realm-", "object-", "reference-");
-                        });
-                if (meter instanceof Timer timer) {
-                  assertThat(timer.takeSnapshot().histogramCounts()).isEmpty();
-                  assertThat(timer.takeSnapshot().percentileValues()).isEmpty();
-                } else if (meter instanceof DistributionSummary summary) {
-                  assertThat(summary.takeSnapshot().histogramCounts()).isEmpty();
-                  assertThat(summary.takeSnapshot().percentileValues()).isEmpty();
-                }
-              });
+          .allSatisfy(meter -> {
+            assertThat(meter.getId().getTags())
+                .allSatisfy(tag -> {
+                  assertThat(tag.getKey()).isIn("stage", "type", "reason", "outcome");
+                  assertThat(tag.getValue()).doesNotContain("realm-", "object-", "reference-");
+                });
+            if (meter instanceof Timer timer) {
+              assertThat(timer.takeSnapshot().histogramCounts()).isEmpty();
+              assertThat(timer.takeSnapshot().percentileValues()).isEmpty();
+            } else if (meter instanceof DistributionSummary summary) {
+              assertThat(summary.takeSnapshot().histogramCounts()).isEmpty();
+              assertThat(summary.takeSnapshot().percentileValues()).isEmpty();
+            }
+          });
     } finally {
       registry.close();
     }

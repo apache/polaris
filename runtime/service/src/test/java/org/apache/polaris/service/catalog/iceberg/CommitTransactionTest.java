@@ -160,16 +160,15 @@ public class CommitTransactionTest {
                     List.of(),
                     List.of(retryableUpdate))));
 
-    assertThatThrownBy(
-            () ->
-                testServices
-                    .restApi()
-                    .commitTransaction(
-                        catalog,
-                        request,
-                        IDEMPOTENCY_KEY,
-                        testServices.realmContext(),
-                        testServices.securityContext()))
+    assertThatThrownBy(() ->
+            testServices
+                .restApi()
+                .commitTransaction(
+                    catalog,
+                    request,
+                    IDEMPOTENCY_KEY,
+                    testServices.realmContext(),
+                    testServices.securityContext()))
         .isInstanceOf(CommitFailedException.class)
         .isNotInstanceOf(ValidationException.class)
         .hasMessageContaining("Validation failed, please retry");

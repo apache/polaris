@@ -114,9 +114,8 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
                 : null)
         .setServiceIdentity(
             Optional.ofNullable(getServiceIdentity())
-                .map(
-                    serviceIdentityInfoDpo ->
-                        serviceIdentityInfoDpo.asServiceIdentityInfoModel(serviceIdentityProvider))
+                .map(serviceIdentityInfoDpo ->
+                    serviceIdentityInfoDpo.asServiceIdentityInfoModel(serviceIdentityProvider))
                 .orElse(null))
         .build();
   }

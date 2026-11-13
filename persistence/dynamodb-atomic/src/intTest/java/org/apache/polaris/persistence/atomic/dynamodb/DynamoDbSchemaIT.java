@@ -91,15 +91,14 @@ class DynamoDbSchemaIT extends AbstractDynamoDbTest {
       // A direct read reconstructs the entity through the mapper.
       Map<String, AttributeValue> stored =
           client
-              .getItem(
-                  b ->
-                      b.tableName(table)
-                          .key(
-                              Map.of(
-                                  DynamoDbLayout.PK,
-                                  AttributeValue.fromS(DynamoDbLayout.entityPk(realmId, 30L)),
-                                  DynamoDbLayout.SK,
-                                  AttributeValue.fromS(DynamoDbLayout.SK_ENTITY))))
+              .getItem(b ->
+                  b.tableName(table)
+                      .key(
+                          Map.of(
+                              DynamoDbLayout.PK,
+                              AttributeValue.fromS(DynamoDbLayout.entityPk(realmId, 30L)),
+                              DynamoDbLayout.SK,
+                              AttributeValue.fromS(DynamoDbLayout.SK_ENTITY))))
               .item();
       PolarisBaseEntity roundTripped = EntityItem.toEntity(stored);
       assertThat(roundTripped.getId()).isEqualTo(30L);
@@ -109,13 +108,12 @@ class DynamoDbSchemaIT extends AbstractDynamoDbTest {
       // The children GSI lists both children of the same parent, in id order.
       String gsiPk = DynamoDbLayout.childrenGsiPk(realmId, 7L, 3L, 2);
       QueryResponse response =
-          client.query(
-              b ->
-                  b.tableName(table)
-                      .indexName(DynamoDbLayout.GSI1)
-                      .keyConditionExpression("#pk = :pk")
-                      .expressionAttributeNames(Map.of("#pk", DynamoDbLayout.GSI1_PK))
-                      .expressionAttributeValues(Map.of(":pk", AttributeValue.fromS(gsiPk))));
+          client.query(b ->
+              b.tableName(table)
+                  .indexName(DynamoDbLayout.GSI1)
+                  .keyConditionExpression("#pk = :pk")
+                  .expressionAttributeNames(Map.of("#pk", DynamoDbLayout.GSI1_PK))
+                  .expressionAttributeValues(Map.of(":pk", AttributeValue.fromS(gsiPk))));
       assertThat(response.items())
           .extracting(item -> item.get(DynamoDbLayout.A_NAME).s())
           .containsExactly("sales", "orders");

@@ -89,11 +89,10 @@ public class TestCacheInvalidationReceiver {
     var invalidations = cacheInvalidations(allInvalidationTypes());
 
     var rc =
-        expectResponse(
-            r -> {
-              when(r.getParam("sender")).thenReturn(senderId.instanceId());
-              when(r.getHeader(CACHE_INVALIDATION_TOKEN_HEADER)).thenReturn(token);
-            });
+        expectResponse(r -> {
+          when(r.getParam("sender")).thenReturn(senderId.instanceId());
+          when(r.getHeader(CACHE_INVALIDATION_TOKEN_HEADER)).thenReturn(token);
+        });
     var reqBody = mock(RequestBody.class);
     var reqBodyString = JsonMapper.shared().writeValueAsString(invalidations);
     when(reqBody.asString()).thenReturn(reqBodyString);
@@ -139,12 +138,11 @@ public class TestCacheInvalidationReceiver {
     var invalidations = cacheInvalidations(allInvalidationTypes());
 
     var rc =
-        expectResponse(
-            r -> {
-              when(r.getParam("sender")).thenReturn(senderId.instanceId());
-              when(r.getHeader(CACHE_INVALIDATION_TOKEN_HEADER)).thenReturn(token);
-              when(r.getHeader("Content-Type")).thenReturn("application/json; charset=utf-8");
-            });
+        expectResponse(r -> {
+          when(r.getParam("sender")).thenReturn(senderId.instanceId());
+          when(r.getHeader(CACHE_INVALIDATION_TOKEN_HEADER)).thenReturn(token);
+          when(r.getHeader("Content-Type")).thenReturn("application/json; charset=utf-8");
+        });
     var reqBody = mock(RequestBody.class);
     var reqBodyValue = JsonMapper.shared().writeValueAsString(invalidations);
     when(reqBody.asString()).thenReturn(reqBodyValue);
@@ -277,11 +275,10 @@ public class TestCacheInvalidationReceiver {
     var handler = mock(DistributedCacheInvalidation.Receiver.class);
     var receiver = buildReceiver(List.of("token"), ServerInstanceId.of("receiver"), handler);
     var rc =
-        expectResponse(
-            request -> {
-              when(request.getParam("sender")).thenReturn("sender");
-              when(request.getHeader(CACHE_INVALIDATION_TOKEN_HEADER)).thenReturn("token");
-            });
+        expectResponse(request -> {
+          when(request.getParam("sender")).thenReturn("sender");
+          when(request.getHeader(CACHE_INVALIDATION_TOKEN_HEADER)).thenReturn("token");
+        });
     var requestBody = mock(RequestBody.class);
     when(requestBody.asString()).thenReturn(body);
     when(rc.body()).thenReturn(requestBody);
@@ -359,10 +356,9 @@ public class TestCacheInvalidationReceiver {
     doThrow(failure).when(handler).evictObj("repo", SOME_OBJ_REF);
     var receiver = buildReceiver(List.of("token"), ServerInstanceId.of("receiver"), handler);
     var rc = expectResponse();
-    assertThatThrownBy(
-            () ->
-                receiver.cacheInvalidations(
-                    rc, () -> cacheInvalidations(allInvalidationTypes()), "sender", "token"))
+    assertThatThrownBy(() ->
+            receiver.cacheInvalidations(
+                rc, () -> cacheInvalidations(allInvalidationTypes()), "sender", "token"))
         .isSameAs(failure);
     assertThat(
             registry

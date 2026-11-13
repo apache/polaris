@@ -134,31 +134,30 @@ public class DatasourceOperations {
         new BufferedReader(
             new InputStreamReader(Objects.requireNonNull(scriptInputStream), UTF_8))) {
       List<String> scriptLines = scriptReader.lines().toList();
-      runWithinTransaction(
-          connection -> {
-            try (Statement statement = connection.createStatement()) {
-              StringBuilder sqlBuffer = new StringBuilder();
-              for (String line : scriptLines) {
-                line = line.trim();
-                if (!line.isEmpty() && !line.startsWith("--")) { // Ignore empty lines and comments
-                  sqlBuffer.append(line).append("\n");
-                  if (line.endsWith(";")) { // Execute statement when semicolon is found
-                    String sql = sqlBuffer.toString().trim();
-                    try {
-                      // since SQL is directly read from the file, there is close to 0 possibility
-                      // of this being injected plus this run via an Admin tool, if attacker can
-                      // fiddle with this that means lot of other things are already compromised.
-                      statement.execute(sql);
-                    } catch (SQLException e) {
-                      throw new RuntimeException(e);
-                    }
-                    sqlBuffer.setLength(0); // Clear the buffer for the next statement
-                  }
+      runWithinTransaction(connection -> {
+        try (Statement statement = connection.createStatement()) {
+          StringBuilder sqlBuffer = new StringBuilder();
+          for (String line : scriptLines) {
+            line = line.trim();
+            if (!line.isEmpty() && !line.startsWith("--")) { // Ignore empty lines and comments
+              sqlBuffer.append(line).append("\n");
+              if (line.endsWith(";")) { // Execute statement when semicolon is found
+                String sql = sqlBuffer.toString().trim();
+                try {
+                  // since SQL is directly read from the file, there is close to 0 possibility
+                  // of this being injected plus this run via an Admin tool, if attacker can
+                  // fiddle with this that means lot of other things are already compromised.
+                  statement.execute(sql);
+                } catch (SQLException e) {
+                  throw new RuntimeException(e);
                 }
+                sqlBuffer.setLength(0); // Clear the buffer for the next statement
               }
-              return true;
             }
-          });
+          }
+          return true;
+        }
+      });
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -196,13 +195,12 @@ public class DatasourceOperations {
       @NonNull Converter<T> converterInstance,
       @NonNull Consumer<Stream<T>> consumer)
       throws SQLException {
-    withRetries(
-        () -> {
-          try (Connection connection = borrowConnection()) {
-            executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
-            return null;
-          }
-        });
+    withRetries(() -> {
+      try (Connection connection = borrowConnection()) {
+        executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
+        return null;
+      }
+    });
   }
 
   /** Connection-aware version for use inside runWithinTransaction. */
@@ -212,11 +210,10 @@ public class DatasourceOperations {
       @NonNull Converter<T> converterInstance,
       @NonNull Consumer<Stream<T>> consumer)
       throws SQLException {
-    withRetries(
-        () -> {
-          executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
-          return null;
-        });
+    withRetries(() -> {
+      executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
+      return null;
+    });
   }
 
   /**
@@ -262,42 +259,41 @@ public class DatasourceOperations {
    * @throws SQLException : Exception during Query Execution.
    */
   public int executeUpdate(QueryGenerator.PreparedQuery preparedQuery) throws SQLException {
-    return withRetries(
-        () -> {
-          logQuery(preparedQuery);
-          boolean commitStarted = false;
-          try (Connection connection = borrowConnection();
-              PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
-            List<Object> params = preparedQuery.parameters();
-            for (int i = 0; i < params.size(); i++) {
-              statement.setObject(i + 1, params.get(i));
-            }
-            boolean autoCommit = connection.getAutoCommit();
-            // Drive the transaction explicitly so the ambiguity window is the commit() call alone:
-            // any failure before commit leaves the transaction uncommitted (a definite non-write).
-            connection.setAutoCommit(false);
-            int rowsUpdated;
-            try {
-              try {
-                rowsUpdated = statement.executeUpdate();
-              } catch (SQLException | RuntimeException | Error executeFailure) {
-                // The statement failed before commit; roll back but keep the original failure,
-                // which is the exception callers classify. A failing rollback must not replace it.
-                // Catch RuntimeException/Error too: otherwise the finally below would restore
-                // autoCommit and commit the open transaction.
-                rollbackSuppressing(connection, executeFailure);
-                throw executeFailure;
-              }
-              commitStarted = true;
-              connection.commit();
-            } finally {
-              connection.setAutoCommit(autoCommit);
-            }
-            return rowsUpdated;
-          } catch (SQLException e) {
-            throw classifyByPhase(e, commitStarted);
+    return withRetries(() -> {
+      logQuery(preparedQuery);
+      boolean commitStarted = false;
+      try (Connection connection = borrowConnection();
+          PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
+        List<Object> params = preparedQuery.parameters();
+        for (int i = 0; i < params.size(); i++) {
+          statement.setObject(i + 1, params.get(i));
+        }
+        boolean autoCommit = connection.getAutoCommit();
+        // Drive the transaction explicitly so the ambiguity window is the commit() call alone:
+        // any failure before commit leaves the transaction uncommitted (a definite non-write).
+        connection.setAutoCommit(false);
+        int rowsUpdated;
+        try {
+          try {
+            rowsUpdated = statement.executeUpdate();
+          } catch (SQLException | RuntimeException | Error executeFailure) {
+            // The statement failed before commit; roll back but keep the original failure,
+            // which is the exception callers classify. A failing rollback must not replace it.
+            // Catch RuntimeException/Error too: otherwise the finally below would restore
+            // autoCommit and commit the open transaction.
+            rollbackSuppressing(connection, executeFailure);
+            throw executeFailure;
           }
-        });
+          commitStarted = true;
+          connection.commit();
+        } finally {
+          connection.setAutoCommit(autoCommit);
+        }
+        return rowsUpdated;
+      } catch (SQLException e) {
+        throw classifyByPhase(e, commitStarted);
+      }
+    });
   }
 
   /**
@@ -315,51 +311,50 @@ public class DatasourceOperations {
     }
     int batchSize = 100;
     AtomicInteger successCount = new AtomicInteger();
-    return withRetries(
-        () -> {
-          boolean commitStarted = false;
-          try (Connection connection = borrowConnection();
-              PreparedStatement statement = connection.prepareStatement(preparedQueries.sql())) {
-            boolean autoCommit = connection.getAutoCommit();
-            connection.setAutoCommit(false);
+    return withRetries(() -> {
+      boolean commitStarted = false;
+      try (Connection connection = borrowConnection();
+          PreparedStatement statement = connection.prepareStatement(preparedQueries.sql())) {
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
 
-            try {
-              try {
-                for (int i = 1; i <= preparedQueries.parametersList().size(); i++) {
-                  List<Object> params = preparedQueries.parametersList().get(i - 1);
-                  for (int j = 0; j < params.size(); j++) {
-                    statement.setObject(j + 1, params.get(j));
-                  }
-
-                  statement.addBatch(); // Add to batch
-
-                  if (i % batchSize == 0) {
-                    successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
-                  }
-                }
-
-                // Execute remaining queries in the batch
-                successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
-              } catch (SQLException | RuntimeException | Error batchFailure) {
-                // The batch is buffered until commit(); a failure here is uncommitted (a definite
-                // non-write). Roll back but keep the original failure, which callers classify.
-                // Catch RuntimeException/Error too: otherwise the finally below would restore
-                // autoCommit and commit the open transaction.
-                successCount.set(0);
-                rollbackSuppressing(connection, batchFailure);
-                throw batchFailure;
+        try {
+          try {
+            for (int i = 1; i <= preparedQueries.parametersList().size(); i++) {
+              List<Object> params = preparedQueries.parametersList().get(i - 1);
+              for (int j = 0; j < params.size(); j++) {
+                statement.setObject(j + 1, params.get(j));
               }
-              // Only commit() can leave an ambiguous outcome.
-              commitStarted = true;
-              connection.commit();
-            } finally {
-              connection.setAutoCommit(autoCommit);
+
+              statement.addBatch(); // Add to batch
+
+              if (i % batchSize == 0) {
+                successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
+              }
             }
-          } catch (SQLException e) {
-            throw classifyByPhase(e, commitStarted);
+
+            // Execute remaining queries in the batch
+            successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
+          } catch (SQLException | RuntimeException | Error batchFailure) {
+            // The batch is buffered until commit(); a failure here is uncommitted (a definite
+            // non-write). Roll back but keep the original failure, which callers classify.
+            // Catch RuntimeException/Error too: otherwise the finally below would restore
+            // autoCommit and commit the open transaction.
+            successCount.set(0);
+            rollbackSuppressing(connection, batchFailure);
+            throw batchFailure;
           }
-          return successCount.get();
-        });
+          // Only commit() can leave an ambiguous outcome.
+          commitStarted = true;
+          connection.commit();
+        } finally {
+          connection.setAutoCommit(autoCommit);
+        }
+      } catch (SQLException e) {
+        throw classifyByPhase(e, commitStarted);
+      }
+      return successCount.get();
+    });
   }
 
   /**
@@ -369,39 +364,38 @@ public class DatasourceOperations {
    * @throws SQLException : Exception caught during transaction execution.
    */
   public void runWithinTransaction(TransactionCallback callback) throws SQLException {
-    withRetries(
-        () -> {
-          boolean commitStarted = false;
-          try (Connection connection = borrowConnection()) {
-            boolean autoCommit = connection.getAutoCommit();
-            connection.setAutoCommit(false);
-            try {
-              boolean success;
-              try {
-                success = callback.execute(connection);
-              } catch (SQLException | RuntimeException | Error callbackFailure) {
-                // The callback failed against an uncommitted transaction (a definite non-write).
-                // Roll back but keep the original failure, which callers classify. Catch Error too:
-                // otherwise the finally below would restore autoCommit and commit the open
-                // transaction.
-                rollbackSuppressing(connection, callbackFailure);
-                throw callbackFailure;
-              }
-              if (success) {
-                // Only commit() can leave an ambiguous outcome.
-                commitStarted = true;
-                connection.commit();
-              } else {
-                connection.rollback();
-              }
-            } finally {
-              connection.setAutoCommit(autoCommit);
-            }
-          } catch (SQLException e) {
-            throw classifyByPhase(e, commitStarted);
+    withRetries(() -> {
+      boolean commitStarted = false;
+      try (Connection connection = borrowConnection()) {
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+          boolean success;
+          try {
+            success = callback.execute(connection);
+          } catch (SQLException | RuntimeException | Error callbackFailure) {
+            // The callback failed against an uncommitted transaction (a definite non-write).
+            // Roll back but keep the original failure, which callers classify. Catch Error too:
+            // otherwise the finally below would restore autoCommit and commit the open
+            // transaction.
+            rollbackSuppressing(connection, callbackFailure);
+            throw callbackFailure;
           }
-          return null;
-        });
+          if (success) {
+            // Only commit() can leave an ambiguous outcome.
+            commitStarted = true;
+            connection.commit();
+          } else {
+            connection.rollback();
+          }
+        } finally {
+          connection.setAutoCommit(autoCommit);
+        }
+      } catch (SQLException e) {
+        throw classifyByPhase(e, commitStarted);
+      }
+      return null;
+    });
   }
 
   public Integer execute(Connection connection, QueryGenerator.PreparedQuery preparedQuery)
@@ -690,11 +684,10 @@ public class DatasourceOperations {
     LOGGER
         .atDebug()
         .addArgument(query.sql())
-        .addArgument(
-            () ->
-                query.parameters().stream()
-                    .map(o -> o != null ? o.toString() : "NULL")
-                    .collect(Collectors.joining("\n    ", "\n    ", "")))
+        .addArgument(() ->
+            query.parameters().stream()
+                .map(o -> o != null ? o.toString() : "NULL")
+                .collect(Collectors.joining("\n    ", "\n    ", "")))
         .setMessage("query: {}{}")
         .log();
   }

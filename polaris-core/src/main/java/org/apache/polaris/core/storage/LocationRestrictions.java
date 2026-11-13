@@ -123,22 +123,20 @@ public class LocationRestrictions {
             realmConfig, allowedLocations, Set.of(PolarisStorageActions.ALL), requestLocations);
     validationResults
         .values()
-        .forEach(
-            actionResult ->
-                actionResult
-                    .values()
-                    .forEach(
-                        result -> {
-                          if (!result.success()) {
-                            throw new ForbiddenException(
-                                "Invalid locations '%s' for identifier '%s': %s",
-                                requestLocations, identifier, result.message());
-                          } else {
-                            LOGGER.debug(
-                                "Validated locations '{}' for identifier '{}'",
-                                requestLocations,
-                                identifier);
-                          }
-                        }));
+        .forEach(actionResult ->
+            actionResult
+                .values()
+                .forEach(result -> {
+                  if (!result.success()) {
+                    throw new ForbiddenException(
+                        "Invalid locations '%s' for identifier '%s': %s",
+                        requestLocations, identifier, result.message());
+                  } else {
+                    LOGGER.debug(
+                        "Validated locations '{}' for identifier '{}'",
+                        requestLocations,
+                        identifier);
+                  }
+                }));
   }
 }

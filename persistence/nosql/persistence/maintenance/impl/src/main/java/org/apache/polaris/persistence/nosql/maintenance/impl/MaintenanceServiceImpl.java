@@ -168,20 +168,19 @@ class MaintenanceServiceImpl implements MaintenanceService {
   public MaintenanceRunSpec buildMaintenanceRunSpec() {
     try (var realms = realmManagement.list()) {
       var specBuilder = MaintenanceRunSpec.builder();
-      realms.forEach(
-          realm -> {
-            switch (realm.status()) {
-              case CREATED, INITIALIZING, LOADING, PURGED -> {
-                // Don't handle these states, those are either final or known to contain
-                // inconsistent data
-              }
-              case PURGING -> specBuilder.addRealmsToPurge(realm.id());
-              case ACTIVE, INACTIVE -> specBuilder.addRealmsToProces(realm.id());
-              default ->
-                  throw new IllegalStateException(
-                      "Unexpected realm status " + realm.status() + " for realm " + realm.id());
-            }
-          });
+      realms.forEach(realm -> {
+        switch (realm.status()) {
+          case CREATED, INITIALIZING, LOADING, PURGED -> {
+            // Don't handle these states, those are either final or known to contain
+            // inconsistent data
+          }
+          case PURGING -> specBuilder.addRealmsToPurge(realm.id());
+          case ACTIVE, INACTIVE -> specBuilder.addRealmsToProces(realm.id());
+          default ->
+              throw new IllegalStateException(
+                  "Unexpected realm status " + realm.status() + " for realm " + realm.id());
+        }
+      });
       return specBuilder.build();
     }
   }
@@ -370,38 +369,32 @@ class MaintenanceServiceImpl implements MaintenanceService {
         .map(realmManagement::get)
         .filter(Optional::isPresent)
         .map(Optional::get)
-        .forEach(
-            purgedRealm -> {
-              try {
-                realmManagement.update(
-                    purgedRealm,
-                    RealmDefinition.builder().from(purgedRealm).status(PURGED).build());
-              } catch (RealmExpectedStateMismatchException e) {
-                // ignore, do the state transition during the next maintenance run
-              }
-            });
+        .forEach(purgedRealm -> {
+          try {
+            realmManagement.update(
+                purgedRealm, RealmDefinition.builder().from(purgedRealm).status(PURGED).build());
+          } catch (RealmExpectedStateMismatchException e) {
+            // ignore, do the state transition during the next maintenance run
+          }
+        });
   }
 
   private void maintenanceServiceReport() {
     LOGGER.info("Using {} realm retained identifiers", perRealmRetainedIdentifiers.size());
-    perRealmRetainedIdentifiers.forEach(
-        realmRetainedIdentifier ->
-            LOGGER.info("Realm retained identifier: {}", realmRetainedIdentifier.name()));
+    perRealmRetainedIdentifiers.forEach(realmRetainedIdentifier ->
+        LOGGER.info("Realm retained identifier: {}", realmRetainedIdentifier.name()));
     LOGGER.info(
         "Using {} object type identifiers:",
         objTypeRetainedIdentifiers.values().stream().mapToInt(List::size).sum());
-    objTypeRetainedIdentifiers.forEach(
-        (type, idents) -> {
-          LOGGER.info(
-              "Using {} identifiers for object type '{}' {}",
-              idents.size(),
-              type,
-              objTypeById(type).name());
-          idents.forEach(
-              objTypeRetainedIdentifier ->
-                  LOGGER.info(
-                      "Object type '{}' identifier: {}", type, objTypeRetainedIdentifier.name()));
-        });
+    objTypeRetainedIdentifiers.forEach((type, idents) -> {
+      LOGGER.info(
+          "Using {} identifiers for object type '{}' {}",
+          idents.size(),
+          type,
+          objTypeById(type).name());
+      idents.forEach(objTypeRetainedIdentifier ->
+          LOGGER.info("Object type '{}' identifier: {}", type, objTypeRetainedIdentifier.name()));
+    });
   }
 
   private Set<String> processRealms(
@@ -419,15 +412,14 @@ class MaintenanceServiceImpl implements MaintenanceService {
     }
     maintenanceRunSpec.realmsToProcess().stream()
         .filter(r -> !realmsToProcess.contains(r))
-        .forEach(
-            r -> {
-              var msg =
-                  format(
-                      "No realm retained identifier was able to handle the realm '%s' or the realm is not in status ACTIVE or INACTIVE, no references or objects will be purged from this realm.",
-                      r);
-              descriptionWriter.println(msg);
-              LOGGER.warn(msg);
-            });
+        .forEach(r -> {
+          var msg =
+              format(
+                  "No realm retained identifier was able to handle the realm '%s' or the realm is not in status ACTIVE or INACTIVE, no references or objects will be purged from this realm.",
+                  r);
+          descriptionWriter.println(msg);
+          LOGGER.warn(msg);
+        });
     return realmsToProcess;
   }
 
@@ -443,14 +435,12 @@ class MaintenanceServiceImpl implements MaintenanceService {
     }
     maintenanceRunSpec.realmsToPurge().stream()
         .filter(r -> !realmsToPurge.contains(r))
-        .forEach(
-            r -> {
-              var msg =
-                  format(
-                      "The realm '%s' is not in state PURGING, will therefore not be purged.", r);
-              descriptionWriter.println(msg);
-              LOGGER.warn(msg);
-            });
+        .forEach(r -> {
+          var msg =
+              format("The realm '%s' is not in state PURGING, will therefore not be purged.", r);
+          descriptionWriter.println(msg);
+          LOGGER.warn(msg);
+        });
     return realmsToPurge;
   }
 
@@ -459,12 +449,11 @@ class MaintenanceServiceImpl implements MaintenanceService {
     var grace =
         effectiveConfig
             .createdAtGraceTime()
-            .map(
-                d -> {
-                  var micros = SECONDS.toMicros(d.toSeconds());
-                  micros += TimeUnit.NANOSECONDS.toMicros(d.toNanosPart());
-                  return Math.max(micros, MIN_GRACE_TIME_MICROS);
-                })
+            .map(d -> {
+              var micros = SECONDS.toMicros(d.toSeconds());
+              micros += TimeUnit.NANOSECONDS.toMicros(d.toNanosPart());
+              return Math.max(micros, MIN_GRACE_TIME_MICROS);
+            })
             .orElse(MIN_GRACE_TIME_MICROS);
     return now - grace;
   }
@@ -568,37 +557,34 @@ class MaintenanceServiceImpl implements MaintenanceService {
 
   private MaintenanceRunObj initMaintenanceRunObj(OptionalLong overrideRunId) {
     return committer
-        .commitRuntimeException(
-            (state, refObjSupplier) -> {
-              var refObj = refObjSupplier.get();
-              refObj
-                  .map(MaintenanceRunsObj::maintenanceRunId)
-                  .map(id -> state.persistence().fetch(id, MaintenanceRunObj.class))
-                  .filter(run -> run != null && run.runInformation().finished().isEmpty())
-                  .ifPresent(
-                      run -> {
-                        if (overrideRunId.isEmpty() || overrideRunId.getAsLong() != run.id()) {
-                          throw new MaintenanceRunInProgressException(
-                              run.id(), run.runInformation());
-                        }
-                      });
+        .commitRuntimeException((state, refObjSupplier) -> {
+          var refObj = refObjSupplier.get();
+          refObj
+              .map(MaintenanceRunsObj::maintenanceRunId)
+              .map(id -> state.persistence().fetch(id, MaintenanceRunObj.class))
+              .filter(run -> run != null && run.runInformation().finished().isEmpty())
+              .ifPresent(run -> {
+                if (overrideRunId.isEmpty() || overrideRunId.getAsLong() != run.id()) {
+                  throw new MaintenanceRunInProgressException(run.id(), run.runInformation());
+                }
+              });
 
-              var res = MaintenanceRunsObj.builder();
+          var res = MaintenanceRunsObj.builder();
 
-              var ro =
-                  MaintenanceRunObj.builder()
-                      .id(systemPersistence.generateId())
-                      .runInformation(
-                          MaintenanceRunInformation.builder()
-                              .started(monotonicClock.currentInstant())
-                              .build())
-                      .build();
-              res.maintenanceRunId(objRef(ro));
+          var ro =
+              MaintenanceRunObj.builder()
+                  .id(systemPersistence.generateId())
+                  .runInformation(
+                      MaintenanceRunInformation.builder()
+                          .started(monotonicClock.currentInstant())
+                          .build())
+                  .build();
+          res.maintenanceRunId(objRef(ro));
 
-              state.writeIfNew("ro", ro);
+          state.writeIfNew("ro", ro);
 
-              return state.commitResult(ro, res, refObj);
-            })
+          return state.commitResult(ro, res, refObj);
+        })
         .orElseThrow();
   }
 
@@ -608,19 +594,17 @@ class MaintenanceServiceImpl implements MaintenanceService {
         .ifPresent(v -> checkArgument(v > 1, "Number of maintenance runs must be at least 2"));
     config
         .expectedReferenceCount()
-        .ifPresent(
-            v ->
-                checkArgument(
-                    v >= MaintenanceConfig.DEFAULT_EXPECTED_REFERENCE_COUNT,
-                    "Expected reference count runs must be greater than or equal to %s",
-                    MaintenanceConfig.DEFAULT_EXPECTED_REFERENCE_COUNT));
+        .ifPresent(v ->
+            checkArgument(
+                v >= MaintenanceConfig.DEFAULT_EXPECTED_REFERENCE_COUNT,
+                "Expected reference count runs must be greater than or equal to %s",
+                MaintenanceConfig.DEFAULT_EXPECTED_REFERENCE_COUNT));
     config
         .expectedObjCount()
-        .ifPresent(
-            v ->
-                checkArgument(
-                    v >= MaintenanceConfig.DEFAULT_EXPECTED_OBJ_COUNT,
-                    "Expected object count runs must be greater than or equal to %s",
-                    MaintenanceConfig.DEFAULT_EXPECTED_OBJ_COUNT));
+        .ifPresent(v ->
+            checkArgument(
+                v >= MaintenanceConfig.DEFAULT_EXPECTED_OBJ_COUNT,
+                "Expected object count runs must be greater than or equal to %s",
+                MaintenanceConfig.DEFAULT_EXPECTED_OBJ_COUNT));
   }
 }

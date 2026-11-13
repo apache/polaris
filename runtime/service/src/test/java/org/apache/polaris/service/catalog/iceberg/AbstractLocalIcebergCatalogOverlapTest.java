@@ -202,7 +202,7 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
             .build();
     AwsCredentialsStorageIntegration storageIntegration =
         new AwsCredentialsStorageIntegration(
-            (destination) -> stsClient,
+            destination -> stsClient,
             config -> Optional.empty(),
             storageCredentialCache,
             mockAwsConfig,
@@ -314,12 +314,11 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         .withProperty(TableProperties.WRITE_DATA_LOCATION, writePath)
         .create();
 
-    assertThatThrownBy(
-            () ->
-                catalog()
-                    .buildTable(TableIdentifier.of(ns, "t2"), SCHEMA)
-                    .withProperty(TableProperties.WRITE_DATA_LOCATION, writePath)
-                    .create())
+    assertThatThrownBy(() ->
+            catalog()
+                .buildTable(TableIdentifier.of(ns, "t2"), SCHEMA)
+                .withProperty(TableProperties.WRITE_DATA_LOCATION, writePath)
+                .create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace")
         .hasMessageContaining(writePath);
@@ -369,12 +368,8 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
 
     TableIdentifier anotherChildTable = TableIdentifier.of(ns, "another-child-table");
     String anotherChildLoc = STORAGE_LOCATION + "/overlap-parent-2/child";
-    assertThatThrownBy(
-            () ->
-                catalog()
-                    .buildTable(anotherChildTable, SCHEMA)
-                    .withLocation(anotherChildLoc)
-                    .create())
+    assertThatThrownBy(() ->
+            catalog().buildTable(anotherChildTable, SCHEMA).withLocation(anotherChildLoc).create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Unable to create entity at location")
         .hasMessageContaining("conflicts with existing table or namespace");
@@ -414,12 +409,10 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
     // A new namespace at the existing namespace's location is still an overlap.
     Namespace intruder = Namespace.of("overlap-recreate-intruder");
     String parentLocation = STORAGE_LOCATION + "/overlap-recreate-parent";
-    assertThatThrownBy(
-            () ->
-                catalog()
-                    .createNamespace(
-                        intruder,
-                        Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, parentLocation)))
+    assertThatThrownBy(() ->
+            catalog()
+                .createNamespace(
+                    intruder, Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, parentLocation)))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }
@@ -444,12 +437,11 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
     TableIdentifier tableAtNamespaceLocation =
         TableIdentifier.of(grandchild, "table-at-namespace-location");
     String grandchildLocation = STORAGE_LOCATION + "/overlap-ancestor-parent/child/grandchild";
-    assertThatThrownBy(
-            () ->
-                catalog()
-                    .buildTable(tableAtNamespaceLocation, SCHEMA)
-                    .withLocation(grandchildLocation)
-                    .create())
+    assertThatThrownBy(() ->
+            catalog()
+                .buildTable(tableAtNamespaceLocation, SCHEMA)
+                .withLocation(grandchildLocation)
+                .create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace")
         .hasMessageContaining(grandchildLocation);
@@ -461,12 +453,10 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
     // location sits inside the child's default location.
     Namespace intruder = Namespace.of("overlap-ancestor-parent", "intruder");
     String childLocation = STORAGE_LOCATION + "/overlap-ancestor-parent/child/intruder";
-    assertThatThrownBy(
-            () ->
-                catalog()
-                    .createNamespace(
-                        intruder,
-                        Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, childLocation)))
+    assertThatThrownBy(() ->
+            catalog()
+                .createNamespace(
+                    intruder, Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, childLocation)))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }
@@ -487,9 +477,8 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
 
     // Table first, then a namespace with the same name.
     catalog().buildTable(TableIdentifier.of(parent, "table-first"), SCHEMA).create();
-    assertThatThrownBy(
-            () ->
-                catalog().createNamespace(Namespace.of("overlap-same-name-parent", "table-first")))
+    assertThatThrownBy(() ->
+            catalog().createNamespace(Namespace.of("overlap-same-name-parent", "table-first")))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }
@@ -503,21 +492,18 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
     catalog().createNamespace(ns, Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, oldLocation));
 
     String newLocation = oldLocation + "/moved";
-    assertThatCode(
-            () ->
-                catalog()
-                    .setProperties(
-                        ns, Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, newLocation)))
+    assertThatCode(() ->
+            catalog()
+                .setProperties(
+                    ns, Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, newLocation)))
         .doesNotThrowAnyException();
 
     // Other namespaces still conflict with the new location.
     Namespace conflicting = Namespace.of("overlap-move-namespace-conflicting");
-    assertThatThrownBy(
-            () ->
-                catalog()
-                    .createNamespace(
-                        conflicting,
-                        Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, newLocation)))
+    assertThatThrownBy(() ->
+            catalog()
+                .createNamespace(
+                    conflicting, Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, newLocation)))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }
@@ -536,12 +522,11 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         .doesNotThrowAnyException();
 
     // Other tables still conflict with the new location.
-    assertThatThrownBy(
-            () ->
-                catalog()
-                    .buildTable(TableIdentifier.of(ns, "conflicting"), SCHEMA)
-                    .withLocation(newLocation)
-                    .create())
+    assertThatThrownBy(() ->
+            catalog()
+                .buildTable(TableIdentifier.of(ns, "conflicting"), SCHEMA)
+                .withLocation(newLocation)
+                .create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }

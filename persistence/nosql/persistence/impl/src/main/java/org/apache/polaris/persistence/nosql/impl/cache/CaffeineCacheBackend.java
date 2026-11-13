@@ -172,32 +172,31 @@ class CaffeineCacheBackend implements CacheBackend {
                 });
     rejectionsWeight =
         meterRegistry
-            .map(
-                reg -> {
-                  cacheBuilder.recordStats(() -> new CaffeineStatsCounter(reg, CACHE_NAME));
-                  Gauge.builder(METER_CACHE_CAPACITY, "", x -> capacityBytes)
-                      .description("Total capacity of the objects cache in bytes.")
+            .map(reg -> {
+              cacheBuilder.recordStats(() -> new CaffeineStatsCounter(reg, CACHE_NAME));
+              Gauge.builder(METER_CACHE_CAPACITY, "", x -> capacityBytes)
+                  .description("Total capacity of the objects cache in bytes.")
+                  .tag("cache", CACHE_NAME)
+                  .baseUnit(BaseUnits.BYTES)
+                  .register(reg);
+              Gauge.builder(METER_CACHE_ADMIT_CAPACITY, "", x -> admitWeight)
+                  .description("Admitted capacity of the objects cache in bytes.")
+                  .tag("cache", CACHE_NAME)
+                  .baseUnit(BaseUnits.BYTES)
+                  .register(reg);
+              Gauge.builder(METER_CACHE_WEIGHT, "", x -> (double) currentWeightReported())
+                  .description("Current reported weight of the objects cache in bytes.")
+                  .tag("cache", CACHE_NAME)
+                  .baseUnit(BaseUnits.BYTES)
+                  .register(reg);
+              var rejectedWeightSummary =
+                  DistributionSummary.builder(METER_CACHE_REJECTED_WEIGHT)
+                      .description("Weight of rejected cache-puts in bytes.")
                       .tag("cache", CACHE_NAME)
                       .baseUnit(BaseUnits.BYTES)
                       .register(reg);
-                  Gauge.builder(METER_CACHE_ADMIT_CAPACITY, "", x -> admitWeight)
-                      .description("Admitted capacity of the objects cache in bytes.")
-                      .tag("cache", CACHE_NAME)
-                      .baseUnit(BaseUnits.BYTES)
-                      .register(reg);
-                  Gauge.builder(METER_CACHE_WEIGHT, "", x -> (double) currentWeightReported())
-                      .description("Current reported weight of the objects cache in bytes.")
-                      .tag("cache", CACHE_NAME)
-                      .baseUnit(BaseUnits.BYTES)
-                      .register(reg);
-                  var rejectedWeightSummary =
-                      DistributionSummary.builder(METER_CACHE_REJECTED_WEIGHT)
-                          .description("Weight of rejected cache-puts in bytes.")
-                          .tag("cache", CACHE_NAME)
-                          .baseUnit(BaseUnits.BYTES)
-                          .register(reg);
-                  return (IntConsumer) rejectedWeightSummary::record;
-                })
+              return (IntConsumer) rejectedWeightSummary::record;
+            })
             .orElse(x -> {});
 
     LOGGER.info(

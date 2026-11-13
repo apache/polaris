@@ -95,13 +95,12 @@ public class BigLakeCatalogValidator implements CatalogConfigValidator {
   private static void validateBigLakeHeaders(
       Map<String, String> connectionProperties, Map<String, String> catalogProperties) {
     Map<String, String> quotaProjectProperties = new HashMap<>();
-    catalogProperties.forEach(
-        (key, value) -> {
-          // Iceberg's property prefix is case-sensitive, but HTTP header names are not.
-          if (key.startsWith("header.") && QUOTA_PROJECT_HEADER.equalsIgnoreCase(key)) {
-            quotaProjectProperties.put(key, value);
-          }
-        });
+    catalogProperties.forEach((key, value) -> {
+      // Iceberg's property prefix is case-sensitive, but HTTP header names are not.
+      if (key.startsWith("header.") && QUOTA_PROJECT_HEADER.equalsIgnoreCase(key)) {
+        quotaProjectProperties.put(key, value);
+      }
+    });
     // Only the exact connection key is forwarded, and it overrides only the same spelling.
     if (connectionProperties != null && connectionProperties.containsKey(QUOTA_PROJECT_HEADER)) {
       quotaProjectProperties.put(

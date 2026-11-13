@@ -149,11 +149,9 @@ public class DynamoDbBasePersistence implements BasePersistence {
 
   private void createEntity(PolarisCallContext callCtx, PolarisBaseEntity entity) {
     try {
-      client.transactWriteItems(
-          b ->
-              b.transactItems(
-                  putIfAbsent(EntityItem.toItem(realmId, entity)),
-                  putIfAbsent(sentinelItem(entity))));
+      client.transactWriteItems(b ->
+          b.transactItems(
+              putIfAbsent(EntityItem.toItem(realmId, entity)), putIfAbsent(sentinelItem(entity))));
     } catch (TransactionCanceledException e) {
       if (!onlyConflicts(e)) {
         throw e;
@@ -178,13 +176,12 @@ public class DynamoDbBasePersistence implements BasePersistence {
 
   private void updateEntity(PolarisBaseEntity entity, PolarisBaseEntity originalEntity) {
     try {
-      client.putItem(
-          b ->
-              b.tableName(tableName)
-                  .item(EntityItem.toItem(realmId, entity))
-                  .conditionExpression(VERSIONS_MATCH)
-                  .expressionAttributeNames(versionNames())
-                  .expressionAttributeValues(versionValues(originalEntity)));
+      client.putItem(b ->
+          b.tableName(tableName)
+              .item(EntityItem.toItem(realmId, entity))
+              .conditionExpression(VERSIONS_MATCH)
+              .expressionAttributeNames(versionNames())
+              .expressionAttributeValues(versionValues(originalEntity)));
     } catch (ConditionalCheckFailedException | TransactionConflictException e) {
       throw concurrentModification(e, originalEntity);
     }
@@ -194,12 +191,11 @@ public class DynamoDbBasePersistence implements BasePersistence {
       PolarisCallContext callCtx, PolarisBaseEntity entity, PolarisBaseEntity originalEntity) {
     final int newSentinelIndex = 2;
     try {
-      client.transactWriteItems(
-          b ->
-              b.transactItems(
-                  putIfVersionsMatch(EntityItem.toItem(realmId, entity), originalEntity),
-                  deleteSentinelIfOwned(originalEntity),
-                  putIfAbsent(sentinelItem(entity))));
+      client.transactWriteItems(b ->
+          b.transactItems(
+              putIfVersionsMatch(EntityItem.toItem(realmId, entity), originalEntity),
+              deleteSentinelIfOwned(originalEntity),
+              putIfAbsent(sentinelItem(entity))));
     } catch (TransactionCanceledException e) {
       if (!onlyConflicts(e)) {
         throw e;

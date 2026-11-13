@@ -111,28 +111,27 @@ public class TestCacheInvalidationSender {
             Duration.ofSeconds(10),
             Duration.ofSeconds(10));
 
-    soft.assertThatThrownBy(
-            () ->
-                new CacheInvalidationSender(
-                    vertx,
-                    config,
-                    senderId,
-                    new DnsCacheInvalidationPeerDiscovery(vertx, config),
-                    metrics) {
-                  @Override
-                  Future<List<CacheInvalidationPeer>> discoverPeers() {
-                    return failedFuture(new RuntimeException("foo"));
-                  }
+    soft.assertThatThrownBy(() ->
+            new CacheInvalidationSender(
+                vertx,
+                config,
+                senderId,
+                new DnsCacheInvalidationPeerDiscovery(vertx, config),
+                metrics) {
+              @Override
+              Future<List<CacheInvalidationPeer>> discoverPeers() {
+                return failedFuture(new RuntimeException("foo"));
+              }
 
-                  @Override
-                  List<Future<Map.Entry<HttpClientResponse, Buffer>>> submit(
-                      List<CacheInvalidation> batch,
-                      List<CacheInvalidationPeer> resolvedPeers,
-                      int httpPort) {
-                    soft.fail("Not expected");
-                    return null;
-                  }
-                })
+              @Override
+              List<Future<Map.Entry<HttpClientResponse, Buffer>>> submit(
+                  List<CacheInvalidation> batch,
+                  List<CacheInvalidationPeer> resolvedPeers,
+                  int httpPort) {
+                soft.fail("Not expected");
+                return null;
+              }
+            })
         .hasMessage("Failed to discover peers for remote cache invalidations")
         .cause()
         .hasMessage("foo");
@@ -523,12 +522,11 @@ public class TestCacheInvalidationSender {
 
     invalidations()
         .map(args -> args.get()[0])
-        .map(
-            i -> {
-              @SuppressWarnings({"UnnecessaryLocalVariable", "unchecked"})
-              Consumer<DistributedCacheInvalidation> r = (Consumer<DistributedCacheInvalidation>) i;
-              return r;
-            })
+        .map(i -> {
+          @SuppressWarnings({"UnnecessaryLocalVariable", "unchecked"})
+          Consumer<DistributedCacheInvalidation> r = (Consumer<DistributedCacheInvalidation>) i;
+          return r;
+        })
         .forEach(i -> i.accept(senderSpy));
 
     assertThat(sem.tryAcquire(expected.size(), 30, TimeUnit.SECONDS)).isTrue();
