@@ -47,11 +47,7 @@ public class ObjRefBench {
     @Param({"ASCII", "ASCII32", "UNICODE", "MULTIPART"})
     public String shape;
 
-    @Param({"HEAP", "SLICED", "READ_ONLY", "DIRECT"})
-    public String bufferType;
-
     private final ObjRef[] values = new ObjRef[64];
-    private final ByteBuffer[] encoded = new ByteBuffer[64];
     private final ByteBuffer target = ByteBuffer.allocate(128);
     private int index;
 
@@ -66,20 +62,39 @@ public class ObjRefBench {
               default -> throw new IllegalArgumentException(shape);
             };
         values[i] = ObjRef.objRef(type, 0x123456789abcL + i, shape.equals("MULTIPART") ? 3 : 1);
+      }
+    }
+
+    private int next() {
+      return index++ & (values.length - 1);
+    }
+  }
+
+  @State(Scope.Thread)
+  public static class EncodedValues {
+    @Param({"HEAP", "SLICED", "READ_ONLY", "DIRECT"})
+    public String bufferType;
+
+    private final ByteBuffer[] encoded = new ByteBuffer[64];
+    private int index;
+
+    @Setup
+    public void setup(Values state) {
+      for (int i = 0; i < encoded.length; i++) {
         var buffer =
             bufferType.equals("DIRECT") ? ByteBuffer.allocateDirect(128) : ByteBuffer.allocate(128);
         if (bufferType.equals("SLICED")) {
           buffer = buffer.position(7).slice();
         }
         buffer.position(3);
-        OBJ_REF_SERIALIZER.serialize(values[i], buffer);
+        OBJ_REF_SERIALIZER.serialize(state.values[i], buffer);
         buffer.limit(buffer.position());
         encoded[i] = bufferType.equals("READ_ONLY") ? buffer.asReadOnlyBuffer() : buffer;
       }
     }
 
     private int next() {
-      return index++ & (values.length - 1);
+      return index++ & (encoded.length - 1);
     }
   }
 
@@ -101,7 +116,7 @@ public class ObjRefBench {
   }
 
   @Benchmark
-  public ObjRef deserialize(Values state) {
+  public ObjRef deserialize(EncodedValues state) {
     return OBJ_REF_SERIALIZER.deserialize(state.encoded[state.next()].position(3));
   }
 }
