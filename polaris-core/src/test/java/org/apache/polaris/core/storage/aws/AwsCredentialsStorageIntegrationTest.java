@@ -271,7 +271,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 .returns(
                                     List.of(
                                         IamAction.create("s3:PutObject"),
-                                        IamAction.create("s3:DeleteObject")),
+                                        IamAction.create("s3:DeleteObject"),
+                                        IamAction.create("s3:AbortMultipartUpload")),
                                     IamStatement::actions),
                         statement ->
                             assertThat(statement)
@@ -321,8 +322,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 .returns(
                                     List.of(
                                         IamAction.create("s3:GetObject"),
-                                        IamAction.create("s3:GetObjectVersion"),
-                                        IamAction.create("s3:AbortMultipartUpload")),
+                                        IamAction.create("s3:GetObjectVersion")),
                                     IamStatement::actions));
               });
           return ASSUME_ROLE_RESPONSE;
@@ -564,7 +564,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 .returns(
                                     List.of(
                                         IamAction.create("s3:PutObject"),
-                                        IamAction.create("s3:DeleteObject")),
+                                        IamAction.create("s3:DeleteObject"),
+                                        IamAction.create("s3:AbortMultipartUpload")),
                                     IamStatement::actions),
                         statement ->
                             assertThat(statement)
@@ -589,8 +590,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 .returns(
                                     List.of(
                                         IamAction.create("s3:GetObject"),
-                                        IamAction.create("s3:GetObjectVersion"),
-                                        IamAction.create("s3:AbortMultipartUpload")),
+                                        IamAction.create("s3:GetObjectVersion")),
                                     IamStatement::actions));
               });
           return ASSUME_ROLE_RESPONSE;
