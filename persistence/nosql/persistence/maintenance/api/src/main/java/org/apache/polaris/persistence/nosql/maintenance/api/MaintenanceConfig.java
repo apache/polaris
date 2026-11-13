@@ -133,16 +133,18 @@ public interface MaintenanceConfig {
   Optional<Duration> createdAtGraceTime();
 
   /**
-   * Optionally limit the number of objects scanned per second. Default is to not throttle object
-   * scanning.
+   * Optionally limit the number of object parts scanned or fetched during retained-object
+   * identification per second, including non-recording cleanup reads. The limit is shared across
+   * realms during identification. Default is unlimited. Large fetch batches may cause temporary
+   * bursts.
    */
   @JsonInclude(JsonInclude.Include.NON_ABSENT)
   OptionalInt objectScanRateLimitPerSecond();
 
   /**
-   * Optionally limit the number of references scanned per second.
-   *
-   * <p>Default is to not throttle reference scanning.
+   * Optionally limit the number of references scanned or fetched during retained-object
+   * identification per second, including non-recording cleanup reads. The limit is shared across
+   * realms during identification. Default is unlimited.
    */
   @JsonInclude(JsonInclude.Include.NON_ABSENT)
   OptionalInt referenceScanRateLimitPerSecond();

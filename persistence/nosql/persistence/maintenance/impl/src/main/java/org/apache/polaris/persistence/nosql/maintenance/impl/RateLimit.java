@@ -21,14 +21,18 @@ package org.apache.polaris.persistence.nosql.maintenance.impl;
 import com.google.common.util.concurrent.RateLimiter;
 
 interface RateLimit {
-  void acquire();
+  default void acquire() {
+    acquire(1);
+  }
+
+  void acquire(int permits);
 
   @SuppressWarnings("UnstableApiUsage")
   static RateLimit create(int ratePerSecond) {
     if (ratePerSecond <= 0 || ratePerSecond == Integer.MAX_VALUE) {
       return new RateLimit() {
         @Override
-        public void acquire() {}
+        public void acquire(int permits) {}
 
         @Override
         public String toString() {
@@ -40,8 +44,8 @@ interface RateLimit {
       final RateLimiter limiter = RateLimiter.create(ratePerSecond);
 
       @Override
-      public void acquire() {
-        limiter.acquire();
+      public void acquire(int permits) {
+        limiter.acquire(permits);
       }
 
       @Override
