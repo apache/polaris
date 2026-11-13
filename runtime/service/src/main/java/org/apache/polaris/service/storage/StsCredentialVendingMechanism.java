@@ -22,7 +22,9 @@ import com.google.common.base.Suppliers;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -73,13 +75,18 @@ public class StsCredentialVendingMechanism implements S3CredentialVendingMechani
     // Without static keys, stsCredentials() builds a new DefaultCredentialsProvider, and a new
     // provider fetches the base credentials again from their source (IMDS, STS web identity, ...).
     // Build it once so that every AssumeRole call shares one provider and its cached credentials.
+    // Named storages get the same treatment: one provider per configured storage name. An unknown
+    // name throws in stsCredentials(name), so nothing is stored for it.
     Supplier<AwsCredentialsProvider> defaultCredentials =
         Suppliers.memoize(storageConfiguration::stsCredentials);
+    Map<String, AwsCredentialsProvider> namedCredentials = new ConcurrentHashMap<>();
     this.credentialsResolver =
         config -> {
           if (realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)
               && config.getStorageName() != null) {
-            return Optional.of(storageConfiguration.stsCredentials(config.getStorageName()));
+            return Optional.of(
+                namedCredentials.computeIfAbsent(
+                    config.getStorageName(), storageConfiguration::stsCredentials));
           }
           return Optional.of(defaultCredentials.get());
         };

@@ -197,6 +197,40 @@ class StsCredentialVendingMechanismTest {
   }
 
   @Test
+  void namedCredentialsAreResolvedOncePerStorageName() {
+    StorageConfiguration storageConfiguration = mock(StorageConfiguration.class);
+    AwsCredentialsProvider aCredentials =
+        StaticCredentialsProvider.create(AwsBasicCredentials.create("ak-a", "sk-a"));
+    AwsCredentialsProvider bCredentials =
+        StaticCredentialsProvider.create(AwsBasicCredentials.create("ak-b", "sk-b"));
+    when(storageConfiguration.stsCredentials("storage-a")).thenReturn(aCredentials);
+    when(storageConfiguration.stsCredentials("storage-b")).thenReturn(bCredentials);
+
+    StsClient stsClient = mock(StsClient.class);
+    ArgumentCaptor<AssumeRoleRequest> captor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
+    when(stsClient.assumeRole(captor.capture())).thenReturn(assumeRoleResponse());
+    StsClientProvider stsClientProvider = destination -> stsClient;
+
+    RealmConfig realmConfig = realmConfig(Map.of(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true));
+    StsCredentialVendingMechanism mechanism =
+        new StsCredentialVendingMechanism(
+            storageConfiguration, stsClientProvider, null, realmConfig);
+
+    for (String storageName : List.of("storage-a", "storage-b", "storage-a", "storage-b")) {
+      mechanism
+          .integrationFor(storageConfigWithName(storageName))
+          .getStorageAccessConfig(grants(), Optional.empty(), CredentialVendingContext.empty());
+    }
+
+    verify(storageConfiguration, times(1)).stsCredentials("storage-a");
+    verify(storageConfiguration, times(1)).stsCredentials("storage-b");
+    verify(storageConfiguration, never()).stsCredentials();
+    assertThat(captor.getAllValues())
+        .extracting(request -> request.overrideConfiguration().get().credentialsProvider().get())
+        .containsExactly(aCredentials, bCredentials, aCredentials, bCredentials);
+  }
+
+  @Test
   void stsUnavailableVendsNoCredentialsAndNeverCallsSts() {
     StorageConfiguration storageConfiguration = mock(StorageConfiguration.class);
     StsClient stsClient = mock(StsClient.class);
