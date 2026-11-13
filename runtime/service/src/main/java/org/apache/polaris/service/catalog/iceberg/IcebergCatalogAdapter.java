@@ -286,8 +286,9 @@ public class IcebergCatalogAdapter
         prefix,
         catalog -> {
           Optional<String> refreshCredentialsEndpoint =
-              getRefreshCredentialsEndpoint(
-                  prefix, TableIdentifier.of(namespace, createTableRequest.name()));
+              Optional.of(
+                  getRefreshCredentialsEndpoint(
+                      prefix, TableIdentifier.of(namespace, createTableRequest.name())));
           if (createTableRequest.stageCreate()) {
             return Response.ok(
                     catalog.createTableStaged(
@@ -353,7 +354,7 @@ public class IcebergCatalogAdapter
                   snapshots,
                   ifNoneMatch,
                   delegationModes,
-                  getRefreshCredentialsEndpoint(prefix, tableIdentifier));
+                  Optional.of(getRefreshCredentialsEndpoint(prefix, tableIdentifier)));
 
           if (response.isEmpty()) {
             return Response.notModified().build();
@@ -366,14 +367,13 @@ public class IcebergCatalogAdapter
 
   /**
    * The path of the credentials endpoint for {@code tableIdentifier}. The path is static; whether
-   * it is returned to the client is decided where credentials are vended (see {@link
-   * org.apache.polaris.core.storage.PolarisStorageIntegration#getStorageAccessConfig}), not here.
+   * it is returned to the client is decided by the storage integration, where credentials are
+   * vended, not here.
    */
-  private static Optional<String> getRefreshCredentialsEndpoint(
+  private static String getRefreshCredentialsEndpoint(
       String prefix, TableIdentifier tableIdentifier) {
-    return Optional.of(
-        new PolarisResourcePaths(prefix, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED)
-            .credentialsPath(tableIdentifier));
+    return new PolarisResourcePaths(prefix, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED)
+        .credentialsPath(tableIdentifier);
   }
 
   @Override
@@ -445,7 +445,7 @@ public class IcebergCatalogAdapter
                   ns,
                   registerTableRequest,
                   delegationModes,
-                  getRefreshCredentialsEndpoint(prefix, tableIdentifier));
+                  Optional.of(getRefreshCredentialsEndpoint(prefix, tableIdentifier)));
           return tryInsertETagHeader(
                   Response.ok(response), response, namespace, registerTableRequest.name())
               .build();
@@ -575,7 +575,8 @@ public class IcebergCatalogAdapter
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
-    Optional<String> refreshEndpoint = getRefreshCredentialsEndpoint(prefix, tableIdentifier);
+    Optional<String> refreshEndpoint =
+        Optional.of(getRefreshCredentialsEndpoint(prefix, tableIdentifier));
     return withCatalog(
         securityContext,
         prefix,
