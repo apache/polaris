@@ -203,6 +203,11 @@ public class MetricsReportsService implements PolarisCatalogMetricsReportsApiSer
         resolveAndAuthorizeTableMetrics(catalogName, List.copyOf(snapshotsByTable.keySet()));
     Map<Long, TableIdentifier> tableIdToIdentifier = resolved.tableIdToIdentifier();
     if (tableIdToIdentifier.isEmpty()) {
+      // On a later page, the tables readable earlier were dropped or lost the privilege. End the
+      // listing instead of failing it partway through.
+      if (resumed != null) {
+        return toResponse(null, List.of());
+      }
       // Missing and denied tables are indistinguishable, so this does not reveal which exist.
       throw new ForbiddenException(
           "Principal '%s' is not authorized to read metrics of any of the requested tables",

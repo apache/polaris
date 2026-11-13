@@ -41,7 +41,10 @@ paths:
         the requested tables that exist and for which the caller holds that privilege. Other
         requested tables are omitted without error, so the response does not reveal whether they
         exist. A 403 is returned when none of the requested tables is readable by the caller,
-        whether because they do not exist or because the caller lacks the privilege. A 404 is
+        whether because they do not exist or because the caller lacks the privilege. This applies
+        only to a request without a `page-token`: when none of the tables is readable on a later
+        page, for example because they were dropped or the privilege was revoked during the
+        listing, the server returns an empty `reports` list with no `next-page-token`. A 404 is
         returned only when the catalog itself does not exist.
 
         The response may be paginated: clients should always check `next-page-token` and, when
@@ -69,14 +72,13 @@ paths:
         403:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
         404:
-          description: Not Found - The catalog does not exist
+          description: >
+            Not Found - The catalog does not exist. Requested tables that do not exist never
+            produce a 404; they are omitted from the result, or produce a 403 as described above.
           content:
             application/json:
               schema:
                 $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
-              examples:
-                TableNotFound:
-                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchTableError'
         503:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
         5XX:

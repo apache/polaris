@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -230,6 +231,28 @@ class MetricsReportsServiceTest {
                 service.queryTableMetrics(
                     CATALOG, requestFor(SCAN, NAMESPACE, TABLE), realmContext, securityContext))
         .isInstanceOf(ForbiddenException.class);
+    verify(provider, never()).listReports(any(), anyLong(), any(), any(), any(), any());
+  }
+
+  @Test
+  void laterPageWithNoReadableTableEndsTheListing() {
+    String token = firstPageToken(requestFor(SCAN, NAMESPACE, TABLE));
+    when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
+        .thenReturn(AuthorizationDecision.deny("denied"));
+    MetricsQuerySpi provider = queryProvider.get();
+    clearInvocations(provider);
+
+    Response response =
+        service.queryTableMetrics(
+            CATALOG,
+            withPaging(requestFor(SCAN, NAMESPACE, TABLE), token, null),
+            realmContext,
+            securityContext);
+
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    ListMetricsResponse body = (ListMetricsResponse) response.getEntity();
+    assertThat(body.getReports()).isEmpty();
+    assertThat(body.getNextPageToken()).isNull();
     verify(provider, never()).listReports(any(), anyLong(), any(), any(), any(), any());
   }
 
