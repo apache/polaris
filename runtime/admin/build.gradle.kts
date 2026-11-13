@@ -21,8 +21,9 @@ plugins {
   alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
-  id("polaris-license-report")
 }
+
+apply(from = "../licensee.gradle.kts")
 
 dependencies {
   compileOnly(libs.jspecify)
@@ -67,6 +68,7 @@ dependencies {
   }
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
+  implementation("io.quarkus:quarkus-cyclonedx")
 
   implementation(platform(libs.awssdk.bom))
   implementation("software.amazon.awssdk:apache5-client")
@@ -133,6 +135,7 @@ val licenseNoticeElements =
 artifacts {
   add(distributionElements.name, layout.buildDirectory.dir("quarkus-app")) {
     builtBy("quarkusBuild")
+    builtBy("checkDistributionLicenses")
   }
   add(licenseNoticeElements.name, layout.projectDirectory.dir("distribution"))
 }

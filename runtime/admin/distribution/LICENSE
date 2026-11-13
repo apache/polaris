@@ -293,6 +293,8 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-container-image-docker-common
 * Maven group:artifact IDs: io.quarkus:quarkus-core
 * Maven group:artifact IDs: io.quarkus:quarkus-credentials
+* Maven group:artifact IDs: io.quarkus:quarkus-cyclonedx
+* Maven group:artifact IDs: io.quarkus:quarkus-cyclonedx-endpoint
 * Maven group:artifact IDs: io.quarkus:quarkus-datasource
 * Maven group:artifact IDs: io.quarkus:quarkus-datasource-common
 * Maven group:artifact IDs: io.quarkus:quarkus-development-mode-spi

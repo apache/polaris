@@ -78,6 +78,8 @@ kls_database.db
 /build-logic/.kotlin
 /gradle/server-test-runner/.gradle
 /gradle/server-test-runner/.kotlin
+/gradle/license-check-plugin/.gradle
+/gradle/license-check-plugin/.kotlin
 **/build/
 !src/**/build/
 
