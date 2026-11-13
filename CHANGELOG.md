@@ -221,6 +221,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- AWS credentials vended for write access now also allow `s3:AbortMultipartUpload` on the same
+  locations as `s3:PutObject`, so clients can cancel failed multipart uploads. The vended policy is
+  intersected with the catalog's IAM role, so the role must grant `s3:AbortMultipartUpload` as well
+  for the change to take effect; roles that do not grant it keep working as before.
 - Credential vending no longer ends up with no allowed read/write locations when a table's data
   or metadata path matches its base location except for the scheme (for example `abfss://` vs
   `abfs://`) or a trailing slash. Such locations are mutual children, so the previous logic dropped
