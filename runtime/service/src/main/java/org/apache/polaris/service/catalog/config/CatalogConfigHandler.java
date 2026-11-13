@@ -57,6 +57,9 @@ import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 
 @RequestScoped
 public class CatalogConfigHandler {
+  private static final List<String> ICEBERG_REST_CONFIG_DEFAULT_KEYS =
+      List.of(RESTCatalogProperties.PAGE_SIZE, RESTCatalogProperties.METRICS_REPORTING_ENABLED);
+
   private final CatalogPrefixParser prefixParser;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final PolarisAuthorizer authorizer;
@@ -106,20 +109,20 @@ public class CatalogConfigHandler {
             .getEntity();
 
     // GET_CATALOG_CONFIG is opt-in via ENFORCE_CATALOG_CONFIG_AUTHORIZATION (default false).
-    // When false, behavior matches the pre-authorization path so upgrades do not 403 bootstrap.
-    // When true, CATALOG_READ_CONFIG is required for the whole endpoint. A 200 still includes
-    // catalog properties (defaults) as it does today.
+    // When false, the endpoint is not authorization-gated so upgrades do not 403 bootstrap.
+    // When true, CATALOG_READ_CONFIG is required for the whole endpoint. A 200 includes Iceberg
+    // REST client keys in defaults when they are set on the catalog.
     boolean enforceAccessChecks =
         realmConfig.getConfig(FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION);
     if (enforceAccessChecks) {
       authorizer.authorize(authorizationState, configAuthzRequest).throwIfDenied();
     }
 
-    Map<String, String> properties = PolarisEntity.of(catalogEntity).getPropertiesAsMap();
+    Map<String, String> catalogProperties = PolarisEntity.of(catalogEntity).getPropertiesAsMap();
 
     ConfigResponse.Builder builder =
         ConfigResponse.builder()
-            .withDefaults(properties)
+            .withDefaults(icebergRestConfigDefaults(catalogProperties))
             .withOverrides(
                 ImmutableMap.of(
                     "prefix",
@@ -138,6 +141,23 @@ public class CatalogConfigHandler {
     }
 
     return builder.build();
+  }
+
+  /**
+   * Iceberg REST {@code GET /v1/config} defaults copy {@code rest-page-size} and {@code
+   * rest-metrics-reporting-enabled} when present on the catalog. Other catalog properties remain on
+   * Management GET catalog.
+   */
+  private static Map<String, String> icebergRestConfigDefaults(
+      Map<String, String> catalogProperties) {
+    ImmutableMap.Builder<String, String> defaults = ImmutableMap.builder();
+    for (String key : ICEBERG_REST_CONFIG_DEFAULT_KEYS) {
+      String value = catalogProperties.get(key);
+      if (value != null) {
+        defaults.put(key, value);
+      }
+    }
+    return defaults.build();
   }
 
   private Set<Endpoint> supportedEndpoints() {
