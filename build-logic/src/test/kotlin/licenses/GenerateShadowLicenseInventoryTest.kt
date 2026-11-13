@@ -21,6 +21,7 @@
 
 package licenses
 
+import groovy.json.JsonSlurper
 import java.nio.file.Path
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -44,6 +45,26 @@ class GenerateShadowLicenseInventoryTest {
       .writeText(
         """
         import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+        import groovy.json.JsonOutput
+
+        abstract class InspectShadowInputs extends DefaultTask {
+          @InputFiles @PathSensitive(PathSensitivity.RELATIVE)
+          abstract ConfigurableFileCollection getSelected()
+          @Input abstract MapProperty<String, Map<String, String>> getMetadata()
+          @Input abstract Property<Boolean> getMinimized()
+          @OutputFile abstract RegularFileProperty getReport()
+
+          @TaskAction void inspect() {
+            def byPath = metadata.get()
+            def artifacts = selected.files.collect { file ->
+              assert byPath.containsKey(file.absolutePath)
+              byPath[file.absolutePath]
+            }.sort { it.name }
+            def output = report.get().asFile
+            output.parentFile.mkdirs()
+            output.text = JsonOutput.toJson([minimized: minimized.get(), artifacts: artifacts])
+          }
+        }
 
         plugins {
           id 'java'
@@ -59,14 +80,25 @@ class GenerateShadowLicenseInventoryTest {
         dependencies {
           implementation 'example:included:1'
           implementation 'example:excluded:1'
+          implementation 'example:classified:1:tests'
         }
         tasks.named('createPolarisSparkJar') {
-          dependencies { include(dependency('example:included:.*')) }
+          dependencies {
+            include(dependency('example:included:.*'))
+            include(dependency('example:classified:.*'))
+          }
+        }
+        def shadowInputs = extensions.extraProperties.get('sbomShadow')
+        tasks.register('inspectShadowInputs', InspectShadowInputs) {
+          selected.from(shadowInputs.selected)
+          metadata.set(shadowInputs.metadata)
+          minimized.set(shadowInputs.minimized)
+          report.set(layout.buildDirectory.file('shadow-inputs.json'))
         }
         """
           .trimIndent() + "\n",
       )
-    for (name in listOf("included", "excluded")) {
+    for (name in listOf("included", "excluded", "classified")) {
       val repository = dir.resolve("repository/example/$name/1").toFile().apply { mkdirs() }
       repository
         .resolve("$name-1.pom")
@@ -77,7 +109,8 @@ class GenerateShadowLicenseInventoryTest {
           """
             .trimIndent() + "\n",
         )
-      ZipOutputStream(repository.resolve("$name-1.jar").outputStream()).use { zip ->
+      val classifier = if (name == "classified") "-tests" else ""
+      ZipOutputStream(repository.resolve("$name-1$classifier.jar").outputStream()).use { zip ->
         zip.putNextEntry(ZipEntry("$name.txt"))
         zip.write(name.toByteArray())
         zip.closeEntry()
@@ -89,15 +122,40 @@ class GenerateShadowLicenseInventoryTest {
         .withPluginClasspath()
         .withArguments(
           "generateLicenseInventory",
+          "inspectShadowInputs",
           "--configuration-cache",
           "--offline",
           "--no-scan",
         )
-    assertThat(runner.build().output).contains("Configuration cache entry stored.")
+    val first = runner.build()
+    assertThat(first.output).contains("Configuration cache entry stored.")
+    assertThat(first.task(":createPolarisSparkJar")).isNull()
     assertThat(runner.build().output).contains("Configuration cache entry reused.")
     assertThat(dir.resolve("build/reports/licensee/shadow-inputs.json").toFile().readText())
-      .contains("pkg:maven/example/included@1")
+      .contains("pkg:maven/example/included@1", "pkg:maven/example/classified@1")
       .doesNotContain("excluded")
+    val inspected =
+      JsonSlurper().parse(dir.resolve("build/shadow-inputs.json").toFile()) as Map<*, *>
+    assertThat(inspected["minimized"]).isEqualTo(false)
+    assertThat(inspected["artifacts"])
+      .isEqualTo(
+        listOf(
+          mapOf(
+            "group" to "example",
+            "name" to "classified",
+            "version" to "1",
+            "classifier" to "tests",
+            "type" to "jar",
+          ),
+          mapOf(
+            "group" to "example",
+            "name" to "included",
+            "version" to "1",
+            "classifier" to "",
+            "type" to "jar",
+          ),
+        ),
+      )
   }
 
   @Test

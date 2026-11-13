@@ -28,6 +28,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ## [Unreleased]
 
 ### Highlights
+- Spark bundle Maven publications now include signed CycloneDX SBOMs with classifier
+  `bundle-sbom-cyclonedx`. Binary ZIP and TAR releases include signed `.cdx.json` sidecars;
+  Spark SBOMs are also available with the release assets.
+
 - Table and view commits no longer delete newly written metadata when the metastore write outcome
   is unknown (e.g. a dropped connection during `commit()`); they still clean up on known failures.
   JDBC reports that unknown outcome as `PersistenceCommitStateUnknownException` (HTTP 500). A

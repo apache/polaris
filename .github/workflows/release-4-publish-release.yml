@@ -315,6 +315,7 @@ jobs:
               -name "*.tar.gz" -o \
               -name "*.tgz" -o \
               -name "*.zip" -o \
+              -name "*.cdx.json" -o \
               -name "*.asc" -o \
               -name "*.sha512" -o \
               -name "*.prov" \
