@@ -49,6 +49,9 @@ val serverDistribution =
     isCanBeResolved = true
   }
 
+val adminSbom = configurations.create("adminSbom") { isCanBeConsumed = false }
+val serverSbom = configurations.create("serverSbom") { isCanBeConsumed = false }
+
 val licenseNotice =
   configurations.create("licenseNotice") {
     isCanBeConsumed = false
@@ -56,6 +59,8 @@ val licenseNotice =
   }
 
 dependencies {
+  adminSbom(project(":polaris-admin", "nativeSbomElements"))
+  serverSbom(project(":polaris-server", "nativeSbomElements"))
   adminDistribution(project(":polaris-admin", "distributionElements"))
   serverDistribution(project(":polaris-server", "distributionElements"))
   licenseNotice(project(":polaris-admin", "licenseNoticeElements"))
@@ -102,3 +107,9 @@ signTaskOutputs(distTar)
 signTaskOutputs(distZip)
 
 apply(from = "../distribution-license-checks.gradle.kts")
+
+listOf("finalizeDistZipSbom", "finalizeDistTarSbom").forEach { name ->
+  val sbomTask = tasks.named(name)
+  digestTaskOutputs(sbomTask)
+  signTaskOutputs(sbomTask)
+}

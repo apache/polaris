@@ -52,3 +52,15 @@ You can verify the server is running by checking the health endpoint:
 ```bash
 curl http://localhost:8182/q/health
 ```
+
+## Software bill of materials
+
+Binary ZIP and TAR releases include a signed CycloneDX 1.6 JSON sidecar named
+`polaris-bin-V.zip.cdx.json` or `polaris-bin-V.tgz.cdx.json`. Verify its `.asc`
+signature using a trusted Polaris release key, then compare the SHA-256 in
+`metadata.component.hashes` with the downloaded archive. Each document describes
+both packaged applications and the other archive files; dependency completeness
+is marked unknown.
+
+Spark bundle JARs have separate SBOMs attached to their Maven publications with
+classifier `bundle-sbom-cyclonedx`, also available with release assets.

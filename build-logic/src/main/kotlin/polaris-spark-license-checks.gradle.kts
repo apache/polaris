@@ -21,26 +21,62 @@
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import licenses.GenerateShadowLicenseInventory
+import publishing.GenerateDigest
+
+val shadowJar = providers.provider { tasks.named<ShadowJar>("createPolarisSparkJar").get() }
+val shadowSelected = shadowJar.map { it.includedDependencies }
+val shadowMinimized = shadowJar.flatMap { it.minimizeJar }
+val shadowMetadata =
+  shadowJar
+    .flatMap { it.configurations }
+    .map { configurations ->
+      configurations
+        .flatMap { it.resolvedConfiguration.resolvedArtifacts }
+        .groupBy { it.file.absolutePath }
+        .mapValues { (path, values) ->
+          val metadata =
+            values
+              .map { artifact ->
+                val id = artifact.moduleVersion.id
+                mapOf(
+                  "group" to id.group,
+                  "name" to id.name,
+                  "version" to id.version,
+                  "classifier" to artifact.classifier.orEmpty(),
+                  "type" to artifact.type,
+                )
+              }
+              .distinct()
+          require(metadata.size == 1) { "Ambiguous Shadow input metadata: $path" }
+          metadata.single()
+        }
+    }
 
 tasks.register<GenerateShadowLicenseInventory>("generateLicenseInventory") {
-  val shadowJar = tasks.named<ShadowJar>("createPolarisSparkJar")
   group = "verification"
   description = "Records actual selected Shadow dependency inputs with resolved Maven coordinates"
-  selectedDependencies.from(shadowJar.map { it.includedDependencies })
-  minimized.set(shadowJar.flatMap { it.minimizeJar })
+  selectedDependencies.from(shadowSelected)
+  minimized.set(shadowMinimized)
   coordinatesByPath.set(
-    shadowJar
-      .flatMap { it.configurations }
-      .map { configurations ->
-        val artifacts = configurations.flatMap { it.resolvedConfiguration.resolvedArtifacts }
-        artifacts
-          .groupBy { it.file.absolutePath }
-          .mapValues { (path, values) ->
-            val coordinates = values.map { it.moduleVersion.id.toString() }.distinct()
-            require(coordinates.size == 1) { "Ambiguous Shadow input coordinate: $path" }
-            coordinates.single()
-          }
-      },
+    shadowMetadata.map { metadata ->
+      metadata.mapValues { (_, artifact) ->
+        "${artifact.getValue("group")}:${artifact.getValue("name")}:${artifact.getValue("version")}"
+      }
+    },
   )
   inventory.set(layout.buildDirectory.file("reports/licensee/shadow-inputs.json"))
 }
+
+extra["sbomShadow"] =
+  mapOf(
+    "selected" to shadowSelected,
+    "archive" to shadowJar.flatMap { it.archiveFile },
+    "minimized" to shadowMinimized,
+    "metadata" to shadowMetadata,
+    "digests" to
+      tasks
+        .register<GenerateDigest>("digestDistributionSbom") {
+          files.from(tasks.named("finalizeDistributionSbom").map { it.outputs.files })
+        }
+        .map { it.outputFiles },
+  )
