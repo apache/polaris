@@ -169,7 +169,7 @@ public class PolarisAdminServiceTest {
             authorizer,
             reservedProperties,
             vendingMechanisms,
-            new CatalogConfigValidators(List.of()));
+            new CatalogConfigValidators(List.of(new SigV4CatalogValidator(realmConfig))));
   }
 
   protected static void assertSuccess(BaseResult result) {
@@ -324,10 +324,9 @@ public class PolarisAdminServiceTest {
     when(realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME))
         .thenReturn(false);
 
-    assertThatThrownBy(
-            () ->
-                adminService.createCatalog(
-                    new CreateCatalogRequest(createExternalSigV4StorageNameCatalog())))
+    assertThatThrownBy(() ->
+            adminService.createCatalog(
+                new CreateCatalogRequest(createExternalSigV4StorageNameCatalog())))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key());
     verify(metaStoreManager, never()).createCatalog(any(), any(), any());

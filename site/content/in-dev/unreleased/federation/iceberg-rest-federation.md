@@ -33,16 +33,13 @@ REST implementation), enabling a Polaris service to access table and view entiti
   `ConnectionConfigInfo.AuthenticationParameters`. OAuth2 client credentials, bearer tokens, GCP,
   and AWS SigV4 are supported; choose the scheme the remote service expects.
 
-  SigV4 comes in two forms. Supply `roleArn` for AWS services such as Glue: Polaris uses its own
-  AWS IAM service identity to assume that role through AWS STS. Supply `storageName` instead for
-  SigV4-compatible catalogs that are not AWS, which have no role to assume and no AWS STS endpoint
-  to reach. It names static keys that the server operator configures under
-  `polaris.storage.aws.<storage-name>.access-key` and `polaris.storage.aws.<storage-name>.secret-key`,
-  and those keys are used for signing directly. Only the name is stored with the catalog. This form
-  requires `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` to be enabled. The two forms are mutually
-  exclusive, as are the parameters that only shape an STS request: `roleSessionName`, `externalId`
-  and `sessionPolicy` cannot be combined with `storageName`, and are rejected rather than silently
-  ignored.
+  SigV4 comes in two forms. Supply `roleArn` to assume a role through AWS STS, which is the usual
+  path for AWS services such as Glue. Supply `storageName` to sign with named static keys and skip
+  STS. That path works for Iceberg REST catalogs that have no IAM role, and for AWS services when
+  the operator already has a dedicated key pair. Only the name is stored with the catalog; the
+  keys live in server configuration. Combining `storageName` with `roleArn`, `roleSessionName`,
+  `externalId` or `sessionPolicy` is rejected. Named keys require
+  `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` to be enabled.
 
 ## Feature configuration
 
