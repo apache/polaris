@@ -185,8 +185,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - The credential refresh endpoint (`*.refresh-credentials-endpoint` in the `config` of a
   `LoadTableResult`) is now included only when credentials were actually vended for the request.
-  Storage configurations that return no credentials no longer advertise the endpoint; requests that
-  include `none` in `X-Iceberg-Access-Delegation`, or resolve to no delegation, never receive it.
+  Storage configurations that return no credentials no longer advertise the endpoint.
 - Azure credential vending now maps MSAL authentication failures using their HTTP status codes,
   including the existing `401` to `403` and `404` to `400` mappings.
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
