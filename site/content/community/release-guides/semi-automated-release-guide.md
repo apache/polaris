@@ -121,6 +121,9 @@ Review these updates before creating a release candidate tag.
 Renovate also manages the pinned Helm version through its built-in support for `azure/setup-helm`.
 The build-environment record is staged with the distribution files and later attached to the GitHub release; it is not included inside the source or binary archives.
 Ordinary contributor builds do not require the exact release JDK.
+Compilation and documentation cache keys include the selected JDK's exact runtime version and vendor.
+Changing JDK patch version or vendor therefore prevents reuse of those tasks' local and remote cached outputs from the previous JDK.
+Those tasks run again unless the cache already contains outputs for the newly selected JDK.
 
 This workflow must be run from an RC tag (e.g., `apache-polaris-1.3.0-rc0`). Select the tag from the `Use workflow from` dropdown in the Github Actions UI. Selecting any other reference in the Github Actions UI will result in a failure.
 

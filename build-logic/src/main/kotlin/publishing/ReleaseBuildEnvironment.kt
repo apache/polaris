@@ -20,19 +20,23 @@
 package publishing
 
 import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 import java.time.Instant
 import org.gradle.api.DefaultTask
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 
 /** Observed build context, kept outside release archives because it identifies a particular run. */
-@DisableCachingByDefault(because = "Records the current build environment and invocation")
+@DisableCachingByDefault(because = "Records the current build environment")
 abstract class ReleaseBuildEnvironment : DefaultTask() {
   @get:Input abstract val releaseVersion: Property<String>
   @get:Input abstract val gradleVersion: Property<String>
@@ -40,17 +44,25 @@ abstract class ReleaseBuildEnvironment : DefaultTask() {
   @get:Input abstract val environment: MapProperty<String, String>
   @get:Input abstract val ci: MapProperty<String, String>
   @get:Input abstract val buildFlags: MapProperty<String, String>
-  @get:Input abstract val requestedTasks: ListProperty<String>
-  @get:Input abstract val configuredToolchains: ListProperty<Map<String, String>>
+  @get:InputFiles
+  @get:PathSensitive(PathSensitivity.NONE)
+  abstract val toolchainReports: ConfigurableFileCollection
   @get:OutputFile abstract val outputFile: RegularFileProperty
 
   init {
-    configuredToolchains.convention(emptyList())
     outputs.upToDateWhen { false }
   }
 
   @TaskAction
   fun generate() {
+    val configuredToolchains =
+      toolchainReports.files.flatMap { file ->
+        (JsonSlurper().parse(file) as List<*>).map { entry ->
+          (entry as Map<*, *>).entries.associate { (key, value) ->
+            key as String to value as String
+          }
+        }
+      }
     val record =
       linkedMapOf(
         "schemaVersion" to 1,
@@ -61,9 +73,8 @@ abstract class ReleaseBuildEnvironment : DefaultTask() {
         "gradleJvm" to gradleJvm.get().toSortedMap(),
         "environment" to environment.get().toSortedMap(),
         "ci" to ci.get().toSortedMap(),
-        "build" to (buildFlags.get().toSortedMap() + ("requestedTasks" to requestedTasks.get())),
-        "configuredToolchains" to
-          configuredToolchains.get().distinct().sortedBy { it.getValue("task") },
+        "build" to buildFlags.get().toSortedMap(),
+        "configuredToolchains" to configuredToolchains.distinct().sortedBy { it.getValue("task") },
       )
     val file = outputFile.get().asFile
     file.parentFile.mkdirs()

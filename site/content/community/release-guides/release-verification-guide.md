@@ -124,6 +124,8 @@ These diagnostics do not waive artifact comparison failures.
 Older releases without the record remain supported.
 The record describes the source/binary/Maven build job, not the separate Docker, Helm or Python build jobs.
 The locally generated record describes the verification run and is expected to differ from the candidate's record.
+The toolchain inventory covers each Java project's configured compilation and documentation tasks, including tasks that were not executed.
+The collector resolves per-project report artifacts without running the compilation or documentation tasks themselves.
 Evidence JSON files and their signatures/checksums are not compared byte-for-byte; selected environment fields are compared separately.
 
 To run the script, you need the following pieces of information from the release-vote email:

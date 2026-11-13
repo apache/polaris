@@ -39,7 +39,7 @@ import org.gradle.process.CommandLineArgumentProvider
 import org.kordamp.gradle.plugin.jandex.JandexExtension
 import org.kordamp.gradle.plugin.jandex.JandexPlugin
 import publishing.PublishingHelperPlugin
-import publishing.ReleaseBuildEnvironment
+import publishing.configureReleaseToolchains
 
 plugins {
   jacoco
@@ -56,46 +56,33 @@ plugins {
 
 apply<PublishingHelperPlugin>()
 
+configureReleaseToolchains(project)
+
 /**
  * Makes the "tracked" task's inputs dependent on JDK vendor and runtime-version. Different Java
  * patch versions can produce different byte code and different Javadoc content. Making the task
  * depend on the exact Java version and vendor helps especially Polaris reproducible build
  * verifications.
  */
-fun Task.trackJdk(role: String, metadata: Provider<JavaInstallationMetadata>) {
+fun Task.trackJdk(metadata: Provider<JavaInstallationMetadata>) {
   inputs.property("jdkRuntimeVersion", metadata.map { it.javaRuntimeVersion })
   inputs.property("jdkVendor", metadata.map { it.vendor })
-
-  val toolTaskPath = path
-  rootProject.tasks.named<ReleaseBuildEnvironment>("releaseBuildEnvironment").configure {
-    configuredToolchains.add(
-      metadata.map {
-        mapOf(
-          "task" to toolTaskPath,
-          "role" to role,
-          "vendor" to it.vendor,
-          "runtimeVersion" to it.javaRuntimeVersion,
-          "languageVersion" to it.languageVersion.toString(),
-        )
-      },
-    )
-  }
 }
 
 tasks.withType<JavaCompile>().configureEach {
-  trackJdk("javaCompiler", javaCompiler.map { it.metadata })
+  trackJdk(javaCompiler.map { it.metadata })
 }
 
 tasks.withType<ScalaCompile>().configureEach {
-  trackJdk("scalaCompiler", javaLauncher.map { it.metadata })
+  trackJdk(javaLauncher.map { it.metadata })
 }
 
 tasks.withType<Javadoc>().configureEach {
-  trackJdk("javadoc", javadocTool.map { it.metadata })
+  trackJdk(javadocTool.map { it.metadata })
 }
 
 tasks.withType<ScalaDoc>().configureEach {
-  trackJdk("scaladoc", javaLauncher.map { it.metadata })
+  trackJdk(javaLauncher.map { it.metadata })
 }
 
 private val libs: VersionCatalog by lazy { versionCatalogs.named("libs") }

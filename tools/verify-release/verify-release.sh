@@ -549,6 +549,7 @@ function compare_build_environments {
       log_info "Build environment $field differs: release='$expected', local='$actual'"
     fi
   done
+  # Requested tasks differ between release and verification builds; compare tools by role, not task paths.
   while IFS= read -r role; do
     expected=$(jq -c --arg role "$role" '[.configuredToolchains[] | select(.role == $role) | {vendor, runtimeVersion}] | unique' "$recorded")
     actual=$(jq -c --arg role "$role" '[.configuredToolchains[] | select(.role == $role) | {vendor, runtimeVersion}] | unique' "$local_record")

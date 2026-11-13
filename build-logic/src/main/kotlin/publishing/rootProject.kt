@@ -80,6 +80,7 @@ internal fun configureOnRootProject(project: Project) = project.run {
 
   signTaskOutputs(sourceTarball)
 
+  val reports = releaseToolchainReports(project)
   val releaseBuildEnvironment =
     tasks.register<ReleaseBuildEnvironment>("releaseBuildEnvironment") {
       group = "publishing"
@@ -126,7 +127,7 @@ internal fun configureOnRootProject(project: Project) = project.run {
           "buildCacheEnabled" to project.gradle.startParameter.isBuildCacheEnabled.toString(),
         ),
       )
-      requestedTasks.set(project.gradle.startParameter.taskNames)
+      toolchainReports.from(reports)
       val publishingHelper = project.extensions.getByType(PublishingHelperExtension::class.java)
       outputFile.set(
         publishingHelper.distributionDir.map {
