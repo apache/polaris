@@ -33,7 +33,7 @@ public interface RetryLoop<RESULT> {
   /** Creates a retry loop using the given fairness policy instead of the configured policy. */
   static <RESULT> RetryLoop<RESULT> newRetryLoop(
       RetryConfig retryConfig, MonotonicClock monotonicClock, FairRetriesType fairRetries) {
-    return new RetryLoopImpl<>(retryConfig, monotonicClock, fairRetries);
+    return new RetryLoopImpl<>(retryConfig, monotonicClock, FairRetries.create(fairRetries));
   }
 
   RetryLoop<RESULT> setRetryStatsConsumer(RetryStatsConsumer retryStatsConsumer);

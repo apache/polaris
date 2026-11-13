@@ -36,19 +36,18 @@ public class TestExclusiveCommitSynchronizer {
     var executor = Executors.newSingleThreadExecutor();
     try {
       var waiter =
-          executor.submit(
-              () -> {
-                if (!sync.before(TimeUnit.SECONDS.toNanos(5))) {
-                  throw new AssertionError("Timed out waiting for permit");
-                }
-                try {
-                  waiterEntered.countDown();
-                  assertThat(releaseWaiter.await(5, TimeUnit.SECONDS)).isTrue();
-                } finally {
-                  sync.after();
-                }
-                return true;
-              });
+          executor.submit(() -> {
+            if (!sync.before(TimeUnit.SECONDS.toNanos(5))) {
+              throw new AssertionError("Timed out waiting for permit");
+            }
+            try {
+              waiterEntered.countDown();
+              assertThat(releaseWaiter.await(5, TimeUnit.SECONDS)).isTrue();
+            } finally {
+              sync.after();
+            }
+            return true;
+          });
       var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
       while (!sync.hasQueuedThreads() && System.nanoTime() < deadline) {
         Thread.sleep(1);

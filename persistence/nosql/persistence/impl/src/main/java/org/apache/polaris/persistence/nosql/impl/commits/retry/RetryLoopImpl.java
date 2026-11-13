@@ -27,7 +27,6 @@ import static org.apache.polaris.persistence.nosql.impl.commits.retry.RetryStats
 import java.util.concurrent.ThreadLocalRandom;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.persistence.nosql.api.commit.CommitException;
-import org.apache.polaris.persistence.nosql.api.commit.FairRetriesType;
 import org.apache.polaris.persistence.nosql.api.commit.RetryConfig;
 import org.apache.polaris.persistence.nosql.api.commit.RetryTimeoutException;
 import org.apache.polaris.persistence.nosql.api.exceptions.UnknownOperationResultException;
@@ -46,17 +45,17 @@ final class RetryLoopImpl<RESULT> implements RetryLoop<RESULT> {
   private RetryStatsConsumer retryStatsConsumer;
 
   RetryLoopImpl(RetryConfig config, MonotonicClock monotonicClock) {
-    this(config, monotonicClock, config.fairRetries());
+    this(config, monotonicClock, FairRetries.create(config.fairRetries()));
   }
 
-  RetryLoopImpl(RetryConfig config, MonotonicClock monotonicClock, FairRetriesType fairRetries) {
+  RetryLoopImpl(RetryConfig config, MonotonicClock monotonicClock, FairRetries fairRetries) {
     this.maxTime = config.timeout().toNanos();
     this.maxRetries = config.retries();
     this.monotonicClock = monotonicClock;
     this.lowerBound = config.initialSleepLower().toMillis();
     this.upperBound = config.initialSleepUpper().toMillis();
     this.maxSleep = config.maxSleep().toMillis();
-    this.fairRetries = FairRetries.create(fairRetries);
+    this.fairRetries = fairRetries;
   }
 
   @Override
@@ -78,7 +77,7 @@ final class RetryLoopImpl<RESULT> implements RetryLoop<RESULT> {
         var nanosRemaining = timeoutAt - currentNanos();
         // Enforce the deadline for all commits, including backoff that rounds past it.
         if (nanosRemaining <= 0) {
-          reportEnd(TIMEOUT, timeAttemptStarted);
+          reportEnd(TIMEOUT, timeLoopStarted);
           throw new RetryTimeoutException(attempt, currentNanos() - timeLoopStarted);
         }
         try {

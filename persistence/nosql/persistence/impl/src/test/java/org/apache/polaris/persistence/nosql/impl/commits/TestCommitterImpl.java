@@ -65,12 +65,10 @@ public class TestCommitterImpl extends BaseTestCommitterImpl {
     var expected = synchronizing ? FairRetriesType.UNFAIR : FairRetriesType.SLEEPING;
     try (var factory = mockStatic(RetryLoop.class, CALLS_REAL_METHODS)) {
       var failure = new IllegalStateException("attempt failed");
-      assertThatThrownBy(
-              () ->
-                  committer.commit(
-                      (state, reference) -> {
-                        throw failure;
-                      }))
+      assertThatThrownBy(() ->
+              committer.commit((state, reference) -> {
+                throw failure;
+              }))
           .isSameAs(failure);
       assertThat(committer.commit((state, reference) -> state.noCommit("done"))).contains("done");
       factory.verify(() -> RetryLoop.newRetryLoop(config, clock, expected), times(2));
@@ -114,9 +112,8 @@ public class TestCommitterImpl extends BaseTestCommitterImpl {
             .synchronizingLocally();
 
     assertThat(
-            committer.commit(
-                (state, reference) ->
-                    attempts.incrementAndGet() == 1 ? Optional.empty() : state.noCommit("done")))
+            committer.commit((state, reference) ->
+                attempts.incrementAndGet() == 1 ? Optional.empty() : state.noCommit("done")))
         .contains("done");
 
     assertThat(attempts).hasValue(2);
