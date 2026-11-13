@@ -480,17 +480,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     IcebergTableLikeEntity existingEntity = IcebergTableLikeEntity.of(rawEntity);
 
     Map<String, String> storedProperties = buildTableMetadataPropertiesMap(metadata);
-    // Retry keys belong to the table UUID, not the registration's metadata location.
-    Map<String, String> existingInternalProperties = existingEntity.getInternalPropertiesAsMap();
-    if (metadata.uuid() != null
-        && metadata
-            .uuid()
-            .equals(existingInternalProperties.get(IcebergTableLikeEntity.TABLE_UUID))) {
-      String priorWindow =
-          existingInternalProperties.get(EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY);
-      if (priorWindow != null) {
-        storedProperties.put(EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY, priorWindow);
-      }
+    // Retry keys belong to the table UUID, not the registration's metadata location. Re-registering
+    // older metadata with the same UUID (a rollback) still replays keys for rolled-back updates as
+    // success without re-applying them, like any retry of an update that was later superseded.
+    String existingUuid =
+        existingEntity.getInternalPropertiesAsMap().get(IcebergTableLikeEntity.TABLE_UUID);
+    if (metadata.uuid() != null && metadata.uuid().equals(existingUuid)) {
+      carryForwardIdempotencyKeys(storedProperties, existingEntity);
     }
     IcebergTableLikeEntity updatedEntity =
         new IcebergTableLikeEntity.Builder(existingEntity)
@@ -503,6 +499,16 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     TableOperations ops = newTableOps(identifier);
     return new BaseTable(ops, fullTableName(name(), identifier), metricsReporter());
+  }
+
+  /** Copies {@code existing}'s idempotency key window, if any, into {@code internalProperties}. */
+  private static void carryForwardIdempotencyKeys(
+      Map<String, String> internalProperties, IcebergTableLikeEntity existing) {
+    String priorWindow =
+        existing.getInternalPropertiesAsMap().get(EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY);
+    if (priorWindow != null) {
+      internalProperties.put(EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY, priorWindow);
+    }
   }
 
   @Override
@@ -2197,11 +2203,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       // on write, so carry any prior window forward to keep earlier keys live across updates even
       // when a given update carries no key of its own.
       if (existing != null) {
-        String priorWindow =
-            existing.getInternalPropertiesAsMap().get(EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY);
-        if (priorWindow != null) {
-          internalProperties.put(EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY, priorWindow);
-        }
+        carryForwardIdempotencyKeys(internalProperties, existing);
       }
       if (idempotencyRequestContext.isActive()) {
         // Stamp this operation's key atomically with the metadata change, purging expired keys.
