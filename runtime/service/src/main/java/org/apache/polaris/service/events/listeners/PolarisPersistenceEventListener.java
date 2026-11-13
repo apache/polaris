@@ -157,17 +157,13 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
         .getOptional(EventAttributes.VIEW_IDENTIFIER)
         .map(TableIdentifier::toString)
         .or(() -> resolveRenameIdentifier(event))
-        .or(
-            () ->
-                attributes
-                    .getOptional(EventAttributes.NAMESPACE)
-                    .flatMap(
-                        namespace ->
-                            attributes
-                                .getOptional(EventAttributes.VIEW_NAME)
-                                .map(
-                                    viewName ->
-                                        TableIdentifier.of(namespace, viewName).toString())))
+        .or(() ->
+            attributes
+                .getOptional(EventAttributes.NAMESPACE)
+                .flatMap(namespace ->
+                    attributes
+                        .getOptional(EventAttributes.VIEW_NAME)
+                        .map(viewName -> TableIdentifier.of(namespace, viewName).toString())))
         .or(() -> attributes.getOptional(EventAttributes.VIEW_NAME))
         .orElseGet(() -> fallbackResourceIdentifier(event, catalogName));
   }
@@ -176,43 +172,39 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     return event
         .attributes()
         .getOptional(EventAttributes.RENAME_TABLE_REQUEST)
-        .map(
-            request ->
-                event.type().name().startsWith("AFTER_")
-                    ? request.destination().toString()
-                    : request.source().toString());
+        .map(request ->
+            event.type().name().startsWith("AFTER_")
+                ? request.destination().toString()
+                : request.source().toString());
   }
 
   private static Optional<String> resolveNamespaceAndTableName(AttributeMap attributes) {
     return attributes
         .getOptional(EventAttributes.NAMESPACE)
-        .flatMap(
-            namespace ->
-                attributes
-                    .getOptional(EventAttributes.TABLE_NAME)
-                    .map(tableName -> TableIdentifier.of(namespace, tableName).toString()));
+        .flatMap(namespace ->
+            attributes
+                .getOptional(EventAttributes.TABLE_NAME)
+                .map(tableName -> TableIdentifier.of(namespace, tableName).toString()));
   }
 
   private static Optional<String> resolveCreateTableIdentifier(AttributeMap attributes) {
     return attributes
         .getOptional(EventAttributes.NAMESPACE)
-        .flatMap(
-            namespace ->
-                attributes
-                    .getOptional(EventAttributes.CREATE_TABLE_REQUEST)
-                    .map(CreateTableRequest::name)
-                    .map(tableName -> TableIdentifier.of(namespace, tableName).toString()));
+        .flatMap(namespace ->
+            attributes
+                .getOptional(EventAttributes.CREATE_TABLE_REQUEST)
+                .map(CreateTableRequest::name)
+                .map(tableName -> TableIdentifier.of(namespace, tableName).toString()));
   }
 
   private static Optional<String> resolveRegisterTableIdentifier(AttributeMap attributes) {
     return attributes
         .getOptional(EventAttributes.NAMESPACE)
-        .flatMap(
-            namespace ->
-                attributes
-                    .getOptional(EventAttributes.REGISTER_TABLE_REQUEST)
-                    .map(RegisterTableRequest::name)
-                    .map(tableName -> TableIdentifier.of(namespace, tableName).toString()));
+        .flatMap(namespace ->
+            attributes
+                .getOptional(EventAttributes.REGISTER_TABLE_REQUEST)
+                .map(RegisterTableRequest::name)
+                .map(tableName -> TableIdentifier.of(namespace, tableName).toString()));
   }
 
   private static String resolveNamespaceResourceIdentifier(

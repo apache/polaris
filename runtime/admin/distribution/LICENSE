@@ -475,7 +475,6 @@ This product bundles Jackson.
 * Maven group:artifact IDs: com.fasterxml.jackson.core:jackson-databind
 * Maven group:artifact IDs: com.fasterxml.jackson.dataformat:jackson-dataformat-smile
 * Maven group:artifact IDs: com.fasterxml.jackson.dataformat:jackson-dataformat-xml
-* Maven group:artifact IDs: com.fasterxml.jackson.dataformat:jackson-dataformat-yaml
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-guava
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jdk8
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jsr310
@@ -486,6 +485,239 @@ This product bundles Jackson.
 * Maven group:artifact IDs: tools.jackson.datatype:jackson-datatype-guava
 
 Project URL: https://github.com/FasterXML/jackson
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles FastDoubleParser (via jackson-core).
+
+Project URL: https://github.com/wrandelshofer/FastDoubleParser
+License: MIT License
+| MIT License
+|
+| Copyright (c) 2024 Werner Randelshofer, Switzerland.
+|
+| Permission is hereby granted, free of charge, to any person obtaining a copy
+| of this software and associated documentation files (the "Software"), to deal
+| in the Software without restriction, including without limitation the rights
+| to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+| copies of the Software, and to permit persons to whom the Software is
+| furnished to do so, subject to the following conditions:
+|
+| The above copyright notice and this permission notice shall be included in all
+| copies or substantial portions of the Software.
+|
+| THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+| IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+| FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+| AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+| LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+| OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+| SOFTWARE.
+|
+| ------
+| This is a Java port of Daniel Lemire's fast_float project.
+| This project provides parsers for double, float, BigDecimal and BigInteger values.
+|
+| ## Copyright
+|
+| Copyright © 2024 Werner Randelshofer, Switzerland.
+|
+| ## Licensing
+|
+| This code is licensed under MIT License.
+| https://github.com/wrandelshofer/FastDoubleParser/blob/522be16e145f43308c43b23094e31d5efcaa580e/LICENSE
+| (The file 'LICENSE' is included in the sources and classes Jar files that are released by this project
+| - as is required by that license - see FastDoubleParser-LICENSE.)
+|
+| Some portions of the code have been derived from other projects.
+| All these projects require that we include a copyright notice, and some require that we also include some text of their
+| license file.
+|
+| fast_double_parser, Copyright (c) 2022 Daniel Lemire. Boost Software License.
+| https://github.com/lemire/fast_double_parser
+| https://github.com/lemire/fast_double_parser/blob/07d9189a8fb815fe800cb15ca022e7a07093236e/LICENSE.BSL
+| (The file 'LICENSE.BSL' is included in the sources and classes Jar files that are released by this project
+| - as is required by that license - see FastDoubleParser-ThirdParty-LICENSE.)
+|
+| fast_float, Copyright (c) 2021 The fast_float authors. MIT License.
+| https://github.com/fastfloat/fast_float
+| https://github.com/fastfloat/fast_float/blob/cc1e01e9eee74128e48d51488a6b1df4a767a810/LICENSE-MIT
+| (The file 'LICENSE-MIT' is included in the sources and classes Jar files that are released by this project
+| - as is required by that license - see FastDoubleParser-ThirdParty-LICENSE.)
+|
+| bigint, Copyright 2020 Tim Buktu. 2-clause BSD License.
+| https://github.com/tbuktu/bigint/tree/floatfft
+| https://github.com/tbuktu/bigint/blob/617c8cd8a7c5e4fb4d919c6a4d11e2586107f029/LICENSE
+| https://github.com/wrandelshofer/FastDoubleParser/blob/39e123b15b71f29a38a087d16a0bc620fc879aa6/bigint-LICENSE
+| (We only use those portions of the bigint project that can be licensed under 2-clause BSD License.)
+| (The file 'bigint-LICENSE' is included in the sources and classes Jar files that are released by this project
+| - as is required by that license - see FastDoubleParser-ThirdParty-LICENSE.)
+
+--------------------------------------------------------------------------------
+
+This product bundles fast_double_parser (via FastDoubleParser).
+
+Project URL: https://github.com/lemire/fast_double_parser
+License: Boost Software License 1.0
+| Copyright (c) Daniel Lemire
+|
+| Boost Software License - Version 1.0 - August 17th, 2003
+|
+| Permission is hereby granted, free of charge, to any person or organization
+| obtaining a copy of the software and accompanying documentation covered by
+| this license (the "Software") to use, reproduce, display, distribute,
+| execute, and transmit the Software, and to prepare derivative works of the
+| Software, and to permit third-parties to whom the Software is furnished to
+| do so, all subject to the following:
+|
+| The copyright notices in the Software and this entire statement, including
+| the above license grant, this restriction and the following disclaimer,
+| must be included in all copies of the Software, in whole or in part, and
+| all derivative works of the Software, unless such copies or derivative
+| works are solely in the form of machine-executable object code generated by
+| a source language processor.
+|
+| THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+| IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+| FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT. IN NO EVENT
+| SHALL THE COPYRIGHT HOLDERS OR ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE
+| FOR ANY DAMAGES OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE,
+| ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+| DEALINGS IN THE SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+This product bundles fast_float (via FastDoubleParser).
+
+Project URL: https://github.com/fastfloat/fast_float
+License: MIT License
+| Third-party license for
+| fast_float, Copyright (c) 2021 The fast_float authors. MIT License.
+| https://github.com/fastfloat/fast_float
+| https://github.com/fastfloat/fast_float/blob/35d523195bf7d57aba0e735ad6eba1e6f71ba8d6/LICENSE-MIT
+|
+| MIT License
+|
+| Copyright (c) 2021 The fast_float authors
+|
+| Permission is hereby granted, free of charge, to any person obtaining a copy
+| of this software and associated documentation files (the "Software"), to deal
+| in the Software without restriction, including without limitation the rights
+| to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+| copies of the Software, and to permit persons to whom the Software is
+| furnished to do so, subject to the following conditions:
+|
+| The above copyright notice and this permission notice shall be included in all
+| copies or substantial portions of the Software.
+|
+| THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+| IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+| FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+| AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+| LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+| OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+| SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+This product bundles bigint (via FastDoubleParser).
+
+Project URL: https://github.com/tbuktu/bigint
+License: BSD 2-Clause License
+| Third-party license for
+| bigint, Copyright 2020 Tim Buktu. 2-clause BSD License.
+| https://github.com/tbuktu/bigint/tree/floatfft
+| https://github.com/tbuktu/bigint/blob/617c8cd8a7c5e4fb4d919c6a4d11e2586107f029/LICENSE
+| https://github.com/wrandelshofer/FastDoubleParser/blob/39e123b15b71f29a38a087d16a0bc620fc879aa6/bigint-LICENSE
+| (We only use those portions of the bigint project that can be licensed under 2-clause BSD License.)
+|
+| 2-clause BSD License
+|
+| Copyright 2022 Tim Buktu
+|
+| Redistribution and use in source and binary forms, with or without
+| modification, are permitted provided that the following conditions
+| are met:
+|
+| 1. Redistributions of source code must retain the above copyright notice, this
+|    list of conditions and the following disclaimer.
+|
+| 2. Redistributions in binary form must reproduce the above copyright notice,
+|    this list of conditions and the following disclaimer in the documentation
+|    and/or other materials provided with the distribution.
+|
+| THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+| ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+| WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+| DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+| FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+| DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+| SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+| CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+| OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+| OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+
+This product bundles Schubfach (via jackson-core).
+
+Project URL: https://github.com/c4f7fcce9cb06515/Schubfach
+License: MIT License
+| Copyright 2018-2020 Raffaello Giulietti
+|
+| Permission is hereby granted, free of charge, to any person obtaining a copy
+| of this software and associated documentation files (the "Software"), to deal
+| in the Software without restriction, including without limitation the rights
+| to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+| copies of the Software, and to permit persons to whom the Software is
+| furnished to do so, subject to the following conditions:
+|
+| The above copyright notice and this permission notice shall be included in
+| all copies or substantial portions of the Software.
+|
+| THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+| IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+| FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+| AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+| LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+| OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+| THE SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+This product bundles jsoniter-scala (via jackson-core 3.x).
+
+Project URL: https://github.com/plokhotnyuk/jsoniter-scala
+License: MIT License
+| MIT License
+|
+| Copyright (c) 2017-2026 Andriy Plokhotnyuk, and respective contributors
+|
+| Permission is hereby granted, free of charge, to any person obtaining a copy
+| of this software and associated documentation files (the "Software"), to deal
+| in the Software without restriction, including without limitation the rights
+| to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+| copies of the Software, and to permit persons to whom the Software is
+| furnished to do so, subject to the following conditions:
+|
+| The above copyright notice and this permission notice shall be included in all
+| copies or substantial portions of the Software.
+|
+| THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+| IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+| FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+| AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+| LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+| OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+| SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+This product bundles xjb (via jackson-core 3.x).
+
+Copyright: 2026 xjb714 and contributors
+Project URL: https://github.com/xjb714/xjb
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
@@ -1106,9 +1338,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 This product bundles Swagger.
 
 * Maven group:artifact IDs: io.swagger:swagger-annotations
-* Maven group:artifact IDs: io.swagger:swagger-core
-* Maven group:artifact IDs: io.swagger:swagger-jaxrs
-* Maven group:artifact IDs: io.swagger:swagger-models
 
 Project URL: https://github.com/swagger-api/swagger-core
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1127,15 +1356,6 @@ This product bundles VertX.
 
 Project URL: https://vertx.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This product bundles Jakarta Activation API.
-
-* Maven group:artifact IDs: jakarta.activation:jakarta.activation-api
-
-Project URL: https://github.com/jakartaee/jaf-api
-License: Eclipse Distribution License 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
 
 --------------------------------------------------------------------------------
 
@@ -1247,15 +1467,6 @@ License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
-This product bundles Jakarta JAXB API.
-
-* Maven group:artifact IDs: jakarta.xml.bind:jakarta.xml.bind-api
-
-Project URL: https://github.com/jakartaee/jaxb-api
-License: Eclipse Distribution License 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
-
---------------------------------------------------------------------------------
-
 This product bundles JNA.
 
 * Maven group:artifact IDs: net.java.dev.jna:jna
@@ -1303,6 +1514,16 @@ This product bundles Apache HttpComponents (core and client).
 
 Project URL: https://hc.apache.org/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles the Mozilla Public Suffix List, distributed by Apache HttpComponents.
+
+The list is bundled as mozilla/public-suffix-list.txt and
+org/publicsuffix/list/effective_tld_names.dat.
+
+Project URL: https://publicsuffix.org/
+License: Mozilla Public License 2.0 - https://mozilla.org/MPL/2.0/
 
 --------------------------------------------------------------------------------
 
@@ -1486,15 +1707,6 @@ License: BSD 2-Clause
 
 --------------------------------------------------------------------------------
 
-This product bundles Javassist.
-
-* Maven group:artifact IDs: org.javassist:javassist
-
-Project URL: http://www.javassist.org/
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles JBoss (logmanager, transaction, narayana).
 
 * Maven group:artifact IDs: org.jboss:jboss-transaction-spi
@@ -1617,15 +1829,6 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-This product bundles Reflections.
-
-* Maven group:artifact IDs: org.reflections:reflections
-
-Project URL: http://github.com/ronmamo/reflections
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles RoaringBitmap.
 
 * Maven group:artifact IDs: org.roaringbitmap:RoaringBitmap
@@ -1703,15 +1906,6 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-This product bundles SnakeYAML.
-
-* Maven group:artifact IDs: org.yaml:snakeyaml
-
-Project URL: https://bitbucket.org/snakeyaml/snakeyaml
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles AWS SDK for Java.
 
 * Maven group:artifact IDs: software.amazon.awssdk:annotations
@@ -1727,6 +1921,7 @@ This product bundles AWS SDK for Java.
 * Maven group:artifact IDs: software.amazon.awssdk:crt-core
 * Maven group:artifact IDs: software.amazon.awssdk:dynamodb
 * Maven group:artifact IDs: software.amazon.awssdk:endpoints-spi
+* Maven group:artifact IDs: software.amazon.awssdk:eventstream
 * Maven group:artifact IDs: software.amazon.awssdk:http-auth
 * Maven group:artifact IDs: software.amazon.awssdk:http-auth-aws
 * Maven group:artifact IDs: software.amazon.awssdk:http-auth-aws-eventstream
@@ -1753,15 +1948,6 @@ This product bundles AWS SDK for Java.
 * Maven group:artifact IDs: software.amazon.awssdk:utils-lite
 
 Project URL: https://aws.amazon.com/sdkforjava
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This product bundles AWS EventStream Java.
-
-* Maven group:artifact IDs: software.amazon.eventstream:eventstream
-
-Project URL: https://github.com/awslabs/aws-eventstream-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------

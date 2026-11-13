@@ -162,12 +162,9 @@ class ViewCommand(Command):
                 # SQL representations
                 print("\nRepresentations")
                 for representation in current_version.representations:
-                    unwrapped = representation.actual_instance
-                    if unwrapped is None:
-                        continue
-                    print(f"  {'Dialect:':<30} {unwrapped.dialect}")
+                    print(f"  {'Dialect:':<30} {representation.dialect}")
                     indented_sql = "\n".join(
-                        " " * 4 + line for line in unwrapped.sql.splitlines()
+                        " " * 4 + line for line in representation.sql.splitlines()
                     )
                     print("  SQL:")
                     print(indented_sql)

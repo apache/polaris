@@ -528,12 +528,11 @@ public class Resolver {
     if (!this.resolvedPaths.isEmpty()) {
       List<List<ResolvedPolarisEntity>> refreshedResolvedPaths =
           new ArrayList<>(this.resolvedPaths.size());
-      this.resolvedPaths.forEach(
-          rp -> {
-            List<ResolvedPolarisEntity> refreshedRp = new ArrayList<>(rp.size());
-            rp.forEach(ce -> refreshedRp.add(this.getFreshlyResolved(ce)));
-            refreshedResolvedPaths.add(refreshedRp);
-          });
+      this.resolvedPaths.forEach(rp -> {
+        List<ResolvedPolarisEntity> refreshedRp = new ArrayList<>(rp.size());
+        rp.forEach(ce -> refreshedRp.add(this.getFreshlyResolved(ce)));
+        refreshedResolvedPaths.add(refreshedRp);
+      });
       this.resolvedPaths = refreshedResolvedPaths;
     }
   }
@@ -580,11 +579,10 @@ public class Resolver {
       // when PolarisMetaStoreManagerImpl uses PolarisEntityResolver in a read transaction.
       List<PolarisEntityId> entityIds =
           toValidate.stream()
-              .map(
-                  resolvedEntity ->
-                      new PolarisEntityId(
-                          resolvedEntity.getEntity().getCatalogId(),
-                          resolvedEntity.getEntity().getId()))
+              .map(resolvedEntity ->
+                  new PolarisEntityId(
+                      resolvedEntity.getEntity().getCatalogId(),
+                      resolvedEntity.getEntity().getId()))
               .collect(Collectors.toList());
 
       // now get the current backend versions of all these entities
@@ -882,13 +880,12 @@ public class Resolver {
       List<ResolvedPolarisEntity> toValidate, ResolvedPolarisEntity callerPrincipal) {
     return callerPrincipal.getGrantRecordsAsGrantee().stream()
         .filter(gr -> gr.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode())
-        .map(
-            gr ->
-                resolveById(
-                    toValidate,
-                    PolarisEntityType.PRINCIPAL_ROLE,
-                    PolarisEntityConstants.getRootEntityId(),
-                    gr.getSecurableId()))
+        .map(gr ->
+            resolveById(
+                toValidate,
+                PolarisEntityType.PRINCIPAL_ROLE,
+                PolarisEntityConstants.getRootEntityId(),
+                gr.getSecurableId()))
         .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }

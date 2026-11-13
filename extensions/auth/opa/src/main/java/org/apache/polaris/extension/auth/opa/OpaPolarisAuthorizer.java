@@ -41,10 +41,12 @@ import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.NonRBACResolutionSemantics;
 import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributePrefixes;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.auth.PolicyAttachmentAuthorizationIntent;
 import org.apache.polaris.core.auth.PrivilegeGrantAuthorizationIntent;
@@ -53,6 +55,7 @@ import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
 import org.apache.polaris.core.auth.RootPrivilegeGrantAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
 import org.apache.polaris.extension.auth.opa.model.ImmutableContext;
 import org.apache.polaris.extension.auth.opa.model.ImmutableOpaAuthorizationInput;
@@ -119,15 +122,16 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   /**
-   * Resolves authorization inputs using {@code resolveAll()} for backward compatibility.
+   * {@link AuthorizationState#resolve() Resolves} authorization inputs using the narrowest set of
+   * {@link Resolvable}s that is required for authorizing the given {code request}.
    *
-   * <p>This scope is intentionally broad for now and will be narrowed in a future refactoring to
-   * resolve only the selections required by OPA authorization.
+   * @see AuthorizationState#resolve()
    */
   @Override
   public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    authzState.getResolutionManifest().resolveAll();
+    NonRBACResolutionSemantics.applySelectors(authzState, request);
+    authzState.resolve();
   }
 
   @Override
@@ -286,6 +290,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     return ImmutableActor.builder()
         .principal(principal.getName())
         .addAllRoles(principal.getRoles())
+        .putAllAttributes(PolarisPrincipalAttributePrefixes.derivedStringAttributes(principal))
         .build();
   }
 

@@ -53,12 +53,11 @@ public class PolicyEntityTest {
 
   @Test
   public void testBuildPolicyEntityWithoutPolicyTye() {
-    Assertions.assertThatThrownBy(
-            () ->
-                new PolicyEntity.Builder(Namespace.of("NS1"), "testPolicy", null)
-                    .setContent("test_content")
-                    .setPolicyVersion(0)
-                    .build())
+    Assertions.assertThatThrownBy(() ->
+            new PolicyEntity.Builder(Namespace.of("NS1"), "testPolicy", null)
+                .setContent("test_content")
+                .setPolicyVersion(0)
+                .build())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Policy type must be specified");
   }

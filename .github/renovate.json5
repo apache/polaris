@@ -55,7 +55,7 @@
     {
       matchManagers: [
         "gradle", "gradle-wrapper",
-        "pip_requirements", "pip_setup", "uv", "setup-cfg",
+        "pip_requirements", "pip_setup", "pep621", "setup-cfg",
         "dockerfile", "devcontainer", "docker-compose",
         "helm-requirements", "helm-values",
         "github-actions"],
@@ -70,7 +70,7 @@
     },
     // boto3 (release frequency: multiple times per week)
     {
-      matchManagers: ["pip_requirements", "pip_setup", "uv"],
+      matchManagers: ["pip_requirements", "pip_setup", "pep621"],
       matchPackageNames: ["boto3{/,}**"],
       extends: ["schedule:weekly"],
     },
@@ -103,11 +103,6 @@
         "io.quarkus.platform:*",
         "!io.quarkus.platform:quarkus-bom"
       ],
-      enabled: false
-    },
-    // Disable update for openapi-generator-cli due to our OpenAPI spec version
-    {
-      matchPackageNames: ["openapi-generator-cli"],
       enabled: false
     },
     // Disable update for python version

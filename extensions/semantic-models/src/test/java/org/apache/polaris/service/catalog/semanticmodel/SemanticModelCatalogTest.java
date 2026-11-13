@@ -322,11 +322,10 @@ class SemanticModelCatalogTest {
     var response = catalog.listSemanticModels(NS, PageToken.readEverything());
     assertThat(response.getIdentifiers())
         .singleElement()
-        .satisfies(
-            id -> {
-              assertThat(id.getName()).isEqualTo(MODEL);
-              assertThat(id.getNamespace()).containsExactly("sales");
-            });
+        .satisfies(id -> {
+          assertThat(id.getName()).isEqualTo(MODEL);
+          assertThat(id.getNamespace()).containsExactly("sales");
+        });
   }
 
   // ---- helpers ----

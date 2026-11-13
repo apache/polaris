@@ -223,11 +223,10 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       if (shouldBeDeleted) {
         Awaitility.await()
             .atMost(Duration.ofSeconds(20))
-            .untilAsserted(
-                () ->
-                    assertThat(fileIO.newInputFile(metadataLocation).exists())
-                        .as("View metadata file should be deleted when purge is enabled")
-                        .isFalse());
+            .untilAsserted(() ->
+                assertThat(fileIO.newInputFile(metadataLocation).exists())
+                    .as("View metadata file should be deleted when purge is enabled")
+                    .isFalse());
       } else {
         assertThat(fileIO.newInputFile(metadataLocation).exists())
             .as("View metadata file should remain when purge is disabled")
@@ -331,7 +330,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
             .build();
 
     createPolarisCatalog(catalog);
-    managementApi.makeAdmin(principalRoleName, catalog);
+    makeAdmin(principalRoleName, catalog);
 
     ImmutableMap.Builder<String, String> restCatalogConfigBuilder = ImmutableMap.builder();
 
@@ -356,6 +355,10 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
     restCatalogConfig = restCatalogConfigBuilder.buildKeepingLast();
     restCatalog = initCatalog(currentCatalogName, Map.of());
+  }
+
+  protected void makeAdmin(String principalRoleName, Catalog catalog) {
+    managementApi.makeAdmin(principalRoleName, catalog);
   }
 
   /**
@@ -716,12 +719,11 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         .asInstanceOf(InstanceOfAssertFactories.type(BaseTable.class))
         .returns(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override", BaseTable::location);
 
-    Assertions.assertThatThrownBy(
-            () ->
-                restCatalog
-                    .buildTable(TableIdentifier.of(Namespace.of("ns1", "ns1a"), "tbl2"), SCHEMA)
-                    .withLocation(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override")
-                    .create())
+    Assertions.assertThatThrownBy(() ->
+            restCatalog
+                .buildTable(TableIdentifier.of(Namespace.of("ns1", "ns1a"), "tbl2"), SCHEMA)
+                .withLocation(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override")
+                .create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("because it conflicts with existing table or namespace");
   }
@@ -742,12 +744,11 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
             catalogBaseLocation + "/ns1/ns1a-override"));
 
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("ns1", "ns1a"), "tbl1");
-    assertThatThrownBy(
-            () ->
-                restCatalog
-                    .buildTable(tableIdentifier, SCHEMA)
-                    .withLocation(catalogBaseLocation + "/ns1/ns1a/tbl1-override")
-                    .create())
+    assertThatThrownBy(() ->
+            restCatalog
+                .buildTable(tableIdentifier, SCHEMA)
+                .withLocation(catalogBaseLocation + "/ns1/ns1a/tbl1-override")
+                .create())
         .isInstanceOf(ForbiddenException.class);
   }
 
@@ -1040,10 +1041,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         restCatalog.registerTable(TableIdentifier.of(ns, "my_table"), fileLocation);
 
         // Now attempt to register again with overwrite=true — must be rejected with 400
-        assertThatThrownBy(
-                () ->
-                    restCatalog.registerTable(
-                        TableIdentifier.of(ns, "my_table"), fileLocation, true))
+        assertThatThrownBy(() ->
+                restCatalog.registerTable(TableIdentifier.of(ns, "my_table"), fileLocation, true))
             .isInstanceOf(BadRequestException.class)
             .hasMessageContaining(
                 "Register table overwrite is only supported for internal Polaris catalogs");
@@ -1162,10 +1161,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       try {
-        assertThatThrownBy(
-                () ->
-                    restCatalog.registerTable(
-                        TableIdentifier.of(ns1, "my_table"), fileLocation, false))
+        assertThatThrownBy(() ->
+                restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation, false))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("is not enabled for this external catalog")
             .hasMessageContaining(
@@ -1254,10 +1251,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       try {
-        assertThatThrownBy(
-                () ->
-                    restCatalog.registerTable(
-                        TableIdentifier.of(ns1, "my_table"), fileLocation, true))
+        assertThatThrownBy(() ->
+                restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation, true))
             .isInstanceOf(BadRequestException.class)
             .hasMessageContaining(
                 "Register table overwrite is only supported for internal Polaris catalogs");
@@ -2126,10 +2121,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
       List<TableGrant> tableGrants =
           Arrays.stream(TablePrivilege.values())
-              .map(
-                  p -> {
-                    return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
-                  })
+              .map(p -> {
+                return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
+              })
               .toList();
 
       tableGrants.forEach(g -> managementApi.addGrant(currentCatalogName, "catalogrole1", g));
@@ -2152,23 +2146,21 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
       Stream<TableGrant> tableGrants =
           Arrays.stream(TablePrivilege.values())
-              .map(
-                  p -> {
-                    return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
-                  });
+              .map(p -> {
+                return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
+              });
 
-      tableGrants.forEach(
-          g -> {
-            try (Response response =
-                managementApi
-                    .request(
-                        "v1/catalogs/{cat}/catalog-roles/{role}/grants",
-                        Map.of("cat", currentCatalogName, "role", "catalogrole1"))
-                    .put(Entity.json(g))) {
+      tableGrants.forEach(g -> {
+        try (Response response =
+            managementApi
+                .request(
+                    "v1/catalogs/{cat}/catalog-roles/{role}/grants",
+                    Map.of("cat", currentCatalogName, "role", "catalogrole1"))
+                .put(Entity.json(g))) {
 
-              assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
-            }
-          });
+          assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+        }
+      });
     } finally {
       genericTableApi.purge(currentCatalogName, namespace);
     }

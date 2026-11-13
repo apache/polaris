@@ -76,6 +76,7 @@ import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -243,14 +244,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // from/to these entities has been removed, hence we need to update the grant version of
     // each entity. Collect the id of each.
     Set<PolarisEntityId> entityIdsGrantChanged = new HashSet<>();
-    grantsOnGrantee.forEach(
-        gr ->
-            entityIdsGrantChanged.add(
-                new PolarisEntityId(gr.getSecurableCatalogId(), gr.getSecurableId())));
-    grantsOnSecurable.forEach(
-        gr ->
-            entityIdsGrantChanged.add(
-                new PolarisEntityId(gr.getGranteeCatalogId(), gr.getGranteeId())));
+    grantsOnGrantee.forEach(gr ->
+        entityIdsGrantChanged.add(
+            new PolarisEntityId(gr.getSecurableCatalogId(), gr.getSecurableId())));
+    grantsOnSecurable.forEach(gr ->
+        entityIdsGrantChanged.add(
+            new PolarisEntityId(gr.getGranteeCatalogId(), gr.getGranteeId())));
 
     // Bump up the grant version of these entities
     List<PolarisBaseEntity> entities =
@@ -1095,6 +1094,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       renamedEntityToReturn =
           this.persistEntityAfterChange(
               callCtx, ms, refreshEntityToRenameBuilder.build(), true, refreshEntityToRename);
+    } catch (EntityAlreadyExistsException e) {
+      // Another writer claimed the destination name after the check above.
+      return new EntityResult(
+          BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, e.getExistingEntity().getSubTypeCode());
     } catch (RetryOnConcurrencyException e) {
       return new EntityResult(
           BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());
@@ -1410,10 +1413,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // find all unique grantees
     List<PolarisEntityId> entityIds =
         returnGrantRecords.stream()
-            .map(
-                grantRecord ->
-                    new PolarisEntityId(
-                        grantRecord.getGranteeCatalogId(), grantRecord.getGranteeId()))
+            .map(grantRecord ->
+                new PolarisEntityId(grantRecord.getGranteeCatalogId(), grantRecord.getGranteeId()))
             .distinct()
             .collect(Collectors.toList());
     List<PolarisBaseEntity> entities = ms.lookupEntities(callCtx, entityIds);
@@ -1455,10 +1456,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // find all unique securables
     List<PolarisEntityId> entityIds =
         returnGrantRecords.stream()
-            .map(
-                grantRecord ->
-                    new PolarisEntityId(
-                        grantRecord.getSecurableCatalogId(), grantRecord.getSecurableId()))
+            .map(grantRecord ->
+                new PolarisEntityId(
+                    grantRecord.getSecurableCatalogId(), grantRecord.getSecurableId()))
             .distinct()
             .collect(Collectors.toList());
     List<PolarisBaseEntity> entities = ms.lookupEntities(callCtx, entityIds);
@@ -1530,30 +1530,28 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     final AtomicInteger failedLeaseCount = new AtomicInteger(0);
     List<PolarisBaseEntity> loadedTasks =
         availableTasks.items().stream()
-            .map(
-                task -> {
-                  PolarisBaseEntity.Builder updatedTaskBuilder =
-                      new PolarisBaseEntity.Builder(task);
-                  Map<String, String> properties = task.getPropertiesAsMap();
-                  properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
-                  properties.put(
-                      PolarisTaskConstants.LAST_ATTEMPT_START_TIME, String.valueOf(clock.millis()));
-                  properties.put(
-                      PolarisTaskConstants.ATTEMPT_COUNT,
-                      String.valueOf(
-                          Integer.parseInt(
-                                  properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
-                              + 1));
-                  updatedTaskBuilder.propertiesAsMap(properties);
-                  EntityResult result =
-                      updateEntityPropertiesIfNotChanged(callCtx, null, updatedTaskBuilder.build());
-                  if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
-                    return result.getEntity();
-                  } else {
-                    failedLeaseCount.getAndIncrement();
-                    return null;
-                  }
-                })
+            .map(task -> {
+              PolarisBaseEntity.Builder updatedTaskBuilder = new PolarisBaseEntity.Builder(task);
+              Map<String, String> properties = task.getPropertiesAsMap();
+              properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
+              properties.put(
+                  PolarisTaskConstants.LAST_ATTEMPT_START_TIME, String.valueOf(clock.millis()));
+              properties.put(
+                  PolarisTaskConstants.ATTEMPT_COUNT,
+                  String.valueOf(
+                      Integer.parseInt(
+                              properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
+                          + 1));
+              updatedTaskBuilder.propertiesAsMap(properties);
+              EntityResult result =
+                  updateEntityPropertiesIfNotChanged(callCtx, null, updatedTaskBuilder.build());
+              if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
+                return result.getEntity();
+              } else {
+                failedLeaseCount.getAndIncrement();
+                return null;
+              }
+            })
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
 
@@ -1705,15 +1703,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // mimic the behavior of loadEntity above, return null if not found or type mismatch
     List<ResolvedPolarisEntity> ret =
         IntStream.range(0, entityIds.size())
-            .mapToObj(
-                i -> {
-                  if (entities.get(i) != null
-                      && !entities.get(i).getType().equals(entityTypeForIndex.apply(i))) {
-                    return null;
-                  } else {
-                    return entities.get(i);
-                  }
-                })
+            .mapToObj(i -> {
+              if (entities.get(i) != null
+                  && !entities.get(i).getType().equals(entityTypeForIndex.apply(i))) {
+                return null;
+              } else {
+                return entities.get(i);
+              }
+            })
             .map(e -> toResolvedPolarisEntity(callCtx, e, ms))
             .collect(Collectors.toList());
     return new ResolvedEntitiesResult(ret);
@@ -1802,12 +1799,13 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
-      Optional<Optional<String>> hasOverlappingSiblings(
+      LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> parentPath,
-          T entity) {
+          T entity,
+          @NonNull Set<Long> parentPathIds,
+          @Nullable StorageLocation searchRoot) {
     BasePersistence ms = callContext.getMetaStore();
-    return ms.hasOverlappingSiblings(callContext, parentPath, entity);
+    return ms.hasOverlappingSiblings(callContext, entity, parentPathIds, searchRoot);
   }
 
   @Override
@@ -1951,11 +1949,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @NonNull List<PolarisPolicyMappingRecord> policyMappingRecords) {
     List<PolarisEntityId> policyEntityIds =
         policyMappingRecords.stream()
-            .map(
-                policyMappingRecord ->
-                    new PolarisEntityId(
-                        policyMappingRecord.getPolicyCatalogId(),
-                        policyMappingRecord.getPolicyId()))
+            .map(policyMappingRecord ->
+                new PolarisEntityId(
+                    policyMappingRecord.getPolicyCatalogId(), policyMappingRecord.getPolicyId()))
             .distinct()
             .collect(Collectors.toList());
     return ms.lookupEntities(callCtx, policyEntityIds);

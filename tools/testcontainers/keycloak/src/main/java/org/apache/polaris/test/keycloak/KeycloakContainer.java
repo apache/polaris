@@ -128,7 +128,8 @@ public class KeycloakContainer extends GenericContainer<KeycloakContainer>
               "temporary": false
             }
           ]
-        }"""
+        }\
+        """
             .formatted(name, name, name, name, password);
     int status = adminPost(realmAdminUrl("/users"), body);
     Preconditions.checkState(status == 201, "Failed to create user '%s', status: %s", name, status);
@@ -154,7 +155,8 @@ public class KeycloakContainer extends GenericContainer<KeycloakContainer>
           "publicClient": false,
           "serviceAccountsEnabled": true,
           "directAccessGrantsEnabled": true
-        }"""
+        }\
+        """
             .formatted(clientId, clientSecret);
     int status = adminPost(realmAdminUrl("/clients"), body);
     Preconditions.checkState(

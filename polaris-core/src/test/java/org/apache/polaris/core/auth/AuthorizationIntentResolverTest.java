@@ -234,10 +234,9 @@ public class AuthorizationIntentResolverTest {
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     // Manifest returns null (default) for the reference catalog lookup -> checkState should trip.
 
-    assertThatThrownBy(
-            () ->
-                AuthorizationIntentResolver.resolve(
-                    manifest, new SingleTargetAuthorizationIntent(OP, catalogSecurable()), true))
+    assertThatThrownBy(() ->
+            AuthorizationIntentResolver.resolve(
+                manifest, new SingleTargetAuthorizationIntent(OP, catalogSecurable()), true))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Resolved path for securable is null");
   }

@@ -25,14 +25,22 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
-import org.apache.polaris.service.it.env.IntegrationTestsHelper;
+import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 public class SparkHudiIT extends SparkIntegrationBase {
+
+  @Override
+  protected StorageConfigInfo getStorageConfigInfo() {
+    return FileStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+        .setAllowedLocations(List.of(warehouseDir.toString()))
+        .build();
+  }
 
   @Override
   protected SparkSession buildSparkSession() {
@@ -79,14 +87,13 @@ public class SparkHudiIT extends SparkIntegrationBase {
   }
 
   @BeforeEach
-  public void createDefaultResources(@TempDir Path tempDir) {
+  public void createDefaultResources() {
     spark.sparkContext().setLogLevel("INFO");
     defaultNs = generateName("hudi");
     // create a default namespace
     sql("CREATE NAMESPACE %s", defaultNs);
     sql("USE NAMESPACE %s", defaultNs);
-    tableRootDir =
-        IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(defaultNs).getPath();
+    tableRootDir = Path.of(warehouseDir).resolve(defaultNs).toString();
   }
 
   @AfterEach

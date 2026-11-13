@@ -62,12 +62,11 @@ public abstract class BaseTestCommitLogImpl {
     var committer = persistence.createCommitter(refName, SimpleCommitTestObj.class, String.class);
     for (int i = 0; i < numCommits; i++) {
       var payload = "commit #" + i;
-      committer.commit(
-          (state, refObjSupplier) -> {
-            var refObj = refObjSupplier.get();
-            return state.commitResult(
-                "foo", ImmutableSimpleCommitTestObj.builder().payload(payload), refObj);
-          });
+      committer.commit((state, refObjSupplier) -> {
+        var refObj = refObjSupplier.get();
+        return state.commitResult(
+            "foo", ImmutableSimpleCommitTestObj.builder().payload(payload), refObj);
+      });
     }
 
     // Commit log in "reversed" (most recent commit last)
@@ -99,12 +98,11 @@ public abstract class BaseTestCommitLogImpl {
     var committer = persistence.createCommitter(refName, SimpleCommitTestObj.class, String.class);
     for (int i = 0; i < numCommits; i++) {
       var payload = "commit #" + i;
-      committer.commit(
-          (state, refObjSupplier) ->
-              state.commitResult(
-                  "foo",
-                  ImmutableSimpleCommitTestObj.builder().payload(payload),
-                  refObjSupplier.get()));
+      committer.commit((state, refObjSupplier) ->
+          state.commitResult(
+              "foo",
+              ImmutableSimpleCommitTestObj.builder().payload(payload),
+              refObjSupplier.get()));
     }
 
     var commits = persistence.commits();
@@ -172,12 +170,11 @@ public abstract class BaseTestCommitLogImpl {
         reducedPersistence.createCommitter(refName, SimpleCommitTestObj.class, String.class);
     for (int i = 0; i < numCommits; i++) {
       var payload = "commit #" + i;
-      committer.commit(
-          (state, refObjSupplier) ->
-              state.commitResult(
-                  "foo",
-                  ImmutableSimpleCommitTestObj.builder().payload(payload),
-                  refObjSupplier.get()));
+      committer.commit((state, refObjSupplier) ->
+          state.commitResult(
+              "foo",
+              ImmutableSimpleCommitTestObj.builder().payload(payload),
+              refObjSupplier.get()));
     }
 
     var commits = reducedPersistence.commits();

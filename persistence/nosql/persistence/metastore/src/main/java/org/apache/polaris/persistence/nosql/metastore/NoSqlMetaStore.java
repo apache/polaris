@@ -31,6 +31,7 @@ import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIAL
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.EntityIdSet.ENTITY_ID_SET_SERIALIZER;
+import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.checkCatalogId;
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.containerTypeForEntityType;
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.filterIsEntityType;
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.isCatalogContent;
@@ -120,6 +121,7 @@ import org.apache.polaris.persistence.nosql.metastore.committers.CatalogChangeCo
 import org.apache.polaris.persistence.nosql.metastore.committers.ChangeCommitter;
 import org.apache.polaris.persistence.nosql.metastore.committers.ChangeCommitterWrapper;
 import org.apache.polaris.persistence.nosql.metastore.committers.ChangeResult;
+import org.apache.polaris.persistence.nosql.metastore.committers.SupportsCatalogChangeCommit;
 import org.apache.polaris.persistence.nosql.metastore.indexaccess.IndexedContainerAccess;
 import org.apache.polaris.persistence.nosql.metastore.indexaccess.MemoizedIndexedAccess;
 import org.apache.polaris.persistence.nosql.metastore.mutation.EntityUpdate;
@@ -138,7 +140,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class NoSqlMetaStore extends NonFunctionalBasePersistence {
+class NoSqlMetaStore extends NonFunctionalBasePersistence implements SupportsCatalogChangeCommit {
   private static final Logger LOGGER = LoggerFactory.getLogger(NoSqlMetaStore.class);
 
   private final Persistence persistence;
@@ -178,18 +180,16 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     memoizedIndexedAccess
         .indexedAccess(0, PolarisEntityType.CATALOG.getCode())
         .nameIndex()
-        .ifPresent(
-            names ->
-                persistence
-                    .bucketizedBulkFetches(
-                        Streams.stream(names).filter(Objects::nonNull).map(Index.Element::value),
-                        CatalogObj.class)
-                    .filter(Objects::nonNull)
-                    .forEach(
-                        catalogObj -> {
-                          LOGGER.debug("Initializing catalog {} if necessary", catalogObj.name());
-                          initializeCatalogIfNecessary(persistence, catalogObj);
-                        }));
+        .ifPresent(names ->
+            persistence
+                .bucketizedBulkFetches(
+                    Streams.stream(names).filter(Objects::nonNull).map(Index.Element::value),
+                    CatalogObj.class)
+                .filter(Objects::nonNull)
+                .forEach(catalogObj -> {
+                  LOGGER.debug("Initializing catalog {} if necessary", catalogObj.name());
+                  initializeCatalogIfNecessary(persistence, catalogObj);
+                }));
   }
 
   CreateCatalogResult createCatalog(
@@ -480,51 +480,65 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               .synchronizingLocally();
       var ignore =
           committer
-              .commitRuntimeException(
-                  (state, refObjSupplier) -> {
-                    var refObj = refObjSupplier.get();
-                    var index =
-                        refObj
-                            .map(
-                                ref ->
-                                    ref.policyMappings()
-                                        .asUpdatableIndex(
-                                            state.persistence(), POLICY_MAPPING_SERIALIZER))
-                            .orElseGet(
-                                () -> newUpdatableIndex(persistence, POLICY_MAPPING_SERIALIZER));
-                    var builder = PolicyMappingsObj.builder();
-                    refObj.ifPresent(builder::from);
+              .commitRuntimeException((state, refObjSupplier) -> {
+                var refObj = refObjSupplier.get();
+                var index =
+                    refObj
+                        .map(ref ->
+                            ref.policyMappings()
+                                .asUpdatableIndex(state.persistence(), POLICY_MAPPING_SERIALIZER))
+                        .orElseGet(() -> newUpdatableIndex(persistence, POLICY_MAPPING_SERIALIZER));
+                var builder = PolicyMappingsObj.builder();
+                refObj.ifPresent(builder::from);
 
-                    var keyBy =
-                        policyNotEntity
-                            ? new PolicyMappingsObj.KeyByPolicy(catalogId, id, 0, 0L, 0L)
-                                .toPolicyPartialIndexKey()
-                            : new PolicyMappingsObj.KeyByEntity(catalogId, id, 0, 0L, 0L)
-                                .toEntityPartialIndexKey();
+                var keyBy =
+                    policyNotEntity
+                        ? new PolicyMappingsObj.KeyByPolicy(catalogId, id, 0, 0L, 0L)
+                            .toPolicyPartialIndexKey()
+                        : new PolicyMappingsObj.KeyByEntity(catalogId, id, 0, 0L, 0L)
+                            .toEntityPartialIndexKey();
 
-                    var keys = new ArrayList<IndexKey>();
-                    for (var iter = index.iterator(keyBy, keyBy, true); iter.hasNext(); ) {
-                      var elem = iter.next();
-                      keys.add(elem.key());
-                    }
+                var keys = new ArrayList<IndexKey>();
+                for (var iter = index.iterator(keyBy, keyBy, true); iter.hasNext(); ) {
+                  var elem = iter.next();
+                  keys.add(elem.key());
+                }
 
-                    if (keys.isEmpty()) {
-                      return state.noCommit("");
-                    }
+                if (keys.isEmpty()) {
+                  return state.noCommit("");
+                }
 
-                    for (var key : keys) {
-                      index.remove(key);
-                      index.remove(fromIndexKey(key).reverse().toIndexKey());
-                    }
+                for (var key : keys) {
+                  index.remove(key);
+                  index.remove(fromIndexKey(key).reverse().toIndexKey());
+                }
 
-                    // Replacing this inline index leaves older mapping objects and stripes stale
-                    // until a later maintenance purge.
-                    builder.policyMappings(index.toIndexed("mappings", state::writeOrReplace));
-                    return state.commitResult("", builder, refObj);
-                  })
+                // Replacing this inline index leaves older mapping objects and stripes stale
+                // until a later maintenance purge.
+                builder.policyMappings(index.toIndexed("mappings", state::writeOrReplace));
+                return state.commitResult("", builder, refObj);
+              })
               .orElseThrow();
     } finally {
       memoizedIndexedAccess.invalidateReferenceHead(POLICY_MAPPINGS_REF_NAME);
+    }
+  }
+
+  @Override
+  public <T> T commitCatalogChange(
+      long catalogId, Class<T> resultType, CatalogChangeCommitterWrapper<T> wrapper) {
+    checkCatalogId(catalogId);
+    try {
+      var committer =
+          persistence
+              .createCommitter(
+                  format(CATALOG_STATE_REF_NAME_PATTERN, catalogId),
+                  CatalogStateObj.class,
+                  resultType)
+              .synchronizingLocally();
+      return committer.commitRuntimeException(wrapper).orElseThrow();
+    } finally {
+      memoizedIndexedAccess.invalidateCatalogContent(catalogId);
     }
   }
 
@@ -540,18 +554,16 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
             updateKeyForCatalogAndEntityType.catalogContent()
                 ? "catalog-content"
                 : "non-catalog-content")
-        .addArgument(
-            () ->
-                updates.stream()
-                    .map(
-                        u ->
-                            format(
-                                "%s: %s #%s '%s'",
-                                u.operation(),
-                                u.entity().getType(),
-                                u.entity().getId(),
-                                u.entity().getName()))
-                    .collect(Collectors.joining("\n    ", "\n    ", "")))
+        .addArgument(() ->
+            updates.stream()
+                .map(u ->
+                    format(
+                        "%s: %s #%s '%s'",
+                        u.operation(),
+                        u.entity().getType(),
+                        u.entity().getId(),
+                        u.entity().getName()))
+                .collect(Collectors.joining("\n    ", "\n    ", "")))
         .log("Applying {} updates to {} entities in catalog id {} as {} : {}");
 
     if (updateKeyForCatalogAndEntityType.entityType() == PolarisEntityType.ROOT) {
@@ -562,9 +574,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
         return persistence
             .createCommitter(ROOT_REF_NAME, RootObj.class, MutationResults.class)
             .synchronizingLocally()
-            .commitRuntimeException(
-                (state, refObjSupplier) ->
-                    new MutationAttemptRoot(state, refObjSupplier, update).apply())
+            .commitRuntimeException((state, refObjSupplier) ->
+                new MutationAttemptRoot(state, refObjSupplier, update).apply())
             .orElseThrow();
       } finally {
         memoizedIndexedAccess.invalidateIndexedAccess(0L, PolarisEntityType.ROOT.getCode());
@@ -574,34 +585,22 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     var mutationResults = (MutationResults) null;
 
     if (updateKeyForCatalogAndEntityType.catalogContent()) {
-      try {
-        var committer =
-            persistence
-                .createCommitter(
-                    format(
-                        CATALOG_STATE_REF_NAME_PATTERN,
-                        updateKeyForCatalogAndEntityType.catalogId()),
-                    CatalogStateObj.class,
-                    MutationResults.class)
-                .synchronizingLocally();
-        var commitRetryable =
-            new CatalogChangeCommitterWrapper<MutationResults>(
-                ((state, ref, byName, byId, changes, locations) ->
-                    new MutationAttempt(
-                            updateKeyForCatalogAndEntityType,
-                            updates,
-                            state,
-                            byName,
-                            byId,
-                            changes,
-                            locations,
-                            memoizedIndexedAccess)
-                        .apply()));
-        mutationResults = committer.commitRuntimeException(commitRetryable).orElseThrow();
-      } finally {
-        memoizedIndexedAccess.invalidateCatalogContent(
-            updateKeyForCatalogAndEntityType.catalogId());
-      }
+      mutationResults =
+          commitCatalogChange(
+              updateKeyForCatalogAndEntityType.catalogId(),
+              MutationResults.class,
+              new CatalogChangeCommitterWrapper<>(
+                  ((state, ref, byName, byId, changes, locations) ->
+                      new MutationAttempt(
+                              updateKeyForCatalogAndEntityType,
+                              updates,
+                              state,
+                              byName,
+                              byId,
+                              changes,
+                              locations,
+                              memoizedIndexedAccess)
+                          .apply())));
     } else {
       mutationResults =
           performChange(
@@ -630,7 +629,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   <T extends PolarisEntity & LocationBasedEntity> Optional<String> hasOverlappingSiblings(
-      List<PolarisEntityCore> parentPath, T entity) {
+      T entity, Set<Long> parentPathIds, @Nullable StorageLocation searchRoot) {
     var baseLocation = entity.getBaseLocation();
     if (baseLocation == null) {
       return Optional.empty();
@@ -641,105 +640,132 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
     // The entity's own parent namespaces may contain its location: they always do when locations
     // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
-    var ancestorIds = parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
-
-    return hasOverlappingSiblings(catalogId, checkLocation, ancestorIds);
+    return hasOverlappingSiblings(
+        catalogId, checkLocation, parentPathIds, entity.getId(), searchRoot);
   }
 
   Optional<String> hasOverlappingSiblings(
-      long catalogId, String checkLocation, Set<Long> ancestorIds) {
+      long catalogId,
+      String checkLocation,
+      Set<Long> ancestorIds,
+      long entityId,
+      @Nullable StorageLocation searchRoot) {
+    var locationIdentifier = identifierFromLocationString(checkLocation);
+    var searchRootIdentifier =
+        searchRoot == null ? null : identifierFromLocationString(searchRoot.withoutScheme());
+
+    // With a search root, only the entities located inside the search root are considered. The
+    // candidates are
+    // the descendants of the location (including an entity at exactly the location) and its
+    // ancestors:
+    // - If the location is inside the search root, all its descendants are inside the search root,
+    // but only
+    //   the ancestors that are at least as deep as the search root are.
+    // - If the search root is inside the location, only the descendants of the search root can
+    // match, and no
+    //   ancestor can: it would be shallower than the search root.
+    // - Otherwise, nothing can match.
+    var locationInsideSearchRoot =
+        searchRootIdentifier == null || locationIdentifier.startsWith(searchRootIdentifier);
+    if (!locationInsideSearchRoot && !searchRootIdentifier.startsWith(locationIdentifier)) {
+      return Optional.empty();
+    }
+    var scanIdentifier = locationInsideSearchRoot ? locationIdentifier : searchRootIdentifier;
+
     return memoizedIndexedAccess
         .catalogContent(catalogId)
         .refObj()
-        .flatMap(
-            catalogStateObj -> {
-              var locationsIndex =
-                  catalogStateObj
-                      .locations()
-                      .map(i -> i.indexForRead(persistence, ENTITY_ID_SET_SERIALIZER))
-                      .orElseGet(Index::empty);
-              var byId =
-                  catalogStateObj.stableIdToName().indexForRead(persistence, INDEX_KEY_SERIALIZER);
-              var byName =
-                  catalogStateObj.nameToObjRef().indexForRead(persistence, OBJ_REF_SERIALIZER);
+        .flatMap(catalogStateObj -> {
+          var locationsIndex =
+              catalogStateObj
+                  .locations()
+                  .map(i -> i.indexForRead(persistence, ENTITY_ID_SET_SERIALIZER))
+                  .orElseGet(Index::empty);
+          var byId =
+              catalogStateObj.stableIdToName().indexForRead(persistence, INDEX_KEY_SERIALIZER);
+          var byName = catalogStateObj.nameToObjRef().indexForRead(persistence, OBJ_REF_SERIALIZER);
 
-              var locationIdentifier = identifierFromLocationString(checkLocation);
-              var locationIndexKey = locationIdentifier.toIndexKey();
+          // Check for children and exact matches first using forward iteration (preserves
+          // existing test expectations on which conflicting location is reported).
+          // Also iterate fully in case early entries are filtered out.
+          var iter = locationsIndex.iterator(scanIdentifier.toIndexKey(), null, false);
+          while (iter.hasNext()) {
+            var elem = iter.next();
+            var elemKey = elem.key();
+            var elemIdentifier = indexKeyToIdentifier(elemKey);
+            if (!elemIdentifier.startsWith(scanIdentifier)) {
+              break; // No more matches due to ordering
+            }
 
-              // Check for children and exact matches first using forward iteration (preserves
-              // existing test expectations on which conflicting location is reported).
-              // Also iterate fully in case early entries are filtered out.
-              var iter = locationsIndex.iterator(locationIndexKey, null, false);
-              while (iter.hasNext()) {
-                var elem = iter.next();
-                var elemKey = elem.key();
-                var elemIdentifier = indexKeyToIdentifier(elemKey);
-                if (!elemIdentifier.startsWith(locationIdentifier)) {
-                  break; // No more matches due to ordering
-                }
+            var conflicting =
+                elem.value().entityIds().stream()
+                    .filter(id -> id != entityId)
+                    .map(IndexKey::key)
+                    .map(byId::get)
+                    .filter(Objects::nonNull)
+                    .map(byName::get)
+                    .filter(Objects::nonNull)
+                    .map(objRef -> persistence.fetch(objRef, ContentObj.class))
+                    .filter(Objects::nonNull)
+                    .map(contentObj -> {
+                      var conflictingBaseLocation =
+                          contentObj.properties().get(ENTITY_BASE_LOCATION);
+                      return conflictingBaseLocation != null
+                          ? conflictingBaseLocation
+                          : String.join("/", elemIdentifier.elements());
+                    })
+                    .findFirst();
+            if (conflicting.isPresent()) {
+              return conflicting;
+            }
+          }
 
-                var conflicting =
-                    elem.value().entityIds().stream()
-                        .map(IndexKey::key)
-                        .map(byId::get)
-                        .filter(Objects::nonNull)
-                        .map(byName::get)
-                        .filter(Objects::nonNull)
-                        .map(objRef -> persistence.fetch(objRef, ContentObj.class))
-                        .filter(Objects::nonNull)
-                        .map(
-                            contentObj -> {
-                              var conflictingBaseLocation =
-                                  contentObj.properties().get(ENTITY_BASE_LOCATION);
-                              return conflictingBaseLocation != null
-                                  ? conflictingBaseLocation
-                                  : String.join("/", elemIdentifier.elements());
-                            })
-                        .findFirst();
-                if (conflicting.isPresent()) {
-                  return conflicting;
-                }
+          // Check for parent (prefix) overlaps. These have shorter keys and are missed by
+          // forward iteration starting at the full target key.
+          if (!locationInsideSearchRoot) {
+            // Location is outside the search root: no ancestor could be inside it,
+            // so skip prefix checks.
+            return Optional.empty();
+          }
+          var firstPrefixLength =
+              searchRootIdentifier == null ? 1 : Math.max(1, searchRootIdentifier.length());
+          for (int i = firstPrefixLength; i <= locationIdentifier.length(); i++) {
+            var prefixElements = locationIdentifier.elements().subList(0, i);
+            var prefix = ContentIdentifier.identifier(prefixElements);
+            var prefixKey = prefix.toIndexKey();
+            var entry = locationsIndex.get(prefixKey);
+            if (entry != null) {
+              // An ancestor found at a strict prefix is the expected layout when locations
+              // follow the namespace tree, not a sibling conflict. An ancestor at exactly the
+              // entity's location still conflicts.
+              var strictPrefix = i < locationIdentifier.length();
+              var conflicting =
+                  entry.entityIds().stream()
+                      .filter(id -> id != entityId)
+                      .filter(id -> !strictPrefix || !ancestorIds.contains(id))
+                      .map(IndexKey::key)
+                      .map(byId::get)
+                      .filter(Objects::nonNull)
+                      .map(byName::get)
+                      .filter(Objects::nonNull)
+                      .map(objRef -> persistence.fetch(objRef, ContentObj.class))
+                      .filter(Objects::nonNull)
+                      .map(contentObj -> {
+                        var conflictingBaseLocation =
+                            contentObj.properties().get(ENTITY_BASE_LOCATION);
+                        return conflictingBaseLocation != null
+                            ? conflictingBaseLocation
+                            : String.join("/", prefix.elements());
+                      })
+                      .findFirst();
+              if (conflicting.isPresent()) {
+                return conflicting;
               }
+            }
+          }
 
-              // Check for parent (prefix) overlaps. These have shorter keys and are missed by
-              // forward iteration starting at the full target key.
-              for (int i = 1; i <= locationIdentifier.length(); i++) {
-                var prefixElements = locationIdentifier.elements().subList(0, i);
-                var prefix = ContentIdentifier.identifier(prefixElements);
-                var prefixKey = prefix.toIndexKey();
-                var entry = locationsIndex.get(prefixKey);
-                if (entry != null) {
-                  // An ancestor found at a strict prefix is the expected layout when locations
-                  // follow the namespace tree, not a sibling conflict. An ancestor at exactly the
-                  // entity's location still conflicts.
-                  var strictPrefix = i < locationIdentifier.length();
-                  var conflicting =
-                      entry.entityIds().stream()
-                          .filter(id -> !strictPrefix || !ancestorIds.contains(id))
-                          .map(IndexKey::key)
-                          .map(byId::get)
-                          .filter(Objects::nonNull)
-                          .map(byName::get)
-                          .filter(Objects::nonNull)
-                          .map(objRef -> persistence.fetch(objRef, ContentObj.class))
-                          .filter(Objects::nonNull)
-                          .map(
-                              contentObj -> {
-                                var conflictingBaseLocation =
-                                    contentObj.properties().get(ENTITY_BASE_LOCATION);
-                                return conflictingBaseLocation != null
-                                    ? conflictingBaseLocation
-                                    : String.join("/", prefix.elements());
-                              })
-                          .findFirst();
-                  if (conflicting.isPresent()) {
-                    return conflicting;
-                  }
-                }
-              }
-
-              return Optional.empty();
-            });
+          return Optional.empty();
+        });
   }
 
   @Nullable PolarisBaseEntity lookupEntity(long catalogId, long entityId, int entityTypeCode) {
@@ -881,10 +907,9 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
     if (LOGGER.isDebugEnabled()) {
       objRefs =
-          objRefs.peek(
-              o ->
-                  LOGGER.debug(
-                      "  listEntitiesStream (before type filter): {} : {}", o.key(), o.value()));
+          objRefs.peek(o ->
+              LOGGER.debug(
+                  "  listEntitiesStream (before type filter): {} : {}", o.key(), o.value()));
     }
 
     var filterType = objTypeForPolarisTypeForFiltering(entityType, entitySubType);
@@ -910,31 +935,28 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     var prefixElems = prefix.elements();
     var directChildLevel = prefixElems.size() + 1;
     return Streams.stream(nameIndex.iterator(offsetKey, null, false))
-        .takeWhile(
-            e -> {
-              var ident = indexKeyToIdentifier(requireNonNull(e).key());
-              var identElems = ident.elements();
-              if (identElems.size() < prefixElems.size() + 1) {
-                return ident.equals(prefix);
-              }
-              return identElems.subList(0, prefixElems.size()).equals(prefixElems);
-            })
-        .filter(
-            e -> {
-              var ident = indexKeyToIdentifier(requireNonNull(e).key());
-              return ident.elements().size() == directChildLevel;
-            });
+        .takeWhile(e -> {
+          var ident = indexKeyToIdentifier(requireNonNull(e).key());
+          var identElems = ident.elements();
+          if (identElems.size() < prefixElems.size() + 1) {
+            return ident.equals(prefix);
+          }
+          return identElems.subList(0, prefixElems.size()).equals(prefixElems);
+        })
+        .filter(e -> {
+          var ident = indexKeyToIdentifier(requireNonNull(e).key());
+          return ident.elements().size() == directChildLevel;
+        });
   }
 
   private static Stream<Index.Element<ObjRef>> catalogRootEntriesStream(
       Index<ObjRef> nameIndex, IndexKey lower) {
     return Streams.stream(nameIndex.iterator(lower, null, false))
         .filter(Objects::nonNull)
-        .filter(
-            e -> {
-              var ident = indexKeyToIdentifier(e.key());
-              return ident.elements().size() == 1;
-            });
+        .filter(e -> {
+          var ident = indexKeyToIdentifier(e.key());
+          return ident.elements().size() == 1;
+        });
   }
 
   /**
@@ -1049,34 +1071,29 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
     return memoizedIndexedAccess
         .referenceHead(POLICY_MAPPINGS_REF_NAME, PolicyMappingsObj.class)
-        .map(
-            policyMappingsObj -> {
-              var index =
-                  policyMappingsObj
-                      .policyMappings()
-                      .indexForRead(persistence, POLICY_MAPPING_SERIALIZER);
+        .map(policyMappingsObj -> {
+          var index =
+              policyMappingsObj
+                  .policyMappings()
+                  .indexForRead(persistence, POLICY_MAPPING_SERIALIZER);
 
-              // (Partial) index-key for the lookup
-              var keyByPolicyTemplate =
-                  new PolicyMappingsObj.KeyByPolicy(
-                      policyCatalogId,
-                      policyId,
-                      policyType.map(PolicyType::getCode).orElse(0),
-                      0L,
-                      0L);
+          // (Partial) index-key for the lookup
+          var keyByPolicyTemplate =
+              new PolicyMappingsObj.KeyByPolicy(
+                  policyCatalogId, policyId, policyType.map(PolicyType::getCode).orElse(0), 0L, 0L);
 
-              // Construct the prefix-key, depending on whether to look for all attached policies or
-              // attached policies having the given policy-type
-              var prefixKey =
-                  policyType.isPresent()
-                      ? keyByPolicyTemplate.toPolicyWithTypePartialIndexKey()
-                      : keyByPolicyTemplate.toPolicyPartialIndexKey();
+          // Construct the prefix-key, depending on whether to look for all attached policies or
+          // attached policies having the given policy-type
+          var prefixKey =
+              policyType.isPresent()
+                  ? keyByPolicyTemplate.toPolicyWithTypePartialIndexKey()
+                  : keyByPolicyTemplate.toPolicyPartialIndexKey();
 
-              Class<? extends PolicyMappingsObj.PolicyMappingKey> expectedKeyType =
-                  PolicyMappingsObj.KeyByPolicy.class;
+          Class<? extends PolicyMappingsObj.PolicyMappingKey> expectedKeyType =
+              PolicyMappingsObj.KeyByPolicy.class;
 
-              return loadPolicyMappings(index, prefixKey, expectedKeyType);
-            })
+          return loadPolicyMappings(index, prefixKey, expectedKeyType);
+        })
         .orElse(new LoadPolicyMappingsResult(List.of(), List.of()));
   }
 
@@ -1093,30 +1110,29 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
     return memoizedIndexedAccess
         .referenceHead(POLICY_MAPPINGS_REF_NAME, PolicyMappingsObj.class)
-        .map(
-            policyMappingsObj -> {
-              var index =
-                  policyMappingsObj
-                      .policyMappings()
-                      .indexForRead(persistence, POLICY_MAPPING_SERIALIZER);
+        .map(policyMappingsObj -> {
+          var index =
+              policyMappingsObj
+                  .policyMappings()
+                  .indexForRead(persistence, POLICY_MAPPING_SERIALIZER);
 
-              // (Partial) index-key for the lookup
-              var keyByEntityTemplate =
-                  new PolicyMappingsObj.KeyByEntity(
-                      catalogId, id, policyType.map(PolicyType::getCode).orElse(0), 0L, 0L);
+          // (Partial) index-key for the lookup
+          var keyByEntityTemplate =
+              new PolicyMappingsObj.KeyByEntity(
+                  catalogId, id, policyType.map(PolicyType::getCode).orElse(0), 0L, 0L);
 
-              // Construct the prefix-key, depending on whether to look for all attached policies or
-              // attached policies having the given policy-type
-              var prefixKey =
-                  policyType.isPresent()
-                      ? keyByEntityTemplate.toPolicyTypePartialIndexKey()
-                      : keyByEntityTemplate.toEntityPartialIndexKey();
+          // Construct the prefix-key, depending on whether to look for all attached policies or
+          // attached policies having the given policy-type
+          var prefixKey =
+              policyType.isPresent()
+                  ? keyByEntityTemplate.toPolicyTypePartialIndexKey()
+                  : keyByEntityTemplate.toEntityPartialIndexKey();
 
-              Class<? extends PolicyMappingsObj.PolicyMappingKey> expectedKeyType =
-                  PolicyMappingsObj.KeyByEntity.class;
+          Class<? extends PolicyMappingsObj.PolicyMappingKey> expectedKeyType =
+              PolicyMappingsObj.KeyByEntity.class;
 
-              return loadPolicyMappings(index, prefixKey, expectedKeyType);
-            })
+          return loadPolicyMappings(index, prefixKey, expectedKeyType);
+        })
         .orElse(new LoadPolicyMappingsResult(List.of(), List.of()));
   }
 
@@ -1174,11 +1190,10 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     LOGGER
         .atTrace()
         .addArgument(grantRecords.size())
-        .addArgument(
-            () ->
-                grantRecords.stream()
-                    .map(PolarisGrantRecord::toString)
-                    .collect(Collectors.joining("\n    ", "\n    ", "")))
+        .addArgument(() ->
+            grantRecords.stream()
+                .map(PolarisGrantRecord::toString)
+                .collect(Collectors.joining("\n    ", "\n    ", "")))
         .log("Returning {} grant records: {}");
     return grantRecords;
   }
@@ -1359,34 +1374,29 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     LOGGER.trace("Processing existing ACL {}", aclName);
     Optional.ofNullable(securablesIndex.get(securableKey))
         .flatMap(aclObjRef -> Optional.ofNullable(persistence.fetch(aclObjRef, AclObj.class)))
-        .ifPresent(
-            aclObj -> {
-              var acl = aclObj.acl();
+        .ifPresent(aclObj -> {
+          var acl = aclObj.acl();
 
-              acl.forEach(
-                  (role, entry) -> {
-                    var triplet = GrantTriplet.fromRoleName(role);
-                    if (!tripletFilter.test(triplet)) {
-                      LOGGER.trace("  Skipping ACL entry role '{}' due to direction filter", role);
-                      return;
-                    }
-                    LOGGER
-                        .atTrace()
-                        .setMessage("  ACL has securable {} ({}) with privileges {}")
-                        .addArgument(role)
-                        .addArgument(PolarisEntityType.fromCode(triplet.typeCode()))
-                        .addArgument(
-                            () ->
-                                entry.granted().stream()
-                                    .map(Privilege::name)
-                                    .collect(Collectors.joining(", ")))
-                        .log();
+          acl.forEach((role, entry) -> {
+            var triplet = GrantTriplet.fromRoleName(role);
+            if (!tripletFilter.test(triplet)) {
+              LOGGER.trace("  Skipping ACL entry role '{}' due to direction filter", role);
+              return;
+            }
+            LOGGER
+                .atTrace()
+                .setMessage("  ACL has securable {} ({}) with privileges {}")
+                .addArgument(role)
+                .addArgument(PolarisEntityType.fromCode(triplet.typeCode()))
+                .addArgument(() ->
+                    entry.granted().stream().map(Privilege::name).collect(Collectors.joining(", ")))
+                .log();
 
-                    var securableAndGrantee =
-                        SecurableAndGrantee.forTriplet(catalogStableId, aclObj, triplet);
-                    aclEntryConsumer.handle(securableAndGrantee, entry.granted());
-                  });
-            });
+            var securableAndGrantee =
+                SecurableAndGrantee.forTriplet(catalogStableId, aclObj, triplet);
+            aclEntryConsumer.handle(securableAndGrantee, entry.granted());
+          });
+        });
   }
 
   /**
@@ -1416,13 +1426,12 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
     persistence
         .bucketizedBulkFetches(refOccurrences.keySet().stream(), ObjBase.class)
-        .forEach(
-            obj -> {
-              var occurrences = refOccurrences.get(objRef(obj));
-              for (var occurrence : occurrences) {
-                targetObjs[occurrence] = obj;
-              }
-            });
+        .forEach(obj -> {
+          var occurrences = refOccurrences.get(objRef(obj));
+          for (var occurrence : occurrences) {
+            targetObjs[occurrence] = obj;
+          }
+        });
     return targetObjs;
   }
 

@@ -36,10 +36,9 @@ public class MeasuredInputFile implements InputFile {
 
   @Override
   public long getLength() {
-    getLengthExceptionSupplier.ifPresent(
-        s -> {
-          throw s.get();
-        });
+    getLengthExceptionSupplier.ifPresent(s -> {
+      throw s.get();
+    });
 
     return inputFile.getLength();
   }

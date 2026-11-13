@@ -43,6 +43,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -243,11 +244,10 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     // allocate return list
     return entityIds.stream()
-        .map(
-            id ->
-                this.store
-                    .getSliceEntities()
-                    .read(this.store.buildKeyComposite(id.catalogId(), id.id())))
+        .map(id ->
+            this.store
+                .getSliceEntities()
+                .read(this.store.buildKeyComposite(id.catalogId(), id.id())))
         .collect(Collectors.toList());
   }
 
@@ -257,17 +257,15 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     // allocate return list
     return entityIds.stream()
-        .map(
-            id ->
-                this.store
-                    .getSliceEntitiesChangeTracking()
-                    .read(this.store.buildKeyComposite(id.catalogId(), id.id())))
-        .map(
-            entity ->
-                (entity != null)
-                    ? new PolarisChangeTrackingVersions(
-                        entity.getEntityVersion(), entity.getGrantRecordsVersion())
-                    : null)
+        .map(id ->
+            this.store
+                .getSliceEntitiesChangeTracking()
+                .read(this.store.buildKeyComposite(id.catalogId(), id.id())))
+        .map(entity ->
+            (entity != null)
+                ? new PolarisChangeTrackingVersions(
+                    entity.getEntityVersion(), entity.getGrantRecordsVersion())
+                : null)
         .collect(Collectors.toList());
   }
 
@@ -320,19 +318,17 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             .readRange(
                 this.store.buildPrefixKeyComposite(catalogId, parentId, entityType.getCode()))
             .stream()
-            .map(
-                nameRecord ->
-                    this.lookupEntityInCurrentTxn(
-                        callCtx, catalogId, nameRecord.getId(), entityType.getCode()));
+            .map(nameRecord ->
+                this.lookupEntityInCurrentTxn(
+                    callCtx, catalogId, nameRecord.getId(), entityType.getCode()));
 
     Predicate<PolarisBaseEntity> tokenFilter =
         pageToken
             .valueAs(EntityIdToken.class)
-            .map(
-                entityIdToken -> {
-                  var nextId = entityIdToken.entityId();
-                  return (Predicate<PolarisBaseEntity>) e -> e.getId() > nextId;
-                })
+            .map(entityIdToken -> {
+              var nextId = entityIdToken.entityId();
+              return (Predicate<PolarisBaseEntity>) e -> e.getId() > nextId;
+            })
             .orElse(e -> true);
 
     data = data.sorted(Comparator.comparingLong(PolarisEntityCore::getId)).filter(tokenFilter);
@@ -673,37 +669,46 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
-      Optional<Optional<String>> hasOverlappingSiblings(
+      LocationOverlapResult hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext,
-          @NonNull List<PolarisEntityCore> parentPath,
-          T entity) {
+          T entity,
+          @NonNull Set<Long> parentPathIds,
+          @Nullable StorageLocation searchRoot) {
     // TODO we could optimize this full scan
     StorageLocation entityLocationWithoutScheme =
         StorageLocation.of(StorageLocation.of(entity.getBaseLocation()).withoutScheme());
     List<PolarisBaseEntity> allEntities = this.store.getSliceEntities().readRange("");
 
+    StorageLocation searchRootWithoutScheme =
+        searchRoot == null ? null : StorageLocation.of(searchRoot.withoutScheme());
+
     // The entity's own parent namespaces may contain its location: they always do when locations
     // follow the namespace tree, as default locations do. Such an ancestor is not a sibling.
-    Set<Long> ancestorIds =
-        parentPath.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
-
     for (PolarisBaseEntity siblingEntity : allEntities) {
+      if (siblingEntity.getId() == entity.getId()) {
+        continue;
+      }
       Optional<StorageLocation> maybeSiblingLocationWithoutScheme =
           getEntityLocationWithoutScheme(siblingEntity).map(StorageLocation::of);
       if (maybeSiblingLocationWithoutScheme.isPresent()) {
+        if (searchRootWithoutScheme != null
+            && !maybeSiblingLocationWithoutScheme.get().isChildOf(searchRootWithoutScheme)) {
+          continue;
+        }
         boolean containsEntity =
             entityLocationWithoutScheme.isChildOf(maybeSiblingLocationWithoutScheme.get());
         boolean containedByEntity =
             maybeSiblingLocationWithoutScheme.get().isChildOf(entityLocationWithoutScheme);
         // An ancestor may contain the entity, but the entity may not sit at exactly its location.
-        if (containsEntity && !containedByEntity && ancestorIds.contains(siblingEntity.getId())) {
+        if (containsEntity && !containedByEntity && parentPathIds.contains(siblingEntity.getId())) {
           continue;
         }
         if (containsEntity || containedByEntity) {
-          return Optional.of(Optional.of(maybeSiblingLocationWithoutScheme.toString()));
+          return new LocationOverlapResult.Overlap(
+              siblingEntity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION));
         }
       }
     }
-    return Optional.of(Optional.empty());
+    return new LocationOverlapResult.NoOverlap();
   }
 }

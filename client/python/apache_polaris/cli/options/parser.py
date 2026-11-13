@@ -81,6 +81,16 @@ class Parser(object):
         ),
         Argument(Arguments.PROFILE, str, hint="Polaris profile name"),
         Argument(Arguments.PROXY, str, hint="Proxy URL"),
+        Argument(
+            Arguments.SSL_CA_CERT,
+            str,
+            hint="Path to a PEM file of CA certificates used to verify the server",
+        ),
+        Argument(
+            Arguments.INSECURE,
+            bool,
+            hint="Disable TLS certificate verification (not recommended)",
+        ),
         Argument(Arguments.DEBUG, bool, hint="Enable debug mode"),
         Argument(Arguments.PAGE_SIZE, int, hint=Hints.PAGE_SIZE),
     ]

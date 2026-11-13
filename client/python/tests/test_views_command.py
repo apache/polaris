@@ -34,7 +34,6 @@ from apache_polaris.sdk.catalog.models import (
     Type,
     ViewHistoryEntry,
     ViewMetadata,
-    ViewRepresentation,
     ViewVersion,
 )
 
@@ -57,11 +56,7 @@ def _build_load_view_result(current_version_id: int = 1) -> LoadViewResult:
         summary={},
         default_namespace=["ns1"],
         representations=[
-            ViewRepresentation(
-                SQLViewRepresentation(
-                    type="sql", sql="SELECT id FROM t", dialect="spark"
-                )
-            )
+            SQLViewRepresentation(type="sql", sql="SELECT id FROM t", dialect="spark")
         ],
     )
     metadata = ViewMetadata(

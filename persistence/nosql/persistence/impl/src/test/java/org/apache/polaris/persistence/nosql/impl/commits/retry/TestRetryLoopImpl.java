@@ -37,6 +37,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.ids.api.MonotonicClock;
+import org.apache.polaris.persistence.nosql.api.commit.CommitException;
 import org.apache.polaris.persistence.nosql.api.commit.FairRetriesType;
 import org.apache.polaris.persistence.nosql.api.commit.RetryConfig;
 import org.apache.polaris.persistence.nosql.api.commit.RetryTimeoutException;
@@ -46,6 +47,7 @@ import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentMatcher;
 
@@ -63,13 +65,11 @@ public class TestRetryLoopImpl {
 
     var retryCounter = new AtomicInteger();
 
-    soft.assertThatThrownBy(
-            () ->
-                tryLoopState.retryLoop(
-                    (long nanosRemaining) -> {
-                      retryCounter.incrementAndGet();
-                      return Optional.empty();
-                    }))
+    soft.assertThatThrownBy(() ->
+            tryLoopState.retryLoop((long nanosRemaining) -> {
+              retryCounter.incrementAndGet();
+              return Optional.empty();
+            }))
         .isInstanceOf(RetryTimeoutException.class)
         .asInstanceOf(type(RetryTimeoutException.class))
         .extracting(RetryTimeoutException::getRetry, RetryTimeoutException::getTimeNanos)
@@ -88,14 +88,12 @@ public class TestRetryLoopImpl {
     var retryCounter = new AtomicInteger();
     var result = new AtomicReference<String>();
 
-    soft.assertThatCode(
-            () ->
-                result.set(
-                    tryLoopState.retryLoop(
-                        (long nanosRemaining) -> {
-                          retryCounter.incrementAndGet();
-                          return Optional.of("foo");
-                        })))
+    soft.assertThatCode(() ->
+            result.set(
+                tryLoopState.retryLoop((long nanosRemaining) -> {
+                  retryCounter.incrementAndGet();
+                  return Optional.of("foo");
+                })))
         .doesNotThrowAnyException();
 
     soft.assertThat(retryCounter).hasValue(1);
@@ -113,20 +111,69 @@ public class TestRetryLoopImpl {
     var retryCounter = new AtomicInteger();
     var result = new AtomicReference<String>();
 
-    soft.assertThatCode(
-            () ->
-                result.set(
-                    tryLoopState.retryLoop(
-                        (long nanosRemaining) -> {
-                          if (retryCounter.incrementAndGet() == 1) {
-                            return Optional.empty();
-                          }
-                          return Optional.of("foo");
-                        })))
+    soft.assertThatCode(() ->
+            result.set(
+                tryLoopState.retryLoop((long nanosRemaining) -> {
+                  if (retryCounter.incrementAndGet() == 1) {
+                    return Optional.empty();
+                  }
+                  return Optional.of("foo");
+                })))
         .doesNotThrowAnyException();
 
     soft.assertThat(retryCounter).hasValue(2);
     soft.assertThat(result).hasValue("foo");
+  }
+
+  @ParameterizedTest
+  @EnumSource(RetryStatsConsumer.Result.class)
+  public void reportsTotalDurationIncludingPreviousAttempts(RetryStatsConsumer.Result outcome) {
+    var clock =
+        mockedClock(
+            MILLISECONDS.toNanos(100),
+            MILLISECONDS.toNanos(103),
+            MILLISECONDS.toNanos(110),
+            MILLISECONDS.toNanos(113),
+            MILLISECONDS.toNanos(120),
+            // Mockito repeats this value for the TIMEOUT path's extra clock reads.
+            MILLISECONDS.toNanos(123));
+    var stats = mock(RetryStatsConsumer.class);
+    var loop =
+        new RetryLoopImpl<String>(mockedConfig(2, 1000, 10, 10, 10), clock)
+            .setRetryStatsConsumer(stats);
+    var attempts = new AtomicInteger();
+    var conflict = mock(CommitException.class);
+    Retryable<String> retryable =
+        nanosRemaining -> {
+          if (attempts.incrementAndGet() < 3) {
+            return Optional.empty();
+          }
+          return switch (outcome) {
+            case SUCCESS -> Optional.of("foo");
+            case TIMEOUT -> Optional.empty();
+            case CONFLICT -> throw conflict;
+            case ERROR -> throw new IllegalStateException("error");
+          };
+        };
+
+    switch (outcome) {
+      case SUCCESS ->
+          soft.assertThatCode(() -> loop.retryLoop(retryable)).doesNotThrowAnyException();
+      case TIMEOUT ->
+          soft.assertThatThrownBy(() -> loop.retryLoop(retryable))
+              .isInstanceOf(RetryTimeoutException.class);
+      case CONFLICT -> soft.assertThatThrownBy(() -> loop.retryLoop(retryable)).isSameAs(conflict);
+      case ERROR ->
+          soft.assertThatThrownBy(() -> loop.retryLoop(retryable))
+              .isInstanceOf(IllegalStateException.class);
+    }
+
+    verify(stats)
+        .retryLoopFinished(
+            outcome,
+            outcome == RetryStatsConsumer.Result.TIMEOUT ? 3 : 2,
+            14,
+            MILLISECONDS.toNanos(23));
   }
 
   @Test
@@ -139,16 +186,14 @@ public class TestRetryLoopImpl {
     var retryCounter = new AtomicInteger();
     var result = new AtomicReference<String>();
 
-    soft.assertThatCode(
-            () ->
-                result.set(
-                    tryLoopState.retryLoop(
-                        (long nanosRemaining) -> {
-                          if (retryCounter.incrementAndGet() == 1) {
-                            return Optional.empty();
-                          }
-                          return Optional.of("foo");
-                        })))
+    soft.assertThatCode(() ->
+            result.set(
+                tryLoopState.retryLoop((long nanosRemaining) -> {
+                  if (retryCounter.incrementAndGet() == 1) {
+                    return Optional.empty();
+                  }
+                  return Optional.of("foo");
+                })))
         .doesNotThrowAnyException();
 
     soft.assertThat(retryCounter).hasValue(2);

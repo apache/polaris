@@ -96,7 +96,11 @@ final class ResolvConf {
       }
       if (ln.startsWith("search")) {
         ln = ln.substring("search".length()).trim();
-        searchList.addAll(Arrays.asList(ln.split(" ")));
+        if (ln.isEmpty()) {
+          continue;
+        }
+        // resolv.conf allows search domains to be separated by any amount of spaces or tabs
+        searchList.addAll(Arrays.asList(ln.split("\\s+")));
       }
     }
     this.nameservers = unmodifiableList(nameservers);

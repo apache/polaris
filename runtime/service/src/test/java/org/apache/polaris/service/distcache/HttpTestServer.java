@@ -36,6 +36,10 @@ public class HttpTestServer implements AutoCloseable {
       throws IOException {
     HttpHandler safeHandler =
         exchange -> {
+          // Tests stop this server and start another one on the same address. A connection the
+          // client kept open to the stopped server would make its next request fail with
+          // "Connection was closed", so no connection is kept open after a response.
+          exchange.getResponseHeaders().set("Connection", "close");
           try {
             handler.handle(exchange);
           } catch (RuntimeException | Error e) {

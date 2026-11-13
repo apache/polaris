@@ -29,6 +29,11 @@ package org.apache.polaris.service.lineage;
  * is the adapter's responsibility. Each ingest call is inherently realm-scoped; an implementation
  * that needs realm-specific context can be {@code @RequestScoped} and inject {@code
  * RealmContext}/{@code CallContext} directly.
+ *
+ * <p>Implementations should report a transient backend failure by returning {@link
+ * OpenLineageIngestResult#UNAVAILABLE} rather than throwing. During batch ingest, an exception
+ * escaping {@link #ingest} is reported as a non-retriable failure for that event only, so a
+ * transient failure surfaced as an exception will not be retried by the client.
  */
 public interface OpenLineageIngestProvider {
 

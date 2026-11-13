@@ -175,11 +175,10 @@ public final class PolarisClient implements AutoCloseable {
 
     managementApi.listCatalogs().stream()
         .filter(c -> ownedName(c.getName()))
-        .forEach(
-            c -> {
-              catalogApi.purge(c.getName());
-              managementApi.dropCatalog(c.getName());
-            });
+        .forEach(c -> {
+          catalogApi.purge(c.getName());
+          managementApi.dropCatalog(c.getName());
+        });
 
     managementApi.listPrincipalRoles().stream()
         .filter(r -> ownedName(r.getName()))

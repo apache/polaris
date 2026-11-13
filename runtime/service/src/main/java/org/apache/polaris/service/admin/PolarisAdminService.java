@@ -129,6 +129,7 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -177,6 +178,7 @@ public class PolarisAdminService {
   private final ServiceIdentityProvider serviceIdentityProvider;
   private final ReservedProperties reservedProperties;
   private final S3CredentialVendingMechanisms vendingMechanisms;
+  private final CatalogConfigValidators catalogConfigValidators;
 
   @Inject
   public PolarisAdminService(
@@ -188,7 +190,8 @@ public class PolarisAdminService {
       @NonNull PolarisPrincipal principal,
       @NonNull PolarisAuthorizer authorizer,
       @NonNull ReservedProperties reservedProperties,
-      @NonNull S3CredentialVendingMechanisms vendingMechanisms) {
+      @NonNull S3CredentialVendingMechanisms vendingMechanisms,
+      @NonNull CatalogConfigValidators catalogConfigValidators) {
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
@@ -198,6 +201,7 @@ public class PolarisAdminService {
     this.userSecretsManager = userSecretsManager;
     this.serviceIdentityProvider = serviceIdentityProvider;
     this.reservedProperties = reservedProperties;
+    this.catalogConfigValidators = catalogConfigValidators;
     this.vendingMechanisms = vendingMechanisms;
   }
 
@@ -280,6 +284,9 @@ public class PolarisAdminService {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(referenceCatalogName);
     resolutionManifest.addTopLevelName(topLevelEntityName, entityType, false /* isOptional */);
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    if (referenceCatalogName != null) {
+      authorizationState.select(Resolvable.REFERENCE_CATALOG);
+    }
     AuthorizationRequest authorizationRequest =
         new AuthorizationRequest(
             polarisPrincipal,
@@ -720,25 +727,21 @@ public class PolarisAdminService {
 
     Set<String> newCatalogLocations = getCatalogLocations(catalogEntity);
     return listCatalogsUnsafe()
-        .anyMatch(
-            existingCatalog -> {
-              if (existingCatalog.getName().equals(catalogEntity.getName())) {
-                return false;
-              }
-              return getCatalogLocations(existingCatalog).stream()
-                  .map(StorageLocation::of)
-                  .anyMatch(
-                      existingLocation -> {
-                        return newCatalogLocations.stream()
-                            .anyMatch(
-                                newLocationString -> {
-                                  StorageLocation newLocation =
-                                      StorageLocation.of(newLocationString);
-                                  return newLocation.isChildOf(existingLocation)
-                                      || existingLocation.isChildOf(newLocation);
-                                });
-                      });
-            });
+        .anyMatch(existingCatalog -> {
+          if (existingCatalog.getName().equals(catalogEntity.getName())) {
+            return false;
+          }
+          return getCatalogLocations(existingCatalog).stream()
+              .map(StorageLocation::of)
+              .anyMatch(existingLocation -> {
+                return newCatalogLocations.stream()
+                    .anyMatch(newLocationString -> {
+                      StorageLocation newLocation = StorageLocation.of(newLocationString);
+                      return newLocation.isChildOf(existingLocation)
+                          || existingLocation.isChildOf(newLocation);
+                    });
+              });
+        });
   }
 
   /**
@@ -808,18 +811,17 @@ public class PolarisAdminService {
 
   private void deleteSecretReferences(
       Collection<SecretReference> secretReferences, String context) {
-    secretReferences.forEach(
-        secretReference -> {
-          try {
-            getUserSecretsManager().deleteSecret(secretReference);
-          } catch (RuntimeException e) {
-            LOGGER
-                .atWarn()
-                .setCause(e)
-                .addKeyValue(StructuredLogKeys.SECRET_REFERENCE, secretReference.urn())
-                .log("Failed to clean up secret {} while {}", secretReference.urn(), context);
-          }
-        });
+    secretReferences.forEach(secretReference -> {
+      try {
+        getUserSecretsManager().deleteSecret(secretReference);
+      } catch (RuntimeException e) {
+        LOGGER
+            .atWarn()
+            .setCause(e)
+            .addKeyValue(StructuredLogKeys.SECRET_REFERENCE, secretReference.urn())
+            .log("Failed to clean up secret {} while {}", secretReference.urn(), context);
+      }
+    });
   }
 
   /**
@@ -838,6 +840,7 @@ public class PolarisAdminService {
         validateS3CredentialVendingMechanism(catalog.getStorageConfigInfo());
 
     CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, catalog);
+    catalogConfigValidators.validate(catalog);
     if (mechanism != null) {
       // Safe: CatalogEntity.Builder.processStorageConfigurationInfo always converts an
       // AwsStorageConfigInfo request to an AwsStorageConfigurationInfo.
@@ -1091,6 +1094,7 @@ public class PolarisAdminService {
     }
     CatalogEntity updatedEntity = updateBuilder.build();
 
+    catalogConfigValidators.validate(updatedEntity.asCatalog(getServiceIdentityProvider()));
     validateUpdateCatalogDiffOrThrow(currentCatalogEntity, updatedEntity);
 
     if (mechanism != null) {
@@ -1118,10 +1122,9 @@ public class PolarisAdminService {
                     PolarisEntity.of(
                         metaStoreManager.updateEntityPropertiesIfNotChanged(
                             getCurrentPolarisContext(), null, updatedEntity))))
-            .orElseThrow(
-                () ->
-                    new CommitConflictException(
-                        "Concurrent modification on Catalog '%s'; retry later", name));
+            .orElseThrow(() ->
+                new CommitConflictException(
+                    "Concurrent modification on Catalog '%s'; retry later", name));
     return returnedEntity;
   }
 
@@ -1231,10 +1234,9 @@ public class PolarisAdminService {
                     PolarisEntity.of(
                         metaStoreManager.updateEntityPropertiesIfNotChanged(
                             getCurrentPolarisContext(), null, updatedEntity))))
-            .orElseThrow(
-                () ->
-                    new CommitConflictException(
-                        "Concurrent modification on Principal '%s'; retry later", name));
+            .orElseThrow(() ->
+                new CommitConflictException(
+                    "Concurrent modification on Principal '%s'; retry later", name));
     return returnedEntity;
   }
 
@@ -1282,10 +1284,9 @@ public class PolarisAdminService {
                       PolarisEntity.of(
                           metaStoreManager.updateEntityPropertiesIfNotChanged(
                               getCurrentPolarisContext(), null, updatedNewPrincipalEntity))))
-              .orElseThrow(
-                  () ->
-                      new CommitConflictException(
-                          "Concurrent modification on Principal '%s'; retry later", principalName));
+              .orElseThrow(() ->
+                  new CommitConflictException(
+                      "Concurrent modification on Principal '%s'; retry later", principalName));
     }
 
     String resolvedClientId =
@@ -1481,10 +1482,9 @@ public class PolarisAdminService {
                     PolarisEntity.of(
                         metaStoreManager.updateEntityPropertiesIfNotChanged(
                             getCurrentPolarisContext(), null, updatedEntity))))
-            .orElseThrow(
-                () ->
-                    new CommitConflictException(
-                        "Concurrent modification on PrincipalRole '%s'; retry later", name));
+            .orElseThrow(() ->
+                new CommitConflictException(
+                    "Concurrent modification on PrincipalRole '%s'; retry later", name));
     return returnedEntity;
   }
 
@@ -1597,10 +1597,9 @@ public class PolarisAdminService {
                             getCurrentPolarisContext(),
                             PolarisEntity.toCoreList(List.of(catalogEntity)),
                             updatedEntity))))
-            .orElseThrow(
-                () ->
-                    new CommitConflictException(
-                        "Concurrent modification on CatalogRole '%s'; retry later", name));
+            .orElseThrow(() ->
+                new CommitConflictException(
+                    "Concurrent modification on CatalogRole '%s'; retry later", name));
     return returnedEntity;
   }
 

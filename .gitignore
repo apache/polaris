@@ -59,6 +59,13 @@ gradle/wrapper/gradle-wrapper-*.sha256
 .classpath
 .env
 
+# Buildship (Eclipse/jdt.ls) import artifacts, generated per Gradle module
+.settings/
+bin/
+
+# Kotlin language server database
+kls_database.db
+
 # IntelliJ
 .idea/
 *.iml

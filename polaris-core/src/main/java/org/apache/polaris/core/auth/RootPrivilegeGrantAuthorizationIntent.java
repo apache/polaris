@@ -19,6 +19,7 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
+import java.util.function.Consumer;
 import org.jspecify.annotations.NonNull;
 
 /** Authorization intent for granting or revoking root privileges for a grantee. */
@@ -28,5 +29,10 @@ public record RootPrivilegeGrantAuthorizationIntent(
   public RootPrivilegeGrantAuthorizationIntent {
     Preconditions.checkNotNull(operation, "operation must be non-null");
     Preconditions.checkNotNull(grantee, "grantee must be non-null");
+  }
+
+  @Override
+  public void visitSecurables(Consumer<PolarisSecurable> visitor) {
+    visitor.accept(grantee);
   }
 }

@@ -75,7 +75,7 @@ public class AwsCredentialsStorageIntegration
   /** Test constructor — no cache, no request-scoped suppliers. */
   public AwsCredentialsStorageIntegration(
       StsClient fixedClient, AwsStorageConfigurationInfo storageConfig, RealmConfig realmConfig) {
-    this((destination) -> fixedClient, config -> Optional.empty(), storageConfig, realmConfig);
+    this(destination -> fixedClient, config -> Optional.empty(), storageConfig, realmConfig);
   }
 
   /** Test constructor with credentials. */
@@ -119,10 +119,9 @@ public class AwsCredentialsStorageIntegration
   protected StorageAccessConfig addExtraProperties(
       @NonNull StorageAccessConfig accessConfig, @NonNull Optional<String> refreshEndpoint) {
     return refreshEndpoint
-        .map(
-            endpoint ->
-                withExtraProperty(
-                    accessConfig, StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint))
+        .map(endpoint ->
+            withExtraProperty(
+                accessConfig, StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint))
         .orElse(accessConfig);
   }
 
@@ -259,11 +258,10 @@ public class AwsCredentialsStorageIntegration
           StorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
       accessConfig.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
       Optional.ofNullable(response.credentials().expiration())
-          .ifPresent(
-              i ->
-                  accessConfig.put(
-                      StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
-                      String.valueOf(i.toEpochMilli())));
+          .ifPresent(i ->
+              accessConfig.put(
+                  StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                  String.valueOf(i.toEpochMilli())));
     }
 
     if (region != null) {
@@ -330,48 +328,45 @@ public class AwsCredentialsStorageIntegration
     List<String> encryptionKeys = storageConfigurationInfo.getEffectiveEncryptionKeys();
     List<String> decryptionKeys = storageConfigurationInfo.getDecryptionKeys();
 
-    readLocations.forEach(
-        location -> {
-          StorageUri uri = StorageUri.parse(location);
-          String escapedObjectPrefix = escapeIamGlobLiteral(parseS3Path(uri));
-          allowGetObjectStatementBuilder.addResource(
-              IamResource.create(
-                  arnPrefix + StorageUtil.concatFilePrefixes(escapedObjectPrefix, "*", "/")));
-        });
+    readLocations.forEach(location -> {
+      StorageUri uri = StorageUri.parse(location);
+      String escapedObjectPrefix = escapeIamGlobLiteral(parseS3Path(uri));
+      allowGetObjectStatementBuilder.addResource(
+          IamResource.create(
+              arnPrefix + StorageUtil.concatFilePrefixes(escapedObjectPrefix, "*", "/")));
+    });
 
-    listLocations.forEach(
-        location -> {
-          StorageUri uri = StorageUri.parse(location);
-          final var bucket = arnPrefix + uri.authority();
-          String escapedListPrefix = escapeIamGlobLiteral(trimLeadingSlash(uri.rawPath()));
-          bucketListStatementBuilder
-              .computeIfAbsent(
-                  bucket,
-                  (String key) ->
-                      IamStatement.builder()
-                          .effect(IamEffect.ALLOW)
-                          .addAction("s3:ListBucket")
-                          .addResource(key))
-              .addCondition(
-                  IamConditionOperator.STRING_LIKE,
-                  "s3:prefix",
-                  StorageUtil.concatFilePrefixes(escapedListPrefix, "*", "/"));
-        });
+    listLocations.forEach(location -> {
+      StorageUri uri = StorageUri.parse(location);
+      final var bucket = arnPrefix + uri.authority();
+      String escapedListPrefix = escapeIamGlobLiteral(trimLeadingSlash(uri.rawPath()));
+      bucketListStatementBuilder
+          .computeIfAbsent(
+              bucket,
+              (String key) ->
+                  IamStatement.builder()
+                      .effect(IamEffect.ALLOW)
+                      .addAction("s3:ListBucket")
+                      .addResource(key))
+          .addCondition(
+              IamConditionOperator.STRING_LIKE,
+              "s3:prefix",
+              StorageUtil.concatFilePrefixes(escapedListPrefix, "*", "/"));
+    });
 
     Stream.of(readLocations, listLocations, writeLocations)
         .flatMap(Set::stream)
         .distinct()
-        .forEach(
-            location -> {
-              final var bucket = arnPrefix + StorageUri.parse(location).authority();
-              bucketGetLocationStatementBuilder.computeIfAbsent(
-                  bucket,
-                  key ->
-                      IamStatement.builder()
-                          .effect(IamEffect.ALLOW)
-                          .addAction("s3:GetBucketLocation")
-                          .addResource(key));
-            });
+        .forEach(location -> {
+          final var bucket = arnPrefix + StorageUri.parse(location).authority();
+          bucketGetLocationStatementBuilder.computeIfAbsent(
+              bucket,
+              key ->
+                  IamStatement.builder()
+                      .effect(IamEffect.ALLOW)
+                      .addAction("s3:GetBucketLocation")
+                      .addResource(key));
+        });
 
     int statementCount = 0;
     boolean canWrite = !writeLocations.isEmpty();
@@ -381,14 +376,13 @@ public class AwsCredentialsStorageIntegration
               .effect(IamEffect.ALLOW)
               .addAction("s3:PutObject")
               .addAction("s3:DeleteObject");
-      writeLocations.forEach(
-          location -> {
-            StorageUri uri = StorageUri.parse(location);
-            String escapedObjectPrefix = escapeIamGlobLiteral(parseS3Path(uri));
-            allowPutObjectStatementBuilder.addResource(
-                IamResource.create(
-                    arnPrefix + StorageUtil.concatFilePrefixes(escapedObjectPrefix, "*", "/")));
-          });
+      writeLocations.forEach(location -> {
+        StorageUri uri = StorageUri.parse(location);
+        String escapedObjectPrefix = escapeIamGlobLiteral(parseS3Path(uri));
+        allowPutObjectStatementBuilder.addResource(
+            IamResource.create(
+                arnPrefix + StorageUtil.concatFilePrefixes(escapedObjectPrefix, "*", "/")));
+      });
       policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
       statementCount++;
     }

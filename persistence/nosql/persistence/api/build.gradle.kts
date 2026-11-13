@@ -19,6 +19,7 @@
 
 plugins {
   id("org.kordamp.gradle.jandex")
+  alias(libs.plugins.jmh)
   id("polaris-server")
 }
 
@@ -61,6 +62,7 @@ dependencies {
   testImplementation("tools.jackson.dataformat:jackson-dataformat-smile")
 
   testImplementation(libs.junit.pioneer)
+  testImplementation(libs.smallrye.config.core)
 
   testFixturesImplementation(platform(libs.jackson3.bom))
   testFixturesImplementation("tools.jackson.core:jackson-databind")
@@ -71,4 +73,7 @@ dependencies {
 
   testFixturesCompileOnly(libs.jakarta.annotation.api)
   testFixturesCompileOnly(libs.jakarta.validation.api)
+
+  jmhImplementation(libs.jmh.core)
+  jmhAnnotationProcessor(libs.jmh.generator.annprocess)
 }

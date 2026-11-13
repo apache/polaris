@@ -33,6 +33,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -42,7 +43,9 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationBatchRequest;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -76,6 +79,8 @@ import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
+import org.apache.polaris.service.admin.BigLakeCatalogValidator;
+import org.apache.polaris.service.admin.CatalogConfigValidators;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
@@ -196,6 +201,7 @@ public record TestServices(
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
     private UnaryOperator<PolarisMetaStoreManager> metaStoreManagerDecorator =
         UnaryOperator.identity();
+    private PolarisAuthorizer authorizer;
     private final PolarisEventMetadataFactory eventMetadataFactory =
         new PolarisEventMetadataFactory() {
           @Override
@@ -266,18 +272,42 @@ public record TestServices(
       return this;
     }
 
+    public Builder authorizer(PolarisAuthorizer authorizer) {
+      this.authorizer = authorizer;
+      return this;
+    }
+
     public TestServices build() {
       RealmConfigurationSource configurationSource = (rc, name) -> config.get(name);
-      PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
-      Mockito.doAnswer(
-              invocation -> {
-                AuthorizationState authzState = invocation.getArgument(0);
-                authzState.getResolutionManifest().resolveAll();
-                return null;
-              })
-          .when(authorizer)
-          .resolveAuthorizationInputs(any(), any());
-      Mockito.when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
+      if (authorizer == null) {
+        authorizer = Mockito.mock(PolarisAuthorizer.class);
+        Mockito.doAnswer(
+                invocation -> {
+                  AuthorizationState authzState = invocation.getArgument(0);
+                  authzState.resolve();
+                  return null;
+                })
+            .when(authorizer)
+            .resolveAuthorizationInputs(any(), any(AuthorizationRequest.class));
+        Mockito.when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
+            .thenReturn(AuthorizationDecision.allow());
+        // A Mockito mock does not run the interface's default methods, so the batch overloads must
+        // be stubbed too. Without this they return null, and callers that batch-authorize (such as
+        // entity-level list filtering) fail on the mock rather than on anything under test.
+        Mockito.doAnswer(
+                invocation -> {
+                  AuthorizationState authzState = invocation.getArgument(0);
+                  authzState.getResolutionManifest().resolveAll();
+                  return null;
+                })
+            .when(authorizer)
+            .resolveAuthorizationInputs(any(), any(AuthorizationBatchRequest.class));
+        Mockito.when(authorizer.authorize(any(), any(AuthorizationBatchRequest.class)))
+            .thenAnswer(invocation ->
+                invocation.<AuthorizationBatchRequest>getArgument(1).intents().stream()
+                    .map(intent -> AuthorizationDecision.allow())
+                    .toList());
+      }
 
       // Application level
       StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
@@ -290,7 +320,7 @@ public record TestServices(
       vendingMechanismsMap.put(
           S3CredentialVendingMechanism.STS,
           new StsCredentialVendingMechanism(
-              (destination) -> stsClient, Optional.empty(), storageCredentialCache, realmConfig));
+              destination -> stsClient, Optional.empty(), storageCredentialCache, realmConfig));
       vendingMechanismsMap.putAll(additionalVendingMechanisms);
       S3CredentialVendingMechanisms vendingMechanisms =
           new S3CredentialVendingMechanisms(vendingMechanismsMap);
@@ -382,7 +412,7 @@ public record TestServices(
       @SuppressWarnings("unchecked")
       Instance<ConnectionCredentialVendor> mockCredentialVendors = Mockito.mock(Instance.class);
       SigV4ConnectionCredentialVendor sigV4Vendor =
-          new SigV4ConnectionCredentialVendor((destination) -> stsClient, serviceIdentityProvider);
+          new SigV4ConnectionCredentialVendor(destination -> stsClient, serviceIdentityProvider);
       Mockito.when(
               mockCredentialVendors.select(
                   any(org.apache.polaris.service.credentials.connection.AuthType.Literal.class)))
@@ -458,21 +488,22 @@ public record TestServices(
             CatalogConfigEndpointContributor policyEndpoints =
                 new PolicyConfigEndpoints(realmConfig);
             Mockito.when(configEndpointContributors.handlesStream())
-                .thenAnswer(
-                    invocation ->
-                        Stream.of(
-                            endpointContributorHandle(
-                                GenericTableConfigEndpoints.class, genericTableEndpoints),
-                            endpointContributorHandle(PolicyConfigEndpoints.class, policyEndpoints),
-                            endpointContributorHandle(
-                                IcebergRestConfigEndpoints.class, icebergRestEndpoints),
-                            endpointContributorHandle(
-                                IcebergViewConfigEndpoints.class, icebergViewEndpoints)));
+                .thenAnswer(invocation ->
+                    Stream.of(
+                        endpointContributorHandle(
+                            GenericTableConfigEndpoints.class, genericTableEndpoints),
+                        endpointContributorHandle(PolicyConfigEndpoints.class, policyEndpoints),
+                        endpointContributorHandle(
+                            IcebergRestConfigEndpoints.class, icebergRestEndpoints),
+                        endpointContributorHandle(
+                            IcebergViewConfigEndpoints.class, icebergViewEndpoints)));
             return new CatalogConfigHandler(
                 new DefaultCatalogPrefixParser(),
-                resolverFactory,
+                resolutionManifestFactory,
+                authorizer,
                 configEndpointContributors,
-                idempotencyConfiguration);
+                idempotencyConfiguration,
+                realmConfig);
           };
 
       Supplier<IcebergCatalogAdapter> catalogAdapterSupplier =
@@ -581,6 +612,8 @@ public record TestServices(
             return new PolarisCatalogGenericTableApi(genericTableService);
           };
 
+      CatalogConfigValidators catalogConfigValidators =
+          new CatalogConfigValidators(List.of(new BigLakeCatalogValidator(realmConfig)));
       Supplier<PolarisCatalogsApi> catalogsApiSupplier =
           () -> {
             PolarisAdminService adminService =
@@ -593,7 +626,8 @@ public record TestServices(
                     principal,
                     authorizer,
                     reservedProperties,
-                    vendingMechanisms);
+                    vendingMechanisms,
+                    catalogConfigValidators);
             return new PolarisCatalogsApi(
                 new PolarisServiceImpl(
                     realmConfig, reservedProperties, adminService, serviceIdentityProvider));

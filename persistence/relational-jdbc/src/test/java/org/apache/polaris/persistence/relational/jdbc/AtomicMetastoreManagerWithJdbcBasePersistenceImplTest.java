@@ -25,7 +25,7 @@ import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -35,12 +35,17 @@ import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
 import org.h2.jdbcx.JdbcConnectionPool;
@@ -132,8 +137,8 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(
-                callContext, List.of(PolarisEntity.toCore(catalog)), candidateNamespace))
-        .contains(Optional.of("s3://bucket/warehouse/existing/"));
+                callContext, candidateNamespace, Set.of(catalog.getId()), null))
+        .isEqualTo(new LocationOverlapResult.Overlap("s3://bucket/warehouse/existing/"));
 
     TestLocationBasedEntity nonOverlappingNamespace =
         new TestLocationBasedEntity(
@@ -145,8 +150,19 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(
-                callContext, List.of(PolarisEntity.toCore(catalog)), nonOverlappingNamespace))
-        .contains(Optional.empty());
+                callContext, nonOverlappingNamespace, Set.of(catalog.getId()), null))
+        .isEqualTo(new LocationOverlapResult.NoOverlap());
+
+    // The persisted entity itself, e.g. when renamed, does not conflict with its own location.
+    TestLocationBasedEntity renamedNamespace =
+        new TestLocationBasedEntity(
+            buildLocationBasedNamespace(
+                catalog, existingNamespace.getId(), "renamed", "s3://bucket/warehouse/existing/"));
+
+    Assertions.assertThat(
+            metaStoreManager.hasOverlappingSiblings(
+                callContext, renamedNamespace, Set.of(catalog.getId()), null))
+        .isEqualTo(new LocationOverlapResult.NoOverlap());
   }
 
   @Test
@@ -190,6 +206,75 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             Mockito.any(),
             pageToken.capture());
     Assertions.assertThat(pageToken.getValue().pageSize()).hasValue(2);
+  }
+
+  @Test
+  void renameThatLosesTheRaceForItsNameReportsAlreadyExists() {
+    var metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager();
+    var callContext = polarisTestMetaStoreManager.polarisCallContext();
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStoreManager.generateNewEntityId(callContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "rename_race_catalog");
+    catalog = metaStoreManager.createCatalog(callContext, catalog, List.of()).getCatalog();
+    List<PolarisEntityCore> catalogPath = List.of(catalog);
+    PolarisBaseEntity source =
+        createNamespace(metaStoreManager, callContext, catalog, "source_namespace");
+    PolarisBaseEntity taken =
+        createNamespace(metaStoreManager, callContext, catalog, "taken_namespace");
+
+    // Hide the taken name from the pre-check, as if another writer claimed it right after.
+    BasePersistence spiedPersistence = Mockito.spy(callContext.getMetaStore());
+    Mockito.doReturn(null)
+        .when(spiedPersistence)
+        .lookupEntityIdAndSubTypeByName(
+            Mockito.any(),
+            Mockito.anyLong(),
+            Mockito.anyLong(),
+            Mockito.anyInt(),
+            Mockito.eq(taken.getName()));
+    PolarisCallContext spiedCallContext =
+        new PolarisCallContext(callContext.getRealmContext(), spiedPersistence);
+
+    PolarisEntity renamed =
+        new PolarisEntity(new PolarisBaseEntity.Builder(source).name(taken.getName()).build());
+    EntityResult result =
+        metaStoreManager.renameEntity(spiedCallContext, catalogPath, source, null, renamed);
+
+    Assertions.assertThat(result.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS);
+    Assertions.assertThat(
+            metaStoreManager
+                .loadEntity(
+                    callContext, catalog.getId(), source.getId(), PolarisEntityType.NAMESPACE)
+                .getEntity()
+                .getName())
+        .isEqualTo("source_namespace");
+  }
+
+  private static PolarisBaseEntity createNamespace(
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisCallContext callContext,
+      PolarisBaseEntity catalog,
+      String name) {
+    PolarisBaseEntity namespace =
+        new PolarisBaseEntity.Builder()
+            .catalogId(catalog.getId())
+            .parentId(catalog.getId())
+            .id(metaStoreManager.generateNewEntityId(callContext).getId())
+            .typeCode(PolarisEntityType.NAMESPACE.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .name(name)
+            .propertiesAsMap(Map.of())
+            .internalPropertiesAsMap(Map.of())
+            .build();
+    return metaStoreManager
+        .createEntityIfNotExists(callContext, List.of(catalog), namespace)
+        .getEntity();
   }
 
   private static PolarisBaseEntity buildLocationBasedNamespace(

@@ -468,6 +468,60 @@ public class PolarisManagementServiceIntegrationTest {
   }
 
   @Test
+  public void testCreateExternalCatalogWithInvalidConnectionConfigReturnsBadRequest() {
+    // S3 storage is accepted by every test profile; the connection config is what is under test
+    String storage =
+        "\"storageConfigInfo\":{\"storageType\":\"S3\","
+            + "\"roleArn\":\"arn:aws:iam::123456789012:role/my-role\","
+            + "\"allowedLocations\":[\"s3://my-bucket/path/to/data\"]}";
+    String properties =
+        "\"properties\":{\"default-base-location\":\"s3://my-bucket/path/to/data\"}";
+
+    // authenticationParameters omitted: the spec only requires connectionType
+    String withoutAuthentication =
+        "{\"catalog\":{\"type\":\"EXTERNAL\",\"name\":\""
+            + client.newEntityName("ext-no-auth")
+            + "\","
+            + properties
+            + ","
+            + storage
+            + ",\"connectionConfigInfo\":{\"connectionType\":\"ICEBERG_REST\","
+            + "\"uri\":\"http://localhost:8182/api/catalog\",\"remoteCatalogName\":\"x\"}}}";
+    try (Response response =
+        managementApi.request("v1/catalogs").post(Entity.json(withoutAuthentication))) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+      ErrorResponse error = response.readEntity(ErrorResponse.class);
+      assertThat(error)
+          .isNotNull()
+          .returns(
+              "authenticationParameters is required for an external catalog",
+              ErrorResponse::message);
+    }
+
+    // connection type outside SUPPORTED_CATALOG_CONNECTION_TYPES (default: ICEBERG_REST only)
+    String unsupportedConnectionType =
+        "{\"catalog\":{\"type\":\"EXTERNAL\",\"name\":\""
+            + client.newEntityName("ext-unsupported")
+            + "\","
+            + properties
+            + ","
+            + storage
+            + ",\"connectionConfigInfo\":{\"connectionType\":\"HADOOP\","
+            + "\"uri\":\"http://localhost:8182/\",\"warehouse\":\"s3://my-bucket/path/to/data\","
+            + "\"authenticationParameters\":{\"authenticationType\":\"IMPLICIT\"}}}}";
+    try (Response response =
+        managementApi.request("v1/catalogs").post(Entity.json(unsupportedConnectionType))) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+      ErrorResponse error = response.readEntity(ErrorResponse.class);
+      assertThat(error)
+          .isNotNull()
+          .returns("Unsupported connection type: HADOOP", ErrorResponse::message);
+    }
+  }
+
+  @Test
   public void testCreateExternalCatalog() {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
@@ -1531,12 +1585,10 @@ public class PolarisManagementServiceIntegrationTest {
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .extracting(CatalogRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(CatalogRole.class))
-          .satisfiesExactly(
-              cr ->
-                  assertThat(cr)
-                      .returns(
-                          PolarisEntityConstants.getNameOfCatalogAdminRole(),
-                          CatalogRole::getName));
+          .satisfiesExactly(cr ->
+              assertThat(cr)
+                  .returns(
+                      PolarisEntityConstants.getNameOfCatalogAdminRole(), CatalogRole::getName));
     }
 
     UpdateCatalogRoleRequest updateRequest =
@@ -2046,10 +2098,8 @@ public class PolarisManagementServiceIntegrationTest {
 
     // The grant should appear exactly once.
     assertThat(managementApi.listGrants(catalogName, catalogRoleName).getGrants())
-        .filteredOn(
-            g ->
-                g instanceof CatalogGrant cg
-                    && cg.getPrivilege() == CatalogPrivilege.TABLE_WRITE_DATA)
+        .filteredOn(g ->
+            g instanceof CatalogGrant cg && cg.getPrivilege() == CatalogPrivilege.TABLE_WRITE_DATA)
         .hasSize(1);
   }
 
@@ -2073,18 +2123,16 @@ public class PolarisManagementServiceIntegrationTest {
 
     managementApi.addGrant(catalogName, catalogRoleName, grant);
     assertThat(managementApi.listGrants(catalogName, catalogRoleName).getGrants())
-        .filteredOn(
-            g ->
-                g instanceof CatalogGrant cg
-                    && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS)
+        .filteredOn(g ->
+            g instanceof CatalogGrant cg
+                && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS)
         .hasSize(1);
 
     managementApi.revokeGrant(catalogName, catalogRoleName, grant);
     assertThat(managementApi.listGrants(catalogName, catalogRoleName).getGrants())
-        .noneMatch(
-            g ->
-                g instanceof CatalogGrant cg
-                    && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS);
+        .noneMatch(g ->
+            g instanceof CatalogGrant cg
+                && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS);
   }
 
   @Test
@@ -2372,14 +2420,12 @@ public class PolarisManagementServiceIntegrationTest {
         .atMost(Duration.ofSeconds(20))
         .pollDelay(Duration.ofSeconds(1))
         .pollInterval(Duration.ofSeconds(1))
-        .untilAsserted(
-            () -> {
-              try (Response response =
-                  client.managementApi(newToken).request("v1/principals").get()) {
-                assertThat(response)
-                    .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
-              }
-            });
+        .untilAsserted(() -> {
+          try (Response response = client.managementApi(newToken).request("v1/principals").get()) {
+            assertThat(response)
+                .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
+          }
+        });
   }
 
   @Test

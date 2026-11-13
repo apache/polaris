@@ -283,27 +283,24 @@ public class ServiceProducers {
 
       var result = bootstrapper.bootstrapRealms(realmIds, rootCredentialsSet);
 
-      result.forEach(
-          (realm, secrets) -> {
-            var principalSecrets = secrets.getPrincipalSecrets();
+      result.forEach((realm, secrets) -> {
+        var principalSecrets = secrets.getPrincipalSecrets();
 
-            var log =
-                LOGGER.atInfo().addArgument(realm).addArgument(RootCredentialsSet.SYSTEM_PROPERTY);
-            if (rootCredentials.containsKey(realm)) {
-              log.log(
-                  "Realm '{}' automatically bootstrapped, credentials taken from root credentials set provided via the {} configuration property, not printed to stdout.");
-            } else {
-              log.log(
-                  "Realm '{}' automatically bootstrapped, credentials were not present in root credentials set provided via the {} configuration property, see separate message printed to stdout.");
-              String msg =
-                  String.format(
-                      "realm: %1$s root principal credentials: %2$s:%3$s",
-                      realm,
-                      principalSecrets.getPrincipalClientId(),
-                      principalSecrets.getMainSecret());
-              System.out.println(msg);
-            }
-          });
+        var log =
+            LOGGER.atInfo().addArgument(realm).addArgument(RootCredentialsSet.SYSTEM_PROPERTY);
+        if (rootCredentials.containsKey(realm)) {
+          log.log(
+              "Realm '{}' automatically bootstrapped, credentials taken from root credentials set provided via the {} configuration property, not printed to stdout.");
+        } else {
+          log.log(
+              "Realm '{}' automatically bootstrapped, credentials were not present in root credentials set provided via the {} configuration property, see separate message printed to stdout.");
+          String msg =
+              String.format(
+                  "realm: %1$s root principal credentials: %2$s:%3$s",
+                  realm, principalSecrets.getPrincipalClientId(), principalSecrets.getMainSecret());
+          System.out.println(msg);
+        }
+      });
 
       var unusedRealmSecrets =
           realmIds.stream()

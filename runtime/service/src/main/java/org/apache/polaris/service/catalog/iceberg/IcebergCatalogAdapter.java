@@ -140,6 +140,7 @@ public class IcebergCatalogAdapter
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    createNamespaceRequest.validate();
     validateIcebergProperties(realmConfig, createNamespaceRequest.properties());
     EntityNameValidator.validateNamespace(createNamespaceRequest.namespace());
     return withCatalog(
@@ -158,10 +159,9 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Optional<Namespace> namespaceOptional =
         Optional.ofNullable(parent)
-            .map(
-                namespace ->
-                    NamespaceUtils.splitNamespace(
-                        namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR));
+            .map(namespace ->
+                NamespaceUtils.splitNamespace(
+                    namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR));
     return withCatalog(
         securityContext,
         prefix,
@@ -370,7 +370,10 @@ public class IcebergCatalogAdapter
       EnumSet<AccessDelegationMode> delegationModes,
       String prefix,
       TableIdentifier tableIdentifier) {
-    return delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)
+    // No refresh endpoint when the request does not require delegation (for example when it
+    // includes `none`): the client is not supposed to call /credentials in that case.
+    return AccessDelegationMode.requiresDelegation(delegationModes)
+            && delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)
         ? Optional.of(
             new PolarisResourcePaths(prefix, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED)
                 .credentialsPath(tableIdentifier))
@@ -716,15 +719,14 @@ public class IcebergCatalogAdapter
     CommitTransactionRequest revisedRequest =
         new CommitTransactionRequest(
             commitTransactionRequest.tableChanges().stream()
-                .map(
-                    r -> {
-                      return UpdateTableRequest.create(
-                          r.identifier(),
-                          r.requirements(),
-                          r.updates().stream()
-                              .map(reservedProperties::removeReservedProperties)
-                              .toList());
-                    })
+                .map(r -> {
+                  return UpdateTableRequest.create(
+                      r.identifier(),
+                      r.requirements(),
+                      r.updates().stream()
+                          .map(reservedProperties::removeReservedProperties)
+                          .toList());
+                })
                 .toList());
     return withCatalog(
         securityContext,

@@ -63,9 +63,8 @@ public interface PageToken {
    */
   default <T extends Token> Optional<T> valueAs(Class<T> type) {
     return value()
-        .flatMap(
-            t ->
-                type.isAssignableFrom(t.getClass()) ? Optional.of(type.cast(t)) : Optional.empty());
+        .flatMap(t ->
+            type.isAssignableFrom(t.getClass()) ? Optional.of(type.cast(t)) : Optional.empty());
   }
 
   /** Represents a non-paginated request. */

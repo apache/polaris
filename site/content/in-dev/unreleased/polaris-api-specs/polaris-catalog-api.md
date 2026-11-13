@@ -18,7 +18,7 @@
 # under the License.
 #
 title: 'Apache Polaris Catalog Service OpenAPI Specification'
-linkTitle: 'Catalog API ↗'
+linkTitle: 'Catalog API'
 weight: 200
 params:
   show_page_toc: false

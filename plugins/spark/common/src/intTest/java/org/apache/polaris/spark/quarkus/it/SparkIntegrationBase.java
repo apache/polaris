@@ -89,16 +89,11 @@ public abstract class SparkIntegrationBase {
 
     catalogName = client.newEntityName("spark_catalog");
 
-    AwsStorageConfigInfo awsConfigModel =
-        AwsStorageConfigInfo.builder()
-            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
-            .setExternalId("externalId")
-            .setUserArn("userArn")
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
-            .build();
-    CatalogProperties props = new CatalogProperties("s3://my-bucket/path/to/data");
-    props.putAll(s3Container.getS3ConfigProperties());
+    StorageConfigInfo storageConfig = getStorageConfigInfo();
+    CatalogProperties props = new CatalogProperties(storageConfig.getAllowedLocations().get(0));
+    if (storageConfig.getStorageType() == StorageConfigInfo.StorageTypeEnum.S3) {
+      props.putAll(s3Container.getS3ConfigProperties());
+    }
     props.put("polaris.config.drop-with-purge.enabled", "true");
     props.put("polaris.config.namespace-custom-location.enabled", "true");
     Catalog catalog =
@@ -106,7 +101,7 @@ public abstract class SparkIntegrationBase {
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
             .setProperties(props)
-            .setStorageConfigInfo(awsConfigModel)
+            .setStorageConfigInfo(storageConfig)
             .build();
 
     managementApi.createCatalog(catalog);
@@ -114,6 +109,16 @@ public abstract class SparkIntegrationBase {
     spark = buildSparkSession();
 
     onSpark("USE " + catalogName);
+  }
+
+  protected StorageConfigInfo getStorageConfigInfo() {
+    return AwsStorageConfigInfo.builder()
+        .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+        .setExternalId("externalId")
+        .setUserArn("userArn")
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+        .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
+        .build();
   }
 
   protected SparkSession buildSparkSession() {

@@ -76,44 +76,36 @@ public class DefaultFileIOFactory implements FileIOFactory {
             v -> properties.put(HttpClientProperties.APACHE_MAX_CONNECTIONS, String.valueOf(v)));
     s3AccessConfig
         .readTimeout()
-        .ifPresent(
-            d ->
-                properties.put(
-                    HttpClientProperties.APACHE_SOCKET_TIMEOUT_MS, String.valueOf(d.toMillis())));
+        .ifPresent(d ->
+            properties.put(
+                HttpClientProperties.APACHE_SOCKET_TIMEOUT_MS, String.valueOf(d.toMillis())));
     s3AccessConfig
         .connectTimeout()
-        .ifPresent(
-            d ->
-                properties.put(
-                    HttpClientProperties.APACHE_CONNECTION_TIMEOUT_MS,
-                    String.valueOf(d.toMillis())));
+        .ifPresent(d ->
+            properties.put(
+                HttpClientProperties.APACHE_CONNECTION_TIMEOUT_MS, String.valueOf(d.toMillis())));
     s3AccessConfig
         .connectionAcquisitionTimeout()
-        .ifPresent(
-            d ->
-                properties.put(
-                    HttpClientProperties.APACHE_CONNECTION_ACQUISITION_TIMEOUT_MS,
-                    String.valueOf(d.toMillis())));
+        .ifPresent(d ->
+            properties.put(
+                HttpClientProperties.APACHE_CONNECTION_ACQUISITION_TIMEOUT_MS,
+                String.valueOf(d.toMillis())));
     s3AccessConfig
         .connectionMaxIdleTime()
-        .ifPresent(
-            d ->
-                properties.put(
-                    HttpClientProperties.APACHE_CONNECTION_MAX_IDLE_TIME_MS,
-                    String.valueOf(d.toMillis())));
+        .ifPresent(d ->
+            properties.put(
+                HttpClientProperties.APACHE_CONNECTION_MAX_IDLE_TIME_MS,
+                String.valueOf(d.toMillis())));
     s3AccessConfig
         .connectionTimeToLive()
-        .ifPresent(
-            d ->
-                properties.put(
-                    HttpClientProperties.APACHE_CONNECTION_TIME_TO_LIVE_MS,
-                    String.valueOf(d.toMillis())));
+        .ifPresent(d ->
+            properties.put(
+                HttpClientProperties.APACHE_CONNECTION_TIME_TO_LIVE_MS,
+                String.valueOf(d.toMillis())));
     s3AccessConfig
         .expectContinueEnabled()
-        .ifPresent(
-            v ->
-                properties.put(
-                    HttpClientProperties.APACHE_EXPECT_CONTINUE_ENABLED, String.valueOf(v)));
+        .ifPresent(v ->
+            properties.put(HttpClientProperties.APACHE_EXPECT_CONTINUE_ENABLED, String.valueOf(v)));
 
     return loadFileIOInternal(ioImplClassName, properties);
   }

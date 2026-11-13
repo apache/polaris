@@ -402,120 +402,118 @@ public class CatalogHandlerUtils {
               COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT,
               2.0 /* exponential */)
           .onlyRetryOn(CommitFailedException.class)
-          .run(
-              taskOps -> {
-                TableMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
-                isRetry.set(true);
+          .run(taskOps -> {
+            TableMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
+            isRetry.set(true);
 
-                TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(base);
-                TableMetadata newBase = base;
-                try {
-                  request.requirements().forEach((requirement) -> requirement.validate(base));
-                } catch (CommitFailedException e) {
-                  if (!rollbackCompactionEnabled) {
-                    // wrap and rethrow outside of tasks to avoid unnecessary retry
-                    throw new ValidationFailureException(e);
-                  }
-                  LOGGER.debug(
-                      "Attempting to Rollback replace operations for table={}, with current-snapshot-id={}",
-                      base.uuid(),
-                      base.currentSnapshot().snapshotId());
-                  UpdateRequirement.AssertRefSnapshotID assertRefSnapshotId =
-                      findAssertRefSnapshotID(request);
-                  MetadataUpdate.SetSnapshotRef setSnapshotRef = findSetSnapshotRefUpdate(request);
+            TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(base);
+            TableMetadata newBase = base;
+            try {
+              request.requirements().forEach(requirement -> requirement.validate(base));
+            } catch (CommitFailedException e) {
+              if (!rollbackCompactionEnabled) {
+                // wrap and rethrow outside of tasks to avoid unnecessary retry
+                throw new ValidationFailureException(e);
+              }
+              LOGGER.debug(
+                  "Attempting to Rollback replace operations for table={}, with current-snapshot-id={}",
+                  base.uuid(),
+                  base.currentSnapshot().snapshotId());
+              UpdateRequirement.AssertRefSnapshotID assertRefSnapshotId =
+                  findAssertRefSnapshotID(request);
+              MetadataUpdate.SetSnapshotRef setSnapshotRef = findSetSnapshotRefUpdate(request);
 
-                  if (assertRefSnapshotId == null || setSnapshotRef == null) {
-                    // This implies the request was not trying to add a snapshot.
-                    LOGGER.debug(
-                        "Giving up on Rollback replace operations for table={}, with current-snapshot-id={}, as operation doesn't attempts to add a single snapshot",
-                        base.uuid(),
-                        base.currentSnapshot().snapshotId());
-                    // wrap and rethrow outside of tasks to avoid unnecessary retry
-                    throw new ValidationFailureException(e);
-                  }
+              if (assertRefSnapshotId == null || setSnapshotRef == null) {
+                // This implies the request was not trying to add a snapshot.
+                LOGGER.debug(
+                    "Giving up on Rollback replace operations for table={}, with current-snapshot-id={}, as operation doesn't attempts to add a single snapshot",
+                    base.uuid(),
+                    base.currentSnapshot().snapshotId());
+                // wrap and rethrow outside of tasks to avoid unnecessary retry
+                throw new ValidationFailureException(e);
+              }
 
-                  // snapshot-id the client expects the table current_snapshot_id
-                  long expectedCurrentSnapshotId = assertRefSnapshotId.snapshotId();
+              // snapshot-id the client expects the table current_snapshot_id
+              long expectedCurrentSnapshotId = assertRefSnapshotId.snapshotId();
 
-                  MetadataUpdate.AddSnapshot snapshotToBeAdded = findAddSnapshotUpdate(request);
-                  if (snapshotToBeAdded == null) {
-                    // Re-throw if, there's no snapshot data to be added.
-                    // wrap and rethrow outside of tasks to avoid unnecessary retry
-                    throw new ValidationFailureException(e);
-                  }
+              MetadataUpdate.AddSnapshot snapshotToBeAdded = findAddSnapshotUpdate(request);
+              if (snapshotToBeAdded == null) {
+                // Re-throw if, there's no snapshot data to be added.
+                // wrap and rethrow outside of tasks to avoid unnecessary retry
+                throw new ValidationFailureException(e);
+              }
 
-                  LOGGER.info(
-                      "Attempting to Rollback replace operation for table={}, with current-snapshot-id={}, to snapshot={}",
-                      base.uuid(),
-                      base.currentSnapshot().snapshotId(),
-                      snapshotToBeAdded.snapshot().snapshotId());
+              LOGGER.info(
+                  "Attempting to Rollback replace operation for table={}, with current-snapshot-id={}, to snapshot={}",
+                  base.uuid(),
+                  base.currentSnapshot().snapshotId(),
+                  snapshotToBeAdded.snapshot().snapshotId());
 
-                  List<MetadataUpdate> metadataUpdates =
-                      generateUpdatesToRemoveNoopSnapshot(
-                          base, expectedCurrentSnapshotId, setSnapshotRef.name());
+              List<MetadataUpdate> metadataUpdates =
+                  generateUpdatesToRemoveNoopSnapshot(
+                      base, expectedCurrentSnapshotId, setSnapshotRef.name());
 
-                  if (metadataUpdates == null || metadataUpdates.isEmpty()) {
-                    // Nothing can be done as this implies that there were not all
-                    // No-op snapshots (REPLACE) between expectedCurrentSnapshotId and
-                    // currentSnapshotId. hence re-throw the exception caught.
-                    // wrap and rethrow outside of tasks to avoid unnecessary retry
-                    throw new ValidationFailureException(e);
-                  }
-                  // Set back the ref we wanted to set, back to the snapshot-id
-                  // the client is expecting the table to be at.
-                  metadataBuilder.setBranchSnapshot(
-                      expectedCurrentSnapshotId, setSnapshotRef.name());
+              if (metadataUpdates == null || metadataUpdates.isEmpty()) {
+                // Nothing can be done as this implies that there were not all
+                // No-op snapshots (REPLACE) between expectedCurrentSnapshotId and
+                // currentSnapshotId. hence re-throw the exception caught.
+                // wrap and rethrow outside of tasks to avoid unnecessary retry
+                throw new ValidationFailureException(e);
+              }
+              // Set back the ref we wanted to set, back to the snapshot-id
+              // the client is expecting the table to be at.
+              metadataBuilder.setBranchSnapshot(expectedCurrentSnapshotId, setSnapshotRef.name());
 
-                  // apply the remove snapshots update in the current metadata.
-                  // NOTE: we need to setRef to expectedCurrentSnapshotId first and then apply
-                  // remove, as otherwise the remove will drop the reference.
-                  // NOTE: we can skip removing the now orphan base. It's not a hard requirement.
-                  // just something good to do, and not leave for Remove Orphans.
-                  // Ref rolled back update correctly to snapshot to be committed parent now.
-                  metadataUpdates.forEach((update -> update.applyTo(metadataBuilder)));
-                  newBase =
-                      setAppropriateLastSeqNumber(
-                              metadataBuilder,
-                              base.uuid(),
-                              base.lastSequenceNumber(),
-                              base.snapshot(expectedCurrentSnapshotId).sequenceNumber())
-                          .build();
-                  LOGGER.info(
-                      "Successfully roll-backed replace operation for table={}, with current-snapshot-id={}, to snapshot={}",
-                      base.uuid(),
-                      base.currentSnapshot().snapshotId(),
-                      newBase.currentSnapshot().snapshotId());
-                }
-                // double check if the requirements passes now.
-                try {
-                  TableMetadata baseWithRemovedSnaps = newBase;
-                  request
-                      .requirements()
-                      .forEach((requirement) -> requirement.validate(baseWithRemovedSnaps));
-                } catch (CommitFailedException e) {
-                  // wrap and rethrow outside of tasks to avoid unnecessary retry
-                  throw new ValidationFailureException(e);
-                }
+              // apply the remove snapshots update in the current metadata.
+              // NOTE: we need to setRef to expectedCurrentSnapshotId first and then apply
+              // remove, as otherwise the remove will drop the reference.
+              // NOTE: we can skip removing the now orphan base. It's not a hard requirement.
+              // just something good to do, and not leave for Remove Orphans.
+              // Ref rolled back update correctly to snapshot to be committed parent now.
+              metadataUpdates.forEach((update -> update.applyTo(metadataBuilder)));
+              newBase =
+                  setAppropriateLastSeqNumber(
+                          metadataBuilder,
+                          base.uuid(),
+                          base.lastSequenceNumber(),
+                          base.snapshot(expectedCurrentSnapshotId).sequenceNumber())
+                      .build();
+              LOGGER.info(
+                  "Successfully roll-backed replace operation for table={}, with current-snapshot-id={}, to snapshot={}",
+                  base.uuid(),
+                  base.currentSnapshot().snapshotId(),
+                  newBase.currentSnapshot().snapshotId());
+            }
+            // double check if the requirements passes now.
+            try {
+              TableMetadata baseWithRemovedSnaps = newBase;
+              request
+                  .requirements()
+                  .forEach(requirement -> requirement.validate(baseWithRemovedSnaps));
+            } catch (CommitFailedException e) {
+              // wrap and rethrow outside of tasks to avoid unnecessary retry
+              throw new ValidationFailureException(e);
+            }
 
-                TableMetadata.Builder newMetadataBuilder = TableMetadata.buildFrom(newBase);
-                try {
-                  request.updates().forEach((update) -> update.applyTo(newMetadataBuilder));
-                } catch (RetryableValidationException e) {
-                  // Validation failed because the commit includes stale values (e.g. sequence
-                  // number or first-row-id behind the current table state). This is not a conflict.
-                  // Server-side retry won't help since the stale values are in the request itself.
-                  // Wrap as CommitFailedException so the client can retry with refreshed metadata.
-                  throw new ValidationFailureException(
-                      new CommitFailedException(
-                          e, "Validation failed, please retry: %s", e.getMessage()));
-                }
-                TableMetadata updated = newMetadataBuilder.build();
-                if (updated.changes().isEmpty()) {
-                  // do not commit if the metadata has not changed
-                  return;
-                }
-                taskOps.commit(base, updated);
-              });
+            TableMetadata.Builder newMetadataBuilder = TableMetadata.buildFrom(newBase);
+            try {
+              request.updates().forEach(update -> update.applyTo(newMetadataBuilder));
+            } catch (RetryableValidationException e) {
+              // Validation failed because the commit includes stale values (e.g. sequence
+              // number or first-row-id behind the current table state). This is not a conflict.
+              // Server-side retry won't help since the stale values are in the request itself.
+              // Wrap as CommitFailedException so the client can retry with refreshed metadata.
+              throw new ValidationFailureException(
+                  new CommitFailedException(
+                      e, "Validation failed, please retry: %s", e.getMessage()));
+            }
+            TableMetadata updated = newMetadataBuilder.build();
+            if (updated.changes().isEmpty()) {
+              // do not commit if the metadata has not changed
+              return;
+            }
+            taskOps.commit(base, updated);
+          });
     } catch (ValidationFailureException e) {
       throw e.wrapped();
     }
@@ -759,33 +757,32 @@ public class CatalogHandlerUtils {
               COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT,
               2.0 /* exponential */)
           .onlyRetryOn(CommitFailedException.class)
-          .run(
-              taskOps -> {
-                ViewMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
-                isRetry.set(true);
+          .run(taskOps -> {
+            ViewMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
+            isRetry.set(true);
 
-                // validate requirements
-                try {
-                  request.requirements().forEach(requirement -> requirement.validate(base));
-                } catch (CommitFailedException e) {
-                  // wrap and rethrow outside of tasks to avoid unnecessary retry
-                  throw new ValidationFailureException(e);
-                }
+            // validate requirements
+            try {
+              request.requirements().forEach(requirement -> requirement.validate(base));
+            } catch (CommitFailedException e) {
+              // wrap and rethrow outside of tasks to avoid unnecessary retry
+              throw new ValidationFailureException(e);
+            }
 
-                // apply changes
-                ViewMetadata.Builder metadataBuilder = ViewMetadata.buildFrom(base);
-                request.updates().forEach(update -> update.applyTo(metadataBuilder));
+            // apply changes
+            ViewMetadata.Builder metadataBuilder = ViewMetadata.buildFrom(base);
+            request.updates().forEach(update -> update.applyTo(metadataBuilder));
 
-                ViewMetadata updated = metadataBuilder.build();
+            ViewMetadata updated = metadataBuilder.build();
 
-                if (updated.changes().isEmpty()) {
-                  // do not commit if the metadata has not changed
-                  return;
-                }
+            if (updated.changes().isEmpty()) {
+              // do not commit if the metadata has not changed
+              return;
+            }
 
-                // commit
-                taskOps.commit(base, updated);
-              });
+            // commit
+            taskOps.commit(base, updated);
+          });
 
     } catch (ValidationFailureException e) {
       throw e.wrapped();

@@ -113,8 +113,10 @@ dependencies {
     api(project(":polaris-hms-testcontainer"))
 
     api(project(":polaris-spark-3.5_2.12"))
-    val ideaActive = providers.systemProperty("idea.active").getOrElse("false").toBoolean()
-    if (!ideaActive) {
+    val ideImportActive =
+      providers.systemProperty("idea.active").getOrElse("false").toBoolean() ||
+        providers.systemProperty("buildship.active").getOrElse("false").toBoolean()
+    if (!ideImportActive) {
       api(project(":polaris-spark-3.5_2.13"))
       api(project(":polaris-spark-4.0_2.13"))
     }

@@ -18,21 +18,51 @@
  */
 package org.apache.polaris.core.auth;
 
+import java.util.List;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.jspecify.annotations.NonNull;
 
 /** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {
   /**
-   * Resolve authorizer-specific inputs before authorization.
+   * Analyzes authorizer {@link AuthorizationRequest inputs}, prepares the {@link
+   * AuthorizationState} for entity {@link AuthorizationState#resolve() resolution} and resolves the
+   * {@link PolarisResolutionManifest} by calling {@link AuthorizationState#resolve()}.
    *
-   * <p>Implementations may resolve only the entities required for the request (for example, the
-   * caller principal, principal roles, catalog roles, and requested targets) and store that state
-   * in {@link AuthorizationState}.
+   * <p>Implementations should invoke {@link AuthorizationState#select(Resolvable)} or {@link
+   * AuthorizationState#selectAll()} as appropriate.
+   *
+   * <p>Implementations should be aware that the provided {@link AuthorizationState} may already
+   * have some selectors injected by the caller before invoking this method.
    *
    * <p>This method should not perform authorization decisions directly.
    */
   void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request);
+
+  /**
+   * Batch counterpart to {@link #resolveAuthorizationInputs(AuthorizationState,
+   * AuthorizationRequest)}, invoked once before {@link #authorize(AuthorizationState,
+   * AuthorizationBatchRequest)} for intents that share one {@link AuthorizationState}.
+   *
+   * <p>Implementations may narrow what they resolve, exactly as for the single-request method, and
+   * must resolve the shared state at most once. {@link #authorize(AuthorizationState,
+   * AuthorizationBatchRequest)} may subsequently be called with a subset of {@code batch}'s
+   * intents.
+   *
+   * <p>The default implementation delegates once to the single-request method with every intent of
+   * {@code batch}, in order, so any narrowing done there applies to the batch as well. Overriding
+   * is optional and only needed for batch-specific preparation.
+   */
+  default void resolveAuthorizationInputs(
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationBatchRequest batch) {
+    if (batch.intents().isEmpty()) {
+      return;
+    }
+    resolveAuthorizationInputs(
+        authzState, new AuthorizationRequest(batch.principal(), batch.intents()));
+  }
 
   /**
    * Core authorization entry point for the new SPI.
@@ -46,4 +76,26 @@ public interface PolarisAuthorizer {
    */
   @NonNull AuthorizationDecision authorize(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request);
+
+  /**
+   * Batch authorization entry point.
+   *
+   * <p>The default implementation evaluates each intent independently by delegating to {@link
+   * #authorize(AuthorizationState, AuthorizationRequest)} with a single-intent request.
+   * Implementations may override this method for improved performance.
+   *
+   * <p>The returned list preserves the same size and order as {@code batch.intents()}. Each intent
+   * is evaluated independently. Implementations must return a decision for every intent and must
+   * not short-circuit across intents, even when an earlier intent is denied.
+   *
+   * <p>Note that this differs from the contract of a single {@link AuthorizationRequest}, where the
+   * intents are AND-combined and evaluation may short-circuit on the first deny.
+   */
+  default @NonNull List<AuthorizationDecision> authorize(
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationBatchRequest batch) {
+    return batch.intents().stream()
+        .map(intent ->
+            authorize(authzState, new AuthorizationRequest(batch.principal(), List.of(intent))))
+        .toList();
+  }
 }

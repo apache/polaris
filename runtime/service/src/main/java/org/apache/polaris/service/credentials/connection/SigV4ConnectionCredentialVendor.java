@@ -137,11 +137,10 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
         CatalogAccessProperty.AWS_SECRET_ACCESS_KEY, response.credentials().secretAccessKey());
     props.put(CatalogAccessProperty.AWS_SESSION_TOKEN, response.credentials().sessionToken());
     Optional.ofNullable(response.credentials().expiration())
-        .ifPresent(
-            expiration ->
-                props.put(
-                    CatalogAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
-                    String.valueOf(expiration.toEpochMilli())));
+        .ifPresent(expiration ->
+            props.put(
+                CatalogAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                String.valueOf(expiration.toEpochMilli())));
 
     return ConnectionCredentials.of(props);
   }

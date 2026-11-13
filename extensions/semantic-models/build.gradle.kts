@@ -98,16 +98,16 @@ val generatedOpenApiSrcDir = project.layout.buildDirectory.dir("generated-openap
 openApiGenerate {
   // The OpenAPI generator does NOT resolve relative paths correctly against the Gradle project
   // directory
-  inputSpec = provider { specsDir.file("polaris-catalog-service.yaml").asFile.absolutePath }
+  inputSpec = specsDir.file("generated/bundled-polaris-catalog-service.yaml")
   generatorName = "jaxrs-resteasy"
-  outputDir = provider { generatedDir.get().asFile.absolutePath }
+  outputDir = generatedDir
   // Distinct packages so the generated code does not split-package with
   // polaris-api-catalog-service.
   apiPackage = "org.apache.polaris.service.catalog.semanticmodel.api"
   modelPackage = "org.apache.polaris.service.catalog.semanticmodel.types"
-  ignoreFileOverride.set(provider { rootDir.file(".openapi-generator-ignore").asFile.absolutePath })
+  ignoreFileOverride = rootDir.file(".openapi-generator-ignore")
   removeOperationIdPrefix.set(true)
-  templateDir.set(provider { templatesDir.asFile.absolutePath })
+  templateDir = templatesDir
   globalProperties.put("apis", "SemanticModelApi")
   globalProperties.put("models", semanticModelModels)
   globalProperties.put("apiDocs", "false")

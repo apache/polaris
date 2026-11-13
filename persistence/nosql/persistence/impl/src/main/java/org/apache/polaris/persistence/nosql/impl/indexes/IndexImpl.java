@@ -363,45 +363,42 @@ final class IndexImpl<V> implements IndexSpi<V> {
 
     var splitState = new SplitState();
 
-    walkSerializedElements(
-        (element, keyBuf, previousMaterializationKey) -> {
-          var valueSerializedSize = element.contentSerializedSize(serializer);
-          var entrySerializedSize =
-              serializedEntrySize(splitState.previousSplitKey, keyBuf, valueSerializedSize);
-          var candidateSerializedSize =
-              splitSerializedSize(
-                  splitState.currentElements.size() + 1,
-                  splitState.currentSerializedBodySize + entrySerializedSize);
+    walkSerializedElements((element, keyBuf, previousMaterializationKey) -> {
+      var valueSerializedSize = element.contentSerializedSize(serializer);
+      var entrySerializedSize =
+          serializedEntrySize(splitState.previousSplitKey, keyBuf, valueSerializedSize);
+      var candidateSerializedSize =
+          splitSerializedSize(
+              splitState.currentElements.size() + 1,
+              splitState.currentSerializedBodySize + entrySerializedSize);
 
-          if (!splitState.currentElements.isEmpty()
-              && candidateSerializedSize > targetSerializedSize) {
-            splitState.result.add(
-                newSplitPart(
-                    splitState.currentElements,
-                    splitSerializedSize(
-                        splitState.currentElements.size(), splitState.currentSerializedBodySize)));
-            splitState.currentElements = new ArrayList<>();
-            splitState.currentSerializedBodySize = 0L;
-            splitState.previousSplitKey = null;
-            entrySerializedSize = serializedEntrySize(null, keyBuf, valueSerializedSize);
-            candidateSerializedSize = splitSerializedSize(1, entrySerializedSize);
-          }
+      if (!splitState.currentElements.isEmpty() && candidateSerializedSize > targetSerializedSize) {
+        splitState.result.add(
+            newSplitPart(
+                splitState.currentElements,
+                splitSerializedSize(
+                    splitState.currentElements.size(), splitState.currentSerializedBodySize)));
+        splitState.currentElements = new ArrayList<>();
+        splitState.currentSerializedBodySize = 0L;
+        splitState.previousSplitKey = null;
+        entrySerializedSize = serializedEntrySize(null, keyBuf, valueSerializedSize);
+        candidateSerializedSize = splitSerializedSize(1, entrySerializedSize);
+      }
 
-          splitState.currentElements.add(element);
-          splitState.currentSerializedBodySize += entrySerializedSize;
-          splitState.previousSplitKey = copyKey(splitState.previousSplitKey, keyBuf);
+      splitState.currentElements.add(element);
+      splitState.currentSerializedBodySize += entrySerializedSize;
+      splitState.previousSplitKey = copyKey(splitState.previousSplitKey, keyBuf);
 
-          if (splitState.currentElements.size() == 1
-              && candidateSerializedSize > targetSerializedSize) {
-            splitState.result.add(
-                newSplitPart(splitState.currentElements, candidateSerializedSize));
-            splitState.currentElements = new ArrayList<>();
-            splitState.currentSerializedBodySize = 0L;
-            splitState.previousSplitKey = null;
-          }
+      if (splitState.currentElements.size() == 1
+          && candidateSerializedSize > targetSerializedSize) {
+        splitState.result.add(newSplitPart(splitState.currentElements, candidateSerializedSize));
+        splitState.currentElements = new ArrayList<>();
+        splitState.currentSerializedBodySize = 0L;
+        splitState.previousSplitKey = null;
+      }
 
-          return copyKey(previousMaterializationKey, keyBuf);
-        });
+      return copyKey(previousMaterializationKey, keyBuf);
+    });
 
     if (splitState.result.isEmpty()) {
       return List.of(this);
@@ -671,12 +668,11 @@ final class IndexImpl<V> implements IndexSpi<V> {
       putVarInt(target, elements.size());
       var serializeTarget = target;
 
-      walkSerializedElements(
-          (element, keyBuf, previousMaterializationKey) -> {
-            var previousKey = serializeKey(keyBuf, previousMaterializationKey, serializeTarget);
-            element.serializeContent(serializer, serializeTarget);
-            return previousKey;
-          });
+      walkSerializedElements((element, keyBuf, previousMaterializationKey) -> {
+        var previousKey = serializeKey(keyBuf, previousMaterializationKey, serializeTarget);
+        element.serializeContent(serializer, serializeTarget);
+        return previousKey;
+      });
 
       target = target.flip();
     } else {

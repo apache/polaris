@@ -99,11 +99,10 @@ public class RestCatalogKeycloakFileIT extends PolarisRestCatalogFileIntegration
     ManagementApi managementApi = client.managementApi(adminToken);
     managementApi.listPrincipals().stream()
         .filter(p -> client.ownedName(p.getName()))
-        .forEach(
-            p -> {
-              keycloak.deleteUser(p.getName());
-              keycloak.deleteServiceAccount(p.getClientId());
-            });
+        .forEach(p -> {
+          keycloak.deleteUser(p.getName());
+          keycloak.deleteServiceAccount(p.getClientId());
+        });
     managementApi.listPrincipalRoles().stream()
         .filter(r -> client.ownedName(r.getName()))
         .forEach(role -> keycloak.deleteRole("PRINCIPAL_ROLE:" + role.getName()));

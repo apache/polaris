@@ -38,6 +38,22 @@ All properties listed here are **runtime** properties and can be changed without
 
 ## Features & Behavior
 
+### How the effective value of a feature is determined
+
+For a given catalog, the value of a feature is resolved in this order, and the first value that is
+set wins:
+
+1. The catalog property, for features that have one. It is listed as `Catalog Config` in the feature's
+   description, for example `polaris.config.allow.unstructured.table.location`. A deprecated catalog
+   property, if the feature has one, is only used when the current one is not set.
+2. The realm override
+   `polaris.features.realm-overrides."<realm>".overrides."<FEATURE>"`.
+3. The feature `polaris.features."<FEATURE>"`, which applies to all realms.
+4. The default value of the feature.
+
+Changing or removing a value at any level changes the effective value for every catalog that does not
+set a value at a higher level.
+
 ### `polaris.features`
 
 {{% include-config-section "flags-polaris_features" %}}

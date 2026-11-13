@@ -38,9 +38,8 @@ class FileCleanupTaskHandlerTest {
     // A stalled deletion must free the waiting thread with a terminal timeout failure rather than
     // block forever. Note this only abandons the wait; the in-flight deletes cannot be interrupted.
     CompletableFuture<Void> neverCompletes = new CompletableFuture<>();
-    assertThatThrownBy(
-            () ->
-                handler(Duration.ofMillis(50)).awaitCompletion(neverCompletes, "stalled deletion"))
+    assertThatThrownBy(() ->
+            handler(Duration.ofMillis(50)).awaitCompletion(neverCompletes, "stalled deletion"))
         .isInstanceOf(FileDeletionTimeoutException.class)
         .hasMessageContaining("Timed out")
         .hasMessageContaining("stalled deletion");
@@ -48,20 +47,18 @@ class FileCleanupTaskHandlerTest {
 
   @Test
   void awaitCompletionReturnsWhenDeletionCompletes() {
-    assertThatCode(
-            () ->
-                handler(Duration.ofSeconds(30))
-                    .awaitCompletion(CompletableFuture.completedFuture(null), "deletion"))
+    assertThatCode(() ->
+            handler(Duration.ofSeconds(30))
+                .awaitCompletion(CompletableFuture.completedFuture(null), "deletion"))
         .doesNotThrowAnyException();
   }
 
   @Test
   void awaitCompletionWithNonPositiveTimeoutDoesNotApplyDeadline() {
     // A zero/negative timeout disables the deadline; a completed future must still return.
-    assertThatCode(
-            () ->
-                handler(Duration.ZERO)
-                    .awaitCompletion(CompletableFuture.completedFuture(null), "deletion"))
+    assertThatCode(() ->
+            handler(Duration.ZERO)
+                .awaitCompletion(CompletableFuture.completedFuture(null), "deletion"))
         .doesNotThrowAnyException();
   }
 }

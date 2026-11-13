@@ -119,41 +119,40 @@ public class TestTableLikeMapping extends BaseTestMapping {
           @Override
           public Stream<MappingSample> typeVariations(MappingSample base) {
             return storageVariations(this::objBuilder, base)
-                .flatMap(
-                    b ->
-                        Stream.of(
-                            b,
-                            //
-                            new MappingSample(
-                                objBuilder()
-                                    .from(b.obj())
-                                    .metadataLocation("s3://foo/bar/here.json")
-                                    .build(),
-                                entityWithInternalProperty(
-                                    b.entity(), METADATA_LOCATION_KEY, "s3://foo/bar/here.json")),
-                            new MappingSample(
-                                objBuilder().from(b.obj()).doc("doc").build(),
-                                entityWithInternalProperty(b.entity(), DOC_KEY, "doc")),
-                            new MappingSample(
-                                objBuilder().from(b.obj()).format("format").build(),
-                                entityWithInternalProperty(b.entity(), FORMAT_KEY, "format")),
-                            //
-                            new MappingSample(
-                                objBuilder()
-                                    .from(b.obj())
-                                    .metadataLocation("s3://foo/bar/here.json")
-                                    .doc("doc")
-                                    .format("format")
-                                    .build(),
-                                entityWithInternalProperties(
-                                    b.entity(),
-                                    Map.of(
-                                        METADATA_LOCATION_KEY,
-                                        "s3://foo/bar/here.json",
-                                        DOC_KEY,
-                                        "doc",
-                                        FORMAT_KEY,
-                                        "format")))));
+                .flatMap(b ->
+                    Stream.of(
+                        b,
+                        //
+                        new MappingSample(
+                            objBuilder()
+                                .from(b.obj())
+                                .metadataLocation("s3://foo/bar/here.json")
+                                .build(),
+                            entityWithInternalProperty(
+                                b.entity(), METADATA_LOCATION_KEY, "s3://foo/bar/here.json")),
+                        new MappingSample(
+                            objBuilder().from(b.obj()).doc("doc").build(),
+                            entityWithInternalProperty(b.entity(), DOC_KEY, "doc")),
+                        new MappingSample(
+                            objBuilder().from(b.obj()).format("format").build(),
+                            entityWithInternalProperty(b.entity(), FORMAT_KEY, "format")),
+                        //
+                        new MappingSample(
+                            objBuilder()
+                                .from(b.obj())
+                                .metadataLocation("s3://foo/bar/here.json")
+                                .doc("doc")
+                                .format("format")
+                                .build(),
+                            entityWithInternalProperties(
+                                b.entity(),
+                                Map.of(
+                                    METADATA_LOCATION_KEY,
+                                    "s3://foo/bar/here.json",
+                                    DOC_KEY,
+                                    "doc",
+                                    FORMAT_KEY,
+                                    "format")))));
           }
         });
   }

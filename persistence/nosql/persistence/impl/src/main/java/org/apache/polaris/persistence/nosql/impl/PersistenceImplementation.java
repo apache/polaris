@@ -273,22 +273,21 @@ public final class PersistenceImplementation implements Persistence {
               ? new ByteArrayInputStream(f.serialized())
               : new MultiByteArrayInputStream(
                   IntStream.range(0, numParts)
-                      .mapToObj(
-                          p -> {
-                            var part = fetched.get(persistId(id.id(), p));
-                            checkState(
-                                part != null,
-                                "Part #%s of %s of object %s does not exist in the database",
-                                p,
-                                numParts,
-                                id);
-                            checkState(
-                                fetchedObjTypeId.equals(part.type()),
-                                "Object type mismatch, expected '%s', got '%s'",
-                                fetchedObjTypeId,
-                                part.type());
-                            return part.serialized();
-                          })
+                      .mapToObj(p -> {
+                        var part = fetched.get(persistId(id.id(), p));
+                        checkState(
+                            part != null,
+                            "Part #%s of %s of object %s does not exist in the database",
+                            p,
+                            numParts,
+                            id);
+                        checkState(
+                            fetchedObjTypeId.equals(part.type()),
+                            "Object type mismatch, expected '%s', got '%s'",
+                            fetchedObjTypeId,
+                            part.type());
+                        return part.serialized();
+                      })
                       .toList())) {
         r[i] =
             deserializeObj(

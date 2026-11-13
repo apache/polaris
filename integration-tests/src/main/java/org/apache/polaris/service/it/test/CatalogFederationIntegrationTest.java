@@ -101,6 +101,14 @@ public class CatalogFederationIntegrationTest {
           .setPrivilege(CatalogPrivilege.CATALOG_MANAGE_CONTENT)
           .build();
 
+  // Granted separately from defaultCatalogGrant: RBAC tests revoke defaultCatalogGrant, and the
+  // Spark client still needs GET /v1/config to bootstrap against the federated catalog.
+  private static final CatalogGrant catalogReadConfigGrant =
+      CatalogGrant.builder()
+          .setType(GrantResource.TypeEnum.CATALOG)
+          .setPrivilege(CatalogPrivilege.CATALOG_READ_CONFIG)
+          .build();
+
   @TempDir static java.nio.file.Path warehouseDir;
 
   private PrincipalWithCredentials newUserCredentials;
@@ -228,6 +236,7 @@ public class CatalogFederationIntegrationTest {
     managementApi.createCatalogRole(federatedCatalogName, federatedCatalogRoleName);
 
     managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, defaultCatalogGrant);
+    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, catalogReadConfigGrant);
     CatalogRole externalCatalogAdminRole =
         managementApi.getCatalogRole(federatedCatalogName, federatedCatalogRoleName);
     managementApi.grantCatalogRoleToPrincipalRole(
@@ -424,14 +433,12 @@ public class CatalogFederationIntegrationTest {
 
     // Verify that write is blocked since the vended credential should only have read permission
     assertThatThrownBy(() -> spark.sql("INSERT INTO ns1.test_table VALUES (3, 'Charlie')"))
-        .satisfies(
-            ex -> {
-              Throwable root = ExceptionUtils.getRootCause(ex);
-              assertThat(root)
-                  .isInstanceOf(
-                      software.amazon.awssdk.services.s3.model.AccessDeniedException.class);
-              assertThat(root.getMessage()).matches("(?s).*Access Denied.*Status Code: 403.*");
-            });
+        .satisfies(ex -> {
+          Throwable root = ExceptionUtils.getRootCause(ex);
+          assertThat(root)
+              .isInstanceOf(software.amazon.awssdk.services.s3.model.AccessDeniedException.class);
+          assertThat(root.getMessage()).matches("(?s).*Access Denied.*Status Code: 403.*");
+        });
 
     // Case 3: TABLE_WRITE_DATA should
     managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableReadDataGrant);

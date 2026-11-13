@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING;
+import static org.apache.polaris.core.config.FeatureConfiguration.ENABLE_ENTITY_LEVEL_LIST_FILTERING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
@@ -46,9 +47,11 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
-import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.MetadataTableType;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
@@ -91,9 +94,14 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.StructuredLogKeys;
+import org.apache.polaris.core.auth.AuthorizationBatchRequest;
+import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
@@ -114,6 +122,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.pagination.PageTokenUtil;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -294,7 +303,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   public ListNamespacesResponse listNamespaces(
       Namespace parent, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
-    authorizeBasicNamespaceOperationOrThrow(op, parent);
+    boolean filter = authorizeListOrRequireFiltering(op, parent);
 
     if (isFederated) {
       ListNamespacesResponse response =
@@ -302,14 +311,22 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               .listNamespaces(
                   namespaceCatalog, parent, boundedPageToken(pageToken), boundedPageSize(pageSize));
       rejectIncompleteListing(pageToken, pageSize, response.nextPageToken());
-      return response;
+      if (!filter) {
+        return response;
+      }
+      List<Namespace> visible = filterNamespaces(response.namespaces(), op);
+      return ListNamespacesResponse.builder()
+          .addAll(visible)
+          .nextPageToken(response.nextPageToken())
+          .build();
     } else {
       PageToken pageRequest =
           PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listNamespaces(parent, pageRequest);
       rejectIncompleteListing(pageToken, pageSize, results.encodedResponseToken());
+      List<Namespace> items = filter ? filterNamespaces(results.items(), op) : results.items();
       return ListNamespacesResponse.builder()
-          .addAll(results.items())
+          .addAll(items)
           .nextPageToken(results.encodedResponseToken())
           .build();
     }
@@ -398,7 +415,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public ListTablesResponse listTables(Namespace namespace, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
-    authorizeBasicNamespaceOperationOrThrow(op, namespace);
+    boolean filter = authorizeListOrRequireFiltering(op, namespace);
 
     if (isFederated) {
       ListTablesResponse response =
@@ -406,14 +423,23 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               .listTables(
                   baseCatalog, namespace, boundedPageToken(pageToken), boundedPageSize(pageSize));
       rejectIncompleteListing(pageToken, pageSize, response.nextPageToken());
-      return response;
+      if (!filter) {
+        return response;
+      }
+      List<TableIdentifier> visible = filterTableIdentifiers(response.identifiers(), op);
+      return ListTablesResponse.builder()
+          .addAll(visible)
+          .nextPageToken(response.nextPageToken())
+          .build();
     } else {
       PageToken pageRequest =
           PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listTables(namespace, pageRequest);
       rejectIncompleteListing(pageToken, pageSize, results.encodedResponseToken());
+      List<TableIdentifier> items =
+          filter ? filterTableIdentifiers(results.items(), op) : results.items();
       return ListTablesResponse.builder()
-          .addAll(results.items())
+          .addAll(items)
           .nextPageToken(results.encodedResponseToken())
           .build();
     }
@@ -451,7 +477,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
+    authorizeCreateTableDirect(
+        namespace, request, AccessDelegationMode.requiresDelegation(delegationModes));
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
@@ -714,7 +741,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    authorizeCreateTableStaged(namespace, request, !delegationModes.isEmpty());
+    authorizeCreateTableStaged(
+        namespace, request, AccessDelegationMode.requiresDelegation(delegationModes));
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
@@ -935,7 +963,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     StorageAccessConfig storageAccessConfig =
         vendCredentials(
-            tableIdentifier, tableLocations, actionsRequested, refreshCredentialsEndpoint);
+            tableIdentifier,
+            baseLocation,
+            tableLocations,
+            actionsRequested,
+            refreshCredentialsEndpoint);
     if (storageAccessConfig == null) {
       storageAccessConfig = StorageAccessConfig.builder().build();
     }
@@ -1003,7 +1035,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       boolean overwrite) {
 
-    if (delegationModes.isEmpty()) {
+    if (!AccessDelegationMode.requiresDelegation(delegationModes)) {
 
       if (overwrite) {
         authorizeRegisterTableOverwriteOrThrow(
@@ -1139,7 +1171,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Optional<String> refreshCredentialsEndpoint) {
 
     Set<PolarisStorageActions> actionsRequested =
-        authorizeLoadTable(tableIdentifier, !delegationModes.isEmpty());
+        authorizeLoadTable(
+            tableIdentifier, AccessDelegationMode.requiresDelegation(delegationModes));
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     return loadTableWithResolvedAuthorization(
@@ -1229,6 +1262,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // allowedLocations before vending credentials. This protects against cases where
       // allowedLocations were tightened after the table was created.
       validateTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
+      if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))
+          && baseCatalog instanceof LocalIcebergCatalog localCatalog) {
+        localCatalog.validateNoLocationOverlapForCredentialVending(
+            tableIdentifier, tableMetadata.location(), tableLocations, resolvedStoragePath);
+      }
 
       StorageAccessConfig storageAccessConfig =
           storageAccessConfigProvider()
@@ -1272,7 +1310,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // catalogs before vending credentials to ensure locations are still within the
       // current catalog's allowedLocations (defense against policy changes after table creation).
       CatalogUtils.validateLocationsForTableLike(
-          realmConfig(), tableIdentifier, tableLocations, resolvedStoragePath);
+          realmConfig(), tableIdentifier, tableLocations, resolvedStoragePath.getRawFullPath());
 
       LOGGER
           .atInfo()
@@ -1298,18 +1336,17 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     List<UpdateRequirement> requirements = request.requirements();
     List<MetadataUpdate> updates =
         request.updates().stream()
-            .map(
-                update -> {
-                  if (!isFederated && update instanceof MetadataUpdate.SetLocation setLocation) {
-                    String requestedLocation = setLocation.location();
-                    String filteredLocation =
-                        ((LocalIcebergCatalog) baseCatalog)
-                            .transformTableLikeLocation(identifier, requestedLocation);
-                    return new MetadataUpdate.SetLocation(filteredLocation);
-                  } else {
-                    return update;
-                  }
-                })
+            .map(update -> {
+              if (!isFederated && update instanceof MetadataUpdate.SetLocation setLocation) {
+                String requestedLocation = setLocation.location();
+                String filteredLocation =
+                    ((LocalIcebergCatalog) baseCatalog)
+                        .transformTableLikeLocation(identifier, requestedLocation);
+                return new MetadataUpdate.SetLocation(filteredLocation);
+              } else {
+                return update;
+              }
+            })
             .toList();
     return UpdateTableRequest.create(identifier, requirements, updates);
   }
@@ -1514,73 +1551,70 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // complex) alternative that would intercept at the MetaStoreManager layer.
     List<TableMetadata> tableMetadataObjs = new ArrayList<>();
     Map<TableIdentifier, FileIO> tableFileIOs = new HashMap<>();
-    changesByTable.forEach(
-        (tableIdentifier, changes) -> {
-          Table table = baseCatalog.loadTable(tableIdentifier);
-          if (!(table instanceof BaseTable baseTable)) {
-            throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
-          }
+    changesByTable.forEach((tableIdentifier, changes) -> {
+      Table table = baseCatalog.loadTable(tableIdentifier);
+      if (!(table instanceof BaseTable baseTable)) {
+        throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+      }
 
-          TableOperations tableOps = baseTable.operations();
-          TableMetadata baseMetadata = tableOps.current();
+      TableOperations tableOps = baseTable.operations();
+      TableMetadata baseMetadata = tableOps.current();
 
-          // Apply each change sequentially: validate requirements against current state,
-          // then apply updates. This ensures conflicts are detected (e.g., if two changes
-          // both expect schema ID 0, the second will fail after the first increments it).
-          TableMetadata currentMetadata = baseMetadata;
-          for (UpdateTableRequest change : changes) {
-            // A multi-table transaction must not be a way to bypass the caller-specified-location
-            // gate enforced on the single-table updateTable path.
-            rejectClientSpecifiedLocationIfDisallowed(change);
+      // Apply each change sequentially: validate requirements against current state,
+      // then apply updates. This ensures conflicts are detected (e.g., if two changes
+      // both expect schema ID 0, the second will fail after the first increments it).
+      TableMetadata currentMetadata = baseMetadata;
+      for (UpdateTableRequest change : changes) {
+        // A multi-table transaction must not be a way to bypass the caller-specified-location
+        // gate enforced on the single-table updateTable path.
+        rejectClientSpecifiedLocationIfDisallowed(change);
 
-            // Validate requirements against the current metadata state
-            final TableMetadata metadataForValidation = currentMetadata;
-            change
-                .requirements()
-                .forEach(requirement -> requirement.validate(metadataForValidation));
+        // Validate requirements against the current metadata state
+        final TableMetadata metadataForValidation = currentMetadata;
+        change.requirements().forEach(requirement -> requirement.validate(metadataForValidation));
 
-            // TODO: Refactor to share/reconcile the update-application logic below with
-            // CatalogHandlerUtils to avoid divergence as complexity grows.
-            TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
-            for (MetadataUpdate singleUpdate : change.updates()) {
-              // Note: If location-overlap checking is refactored to be atomic, we could
-              // support validation within a single multi-table transaction as well, but
-              // will need to update the TransactionWorkspaceMetaStoreManager to better
-              // expose the concept of being able to read uncommitted updates.
-              if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
-                if (!currentMetadata.location().equals(setLocation.location())
-                    && !realmConfig()
-                        .getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
-                  throw new BadRequestException(
-                      "Unsupported operation: commitTransaction containing SetLocation"
-                          + " for table '%s' and new location '%s'",
-                      change.identifier(), ((MetadataUpdate.SetLocation) singleUpdate).location());
-                }
-              }
-
-              // Apply updates to builder
-              try {
-                singleUpdate.applyTo(metadataBuilder);
-              } catch (RetryableValidationException e) {
-                // Surface as a retryable 409, matching CatalogHandlerUtils.commit.
-                throw new CommitFailedException(
-                    e, "Validation failed, please retry: %s", e.getMessage());
-              }
+        // TODO: Refactor to share/reconcile the update-application logic below with
+        // CatalogHandlerUtils to avoid divergence as complexity grows.
+        TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
+        for (MetadataUpdate singleUpdate : change.updates()) {
+          // Note: If location-overlap checking is refactored to be atomic, we could
+          // support validation within a single multi-table transaction as well, but
+          // will need to update the TransactionWorkspaceMetaStoreManager to better
+          // expose the concept of being able to read uncommitted updates.
+          if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
+            if (!currentMetadata.location().equals(setLocation.location())
+                && !realmConfig()
+                    .getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+              throw new BadRequestException(
+                  "Unsupported operation: commitTransaction containing SetLocation"
+                      + " for table '%s' and new location '%s'",
+                  change.identifier(), ((MetadataUpdate.SetLocation) singleUpdate).location());
             }
-
-            // Update currentMetadata to reflect this change for subsequent requirement validation
-            currentMetadata = metadataBuilder.build();
           }
 
-          // Commit all accumulated changes for this table in a single atomic operation.
-          // The delete logic (set above to collectCleanup) will record instead of delete.
-          if (!currentMetadata.changes().isEmpty()) {
-            tableOps.commit(baseMetadata, currentMetadata);
-            tableFileIOs.put(tableIdentifier, tableOps.io());
+          // Apply updates to builder
+          try {
+            singleUpdate.applyTo(metadataBuilder);
+          } catch (RetryableValidationException e) {
+            // Surface as a retryable 409, matching CatalogHandlerUtils.commit.
+            throw new CommitFailedException(
+                e, "Validation failed, please retry: %s", e.getMessage());
           }
+        }
 
-          tableMetadataObjs.add(currentMetadata);
-        });
+        // Update currentMetadata to reflect this change for subsequent requirement validation
+        currentMetadata = metadataBuilder.build();
+      }
+
+      // Commit all accumulated changes for this table in a single atomic operation.
+      // The delete logic (set above to collectCleanup) will record instead of delete.
+      if (!currentMetadata.changes().isEmpty()) {
+        tableOps.commit(baseMetadata, currentMetadata);
+        tableFileIOs.put(tableIdentifier, tableOps.io());
+      }
+
+      tableMetadataObjs.add(currentMetadata);
+    });
 
     List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
     EntitiesResult result =
@@ -1599,11 +1633,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               .map(ewp -> IcebergTableLikeEntity.of(ewp.entity()))
               .filter(entity -> entity != null && entity.getMetadataLocation() != null)
               .filter(entity -> tableFileIOs.containsKey(entity.getTableIdentifier()))
-              .map(
-                  entity ->
-                      new FileToDelete(
-                          tableFileIOs.get(entity.getTableIdentifier()),
-                          entity.getMetadataLocation()))
+              .map(entity ->
+                  new FileToDelete(
+                      tableFileIOs.get(entity.getTableIdentifier()), entity.getMetadataLocation()))
               .toList();
       cleanupWrittenMetadataFiles(writtenMetadataFiles);
       throw new CommitFailedException(
@@ -1615,8 +1647,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // this transaction (if the table has write.metadata.delete-after-commit.enabled).
     // Because we reach here, the DB pointers have been updated to the new metadata.
     for (MetadataFileCleanup cleanup : pendingCleanups) {
-      CatalogUtil.deleteRemovedMetadataFiles(
-          cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
+      cleanup.deleteRemovedMetadataFiles();
     }
 
     eventAttributeMap().put(EventAttributes.TABLE_METADATAS, tableMetadataObjs);
@@ -1638,7 +1669,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public ListTablesResponse listViews(Namespace namespace, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
-    authorizeBasicNamespaceOperationOrThrow(op, namespace);
+    boolean filter = authorizeListOrRequireFiltering(op, namespace);
 
     if (isFederated) {
       if (baseCatalog instanceof ViewCatalog viewCatalog) {
@@ -1647,7 +1678,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                 .listViews(
                     viewCatalog, namespace, boundedPageToken(pageToken), boundedPageSize(pageSize));
         rejectIncompleteListing(pageToken, pageSize, response.nextPageToken());
-        return response;
+        if (!filter) {
+          return response;
+        }
+        List<TableIdentifier> visible = filterTableIdentifiers(response.identifiers(), op);
+        return ListTablesResponse.builder()
+            .addAll(visible)
+            .nextPageToken(response.nextPageToken())
+            .build();
       }
       throw new BadRequestException(
           "Unsupported operation: listViews with baseCatalog type: %s",
@@ -1657,8 +1695,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listViews(namespace, pageRequest);
       rejectIncompleteListing(pageToken, pageSize, results.encodedResponseToken());
+      List<TableIdentifier> items =
+          filter ? filterTableIdentifiers(results.items(), op) : results.items();
       return ListTablesResponse.builder()
-          .addAll(results.items())
+          .addAll(items)
           .nextPageToken(results.encodedResponseToken())
           .build();
     }
@@ -1780,47 +1820,46 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (useFineGrainedOperations) {
       EnumSet<PolarisAuthorizableOperation> actions =
           request.updates().stream()
-              .map(
-                  update ->
-                      switch (update) {
-                        case MetadataUpdate.AssignUUID assignUuid ->
-                            PolarisAuthorizableOperation.ASSIGN_TABLE_UUID;
-                        case MetadataUpdate.UpgradeFormatVersion upgradeFormat ->
-                            PolarisAuthorizableOperation.UPGRADE_TABLE_FORMAT_VERSION;
-                        case MetadataUpdate.AddSchema addSchema ->
-                            PolarisAuthorizableOperation.ADD_TABLE_SCHEMA;
-                        case MetadataUpdate.SetCurrentSchema setCurrentSchema ->
-                            PolarisAuthorizableOperation.SET_TABLE_CURRENT_SCHEMA;
-                        case MetadataUpdate.AddPartitionSpec addPartitionSpec ->
-                            PolarisAuthorizableOperation.ADD_TABLE_PARTITION_SPEC;
-                        case MetadataUpdate.AddSortOrder addSortOrder ->
-                            PolarisAuthorizableOperation.ADD_TABLE_SORT_ORDER;
-                        case MetadataUpdate.SetDefaultSortOrder setDefaultSortOrder ->
-                            PolarisAuthorizableOperation.SET_TABLE_DEFAULT_SORT_ORDER;
-                        case MetadataUpdate.AddSnapshot addSnapshot ->
-                            PolarisAuthorizableOperation.ADD_TABLE_SNAPSHOT;
-                        case MetadataUpdate.SetSnapshotRef setSnapshotRef ->
-                            PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF;
-                        case MetadataUpdate.RemoveSnapshots removeSnapshots ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOTS;
-                        case MetadataUpdate.RemoveSnapshotRef removeSnapshotRef ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOT_REF;
-                        case MetadataUpdate.SetLocation setLocation ->
-                            PolarisAuthorizableOperation.SET_TABLE_LOCATION;
-                        case MetadataUpdate.SetProperties setProperties ->
-                            PolarisAuthorizableOperation.SET_TABLE_PROPERTIES;
-                        case MetadataUpdate.RemoveProperties removeProperties ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES;
-                        case MetadataUpdate.SetStatistics setStatistics ->
-                            PolarisAuthorizableOperation.SET_TABLE_STATISTICS;
-                        case MetadataUpdate.RemoveStatistics removeStatistics ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_STATISTICS;
-                        case MetadataUpdate.RemovePartitionSpecs removePartitionSpecs ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS;
-                        default ->
-                            PolarisAuthorizableOperation
-                                .UPDATE_TABLE; // Fallback for unknown update types
-                      })
+              .map(update ->
+                  switch (update) {
+                    case MetadataUpdate.AssignUUID assignUuid ->
+                        PolarisAuthorizableOperation.ASSIGN_TABLE_UUID;
+                    case MetadataUpdate.UpgradeFormatVersion upgradeFormat ->
+                        PolarisAuthorizableOperation.UPGRADE_TABLE_FORMAT_VERSION;
+                    case MetadataUpdate.AddSchema addSchema ->
+                        PolarisAuthorizableOperation.ADD_TABLE_SCHEMA;
+                    case MetadataUpdate.SetCurrentSchema setCurrentSchema ->
+                        PolarisAuthorizableOperation.SET_TABLE_CURRENT_SCHEMA;
+                    case MetadataUpdate.AddPartitionSpec addPartitionSpec ->
+                        PolarisAuthorizableOperation.ADD_TABLE_PARTITION_SPEC;
+                    case MetadataUpdate.AddSortOrder addSortOrder ->
+                        PolarisAuthorizableOperation.ADD_TABLE_SORT_ORDER;
+                    case MetadataUpdate.SetDefaultSortOrder setDefaultSortOrder ->
+                        PolarisAuthorizableOperation.SET_TABLE_DEFAULT_SORT_ORDER;
+                    case MetadataUpdate.AddSnapshot addSnapshot ->
+                        PolarisAuthorizableOperation.ADD_TABLE_SNAPSHOT;
+                    case MetadataUpdate.SetSnapshotRef setSnapshotRef ->
+                        PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF;
+                    case MetadataUpdate.RemoveSnapshots removeSnapshots ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOTS;
+                    case MetadataUpdate.RemoveSnapshotRef removeSnapshotRef ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOT_REF;
+                    case MetadataUpdate.SetLocation setLocation ->
+                        PolarisAuthorizableOperation.SET_TABLE_LOCATION;
+                    case MetadataUpdate.SetProperties setProperties ->
+                        PolarisAuthorizableOperation.SET_TABLE_PROPERTIES;
+                    case MetadataUpdate.RemoveProperties removeProperties ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES;
+                    case MetadataUpdate.SetStatistics setStatistics ->
+                        PolarisAuthorizableOperation.SET_TABLE_STATISTICS;
+                    case MetadataUpdate.RemoveStatistics removeStatistics ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_STATISTICS;
+                    case MetadataUpdate.RemovePartitionSpecs removePartitionSpecs ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS;
+                    default ->
+                        PolarisAuthorizableOperation
+                            .UPDATE_TABLE; // Fallback for unknown update types
+                  })
               .collect(
                   () -> EnumSet.noneOf(PolarisAuthorizableOperation.class),
                   EnumSet::add,
@@ -1876,6 +1915,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   private StorageAccessConfig vendCredentials(
       TableIdentifier tableIdentifier,
+      String baseLocation,
       Set<String> tableLocations,
       Set<PolarisStorageActions> actionsRequested,
       Optional<String> refreshCredentialsEndpoint) {
@@ -1890,6 +1930,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // Re-validate before vending in case this is called from other paths in the future.
     // Primary validation for loadCredentials and delegation happens at call sites.
     validateTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
+    if (baseCatalog instanceof LocalIcebergCatalog localCatalog) {
+      localCatalog.validateNoLocationOverlapForCredentialVending(
+          tableIdentifier, baseLocation, tableLocations, resolvedStoragePath);
+    }
 
     return storageAccessConfigProvider()
         .getStorageAccessConfig(
@@ -1918,5 +1962,170 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return ImmutableLoadCredentialsResponse.builder()
         .credentials(loadTableResponse.credentials())
         .build();
+  }
+
+  /**
+   * Authorizes a LIST operation on its container and reports whether the results must be filtered
+   * per entity.
+   *
+   * <p>A caller allowed {@code listOperation} on the container sees every child, so no filtering is
+   * needed. A caller denied it is forbidden, unless {@code ENABLE_ENTITY_LEVEL_LIST_FILTERING} is
+   * enabled for the catalog, in which case the list is returned filtered to the children the caller
+   * may see individually (see {@link #entityVisibilityOperation}).
+   *
+   * @return {@code true} if the caller was denied on the container and the results must be filtered
+   */
+  private boolean authorizeListOrRequireFiltering(
+      PolarisAuthorizableOperation listOperation, Namespace container) {
+    AuthorizationDecision decision = authorizeBasicNamespaceOperation(listOperation, container);
+    boolean filter =
+        !decision.isAllowed()
+            && realmConfig()
+                .getConfig(ENABLE_ENTITY_LEVEL_LIST_FILTERING, getResolvedCatalogEntity());
+    if (!filter) {
+      decision.throwIfDenied();
+    }
+    initializeCatalog();
+    return filter;
+  }
+
+  /**
+   * Maps a container-scoped LIST operation to the entity-scoped operation used to decide whether an
+   * individual candidate is visible.
+   *
+   * <p>The two are deliberately distinct. The container operation decides whether the caller sees
+   * every child, while the entity operation, checked only when the container operation is denied,
+   * asks whether this one entity may be seen. Keeping them separate lets authorizers require a
+   * different permission per entity -- the built-in RBAC authorizer maps the entity operations to
+   * the {@code *_READ_PROPERTIES} privileges.
+   */
+  private static PolarisAuthorizableOperation entityVisibilityOperation(
+      PolarisAuthorizableOperation listOperation) {
+    return switch (listOperation) {
+      case LIST_NAMESPACES -> PolarisAuthorizableOperation.LIST_NAMESPACE;
+      case LIST_TABLES -> PolarisAuthorizableOperation.LIST_TABLE;
+      case LIST_VIEWS -> PolarisAuthorizableOperation.LIST_VIEW;
+      default ->
+          throw new IllegalArgumentException("Not a filterable list operation: " + listOperation);
+    };
+  }
+
+  /** One filtering candidate: the entity, the path it resolves under, and its visibility intent. */
+  private record Candidate<T>(T entity, ResolverPath path, AuthorizationIntent intent) {}
+
+  private <T> List<T> filterEntities(
+      List<T> entities,
+      Function<T, ResolverPath> toResolverPath,
+      Function<T, PolarisSecurable> toSecurable,
+      PolarisAuthorizableOperation op) {
+    if (entities.isEmpty()) {
+      return entities;
+    }
+    var principal = polarisPrincipal();
+    PolarisAuthorizableOperation entityOp = entityVisibilityOperation(op);
+    List<Candidate<T>> candidates = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      candidates.add(
+          new Candidate<>(
+              entity,
+              toResolverPath.apply(entity),
+              new SingleTargetAuthorizationIntent(entityOp, toSecurable.apply(entity))));
+    }
+
+    PolarisResolutionManifest filterManifest = newResolutionManifest();
+    candidates.forEach(candidate -> filterManifest.addPath(candidate.path()));
+    AuthorizationState authzState = new AuthorizationState(filterManifest);
+
+    // Requests are built before resolution so the authorizer decides what to resolve, same as
+    // in the single-request path.
+    authorizer()
+        .resolveAuthorizationInputs(
+            authzState,
+            new AuthorizationBatchRequest(
+                principal, candidates.stream().map(Candidate::intent).toList()));
+
+    // Look each path up under the same key addPath registered it with, so the lookup key cannot
+    // drift from the registered one. Unresolvable candidates (e.g. deleted between list and
+    // filter) are dropped silently.
+    List<Candidate<T>> resolvable =
+        candidates.stream()
+            .filter(candidate ->
+                filterManifest.getResolvedPath(ResolvedPathKey.of(candidate.path()), true) != null)
+            .toList();
+
+    List<AuthorizationDecision> decisions =
+        authorizer()
+            .authorize(
+                authzState,
+                new AuthorizationBatchRequest(
+                    principal, resolvable.stream().map(Candidate::intent).toList()));
+    Preconditions.checkState(
+        decisions.size() == resolvable.size(),
+        "Authorizer returned %s decisions for %s requests",
+        decisions.size(),
+        resolvable.size());
+    return IntStream.range(0, resolvable.size())
+        .filter(i -> decisions.get(i).isAllowed())
+        .mapToObj(i -> resolvable.get(i).entity())
+        .toList();
+  }
+
+  /**
+   * Returns a namespace as a {@link PolarisSecurable} rooted at {@link #catalogName()}.
+   *
+   * <p>The path is: {@code [CATALOG, NAMESPACE, ...NAMESPACE]} — one NAMESPACE segment per level.
+   */
+  private PolarisSecurable namespacePolarisSecurable(Namespace ns) {
+    PathSegment catalogSegment = new PathSegment(PolarisEntityType.CATALOG, catalogName());
+    PathSegment[] nsSegments =
+        Arrays.stream(ns.levels())
+            .map(level -> new PathSegment(PolarisEntityType.NAMESPACE, level))
+            .toArray(PathSegment[]::new);
+    return PolarisSecurable.of(catalogSegment, nsSegments);
+  }
+
+  /**
+   * Returns a table/view identifier as a {@link PolarisSecurable} rooted at {@link #catalogName()}.
+   *
+   * <p>The path is: {@code [CATALOG, NAMESPACE..., TABLE_LIKE]}.
+   */
+  private PolarisSecurable tableLikePolarisSecurable(TableIdentifier id) {
+    PathSegment catalogSegment = new PathSegment(PolarisEntityType.CATALOG, catalogName());
+    PathSegment[] rest =
+        Stream.concat(
+                Arrays.stream(id.namespace().levels())
+                    .map(level -> new PathSegment(PolarisEntityType.NAMESPACE, level)),
+                Stream.of(new PathSegment(PolarisEntityType.TABLE_LIKE, id.name())))
+            .toArray(PathSegment[]::new);
+    return PolarisSecurable.of(catalogSegment, rest);
+  }
+
+  /**
+   * Filters {@code namespaces} to those the caller is authorized to see under {@code op}.
+   *
+   * <p>Creates a single manifest for all child namespaces, resolves it once, and batch-authorizes.
+   * Namespaces that cannot be resolved (e.g. deleted between list and filter) are excluded
+   * silently.
+   */
+  private List<Namespace> filterNamespaces(
+      List<Namespace> namespaces, PolarisAuthorizableOperation op) {
+    return filterEntities(
+        namespaces,
+        ns -> new ResolverPath(Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE, true),
+        this::namespacePolarisSecurable,
+        op);
+  }
+
+  private List<TableIdentifier> filterTableIdentifiers(
+      List<TableIdentifier> identifiers, PolarisAuthorizableOperation op) {
+    return filterEntities(
+        identifiers,
+        id ->
+            new ResolverPath(
+                PolarisCatalogHelpers.tableIdentifierToList(id),
+                PolarisEntityType.TABLE_LIKE,
+                true),
+        this::tableLikePolarisSecurable,
+        op);
   }
 }

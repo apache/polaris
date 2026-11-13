@@ -146,11 +146,10 @@ public class PolarisEntity extends PolarisBaseEntity {
 
   public static List<NameAndId> toNameAndIdList(List<EntityNameLookupRecord> entities) {
     return Optional.ofNullable(entities)
-        .map(
-            list ->
-                list.stream()
-                    .map(record -> new NameAndId(record.getName(), record.getId()))
-                    .collect(Collectors.toList()))
+        .map(list ->
+            list.stream()
+                .map(record -> new NameAndId(record.getName(), record.getId()))
+                .collect(Collectors.toList()))
         .orElse(null);
   }
 

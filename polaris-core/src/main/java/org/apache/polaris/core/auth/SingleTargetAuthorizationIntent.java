@@ -19,6 +19,7 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
+import java.util.function.Consumer;
 import org.jspecify.annotations.NonNull;
 
 /** Authorization intent for operations with one explicit target. */
@@ -28,5 +29,10 @@ public record SingleTargetAuthorizationIntent(
   public SingleTargetAuthorizationIntent {
     Preconditions.checkNotNull(operation, "operation must be non-null");
     Preconditions.checkNotNull(target, "target must be non-null");
+  }
+
+  @Override
+  public void visitSecurables(Consumer<PolarisSecurable> visitor) {
+    visitor.accept(target);
   }
 }

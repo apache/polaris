@@ -26,6 +26,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.util.Collection;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.BigQueryMetastoreConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
@@ -139,15 +140,27 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     return properties;
   }
 
+  /**
+   * Copies the connection properties whose keys are in {@code allowedKeys} into {@code target}.
+   * Connection properties are set by catalog administrators, so each connection type forwards only
+   * an explicit allow-list to the Iceberg catalog client instead of every key.
+   */
+  protected void copyAllowedProperties(Map<String, String> target, Collection<String> allowedKeys) {
+    for (String key : allowedKeys) {
+      if (properties.containsKey(key)) {
+        target.put(key, properties.get(key));
+      }
+    }
+  }
+
   private static final ObjectMapper DEFAULT_MAPPER;
 
   static {
     DEFAULT_MAPPER =
         JsonMapper.builder()
-            .changeDefaultPropertyInclusion(
-                incl ->
-                    incl.withValueInclusion(JsonInclude.Include.NON_NULL)
-                        .withContentInclusion(JsonInclude.Include.NON_NULL))
+            .changeDefaultPropertyInclusion(incl ->
+                incl.withValueInclusion(JsonInclude.Include.NON_NULL)
+                    .withContentInclusion(JsonInclude.Include.NON_NULL))
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .build();
   }
@@ -169,7 +182,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     try {
       URI uriObj = URI.create(uri);
       if (connectionTypeCode == ConnectionType.HIVE.getCode()
-          && uriObj.getScheme().equals("thrift")) {
+          && "thrift".equalsIgnoreCase(uriObj.getScheme())) {
         // Hive metastore runs a thrift server.
         return;
       }

@@ -300,6 +300,16 @@ Flag to enable or disable the API to reset principal credentials. Defaults to en
 
 ---
 
+##### `polaris.features."ENABLE_ENTITY_LEVEL_LIST_FILTERING"`
+
+When true, listNamespaces, listTables and listViews no longer return 403 to a caller who lacks the matching *_LIST privilege on the parent. Instead, the caller receives only the children it has access to. Under the built-in RBAC authorizer, a child is accessible if the caller holds *_READ_PROPERTIES (or a stronger privilege that implies it, such as TABLE_READ_DATA for tables) on the child or one of its parents. Callers holding *_LIST on the parent are unaffected and still see every child. When false (default), callers without *_LIST on the parent receive a 403.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+- **Catalog Config:** `polaris.config.enable-entity-level-list-filtering`
+
+---
+
 ##### `polaris.features."ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES"`
 
 When true, enables finer grained update table privileges which are passed to the authorizer for update table operations
@@ -356,6 +366,15 @@ When enabled, allows RBAC operations to create synthetic entities for entities i
 
 ---
 
+##### `polaris.features."ENFORCE_CATALOG_CONFIG_AUTHORIZATION"`
+
+When true, Iceberg REST GET /v1/config requires CATALOG_READ_CONFIG (or a catalog-level privilege that subsumes it); unauthorized callers get 403. Namespace- or table-scoped grants are not enough; grant CATALOG_READ_CONFIG on the catalog. When false (default), the endpoint is not authorization-gated so upgrades do not 403 bootstrap. On a 200 the response still includes catalog properties (defaults) as it does today. Enable after granting CATALOG_READ_CONFIG (or catalog-level content privileges) and after updating Ranger/OPA policies for GET_CATALOG_CONFIG. Ranger currently maps GET_CATALOG_CONFIG to the existing catalog-properties-read access type; do not enable this flag for Ranger until a dedicated catalog-config-read access type exists (or accept that coarse mapping). This flag is temporary. The default will not flip until client-facing catalog configuration is defined. A production-readiness warning is emitted while the flag remains false only when using the internal Polaris authorizer(`polaris.authorization.type=internal`).
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING"`
 
 If set to true, require that principals must rotate their credentials before being used for anything else.
@@ -367,7 +386,7 @@ If set to true, require that principals must rotate their credentials before bei
 
 ##### `polaris.features."ENTITY_CACHE_WEIGHER_TARGET"`
 
-The maximum weight for the entity cache. This is a heuristic value without any particular unit of measurement. It roughly correlates with the total heap size of cached values. Fine-tuning requires experimentation in the specific deployment environment
+The maximum weight for the entity cache. Weights approximate the size in bytes of the cached entities and of their grant records, so the default corresponds to roughly 100 MiB of entity data. This is a heuristic: actual heap usage is higher than the configured weight, and fine-tuning requires experimentation in the specific deployment environment.
 
 - **Type:** `Long`
 - **Default:** `104857600`
@@ -479,7 +498,7 @@ How many times to retry refreshing metadata when the previous error was retryabl
 
 ##### `polaris.features."OPTIMIZED_SIBLING_CHECK"`
 
-When set, Polaris uses an index to perform sibling overlap checks between tables, views, and namespaces. This is not a bypass mode, but enabling or disabling it can change overlap-detection coverage for non-standard location layouts. Only enable it when the required index and backfill state is known to be correct. Locations written by Polaris always end with a slash; locations stored by older versions without one are still handled. Supported by the JDBC and NoSQL metastore implementations.
+When set, Polaris uses an index to check overlap against base locations of tables, views, and namespaces across the catalog. If ALLOW_UNSTRUCTURED_TABLE_LOCATION is enabled (or the catalog is external), siblings are still listed when the index finds no conflict, to check sibling tables' write.data.path and write.metadata.path properties. Only enable it when the required index and backfill state is known to be correct. Locations written by Polaris always end with a slash; locations stored by older versions without one are still handled. Supported by the JDBC and NoSQL metastore implementations.
 
 - **Type:** `Boolean`
 - **Default:** `false`

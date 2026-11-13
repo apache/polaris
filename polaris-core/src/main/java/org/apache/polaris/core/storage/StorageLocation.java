@@ -85,15 +85,6 @@ public class StorageLocation {
     return path.startsWith("/") ? path.substring(1) : path;
   }
 
-  /** If a path doesn't start with `/`, this will add one */
-  protected static @NonNull String ensureLeadingSlash(@NonNull String location) {
-    if (location.startsWith("/")) {
-      return location;
-    } else {
-      return "/" + location;
-    }
-  }
-
   @Override
   public int hashCode() {
     return location.hashCode();
