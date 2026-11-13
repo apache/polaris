@@ -18,11 +18,13 @@
  */
 package org.apache.polaris.service.storage;
 
+import com.google.common.base.Suppliers;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -68,12 +70,18 @@ public class StsCredentialVendingMechanism implements S3CredentialVendingMechani
     this.stsClientProvider = stsClientProvider;
     this.cache = cache;
     this.realmConfig = realmConfig;
+    // Without static keys, stsCredentials() builds a new DefaultCredentialsProvider, and a new
+    // provider fetches the base credentials again from their source (IMDS, STS web identity, ...).
+    // Build it once so that every AssumeRole call shares one provider and its cached credentials.
+    Supplier<AwsCredentialsProvider> defaultCredentials =
+        Suppliers.memoize(storageConfiguration::stsCredentials);
     this.credentialsResolver =
         config -> {
-          if (realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
+          if (realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)
+              && config.getStorageName() != null) {
             return Optional.of(storageConfiguration.stsCredentials(config.getStorageName()));
           }
-          return Optional.of(storageConfiguration.stsCredentials());
+          return Optional.of(defaultCredentials.get());
         };
   }
 

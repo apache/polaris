@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -45,6 +46,8 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -151,6 +154,46 @@ class StsCredentialVendingMechanismTest {
 
     verify(storageConfiguration).stsCredentials();
     verify(storageConfiguration, never()).stsCredentials(anyString());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void defaultCredentialsAreResolvedOnceAndSharedByEveryVend(boolean resolveByStorageName) {
+    StorageConfiguration storageConfiguration = mock(StorageConfiguration.class);
+    AwsCredentialsProvider defaultCredentials =
+        StaticCredentialsProvider.create(AwsBasicCredentials.create("ak", "sk"));
+    when(storageConfiguration.stsCredentials()).thenReturn(defaultCredentials);
+    // Like the real default method: no storage name means the default credentials.
+    when(storageConfiguration.stsCredentials((String) null))
+        .thenAnswer(invocation -> storageConfiguration.stsCredentials());
+
+    StsClient stsClient = mock(StsClient.class);
+    ArgumentCaptor<AssumeRoleRequest> captor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
+    when(stsClient.assumeRole(captor.capture())).thenReturn(assumeRoleResponse());
+    StsClientProvider stsClientProvider = destination -> stsClient;
+
+    RealmConfig realmConfig =
+        realmConfig(Map.of(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), resolveByStorageName));
+    StsCredentialVendingMechanism mechanism =
+        new StsCredentialVendingMechanism(
+            storageConfiguration, stsClientProvider, null, realmConfig);
+
+    // No credential cache: like first accesses to different tables, every vend calls AssumeRole.
+    for (int i = 0; i < 2; i++) {
+      PolarisStorageIntegration integration = mechanism.integrationFor(storageConfig());
+      integration.getStorageAccessConfig(
+          grants(), Optional.empty(), CredentialVendingContext.empty());
+      integration.getStorageAccessConfig(
+          grants(), Optional.empty(), CredentialVendingContext.empty());
+    }
+
+    verify(storageConfiguration, times(1)).stsCredentials();
+    assertThat(captor.getAllValues())
+        .hasSize(4)
+        .allSatisfy(request ->
+            assertThat(request.overrideConfiguration())
+                .flatMap(c -> c.credentialsProvider())
+                .containsSame(defaultCredentials));
   }
 
   @Test
