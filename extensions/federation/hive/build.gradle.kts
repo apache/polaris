@@ -39,6 +39,8 @@ dependencies {
     exclude("log4j", "log4j")
     exclude("org.apache.zookeeper", "zookeeper")
     exclude("org.ow2.asm", "asm-all")
+    exclude(group = "org.eclipse.jetty")
+    exclude(group = "org.eclipse.jetty.websocket")
   }
 
   // Hadoop dependencies
@@ -54,6 +56,8 @@ dependencies {
     exclude("com.sun.jersey", "jersey-server")
     exclude("com.sun.jersey", "jersey-servlet")
     exclude("io.dropwizard.metrics", "metrics-core")
+    exclude(group = "org.eclipse.jetty")
+    exclude(group = "org.eclipse.jetty.websocket")
   }
 
   // CDI dependencies for runtime discovery
