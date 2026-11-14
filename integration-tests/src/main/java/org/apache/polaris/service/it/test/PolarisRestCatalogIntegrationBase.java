@@ -1105,7 +1105,13 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       assertThat(registered.currentSnapshot()).isEqualTo(sourceCurrentSnapshot);
       assertThat(registered.snapshots()).containsExactlyElementsOf(sourceSnapshots);
       assertThat(registered.history()).isEqualTo(sourceHistory);
-      assertThat(registered.schemas()).isEqualTo(sourceSchemas);
+      assertThat(registered.schemas().keySet()).isEqualTo(sourceSchemas.keySet());
+      sourceSchemas.forEach(
+          (schemaId, expectedSchema) -> {
+            Schema actualSchema = registered.schemas().get(schemaId);
+            assertThat(actualSchema).isNotNull();
+            assertThat(actualSchema.sameSchema(expectedSchema)).isTrue();
+          });
 
       registered.newFastAppend().appendFile(FILE_C).commit();
       assertThat(registered.currentSnapshot().parentId())
