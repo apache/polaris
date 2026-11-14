@@ -33,7 +33,7 @@ Download the [latest release](https://polaris.apache.org/downloads/latest/) and 
 
 ```bash
 POLARIS_VERSION=1.8.0
-curl -Lf https://downloads.apache.org/polaris/${POLARIS_VERSION}/polaris-bin-${POLARIS_VERSION}.tgz | tar xzf -
+curl -Lf https://archive.apache.org/dist/polaris/${POLARIS_VERSION}/polaris-bin-${POLARIS_VERSION}.tgz | tar xzf -
 cd polaris-bin-${POLARIS_VERSION}
 ```
 
