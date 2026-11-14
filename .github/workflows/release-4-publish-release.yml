@@ -218,6 +218,14 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Check Docker image dependency licenses
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          exec_process ./gradlew :polaris-server:checkDistributionLicenses :polaris-admin:checkDistributionLicenses \
+            -Dquarkus.container-image.build=false \
+            -Dquarkus.container-image.push=false
+
       - name: Log in to Docker Hub
         if: env.DRY_RUN == '0'
         env:

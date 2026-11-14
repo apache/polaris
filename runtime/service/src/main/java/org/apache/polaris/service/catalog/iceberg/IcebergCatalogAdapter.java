@@ -159,10 +159,9 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Optional<Namespace> namespaceOptional =
         Optional.ofNullable(parent)
-            .map(
-                namespace ->
-                    NamespaceUtils.splitNamespace(
-                        namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR));
+            .map(namespace ->
+                NamespaceUtils.splitNamespace(
+                    namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR));
     return withCatalog(
         securityContext,
         prefix,
@@ -720,15 +719,14 @@ public class IcebergCatalogAdapter
     CommitTransactionRequest revisedRequest =
         new CommitTransactionRequest(
             commitTransactionRequest.tableChanges().stream()
-                .map(
-                    r -> {
-                      return UpdateTableRequest.create(
-                          r.identifier(),
-                          r.requirements(),
-                          r.updates().stream()
-                              .map(reservedProperties::removeReservedProperties)
-                              .toList());
-                    })
+                .map(r -> {
+                  return UpdateTableRequest.create(
+                      r.identifier(),
+                      r.requirements(),
+                      r.updates().stream()
+                          .map(reservedProperties::removeReservedProperties)
+                          .toList());
+                })
                 .toList());
     return withCatalog(
         securityContext,

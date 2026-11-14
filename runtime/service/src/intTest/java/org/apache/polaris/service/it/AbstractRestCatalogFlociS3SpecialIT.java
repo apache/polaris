@@ -325,67 +325,66 @@ abstract class AbstractRestCatalogFlociS3SpecialIT {
         .createRole(b -> b.roleName(roleName).assumeRolePolicyDocument(trustPolicy(flociAws)));
     flociAws
         .iamClient()
-        .putRolePolicy(
-            b ->
-                b.roleName(roleName)
-                    .policyName("polaris-s3-kms-access")
-                    .policyDocument(s3AndKmsPolicy(flociAws)));
+        .putRolePolicy(b ->
+            b.roleName(roleName)
+                .policyName("polaris-s3-kms-access")
+                .policyDocument(s3AndKmsPolicy(flociAws)));
   }
 
   private static String trustPolicy(FlociAwsAccess flociAws) {
     return """
+    {
+      "Version": "2012-10-17",
+      "Statement": [
         {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Principal": {
-                "AWS": "arn:aws:iam::%s:root"
-              },
-              "Action": "sts:AssumeRole"
-            }
-          ]
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::%s:root"
+          },
+          "Action": "sts:AssumeRole"
         }
-        """
+      ]
+    }
+    """
         .formatted(flociAws.accountId());
   }
 
   private static String s3AndKmsPolicy(FlociAwsAccess flociAws) {
     return """
+    {
+      "Version": "2012-10-17",
+      "Statement": [
         {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject"
-              ],
-              "Resource": "arn:aws:s3:::%s/*"
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "s3:ListBucket",
-                "s3:GetBucketLocation"
-              ],
-              "Resource": "arn:aws:s3:::%s"
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "kms:DescribeKey",
-                "kms:Decrypt",
-                "kms:Encrypt",
-                "kms:GenerateDataKey",
-                "kms:GenerateDataKeyWithoutPlaintext"
-              ],
-              "Resource": "arn:aws:kms:%s:%s:key/*"
-            }
-          ]
+          "Effect": "Allow",
+          "Action": [
+            "s3:GetObject",
+            "s3:PutObject",
+            "s3:DeleteObject"
+          ],
+          "Resource": "arn:aws:s3:::%s/*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:ListBucket",
+            "s3:GetBucketLocation"
+          ],
+          "Resource": "arn:aws:s3:::%s"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "kms:DescribeKey",
+            "kms:Decrypt",
+            "kms:Encrypt",
+            "kms:GenerateDataKey",
+            "kms:GenerateDataKeyWithoutPlaintext"
+          ],
+          "Resource": "arn:aws:kms:%s:%s:key/*"
         }
-        """
+      ]
+    }
+    """
         .formatted(
             flociAws.bucket(),
             flociAws.bucket(),

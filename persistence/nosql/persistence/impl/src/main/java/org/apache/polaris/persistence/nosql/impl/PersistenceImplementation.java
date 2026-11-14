@@ -25,6 +25,7 @@ import static org.apache.polaris.persistence.nosql.api.backend.PersistId.persist
 import static org.apache.polaris.persistence.nosql.api.backend.PersistId.persistIdPart0;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjSerializationHelper.contextualReader;
+import static org.apache.polaris.persistence.nosql.api.obj.ObjSerializationHelper.readersFor;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjTypes.objTypeById;
 import static tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 import static tools.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
@@ -66,6 +67,7 @@ import org.apache.polaris.persistence.nosql.impl.indexes.IndexesProvider;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectReader;
 import tools.jackson.databind.ObjectWriter;
 import tools.jackson.databind.util.ByteBufferBackedInputStream;
 import tools.jackson.dataformat.smile.SmileMapper;
@@ -82,6 +84,7 @@ public final class PersistenceImplementation implements Persistence {
           .disable(FAIL_ON_UNKNOWN_PROPERTIES)
           .enable(DEFAULT_VIEW_INCLUSION)
           .build();
+  private static final ClassValue<ObjectReader> OBJ_READERS = readersFor(SMILE_MAPPER);
   private static final ObjectWriter OBJ_WRITER =
       SMILE_MAPPER.writer().withView(Obj.StorageView.class);
 
@@ -273,22 +276,21 @@ public final class PersistenceImplementation implements Persistence {
               ? new ByteArrayInputStream(f.serialized())
               : new MultiByteArrayInputStream(
                   IntStream.range(0, numParts)
-                      .mapToObj(
-                          p -> {
-                            var part = fetched.get(persistId(id.id(), p));
-                            checkState(
-                                part != null,
-                                "Part #%s of %s of object %s does not exist in the database",
-                                p,
-                                numParts,
-                                id);
-                            checkState(
-                                fetchedObjTypeId.equals(part.type()),
-                                "Object type mismatch, expected '%s', got '%s'",
-                                fetchedObjTypeId,
-                                part.type());
-                            return part.serialized();
-                          })
+                      .mapToObj(p -> {
+                        var part = fetched.get(persistId(id.id(), p));
+                        checkState(
+                            part != null,
+                            "Part #%s of %s of object %s does not exist in the database",
+                            p,
+                            numParts,
+                            id);
+                        checkState(
+                            fetchedObjTypeId.equals(part.type()),
+                            "Object type mismatch, expected '%s', got '%s'",
+                            fetchedObjTypeId,
+                            part.type());
+                        return part.serialized();
+                      })
                       .toList())) {
         r[i] =
             deserializeObj(
@@ -587,7 +589,8 @@ public final class PersistenceImplementation implements Persistence {
         ObjType.class.getName());
 
     var obj =
-        contextualReader(SMILE_MAPPER, objType, id, partNum, versionToken, createdAtMicros)
+        contextualReader(
+                OBJ_READERS.get(typeClass), objType, id, partNum, versionToken, createdAtMicros)
             .readValue(in);
     @SuppressWarnings("unchecked")
     var r = (T) obj;

@@ -145,15 +145,13 @@ public abstract class BaseTestMapping {
           .allSatisfy(
               c -> assertThatCode(() -> mapping.checkCatalogId(c)).doesNotThrowAnyException());
       soft.assertThat(LongStream.of(0, -1, -42, -1000))
-          .allSatisfy(
-              c ->
-                  assertThatIllegalArgumentException().isThrownBy(() -> mapping.checkCatalogId(c)));
+          .allSatisfy(c ->
+              assertThatIllegalArgumentException().isThrownBy(() -> mapping.checkCatalogId(c)));
     } else {
       soft.assertThatCode(() -> mapping.checkCatalogId(0)).doesNotThrowAnyException();
       soft.assertThat(LongStream.of(1, 42, 1000, -1, -42, -1000))
-          .allSatisfy(
-              c ->
-                  assertThatIllegalArgumentException().isThrownBy(() -> mapping.checkCatalogId(c)));
+          .allSatisfy(c ->
+              assertThatIllegalArgumentException().isThrownBy(() -> mapping.checkCatalogId(c)));
     }
   }
 
@@ -335,25 +333,24 @@ public abstract class BaseTestMapping {
     var obj = buildWithDefaults(parameter.objBuilder()).build();
     return parameter
         .typeVariations(new MappingSample(obj, entity))
-        .flatMap(
-            base ->
-                Stream.of(
-                    //
-                    base.varyCreatedTimestamp(parameter.objBuilder()),
-                    base.varyUpdatedTimestamp(parameter.objBuilder()),
-                    base.varyProperties(parameter.objBuilder()),
-                    base.varyInternalProperties(parameter.objBuilder()),
-                    base.varyEntityVersion(parameter.objBuilder()),
-                    base.varyParentId(parameter.objBuilder()),
-                    //
-                    base.varyCreatedTimestamp(parameter.objBuilder())
-                        .varyUpdatedTimestamp(parameter.objBuilder())
-                        .varyProperties(parameter.objBuilder())
-                        .varyInternalProperties(parameter.objBuilder())
-                        .varyEntityVersion(parameter.objBuilder())
-                        .varyParentId(parameter.objBuilder())
-                    //
-                    ));
+        .flatMap(base ->
+            Stream.of(
+                //
+                base.varyCreatedTimestamp(parameter.objBuilder()),
+                base.varyUpdatedTimestamp(parameter.objBuilder()),
+                base.varyProperties(parameter.objBuilder()),
+                base.varyInternalProperties(parameter.objBuilder()),
+                base.varyEntityVersion(parameter.objBuilder()),
+                base.varyParentId(parameter.objBuilder()),
+                //
+                base.varyCreatedTimestamp(parameter.objBuilder())
+                    .varyUpdatedTimestamp(parameter.objBuilder())
+                    .varyProperties(parameter.objBuilder())
+                    .varyInternalProperties(parameter.objBuilder())
+                    .varyEntityVersion(parameter.objBuilder())
+                    .varyParentId(parameter.objBuilder())
+                //
+                ));
   }
 
   protected PolarisBaseEntity.Builder entityBuilder(

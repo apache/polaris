@@ -68,13 +68,12 @@ class RelationalJdbcProductionReadinessChecksTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.message())
-                  .isEqualTo("The current persistence (jdbc:h2) is intended for tests only.");
-              assertThat(error.offendingProperty()).isEqualTo("quarkus.datasource.jdbc.url");
-              assertThat(error.severe()).isFalse();
-            });
+        .satisfies(error -> {
+          assertThat(error.message())
+              .isEqualTo("The current persistence (jdbc:h2) is intended for tests only.");
+          assertThat(error.offendingProperty()).isEqualTo("quarkus.datasource.jdbc.url");
+          assertThat(error.severe()).isFalse();
+        });
   }
 
   @Test

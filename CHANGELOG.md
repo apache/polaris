@@ -142,6 +142,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `resolveSelections()` may be incompatible with the new Polaris code, because in some cases the
   REST API implementation code requests additional selections via `AuthorizationState`.
   All implementations should call `AuthorizationState.resolve()` now.
+- When external principals are enabled, `PolarisAuthorizer` implementations must not call
+  `PolarisResolutionManifest.resolveAll()`, nor resolve the caller principal or its roles in any
+  other way: external principals have no entity in the Polaris metastore, and such resolution now
+  fails with an HTTP 500 error. Implementations should call `AuthorizationState.resolve()` and only 
+  select the securables that are actually needed for authorization.
 - The event attribute `EventAttributes.ACCESS_DELEGATION_MODE` (`String`) has been replaced with
   `EventAttributes.ACCESS_DELEGATION_MODES` (`List<String>`). Accordingly, the OpenTelemetry event
   listener now emits `polaris.access_delegation_modes` instead of `polaris.access_delegation_mode`.
@@ -192,7 +197,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added `register` support for both `tables` and `views` commands
 - Python CLI: `setup export` and `setup apply` now support both Iceberg tables and views as register entries.
 - Python CLI: added `namespaces update` to set and remove namespace properties
-- NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
+- NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`.
+  `fair-retries` does not apply to locally synchronized commits, which use FIFO admission;
+  conflict retry backoff still applies.
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
 
 ### Changes

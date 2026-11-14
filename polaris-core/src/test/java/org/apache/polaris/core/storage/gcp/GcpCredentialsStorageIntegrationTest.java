@@ -92,10 +92,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   private static final ObjectMapper MAPPER =
       JsonMapper.builder()
-          .changeDefaultPropertyInclusion(
-              incl ->
-                  incl.withValueInclusion(JsonInclude.Include.NON_NULL)
-                      .withContentInclusion(JsonInclude.Include.NON_NULL))
+          .changeDefaultPropertyInclusion(incl ->
+              incl.withValueInclusion(JsonInclude.Include.NON_NULL)
+                  .withContentInclusion(JsonInclude.Include.NON_NULL))
           .build();
 
   private static List<LocationGrant> toGrants(
@@ -153,17 +152,15 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     // LIST
     if (allowedListAction) {
       Assertions.assertThatNoException()
-          .isThrownBy(
-              () ->
-                  storageClient.list(
-                      "sfc-dev1-regtest",
-                      Storage.BlobListOption.prefix("polaris-test/subscoped-test/read1/")));
+          .isThrownBy(() ->
+              storageClient.list(
+                  "sfc-dev1-regtest",
+                  Storage.BlobListOption.prefix("polaris-test/subscoped-test/read1/")));
     } else {
-      Assertions.assertThatThrownBy(
-              () ->
-                  storageClient.list(
-                      "sfc-dev1-regtest",
-                      Storage.BlobListOption.prefix("polaris-test/subscoped-test/read1/")))
+      Assertions.assertThatThrownBy(() ->
+              storageClient.list(
+                  "sfc-dev1-regtest",
+                  Storage.BlobListOption.prefix("polaris-test/subscoped-test/read1/")))
           .isInstanceOf(StorageException.class);
     }
     // DELETE
@@ -406,10 +403,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   @Test
   public void testGenerateAccessBoundaryRejectsUnsupportedCelLiteralCharacters() {
-    Assertions.assertThatThrownBy(
-            () ->
-                GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-                    Set.of("gs://bucket1/a\u001fb"), Set.of("gs://bucket1/a\u001fb"), Set.of()))
+    Assertions.assertThatThrownBy(() ->
+            GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+                Set.of("gs://bucket1/a\u001fb"), Set.of("gs://bucket1/a\u001fb"), Set.of()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Unsupported control character");
   }
@@ -499,17 +495,16 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     Mockito.verify(mockIamClient)
         .generateAccessToken(
-            Mockito.argThat(
-                request ->
-                    request
-                            .getName()
-                            .equals(
-                                GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX
-                                    + serviceAccount)
-                        && request.getScopeCount() > 0
-                        && request
-                            .getScope(0)
-                            .equals(GcpCredentialsStorageIntegration.IMPERSONATION_SCOPE)));
+            Mockito.argThat(request ->
+                request
+                        .getName()
+                        .equals(
+                            GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX
+                                + serviceAccount)
+                    && request.getScopeCount() > 0
+                    && request
+                        .getScope(0)
+                        .equals(GcpCredentialsStorageIntegration.IMPERSONATION_SCOPE)));
   }
 
   @Test
@@ -702,13 +697,11 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     Mockito.verify(mockIamClient)
         .generateAccessToken(
-            Mockito.argThat(
-                request ->
-                    request
-                        .getName()
-                        .equals(
-                            GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX
-                                + serviceAccount)));
+            Mockito.argThat(request ->
+                request
+                    .getName()
+                    .equals(
+                        GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX + serviceAccount)));
 
     // The source credential used for impersonation must be a federated identity, not the raw
     // source credential. This ensures the attribution JWT (not the ambient SA key) is what

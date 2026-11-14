@@ -85,14 +85,13 @@ public final class PolarisPrincipalAttributePrefixes {
       return Map.of();
     }
     Map<String, String> derived = new LinkedHashMap<>();
-    attributes.forEach(
-        attribute -> {
-          String key = attribute.key().key();
-          Object value = attribute.value();
-          if (isDerivedAttributeKey(key) && value instanceof String stringValue) {
-            derived.put(key, stringValue);
-          }
-        });
+    attributes.forEach(attribute -> {
+      String key = attribute.key().key();
+      Object value = attribute.value();
+      if (isDerivedAttributeKey(key) && value instanceof String stringValue) {
+        derived.put(key, stringValue);
+      }
+    });
     return Map.copyOf(derived);
   }
 }

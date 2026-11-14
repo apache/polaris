@@ -171,14 +171,13 @@ public class TreeMapMetaStore {
     /** Rollback all changes made to this slice since transaction started */
     private void rollback() {
       ensureReadWriteTr();
-      undoSlice.forEach(
-          (key, value) -> {
-            if (value == null) {
-              slice.remove(key);
-            } else {
-              slice.put(key, value);
-            }
-          });
+      undoSlice.forEach((key, value) -> {
+        if (value == null) {
+          slice.remove(key);
+        } else {
+          slice.put(key, value);
+        }
+      });
     }
 
     private void startWriteTransaction() {

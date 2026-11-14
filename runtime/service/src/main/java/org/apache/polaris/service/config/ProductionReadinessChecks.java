@@ -100,15 +100,14 @@ public class ProductionReadinessChecks {
           .log(
               "{} Production readiness checks failed! Check the warnings below.",
               hasSevere ? severe : warning);
-      errors.forEach(
-          error ->
-              LOGGER
-                  .makeLoggingEventBuilder(error.severe() ? Level.ERROR : Level.WARN)
-                  .log(
-                      "- {} {} Offending configuration option: '{}'.",
-                      error.severe() ? severe : warning,
-                      error.message(),
-                      error.offendingProperty()));
+      errors.forEach(error ->
+          LOGGER
+              .makeLoggingEventBuilder(error.severe() ? Level.ERROR : Level.WARN)
+              .log(
+                  "- {} {} Offending configuration option: '{}'.",
+                  error.severe() ? severe : warning,
+                  error.message(),
+                  error.offendingProperty()));
       LOGGER
           .makeLoggingEventBuilder(hasSevere ? Level.ERROR : Level.WARN)
           .log(
@@ -157,48 +156,47 @@ public class ProductionReadinessChecks {
     List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
     configuration
         .realms()
-        .forEach(
-            (realm, config) -> {
-              if (config.type() != AuthenticationType.EXTERNAL) {
-                if (config.tokenBroker().type().equals("rsa-key-pair")) {
-                  if (config
-                      .tokenBroker()
-                      .rsaKeyPair()
-                      .map(RSAKeyPairConfiguration::publicKeyFile)
-                      .isEmpty()) {
-                    errors.add(
-                        Error.of(
-                            "A public key file wasn't provided and will be generated.",
-                            "polaris.authentication.%stoken-broker.rsa-key-pair.public-key-file"
-                                .formatted(authRealmSegment(realm))));
-                  }
-                  if (config
-                      .tokenBroker()
-                      .rsaKeyPair()
-                      .map(RSAKeyPairConfiguration::privateKeyFile)
-                      .isEmpty()) {
-                    errors.add(
-                        Error.of(
-                            "A private key file wasn't provided and will be generated.",
-                            "polaris.authentication.%stoken-broker.rsa-key-pair.private-key-file"
-                                .formatted(authRealmSegment(realm))));
-                  }
-                }
-                if (config.tokenBroker().type().equals("symmetric-key")) {
-                  if (config
-                      .tokenBroker()
-                      .symmetricKey()
-                      .flatMap(SymmetricKeyConfiguration::secret)
-                      .isPresent()) {
-                    errors.add(
-                        Error.of(
-                            "A symmetric key secret was provided through configuration rather than through a secret file.",
-                            "polaris.authentication.%stoken-broker.symmetric-key.secret"
-                                .formatted(authRealmSegment(realm))));
-                  }
-                }
+        .forEach((realm, config) -> {
+          if (config.type() != AuthenticationType.EXTERNAL) {
+            if (config.tokenBroker().type().equals("rsa-key-pair")) {
+              if (config
+                  .tokenBroker()
+                  .rsaKeyPair()
+                  .map(RSAKeyPairConfiguration::publicKeyFile)
+                  .isEmpty()) {
+                errors.add(
+                    Error.of(
+                        "A public key file wasn't provided and will be generated.",
+                        "polaris.authentication.%stoken-broker.rsa-key-pair.public-key-file"
+                            .formatted(authRealmSegment(realm))));
               }
-            });
+              if (config
+                  .tokenBroker()
+                  .rsaKeyPair()
+                  .map(RSAKeyPairConfiguration::privateKeyFile)
+                  .isEmpty()) {
+                errors.add(
+                    Error.of(
+                        "A private key file wasn't provided and will be generated.",
+                        "polaris.authentication.%stoken-broker.rsa-key-pair.private-key-file"
+                            .formatted(authRealmSegment(realm))));
+              }
+            }
+            if (config.tokenBroker().type().equals("symmetric-key")) {
+              if (config
+                  .tokenBroker()
+                  .symmetricKey()
+                  .flatMap(SymmetricKeyConfiguration::secret)
+                  .isPresent()) {
+                errors.add(
+                    Error.of(
+                        "A symmetric key secret was provided through configuration rather than through a secret file.",
+                        "polaris.authentication.%stoken-broker.symmetric-key.secret"
+                            .formatted(authRealmSegment(realm))));
+              }
+            }
+          }
+        });
     return ProductionReadinessCheck.of(errors);
   }
 
@@ -208,17 +206,15 @@ public class ProductionReadinessChecks {
     List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
     configuration
         .realms()
-        .forEach(
-            (realm, config) -> {
-              if (config.credentialMode() == CredentialMode.EXTERNAL
-                  && config.type() == AuthenticationType.INTERNAL) {
-                errors.add(
-                    Error.ofSevere(
-                        "Setting principal mode to EXTERNAL when the authentication type is INTERNAL is not allowed.",
-                        "polaris.authentication.%scredential-mode"
-                            .formatted(authRealmSegment(realm))));
-              }
-            });
+        .forEach((realm, config) -> {
+          if (config.credentialMode() == CredentialMode.EXTERNAL
+              && config.type() == AuthenticationType.INTERNAL) {
+            errors.add(
+                Error.ofSevere(
+                    "Setting principal mode to EXTERNAL when the authentication type is INTERNAL is not allowed.",
+                    "polaris.authentication.%scredential-mode".formatted(authRealmSegment(realm))));
+          }
+        });
     return ProductionReadinessCheck.of(errors);
   }
 
@@ -230,16 +226,15 @@ public class ProductionReadinessChecks {
     if (authorizationConfiguration.type().equals("internal")) {
       authenticationConfiguration
           .realms()
-          .forEach(
-              (realm, config) -> {
-                if (config.credentialMode() == CredentialMode.EXTERNAL) {
-                  errors.add(
-                      Error.ofSevere(
-                          "Setting principal mode to EXTERNAL when the authorizer is the default (internal) is not allowed.",
-                          "polaris.authentication.%scredential-mode"
-                              .formatted(authRealmSegment(realm))));
-                }
-              });
+          .forEach((realm, config) -> {
+            if (config.credentialMode() == CredentialMode.EXTERNAL) {
+              errors.add(
+                  Error.ofSevere(
+                      "Setting principal mode to EXTERNAL when the authorizer is the default (internal) is not allowed.",
+                      "polaris.authentication.%scredential-mode"
+                          .formatted(authRealmSegment(realm))));
+            }
+          });
     }
     return ProductionReadinessCheck.of(errors);
   }
@@ -251,79 +246,72 @@ public class ProductionReadinessChecks {
     // is EXTERNAL or MIXED). A purely INTERNAL realm never activates the OIDC augmentor.
     boolean anyOidc =
         authConfig.realms().values().stream()
-            .anyMatch(
-                r ->
-                    r.type() == AuthenticationType.EXTERNAL
-                        || r.type() == AuthenticationType.MIXED);
+            .anyMatch(r ->
+                r.type() == AuthenticationType.EXTERNAL || r.type() == AuthenticationType.MIXED);
     if (!anyOidc) {
       return ProductionReadinessCheck.OK;
     }
     boolean anyExternal =
         authConfig.realms().values().stream()
-            .anyMatch(
-                r ->
-                    (r.type() == AuthenticationType.EXTERNAL
-                            || r.type() == AuthenticationType.MIXED)
-                        && r.credentialMode() == CredentialMode.EXTERNAL);
+            .anyMatch(r ->
+                (r.type() == AuthenticationType.EXTERNAL || r.type() == AuthenticationType.MIXED)
+                    && r.credentialMode() == CredentialMode.EXTERNAL);
     boolean anyInternal =
         authConfig.realms().values().stream()
-            .anyMatch(
-                r ->
-                    (r.type() == AuthenticationType.EXTERNAL
-                            || r.type() == AuthenticationType.MIXED)
-                        && r.credentialMode() != CredentialMode.EXTERNAL);
+            .anyMatch(r ->
+                (r.type() == AuthenticationType.EXTERNAL || r.type() == AuthenticationType.MIXED)
+                    && r.credentialMode() != CredentialMode.EXTERNAL);
     List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
     oidcConfig
         .tenants()
-        .forEach(
-            (tenantId, tenant) -> {
-              if (!"default".equals(tenant.principalMapper().type())) {
-                return;
-              }
-              var pm = tenant.principalMapper();
-              String propPrefix = oidcTenantPropPrefix(tenantId);
-              // Named tenants are only activated at runtime by the tenant resolver; a named tenant
-              // that is never resolved is harmless. Downgrade its findings to warnings so that a
-              // partially-configured named tenant does not block startup.
-              boolean isDefault = OidcConfiguration.DEFAULT_TENANT_KEY.equals(tenantId);
-              if (anyExternal) {
-                if (pm.nameClaimPath().isEmpty()) {
-                  errors.add(
-                      isDefault
-                          ? Error.ofSevere(
-                              "name-claim-path must be configured when credential-mode is EXTERNAL,"
-                                  + " since external principals are identified exclusively by name.",
-                              propPrefix + ".name-claim-path")
-                          : Error.of(
-                              "name-claim-path should be configured when credential-mode is EXTERNAL,"
-                                  + " since external principals are identified exclusively by name."
-                                  + " Requests resolved to this tenant will be rejected.",
-                              propPrefix + ".name-claim-path"));
-                }
-                if (pm.idClaimPath().isPresent()) {
-                  errors.add(
-                      Error.of(
-                          "id-claim-path is ignored when credential-mode is EXTERNAL and should be"
-                              + " removed to avoid confusion.",
-                          propPrefix + ".id-claim-path"));
-                }
-              }
-              if (anyInternal) {
-                if (pm.nameClaimPath().isEmpty() && pm.idClaimPath().isEmpty()) {
-                  errors.add(
-                      isDefault
-                          ? Error.ofSevere(
-                              "Either name-claim-path or id-claim-path must be configured so that"
-                                  + " internal principals can be resolved.",
-                              propPrefix + ".name-claim-path")
-                          : Error.of(
-                              "Either name-claim-path or id-claim-path should be configured so that"
-                                  + " internal principals can be resolved."
-                                  + " Requests resolved to this tenant will be rejected.",
-                              propPrefix + ".name-claim-path"));
-                }
-              }
-            });
+        .forEach((tenantId, tenant) -> {
+          if (!"default".equals(tenant.principalMapper().type())) {
+            return;
+          }
+          var pm = tenant.principalMapper();
+          String propPrefix = oidcTenantPropPrefix(tenantId);
+          // Named tenants are only activated at runtime by the tenant resolver; a named tenant
+          // that is never resolved is harmless. Downgrade its findings to warnings so that a
+          // partially-configured named tenant does not block startup.
+          boolean isDefault = OidcConfiguration.DEFAULT_TENANT_KEY.equals(tenantId);
+          if (anyExternal) {
+            if (pm.nameClaimPath().isEmpty()) {
+              errors.add(
+                  isDefault
+                      ? Error.ofSevere(
+                          "name-claim-path must be configured when credential-mode is EXTERNAL,"
+                              + " since external principals are identified exclusively by name.",
+                          propPrefix + ".name-claim-path")
+                      : Error.of(
+                          "name-claim-path should be configured when credential-mode is EXTERNAL,"
+                              + " since external principals are identified exclusively by name."
+                              + " Requests resolved to this tenant will be rejected.",
+                          propPrefix + ".name-claim-path"));
+            }
+            if (pm.idClaimPath().isPresent()) {
+              errors.add(
+                  Error.of(
+                      "id-claim-path is ignored when credential-mode is EXTERNAL and should be"
+                          + " removed to avoid confusion.",
+                      propPrefix + ".id-claim-path"));
+            }
+          }
+          if (anyInternal) {
+            if (pm.nameClaimPath().isEmpty() && pm.idClaimPath().isEmpty()) {
+              errors.add(
+                  isDefault
+                      ? Error.ofSevere(
+                          "Either name-claim-path or id-claim-path must be configured so that"
+                              + " internal principals can be resolved.",
+                          propPrefix + ".name-claim-path")
+                      : Error.of(
+                          "Either name-claim-path or id-claim-path should be configured so that"
+                              + " internal principals can be resolved."
+                              + " Requests resolved to this tenant will be rejected.",
+                          propPrefix + ".name-claim-path"));
+            }
+          }
+        });
     return ProductionReadinessCheck.of(errors);
   }
 
@@ -397,18 +385,17 @@ public class ProductionReadinessChecks {
 
     featureConfiguration
         .realmOverrides()
-        .forEach(
-            (realmId, overrides) -> {
-              if (Boolean.parseBoolean(overrides.overrides().get(insecure.key()))) {
-                errors.add(
-                    Error.ofSevere(
-                        "Must not enable a configuration that exposes known and severe security risks: "
-                            + insecure.description(),
-                        format(
-                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                            realmId, insecure.key())));
-              }
-            });
+        .forEach((realmId, overrides) -> {
+          if (Boolean.parseBoolean(overrides.overrides().get(insecure.key()))) {
+            errors.add(
+                Error.ofSevere(
+                    "Must not enable a configuration that exposes known and severe security risks: "
+                        + insecure.description(),
+                    format(
+                        "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                        realmId, insecure.key())));
+          }
+        });
 
     var storageTypes = FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES;
     var mapper = JsonMapper.builder().build();
@@ -418,31 +405,28 @@ public class ProductionReadinessChecks {
     var supported = (List<String>) defaults.getOrDefault(storageTypes.key(), List.of());
     supported.stream()
         .filter(n -> !IcebergPropertiesValidation.safeStorageType(n))
-        .forEach(
-            t ->
-                errors.add(
-                    Error.ofSevere(
-                        format(
-                            "The storage type '%s' is considered insecure and exposes the service to severe security risks!",
-                            t),
-                        format("polaris.features.\"%s\"", storageTypes.key()))));
-    realmOverrides.forEach(
-        (realmId, overrides) -> {
-          @SuppressWarnings("unchecked")
-          var s = (List<String>) overrides.getOrDefault(storageTypes.key(), List.of());
-          s.stream()
-              .filter(n -> !IcebergPropertiesValidation.safeStorageType(n))
-              .forEach(
-                  t ->
-                      errors.add(
-                          Error.ofSevere(
-                              format(
-                                  "The storage type '%s' is considered insecure and exposes the service to severe security risks!",
-                                  t),
-                              format(
-                                  "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                                  realmId, storageTypes.key()))));
-        });
+        .forEach(t ->
+            errors.add(
+                Error.ofSevere(
+                    format(
+                        "The storage type '%s' is considered insecure and exposes the service to severe security risks!",
+                        t),
+                    format("polaris.features.\"%s\"", storageTypes.key()))));
+    realmOverrides.forEach((realmId, overrides) -> {
+      @SuppressWarnings("unchecked")
+      var s = (List<String>) overrides.getOrDefault(storageTypes.key(), List.of());
+      s.stream()
+          .filter(n -> !IcebergPropertiesValidation.safeStorageType(n))
+          .forEach(t ->
+              errors.add(
+                  Error.ofSevere(
+                      format(
+                          "The storage type '%s' is considered insecure and exposes the service to severe security risks!",
+                          t),
+                      format(
+                          "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                          realmId, storageTypes.key()))));
+    });
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
@@ -480,26 +464,23 @@ public class ProductionReadinessChecks {
             featureConfiguration
                 .parseDefaults(mapper)
                 .getOrDefault(flag.key(), flag.defaultValue());
-    defaults.forEach(
-        name ->
-            checkMechanismAvailable(
-                name, format("polaris.features.\"%s\"", flag.key()), mechanisms, errors));
+    defaults.forEach(name ->
+        checkMechanismAvailable(
+            name, format("polaris.features.\"%s\"", flag.key()), mechanisms, errors));
     featureConfiguration
         .parseRealmOverrides(mapper)
-        .forEach(
-            (realmId, overrides) -> {
-              @SuppressWarnings("unchecked")
-              var names = (List<String>) overrides.getOrDefault(flag.key(), List.of());
-              names.forEach(
-                  name ->
-                      checkMechanismAvailable(
-                          name,
-                          format(
-                              "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                              realmId, flag.key()),
-                          mechanisms,
-                          errors));
-            });
+        .forEach((realmId, overrides) -> {
+          @SuppressWarnings("unchecked")
+          var names = (List<String>) overrides.getOrDefault(flag.key(), List.of());
+          names.forEach(name ->
+              checkMechanismAvailable(
+                  name,
+                  format(
+                      "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                      realmId, flag.key()),
+                  mechanisms,
+                  errors));
+        });
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
@@ -542,18 +523,17 @@ public class ProductionReadinessChecks {
     }
     featureConfiguration
         .realmOverrides()
-        .forEach(
-            (realmId, overrides) -> {
-              String value = overrides.overrides().get(flag.key());
-              if (value != null && !Boolean.parseBoolean(value)) {
-                errors.add(
-                    Error.of(
-                        message,
-                        format(
-                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                            realmId, flag.key())));
-              }
-            });
+        .forEach((realmId, overrides) -> {
+          String value = overrides.overrides().get(flag.key());
+          if (value != null && !Boolean.parseBoolean(value)) {
+            errors.add(
+                Error.of(
+                    message,
+                    format(
+                        "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                        realmId, flag.key())));
+          }
+        });
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
@@ -574,17 +554,16 @@ public class ProductionReadinessChecks {
     }
     featureConfiguration
         .realmOverrides()
-        .forEach(
-            (realmId, overrides) -> {
-              if (Boolean.parseBoolean(overrides.overrides().get(flag.key()))) {
-                errors.add(
-                    Error.of(
-                        message,
-                        format(
-                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                            realmId, flag.key())));
-              }
-            });
+        .forEach((realmId, overrides) -> {
+          if (Boolean.parseBoolean(overrides.overrides().get(flag.key()))) {
+            errors.add(
+                Error.of(
+                    message,
+                    format(
+                        "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                        realmId, flag.key())));
+          }
+        });
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
@@ -606,18 +585,17 @@ public class ProductionReadinessChecks {
 
     featureConfiguration
         .realmOverrides()
-        .forEach(
-            (realmId, overrides) -> {
-              if (Boolean.parseBoolean(overrides.overrides().get(optimizedSiblingCheck.key()))
-                  && !Boolean.parseBoolean(overrides.overrides().get(allowOverlap.key()))) {
-                errors.add(
-                    Error.ofSevere(
-                        "This setting should be used with care and only enabled in new realms. Enabling it in previously used realms and may lead to incorrect behavior, due to missing data for location_without_scheme column. Set the ALLOW_OPTIMIZED_SIBLING_CHECK flag to acknowledge this warning and enable Polaris to start.",
-                        format(
-                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                            realmId, optimizedSiblingCheck.key())));
-              }
-            });
+        .forEach((realmId, overrides) -> {
+          if (Boolean.parseBoolean(overrides.overrides().get(optimizedSiblingCheck.key()))
+              && !Boolean.parseBoolean(overrides.overrides().get(allowOverlap.key()))) {
+            errors.add(
+                Error.ofSevere(
+                    "This setting should be used with care and only enabled in new realms. Enabling it in previously used realms and may lead to incorrect behavior, due to missing data for location_without_scheme column. Set the ALLOW_OPTIMIZED_SIBLING_CHECK flag to acknowledge this warning and enable Polaris to start.",
+                    format(
+                        "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                        realmId, optimizedSiblingCheck.key())));
+          }
+        });
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
@@ -638,19 +616,17 @@ public class ProductionReadinessChecks {
     }
     featureConfiguration
         .realmOverrides()
-        .forEach(
-            (realmId, overrides) -> {
-              if ("false"
-                  .equalsIgnoreCase(
-                      overrides.overrides().get(ADD_TRAILING_SLASH_TO_LOCATION_KEY))) {
-                errors.add(
-                    Error.of(
-                        message,
-                        format(
-                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                            realmId, ADD_TRAILING_SLASH_TO_LOCATION_KEY)));
-              }
-            });
+        .forEach((realmId, overrides) -> {
+          if ("false"
+              .equalsIgnoreCase(overrides.overrides().get(ADD_TRAILING_SLASH_TO_LOCATION_KEY))) {
+            errors.add(
+                Error.of(
+                    message,
+                    format(
+                        "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                        realmId, ADD_TRAILING_SLASH_TO_LOCATION_KEY)));
+          }
+        });
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
@@ -695,52 +671,49 @@ public class ProductionReadinessChecks {
 
     featureConfiguration
         .realmOverrides()
-        .forEach(
-            (realmId, realmOverrides) -> {
-              var overrides = realmOverrides.overrides();
-              boolean realmEnabled =
-                  Boolean.parseBoolean(
-                      overrides.containsKey(enabled.key())
-                          ? overrides.get(enabled.key())
-                          : defaults.get(enabled.key()));
-              if (!realmEnabled) {
-                return;
-              }
-              String effectiveAudience =
-                  overrides.containsKey(audience.key())
-                      ? overrides.get(audience.key())
-                      : defaultAudience;
-              String effectiveIssuer =
-                  overrides.containsKey(issuer.key()) ? overrides.get(issuer.key()) : defaultIssuer;
-              String effectiveKeyFile =
-                  overrides.containsKey(keyFile.key())
-                      ? overrides.get(keyFile.key())
-                      : defaultKeyFile;
-              if (effectiveAudience.isEmpty()) {
-                errors.add(
-                    Error.of(
-                        "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE is not set.",
-                        format(
-                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                            realmId, audience.key())));
-              }
-              if (effectiveIssuer.isEmpty()) {
-                errors.add(
-                    Error.of(
-                        "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER is not set.",
-                        format(
-                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                            realmId, issuer.key())));
-              }
-              if (effectiveKeyFile.isEmpty()) {
-                errors.add(
-                    Error.of(
-                        "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE is not set.",
-                        format(
-                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                            realmId, keyFile.key())));
-              }
-            });
+        .forEach((realmId, realmOverrides) -> {
+          var overrides = realmOverrides.overrides();
+          boolean realmEnabled =
+              Boolean.parseBoolean(
+                  overrides.containsKey(enabled.key())
+                      ? overrides.get(enabled.key())
+                      : defaults.get(enabled.key()));
+          if (!realmEnabled) {
+            return;
+          }
+          String effectiveAudience =
+              overrides.containsKey(audience.key())
+                  ? overrides.get(audience.key())
+                  : defaultAudience;
+          String effectiveIssuer =
+              overrides.containsKey(issuer.key()) ? overrides.get(issuer.key()) : defaultIssuer;
+          String effectiveKeyFile =
+              overrides.containsKey(keyFile.key()) ? overrides.get(keyFile.key()) : defaultKeyFile;
+          if (effectiveAudience.isEmpty()) {
+            errors.add(
+                Error.of(
+                    "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE is not set.",
+                    format(
+                        "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                        realmId, audience.key())));
+          }
+          if (effectiveIssuer.isEmpty()) {
+            errors.add(
+                Error.of(
+                    "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER is not set.",
+                    format(
+                        "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                        realmId, issuer.key())));
+          }
+          if (effectiveKeyFile.isEmpty()) {
+            errors.add(
+                Error.of(
+                    "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE is not set.",
+                    format(
+                        "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                        realmId, keyFile.key())));
+          }
+        });
 
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK
@@ -765,17 +738,16 @@ public class ProductionReadinessChecks {
     var allAuthTypes = new java.util.HashSet<String>();
     if (federationEnabled) allAuthTypes.addAll(defaultAuthTypes);
 
-    realmOverrides.forEach(
-        (id, overrides) -> {
-          if (Boolean.parseBoolean(
-              overrides.getOrDefault(federationKey, federationEnabled).toString())) {
-            allAuthTypes.addAll(
-                (List<String>)
-                    (overrides.containsKey(authTypesKey)
-                        ? overrides.get(authTypesKey)
-                        : defaultAuthTypes));
-          }
-        });
+    realmOverrides.forEach((id, overrides) -> {
+      if (Boolean.parseBoolean(
+          overrides.getOrDefault(federationKey, federationEnabled).toString())) {
+        allAuthTypes.addAll(
+            (List<String>)
+                (overrides.containsKey(authTypesKey)
+                    ? overrides.get(authTypesKey)
+                    : defaultAuthTypes));
+      }
+    });
 
     var errors = new ArrayList<Error>();
     for (var name : allAuthTypes) {

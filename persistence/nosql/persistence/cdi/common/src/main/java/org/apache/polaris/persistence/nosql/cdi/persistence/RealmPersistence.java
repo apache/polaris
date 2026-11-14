@@ -22,6 +22,8 @@ import static com.google.common.base.Preconditions.checkState;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.util.Objects;
+import java.util.function.Function;
 import org.apache.polaris.ids.api.IdGenerator;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.persistence.nosql.api.Persistence;
@@ -58,6 +60,7 @@ class RealmPersistence implements RealmPersistenceFactory {
     return new RealmPersistenceBuilder() {
       private boolean skipDecorators;
       private String realmId;
+      private Function<Backend, Backend> backendWrapper;
       private boolean consumed;
 
       @Override
@@ -74,14 +77,23 @@ class RealmPersistence implements RealmPersistenceFactory {
       }
 
       @Override
+      public RealmPersistenceBuilder backendWrapper(
+          @NonNull Function<Backend, Backend> backendWrapper) {
+        checkState(this.backendWrapper == null, "Backend wrapper may only be set once");
+        this.backendWrapper = Objects.requireNonNull(backendWrapper);
+        return this;
+      }
+
+      @Override
       public Persistence build() {
         checkState(!consumed, "RealmPersistenceBuilder can only be used once");
         checkState(realmId != null, "Must call RealmPersistenceBuilder.setRealmId() before .build");
         consumed = true;
 
+        var wrappedBackend = backendWrapper != null ? backendWrapper.apply(backend) : backend;
         var persistence =
             backend.newPersistence(
-                x -> backend, persistenceConfig, realmId, monotonicClock, idGenerator);
+                x -> wrappedBackend, persistenceConfig, realmId, monotonicClock, idGenerator);
         return skipDecorators ? persistence : persistenceDecorators.decorate(persistence);
       }
     };

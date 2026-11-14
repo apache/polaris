@@ -132,6 +132,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -602,24 +603,23 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     Map<String, String> storageProperties =
         storageInfoEntity
             .map(PolarisEntity::getInternalPropertiesAsMap)
-            .map(
-                properties -> {
-                  if (!triggerCleanup) {
-                    return Map.<String, String>of();
-                  }
-                  Map<String, String> clone = new HashMap<>();
+            .map(properties -> {
+              if (!triggerCleanup) {
+                return Map.<String, String>of();
+              }
+              Map<String, String> clone = new HashMap<>();
 
-                  // Do not copy Iceberg table metadata properties into the purge task: those may
-                  // include caller-controlled FileIO client settings (for example s3.endpoint).
-                  // Server FileIO is built from AccessConfig; the task only needs storage-entity
-                  // internals, io-impl, and the storage location.
-                  clone.put(CatalogProperties.FILE_IO_IMPL, ioImplClassName);
-                  clone.putAll(properties);
-                  clone.put(
-                      PolarisTaskConstants.STORAGE_LOCATIONS,
-                      TaskUtils.encodeStorageLocations(storageLocations));
-                  return clone;
-                })
+              // Do not copy Iceberg table metadata properties into the purge task: those may
+              // include caller-controlled FileIO client settings (for example s3.endpoint).
+              // Server FileIO is built from AccessConfig; the task only needs storage-entity
+              // internals, io-impl, and the storage location.
+              clone.put(CatalogProperties.FILE_IO_IMPL, ioImplClassName);
+              clone.putAll(properties);
+              clone.put(
+                  PolarisTaskConstants.STORAGE_LOCATIONS,
+                  TaskUtils.encodeStorageLocations(storageLocations));
+              return clone;
+            })
             .orElse(Map.of());
     DropEntityResult dropEntityResult =
         dropTableLike(
@@ -791,12 +791,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     // always take the first object. If it has the base-location, stop there
     AtomicBoolean foundBaseLocation = new AtomicBoolean(false);
     return parentPath.reversed().stream()
-        .takeWhile(
-            entity ->
-                !foundBaseLocation.getAndSet(
-                    entity
-                        .getPropertiesAsMap()
-                        .containsKey(PolarisEntityConstants.ENTITY_BASE_LOCATION)))
+        .takeWhile(entity ->
+            !foundBaseLocation.getAndSet(
+                entity
+                    .getPropertiesAsMap()
+                    .containsKey(PolarisEntityConstants.ENTITY_BASE_LOCATION)))
         .toList()
         .reversed()
         .stream()
@@ -1066,10 +1065,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                 pageToken);
     return listResult
         .getPage()
-        .map(
-            record ->
-                PolarisCatalogHelpers.nameAndIdToNamespace(
-                    catalogPath, new PolarisEntity.NameAndId(record.getName(), record.getId())));
+        .map(record ->
+            PolarisCatalogHelpers.nameAndIdToNamespace(
+                catalogPath, new PolarisEntity.NameAndId(record.getName(), record.getId())));
   }
 
   @Override
@@ -1714,38 +1712,36 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     List<TableIdentifier> siblingTables =
         parentNamespace
-            .map(
-                ns -> {
-                  ListEntitiesResult siblingTablesResult =
-                      getMetaStoreManager()
-                          .listEntities(
-                              getCurrentPolarisContext(),
-                              PolarisEntity.toCoreList(parentPath),
-                              PolarisEntityType.TABLE_LIKE,
-                              PolarisEntitySubType.ANY_SUBTYPE,
-                              PageToken.readEverything());
-                  if (!siblingTablesResult.isSuccess()) {
-                    throw new IllegalStateException(
-                        "Unable to resolve siblings entities to validate location - could not list tables");
-                  }
-                  return siblingTablesResult.getEntities().stream()
-                      .map(tbl -> TableIdentifier.of(ns.asNamespace(), tbl.getName()))
-                      .collect(Collectors.toList());
-                })
+            .map(ns -> {
+              ListEntitiesResult siblingTablesResult =
+                  getMetaStoreManager()
+                      .listEntities(
+                          getCurrentPolarisContext(),
+                          PolarisEntity.toCoreList(parentPath),
+                          PolarisEntityType.TABLE_LIKE,
+                          PolarisEntitySubType.ANY_SUBTYPE,
+                          PageToken.readEverything());
+              if (!siblingTablesResult.isSuccess()) {
+                throw new IllegalStateException(
+                    "Unable to resolve siblings entities to validate location - could not list tables");
+              }
+              return siblingTablesResult.getEntities().stream()
+                  .map(tbl -> TableIdentifier.of(ns.asNamespace(), tbl.getName()))
+                  .collect(Collectors.toList());
+            })
             .orElse(List.of());
 
     List<Namespace> siblingNamespaces =
         siblingNamespacesResult.getEntities().stream()
-            .map(
-                ns -> {
-                  String[] nsLevels =
-                      parentNamespace
-                          .map(parent -> parent.asNamespace().levels())
-                          .orElse(new String[0]);
-                  String[] newLevels = Arrays.copyOf(nsLevels, nsLevels.length + 1);
-                  newLevels[nsLevels.length] = ns.getName();
-                  return Namespace.of(newLevels);
-                })
+            .map(ns -> {
+              String[] nsLevels =
+                  parentNamespace
+                      .map(parent -> parent.asNamespace().levels())
+                      .orElse(new String[0]);
+              String[] newLevels = Arrays.copyOf(nsLevels, nsLevels.length + 1);
+              newLevels[nsLevels.length] = ns.getName();
+              return Namespace.of(newLevels);
+            })
             .toList();
     List<ResolvedPathKey> pathsToResolve =
         new ArrayList<>(siblingTables.size() + siblingNamespaces.size());
@@ -1787,15 +1783,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           .map(LocationBasedEntity::getBaseLocation)
           .filter(loc -> loc != null && !loc.isBlank())
           .map(StorageLocation::of)
-          .ifPresent(
-              ancestorLocation -> {
-                if (targetLocation.isSameLocation(ancestorLocation)) {
-                  throw new ForbiddenException(
-                      "Unable to create entity at location '%s' because it conflicts with existing table or namespace at "
-                          + "location '%s'",
-                      targetLocation, ancestorLocation);
-                }
-              });
+          .ifPresent(ancestorLocation -> {
+            if (targetLocation.isSameLocation(ancestorLocation)) {
+              throw new ForbiddenException(
+                  "Unable to create entity at location '%s' because it conflicts with existing table or namespace at "
+                      + "location '%s'",
+                  targetLocation, ancestorLocation);
+            }
+          });
     }
 
     for (PolarisEntity entityToCheck :
@@ -1842,12 +1837,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         new PolarisResolutionManifest(
             diagnostics, callContext.getRealmContext(), resolverFactory, principal, catalogName);
 
-    keys.forEach(
-        k -> {
-          resolutionManifest.addPath(new ResolverPath(k, true)); // optional path
-        });
+    keys.forEach(k -> {
+      resolutionManifest.addPath(new ResolverPath(k, true)); // optional path
+    });
 
-    ResolverStatus status = resolutionManifest.resolveAll();
+    ResolverStatus status =
+        resolutionManifest.resolveSelections(
+            Set.of(Resolvable.REFERENCE_CATALOG, Resolvable.REQUESTED_PATHS));
 
     if (status.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
       String message =
@@ -1868,16 +1864,15 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     List<PolarisEntity> result = new ArrayList<>(keys.size());
-    keys.forEach(
-        k -> {
-          PolarisResolvedPathWrapper path = resolutionManifest.getResolvedPath(k);
-          if (path != null) {
-            PolarisEntity entity = path.getRawLeafEntity();
-            if (entity != null) {
-              result.add(entity);
-            }
-          }
-        });
+    keys.forEach(k -> {
+      PolarisResolvedPathWrapper path = resolutionManifest.getResolvedPath(k);
+      if (path != null) {
+        PolarisEntity entity = path.getRawLeafEntity();
+        if (entity != null) {
+          result.add(entity);
+        }
+      }
+    });
 
     return result;
   }

@@ -17,29 +17,14 @@
  * under the License.
  */
 
-package licenses
-
-import com.github.jk1.license.ProjectData
-import com.github.jk1.license.filter.DependencyFilter
-
-/**
- * Removes license detections originating from NOTICE files. NOTICE files document third-party
- * attributions and may mention licenses of bundled components; these should not be treated as the
- * artifact's own license.
- */
-class NoticeFileLicenseFilter : DependencyFilter {
-
-  private val noticeFilePattern = Regex("(?<=/|^)(?i)NOTICE(?![a-z])[^/]*$")
-
-  override fun filter(data: ProjectData?): ProjectData {
-    data!!
-    data.allDependencies.forEach { mod ->
-      mod.licenseFiles.forEach { licenseFileData ->
-        licenseFileData.fileDetails.removeAll { detail ->
-          detail.file != null && noticeFilePattern.containsMatchIn(detail.file)
-        }
-      }
-    }
-    return data
+dependencyResolutionManagement {
+  versionCatalogs {
+    create("libs") { from(files("../libs.versions.toml")) }
+  }
+  repositories {
+    mavenCentral()
+    gradlePluginPortal()
   }
 }
+
+rootProject.name = "polaris-license-check-plugin"

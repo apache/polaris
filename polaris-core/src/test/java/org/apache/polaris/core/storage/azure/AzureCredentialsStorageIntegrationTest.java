@@ -184,16 +184,15 @@ public class AzureCredentialsStorageIntegrationTest {
                 (builder, context) -> {
                   String[] token = new String[1];
                   Mockito.when(builder.credential(Mockito.any(TokenCredential.class)))
-                      .thenAnswer(
-                          invocation -> {
-                            token[0] =
-                                invocation
-                                    .<TokenCredential>getArgument(0)
-                                    .getToken(new TokenRequestContext())
-                                    .block()
-                                    .getToken();
-                            return builder;
-                          });
+                      .thenAnswer(invocation -> {
+                        token[0] =
+                            invocation
+                                .<TokenCredential>getArgument(0)
+                                .getToken(new TokenRequestContext())
+                                .block()
+                                .getToken();
+                        return builder;
+                      });
                   BlobServiceClient serviceClient = Mockito.mock(BlobServiceClient.class);
                   UserDelegationKey delegationKey = Mockito.mock(UserDelegationKey.class);
                   Mockito.when(delegationKey.getValue()).thenAnswer(i -> token[0]);

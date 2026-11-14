@@ -188,9 +188,8 @@ public class PolicyCatalog {
       }
       return listEntitiesResult
           .getPage()
-          .map(
-              entity ->
-                  PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build());
+          .map(entity ->
+              PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build());
     }
     // with a policyType filter we push the predicate to the store so pagination happens over
     // matching policies
@@ -202,9 +201,8 @@ public class PolicyCatalog {
             PolarisEntitySubType.NULL_SUBTYPE,
             entity -> PolicyEntity.of(entity).getPolicyType() == policyType,
             pageToken)
-        .map(
-            entity ->
-                PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build());
+        .map(entity ->
+            PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build());
   }
 
   public Policy loadPolicy(PolicyIdentifier policyIdentifier) {
@@ -255,10 +253,9 @@ public class PolicyCatalog {
                         newPolicyEntity)
                     .getEntity())
             .map(PolicyEntity::of)
-            .orElseThrow(
-                () ->
-                    new CommitConflictException(
-                        "Concurrent modification on policy '%s'; retry later", policyIdentifier));
+            .orElseThrow(() ->
+                new CommitConflictException(
+                    "Concurrent modification on policy '%s'; retry later", policyIdentifier));
 
     return constructPolicy(newPolicyEntity);
   }
@@ -437,10 +434,9 @@ public class PolicyCatalog {
     return Stream.concat(
             nonInheritablePolicies.stream().map(policy -> constructApplicablePolicy(policy, false)),
             inheritablePolicies.values().stream()
-                .map(
-                    policy ->
-                        constructApplicablePolicy(
-                            policy, !directAttachedInheritablePolicies.contains(policy.getId()))))
+                .map(policy ->
+                    constructApplicablePolicy(
+                        policy, !directAttachedInheritablePolicies.contains(policy.getId()))))
         .toList();
   }
 

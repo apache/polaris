@@ -177,14 +177,13 @@ public interface StorageConfiguration extends S3AccessConfig {
   }
 
   default Supplier<StsClient> stsClientSupplier(boolean withCredentials) {
-    return Suppliers.memoize(
-        () -> {
-          StsClientBuilder stsClientBuilder = StsClient.builder();
-          if (withCredentials) {
-            stsClientBuilder.credentialsProvider(stsCredentials());
-          }
-          return stsClientBuilder.build();
-        });
+    return Suppliers.memoize(() -> {
+      StsClientBuilder stsClientBuilder = StsClient.builder();
+      if (withCredentials) {
+        stsClientBuilder.credentialsProvider(stsCredentials());
+      }
+      return stsClientBuilder.build();
+    });
   }
 
   default AwsCredentialsProvider stsCredentials() {
@@ -212,31 +211,27 @@ public interface StorageConfiguration extends S3AccessConfig {
   }
 
   default Supplier<GoogleCredentials> gcpCredentialsSupplier(Clock clock) {
-    return Suppliers.memoize(
-        () -> {
-          if (gcpAccessToken().isEmpty()) {
-            try {
-              return GoogleCredentials.getApplicationDefault();
-            } catch (IOException e) {
-              throw new RuntimeException("Failed to get GCP credentials", e);
-            }
-          } else {
-            // A statically configured token has no token endpoint to call, and
-            // GoogleCredentials.create(..) returns a credential that cannot refresh. Vending calls
-            // refresh() on the source credential before downscoping, so with that credential the
-            // first vend fails with an IllegalStateException regardless of expiry (#2253). Wrap the
-            // token in a credential that supports refresh by returning it with a fixed expiry: the
-            // configured gcp.expiry if set, otherwise computed once here from the configured
-            // lifespan.
-            Instant expiry =
-                gcpAccessTokenExpiry()
-                    .orElseGet(
-                        () ->
-                            clock
-                                .instant()
-                                .plus(gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN)));
-            return new FixedGcpAccessTokenCredentials(gcpAccessToken().orElseThrow(), expiry);
-          }
-        });
+    return Suppliers.memoize(() -> {
+      if (gcpAccessToken().isEmpty()) {
+        try {
+          return GoogleCredentials.getApplicationDefault();
+        } catch (IOException e) {
+          throw new RuntimeException("Failed to get GCP credentials", e);
+        }
+      } else {
+        // A statically configured token has no token endpoint to call, and
+        // GoogleCredentials.create(..) returns a credential that cannot refresh. Vending calls
+        // refresh() on the source credential before downscoping, so with that credential the
+        // first vend fails with an IllegalStateException regardless of expiry (#2253). Wrap the
+        // token in a credential that supports refresh by returning it with a fixed expiry: the
+        // configured gcp.expiry if set, otherwise computed once here from the configured
+        // lifespan.
+        Instant expiry =
+            gcpAccessTokenExpiry()
+                .orElseGet(() ->
+                    clock.instant().plus(gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN)));
+        return new FixedGcpAccessTokenCredentials(gcpAccessToken().orElseThrow(), expiry);
+      }
+    });
   }
 }

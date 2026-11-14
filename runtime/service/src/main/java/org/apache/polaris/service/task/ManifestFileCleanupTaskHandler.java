@@ -113,15 +113,14 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
       // wait for all content files to be deleted, then wait for the manifest itself to be deleted
       CompletableFuture<Void> deletion =
           CompletableFuture.allOf(contentFileDeletes.toArray(CompletableFuture[]::new))
-              .thenCompose(
-                  (v) -> {
-                    LOGGER
-                        .atInfo()
-                        .addKeyValue(StructuredLogKeys.MANIFEST_FILE, manifestFile.path())
-                        .log("All content files in manifest deleted - deleting manifest");
-                    return tryDelete(
-                        tableId, fileIO, manifestFile.path(), manifestFile.path(), null, 1);
-                  });
+              .thenCompose(v -> {
+                LOGGER
+                    .atInfo()
+                    .addKeyValue(StructuredLogKeys.MANIFEST_FILE, manifestFile.path())
+                    .log("All content files in manifest deleted - deleting manifest");
+                return tryDelete(
+                    tableId, fileIO, manifestFile.path(), manifestFile.path(), null, 1);
+              });
       awaitCompletion(deletion, "deletion of files in manifest " + manifestFile.path());
       return;
     } catch (IOException e) {

@@ -43,13 +43,12 @@ public class RealmContextFilter {
   @ServerRequestFilter(preMatching = true, priority = FilterPriorities.REALM_CONTEXT_FILTER)
   public Uni<Response> resolveRealmContext(ContainerRequestContext rc) {
     return Uni.createFrom()
-        .completionStage(
-            () ->
-                realmContextResolver.resolveRealmContext(
-                    rc.getUriInfo().getRequestUri().toString(),
-                    rc.getMethod(),
-                    rc.getUriInfo().getPath(),
-                    rc.getHeaders()::getFirst))
+        .completionStage(() ->
+            realmContextResolver.resolveRealmContext(
+                rc.getUriInfo().getRequestUri().toString(),
+                rc.getMethod(),
+                rc.getUriInfo().getPath(),
+                rc.getHeaders()::getFirst))
         .onItem()
         .invoke(realmContext -> realmContextHolder.set(realmContext))
         .invoke(realmContext -> rc.setProperty(REALM_CONTEXT_KEY, realmContext))

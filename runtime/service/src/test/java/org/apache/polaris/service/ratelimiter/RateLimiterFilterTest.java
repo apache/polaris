@@ -187,40 +187,38 @@ public class RateLimiterFilterTest {
         .containsKey("polaris_principal_roles_listPrincipalRoles_seconds");
 
     assertThat(metrics.get("http_server_requests_seconds").getMetrics())
-        .satisfiesOnlyOnce(
-            metric -> {
-              assertThat(metric.getLabels())
-                  .contains(
-                      Map.entry("application", "Polaris"),
-                      Map.entry("environment", "prod"),
-                      Map.entry("realm_id", polarisEndpoints.realmId()),
-                      Map.entry("method", "GET"),
-                      Map.entry("outcome", "CLIENT_ERROR"),
-                      Map.entry("status", String.valueOf(Status.TOO_MANY_REQUESTS.getStatusCode())),
-                      Map.entry("uri", "/api/management/v1/principal-roles"));
-              assertThat(metric)
-                  .asInstanceOf(type(Summary.class))
-                  .extracting(Summary::getSampleCount)
-                  .isEqualTo(3L);
-            });
+        .satisfiesOnlyOnce(metric -> {
+          assertThat(metric.getLabels())
+              .contains(
+                  Map.entry("application", "Polaris"),
+                  Map.entry("environment", "prod"),
+                  Map.entry("realm_id", polarisEndpoints.realmId()),
+                  Map.entry("method", "GET"),
+                  Map.entry("outcome", "CLIENT_ERROR"),
+                  Map.entry("status", String.valueOf(Status.TOO_MANY_REQUESTS.getStatusCode())),
+                  Map.entry("uri", "/api/management/v1/principal-roles"));
+          assertThat(metric)
+              .asInstanceOf(type(Summary.class))
+              .extracting(Summary::getSampleCount)
+              .isEqualTo(3L);
+        });
 
     assertThat(metrics.get("polaris_principal_roles_listPrincipalRoles_seconds").getMetrics())
-        .satisfiesOnlyOnce(
-            metric -> {
-              assertThat(metric.getLabels())
-                  .contains(
-                      Map.entry("application", "Polaris"),
-                      Map.entry("environment", "prod"),
-                      Map.entry("realm_id", polarisEndpoints.realmId()),
-                      Map.entry(
-                          "class", "org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi"),
-                      Map.entry("exception", "none"),
-                      Map.entry("method", "listPrincipalRoles"));
-              assertThat(metric)
-                  .asInstanceOf(type(Summary.class))
-                  .extracting(Summary::getSampleCount)
-                  .isEqualTo(3L);
-            });
+        .satisfiesOnlyOnce(metric -> {
+          assertThat(metric.getLabels())
+              .contains(
+                  Map.entry("application", "Polaris"),
+                  Map.entry("environment", "prod"),
+                  Map.entry("realm_id", polarisEndpoints.realmId()),
+                  Map.entry(
+                      "class", "org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi"),
+                  Map.entry("exception", "none"),
+                  Map.entry("method", "listPrincipalRoles"));
+          assertThat(metric)
+              .asInstanceOf(type(Summary.class))
+              .extracting(Summary::getSampleCount)
+              .isEqualTo(3L);
+        });
   }
 
   /**

@@ -425,27 +425,25 @@ public class IcebergAllowedLocationTest {
             List.of(), // requirements
             List.of(new MetadataUpdate.SetProperties(updatedProperties)));
 
-    assertThatThrownBy(
-        () ->
-            services
-                .catalogAdapter()
-                .newHandler(services.securityContext(), catalog)
-                .replaceView(viewId, updateRequest));
+    assertThatThrownBy(() ->
+        services
+            .catalogAdapter()
+            .newHandler(services.securityContext(), catalog)
+            .replaceView(viewId, updateRequest));
 
     // Test 2: Try to create a view with location not allowed
     var createViewRequestNotAllowed =
         getCreateViewRequest(locationNotAllowed, "view2", locationNotAllowed);
 
-    assertThatThrownBy(
-            () ->
-                services
-                    .restApi()
-                    .createView(
-                        catalog,
-                        namespace,
-                        createViewRequestNotAllowed,
-                        services.realmContext(),
-                        services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .restApi()
+                .createView(
+                    catalog,
+                    namespace,
+                    createViewRequestNotAllowed,
+                    services.realmContext(),
+                    services.securityContext()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
 
@@ -453,16 +451,15 @@ public class IcebergAllowedLocationTest {
     var createViewRequestMetadataNotAllowed =
         getCreateViewRequest(locationNotAllowed, "view3", locationAllowed);
 
-    assertThatThrownBy(
-            () ->
-                services
-                    .restApi()
-                    .createView(
-                        catalog,
-                        namespace,
-                        createViewRequestMetadataNotAllowed,
-                        services.realmContext(),
-                        services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .restApi()
+                .createView(
+                    catalog,
+                    namespace,
+                    createViewRequestMetadataNotAllowed,
+                    services.realmContext(),
+                    services.securityContext()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
   }
@@ -543,12 +540,11 @@ public class IcebergAllowedLocationTest {
         UpdateTableRequest.create(
             tableId, List.of(), List.of(new MetadataUpdate.AddSnapshot(snapshot)));
 
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogAdapter()
-                    .newHandler(services.securityContext(), catalog)
-                    .updateTable(tableId, updateRequest))
+    assertThatThrownBy(() ->
+            services
+                .catalogAdapter()
+                .newHandler(services.securityContext(), catalog)
+                .updateTable(tableId, updateRequest))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
   }
@@ -568,12 +564,11 @@ public class IcebergAllowedLocationTest {
         UpdateTableRequest.create(
             tableId, List.of(), List.of(new MetadataUpdate.SetStatistics(statisticsFile)));
 
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogAdapter()
-                    .newHandler(services.securityContext(), catalog)
-                    .updateTable(tableId, updateRequest))
+    assertThatThrownBy(() ->
+            services
+                .catalogAdapter()
+                .newHandler(services.securityContext(), catalog)
+                .updateTable(tableId, updateRequest))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
   }
@@ -599,12 +594,11 @@ public class IcebergAllowedLocationTest {
             List.of(),
             List.of(new MetadataUpdate.SetPartitionStatistics(partitionStatisticsFile)));
 
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogAdapter()
-                    .newHandler(services.securityContext(), catalog)
-                    .updateTable(tableId, updateRequest))
+    assertThatThrownBy(() ->
+            services
+                .catalogAdapter()
+                .newHandler(services.securityContext(), catalog)
+                .updateTable(tableId, updateRequest))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
   }
@@ -674,16 +668,15 @@ public class IcebergAllowedLocationTest {
             .metadataLocation(metadataPath.toAbsolutePath().toUri().toString())
             .build();
 
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogAdapter()
-                    .newHandler(services.securityContext(), catalog)
-                    .registerTable(
-                        Namespace.of(namespace),
-                        registerRequest,
-                        EnumSet.noneOf(AccessDelegationMode.class),
-                        Optional.empty()))
+    assertThatThrownBy(() ->
+            services
+                .catalogAdapter()
+                .newHandler(services.securityContext(), catalog)
+                .registerTable(
+                    Namespace.of(namespace),
+                    registerRequest,
+                    EnumSet.noneOf(AccessDelegationMode.class),
+                    Optional.empty()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
   }
@@ -726,16 +719,15 @@ public class IcebergAllowedLocationTest {
             .withNamespace(Namespace.of("ns2"))
             .setProperties(customLocation)
             .build();
-    assertThatThrownBy(
-            () ->
-                services
-                    .restApi()
-                    .createNamespace(
-                        catalog,
-                        customLocationRequest,
-                        IDEMPOTENCY_KEY,
-                        services.realmContext(),
-                        services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .restApi()
+                .createNamespace(
+                    catalog,
+                    customLocationRequest,
+                    IDEMPOTENCY_KEY,
+                    services.realmContext(),
+                    services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("has a custom location");
   }
@@ -929,10 +921,9 @@ public class IcebergAllowedLocationTest {
     updateNestedNamespaceProperties(services, grandchild, Map.of("location", grandchildLocation));
 
     // The derived default is still what a requested location is compared against.
-    assertThatThrownBy(
-            () ->
-                updateNestedNamespaceProperties(
-                    services, grandchild, Map.of("location", catalogLocation + "elsewhere")))
+    assertThatThrownBy(() ->
+            updateNestedNamespaceProperties(
+                services, grandchild, Map.of("location", catalogLocation + "elsewhere")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("has a custom location");
 
@@ -941,10 +932,8 @@ public class IcebergAllowedLocationTest {
     String sibling = child + sep + "sibling";
     createNestedNamespace(services, sibling, grandchildLocation.replace("grandchild", "sibling"));
 
-    assertThatThrownBy(
-            () ->
-                createNestedNamespace(
-                    services, child + sep + "other", catalogLocation + "elsewhere"))
+    assertThatThrownBy(() ->
+            createNestedNamespace(services, child + sep + "other", catalogLocation + "elsewhere"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("has a custom location");
   }
@@ -1107,21 +1096,20 @@ public class IcebergAllowedLocationTest {
       Map<String, Object> config, AtomicBoolean counting, AtomicInteger listEntitiesCalls) {
     return TestServices.builder()
         .config(config)
-        .metaStoreManagerDecorator(
-            msm -> {
-              PolarisMetaStoreManager spy = Mockito.spy(msm);
-              Mockito.doAnswer(
-                      invocation -> {
-                        if (counting.get()) {
-                          listEntitiesCalls.incrementAndGet();
-                        }
-                        return invocation.callRealMethod();
-                      })
-                  .when(spy)
-                  .listEntities(
-                      Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
-              return spy;
-            })
+        .metaStoreManagerDecorator(msm -> {
+          PolarisMetaStoreManager spy = Mockito.spy(msm);
+          Mockito.doAnswer(
+                  invocation -> {
+                    if (counting.get()) {
+                      listEntitiesCalls.incrementAndGet();
+                    }
+                    return invocation.callRealMethod();
+                  })
+              .when(spy)
+              .listEntities(
+                  Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+          return spy;
+        })
         .build();
   }
 
@@ -1328,10 +1316,8 @@ public class IcebergAllowedLocationTest {
     createTable(services, "dst", "a", sharedLocation);
     createTable(services, "src", "b", sharedLocation + "/b");
 
-    assertThatThrownBy(
-            () ->
-                renameTable(
-                    services, TableIdentifier.of("src", "b"), TableIdentifier.of("dst", "b")))
+    assertThatThrownBy(() ->
+            renameTable(services, TableIdentifier.of("src", "b"), TableIdentifier.of("dst", "b")))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }
@@ -1566,15 +1552,14 @@ public class IcebergAllowedLocationTest {
     assertThatThrownBy(() -> newHandler(services).loadCredentials(renamed, Optional.empty()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
-    assertThatThrownBy(
-            () ->
-                newHandler(services)
-                    .loadTable(
-                        renamed,
-                        "all",
-                        null,
-                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
-                        Optional.empty()))
+    assertThatThrownBy(() ->
+            newHandler(services)
+                .loadTable(
+                    renamed,
+                    "all",
+                    null,
+                    EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                    Optional.empty()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
   }
@@ -1618,35 +1603,32 @@ public class IcebergAllowedLocationTest {
             .withSchema(SCHEMA)
             .setProperty(writePathProperty, namespaceLocation + "/elsewhere")
             .build();
-    assertThatThrownBy(
-            () ->
-                newHandler(services)
-                    .createTableDirect(
-                        Namespace.of("src"),
-                        request,
-                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
-                        Optional.empty()))
+    assertThatThrownBy(() ->
+            newHandler(services)
+                .createTableDirect(
+                    Namespace.of("src"),
+                    request,
+                    EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                    Optional.empty()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
-    assertThatThrownBy(
-            () ->
-                newHandler(services)
-                    .createTableStaged(
-                        Namespace.of("src"),
-                        request,
-                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
-                        Optional.empty()))
+    assertThatThrownBy(() ->
+            newHandler(services)
+                .createTableStaged(
+                    Namespace.of("src"),
+                    request,
+                    EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                    Optional.empty()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
-    assertThatThrownBy(
-            () ->
-                newHandler(services)
-                    .loadTable(
-                        TableIdentifier.of("src", "t"),
-                        "all",
-                        null,
-                        EnumSet.noneOf(AccessDelegationMode.class),
-                        Optional.empty()))
+    assertThatThrownBy(() ->
+            newHandler(services)
+                .loadTable(
+                    TableIdentifier.of("src", "t"),
+                    "all",
+                    null,
+                    EnumSet.noneOf(AccessDelegationMode.class),
+                    Optional.empty()))
         .isInstanceOf(NoSuchTableException.class);
 
     // Under the table's own location.
@@ -1691,14 +1673,13 @@ public class IcebergAllowedLocationTest {
             .name("t")
             .metadataLocation(metadataPath.toAbsolutePath().toUri().toString())
             .build();
-    assertThatThrownBy(
-            () ->
-                newHandler(services)
-                    .registerTable(
-                        Namespace.of("src"),
-                        registerRequest,
-                        EnumSet.noneOf(AccessDelegationMode.class),
-                        Optional.empty()))
+    assertThatThrownBy(() ->
+            newHandler(services)
+                .registerTable(
+                    Namespace.of("src"),
+                    registerRequest,
+                    EnumSet.noneOf(AccessDelegationMode.class),
+                    Optional.empty()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
   }

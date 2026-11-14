@@ -88,26 +88,25 @@ class RealmStoreImpl implements RealmStore {
             .fetchReferenceHead(REALMS_REF_NAME, RealmsStateObj.class)
             .map(realms -> realms.realmIndex().indexForRead(systemPersistence, OBJ_REF_SERIALIZER));
     return realmsIndex.stream()
-        .flatMap(
-            entries ->
-                StreamUtil.bucketized(
-                        Streams.stream(entries),
-                        bucket -> {
-                          var objRefs =
-                              bucket.stream().map(Index.Element::value).toArray(ObjRef[]::new);
-                          var objs = systemPersistence.fetchMany(RealmObj.class, objRefs);
-                          var defs = new ArrayList<RealmDefinition>(bucket.size());
+        .flatMap(entries ->
+            StreamUtil.bucketized(
+                    Streams.stream(entries),
+                    bucket -> {
+                      var objRefs =
+                          bucket.stream().map(Index.Element::value).toArray(ObjRef[]::new);
+                      var objs = systemPersistence.fetchMany(RealmObj.class, objRefs);
+                      var defs = new ArrayList<RealmDefinition>(bucket.size());
 
-                          for (int i = 0; i < objs.length; i++) {
-                            var obj = objs[i];
-                            if (obj != null) {
-                              defs.add(objToDefinition(bucket.get(i).key().toString(), obj));
-                            }
-                          }
-                          return defs;
-                        },
-                        systemPersistence.params().bucketizedBulkFetchSize())
-                    .filter(Objects::nonNull));
+                      for (int i = 0; i < objs.length; i++) {
+                        var obj = objs[i];
+                        if (obj != null) {
+                          defs.add(objToDefinition(bucket.get(i).key().toString(), obj));
+                        }
+                      }
+                      return defs;
+                    },
+                    systemPersistence.params().bucketizedBulkFetchSize())
+                .filter(Objects::nonNull));
   }
 
   @Override
@@ -121,42 +120,40 @@ class RealmStoreImpl implements RealmStore {
   @Override
   public RealmDefinition create(String realmId, RealmDefinition definition) {
     var realm =
-        committer.commitRuntimeException(
-            (state, refObjSupplier) -> {
-              var refObj = refObjSupplier.get();
-              var current = refObj.orElse(null);
+        committer.commitRuntimeException((state, refObjSupplier) -> {
+          var refObj = refObjSupplier.get();
+          var current = refObj.orElse(null);
 
-              var key = IndexKey.key(realmId);
+          var key = IndexKey.key(realmId);
 
-              var index =
-                  current != null
-                      ? current.realmIndex().asUpdatableIndex(systemPersistence, OBJ_REF_SERIALIZER)
-                      : IndexContainer.newUpdatableIndex(systemPersistence, OBJ_REF_SERIALIZER);
-              if (index.contains(key)) {
-                throw new RealmAlreadyExistsException(
-                    format("A realm with ID '%s' already exists", realmId));
-              }
+          var index =
+              current != null
+                  ? current.realmIndex().asUpdatableIndex(systemPersistence, OBJ_REF_SERIALIZER)
+                  : IndexContainer.newUpdatableIndex(systemPersistence, OBJ_REF_SERIALIZER);
+          if (index.contains(key)) {
+            throw new RealmAlreadyExistsException(
+                format("A realm with ID '%s' already exists", realmId));
+          }
 
-              var obj =
-                  state.writeIfNew(
-                      "realm",
-                      RealmObj.builder()
-                          .created(definition.created())
-                          .updated(definition.updated())
-                          .id(systemPersistence.generateId())
-                          .status(definition.status())
-                          .properties(definition.properties())
-                          .build(),
-                      RealmObj.class);
+          var obj =
+              state.writeIfNew(
+                  "realm",
+                  RealmObj.builder()
+                      .created(definition.created())
+                      .updated(definition.updated())
+                      .id(systemPersistence.generateId())
+                      .status(definition.status())
+                      .properties(definition.properties())
+                      .build(),
+                  RealmObj.class);
 
-              index.put(key, objRef(obj));
+          index.put(key, objRef(obj));
 
-              var newRealms =
-                  RealmsStateObj.builder()
-                      .realmIndex(index.toIndexed("idx-", state::writeOrReplace));
+          var newRealms =
+              RealmsStateObj.builder().realmIndex(index.toIndexed("idx-", state::writeOrReplace));
 
-              return state.commitResult(obj, newRealms, refObj);
-            });
+          return state.commitResult(obj, newRealms, refObj);
+        });
 
     return objToDefinition(realmId, realm.orElseThrow());
   }
@@ -166,70 +163,7 @@ class RealmStoreImpl implements RealmStore {
   public RealmDefinition update(
       String realmId, Function<RealmDefinition, RealmDefinition> updater) {
     var realm =
-        committer.commitRuntimeException(
-            (state, refObjSupplier) -> {
-              var refObj = refObjSupplier.get();
-              var current = refObj.orElse(null);
-              if (current == null) {
-                throw getRealmNotFoundException(realmId);
-              }
-
-              var key = IndexKey.key(realmId);
-
-              var index =
-                  current.realmIndex().asUpdatableIndex(systemPersistence, OBJ_REF_SERIALIZER);
-              var currentObjId = index.get(key);
-              if (currentObjId == null) {
-                throw getRealmNotFoundException(realmId);
-              }
-
-              var currentObj = systemPersistence.fetch(currentObjId, RealmObj.class);
-              if (currentObj == null) {
-                throw realmObjNotFoundException(realmId);
-              }
-
-              var update = updater.apply(objToDefinition(realmId, currentObj));
-
-              var obj =
-                  state.writeIfNew(
-                      "realm",
-                      RealmObj.builder()
-                          .created(currentObj.created())
-                          .updated(update.updated())
-                          .id(systemPersistence.generateId())
-                          .status(update.status())
-                          .properties(update.properties())
-                          .build(),
-                      RealmObj.class);
-
-              index.put(key, objRef(obj));
-
-              var newRealms =
-                  RealmsStateObj.builder()
-                      .realmIndex(index.toIndexed("idx-", state::writeOrReplace));
-
-              return state.commitResult(obj, newRealms, refObj);
-            });
-
-    var result = realm.orElseThrow();
-    if (result.status() == PURGING && "InMemory".equals(backend.type())) {
-      // Handle the test/development case when using the in-memory backend:
-      // In this case there is no chance to run the maintenance service. To remove no longer
-      // necessary data from the Java heap, call the in-memory backend directly.
-      // This is "nice behavior" when running tests.
-      // The only "cost" is that the state PURGING may never be pushed to PURGED, but that is
-      // acceptable.
-      backend.deleteRealms(Set.of(realmId));
-    }
-
-    return objToDefinition(realmId, result);
-  }
-
-  @SuppressWarnings("DuplicatedCode") // looks similar, but extracting isn't worth it
-  @Override
-  public void delete(String realmId, Consumer<RealmDefinition> callback) {
-    committer.commitRuntimeException(
-        (state, refObjSupplier) -> {
+        committer.commitRuntimeException((state, refObjSupplier) -> {
           var refObj = refObjSupplier.get();
           var current = refObj.orElse(null);
           if (current == null) {
@@ -249,15 +183,74 @@ class RealmStoreImpl implements RealmStore {
             throw realmObjNotFoundException(realmId);
           }
 
-          callback.accept(objToDefinition(realmId, currentObj));
+          var update = updater.apply(objToDefinition(realmId, currentObj));
 
-          index.remove(key);
+          var obj =
+              state.writeIfNew(
+                  "realm",
+                  RealmObj.builder()
+                      .created(currentObj.created())
+                      .updated(update.updated())
+                      .id(systemPersistence.generateId())
+                      .status(update.status())
+                      .properties(update.properties())
+                      .build(),
+                  RealmObj.class);
+
+          index.put(key, objRef(obj));
 
           var newRealms =
               RealmsStateObj.builder().realmIndex(index.toIndexed("idx-", state::writeOrReplace));
 
-          return state.commitResult(currentObj, newRealms, refObj);
+          return state.commitResult(obj, newRealms, refObj);
         });
+
+    var result = realm.orElseThrow();
+    if (result.status() == PURGING && "InMemory".equals(backend.type())) {
+      // Handle the test/development case when using the in-memory backend:
+      // In this case there is no chance to run the maintenance service. To remove no longer
+      // necessary data from the Java heap, call the in-memory backend directly.
+      // This is "nice behavior" when running tests.
+      // The only "cost" is that the state PURGING may never be pushed to PURGED, but that is
+      // acceptable.
+      backend.deleteRealms(Set.of(realmId));
+    }
+
+    return objToDefinition(realmId, result);
+  }
+
+  @SuppressWarnings("DuplicatedCode") // looks similar, but extracting isn't worth it
+  @Override
+  public void delete(String realmId, Consumer<RealmDefinition> callback) {
+    committer.commitRuntimeException((state, refObjSupplier) -> {
+      var refObj = refObjSupplier.get();
+      var current = refObj.orElse(null);
+      if (current == null) {
+        throw getRealmNotFoundException(realmId);
+      }
+
+      var key = IndexKey.key(realmId);
+
+      var index = current.realmIndex().asUpdatableIndex(systemPersistence, OBJ_REF_SERIALIZER);
+      var currentObjId = index.get(key);
+      if (currentObjId == null) {
+        throw getRealmNotFoundException(realmId);
+      }
+
+      var currentObj = systemPersistence.fetch(currentObjId, RealmObj.class);
+      if (currentObj == null) {
+        throw realmObjNotFoundException(realmId);
+      }
+
+      callback.accept(objToDefinition(realmId, currentObj));
+
+      index.remove(key);
+
+      var newRealms =
+          RealmsStateObj.builder().realmIndex(index.toIndexed("idx-", state::writeOrReplace));
+
+      return state.commitResult(currentObj, newRealms, refObj);
+    });
   }
 
   private RealmDefinition realmFromState(RealmsStateObj realms, String realmId) {

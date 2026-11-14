@@ -62,9 +62,11 @@ See [Token Broker description]({{< relref "../external-idp#token-broker" >}}) fo
 When [external principals]({{< relref "../external-idp#external-principals" >}}) are enabled for
 the realm, step 4 differs: `DefaultAuthenticator` builds the `PolarisPrincipal` directly from the
 mapped credentials, without any metastore lookup, and the principal's roles are taken verbatim from
-the credentials. Downstream, the
+the credentials. Since external principals have no entity in the metastore, the
 [`Resolver`](https://github.com/apache/polaris/blob/main/polaris-core/src/main/java/org/apache/polaris/core/persistence/resolver/Resolver.java)
-synthesizes the caller principal and its roles instead of loading them from the backend.
+does not provide caller principal or principal role entities: external authorizers must not rely on
+them, and should call `AuthorizationState.resolve()` to resolve only the securables that are
+actually needed for authorization.
 
 ### Mixed Authentication
 

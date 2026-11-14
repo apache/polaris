@@ -119,12 +119,9 @@ public class AzureCredentialsStorageIntegration
   protected StorageAccessConfig addExtraProperties(
       @NonNull StorageAccessConfig accessConfig, @NonNull Optional<String> refreshEndpoint) {
     return refreshEndpoint
-        .map(
-            endpoint ->
-                withExtraProperty(
-                    accessConfig,
-                    StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT,
-                    endpoint))
+        .map(endpoint ->
+            withExtraProperty(
+                accessConfig, StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT, endpoint))
         .orElse(accessConfig);
   }
 
@@ -140,11 +137,10 @@ public class AzureCredentialsStorageIntegration
 
   private static Set<String> writeLocations(List<LocationGrant> grants) {
     return grants.stream()
-        .filter(
-            g ->
-                g.actions().contains(PolarisStorageActions.WRITE)
-                    || g.actions().contains(PolarisStorageActions.DELETE)
-                    || g.actions().contains(PolarisStorageActions.ALL))
+        .filter(g ->
+            g.actions().contains(PolarisStorageActions.WRITE)
+                || g.actions().contains(PolarisStorageActions.DELETE)
+                || g.actions().contains(PolarisStorageActions.ALL))
         .flatMap(g -> g.locations().stream())
         .collect(Collectors.toSet());
   }
@@ -424,16 +420,15 @@ public class AzureCredentialsStorageIntegration
     Set<String> allLocations = new HashSet<>();
     allLocations.addAll(readLocations);
     allLocations.addAll(writeLocations);
-    allLocations.forEach(
-        loc -> {
-          AzureLocation location = new AzureLocation(loc);
-          if (!Objects.equals(location.getStorageAccount(), target.getStorageAccount())
-              || !Objects.equals(location.getContainer(), target.getContainer())
-              || !Objects.equals(location.getEndpoint(), target.getEndpoint())) {
-            throw new RuntimeException(
-                "Expect allowed read write locations belong to the same storage account and container");
-          }
-        });
+    allLocations.forEach(loc -> {
+      AzureLocation location = new AzureLocation(loc);
+      if (!Objects.equals(location.getStorageAccount(), target.getStorageAccount())
+          || !Objects.equals(location.getContainer(), target.getContainer())
+          || !Objects.equals(location.getEndpoint(), target.getEndpoint())) {
+        throw new RuntimeException(
+            "Expect allowed read write locations belong to the same storage account and container");
+      }
+    });
   }
 
   /**
@@ -470,27 +465,24 @@ public class AzureCredentialsStorageIntegration
         credential
             .getToken(new TokenRequestContext().addScopes(scope).setTenantId(tenantId))
             .timeout(Duration.ofMillis(timeoutMillis))
-            .doOnError(
-                error ->
-                    LOGGER.warn("Error fetching Azure access token for tenant {}", tenantId, error))
+            .doOnError(error ->
+                LOGGER.warn("Error fetching Azure access token for tenant {}", tenantId, error))
             .retryWhen(
                 Retry.backoff(retryCount, Duration.ofMillis(initialDelayMillis))
                     .jitter(jitter) // Apply jitter factor to computed delay
                     .filter(AzureCredentialsStorageIntegration::isRetriableAzureException)
-                    .doBeforeRetry(
-                        retrySignal ->
-                            LOGGER.info(
-                                "Retrying Azure token fetch for tenant {} (attempt {}/{})",
-                                tenantId,
-                                retrySignal.totalRetries() + 1,
-                                maxAttempts))
-                    .onRetryExhaustedThrow(
-                        (retryBackoffSpec, retrySignal) ->
-                            new RuntimeException(
-                                String.format(
-                                    "Azure token fetch exhausted after %d attempts for tenant %s",
-                                    retrySignal.totalRetries(), tenantId),
-                                retrySignal.failure())))
+                    .doBeforeRetry(retrySignal ->
+                        LOGGER.info(
+                            "Retrying Azure token fetch for tenant {} (attempt {}/{})",
+                            tenantId,
+                            retrySignal.totalRetries() + 1,
+                            maxAttempts))
+                    .onRetryExhaustedThrow((retryBackoffSpec, retrySignal) ->
+                        new RuntimeException(
+                            String.format(
+                                "Azure token fetch exhausted after %d attempts for tenant %s",
+                                retrySignal.totalRetries(), tenantId),
+                            retrySignal.failure())))
             .blockOptional()
             .orElse(null);
 

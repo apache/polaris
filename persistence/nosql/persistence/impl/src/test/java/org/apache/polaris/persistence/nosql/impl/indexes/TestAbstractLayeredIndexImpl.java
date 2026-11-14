@@ -108,18 +108,15 @@ public class TestAbstractLayeredIndexImpl {
     var embedded = newStoreIndex(OBJ_REF_SERIALIZER);
     reference
         .elementIterator()
-        .forEachRemaining(
-            el -> {
-              if ((expected.size() % 5) == 0) {
-                var value = el.valueNullable();
-                soft.assertThat(value)
-                    .describedAs("Element value %s is null", el.key())
-                    .isNotNull();
-                el = indexElement(el.key(), objRef(value.type(), ~value.id(), 1));
-                embedded.add(el);
-              }
-              expected.add(el);
-            });
+        .forEachRemaining(el -> {
+          if ((expected.size() % 5) == 0) {
+            var value = el.valueNullable();
+            soft.assertThat(value).describedAs("Element value %s is null", el.key()).isNotNull();
+            el = indexElement(el.key(), objRef(value.type(), ~value.id(), 1));
+            embedded.add(el);
+          }
+          expected.add(el);
+        });
 
     var layered = layeredIndex(reference, embedded);
 

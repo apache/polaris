@@ -100,3 +100,5 @@ digestTaskOutputs(distZip)
 signTaskOutputs(distTar)
 
 signTaskOutputs(distZip)
+
+apply(from = "../distribution-license-checks.gradle.kts")

@@ -126,10 +126,8 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
             () -> persistence.writeEntity(callCtx, withVersion(v1, 3, 1, Map.of()), false, v1))
         .isInstanceOf(RetryOnConcurrencyException.class);
     PolarisBaseEntity staleGrants = withVersion(v2, 2, 1, Map.of());
-    assertThatThrownBy(
-            () ->
-                persistence.writeEntity(
-                    callCtx, withVersion(v2, 3, 2, Map.of()), false, staleGrants))
+    assertThatThrownBy(() ->
+            persistence.writeEntity(callCtx, withVersion(v2, 3, 2, Map.of()), false, staleGrants))
         .isInstanceOf(RetryOnConcurrencyException.class);
 
     assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isEqualTo(v2);

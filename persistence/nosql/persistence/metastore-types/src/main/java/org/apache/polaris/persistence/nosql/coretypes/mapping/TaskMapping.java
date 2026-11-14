@@ -104,10 +104,9 @@ final class TaskMapping extends BaseMapping<ImmediateTaskObj, ImmediateTaskObj.B
     o.lastAttemptExecutorId()
         .ifPresent(v -> properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, v));
     o.lastAttemptStartTime()
-        .ifPresent(
-            v ->
-                properties.put(
-                    PolarisTaskConstants.LAST_ATTEMPT_START_TIME, Long.toString(v.toEpochMilli())));
+        .ifPresent(v ->
+            properties.put(
+                PolarisTaskConstants.LAST_ATTEMPT_START_TIME, Long.toString(v.toEpochMilli())));
     o.attemptCount()
         .ifPresent(v -> properties.put(PolarisTaskConstants.ATTEMPT_COUNT, Integer.toString(v)));
   }

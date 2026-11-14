@@ -19,6 +19,7 @@
 
 plugins {
   id("org.kordamp.gradle.jandex")
+  alias(libs.plugins.jmh)
   id("polaris-server")
 }
 
@@ -72,4 +73,7 @@ dependencies {
 
   testFixturesCompileOnly(libs.jakarta.annotation.api)
   testFixturesCompileOnly(libs.jakarta.validation.api)
+
+  jmhImplementation(libs.jmh.core)
+  jmhAnnotationProcessor(libs.jmh.generator.annprocess)
 }

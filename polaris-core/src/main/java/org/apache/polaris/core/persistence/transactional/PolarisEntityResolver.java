@@ -275,13 +275,12 @@ public class PolarisEntityResolver {
     // now build a list of entity active keys
     List<PolarisEntitiesActiveKey> entityActiveKeys =
         toResolve.stream()
-            .map(
-                entityCore ->
-                    new PolarisEntitiesActiveKey(
-                        entityCore.getCatalogId(),
-                        entityCore.getParentId(),
-                        entityCore.getTypeCode(),
-                        entityCore.getName()))
+            .map(entityCore ->
+                new PolarisEntitiesActiveKey(
+                    entityCore.getCatalogId(),
+                    entityCore.getParentId(),
+                    entityCore.getTypeCode(),
+                    entityCore.getName()))
             .collect(Collectors.toList());
 
     // now lookup all these entities by name

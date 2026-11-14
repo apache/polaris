@@ -98,20 +98,17 @@ public class TestRealmStoreIntegration {
         .isThrownBy(() -> realmManagement.create("::something"))
         .withMessage("Invalid realm ID '%s'", "::something");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                realmManagement.update(
-                    something.withId("::something"), something.withId("::something")))
+        .isThrownBy(() ->
+            realmManagement.update(
+                something.withId("::something"), something.withId("::something")))
         .withMessage("Invalid realm ID '%s'", "::something");
     soft.assertThatIllegalArgumentException()
         .isThrownBy(() -> realmManagement.delete(something.withId("::something")))
         .withMessage("Invalid realm ID '%s'", "::something");
 
     // empty index
-    soft.assertThatThrownBy(
-            () ->
-                realmManagement.update(
-                    something, RealmDefinition.builder().from(something).build()))
+    soft.assertThatThrownBy(() ->
+            realmManagement.update(something, RealmDefinition.builder().from(something).build()))
         .isInstanceOf(RealmNotFoundException.class)
         .hasMessage("No realm with ID 'something' exists");
     soft.assertThatThrownBy(() -> realmManagement.delete(something.withStatus(PURGED)))
@@ -141,16 +138,14 @@ public class TestRealmStoreIntegration {
 
     // Update with different realm-IDs (duh!)
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                realmManagement.update(
-                    got, RealmDefinition.builder().from(got).id("something-else").build()));
+        .isThrownBy(() ->
+            realmManagement.update(
+                got, RealmDefinition.builder().from(got).id("something-else").build()));
     // Update with different expected state
-    soft.assertThatThrownBy(
-            () ->
-                realmManagement.update(
-                    RealmDefinition.builder().from(got).putProperty("foo", "bar").build(),
-                    RealmDefinition.builder().from(got).putProperty("meep", "meep").build()))
+    soft.assertThatThrownBy(() ->
+            realmManagement.update(
+                RealmDefinition.builder().from(got).putProperty("foo", "bar").build(),
+                RealmDefinition.builder().from(got).putProperty("meep", "meep").build()))
         .isInstanceOf(RealmExpectedStateMismatchException.class)
         .hasMessage("Realm '%s' does not match the expected state", got.id());
 
@@ -177,10 +172,9 @@ public class TestRealmStoreIntegration {
         .isThrownBy(() -> realmManagement.delete(active))
         .withMessage("Realm '%s' must be in state PURGED to be deleted", active.id());
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                realmManagement.update(
-                    active, RealmDefinition.builder().from(active).status(CREATED).build()))
+        .isThrownBy(() ->
+            realmManagement.update(
+                active, RealmDefinition.builder().from(active).status(CREATED).build()))
         .withMessage(
             "Invalid realm state transition from ACTIVE to CREATED for realm '%s'", active.id());
     var inactive =

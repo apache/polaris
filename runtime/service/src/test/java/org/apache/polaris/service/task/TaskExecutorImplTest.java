@@ -190,13 +190,12 @@ public class TaskExecutorImplTest {
             taskHandlerConfiguration());
 
     // No handlers registered
-    assertThatThrownBy(
-            () ->
-                executor.handleTask(
-                    taskEntity.getId(),
-                    polarisCallCtx,
-                    PolarisEventMetadata.builder().realmId(realm).build(),
-                    1))
+    assertThatThrownBy(() ->
+            executor.handleTask(
+                taskEntity.getId(),
+                polarisCallCtx,
+                PolarisEventMetadata.builder().realmId(realm).build(),
+                1))
         .isInstanceOf(RuntimeException.class)
         .hasMessageContaining("Unable to find handler for task type")
         .hasMessageContaining(String.valueOf(taskEntity.getId()));
@@ -252,13 +251,12 @@ public class TaskExecutorImplTest {
           }
         });
 
-    assertThatThrownBy(
-            () ->
-                executor.handleTask(
-                    taskEntity.getId(),
-                    polarisCallCtx,
-                    PolarisEventMetadata.builder().realmId(realm).build(),
-                    1))
+    assertThatThrownBy(() ->
+            executor.handleTask(
+                taskEntity.getId(),
+                polarisCallCtx,
+                PolarisEventMetadata.builder().realmId(realm).build(),
+                1))
         .isInstanceOf(RuntimeException.class)
         .hasMessageContaining("simulate transient failure");
 
@@ -316,13 +314,12 @@ public class TaskExecutorImplTest {
           }
         });
 
-    assertThatCode(
-            () ->
-                executor.handleTask(
-                    droppedTaskId,
-                    polarisCallCtx,
-                    PolarisEventMetadata.builder().realmId(realm).build(),
-                    2))
+    assertThatCode(() ->
+            executor.handleTask(
+                droppedTaskId,
+                polarisCallCtx,
+                PolarisEventMetadata.builder().realmId(realm).build(),
+                2))
         .doesNotThrowAnyException();
 
     assertThat(handlerCalls.get()).isZero();
@@ -425,13 +422,12 @@ public class TaskExecutorImplTest {
           }
         });
 
-    assertThatThrownBy(
-            () ->
-                executor.handleTask(
-                    taskEntity.getId(),
-                    polarisCallCtx,
-                    PolarisEventMetadata.builder().realmId(realm).build(),
-                    2))
+    assertThatThrownBy(() ->
+            executor.handleTask(
+                taskEntity.getId(),
+                polarisCallCtx,
+                PolarisEventMetadata.builder().realmId(realm).build(),
+                2))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("UNEXPECTED_ERROR_SIGNALED");
 

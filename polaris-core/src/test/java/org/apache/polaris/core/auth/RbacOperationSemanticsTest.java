@@ -55,10 +55,9 @@ public class RbacOperationSemanticsTest {
 
   @Test
   void emptyTargetPrivilegesAreRejected() {
-    assertThatThrownBy(
-            () ->
-                new RbacOperationSemantics(
-                    EnumSet.noneOf(PolarisPrivilege.class), null, ResolvedPathRooting.ROOT))
+    assertThatThrownBy(() ->
+            new RbacOperationSemantics(
+                EnumSet.noneOf(PolarisPrivilege.class), null, ResolvedPathRooting.ROOT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("targetPrivileges must be non-empty");
   }

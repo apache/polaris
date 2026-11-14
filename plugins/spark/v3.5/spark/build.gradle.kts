@@ -24,7 +24,10 @@ import org.gradle.api.plugins.jvm.JvmTestSuite
 plugins {
   id("polaris-client")
   id("polaris-server-test-runner")
+  id("polaris-spark-license-checks")
 }
+
+apply(from = "../../licensee.gradle.kts")
 
 checkstyle {
   configProperties =
@@ -245,6 +248,10 @@ val createPolarisSparkJar =
 
       // From Hive/Hadoop - exclude those to not confuse people.
       "META-INF/DEPENDENCIES",
+
+      // JSpecify only contains compile-time annotations; Iceberg's Spark runtime jar bundles an
+      // unrelocated copy that is not needed at runtime.
+      "org/jspecify/**",
     )
 
     // add polaris customized LICENSE and NOTICE for the bundle jar under META-INF. Note that the

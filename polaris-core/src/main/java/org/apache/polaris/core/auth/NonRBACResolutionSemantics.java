@@ -66,7 +66,7 @@ public class NonRBACResolutionSemantics {
       if (intent instanceof TargetlessAuthorizationIntent) {
         authzState.select(REQUESTED_TOP_LEVEL_ENTITIES);
       } else {
-        intent.visitSecurables((securable) -> mergeSelections(authzState, securable));
+        intent.visitSecurables(securable -> mergeSelections(authzState, securable));
       }
     }
   }
