@@ -1933,24 +1933,12 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
   private static void validateLocationsMatchEntity(
       TableIdentifier identifier, IcebergTableLikeEntity entity, TableMetadata metadata) {
-    validateLocationsMatchEntity(
-        identifier,
-        entity,
-        metadata.location(),
-        metadata.properties(),
-        List.of(
-            IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
-            IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
+    validateLocationsMatchEntity(identifier, entity, metadata.location(), metadata.properties());
   }
 
   private static void validateLocationsMatchEntity(
       TableIdentifier identifier, IcebergTableLikeEntity entity, ViewMetadata metadata) {
-    validateLocationsMatchEntity(
-        identifier,
-        entity,
-        metadata.location(),
-        metadata.properties(),
-        List.of(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
+    validateLocationsMatchEntity(identifier, entity, metadata.location(), metadata.properties());
   }
 
   /**
@@ -1960,8 +1948,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       TableIdentifier identifier,
       IcebergTableLikeEntity entity,
       String location,
-      Map<String, String> properties,
-      List<String> writePathKeys) {
+      Map<String, String> properties) {
     // Older entities have no LOCATION marker. Their write paths are unknown rather than unset;
     // table base locations can also be stale because earlier notifications did not update them.
     // Callers retain their legacy fallback until a commit records the locations.
@@ -1969,7 +1956,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     if (!internalProperties.containsKey(IcebergTableLikeEntity.LOCATION)) {
       return;
     }
-    String kind = entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW ? "view" : "table";
+    boolean isView = entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW;
+    String kind = isView ? "view" : "table";
     String storedLocation = entity.getBaseLocation();
     if (storedLocation != null
         && !StorageLocation.of(storedLocation).isSameLocation(StorageLocation.of(location))) {
@@ -1983,6 +1971,12 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           "Location %s in the metadata of %s %s does not match its stored location %s",
           location, kind, identifier, storedLocation);
     }
+    List<String> writePathKeys =
+        isView
+            ? List.of(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)
+            : List.of(
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
     for (String key : writePathKeys) {
       Optional<StorageLocation> stored =
           Optional.ofNullable(internalProperties.get(key)).map(StorageLocation::of);
