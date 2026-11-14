@@ -364,14 +364,12 @@ public interface PolarisMetaStoreManager
    * @param dropTimestamp epoch millis when the entity was soft-deleted
    * @param toPurgeTimestamp epoch millis when the entity becomes eligible for permanent delete
    */
-  default @NonNull DropEntityResult softDeleteEntityIfExists(
+  @NonNull DropEntityResult softDeleteEntityIfExists(
       @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @NonNull PolarisBaseEntity entityToDrop,
       long dropTimestamp,
-      long toPurgeTimestamp) {
-    throw new UnsupportedOperationException("softDeleteEntityIfExists");
-  }
+      long toPurgeTimestamp);
 
   /**
    * Load the entity from backend store. Will return NULL if the entity does not exist, i.e. has
