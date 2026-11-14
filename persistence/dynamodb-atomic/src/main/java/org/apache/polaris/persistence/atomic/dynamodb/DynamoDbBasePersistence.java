@@ -385,18 +385,17 @@ public class DynamoDbBasePersistence implements BasePersistence {
             : List.of(optionalEntityType);
     for (PolarisEntityType type : types) {
       QueryResponse response =
-          client.query(
-              b ->
-                  b.tableName(tableName)
-                      .indexName(GSI1)
-                      .keyConditionExpression("#pk = :pk")
-                      .expressionAttributeNames(Map.of("#pk", GSI1_PK))
-                      .expressionAttributeValues(
-                          Map.of(
-                              ":pk",
-                              AttributeValue.fromS(
-                                  childrenGsiPk(realmId, catalogId, parentId, type.getCode()))))
-                      .limit(1));
+          client.query(b ->
+              b.tableName(tableName)
+                  .indexName(GSI1)
+                  .keyConditionExpression("#pk = :pk")
+                  .expressionAttributeNames(Map.of("#pk", GSI1_PK))
+                  .expressionAttributeValues(
+                      Map.of(
+                          ":pk",
+                          AttributeValue.fromS(
+                              childrenGsiPk(realmId, catalogId, parentId, type.getCode()))))
+                  .limit(1));
       if (response.count() > 0) {
         return true;
       }
