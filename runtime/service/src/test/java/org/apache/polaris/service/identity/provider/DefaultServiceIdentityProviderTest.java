@@ -46,8 +46,11 @@ import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.utils.SdkAutoCloseable;
 
 @QuarkusTest
 @TestProfile(DefaultServiceIdentityProviderTest.Profile.class)
@@ -57,6 +60,7 @@ public class DefaultServiceIdentityProviderTest {
 
   @InjectMock RealmContext realmContext;
   @Inject ServiceIdentityConfiguration serviceIdentityConfiguration;
+  @Inject ServiceIdentityCredentialCache credentialCache;
 
   public static class Profile implements QuarkusTestProfile {
     @Override
@@ -132,7 +136,8 @@ public class DefaultServiceIdentityProviderTest {
     // Check the default realm
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
     DefaultServiceIdentityProvider defaultProvider =
-        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+        new DefaultServiceIdentityProvider(
+            realmContext, serviceIdentityConfiguration, credentialCache);
 
     Optional<AwsIamServiceIdentityConfiguration> awsConfig =
         defaultProvider.getRealmConfig().awsIamServiceIdentity();
@@ -144,7 +149,8 @@ public class DefaultServiceIdentityProviderTest {
     // Check the my-realm with static credentials
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(MY_REALM_KEY);
     DefaultServiceIdentityProvider myRealmProvider =
-        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+        new DefaultServiceIdentityProvider(
+            realmContext, serviceIdentityConfiguration, credentialCache);
 
     awsConfig = myRealmProvider.getRealmConfig().awsIamServiceIdentity();
     Assertions.assertThat(awsConfig).isPresent();
@@ -158,7 +164,8 @@ public class DefaultServiceIdentityProviderTest {
     // Check the other realm (should fallback to default)
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn("other-realm");
     DefaultServiceIdentityProvider otherProvider =
-        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+        new DefaultServiceIdentityProvider(
+            realmContext, serviceIdentityConfiguration, credentialCache);
 
     awsConfig = otherProvider.getRealmConfig().awsIamServiceIdentity();
     Assertions.assertThat(awsConfig).isPresent();
@@ -171,7 +178,8 @@ public class DefaultServiceIdentityProviderTest {
     // Test allocateServiceIdentity with SigV4 authentication
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
     DefaultServiceIdentityProvider provider =
-        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+        new DefaultServiceIdentityProvider(
+            realmContext, serviceIdentityConfiguration, credentialCache);
 
     ConnectionConfigInfo connectionConfig =
         IcebergRestConnectionConfigInfo.builder()
@@ -200,7 +208,8 @@ public class DefaultServiceIdentityProviderTest {
     // Test allocateServiceIdentity with non-SigV4 authentication returns empty
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
     DefaultServiceIdentityProvider provider =
-        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+        new DefaultServiceIdentityProvider(
+            realmContext, serviceIdentityConfiguration, credentialCache);
 
     ConnectionConfigInfo connectionConfig =
         IcebergRestConnectionConfigInfo.builder()
@@ -223,7 +232,8 @@ public class DefaultServiceIdentityProviderTest {
     // Test allocateServiceIdentity with null authentication parameters
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
     DefaultServiceIdentityProvider provider =
-        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+        new DefaultServiceIdentityProvider(
+            realmContext, serviceIdentityConfiguration, credentialCache);
 
     ConnectionConfigInfo connectionConfig =
         IcebergRestConnectionConfigInfo.builder()
@@ -241,7 +251,8 @@ public class DefaultServiceIdentityProviderTest {
     // Test getServiceIdentityInfo returns user-facing info without credentials
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
     DefaultServiceIdentityProvider provider =
-        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+        new DefaultServiceIdentityProvider(
+            realmContext, serviceIdentityConfiguration, credentialCache);
 
     ServiceIdentityInfoDpo serviceIdentityDpo =
         new AwsIamServiceIdentityInfoDpo(
@@ -265,7 +276,8 @@ public class DefaultServiceIdentityProviderTest {
     // Test getServiceIdentityCredential returns full credential with secrets
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(MY_REALM_KEY);
     DefaultServiceIdentityProvider provider =
-        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+        new DefaultServiceIdentityProvider(
+            realmContext, serviceIdentityConfiguration, credentialCache);
 
     ServiceIdentityInfoDpo serviceIdentityDpo =
         new AwsIamServiceIdentityInfoDpo(
@@ -295,6 +307,108 @@ public class DefaultServiceIdentityProviderTest {
   }
 
   @Test
+  void testGetServiceIdentityCredentialIsReusedAcrossRequests() {
+    // A provider instance is created per request; the AWS credentials provider it hands out must be
+    // shared so that the SDK's credential cache is not discarded after every request.
+    Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
+    DefaultServiceIdentityProvider firstRequest =
+        new DefaultServiceIdentityProvider(
+            realmContext, serviceIdentityConfiguration, credentialCache);
+    DefaultServiceIdentityProvider secondRequest =
+        new DefaultServiceIdentityProvider(
+            realmContext, serviceIdentityConfiguration, credentialCache);
+
+    ServiceIdentityInfoDpo serviceIdentityDpo =
+        new AwsIamServiceIdentityInfoDpo(
+            DefaultServiceIdentityProvider.buildIdentityInfoReference(
+                DEFAULT_REALM_KEY, ServiceIdentityType.AWS_IAM));
+
+    AwsIamServiceIdentityCredential first =
+        (AwsIamServiceIdentityCredential)
+            firstRequest.getServiceIdentityCredential(serviceIdentityDpo).orElseThrow();
+    AwsIamServiceIdentityCredential second =
+        (AwsIamServiceIdentityCredential)
+            secondRequest.getServiceIdentityCredential(serviceIdentityDpo).orElseThrow();
+
+    Assertions.assertThat(first.getAwsCredentialsProvider())
+        .isInstanceOf(DefaultCredentialsProvider.class);
+    Assertions.assertThat(second.getAwsCredentialsProvider())
+        .isSameAs(first.getAwsCredentialsProvider());
+    // Only the provider is shared; each request gets its own credential object
+    Assertions.assertThat(second).isNotSameAs(first);
+  }
+
+  @Test
+  void testGetServiceIdentityCredentialSharesProviderOnlyAcrossRealmsWithTheSameIdentity() {
+    ServiceIdentityInfoDpo defaultIdentity =
+        new AwsIamServiceIdentityInfoDpo(
+            DefaultServiceIdentityProvider.buildIdentityInfoReference(
+                DEFAULT_REALM_KEY, ServiceIdentityType.AWS_IAM));
+    ServiceIdentityInfoDpo myRealmIdentity =
+        new AwsIamServiceIdentityInfoDpo(
+            DefaultServiceIdentityProvider.buildIdentityInfoReference(
+                MY_REALM_KEY, ServiceIdentityType.AWS_IAM));
+
+    Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
+    AwsCredentialsProvider defaultProvider =
+        awsCredentialsProvider(
+            new DefaultServiceIdentityProvider(
+                realmContext, serviceIdentityConfiguration, credentialCache),
+            defaultIdentity);
+
+    // A realm without its own configuration falls back to the default identity and shares it
+    Mockito.when(realmContext.getRealmIdentifier()).thenReturn("other-realm");
+    AwsCredentialsProvider otherRealmProvider =
+        awsCredentialsProvider(
+            new DefaultServiceIdentityProvider(
+                realmContext, serviceIdentityConfiguration, credentialCache),
+            defaultIdentity);
+
+    // A realm with its own configuration gets its own provider
+    Mockito.when(realmContext.getRealmIdentifier()).thenReturn(MY_REALM_KEY);
+    AwsCredentialsProvider myRealmProvider =
+        awsCredentialsProvider(
+            new DefaultServiceIdentityProvider(
+                realmContext, serviceIdentityConfiguration, credentialCache),
+            myRealmIdentity);
+
+    Assertions.assertThat(otherRealmProvider).isSameAs(defaultProvider);
+    Assertions.assertThat(myRealmProvider)
+        .isNotSameAs(defaultProvider)
+        .isInstanceOf(StaticCredentialsProvider.class);
+  }
+
+  @Test
+  void testCredentialCacheShutdownClosesAllProvidersEvenIfOneFails() {
+    ServiceIdentityCredentialCache cache = new ServiceIdentityCredentialCache();
+    AwsCredentialsProvider failingProvider = closeableProviderMock();
+    AwsCredentialsProvider closeableProvider = closeableProviderMock();
+    Mockito.doThrow(new IllegalStateException("close failed"))
+        .when((SdkAutoCloseable) failingProvider)
+        .close();
+
+    cache.awsCredentialsProvider(DEFAULT_REALM_KEY, () -> failingProvider);
+    cache.awsCredentialsProvider(MY_REALM_KEY, () -> closeableProvider);
+    cache.shutdown();
+
+    Mockito.verify((SdkAutoCloseable) failingProvider).close();
+    Mockito.verify((SdkAutoCloseable) closeableProvider).close();
+  }
+
+  private static AwsCredentialsProvider awsCredentialsProvider(
+      DefaultServiceIdentityProvider provider, ServiceIdentityInfoDpo serviceIdentity) {
+    return ((AwsIamServiceIdentityCredential)
+            provider.getServiceIdentityCredential(serviceIdentity).orElseThrow())
+        .getAwsCredentialsProvider();
+  }
+
+  private static AwsCredentialsProvider closeableProviderMock() {
+    return Mockito.mock(
+        AwsCredentialsProvider.class,
+        Mockito.withSettings().extraInterfaces(SdkAutoCloseable.class));
+  }
+
+  @Test
   void testEmptyProviderAllocateServiceIdentityReturnsEmpty() {
     // Test that an empty provider returns empty when allocating
     DefaultServiceIdentityProvider emptyProvider = new DefaultServiceIdentityProvider();
@@ -321,11 +435,13 @@ public class DefaultServiceIdentityProviderTest {
     // Test that different realms have different configurations
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
     DefaultServiceIdentityProvider defaultProvider =
-        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+        new DefaultServiceIdentityProvider(
+            realmContext, serviceIdentityConfiguration, credentialCache);
 
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(MY_REALM_KEY);
     DefaultServiceIdentityProvider myRealmProvider =
-        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+        new DefaultServiceIdentityProvider(
+            realmContext, serviceIdentityConfiguration, credentialCache);
 
     // Verify different IAM ARNs from configuration
     Assertions.assertThat(defaultProvider.getRealmConfig().awsIamServiceIdentity()).isPresent();
