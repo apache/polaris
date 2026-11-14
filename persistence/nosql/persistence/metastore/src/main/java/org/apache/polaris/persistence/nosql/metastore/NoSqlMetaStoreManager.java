@@ -216,7 +216,13 @@ record NoSqlMetaStoreManager(
       @NonNull PolarisEntityType entityType,
       @NonNull PolarisEntitySubType entitySubType,
       @NonNull String name) {
-    return readEntityByName(ms(callCtx), catalogPath, entityType, name);
+    var result = readEntityByName(ms(callCtx), catalogPath, entityType, name);
+    if (result.isSuccess()
+        && entitySubType != PolarisEntitySubType.ANY_SUBTYPE
+        && result.getEntity().getSubTypeCode() != entitySubType.getCode()) {
+      return new EntityResult(ENTITY_NOT_FOUND, null);
+    }
+    return result;
   }
 
   EntityResult readEntityByName(
