@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -70,7 +69,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       S3CredentialVendingMechanisms mechanisms,
       RealmConfig realmConfig,
       Clock clock,
-      StorageCredentialCache cache) {
+      StorageCredentialCache cache,
+      AzureCredentialsFactory azureCredentials) {
     this.realmConfig = realmConfig;
     this.mechanisms = mechanisms;
     Supplier<GoogleCredentials> gcpCredsProvider =
@@ -81,20 +81,10 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         storageConfig ->
             new GcpCredentialsStorageIntegration(
                 gcpCredsProvider.get(), gcpTransportFactory, cache, storageConfig, realmConfig);
-    AzureCredentialsFactory azureCredentials = new AzureCredentialsFactory(storageConfiguration);
     this.azureFactory =
         storageConfig ->
-            azureCredentials
-                .credential(
-                    storageConfig,
-                    realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME))
-                .map(
-                    credential ->
-                        new AzureCredentialsStorageIntegration(
-                            credential, cache, storageConfig, realmConfig))
-                .orElseGet(
-                    () ->
-                        new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig));
+            new AzureCredentialsStorageIntegration(
+                azureCredentials.credential(storageConfig), cache, storageConfig, realmConfig);
   }
 
   public PolarisStorageIntegrationProviderImpl(

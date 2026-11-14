@@ -20,54 +20,57 @@ package org.apache.polaris.service.storage;
 
 import com.azure.core.credential.TokenCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
-import com.google.common.base.Suppliers;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.service.storage.StorageConfiguration.AzureNamedStorageConfig;
 import org.apache.polaris.service.storage.StorageConfiguration.AzureStorageConfig;
 
 /**
  * Selects the Azure credential of a storage configuration from the {@code polaris.storage.azure}
- * properties. Each credential is built on first use and then shared, because its access tokens are
- * cached inside the credential object. A failed build is not kept, so the next use retries it.
+ * properties, or the {@code DefaultAzureCredential} chain when none apply. A new credential is
+ * built on every call; the vended credentials are cached by the caller.
  *
- * <p>The checks run on every call, because a credential is shared by every storage configuration
- * that uses it. The messages can reach API clients, so they never include a configured value.
+ * <p>The messages can reach API clients, so they never include a configured value.
  */
-final class AzureCredentialsFactory {
+@ApplicationScoped
+class AzureCredentialsFactory {
 
   private static final String PREFIX = "polaris.storage.azure.";
 
   private final AzureStorageConfig azure;
-  private final Supplier<TokenCredential> unnamedCredential;
-  private final Map<String, TokenCredential> namedCredentials = new ConcurrentHashMap<>();
+  private final RealmConfig realmConfig;
 
-  AzureCredentialsFactory(StorageConfiguration storageConfiguration) {
+  /**
+   * For the client proxy ArC generates for this normal-scoped bean: the proxy subclass needs a
+   * no-args constructor. A working instance always comes from the constructor below.
+   */
+  protected AzureCredentialsFactory() {
+    this.azure = null;
+    this.realmConfig = null;
+  }
+
+  @Inject
+  AzureCredentialsFactory(StorageConfiguration storageConfiguration, RealmConfig realmConfig) {
     this.azure = storageConfiguration.azure();
-    this.unnamedCredential =
-        Suppliers.memoize(
-            () ->
-                build(
-                    "from " + PREFIX + "*",
-                    azure.tenantId().orElseThrow(),
-                    azure.clientId().orElseThrow(),
-                    azure.clientSecret().orElseThrow()));
+    this.realmConfig = realmConfig;
   }
 
   /**
-   * Returns the credential of the storage configuration, or empty to use the {@code
-   * DefaultAzureCredential} chain. With {@code resolveByStorageName}, a storage name selects its
-   * named credential and never falls back. Otherwise the unnamed properties are used, if set.
+   * Returns the credential of the storage configuration. With {@code
+   * RESOLVE_CREDENTIALS_BY_STORAGE_NAME}, a storage name selects its named credential and never
+   * falls back. Otherwise the unnamed properties are used if set, else the {@code
+   * DefaultAzureCredential} chain.
    */
-  Optional<TokenCredential> credential(
-      AzureStorageConfigurationInfo storageConfig, boolean resolveByStorageName) {
+  TokenCredential credential(AzureStorageConfigurationInfo storageConfig) {
     String storageName = storageConfig.getStorageName();
-    if (resolveByStorageName && storageName != null) {
+    if (storageName != null
+        && realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
       AzureNamedStorageConfig named = azure.storages().get(storageName);
       if (named == null) {
         throw new IllegalArgumentException(
@@ -77,15 +80,11 @@ final class AzureCredentialsFactory {
           named.tenantId(),
           storageConfig.getTenantId(),
           "the tenant configured for storage name '" + storageName + "'");
-      return Optional.of(
-          namedCredentials.computeIfAbsent(
-              storageName,
-              name ->
-                  build(
-                      "for storage name '" + name + "'",
-                      named.tenantId(),
-                      named.clientId(),
-                      named.clientSecret())));
+      return build(
+          "for storage name '" + storageName + "'",
+          named.tenantId(),
+          named.clientId(),
+          named.clientSecret());
     }
     List<String> missing = new ArrayList<>();
     if (azure.tenantId().isEmpty()) {
@@ -98,14 +97,19 @@ final class AzureCredentialsFactory {
       missing.add(PREFIX + "client-secret");
     }
     if (missing.size() == 3) {
-      return Optional.empty();
+      // Reads the AZURE_* environment variables, among other sources.
+      return new DefaultAzureCredentialBuilder().build();
     }
     if (!missing.isEmpty()) {
       throw new IllegalStateException(
           "Incomplete Azure credentials on the server, missing: " + String.join(", ", missing));
     }
     checkTenant(azure.tenantId().get(), storageConfig.getTenantId(), PREFIX + "tenant-id");
-    return Optional.of(unnamedCredential.get());
+    return build(
+        "from " + PREFIX + "*",
+        azure.tenantId().get(),
+        azure.clientId().get(),
+        azure.clientSecret().get());
   }
 
   /** A client secret credential only obtains tokens for its own tenant. */

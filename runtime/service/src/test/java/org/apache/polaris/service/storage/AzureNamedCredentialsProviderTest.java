@@ -66,7 +66,6 @@ class AzureNamedCredentialsProviderTest {
   private static final String UNNAMED_CLIENT_ID = "app-unnamed";
 
   private final AtomicInteger builds = new AtomicInteger();
-  private boolean failNextBuild;
   private MockedConstruction<ClientSecretCredentialBuilder> builders;
 
   @BeforeEach
@@ -81,10 +80,6 @@ class AzureNamedCredentialsProviderTest {
                     .thenAnswer(
                         invocation -> {
                           builds.incrementAndGet();
-                          if (failNextBuild) {
-                            failNextBuild = false;
-                            throw new IllegalStateException("build failed");
-                          }
                           return mock(ClientSecretCredential.class);
                         }));
   }
@@ -127,7 +122,8 @@ class AzureNamedCredentialsProviderTest {
         new S3CredentialVendingMechanisms(Map.of()),
         realmConfig,
         Clock.systemUTC(),
-        null);
+        null,
+        new AzureCredentialsFactory(storageConfiguration, realmConfig));
   }
 
   /** The client IDs of the credentials built so far, in build order. */
@@ -282,17 +278,7 @@ class AzureNamedCredentialsProviderTest {
   }
 
   @Test
-  void aNameIsBuiltOnceAndSharedAcrossCalls() {
-    PolarisStorageIntegrationProviderImpl provider = provider(resolveByName());
-
-    provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
-    provider.getStorageIntegration(entityPath(PolarisEntityType.TASK, "team-a", TENANT));
-
-    assertThat(builds).hasValue(1);
-  }
-
-  @Test
-  void theFlagIsReadPerRealmWhileTheBuiltCredentialIsSharedByName() {
+  void theFlagIsReadPerRealm() {
     Map<String, Object> flags = new HashMap<>();
     PolarisStorageIntegrationProviderImpl provider = provider(flags);
 
@@ -310,26 +296,9 @@ class AzureNamedCredentialsProviderTest {
                   entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
             });
 
-    // The realm with the flag off gets the default credential; the two realms with it on share one.
+    // The realm with the flag off gets the default credential; the realms with it on get team-a's.
     assertThat(defaultBuilds).isEqualTo(1);
-    assertThat(builds).hasValue(1);
-  }
-
-  @Test
-  void aFailedBuildIsNotKeptAndIsRetriedOnTheNextUse() {
-    PolarisStorageIntegrationProviderImpl provider = provider(resolveByName());
-    failNextBuild = true;
-
-    assertThatThrownBy(
-            () ->
-                provider.getStorageIntegration(
-                    entityPath(PolarisEntityType.CATALOG, "team-a", TENANT)))
-        .isInstanceOf(IllegalStateException.class);
-    PolarisStorageIntegration integration =
-        provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
-
-    assertThat(integration).isInstanceOf(AzureCredentialsStorageIntegration.class);
-    assertThat(builds).hasValue(2);
+    assertThat(builtClientIds()).containsExactly("app-team-a", "app-team-a");
   }
 
   @Test
@@ -344,7 +313,7 @@ class AzureNamedCredentialsProviderTest {
             });
 
     assertThat(defaultBuilds).isZero();
-    assertThat(builtClientIds()).containsExactly(UNNAMED_CLIENT_ID);
+    assertThat(builtClientIds()).containsExactly(UNNAMED_CLIENT_ID, UNNAMED_CLIENT_ID);
   }
 
   @Test

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.storage;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
@@ -32,6 +33,8 @@ import io.smallrye.config.SmallRyeConfigBuilder;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -88,9 +91,10 @@ class AzureNamedCredentialsTest {
 
   private static TokenCredential credentialOf(
       StorageConfiguration config, String name, String tenantId) {
-    return new AzureCredentialsFactory(config)
-        .credential(storage(name, tenantId), true)
-        .orElseThrow();
+    Map<String, Object> flags = Map.of(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true);
+    RealmConfig realmConfig =
+        new RealmConfigImpl((rc, flag) -> flags.get(flag), () -> "test-realm");
+    return new AzureCredentialsFactory(config, realmConfig).credential(storage(name, tenantId));
   }
 
   /** Builds the credential and returns the builder that built it, to check what it was given. */
