@@ -150,7 +150,7 @@ jobs:
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '21.0.13+9'
 
       - name: Install Subversion
         run: |
@@ -168,7 +168,25 @@ jobs:
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
-          exec_process ./gradlew assemble sourceTarball -Prelease -PuseGpgAgent
+          exec_process ./gradlew assemble sourceTarball releaseBuildEnvironment -Prelease -PuseGpgAgent
+
+          if [[ ${DRY_RUN:-1} -ne 1 ]]; then
+            evidence="build/distributions/polaris-build-environment-${version_without_rc}.json"
+            jq -r '
+              def cell: tostring | gsub("[\\r\\n]"; " ") | gsub("\\|"; "\\|");
+              ["## Build environment", "", "| Property | Value |", "| --- | --- |"],
+              (["Release version", .release.version], ["Gradle", .gradleVersion],
+               ["Gradle JVM vendor", .gradleJvm.vendor], ["Gradle JVM version", .gradleJvm.runtimeVersion],
+               ["OS", .environment.osName], ["Architecture", .environment.architecture],
+               ["Runner image", ((.ci.ImageOS // "") + " " + (.ci.ImageVersion // ""))],
+               ["Locale", .environment.locale], ["Timezone", .environment.timezone],
+               ["Encoding", .environment.encoding] | map(cell) | "| " + join(" | ") + " |"),
+              (.configuredToolchains | map({role, vendor, runtimeVersion}) | unique[] |
+                [.role, (.vendor + " " + .runtimeVersion)] | map(cell) | "| " + join(" | ") + " |")
+              | if type == "array" then .[] else . end
+            ' "$evidence" >> "$GITHUB_STEP_SUMMARY"
+            echo "Evidence asset: $(basename "$evidence") (with ASC signature and SHA-512 checksum)" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Build
@@ -184,6 +202,11 @@ jobs:
 
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
+
+          # Require the signed environment record before changing the staged distribution.
+          for suffix in "" .asc .sha512; do
+            exec_process test -s "build/distributions/polaris-build-environment-${version_without_rc}.json${suffix}"
+          done
 
           dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
 
@@ -293,7 +316,7 @@ jobs:
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '21.0.13+9'
 
       - name: Check Docker image dependency licenses
         run: |
@@ -363,7 +386,7 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
-          version: 'latest'
+          version: 'v4.3.1'
 
       - name: Install Subversion
         run: |
@@ -565,7 +588,7 @@ jobs:
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '21.0.13+9'
 
       - name: Install Subversion
         run: |

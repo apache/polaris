@@ -500,6 +500,81 @@ verify_checksums "${dist_dir}"
 mirror "${maven_repo_url}" "${maven_repo_dir}" 3
 verify_checksums "${maven_repo_dir}"
 
+function validate_build_environment {
+  local record="$1" expected_version="$2"
+  if ! jq -e 'type == "object" and (.schemaVersion | type == "number")' "$record" >/dev/null; then
+    log_fatal "Invalid build-environment JSON: $record"
+    return 1
+  fi
+  if [[ $(jq -r '.schemaVersion' "$record") != 1 ]]; then
+    log_warn "Unsupported build-environment schema; environment comparison skipped: $record"
+    return 2
+  fi
+  if ! jq -e '
+    .scope == "source-binary-maven" and
+    (.release | type == "object") and
+    (.release.version | type == "string") and
+    (.gradleVersion | type == "string") and
+    (.gradleJvm | type == "object") and
+    (.gradleJvm.vendor | type == "string") and
+    (.gradleJvm.runtimeVersion | type == "string") and
+    (.environment | type == "object") and
+    (.configuredToolchains | type == "array") and
+    all(.configuredToolchains[];
+      (.task | type == "string") and (.role | type == "string") and
+      (.vendor | type == "string") and (.runtimeVersion | type == "string"))
+  ' "$record" >/dev/null; then
+    log_fatal "Invalid build-environment fields: $record"
+    return 1
+  fi
+  if ! jq -e --arg version "$expected_version" '.release.version == $version' "$record" >/dev/null; then
+    log_fatal "Build-environment evidence does not match release $expected_version"
+    return 1
+  fi
+}
+
+function compare_build_environments {
+  local recorded="$1" local_record="$2" field expected actual role
+  for field in gradleVersion gradleJvm.vendor gradleJvm.runtimeVersion; do
+    expected=$(jq -r --arg field "$field" 'getpath($field | split(".")) // "<unknown>"' "$recorded")
+    actual=$(jq -r --arg field "$field" 'getpath($field | split(".")) // "<unknown>"' "$local_record")
+    if [[ "$expected" != "$actual" ]]; then
+      log_warn "Build environment $field differs: release='$expected', local='$actual'"
+    fi
+  done
+  for field in osName osVersion architecture locale timezone encoding; do
+    expected=$(jq -r --arg field "$field" '.environment[$field] // "<unknown>"' "$recorded")
+    actual=$(jq -r --arg field "$field" '.environment[$field] // "<unknown>"' "$local_record")
+    if [[ "$expected" != "$actual" ]]; then
+      log_info "Build environment $field differs: release='$expected', local='$actual'"
+    fi
+  done
+  # Requested tasks differ between release and verification builds; compare tools by role, not task paths.
+  while IFS= read -r role; do
+    expected=$(jq -c --arg role "$role" '[.configuredToolchains[] | select(.role == $role) | {vendor, runtimeVersion}] | unique' "$recorded")
+    actual=$(jq -c --arg role "$role" '[.configuredToolchains[] | select(.role == $role) | {vendor, runtimeVersion}] | unique' "$local_record")
+    if [[ "$expected" != "$actual" ]]; then
+      log_warn "Build environment $role toolchains differ: release=$expected, local=$actual"
+    fi
+  done < <(jq -r '[.configuredToolchains[].role] | unique[]' "$recorded")
+}
+
+# Older candidates do not have environment evidence. Verify any supplied evidence using
+# the signatures/checksums above before parsing it; never execute metadata as shell code.
+build_environment_file="${dist_dir}/polaris-build-environment-${version}.json"
+build_environment_tasks=()
+if [[ -f "$build_environment_file" ]]; then
+  if [[ $fatal_reported -ne 0 ]]; then
+    log_warn "Earlier verification checks failed; build-environment evidence will not be used."
+  elif ! command -v jq > /dev/null; then
+    log_warn "Build-environment evidence is present, but jq is unavailable; environment comparison skipped."
+  elif validate_build_environment "$build_environment_file" "$version"; then
+    build_environment_tasks=(releaseBuildEnvironment)
+  fi
+else
+  log_info "No build-environment evidence supplied by this release candidate."
+fi
+
 # Build Polaris ("assemble") and publish to a separate local Maven repository
 log_part_start "Building Polaris ..."
 mkdir -p "${maven_local_dir}"
@@ -508,9 +583,20 @@ mkdir -p "${maven_local_dir}"
   publishToMavenLocal \
   sourceTarball \
   assemble \
+  "${build_environment_tasks[@]}" \
   -PjarWithGitInfo
 )
 log_part_end
+
+if [[ ${#build_environment_tasks[@]} -ne 0 ]]; then
+  local_build_environment_file="${worktree_dir}/build/distributions/polaris-build-environment-${version}.json"
+  if validate_build_environment "$local_build_environment_file" "$version"; then
+    log_part_start "Comparing release build environments"
+    compare_build_environments "$build_environment_file" "$local_build_environment_file"
+    log_info "Environment differences are diagnostic; artifact byte comparisons remain authoritative."
+    log_part_end
+  fi
+fi
 
 # Check that the set of locally built Maven artifacts and staged Maven artifacts is the same.
 echo "Listing locally built Maven artifacts..."
