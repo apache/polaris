@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.cassandra;
+package org.apache.polaris.persistence.nosql.cassandra.quarkus;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -29,9 +29,17 @@ import static org.mockito.Mockito.when;
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
 import com.datastax.oss.driver.api.core.auth.Authenticator;
 import com.datastax.oss.driver.api.core.auth.ProgrammaticPlainTextAuthProvider;
+import com.datastax.oss.driver.api.core.config.OptionsMap;
+import com.datastax.oss.driver.api.core.config.TypedDriverOption;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import jakarta.enterprise.inject.Instance;
+import java.util.Map;
+import org.apache.polaris.persistence.nosql.cassandra.CassandraConfiguration;
+import org.apache.polaris.persistence.nosql.cassandra.CassandraSessionFactory;
+import org.apache.polaris.persistence.nosql.cassandra.ImmutableBuildableCassandraConfiguration;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class CassandraClientProducerTest {
 
@@ -186,6 +194,47 @@ class CassandraClientProducerTest {
         .isThrownBy(
             () -> CassandraClientProducer.resolveAuthenticationProvider(configuration, providers))
         .withMessageContaining("Cassandra authentication provider 'custom' is ambiguous");
+  }
+
+  @Test
+  void enablesConservativeMetricDefaults() {
+    var options = OptionsMap.driverDefaults();
+    CassandraClientProducer.configureMetrics(options);
+    assertThat(options.get(TypedDriverOption.METRICS_SESSION_ENABLED))
+        .containsExactly("connected-nodes", "cql-requests");
+    assertThat(options.get(TypedDriverOption.METRICS_NODE_ENABLED))
+        .contains("pool.open-connections", "errors.request.read-timeouts")
+        .doesNotContain("cql-messages");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"advanced.metrics.node.enabled", "advanced-metrics-node-enabled"})
+  void explicitMetricListsOverrideDefaults(String path) {
+    var options = OptionsMap.driverDefaults();
+    CassandraClientProducer.configureMetrics(options);
+    CassandraSessionFactory.configureDriverOptions(
+        configuration().driverOptions(Map.of(path, "pool.in-flight")).build(), false, options);
+    assertThat(options.get(TypedDriverOption.METRICS_NODE_ENABLED))
+        .containsExactly("pool.in-flight");
+    assertThat(options.get(TypedDriverOption.METRICS_SESSION_ENABLED))
+        .containsExactly("connected-nodes", "cql-requests");
+  }
+
+  @Test
+  void emptyMetricListsDisableBothCategories() {
+    var options = OptionsMap.driverDefaults();
+    CassandraClientProducer.configureMetrics(options);
+    CassandraSessionFactory.configureDriverOptions(
+        configuration()
+            .driverOptions(
+                Map.of(
+                    "advanced.metrics.node.enabled", "",
+                    "advanced.metrics.session.enabled", ""))
+            .build(),
+        false,
+        options);
+    assertThat(options.get(TypedDriverOption.METRICS_NODE_ENABLED)).isEmpty();
+    assertThat(options.get(TypedDriverOption.METRICS_SESSION_ENABLED)).isEmpty();
   }
 
   private static ImmutableBuildableCassandraConfiguration.Builder configuration() {

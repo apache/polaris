@@ -64,6 +64,7 @@ dependencies {
   implementation(libs.guava)
   implementation(libs.slf4j.api)
 
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)

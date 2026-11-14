@@ -23,6 +23,11 @@ import static com.datastax.oss.driver.api.core.config.TypedDriverOption.AUTH_PRO
 import static com.datastax.oss.driver.api.core.config.TypedDriverOption.AUTH_PROVIDER_USER_NAME;
 import static com.datastax.oss.driver.api.core.config.TypedDriverOption.CLOUD_SECURE_CONNECT_BUNDLE;
 import static com.datastax.oss.driver.api.core.config.TypedDriverOption.CONFIG_RELOAD_INTERVAL;
+import static com.datastax.oss.driver.api.core.config.TypedDriverOption.METRICS_FACTORY_CLASS;
+import static com.datastax.oss.driver.api.core.config.TypedDriverOption.METRICS_ID_GENERATOR_CLASS;
+import static com.datastax.oss.driver.api.core.config.TypedDriverOption.METRICS_ID_GENERATOR_PREFIX;
+import static com.datastax.oss.driver.api.core.config.TypedDriverOption.REQUEST_CONSISTENCY;
+import static com.datastax.oss.driver.api.core.config.TypedDriverOption.REQUEST_SERIAL_CONSISTENCY;
 import static com.datastax.oss.driver.api.core.config.TypedDriverOption.REQUEST_TIMEOUT;
 
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
@@ -43,7 +48,13 @@ import org.jspecify.annotations.NonNull;
 /** Applies Cassandra Java driver options supplied through {@link CassandraConfiguration}. */
 final class CassandraDriverOptions {
   private static final Set<DriverOption> POLARIS_MANAGED_OPTIONS =
-      Set.of(REQUEST_TIMEOUT.getRawOption());
+      Set.of(
+          REQUEST_TIMEOUT.getRawOption(),
+          REQUEST_CONSISTENCY.getRawOption(),
+          REQUEST_SERIAL_CONSISTENCY.getRawOption(),
+          METRICS_FACTORY_CLASS.getRawOption(),
+          METRICS_ID_GENERATOR_CLASS.getRawOption(),
+          METRICS_ID_GENERATOR_PREFIX.getRawOption());
   private static final Set<DriverOption> DRIVER_AUTH_OPTIONS =
       Set.of(
           AUTH_PROVIDER_CLASS.getRawOption(),
@@ -121,7 +132,7 @@ final class CassandraDriverOptions {
       if (rawType.equals(List.class)
           && typeArguments.length == 1
           && typeArguments[0] instanceof Class<?>) {
-        return config.getValues(path, (Class<?>) typeArguments[0]);
+        return config.getOptionalValues(path, (Class<?>) typeArguments[0]).orElseGet(List::of);
       }
       if (rawType.equals(Map.class)
           && typeArguments.length == 2
@@ -176,10 +187,6 @@ final class CassandraDriverOptions {
         throw new IllegalArgumentException(
             "Cassandra Java driver option '%s' is unsupported with in-memory driver configuration."
                 .formatted(path));
-      }
-      if (option.getRawOption().getPath().startsWith("advanced.metrics.")) {
-        throw new IllegalArgumentException(
-            "Cassandra Java driver metrics options are configured directly by Polaris.");
       }
       if (quarkusTlsConfigured
           && (option.getRawOption().getPath().startsWith("advanced.ssl-engine-factory.")

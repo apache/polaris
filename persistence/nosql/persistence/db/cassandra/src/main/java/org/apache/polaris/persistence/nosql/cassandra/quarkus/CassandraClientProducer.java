@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.cassandra;
+package org.apache.polaris.persistence.nosql.cassandra.quarkus;
 
 import static com.datastax.oss.driver.api.core.config.TypedDriverOption.METRICS_FACTORY_CLASS;
 import static com.datastax.oss.driver.api.core.config.TypedDriverOption.METRICS_ID_GENERATOR_CLASS;
@@ -27,8 +27,6 @@ import static com.datastax.oss.driver.api.core.config.TypedDriverOption.METRICS_
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
-import com.datastax.oss.driver.api.core.metrics.DefaultNodeMetric;
-import com.datastax.oss.driver.api.core.metrics.DefaultSessionMetric;
 import com.datastax.oss.driver.internal.core.metrics.TaggingMetricIdGenerator;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.quarkus.tls.TlsConfiguration;
@@ -38,8 +36,10 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
-import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
+import org.apache.polaris.persistence.nosql.cassandra.CassandraConfiguration;
+import org.apache.polaris.persistence.nosql.cassandra.CassandraSessionFactory;
 
 @ApplicationScoped
 class CassandraClientProducer {
@@ -58,11 +58,12 @@ class CassandraClientProducer {
       @Any Instance<AuthProvider> authenticationProviders) {
     var authenticationProvider =
         resolveAuthenticationProvider(configuration, authenticationProviders);
-    var options =
-        CassandraSessionFactory.driverOptions(configuration, authenticationProvider.isPresent());
+    var options = OptionsMap.driverDefaults();
     if (meterRegistry.isResolvable()) {
       configureMetrics(options);
     }
+    CassandraSessionFactory.configureDriverOptions(
+        configuration, authenticationProvider.isPresent(), options);
 
     var clientBuilder = CassandraSessionFactory.cqlSessionBuilder(options);
     authenticationProvider.ifPresent(clientBuilder::withAuthProvider);
@@ -155,15 +156,19 @@ class CassandraClientProducer {
     }
   }
 
-  private static void configureMetrics(OptionsMap options) {
+  static void configureMetrics(OptionsMap options) {
     options.put(METRICS_FACTORY_CLASS, MICROMETER_METRICS_FACTORY);
     options.put(METRICS_ID_GENERATOR_CLASS, TaggingMetricIdGenerator.class.getName());
     options.put(METRICS_ID_GENERATOR_PREFIX, "cassandra");
-    options.put(
-        METRICS_SESSION_ENABLED,
-        Arrays.stream(DefaultSessionMetric.values()).map(DefaultSessionMetric::getPath).toList());
+    options.put(METRICS_SESSION_ENABLED, List.of("connected-nodes", "cql-requests"));
     options.put(
         METRICS_NODE_ENABLED,
-        Arrays.stream(DefaultNodeMetric.values()).map(DefaultNodeMetric::getPath).toList());
+        List.of(
+            "pool.open-connections",
+            "errors.request.write-timeouts",
+            "errors.request.read-timeouts",
+            "errors.request.unavailables",
+            "errors.request.others",
+            "errors.connection.init"));
   }
 }

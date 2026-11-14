@@ -30,23 +30,31 @@ import java.time.Duration;
 import java.util.Optional;
 
 /** Builds Cassandra Java-driver sessions from Polaris configuration. */
-final class CassandraSessionFactory {
+public final class CassandraSessionFactory {
   private CassandraSessionFactory() {}
 
-  static OptionsMap driverOptions(CassandraConfiguration configuration) {
+  public static OptionsMap driverOptions(CassandraConfiguration configuration) {
     return driverOptions(configuration, false);
   }
 
-  static OptionsMap driverOptions(
+  public static OptionsMap driverOptions(
       CassandraConfiguration configuration, boolean cdiAuthenticationProviderConfigured) {
-    validateAuthentication(configuration);
     var options = OptionsMap.driverDefaults();
-    CassandraDriverOptions.apply(configuration, cdiAuthenticationProviderConfigured, options);
-    options.put(REQUEST_TIMEOUT, requestTimeout(configuration));
+    configureDriverOptions(configuration, cdiAuthenticationProviderConfigured, options);
     return options;
   }
 
-  static CqlSessionBuilder cqlSessionBuilder(
+  /** Applies Polaris configuration over driver defaults supplied by the caller. */
+  public static void configureDriverOptions(
+      CassandraConfiguration configuration,
+      boolean cdiAuthenticationProviderConfigured,
+      OptionsMap options) {
+    validateAuthentication(configuration);
+    CassandraDriverOptions.apply(configuration, cdiAuthenticationProviderConfigured, options);
+    options.put(REQUEST_TIMEOUT, requestTimeout(configuration));
+  }
+
+  public static CqlSessionBuilder cqlSessionBuilder(
       CassandraConfiguration configuration, OptionsMap options) {
     if (!CassandraConfiguration.DEFAULT_AUTHENTICATION_PROVIDER_NAME.equals(
         configuration.authProviderName())) {
@@ -58,11 +66,11 @@ final class CassandraSessionFactory {
     return sessionBuilder;
   }
 
-  static CqlSessionBuilder cqlSessionBuilder(OptionsMap options) {
+  public static CqlSessionBuilder cqlSessionBuilder(OptionsMap options) {
     return CqlSession.builder().withConfigLoader(DriverConfigLoader.fromMap(options));
   }
 
-  static Duration requestTimeout(CassandraConfiguration configuration) {
+  public static Duration requestTimeout(CassandraConfiguration configuration) {
     return configuration
         .requestTimeout()
         .orElseGet(() ->
@@ -71,7 +79,7 @@ final class CassandraSessionFactory {
                 : configuration.dmlTimeout());
   }
 
-  static Optional<AuthProvider> plainTextAuthProvider(CassandraConfiguration configuration) {
+  public static Optional<AuthProvider> plainTextAuthProvider(CassandraConfiguration configuration) {
     validateAuthentication(configuration);
     if (configuration.authUsername().isEmpty()) {
       return Optional.empty();
@@ -86,7 +94,7 @@ final class CassandraSessionFactory {
             .orElseGet(() -> new ProgrammaticPlainTextAuthProvider(username, password)));
   }
 
-  static void validateAuthentication(CassandraConfiguration configuration) {
+  public static void validateAuthentication(CassandraConfiguration configuration) {
     if (configuration.authUsername().isPresent() != configuration.authPassword().isPresent()) {
       throw new IllegalArgumentException(
           "Cassandra auth.username and auth.password must either both be configured or both be absent.");

@@ -25,12 +25,14 @@ import static org.apache.polaris.persistence.nosql.cassandra.CassandraBackendCon
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithConverter;
 import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.eclipse.microprofile.config.spi.Converter;
 import org.immutables.value.Value;
 
 /**
@@ -50,11 +52,15 @@ import org.immutables.value.Value;
  * tls-configuration-name}, which requires Quarkus's TLS Registry.
  *
  * <p>Additional Cassandra Java driver options can be configured under {@code driver}, using the
- * exact driver option path. For example, {@code driver.basic.request.consistency=LOCAL_QUORUM}
- * configures the driver option {@code basic.request.consistency}. This is an in-memory driver
- * configuration; a driver {@code application.conf} is not used. The Polaris-owned request timeout
- * and metrics settings cannot be configured through this subsection. When {@code
- * tls-configuration-name} is set, configure TLS settings exclusively through the Quarkus TLS
+ * exact driver option path. For example, {@code driver.basic.request.page-size=500} configures the
+ * driver option {@code basic.request.page-size}. This is an in-memory driver configuration; a
+ * driver {@code application.conf} is not used. The Polaris-owned request timeout and consistency
+ * settings cannot be configured through this subsection. In Quarkus, metrics default to session
+ * {@code connected-nodes,cql-requests} and node {@code pool.open-connections} plus selected request
+ * and connection error counters. Override {@code driver.advanced.metrics.session.enabled} and
+ * {@code driver.advanced.metrics.node.enabled} with explicit metric-name lists; an empty list
+ * disables that category. The metrics factory and naming settings are managed by Polaris. When
+ * {@code tls-configuration-name} is set, configure TLS settings exclusively through the Quarkus TLS
  * Registry rather than this subsection. Native driver authentication options can be used only when
  * the default {@code auth.provider-name} is selected and {@code auth.username}, {@code
  * auth.password}, and {@code auth.authorization-id} are absent.
@@ -72,9 +78,12 @@ public interface CassandraConfiguration {
   /**
    * Whether to verify that the Cassandra server certificate identifies the contacted host.
    *
+   * <p>Only applies when {@code tls-configuration-name} selects a Quarkus TLS configuration.
+   * Otherwise, configure hostname validation through the native driver TLS options.
+   *
    * <p>Disabling this option is unsafe and should not be used in production.
    */
-  @WithName("advanced.ssl-engine-factory.hostname-validation")
+  @WithName("tls-hostname-validation")
   @WithDefault("true")
   boolean hostnameValidation();
 
@@ -82,7 +91,7 @@ public interface CassandraConfiguration {
    * Session-wide Cassandra request timeout. Defaults to the larger of {@code ddl-timeout} and
    * {@code dml-timeout} when omitted.
    */
-  @WithName("request.timeout")
+  @WithName("request-timeout")
   @JsonFormat(shape = JsonFormat.Shape.STRING)
   Optional<Duration> requestTimeout();
 
@@ -116,7 +125,15 @@ public interface CassandraConfiguration {
 
   /** Additional Cassandra Java driver options, keyed by their exact driver option paths. */
   @WithName("driver")
-  Map<String, String> driverOptions();
+  Map<String, @WithConverter(DriverOptionValueConverter.class) String> driverOptions();
+
+  /** Preserves explicit empty driver values, including empty metric lists. */
+  final class DriverOptionValueConverter implements Converter<String> {
+    @Override
+    public String convert(String value) {
+      return value;
+    }
+  }
 
   /** The named Quarkus TLS Registry configuration to use for TLS or mTLS. */
   Optional<String> tlsConfigurationName();

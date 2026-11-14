@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.cassandra;
+package org.apache.polaris.persistence.nosql.cassandra.quarkus;
 
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
 import jakarta.enterprise.util.AnnotationLiteral;
