@@ -40,7 +40,7 @@ concurrency:
 jobs:
   site:
 
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     # This condition, which ensures the workflow is only run within the 'apache/polaris' repo, serves two purposes:
     # 1. Not triggering the workflow from any other repo, as it declares a 'workflow_call' trigger (security).
