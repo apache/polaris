@@ -18,15 +18,51 @@
  */
 package org.apache.polaris.service.task;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 
 public class TaskUtils {
+
+  private static final JsonMapper MAPPER = new JsonMapper();
+
+  /** Encodes {@code locations} as the value of {@link PolarisTaskConstants#STORAGE_LOCATIONS}. */
+  public static String encodeStorageLocations(Set<String> locations) {
+    try {
+      return MAPPER.writeValueAsString(locations);
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException("Unable to encode storage locations", e);
+    }
+  }
+
+  /**
+   * Returns the locations recorded in the internal properties of a purge task: {@link
+   * PolarisTaskConstants#STORAGE_LOCATIONS} if present, else the single {@link
+   * PolarisTaskConstants#STORAGE_LOCATION} (as written by older versions), else an empty set.
+   */
+  @SuppressWarnings("deprecation") // reads the legacy key written by older versions
+  public static Set<String> storageLocations(Map<String, String> taskProperties) {
+    String encoded = taskProperties.get(PolarisTaskConstants.STORAGE_LOCATIONS);
+    if (encoded != null) {
+      try {
+        return MAPPER.readValue(encoded, new TypeReference<>() {});
+      } catch (JsonProcessingException e) {
+        throw new IllegalStateException("Unable to decode storage locations", e);
+      }
+    }
+    String location = taskProperties.get(PolarisTaskConstants.STORAGE_LOCATION);
+    return location == null ? Set.of() : Set.of(location);
+  }
 
   public static boolean exists(String path, FileIO fileIO) {
     try {

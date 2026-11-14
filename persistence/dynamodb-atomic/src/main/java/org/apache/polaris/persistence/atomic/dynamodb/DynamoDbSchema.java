@@ -37,7 +37,7 @@ import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 
 /**
  * Provisions the single DynamoDB table the backend uses: the base table keyed by {@link
- * DynamoDbLayout#PK}/{@link DynamoDbLayout#SK} plus the by-name global secondary index {@link
+ * DynamoDbLayout#PK}/{@link DynamoDbLayout#SK} plus the children global secondary index {@link
  * DynamoDbLayout#GSI1} keyed by {@link DynamoDbLayout#GSI1_PK}/{@link DynamoDbLayout#GSI1_SK}.
  *
  * <p>Provisioning is a control-plane step run at bootstrap, not on the request path.
@@ -49,27 +49,26 @@ public final class DynamoDbSchema {
   private DynamoDbSchema() {}
 
   /**
-   * Creates the table and its by-name GSI if they do not already exist, then blocks until the table
-   * is active. Safe to call repeatedly: whether this call created the table, found it already
+   * Creates the table and its children GSI if they do not already exist, then blocks until the
+   * table is active. Safe to call repeatedly: whether this call created the table, found it already
    * present, or lost a create race to another caller, the table that ends up active is validated
    * against the expected layout and otherwise left untouched.
    */
   public static void createIfAbsent(DynamoDbClient client, String tableName) {
     if (!tableExists(client, tableName)) {
       try {
-        client.createTable(
-            builder ->
-                builder
-                    .tableName(tableName)
-                    .billingMode(BillingMode.PAY_PER_REQUEST)
-                    .attributeDefinitions(
-                        stringAttribute(DynamoDbLayout.PK),
-                        stringAttribute(DynamoDbLayout.SK),
-                        stringAttribute(DynamoDbLayout.GSI1_PK),
-                        stringAttribute(DynamoDbLayout.GSI1_SK))
-                    .keySchema(
-                        key(DynamoDbLayout.PK, KeyType.HASH), key(DynamoDbLayout.SK, KeyType.RANGE))
-                    .globalSecondaryIndexes(byNameIndex()));
+        client.createTable(builder ->
+            builder
+                .tableName(tableName)
+                .billingMode(BillingMode.PAY_PER_REQUEST)
+                .attributeDefinitions(
+                    stringAttribute(DynamoDbLayout.PK),
+                    stringAttribute(DynamoDbLayout.SK),
+                    stringAttribute(DynamoDbLayout.GSI1_PK),
+                    stringAttribute(DynamoDbLayout.GSI1_SK))
+                .keySchema(
+                    key(DynamoDbLayout.PK, KeyType.HASH), key(DynamoDbLayout.SK, KeyType.RANGE))
+                .globalSecondaryIndexes(childrenIndex()));
       } catch (ResourceInUseException concurrentCreate) {
         // Another caller created the table between the existence check and here; that is fine. Its
         // layout is validated after the waiter below, so a racing miscreation is still surfaced.
@@ -103,7 +102,7 @@ public final class DynamoDbSchema {
 
   /**
    * Fails if the active table does not match the layout this backend expects -- key schema and the
-   * by-name GSI's key schema and {@code ALL} projection -- surfacing a misconfigured table instead
+   * children GSI's key schema and {@code ALL} projection -- surfacing a misconfigured table instead
    * of letting reads and writes misbehave against it.
    */
   private static void verifyLayout(TableDescription table) {
@@ -117,12 +116,11 @@ public final class DynamoDbSchema {
         table.globalSecondaryIndexes().stream()
             .filter(index -> DynamoDbLayout.GSI1.equals(index.indexName()))
             .findFirst()
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        String.format(
-                            "Existing table %s is missing the %s index.",
-                            table.tableName(), DynamoDbLayout.GSI1)));
+            .orElseThrow(() ->
+                new IllegalStateException(
+                    String.format(
+                        "Existing table %s is missing the %s index.",
+                        table.tableName(), DynamoDbLayout.GSI1)));
     if (!keySchemaMatches(gsi.keySchema(), DynamoDbLayout.GSI1_PK, DynamoDbLayout.GSI1_SK)) {
       throw new IllegalStateException(
           String.format(
@@ -156,7 +154,7 @@ public final class DynamoDbSchema {
     return schema.size() == 2 && hashKey.equals(hash) && rangeKey.equals(range);
   }
 
-  private static GlobalSecondaryIndex byNameIndex() {
+  private static GlobalSecondaryIndex childrenIndex() {
     return GlobalSecondaryIndex.builder()
         .indexName(DynamoDbLayout.GSI1)
         .keySchema(

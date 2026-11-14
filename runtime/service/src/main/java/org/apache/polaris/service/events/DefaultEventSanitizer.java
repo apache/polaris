@@ -85,12 +85,11 @@ public class DefaultEventSanitizer implements EventSanitizer {
     MutableAttributeMap filtered = new MutableAttributeMap();
     event
         .attributes()
-        .forEach(
-            attribute -> {
-              if (!denylist.contains(attribute.key())) {
-                filtered.put(attribute);
-              }
-            });
+        .forEach(attribute -> {
+          if (!denylist.contains(attribute.key())) {
+            filtered.put(attribute);
+          }
+        });
     extractDerivedAttributes(event, filtered);
     return new PolarisEvent(event.type(), event.metadata(), filtered);
   }

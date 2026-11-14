@@ -19,6 +19,7 @@
 
 plugins {
   id("org.kordamp.gradle.jandex")
+  alias(libs.plugins.jmh)
   id("polaris-server")
 }
 
@@ -52,4 +53,7 @@ dependencies {
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
+
+  jmhImplementation(libs.jmh.core)
+  jmhAnnotationProcessor(libs.jmh.generator.annprocess)
 }

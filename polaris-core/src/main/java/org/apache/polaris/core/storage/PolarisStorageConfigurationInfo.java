@@ -96,10 +96,9 @@ public abstract class PolarisStorageConfigurationInfo {
   static {
     DEFAULT_MAPPER =
         JsonMapper.builder()
-            .changeDefaultPropertyInclusion(
-                incl ->
-                    incl.withValueInclusion(JsonInclude.Include.NON_NULL)
-                        .withContentInclusion(JsonInclude.Include.NON_NULL))
+            .changeDefaultPropertyInclusion(incl ->
+                incl.withValueInclusion(JsonInclude.Include.NON_NULL)
+                    .withContentInclusion(JsonInclude.Include.NON_NULL))
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .build();
   }
@@ -130,24 +129,22 @@ public abstract class PolarisStorageConfigurationInfo {
   public static Optional<LocationRestrictions> forEntityPath(
       RealmConfig realmConfig, List<PolarisEntity> entityPath) {
     return findStorageConfigFromHierarchy(entityPath)
-        .map(
-            configInfo -> {
-              CatalogEntity catalog = CatalogEntity.of(entityPath.get(0));
-              PolarisEntity leaf = entityPath.get(entityPath.size() - 1);
-              boolean allowEscape =
-                  realmConfig.getConfig(
-                      FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION, catalog);
-              if (allowEscape || catalog.getCatalogType() == Catalog.TypeEnum.EXTERNAL) {
-                LOGGER.debug("Allowing unstructured table location for entity: {}", leaf.getName());
-                return new LocationRestrictions(configInfo);
-              }
-              boolean leafIsTableLike = leaf.getType() == PolarisEntityType.TABLE_LIKE;
-              String parentLocation = getParentLocation(entityPath, leafIsTableLike);
-              String entityLocation = leafIsTableLike ? getBaseLocation(leaf) : null;
-              LOGGER.debug(
-                  "Not allowing unstructured table location for entity: {}", leaf.getName());
-              return new LocationRestrictions(configInfo, parentLocation, entityLocation);
-            });
+        .map(configInfo -> {
+          CatalogEntity catalog = CatalogEntity.of(entityPath.get(0));
+          PolarisEntity leaf = entityPath.get(entityPath.size() - 1);
+          boolean allowEscape =
+              realmConfig.getConfig(
+                  FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION, catalog);
+          if (allowEscape || catalog.getCatalogType() == Catalog.TypeEnum.EXTERNAL) {
+            LOGGER.debug("Allowing unstructured table location for entity: {}", leaf.getName());
+            return new LocationRestrictions(configInfo);
+          }
+          boolean leafIsTableLike = leaf.getType() == PolarisEntityType.TABLE_LIKE;
+          String parentLocation = getParentLocation(entityPath, leafIsTableLike);
+          String entityLocation = leafIsTableLike ? getBaseLocation(leaf) : null;
+          LOGGER.debug("Not allowing unstructured table location for entity: {}", leaf.getName());
+          return new LocationRestrictions(configInfo, parentLocation, entityLocation);
+        });
   }
 
   private static @Nullable String getBaseLocation(PolarisEntity entity) {

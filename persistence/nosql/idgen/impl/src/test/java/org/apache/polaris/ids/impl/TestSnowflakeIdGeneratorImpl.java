@@ -90,18 +90,15 @@ public class TestSnowflakeIdGeneratorImpl {
 
   @Test
   public void validArgs() {
-    soft.assertThatCode(
-            () ->
-                new SnowflakeIdGeneratorFactory()
-                    .buildIdGenerator(Map.of(), idGeneratorSource(0, clock::currentTimeMillis)))
+    soft.assertThatCode(() ->
+            new SnowflakeIdGeneratorFactory()
+                .buildIdGenerator(Map.of(), idGeneratorSource(0, clock::currentTimeMillis)))
         .doesNotThrowAnyException();
-    soft.assertThatCode(
-            () ->
-                new SnowflakeIdGeneratorFactory()
-                    .buildIdGenerator(
-                        Map.of(),
-                        idGeneratorSource(
-                            (1 << DEFAULT_NODE_ID_BITS) - 1, clock::currentTimeMillis)))
+    soft.assertThatCode(() ->
+            new SnowflakeIdGeneratorFactory()
+                .buildIdGenerator(
+                    Map.of(),
+                    idGeneratorSource((1 << DEFAULT_NODE_ID_BITS) - 1, clock::currentTimeMillis)))
         .doesNotThrowAnyException();
   }
 
@@ -110,119 +107,104 @@ public class TestSnowflakeIdGeneratorImpl {
     var validClock = (LongSupplier) () -> ID_EPOCH_MILLIS;
 
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                new SnowflakeIdGeneratorFactory()
-                    .buildIdGenerator(Map.of(), idGeneratorSource(-1, () -> 0L)))
+        .isThrownBy(() ->
+            new SnowflakeIdGeneratorFactory()
+                .buildIdGenerator(Map.of(), idGeneratorSource(-1, () -> 0L)))
         .withMessage(
             "Clock returns a timestamp 1970-01-01T00:00:00Z less than the configured epoch 2025-03-01T00:00:00Z, nodeId -1 out of range [0..1024[");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                new SnowflakeIdGeneratorFactory()
-                    .buildIdGenerator(Map.of(), idGeneratorSource(-1, validClock)))
+        .isThrownBy(() ->
+            new SnowflakeIdGeneratorFactory()
+                .buildIdGenerator(Map.of(), idGeneratorSource(-1, validClock)))
         .withMessage("nodeId -1 out of range [0..1024[");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                new SnowflakeIdGeneratorFactory()
-                    .buildIdGenerator(
-                        Map.of(), idGeneratorSource(1 << DEFAULT_NODE_ID_BITS, validClock)))
+        .isThrownBy(() ->
+            new SnowflakeIdGeneratorFactory()
+                .buildIdGenerator(
+                    Map.of(), idGeneratorSource(1 << DEFAULT_NODE_ID_BITS, validClock)))
         .withMessage("nodeId 1024 out of range [0..1024[");
 
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                new SnowflakeIdGeneratorFactory()
-                    .buildIdGenerator(
-                        31,
-                        DEFAULT_SEQUENCE_BITS,
-                        DEFAULT_NODE_ID_BITS,
-                        ID_EPOCH_MILLIS,
-                        ID_GENERATOR_SOURCE_CONSTANT))
+        .isThrownBy(() ->
+            new SnowflakeIdGeneratorFactory()
+                .buildIdGenerator(
+                    31,
+                    DEFAULT_SEQUENCE_BITS,
+                    DEFAULT_NODE_ID_BITS,
+                    ID_EPOCH_MILLIS,
+                    ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage("Sum of timestampBits + nodeBits + sequenceBits must be == 63");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                new SnowflakeIdGeneratorFactory()
-                    .buildIdGenerator(
-                        DEFAULT_TIMESTAMP_BITS,
-                        4,
-                        DEFAULT_NODE_ID_BITS,
-                        ID_EPOCH_MILLIS,
-                        ID_GENERATOR_SOURCE_CONSTANT))
+        .isThrownBy(() ->
+            new SnowflakeIdGeneratorFactory()
+                .buildIdGenerator(
+                    DEFAULT_TIMESTAMP_BITS,
+                    4,
+                    DEFAULT_NODE_ID_BITS,
+                    ID_EPOCH_MILLIS,
+                    ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage(
             "value of nodeBits 10 or sequenceBits 4 or timestampBits 41 is too low or too high, Sum of timestampBits + nodeBits + sequenceBits must be == 63");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                new SnowflakeIdGeneratorFactory()
-                    .buildIdGenerator(
-                        DEFAULT_TIMESTAMP_BITS,
-                        DEFAULT_SEQUENCE_BITS,
-                        4,
-                        ID_EPOCH_MILLIS,
-                        ID_GENERATOR_SOURCE_CONSTANT))
+        .isThrownBy(() ->
+            new SnowflakeIdGeneratorFactory()
+                .buildIdGenerator(
+                    DEFAULT_TIMESTAMP_BITS,
+                    DEFAULT_SEQUENCE_BITS,
+                    4,
+                    ID_EPOCH_MILLIS,
+                    ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage("Sum of timestampBits + nodeBits + sequenceBits must be == 63");
 
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                new SnowflakeIdGeneratorFactory()
-                    .buildIdGenerator(
-                        64,
-                        DEFAULT_SEQUENCE_BITS,
-                        DEFAULT_NODE_ID_BITS,
-                        ID_EPOCH_MILLIS,
-                        ID_GENERATOR_SOURCE_CONSTANT))
+        .isThrownBy(() ->
+            new SnowflakeIdGeneratorFactory()
+                .buildIdGenerator(
+                    64,
+                    DEFAULT_SEQUENCE_BITS,
+                    DEFAULT_NODE_ID_BITS,
+                    ID_EPOCH_MILLIS,
+                    ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage(
             "value of nodeBits 10 or sequenceBits 12 or timestampBits 64 is too low or too high, Sum of timestampBits + nodeBits + sequenceBits must be == 63");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                new SnowflakeIdGeneratorFactory()
-                    .buildIdGenerator(
-                        DEFAULT_TIMESTAMP_BITS,
-                        64,
-                        DEFAULT_NODE_ID_BITS,
-                        ID_EPOCH_MILLIS,
-                        ID_GENERATOR_SOURCE_CONSTANT))
+        .isThrownBy(() ->
+            new SnowflakeIdGeneratorFactory()
+                .buildIdGenerator(
+                    DEFAULT_TIMESTAMP_BITS,
+                    64,
+                    DEFAULT_NODE_ID_BITS,
+                    ID_EPOCH_MILLIS,
+                    ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage(
             "value of nodeBits 10 or sequenceBits 64 or timestampBits 41 is too low or too high, Sum of timestampBits + nodeBits + sequenceBits must be == 63");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                new SnowflakeIdGeneratorFactory()
-                    .buildIdGenerator(
-                        DEFAULT_TIMESTAMP_BITS,
-                        DEFAULT_SEQUENCE_BITS,
-                        64,
-                        ID_EPOCH_MILLIS,
-                        ID_GENERATOR_SOURCE_CONSTANT))
+        .isThrownBy(() ->
+            new SnowflakeIdGeneratorFactory()
+                .buildIdGenerator(
+                    DEFAULT_TIMESTAMP_BITS,
+                    DEFAULT_SEQUENCE_BITS,
+                    64,
+                    ID_EPOCH_MILLIS,
+                    ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage(
             "value of nodeBits 64 or sequenceBits 12 or timestampBits 41 is too low or too high, Sum of timestampBits + nodeBits + sequenceBits must be == 63");
 
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                new SnowflakeIdGeneratorFactory()
-                    .buildIdGenerator(
-                        DEFAULT_TIMESTAMP_BITS,
-                        5,
-                        DEFAULT_NODE_ID_BITS,
-                        ID_EPOCH_MILLIS,
-                        ID_GENERATOR_SOURCE_CONSTANT))
+        .isThrownBy(() ->
+            new SnowflakeIdGeneratorFactory()
+                .buildIdGenerator(
+                    DEFAULT_TIMESTAMP_BITS,
+                    5,
+                    DEFAULT_NODE_ID_BITS,
+                    ID_EPOCH_MILLIS,
+                    ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage("Sum of timestampBits + nodeBits + sequenceBits must be == 63");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                new SnowflakeIdGeneratorFactory()
-                    .buildIdGenerator(
-                        DEFAULT_TIMESTAMP_BITS,
-                        4,
-                        18,
-                        ID_EPOCH_MILLIS,
-                        ID_GENERATOR_SOURCE_CONSTANT))
+        .isThrownBy(() ->
+            new SnowflakeIdGeneratorFactory()
+                .buildIdGenerator(
+                    DEFAULT_TIMESTAMP_BITS, 4, 18, ID_EPOCH_MILLIS, ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage(
             "value of nodeBits 18 or sequenceBits 4 or timestampBits 41 is too low or too high");
   }
@@ -304,24 +286,22 @@ public class TestSnowflakeIdGeneratorImpl {
     try (var executorService = Executors.newFixedThreadPool(2)) {
 
       var t1 =
-          executorService.submit(
-              () -> {
-                thread1.set(Thread.currentThread());
+          executorService.submit(() -> {
+            thread1.set(Thread.currentThread());
 
-                syncMain.countDown();
-                syncGenerate.await();
+            syncMain.countDown();
+            syncGenerate.await();
 
-                return impl.generateId();
-              });
+            return impl.generateId();
+          });
 
       var t2 =
-          executorService.submit(
-              () -> {
-                syncMain.countDown();
-                syncGenerate.await();
+          executorService.submit(() -> {
+            syncMain.countDown();
+            syncGenerate.await();
 
-                return impl.generateId();
-              });
+            return impl.generateId();
+          });
 
       // Wait for both threads to reach the same state
       syncMain.await();
@@ -377,25 +357,24 @@ public class TestSnowflakeIdGeneratorImpl {
 
       for (int i = 0; i < threads; i++) {
         futures.add(
-            executorService.submit(
-                () -> {
-                  sync.countDown();
-                  start.await();
+            executorService.submit(() -> {
+              sync.countDown();
+              start.await();
 
-                  var localIds = new HashSet<Long>(numIdsPerThread * 2);
-                  try {
-                    for (int n = 0; n < numIdsPerThread; n++) {
-                      localIds.add(impl.generateId());
-                    }
-                  } finally {
-                    done.countDown();
-                    finish.await();
-                  }
+              var localIds = new HashSet<Long>(numIdsPerThread * 2);
+              try {
+                for (int n = 0; n < numIdsPerThread; n++) {
+                  localIds.add(impl.generateId());
+                }
+              } finally {
+                done.countDown();
+                finish.await();
+              }
 
-                  ids.addAll(localIds);
+              ids.addAll(localIds);
 
-                  return null;
-                }));
+              return null;
+            }));
       }
 
       // Wait until all threads have started
@@ -553,29 +532,24 @@ public class TestSnowflakeIdGeneratorImpl {
     long nodeUuidHighest = 0x3FFF;
 
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                impl.timeUuidToId(
-                    new UUID(
-                        timeUuidMsbReal(tsUuidHighest),
-                        timeUuidLsb(seqUuidHighest, nodeUuidHighest))))
+        .isThrownBy(() ->
+            impl.timeUuidToId(
+                new UUID(
+                    timeUuidMsbReal(tsUuidHighest), timeUuidLsb(seqUuidHighest, nodeUuidHighest))))
         .withMessage("TimeUUID contains values that cannot be condensed into a snowflake-ID");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                unixMillisFromTimeUuidTimestamp(
-                    timeUuidTimestampFromUnixMillis(ID_EPOCH_MILLIS) + 1))
+        .isThrownBy(() ->
+            unixMillisFromTimeUuidTimestamp(timeUuidTimestampFromUnixMillis(ID_EPOCH_MILLIS) + 1))
         .withMessage("TimeUUID contains values that cannot be condensed into a snowflake-ID");
 
-    soft.assertThatCode(
-            () ->
-                impl.timeUuidToId(
-                    new UUID(
-                        timeUuidMsbReal(
-                            timeUuidTimestampFromUnixMillis(
-                                ID_EPOCH_MILLIS + ((1L << DEFAULT_TIMESTAMP_BITS) - 2))),
-                        timeUuidLsb(
-                            (1L << DEFAULT_SEQUENCE_BITS) - 1, (1L << DEFAULT_NODE_ID_BITS) - 1))))
+    soft.assertThatCode(() ->
+            impl.timeUuidToId(
+                new UUID(
+                    timeUuidMsbReal(
+                        timeUuidTimestampFromUnixMillis(
+                            ID_EPOCH_MILLIS + ((1L << DEFAULT_TIMESTAMP_BITS) - 2))),
+                    timeUuidLsb(
+                        (1L << DEFAULT_SEQUENCE_BITS) - 1, (1L << DEFAULT_NODE_ID_BITS) - 1))))
         .doesNotThrowAnyException();
   }
 

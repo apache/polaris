@@ -34,6 +34,7 @@ import org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations;
 import org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.CacheInvalidationEvictObj;
 import org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.CacheInvalidationEvictReference;
 import org.apache.polaris.persistence.nosql.api.cache.DistributedCacheInvalidation;
+import org.apache.polaris.persistence.nosql.quarkus.distcache.CacheInvalidationMetrics.ReceiveOutcome;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.databind.ObjectMapper;
@@ -54,6 +55,7 @@ class CacheInvalidationReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(CacheInvalidationReceiver.class);
 
   private final DistributedCacheInvalidation distributedCacheInvalidation;
+  private final CacheInvalidationMetrics metrics;
   private final String serverInstanceId;
   private final Set<String> validTokens;
   private final String invalidationPath;
@@ -64,8 +66,10 @@ class CacheInvalidationReceiver {
   CacheInvalidationReceiver(
       QuarkusDistributedCacheInvalidationsConfig storeConfig,
       ServerInstanceId serverInstanceId,
-      DistributedCacheInvalidation.Receiver distributedCacheInvalidation) {
+      DistributedCacheInvalidation.Receiver distributedCacheInvalidation,
+      CacheInvalidationMetrics metrics) {
     this.distributedCacheInvalidation = distributedCacheInvalidation;
+    this.metrics = metrics;
     this.serverInstanceId = serverInstanceId.instanceId();
     this.invalidationPath = storeConfig.cacheInvalidationUri();
     this.validTokens =
@@ -84,18 +88,21 @@ class CacheInvalidationReceiver {
     var senderId = request.getParam("sender");
     var token = request.getHeader(CACHE_INVALIDATION_TOKEN_HEADER);
 
-    cacheInvalidations(
+    receive(
         rc,
         () -> {
           try {
             var json = rc.body().asString();
             if (json == null || json.isEmpty()) {
-              return CacheInvalidations.cacheInvalidations(emptyList());
+              return new ParsedInvalidations(
+                  CacheInvalidations.cacheInvalidations(emptyList()), false);
             }
-            return objectMapper.readValue(json, CacheInvalidations.class);
+            return new ParsedInvalidations(
+                objectMapper.readValue(json, CacheInvalidations.class), false);
           } catch (Exception e) {
             LOGGER.error("Failed to deserialize cache invalidation", e);
-            return CacheInvalidations.cacheInvalidations(emptyList());
+            return new ParsedInvalidations(
+                CacheInvalidations.cacheInvalidations(emptyList()), true);
           }
         },
         senderId,
@@ -107,28 +114,52 @@ class CacheInvalidationReceiver {
       Supplier<CacheInvalidations> invalidations,
       String senderId,
       String token) {
+    receive(rc, () -> new ParsedInvalidations(invalidations.get(), false), senderId, token);
+  }
+
+  private void receive(
+      RoutingContext rc,
+      Supplier<ParsedInvalidations> invalidations,
+      String senderId,
+      String token) {
+    var sample = metrics.start();
+    var outcome = ReceiveOutcome.HANDLER_ERROR;
+    try {
+      outcome = processInvalidations(rc, invalidations, senderId, token);
+    } finally {
+      metrics.receiveCompleted(sample, outcome);
+    }
+  }
+
+  private ReceiveOutcome processInvalidations(
+      RoutingContext rc,
+      Supplier<ParsedInvalidations> invalidations,
+      String senderId,
+      String token) {
     if (token == null || !validTokens.contains(token)) {
       LOGGER.warn("Received cache invalidation with a missing or invalid token");
       responseInvalidToken(rc);
-      return;
+      return ReceiveOutcome.INVALID_TOKEN;
     }
     if (serverInstanceId.equals(senderId)) {
       LOGGER.trace("Ignoring invalidations from local instance");
       responseNoContent(rc);
-      return;
+      return ReceiveOutcome.SELF;
     }
     if (!acceptsJsonContentType(rc.request().getHeader("Content-Type"))) {
       LOGGER.warn("Received cache invalidation with invalid HTTP content type");
       responseInvalidContentType(rc);
-      return;
+      return ReceiveOutcome.INVALID_CONTENT_TYPE;
     }
 
+    ParsedInvalidations parsed;
     List<CacheInvalidations.CacheInvalidation> invalidationList;
     try {
-      invalidationList = invalidations.get().invalidations();
+      parsed = invalidations.get();
+      invalidationList = parsed.invalidations().invalidations();
     } catch (RuntimeException e) {
       responseServerError(rc);
-      return;
+      return ReceiveOutcome.INVALID_PAYLOAD;
     }
 
     var cacheInvalidation = distributedCacheInvalidation;
@@ -138,10 +169,12 @@ class CacheInvalidationReceiver {
           case CacheInvalidationEvictObj.TYPE -> {
             var putObj = (CacheInvalidationEvictObj) invalidation;
             cacheInvalidation.evictObj(putObj.realmId(), putObj.id());
+            metrics.dispatched(invalidation);
           }
           case CacheInvalidationEvictReference.TYPE -> {
             var putReference = (CacheInvalidationEvictReference) invalidation;
             cacheInvalidation.evictReference(putReference.realmId(), putReference.ref());
+            metrics.dispatched(invalidation);
           }
           default -> {
             // nothing we can do about a new invalidation type here
@@ -151,7 +184,10 @@ class CacheInvalidationReceiver {
     }
 
     responseNoContent(rc);
+    return parsed.invalidPayload() ? ReceiveOutcome.INVALID_PAYLOAD : ReceiveOutcome.PROCESSED;
   }
+
+  private record ParsedInvalidations(CacheInvalidations invalidations, boolean invalidPayload) {}
 
   private boolean acceptsJsonContentType(String contentType) {
     if (contentType == null) {

@@ -128,11 +128,9 @@ public class PolarisResolutionManifestLookupKeyTest {
             "catalog");
     manifest.resolveAll();
 
-    assertThatThrownBy(
-            () ->
-                manifest.getResolvedPath(
-                    ResolvedPathKey.of(List.of("does_not_exist"), PolarisEntityType.NAMESPACE),
-                    false))
+    assertThatThrownBy(() ->
+            manifest.getResolvedPath(
+                ResolvedPathKey.of(List.of("does_not_exist"), PolarisEntityType.NAMESPACE), false))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("never_registered_key_for_resolved_path");
   }

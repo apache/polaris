@@ -24,8 +24,14 @@ dependencies {
   implementation(baselibs.errorprone)
   implementation(baselibs.idea.ext)
   implementation(baselibs.jandex)
-  implementation(baselibs.license.report)
   implementation(baselibs.nexus.publish)
   implementation(baselibs.shadow)
   implementation(baselibs.spotless)
+  testImplementation(gradleTestKit())
+  testImplementation(platform(libs.junit.bom))
+  testImplementation("org.junit.jupiter:junit-jupiter")
+  testImplementation(libs.assertj.core)
+  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
+
+testing { suites { named<JvmTestSuite>("test") { useJUnitJupiter() } } }

@@ -103,7 +103,7 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
     if (null == entity) {
       if (baseLocation != null && !baseLocation.isEmpty()) {
         CatalogUtils.validateLocationsForTableLike(
-            callContext.getRealmConfig(), tableIdentifier, Set.of(baseLocation), resolvedParent);
+            callContext.getRealmConfig(), tableIdentifier, Set.of(baseLocation), catalogPath);
       }
       entity =
           new GenericTableEntity.Builder(tableIdentifier, format)

@@ -56,10 +56,9 @@ public class MeasuredFileIOFactory implements FileIOFactory {
       @NonNull StorageAccessConfig storageAccessConfig,
       @NonNull String ioImplClassName,
       @NonNull Map<String, String> properties) {
-    loadFileIOExceptionSupplier.ifPresent(
-        s -> {
-          throw s.get();
-        });
+    loadFileIOExceptionSupplier.ifPresent(s -> {
+      throw s.get();
+    });
 
     MeasuredFileIO wrapped =
         new MeasuredFileIO(

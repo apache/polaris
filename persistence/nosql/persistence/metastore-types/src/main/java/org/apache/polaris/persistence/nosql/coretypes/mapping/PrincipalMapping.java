@@ -59,13 +59,12 @@ final class PrincipalMapping extends BaseMapping<PrincipalObj, PrincipalObj.Buil
 
     var principalObjBuilder =
         baseBuilder.credentialRotationRequired(credentialRotationRequired != null);
-    principalSecrets.ifPresent(
-        secrets ->
-            principalObjBuilder
-                .clientId(secrets.getPrincipalClientId())
-                .mainSecretHash(secrets.getMainSecretHash())
-                .secondarySecretHash(secrets.getSecondarySecretHash())
-                .secretSalt(secrets.getSecretSalt()));
+    principalSecrets.ifPresent(secrets ->
+        principalObjBuilder
+            .clientId(secrets.getPrincipalClientId())
+            .mainSecretHash(secrets.getMainSecretHash())
+            .secondarySecretHash(secrets.getSecondarySecretHash())
+            .secretSalt(secrets.getSecretSalt()));
   }
 
   @Override

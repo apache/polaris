@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.CompletableFuture;
@@ -66,14 +67,23 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
   public void handleTask(TaskEntity task, CallContext callContext) {
     ManifestCleanupTask cleanupTask = task.readData(ManifestCleanupTask.class);
     TableIdentifier tableId = cleanupTask.tableId();
+    ManifestFile manifestFile = TaskUtils.decodeManifestFileData(cleanupTask.manifestFileData());
+    Set<String> tableLocations = TaskUtils.storageLocations(task.getInternalPropertiesAsMap());
+    // The manifest comes from untrusted table metadata: if it is outside the table locations, skip
+    // it along with all the data files it lists, even those that are within the table locations.
+    if (!isUnderTableLocation(tableLocations, tableId, manifestFile.path())) {
+      return;
+    }
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task, tableId)) {
-      ManifestFile manifestFile = TaskUtils.decodeManifestFileData(cleanupTask.manifestFileData());
-      cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);
+      cleanUpManifestFile(tableLocations, manifestFile, authorizedFileIO, tableId);
     }
   }
 
   private void cleanUpManifestFile(
-      ManifestFile manifestFile, FileIO fileIO, TableIdentifier tableId) {
+      Set<String> tableLocations,
+      ManifestFile manifestFile,
+      FileIO fileIO,
+      TableIdentifier tableId) {
     // if the file doesn't exist, we assume that another task execution was successful, but
     // failed to drop the task entity. Log a warning and return success
     if (!TaskUtils.exists(manifestFile.path(), fileIO)) {
@@ -91,8 +101,9 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
           StreamSupport.stream(
                   Spliterators.spliteratorUnknownSize(reader.iterator(), Spliterator.IMMUTABLE),
                   false)
-              .map(
-                  file -> tryDelete(tableId, fileIO, manifestFile.path(), file.location(), null, 1))
+              .map(ContentFile::location)
+              .filter(location -> isUnderTableLocation(tableLocations, tableId, location))
+              .map(location -> tryDelete(tableId, fileIO, manifestFile.path(), location, null, 1))
               .toList();
       LOGGER.debug(
           "Scheduled {} content files to be deleted from manifest {} (content={})",
@@ -102,15 +113,14 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
       // wait for all content files to be deleted, then wait for the manifest itself to be deleted
       CompletableFuture<Void> deletion =
           CompletableFuture.allOf(contentFileDeletes.toArray(CompletableFuture[]::new))
-              .thenCompose(
-                  (v) -> {
-                    LOGGER
-                        .atInfo()
-                        .addKeyValue(StructuredLogKeys.MANIFEST_FILE, manifestFile.path())
-                        .log("All content files in manifest deleted - deleting manifest");
-                    return tryDelete(
-                        tableId, fileIO, manifestFile.path(), manifestFile.path(), null, 1);
-                  });
+              .thenCompose(v -> {
+                LOGGER
+                    .atInfo()
+                    .addKeyValue(StructuredLogKeys.MANIFEST_FILE, manifestFile.path())
+                    .log("All content files in manifest deleted - deleting manifest");
+                return tryDelete(
+                    tableId, fileIO, manifestFile.path(), manifestFile.path(), null, 1);
+              });
       awaitCompletion(deletion, "deletion of files in manifest " + manifestFile.path());
       return;
     } catch (IOException e) {

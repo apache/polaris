@@ -143,11 +143,10 @@ public abstract class BaseNoSqlMaintenanceCommand extends BaseNoSqlCommand {
     }
     info.referenceStats().ifPresent(stats -> printStats(out, "  ", stats));
     info.perRealmReferenceStats()
-        .forEach(
-            (realm, stats) -> {
-              out.printf("  Realm: %s%n", realm);
-              printStats(out, "      ", stats);
-            });
+        .forEach((realm, stats) -> {
+          out.printf("  Realm: %s%n", realm);
+          printStats(out, "      ", stats);
+        });
 
     out.println();
     out.println("Objects:");
@@ -158,15 +157,13 @@ public abstract class BaseNoSqlMaintenanceCommand extends BaseNoSqlCommand {
     }
     info.objStats().ifPresent(stats -> printStats(out, "  ", stats));
     info.perRealmPerObjTypeStats()
-        .forEach(
-            (realm, perTypeStats) -> {
-              out.printf("  Realm: %s%n", realm);
-              perTypeStats.forEach(
-                  (type, stats) -> {
-                    out.printf("    Type: %s (%s)%n", type, ObjTypes.objTypeById(type).name());
-                    printStats(out, "        ", stats);
-                  });
-            });
+        .forEach((realm, perTypeStats) -> {
+          out.printf("  Realm: %s%n", realm);
+          perTypeStats.forEach((type, stats) -> {
+            out.printf("    Type: %s (%s)%n", type, ObjTypes.objTypeById(type).name());
+            printStats(out, "        ", stats);
+          });
+        });
   }
 
   private void printStats(PrintWriter out, String indent, MaintenanceStats stats) {

@@ -58,36 +58,34 @@ record AddressResolver(DnsClient dnsClient, List<String> searchList) {
       IP_V4_ONLY = Boolean.parseBoolean(System.getProperty("java.net.preferIPv4Stack", "false"));
       LOCAL_ADDRESSES =
           networkInterfaces()
-              .flatMap(
-                  ni ->
-                      Stream.concat(
-                              // localhost can be ipv6 when sysctl disable ipv6
-                              // if ::1 is registered for localhost in /etc/hosts
-                              // in this case java stack can still capture it
-                              // and it will work (even if not great)
-                              // this is a workaround to ensure at least localhost is
-                              // in the list but this could be more general to all /etc/hosts
-                              // mappings
-                              IP_V4_ONLY || !"lo".equalsIgnoreCase(ni.getName())
-                                  ? Stream.empty()
-                                  : findLocalhostAddresses(),
-                              ni.getInterfaceAddresses().stream()
-                                  // Need to do this InetAddress->byte[]->InetAddress dance to get
-                                  // rid of
-                                  // host-address suffixes as in `0:0:0:0:0:0:0:1%lo`
-                                  .map(InterfaceAddress::getAddress))
-                          .map(InetAddress::getAddress)
-                          .map(
-                              a -> {
-                                try {
-                                  return InetAddress.getByAddress(a);
-                                } catch (UnknownHostException e) {
-                                  // Should never happen when calling getByAddress() with an IPv4 or
-                                  // IPv6 address
-                                  throw new RuntimeException(e);
-                                }
-                              })
-                          .map(InetAddress::getHostAddress))
+              .flatMap(ni ->
+                  Stream.concat(
+                          // localhost can be ipv6 when sysctl disable ipv6
+                          // if ::1 is registered for localhost in /etc/hosts
+                          // in this case java stack can still capture it
+                          // and it will work (even if not great)
+                          // this is a workaround to ensure at least localhost is
+                          // in the list but this could be more general to all /etc/hosts
+                          // mappings
+                          IP_V4_ONLY || !"lo".equalsIgnoreCase(ni.getName())
+                              ? Stream.empty()
+                              : findLocalhostAddresses(),
+                          ni.getInterfaceAddresses().stream()
+                              // Need to do this InetAddress->byte[]->InetAddress dance to get
+                              // rid of
+                              // host-address suffixes as in `0:0:0:0:0:0:0:1%lo`
+                              .map(InterfaceAddress::getAddress))
+                      .map(InetAddress::getAddress)
+                      .map(a -> {
+                        try {
+                          return InetAddress.getByAddress(a);
+                        } catch (UnknownHostException e) {
+                          // Should never happen when calling getByAddress() with an IPv4 or
+                          // IPv6 address
+                          throw new RuntimeException(e);
+                        }
+                      })
+                      .map(InetAddress::getHostAddress))
               .collect(toUnmodifiableSet());
     } catch (SocketException e) {
       throw new RuntimeException(e);
@@ -136,11 +134,10 @@ record AddressResolver(DnsClient dnsClient, List<String> searchList) {
     if (IP_V4_ONLY) {
       return resultA;
     }
-    return resultA.compose(
-        a ->
-            dnsClient
-                .resolveAAAA(name)
-                .map(aaaa -> Stream.concat(aaaa.stream(), a.stream()).collect(toList())));
+    return resultA.compose(a ->
+        dnsClient
+            .resolveAAAA(name)
+            .map(aaaa -> Stream.concat(aaaa.stream(), a.stream()).collect(toList())));
   }
 
   /** Resolve a single name, used by {@link #resolveAll(List)}. */
@@ -166,18 +163,16 @@ record AddressResolver(DnsClient dnsClient, List<String> searchList) {
   /** Resolve all names in parallel. */
   Future<List<String>> resolveAll(List<String> names) {
     var composite = Future.all(names.stream().map(this::resolve).collect(toList()));
-    return composite.map(
-        c ->
-            IntStream.range(0, c.size())
-                .mapToObj(c::resultAt)
-                .map(
-                    e -> {
-                      @SuppressWarnings("unchecked")
-                      var casted = (List<String>) e;
-                      return casted.stream();
-                    })
-                .reduce(Stream::concat)
-                .map(s -> s.collect(toList()))
-                .orElse(List.of()));
+    return composite.map(c ->
+        IntStream.range(0, c.size())
+            .mapToObj(c::resultAt)
+            .map(e -> {
+              @SuppressWarnings("unchecked")
+              var casted = (List<String>) e;
+              return casted.stream();
+            })
+            .reduce(Stream::concat)
+            .map(s -> s.collect(toList()))
+            .orElse(List.of()));
   }
 }

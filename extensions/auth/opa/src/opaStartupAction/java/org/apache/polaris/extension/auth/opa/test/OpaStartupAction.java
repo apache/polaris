@@ -30,20 +30,20 @@ public class OpaStartupAction implements PolarisServerStartupAction {
 
   private static final String POLICY =
       """
-        package %s
+      package %s
 
-        default allow := false
+      default allow := false
 
-        # Allow root user for all operations
-        allow if {
-          input.actor.principal == "root"
-        }
+      # Allow root user for all operations
+      allow if {
+        input.actor.principal == "root"
+      }
 
-        # Allow admin user for all operations
-        allow if {
-          input.actor.principal == "admin"
-        }
-        """
+      # Allow admin user for all operations
+      allow if {
+        input.actor.principal == "admin"
+      }
+      """
           .formatted(POLICY_PACKAGE);
 
   private OpaContainer opa;

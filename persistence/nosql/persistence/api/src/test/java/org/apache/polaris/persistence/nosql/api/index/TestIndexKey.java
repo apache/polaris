@@ -30,6 +30,7 @@ import static org.apache.polaris.persistence.nosql.api.index.IndexKey.skip;
 import static org.apache.polaris.persistence.nosql.api.index.Util.asHex;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.InstanceOfAssertFactories.INTEGER;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
@@ -126,7 +127,34 @@ public class TestIndexKey {
         arguments(key("ab"), key("a"), true),
         arguments(key("a"), key("ab"), false),
         arguments(key("b"), key("ab"), false),
-        arguments(key("b"), key("ab"), false));
+        arguments(key(""), key("a"), false),
+        arguments(key(STRING_100 + "tail"), key(STRING_100), true),
+        arguments(key(STRING_100), key(STRING_100 + "tail"), false),
+        arguments(key(STRING_100 + "a"), key(STRING_100 + "b"), false),
+        arguments(key("\u0000\u0001\u0002πtail"), key("\u0000\u0001\u0002π"), true));
+  }
+
+  @Test
+  void startsWithRejectsEmptyPrefix() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> key("a").startsWith(key("")))
+        .withMessage("prefix must not be empty");
+  }
+
+  @ParameterizedTest
+  @ValueSource(longs = {0, 1, 2, -1, Long.MIN_VALUE, Long.MAX_VALUE, 0x8001027f80feff00L})
+  void longKeyUsesBigEndianBytes(long value) {
+    var bytes = ByteBuffer.allocate(Long.BYTES).putLong(value).flip();
+    assertThat(key(value).asByteBuffer()).isEqualTo(bytes);
+    assertThat(key(bytes).asLong()).isEqualTo(value);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 1, 7, 9, 16})
+  void asLongRejectsInvalidLength(int length) {
+    assertThatIllegalStateException()
+        .isThrownBy(() -> key(ByteBuffer.allocate(length)).asLong())
+        .withMessage("Invalid key length, must be 8");
   }
 
   @ParameterizedTest

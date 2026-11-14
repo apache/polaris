@@ -40,6 +40,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -104,7 +105,8 @@ public class PolarisServiceImplTest {
             principal,
             polarisAuthorizer,
             reservedProperties,
-            vendingMechanisms);
+            vendingMechanisms,
+            new CatalogConfigValidators(List.of()));
     polarisService =
         new PolarisServiceImpl(
             realmConfig, reservedProperties, adminService, serviceIdentityProvider);
@@ -118,7 +120,7 @@ public class PolarisServiceImplTest {
   void deniedCreateCatalogThroughTheResourceNeverConsultsTheAllowlist() {
     PolarisResolutionManifest manifest = Mockito.mock(PolarisResolutionManifest.class);
     when(resolutionManifestFactory.createResolutionManifest(any(), any())).thenReturn(manifest);
-    when(polarisAuthorizer.authorize(any(), any()))
+    when(polarisAuthorizer.authorize(any(), any(AuthorizationRequest.class)))
         .thenReturn(AuthorizationDecision.deny("denied"));
     when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES))
         .thenReturn(List.of("S3"));
@@ -243,7 +245,7 @@ public class PolarisServiceImplTest {
             .build();
 
     assertThatThrownBy(() -> invokeValidateExternalCatalog(polarisService, externalCatalog))
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported connection type: HADOOP");
   }
 
@@ -273,8 +275,34 @@ public class PolarisServiceImplTest {
             .build();
 
     assertThatThrownBy(() -> invokeValidateExternalCatalog(polarisService, externalCatalog))
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported authentication type: BEARER");
+  }
+
+  @Test
+  void testValidateExternalCatalog_MissingAuthenticationParameters() {
+    StorageConfigInfo storageConfig =
+        FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
+            .setAllowedLocations(List.of("file://tmp"))
+            .build();
+
+    ConnectionConfigInfo connectionConfigInfo = Mockito.mock(ConnectionConfigInfo.class);
+    when(connectionConfigInfo.getConnectionType())
+        .thenReturn(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST);
+    when(connectionConfigInfo.getAuthenticationParameters()).thenReturn(null);
+
+    ExternalCatalog externalCatalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName("test-catalog")
+            .setProperties(new CatalogProperties("file://tmp"))
+            .setStorageConfigInfo(storageConfig)
+            .setConnectionConfigInfo(connectionConfigInfo)
+            .build();
+
+    assertThatThrownBy(() -> invokeValidateExternalCatalog(polarisService, externalCatalog))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("authenticationParameters is required for an external catalog");
   }
 
   private void invokeValidateExternalCatalog(PolarisServiceImpl service, Catalog catalog)

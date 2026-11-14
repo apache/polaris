@@ -58,6 +58,7 @@ import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.LocationOverlapResult;
+import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
@@ -142,7 +143,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             return datasourceOperations.executeUpdate(preparedQuery);
           });
     } catch (SQLException e) {
-      throw new RuntimeException("Error persisting entity", e);
+      throw wrapEntityWriteFailure(e);
     }
   }
 
@@ -152,25 +153,20 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @NonNull List<PolarisBaseEntity> entities,
       List<PolarisBaseEntity> originalEntities) {
     try {
-      datasourceOperations.runWithinTransaction(
-          connection -> {
-            for (int i = 0; i < entities.size(); i++) {
-              PolarisBaseEntity entity = entities.get(i);
-              PolarisBaseEntity originalEntity =
-                  originalEntities != null ? originalEntities.get(i) : null;
-              if (originalEntity == null && entityExists(connection, entity.getId())) {
-                continue;
-              }
-              persistEntity(
-                  callCtx, entity, originalEntity, connection, datasourceOperations::execute);
-            }
-            return true;
-          });
+      datasourceOperations.runWithinTransaction(connection -> {
+        for (int i = 0; i < entities.size(); i++) {
+          PolarisBaseEntity entity = entities.get(i);
+          PolarisBaseEntity originalEntity =
+              originalEntities != null ? originalEntities.get(i) : null;
+          if (originalEntity == null && entityExists(connection, entity.getId())) {
+            continue;
+          }
+          persistEntity(callCtx, entity, originalEntity, connection, datasourceOperations::execute);
+        }
+        return true;
+      });
     } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format(
-              "Error executing the transaction for writing entities due to %s", e.getMessage()),
-          e);
+      throw wrapEntityWriteFailure(e, "Error executing the transaction for writing entities");
     }
   }
 
@@ -209,28 +205,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                 ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, values, realmId));
       } catch (SQLException e) {
         if (datasourceOperations.isUniquenessConstraintViolation(e)) {
-          PolarisBaseEntity existingEntity =
-              lookupEntityByName(
-                  callCtx,
-                  entity.getCatalogId(),
-                  entity.getParentId(),
-                  entity.getTypeCode(),
-                  entity.getName());
-          // This happens in two scenarios:
-          // 1. PRIMARY KEY violated
-          // 2. UNIQUE CONSTRAINT on (realm_id, catalog_id, parent_id, type_code, name) violated
-          // With SERIALIZABLE isolation, the conflicting entity may _not_ be visible and
-          // existingEntity can be null. We cannot distinguish a same-id idempotent retry from a
-          // genuine name collision in that case, so we must report a concurrency conflict rather
-          // than fabricate the entity we were trying to create.
-          if (existingEntity != null) {
-            throw new EntityAlreadyExistsException(existingEntity, e);
-          }
-          throw new RetryOnConcurrencyException(
-              e, "Conflicting entity is not visible in the current transaction snapshot; retry");
+          throw uniquenessViolation(callCtx, entity, e);
         }
-        throw new RuntimeException(
-            String.format("Failed to write entity due to %s", e.getMessage()), e);
+        throw wrapEntityWriteFailure(e);
       }
     } else {
       // CAS on both entity_version and grant_records_version because grant operations only
@@ -264,10 +241,53 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               originalEntity.getGrantRecordsVersion());
         }
       } catch (SQLException e) {
-        throw new RuntimeException(
-            String.format("Failed to write entity due to %s", e.getMessage()), e);
+        if (datasourceOperations.isUniquenessConstraintViolation(e)) {
+          // An update keeps the primary key, so this is the name constraint: a rename or
+          // re-parent lost a race for its destination name.
+          throw uniquenessViolation(callCtx, entity, e);
+        }
+        throw wrapEntityWriteFailure(e);
       }
     }
+  }
+
+  /**
+   * Maps a uniqueness violation on an entity write to the exception the metastore manager expects.
+   *
+   * <p>On insert this is either the primary key or the unique constraint on (realm_id, catalog_id,
+   * parent_id, type_code, name); on update it is always the name constraint. With SERIALIZABLE
+   * isolation the conflicting entity may not be visible, so the lookup can return null. A same-id
+   * idempotent retry cannot be told apart from a name collision then, so this reports a concurrency
+   * conflict rather than fabricating the entity being written.
+   */
+  private RuntimeException uniquenessViolation(
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity, SQLException e) {
+    PolarisBaseEntity existingEntity =
+        lookupEntityByName(
+            callCtx,
+            entity.getCatalogId(),
+            entity.getParentId(),
+            entity.getTypeCode(),
+            entity.getName());
+    if (existingEntity != null) {
+      return new EntityAlreadyExistsException(existingEntity, e);
+    }
+    return new RetryOnConcurrencyException(
+        e, "Conflicting entity is not visible in the current transaction snapshot; retry");
+  }
+
+  private RuntimeException wrapEntityWriteFailure(SQLException e) {
+    return wrapEntityWriteFailure(e, "Failed to write entity");
+  }
+
+  private RuntimeException wrapEntityWriteFailure(SQLException e, String context) {
+    // Only a failure inside commit() is ambiguous. Anything earlier is a definite failure, even
+    // when its SQLSTATE (for example class 08) would otherwise look like a lost connection.
+    if (datasourceOperations.isAmbiguousCommitOutcome(e)) {
+      return new PersistenceCommitStateUnknownException(
+          String.format("%s due to %s; commit outcome is unknown", context, e.getMessage()), e);
+    }
+    return new RuntimeException(String.format("%s due to %s", context, e.getMessage()), e);
   }
 
   @Override
@@ -404,30 +424,27 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public void deleteAll(@NonNull PolarisCallContext callCtx) {
     try {
       Map<String, Object> params = Map.of("realm_id", realmId);
-      datasourceOperations.runWithinTransaction(
-          connection -> {
-            datasourceOperations.execute(
-                connection,
-                QueryGenerator.generateDeleteQuery(
-                    ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, params));
-            datasourceOperations.execute(
-                connection,
-                QueryGenerator.generateDeleteQuery(
-                    ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, params));
-            datasourceOperations.execute(
-                connection,
-                QueryGenerator.generateDeleteQuery(
-                    ModelPrincipalAuthenticationData.ALL_COLUMNS,
-                    ModelPrincipalAuthenticationData.TABLE_NAME,
-                    params));
-            datasourceOperations.execute(
-                connection,
-                QueryGenerator.generateDeleteQuery(
-                    ModelPolicyMappingRecord.ALL_COLUMNS,
-                    ModelPolicyMappingRecord.TABLE_NAME,
-                    params));
-            return true;
-          });
+      datasourceOperations.runWithinTransaction(connection -> {
+        datasourceOperations.execute(
+            connection,
+            QueryGenerator.generateDeleteQuery(
+                ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, params));
+        datasourceOperations.execute(
+            connection,
+            QueryGenerator.generateDeleteQuery(
+                ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, params));
+        datasourceOperations.execute(
+            connection,
+            QueryGenerator.generateDeleteQuery(
+                ModelPrincipalAuthenticationData.ALL_COLUMNS,
+                ModelPrincipalAuthenticationData.TABLE_NAME,
+                params));
+        datasourceOperations.execute(
+            connection,
+            QueryGenerator.generateDeleteQuery(
+                ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
+        return true;
+      });
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to delete all due to %s", e.getMessage()), e);
@@ -567,9 +584,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       whereGreater =
           pageToken
               .valueAs(EntityIdToken.class)
-              .map(
-                  entityIdToken ->
-                      Map.<String, Object>of(ModelEntity.ID_COLUMN, entityIdToken.entityId()))
+              .map(entityIdToken ->
+                  Map.<String, Object>of(ModelEntity.ID_COLUMN, entityIdToken.entityId()))
               .orElse(Map.of());
       OptionalInt pageSize = pageToken.pageSize();
       if (applyPageSizeLimit && pageSize.isPresent() && pageSize.getAsInt() < Integer.MAX_VALUE) {
@@ -1071,32 +1087,28 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public void writeToPolicyMappingRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
     try {
-      datasourceOperations.runWithinTransaction(
-          connection -> {
-            PolicyType policyType = PolicyType.fromCode(record.getPolicyTypeCode());
-            Preconditions.checkArgument(
-                policyType != null, "Invalid policy type code: %s", record.getPolicyTypeCode());
-            ModelPolicyMappingRecord modelPolicyMappingRecord =
-                ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
-            List<Object> values =
-                modelPolicyMappingRecord
-                    .toMap(datasourceOperations.getDatabaseType())
-                    .values()
-                    .stream()
-                    .toList();
-            PreparedQuery insertPolicyMappingQuery =
-                QueryGenerator.generateInsertQuery(
-                    ModelPolicyMappingRecord.ALL_COLUMNS,
-                    ModelPolicyMappingRecord.TABLE_NAME,
-                    values,
-                    realmId);
-            if (policyType.isInheritable()) {
-              return handleInheritablePolicy(callCtx, record, insertPolicyMappingQuery, connection);
-            } else {
-              datasourceOperations.execute(connection, insertPolicyMappingQuery);
-            }
-            return true;
-          });
+      datasourceOperations.runWithinTransaction(connection -> {
+        PolicyType policyType = PolicyType.fromCode(record.getPolicyTypeCode());
+        Preconditions.checkArgument(
+            policyType != null, "Invalid policy type code: %s", record.getPolicyTypeCode());
+        ModelPolicyMappingRecord modelPolicyMappingRecord =
+            ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
+        List<Object> values =
+            modelPolicyMappingRecord.toMap(datasourceOperations.getDatabaseType()).values().stream()
+                .toList();
+        PreparedQuery insertPolicyMappingQuery =
+            QueryGenerator.generateInsertQuery(
+                ModelPolicyMappingRecord.ALL_COLUMNS,
+                ModelPolicyMappingRecord.TABLE_NAME,
+                values,
+                realmId);
+        if (policyType.isInheritable()) {
+          return handleInheritablePolicy(callCtx, record, insertPolicyMappingQuery, connection);
+        } else {
+          datasourceOperations.execute(connection, insertPolicyMappingQuery);
+        }
+        return true;
+      });
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write to policy mapping records due to %s", e.getMessage()), e);

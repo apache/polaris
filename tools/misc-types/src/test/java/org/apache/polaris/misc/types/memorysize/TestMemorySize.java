@@ -95,20 +95,17 @@ public class TestMemorySize {
             tuple("E", BigInteger.valueOf(1024).pow(6)),
             tuple("Z", BigInteger.valueOf(1024).pow(7)),
             tuple("Y", BigInteger.valueOf(1024).pow(8)))
-        .flatMap(
-            t ->
-                Stream.of(
-                    tuple(t.toList().get(0).toString().toLowerCase(ROOT), t.toList().get(1)), t))
-        .flatMap(
-            t -> {
-              var suffix = t.toList().get(0).toString();
-              var mult = (BigInteger) t.toList().get(1);
-              return Stream.of(
-                  arguments("1" + suffix, mult),
-                  arguments("5" + suffix, mult.multiply(BigInteger.valueOf(5))),
-                  arguments("32" + suffix, mult.multiply(BigInteger.valueOf(32))),
-                  arguments("1023" + suffix, mult.multiply(BigInteger.valueOf(1023))));
-            });
+        .flatMap(t ->
+            Stream.of(tuple(t.toList().get(0).toString().toLowerCase(ROOT), t.toList().get(1)), t))
+        .flatMap(t -> {
+          var suffix = t.toList().get(0).toString();
+          var mult = (BigInteger) t.toList().get(1);
+          return Stream.of(
+              arguments("1" + suffix, mult),
+              arguments("5" + suffix, mult.multiply(BigInteger.valueOf(5))),
+              arguments("32" + suffix, mult.multiply(BigInteger.valueOf(32))),
+              arguments("1023" + suffix, mult.multiply(BigInteger.valueOf(1023))));
+        });
   }
 
   @ParameterizedTest

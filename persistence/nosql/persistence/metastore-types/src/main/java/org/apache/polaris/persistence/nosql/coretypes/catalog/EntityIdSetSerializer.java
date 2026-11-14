@@ -25,25 +25,21 @@ import static org.apache.polaris.persistence.varint.VarInt.readVarLong;
 import static org.apache.polaris.persistence.varint.VarInt.skipVarInt;
 import static org.apache.polaris.persistence.varint.VarInt.varIntLen;
 
+import com.google.common.collect.ImmutableSet;
 import java.nio.ByteBuffer;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 final class EntityIdSetSerializer implements IndexValueSerializer<EntityIdSet> {
-  private static final byte[] NULL;
-
-  static {
-    var buffer = putVarInt(ByteBuffer.allocate(1), 0).flip();
-    NULL = new byte[buffer.remaining()];
-    buffer.get(NULL);
-  }
+  // Counts may include duplicates or come from truncated input; bound speculative allocation.
+  private static final int MAX_INITIAL_SET_SIZE = 1024;
 
   @NonNull
   @Override
   public ByteBuffer serialize(@Nullable EntityIdSet value, @NonNull ByteBuffer target) {
     if (value == null) {
-      return target.put(NULL);
+      return target.put((byte) 0);
     }
     var longs = value.entityIds();
     var num = longs.size();
@@ -57,7 +53,7 @@ final class EntityIdSetSerializer implements IndexValueSerializer<EntityIdSet> {
   @Override
   public int serializedSize(@Nullable EntityIdSet value) {
     if (value == null || value.entityIds().isEmpty()) {
-      return NULL.length;
+      return 1;
     }
     var longs = value.entityIds();
     var num = longs.size();
@@ -75,11 +71,13 @@ final class EntityIdSetSerializer implements IndexValueSerializer<EntityIdSet> {
     if (num == 0) {
       return null;
     }
-    var b = ImmutableEntityIdSet.builder();
+    var b =
+        ImmutableSet.<Long>builderWithExpectedSize(
+            Math.min(num, Math.min(buffer.remaining(), MAX_INITIAL_SET_SIZE)));
     for (int i = 0; i < num; i++) {
-      b.addEntityId(readVarLong(buffer));
+      b.add(readVarLong(buffer));
     }
-    return b.build();
+    return EntityIdSet.entityIdSet(b.build());
   }
 
   @Override

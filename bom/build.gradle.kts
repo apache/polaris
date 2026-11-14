@@ -147,7 +147,6 @@ tasks.register<VerifyBomDependenciesTask>("verifyBomDependencies") {
   excludedProjectPaths.set(
     setOf(
       ":polaris-bom",
-      ":aggregated-license-report",
       ":polaris-config-docs-site",
       ":polaris-distribution",
     ),

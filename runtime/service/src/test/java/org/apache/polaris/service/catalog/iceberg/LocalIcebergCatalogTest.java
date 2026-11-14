@@ -27,6 +27,7 @@ import static org.apache.polaris.core.config.FeatureConfiguration.OPTIMIZED_SIBL
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.net.URLEncoder;
@@ -48,6 +49,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -90,7 +92,7 @@ class LocalIcebergCatalogTest {
     when(resolvedEntityView.getResolvedCatalogEntity()).thenReturn(catalogEntity);
     lenient().when(resolverFactory.createResolver(any(), any())).thenReturn(resolver);
     lenient()
-        .when(resolver.resolveAll())
+        .when(resolver.resolveSelections(any()))
         .thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
 
     rns1 = new ResolvedPolarisEntity(ns1, List.of(), List.of());
@@ -137,7 +139,7 @@ class LocalIcebergCatalogTest {
 
   @Test
   void testFailedLocationSiblingResolutionException() {
-    when(resolver.resolveAll())
+    when(resolver.resolveSelections(any()))
         .thenReturn(new ResolverStatus(PolarisEntityType.TABLE_LIKE, "test-name"));
     Assertions.assertThatThrownBy(() -> catalog.resolveOptionalPaths(List.of(), "test"))
         .isInstanceOf(CommitConflictException.class)
@@ -145,7 +147,7 @@ class LocalIcebergCatalogTest {
         .hasMessageContaining("test-name")
         .hasMessageContaining(ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED.name());
 
-    when(resolver.resolveAll())
+    when(resolver.resolveSelections(any()))
         .thenReturn(
             new ResolverStatus(
                 new ResolverPath(
@@ -177,5 +179,8 @@ class LocalIcebergCatalogTest {
     assertThat(entities).hasSize(2);
     assertThat(entities.get(0)).isSameAs(table3);
     assertThat(entities.get(1)).isSameAs(ns2);
+
+    verify(resolver)
+        .resolveSelections(Set.of(Resolvable.REFERENCE_CATALOG, Resolvable.REQUESTED_PATHS));
   }
 }

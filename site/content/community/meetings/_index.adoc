@@ -43,15 +43,15 @@ https://meet.google.com/pii-faxn-woh[Google Meet Link]
 |===
 | Date | Time
 
-| 2026-10-01 | 09:00 PST, 18:00 CET
-
-| 2026-10-15 | 09:00 PST, 18:00 CET
-
-| 2026-10-29 | 09:00 PST, 18:00 CET
-
-| 2026-11-12 | 09:00 PST, 18:00 CET
-
 | 2026-11-26 | 09:00 PST, 18:00 CET
+
+| 2026-12-10 | 09:00 PST, 18:00 CET
+
+| 2026-12-24 | 09:00 PST, 18:00 CET
+
+| 2027-01-07 | 09:00 PST, 18:00 CET
+
+| 2027-01-21 | 09:00 PST, 18:00 CET
 
 | ... |
 |===
@@ -61,6 +61,10 @@ https://meet.google.com/pii-faxn-woh[Google Meet Link]
 [cols="1,3,3"]
 |===
 | Date | Notes | Recording
+
+| 2026-10-29
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.qthi7krkwnh9[Meeting Notes]
+| https://drive.google.com/file/d/1oLDHls4pUA0OjN1aeykUoW10XGTALkXF/view?usp=sharing
 
 | 2026-09-17
 | https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.rc3g6e7p6bk[Meeting Notes]

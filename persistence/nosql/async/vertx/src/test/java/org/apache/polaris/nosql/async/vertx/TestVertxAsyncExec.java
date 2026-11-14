@@ -101,11 +101,10 @@ public class TestVertxAsyncExec extends AsyncExecTestBase {
           }
         }) {
       var task =
-          executor.submit(
-              () -> {
-                assertThat(tracked).hasValueSatisfying(t -> assertThat(t).isNotNull());
-                return "done";
-              });
+          executor.submit(() -> {
+            assertThat(tracked).hasValueSatisfying(t -> assertThat(t).isNotNull());
+            return "done";
+          });
 
       assertThat(task.completionStage()).succeedsWithin(Duration.ofSeconds(5)).isEqualTo("done");
     }
@@ -140,12 +139,11 @@ public class TestVertxAsyncExec extends AsyncExecTestBase {
     try (var executor =
         new VertxAsyncExec(vertx, AsyncConfiguration.builder().maxThreads(1).build())) {
       var blocker =
-          executor.submit(
-              () -> {
-                started.countDown();
-                assertThat(release.tryAcquire(5, SECONDS)).isTrue();
-                return null;
-              });
+          executor.submit(() -> {
+            started.countDown();
+            assertThat(release.tryAcquire(5, SECONDS)).isTrue();
+            return null;
+          });
 
       assertThat(started.await(5, SECONDS)).isTrue();
       var delayed = executor.submit(() -> "delayed").completionStage().toCompletableFuture();
@@ -236,11 +234,10 @@ public class TestVertxAsyncExec extends AsyncExecTestBase {
 
       await(started);
       var task =
-          executor.submit(
-              () -> {
-                ran.set(true);
-                return "unexpected";
-              });
+          executor.submit(() -> {
+            ran.set(true);
+            return "unexpected";
+          });
 
       await(rejected);
       task.cancel();
@@ -298,11 +295,10 @@ public class TestVertxAsyncExec extends AsyncExecTestBase {
     var blocker = executor.submit(blockingTask(started, release));
     await(started);
     var task =
-        executor.submit(
-            () -> {
-              ran.set(true);
-              return "unexpected";
-            });
+        executor.submit(() -> {
+          ran.set(true);
+          return "unexpected";
+        });
     await(rejected);
 
     executor.close();

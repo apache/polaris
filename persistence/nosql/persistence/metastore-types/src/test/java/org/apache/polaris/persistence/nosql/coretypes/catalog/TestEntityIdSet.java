@@ -21,7 +21,9 @@ package org.apache.polaris.persistence.nosql.coretypes.catalog;
 
 import static java.lang.Long.MAX_VALUE;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.EntityIdSet.ENTITY_ID_SET_SERIALIZER;
+import static org.apache.polaris.persistence.varint.VarInt.putVarInt;
 
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -34,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestEntityIdSet {
@@ -99,6 +102,37 @@ public class TestEntityIdSet {
         EntityIdSet.entityIdSet(LongStream.range(0, 10000).boxed().collect(Collectors.toSet())),
         EntityIdSet.entityIdSet(
             LongStream.range(MAX_VALUE - 1000, MAX_VALUE).boxed().collect(Collectors.toSet())));
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 16, 1024, 2048})
+  void deserializeDeduplicatesIds(int count) {
+    var buffer = putVarInt(ByteBuffer.allocate(count * 5 + 16), count);
+    for (int i = 0; i < count; i++) {
+      putVarInt(buffer, 123456789L);
+    }
+    buffer.put((byte) 42).flip();
+    var value = ENTITY_ID_SET_SERIALIZER.deserialize(buffer);
+    soft.assertThat(value).isEqualTo(EntityIdSet.entityIdSet(Set.of(123456789L)));
+    soft.assertThat(buffer.get()).isEqualTo((byte) 42);
+  }
+
+  @Test
+  void deserializeRejectsTenByteCount() {
+    var buffer = ByteBuffer.wrap(new byte[] {-1, -1, -1, -1, -1, -1, -1, -1, -1, 1});
+    soft.assertThatIllegalArgumentException()
+        .isThrownBy(() -> ENTITY_ID_SET_SERIALIZER.deserialize(buffer))
+        .withMessage("Illegal variable length integer representation");
+    soft.assertThat(buffer.position()).isEqualTo(9);
+  }
+
+  @Test
+  void truncatedLargeCountUnderflows() {
+    var buffer = putVarInt(ByteBuffer.allocate(16), Integer.MAX_VALUE).flip();
+    var limit = buffer.limit();
+    soft.assertThatThrownBy(() -> ENTITY_ID_SET_SERIALIZER.deserialize(buffer))
+        .isInstanceOf(BufferUnderflowException.class);
+    soft.assertThat(buffer.position()).isEqualTo(limit);
   }
 
   /**

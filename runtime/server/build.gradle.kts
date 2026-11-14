@@ -24,8 +24,9 @@ plugins {
   alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
-  id("polaris-license-report")
 }
+
+apply(from = "../licensee.gradle.kts")
 
 val quarkusRunner =
   configurations.create("quarkusRunner") {
@@ -71,6 +72,7 @@ dependencies {
     exclude(group = "com.google.protobuf", module = "protobuf-java-util")
   }
   implementation("io.quarkus:quarkus-container-image-docker")
+  implementation("io.quarkus:quarkus-cyclonedx")
 }
 
 quarkus {
@@ -135,6 +137,7 @@ artifacts {
   }
   add(distributionElements.name, layout.buildDirectory.dir("quarkus-app")) {
     builtBy("quarkusBuild")
+    builtBy("checkDistributionLicenses")
   }
   add(licenseNoticeElements.name, layout.projectDirectory.dir("distribution"))
 }

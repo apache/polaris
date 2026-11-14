@@ -104,9 +104,8 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
     SecretReference actualRef = serviceIdentityInfo.getIdentityInfoReference();
 
     return config.serviceIdentityConfigurations().stream()
-        .filter(
-            identityConfig ->
-                buildIdentityInfoReference(realm, identityConfig.getType()).equals(actualRef))
+        .filter(identityConfig ->
+            buildIdentityInfoReference(realm, identityConfig.getType()).equals(actualRef))
         .findFirst()
         .flatMap(ResolvableServiceIdentityConfiguration::asServiceIdentityInfoModel);
   }
@@ -122,9 +121,8 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
     SecretReference ref = serviceIdentityInfo.getIdentityInfoReference();
 
     return config.serviceIdentityConfigurations().stream()
-        .filter(
-            identityConfig ->
-                buildIdentityInfoReference(realm, identityConfig.getType()).equals(ref))
+        .filter(identityConfig ->
+            buildIdentityInfoReference(realm, identityConfig.getType()).equals(ref))
         .findFirst()
         .flatMap(identityConfig -> identityConfig.asServiceIdentityCredential(ref));
   }

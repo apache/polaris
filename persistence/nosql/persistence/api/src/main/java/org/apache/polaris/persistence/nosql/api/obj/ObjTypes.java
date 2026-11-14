@@ -67,14 +67,13 @@ public final class ObjTypes {
       var loader = ServiceLoader.load(ObjType.class);
       loader.stream()
           .map(ServiceLoader.Provider::get)
-          .forEach(
-              objType -> {
-                ObjType ex = byId.put(objType.id(), objType);
-                if (ex != null) {
-                  throw new IllegalStateException(
-                      format("Duplicate object type ID: from %s and %s", objType, ex));
-                }
-              });
+          .forEach(objType -> {
+            ObjType ex = byId.put(objType.id(), objType);
+            if (ex != null) {
+              throw new IllegalStateException(
+                  format("Duplicate object type ID: from %s and %s", objType, ex));
+            }
+          });
       BY_ID = unmodifiableMap(byId);
     }
   }

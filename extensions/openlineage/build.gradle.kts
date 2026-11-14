@@ -48,6 +48,7 @@ dependencies {
   implementation(libs.jakarta.validation.api)
   implementation(libs.jakarta.ws.rs.api)
   implementation(libs.guava)
+  implementation(libs.slf4j.api)
 
   implementation(platform(libs.jackson.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")

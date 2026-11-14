@@ -99,7 +99,8 @@ public class QueryGeneratorTest {
         DELETE FROM GRANT_RECORDS WHERE (
             (grantee_id = ? AND grantee_catalog_id = ?) OR
             (securable_id = ? AND securable_catalog_id = ?)
-        ) AND realm_id = ?""";
+        ) AND realm_id = ?\
+        """;
     assertEquals(
         expectedQuery,
         QueryGenerator.generateDeleteQueryForEntityGrantRecords(entity, REALM_ID).sql());
@@ -495,10 +496,9 @@ public class QueryGeneratorTest {
 
   @Test
   void generateOverlapQueryRejectsUnrelatedSearchRoot() {
-    Assertions.assertThatThrownBy(
-            () ->
-                QueryGenerator.generateOverlapQuery(
-                    "realmId", -123, "s3://bucket/ns/t/", StorageLocation.of("s3://bucket/other/")))
+    Assertions.assertThatThrownBy(() ->
+            QueryGenerator.generateOverlapQuery(
+                "realmId", -123, "s3://bucket/ns/t/", StorageLocation.of("s3://bucket/other/")))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -507,10 +507,9 @@ public class QueryGeneratorTest {
     // Without their scheme, "s3://bucket/a/" is "//bucket/a/" and "file:///bucket/a/" is
     // "///bucket/a/": they are different locations, which must not be conflated into the same
     // file:/// location.
-    Assertions.assertThatThrownBy(
-            () ->
-                QueryGenerator.generateOverlapQuery(
-                    "realmId", -123, "s3://bucket/a/", StorageLocation.of("file:///bucket/a/")))
+    Assertions.assertThatThrownBy(() ->
+            QueryGenerator.generateOverlapQuery(
+                "realmId", -123, "s3://bucket/a/", StorageLocation.of("file:///bucket/a/")))
         .isInstanceOf(IllegalArgumentException.class);
   }
 

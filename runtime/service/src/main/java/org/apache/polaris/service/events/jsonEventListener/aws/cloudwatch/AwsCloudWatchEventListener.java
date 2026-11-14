@@ -157,11 +157,10 @@ public class AwsCloudWatchEventListener implements PolarisEventListener {
     event
         .metadata()
         .user()
-        .ifPresent(
-            p -> {
-              properties.put("principal", p.getName());
-              properties.put("activated_roles", p.getRoles());
-            });
+        .ifPresent(p -> {
+          properties.put("principal", p.getName());
+          properties.put("activated_roles", p.getRoles());
+        });
     event.metadata().requestId().ifPresent(id -> properties.put("request_id", id));
 
     String eventAsJson;
@@ -182,13 +181,12 @@ public class AwsCloudWatchEventListener implements PolarisEventListener {
     CompletableFuture<PutLogEventsResponse> future =
         client
             .putLogEvents(requestBuilder.build())
-            .whenComplete(
-                (resp, err) -> {
-                  if (err != null) {
-                    LOGGER.error(
-                        "Error writing log to CloudWatch. Event: {}, Error: ", inputLogEvent, err);
-                  }
-                });
+            .whenComplete((resp, err) -> {
+              if (err != null) {
+                LOGGER.error(
+                    "Error writing log to CloudWatch. Event: {}, Error: ", inputLogEvent, err);
+              }
+            });
     if (synchronousMode) {
       future.join();
     }

@@ -66,7 +66,7 @@ services:
       start_period: 10s
 
   polaris-setup:
-    image: alpine/curl:8.22.0
+    image: alpine/curl:8.23.0
     depends_on:
       polaris:
         condition: service_healthy
@@ -95,7 +95,7 @@ services:
       test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.8.1
+    image: quay.io/keycloak/keycloak:26.8.2
     ports:
       - "8080:8080"
     environment:

@@ -65,6 +65,6 @@ public interface RealmContextResolver {
       caseInsensitiveMap.put(entry.getKey().toLowerCase(Locale.ROOT), entry.getValue());
     }
     return resolveRealmContext(
-        requestURL, method, path, (key) -> caseInsensitiveMap.get(key.toLowerCase(Locale.ROOT)));
+        requestURL, method, path, key -> caseInsensitiveMap.get(key.toLowerCase(Locale.ROOT)));
   }
 }

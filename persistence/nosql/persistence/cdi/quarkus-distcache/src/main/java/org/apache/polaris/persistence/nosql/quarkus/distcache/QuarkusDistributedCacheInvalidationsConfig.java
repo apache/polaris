@@ -46,11 +46,10 @@ public interface QuarkusDistributedCacheInvalidationsConfig {
    * Host names, IP addresses, or Kubernetes headless-service name of all Polaris server instances
    * accessing the same repository, used by the default DNS peer discovery implementation.
    *
-   * <p>This value is automatically configured via the Polaris Helm chart, additional configuration
-   * is not required.
-   *
-   * <p>If you have your own Helm chart or custom deployment using DNS peer discovery, make sure to
-   * configure the IPs of all Polaris instances here.
+   * <p>This value is not configured automatically. For a multi-instance deployment, configure peer
+   * discovery; for the default DNS implementation set the host names, IP addresses, or the
+   * Kubernetes headless-service name of all Polaris instances here. Cache invalidations are only
+   * sent between instances when both peer discovery and {@code valid-tokens} are configured.
    *
    * <p>Names that start with an equal sign are not resolved but used "as is".
    */

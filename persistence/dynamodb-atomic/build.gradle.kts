@@ -25,6 +25,7 @@ plugins {
 dependencies {
   implementation(project(":polaris-core"))
   implementation(libs.slf4j.api)
+  compileOnly(libs.jspecify)
 
   implementation(platform(libs.awssdk.bom))
   implementation("software.amazon.awssdk:dynamodb")

@@ -64,19 +64,18 @@ class GcpAuthenticationParametersDpoTest {
             .filter(x -> x.startsWith("get"))
             .collect(toUnmodifiableSet());
     dtoGetMethods.stream()
-        .forEach(
-            x -> {
-              try {
-                var expected =
-                    GcpAuthenticationParametersDpo.class.getMethod(x, (Class<?>) null).invoke(dpo);
-                var actual =
-                    GcpAuthenticationParameters.class
-                        .getMethod(x, (Class<?>) null)
-                        .invoke(authenticationParameters);
-                assertThat(expected).isEqualTo(actual);
-              } catch (Exception e) {
-                throw new RuntimeException(e);
-              }
-            });
+        .forEach(x -> {
+          try {
+            var expected =
+                GcpAuthenticationParametersDpo.class.getMethod(x, (Class<?>) null).invoke(dpo);
+            var actual =
+                GcpAuthenticationParameters.class
+                    .getMethod(x, (Class<?>) null)
+                    .invoke(authenticationParameters);
+            assertThat(expected).isEqualTo(actual);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 }

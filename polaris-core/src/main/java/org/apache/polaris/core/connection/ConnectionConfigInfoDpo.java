@@ -158,10 +158,9 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   static {
     DEFAULT_MAPPER =
         JsonMapper.builder()
-            .changeDefaultPropertyInclusion(
-                incl ->
-                    incl.withValueInclusion(JsonInclude.Include.NON_NULL)
-                        .withContentInclusion(JsonInclude.Include.NON_NULL))
+            .changeDefaultPropertyInclusion(incl ->
+                incl.withValueInclusion(JsonInclude.Include.NON_NULL)
+                    .withContentInclusion(JsonInclude.Include.NON_NULL))
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .build();
   }
@@ -183,7 +182,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     try {
       URI uriObj = URI.create(uri);
       if (connectionTypeCode == ConnectionType.HIVE.getCode()
-          && uriObj.getScheme().equals("thrift")) {
+          && "thrift".equalsIgnoreCase(uriObj.getScheme())) {
         // Hive metastore runs a thrift server.
         return;
       }

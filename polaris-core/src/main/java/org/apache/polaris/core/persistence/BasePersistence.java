@@ -404,8 +404,9 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * <p>Despite the name, implementations do not limit the search to siblings under the same parent.
    * They consider every table, view, and namespace in the catalog whose base location contains,
    * equals, or is contained by the entity's base location. This is the check behind {@code
-   * OPTIMIZED_SIBLING_CHECK}; the fallback used when that flag is off inspects only the entities
-   * directly under the same parent.
+   * OPTIMIZED_SIBLING_CHECK}; when unstructured table locations are allowed or the catalog is
+   * external, it is supplemented by list-based validation of entities directly under the same
+   * parent, including Iceberg tables' write paths.
    *
    * <p>The ancestors given by {@code parentPathIds} are excluded: a parent namespace whose location
    * strictly contains the entity's location is not reported, since default locations nest under the

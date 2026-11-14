@@ -100,10 +100,9 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
     URI policyUri =
         opaConfig
             .policyUri()
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "OPA policy URI must be configured via polaris.authorization.opa.policy-uri"));
+            .orElseThrow(() ->
+                new IllegalStateException(
+                    "OPA policy URI must be configured via polaris.authorization.opa.policy-uri"));
 
     return new OpaPolarisAuthorizer(
         policyUri,

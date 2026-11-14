@@ -42,27 +42,25 @@ class BackendProvider {
         backendConfiguration
             .backend()
             .map(BackendLoader::findFactoryByName)
-            .map(
-                f -> {
-                  @SuppressWarnings("unchecked")
-                  var r = (BackendFactory<Object, Object>) f;
-                  return r;
-                })
-            .orElseGet(
-                () -> {
-                  try {
-                    @SuppressWarnings("unchecked")
-                    var r = (BackendFactory<Object, Object>) BackendLoader.findFactory(x -> true);
-                    return r;
-                  } catch (IllegalStateException e) {
-                    throw new RuntimeException(
-                        "Backend factory type is configured using the configuration option polaris.persistence.nosql.backend - available are: "
-                            + BackendLoader.availableFactories()
-                                .map(BackendFactory::name)
-                                .collect(Collectors.joining(", ")),
-                        e);
-                  }
-                });
+            .map(f -> {
+              @SuppressWarnings("unchecked")
+              var r = (BackendFactory<Object, Object>) f;
+              return r;
+            })
+            .orElseGet(() -> {
+              try {
+                @SuppressWarnings("unchecked")
+                var r = (BackendFactory<Object, Object>) BackendLoader.findFactory(x -> true);
+                return r;
+              } catch (IllegalStateException e) {
+                throw new RuntimeException(
+                    "Backend factory type is configured using the configuration option polaris.persistence.nosql.backend - available are: "
+                        + BackendLoader.availableFactories()
+                            .map(BackendFactory::name)
+                            .collect(Collectors.joining(", ")),
+                    e);
+              }
+            });
     var configType = factory.configurationInterface();
     var config = backendSpecificConfigs.select(configType).get();
     var runtimeConfig = factory.buildConfiguration(config);

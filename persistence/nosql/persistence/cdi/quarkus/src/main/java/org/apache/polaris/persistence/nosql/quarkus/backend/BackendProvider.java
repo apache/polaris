@@ -44,10 +44,9 @@ class BackendProvider {
     var backendName =
         backendConfiguration
             .backend()
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Mandatory configuration option polaris.persistence.nosql.backend is missing!"));
+            .orElseThrow(() ->
+                new IllegalStateException(
+                    "Mandatory configuration option polaris.persistence.nosql.backend is missing!"));
 
     var backendBuilder = backendBuilders.select(BackendType.Literal.of(backendName));
     if (!backendBuilder.isResolvable()) {
@@ -57,13 +56,12 @@ class BackendProvider {
               backendName,
               backendBuilders
                   .handlesStream()
-                  .map(
-                      h ->
-                          h.getBean().getQualifiers().stream()
-                              .filter(q -> q instanceof BackendType)
-                              .map(BackendType.class::cast)
-                              .findFirst()
-                              .map(BackendType::value))
+                  .map(h ->
+                      h.getBean().getQualifiers().stream()
+                          .filter(q -> q instanceof BackendType)
+                          .map(BackendType.class::cast)
+                          .findFirst()
+                          .map(BackendType::value))
                   .filter(Optional::isPresent)
                   .map(Optional::get)
                   .toList()));
@@ -75,13 +73,12 @@ class BackendProvider {
               backendName,
               backendBuilders
                   .handlesStream()
-                  .map(
-                      h ->
-                          h.getBean().getQualifiers().stream()
-                              .filter(q -> q instanceof BackendType)
-                              .map(BackendType.class::cast)
-                              .findFirst()
-                              .map(BackendType::value))
+                  .map(h ->
+                      h.getBean().getQualifiers().stream()
+                          .filter(q -> q instanceof BackendType)
+                          .map(BackendType.class::cast)
+                          .findFirst()
+                          .map(BackendType::value))
                   .filter(Optional::isPresent)
                   .map(Optional::get)
                   .toList()));

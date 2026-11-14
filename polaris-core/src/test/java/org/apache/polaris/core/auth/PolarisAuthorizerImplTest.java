@@ -62,6 +62,64 @@ public class PolarisAuthorizerImplTest {
     assertThat(actual).isEqualTo(expected);
   }
 
+  @ParameterizedTest
+  @EnumSource(
+      value = PolarisPrivilege.class,
+      names = {
+        "TABLE_ADD_PARTITION_SPEC",
+        "TABLE_ADD_SCHEMA",
+        "TABLE_ADD_SNAPSHOT",
+        "TABLE_ADD_SORT_ORDER",
+        "TABLE_ASSIGN_UUID",
+        "TABLE_MANAGE_STRUCTURE",
+        "TABLE_REMOVE_PARTITION_SPECS",
+        "TABLE_REMOVE_PROPERTIES",
+        "TABLE_REMOVE_SNAPSHOTS",
+        "TABLE_REMOVE_SNAPSHOT_REF",
+        "TABLE_REMOVE_STATISTICS",
+        "TABLE_SET_CURRENT_SCHEMA",
+        "TABLE_SET_DEFAULT_SORT_ORDER",
+        "TABLE_SET_LOCATION",
+        "TABLE_SET_PROPERTIES",
+        "TABLE_SET_SNAPSHOT_REF",
+        "TABLE_SET_STATISTICS",
+        "TABLE_UPGRADE_FORMAT_VERSION"
+      })
+  void catalogReadConfigSubsumedByFineGrainedTablePrivileges(PolarisPrivilege privilege) {
+    // Catalog-scoped holders of these Iceberg table-update privileges must still bootstrap
+    // GET /v1/config when ENFORCE_CATALOG_CONFIG_AUTHORIZATION is enabled.
+    assertThat(PolarisAuthorizerImpl.subsumingPrivilegesOf(PolarisPrivilege.CATALOG_READ_CONFIG))
+        .contains(privilege);
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = PolarisPrivilege.class,
+      names = {
+        "POLICY_ATTACH",
+        "POLICY_CREATE",
+        "POLICY_DETACH",
+        "POLICY_DROP",
+        "POLICY_FULL_METADATA",
+        "POLICY_LIST",
+        "POLICY_MANAGE_GRANTS_ON_SECURABLE",
+        "POLICY_READ",
+        "POLICY_WRITE",
+        "SEMANTIC_MODEL_CREATE",
+        "SEMANTIC_MODEL_DROP",
+        "SEMANTIC_MODEL_FULL_METADATA",
+        "SEMANTIC_MODEL_LIST",
+        "SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE",
+        "SEMANTIC_MODEL_READ",
+        "SEMANTIC_MODEL_WRITE"
+      })
+  void catalogReadConfigSubsumedByPolicyAndSemanticModelPrivileges(PolarisPrivilege privilege) {
+    // Catalog-scoped POLICY_* / SEMANTIC_MODEL_* grants must still bootstrap GET /v1/config
+    // because that endpoint advertises those APIs.
+    assertThat(PolarisAuthorizerImpl.subsumingPrivilegesOf(PolarisPrivilege.CATALOG_READ_CONFIG))
+        .contains(privilege);
+  }
+
   @Test
   void resolveAuthorizationInputsResolvesAll() {
     PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl();

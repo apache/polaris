@@ -238,11 +238,10 @@ public class ITFlociAwsExtension {
                   .asUtf8String())
           .isEqualTo("allowed");
 
-      assertThatThrownBy(
-              () ->
-                  s3.putObject(
-                      b -> b.bucket(iamFlociAws.bucket()).key("denied/data.txt"),
-                      RequestBody.fromString("denied", UTF_8)))
+      assertThatThrownBy(() ->
+              s3.putObject(
+                  b -> b.bucket(iamFlociAws.bucket()).key("denied/data.txt"),
+                  RequestBody.fromString("denied", UTF_8)))
           .isInstanceOf(S3Exception.class);
     }
   }
@@ -309,15 +308,14 @@ public class ITFlociAwsExtension {
         .createLogStream(b -> b.logGroupName(logGroup).logStreamName(logStream));
     flociAwsStaticField
         .cloudWatchLogsClient()
-        .putLogEvents(
-            b ->
-                b.logGroupName(logGroup)
-                    .logStreamName(logStream)
-                    .logEvents(
-                        InputLogEvent.builder()
-                            .timestamp(Instant.now().toEpochMilli())
-                            .message(message)
-                            .build()));
+        .putLogEvents(b ->
+            b.logGroupName(logGroup)
+                .logStreamName(logStream)
+                .logEvents(
+                    InputLogEvent.builder()
+                        .timestamp(Instant.now().toEpochMilli())
+                        .message(message)
+                        .build()));
 
     assertThat(
             flociAwsStaticField
@@ -348,11 +346,10 @@ public class ITFlociAwsExtension {
         .createRole(b -> b.roleName(roleName).assumeRolePolicyDocument(trustPolicy(flociAws)));
     flociAws
         .iamClient()
-        .putRolePolicy(
-            b ->
-                b.roleName(roleName)
-                    .policyName("polaris-s3-access")
-                    .policyDocument(s3FullBucketPolicy(flociAws)));
+        .putRolePolicy(b ->
+            b.roleName(roleName)
+                .policyName("polaris-s3-access")
+                .policyDocument(s3FullBucketPolicy(flociAws)));
   }
 
   private static AwsSessionCredentials assumeRole(
@@ -383,80 +380,80 @@ public class ITFlociAwsExtension {
 
   private static String trustPolicy(FlociAwsAccess flociAws) {
     return """
+    {
+      "Version": "2012-10-17",
+      "Statement": [
         {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Principal": {
-                "AWS": "arn:aws:iam::%s:root"
-              },
-              "Action": "sts:AssumeRole"
-            }
-          ]
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::%s:root"
+          },
+          "Action": "sts:AssumeRole"
         }
-        """
+      ]
+    }
+    """
         .formatted(flociAws.accountId());
   }
 
   private static String s3FullBucketPolicy(FlociAwsAccess flociAws) {
     return """
+    {
+      "Version": "2012-10-17",
+      "Statement": [
         {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject"
-              ],
-              "Resource": "arn:aws:s3:::%s/*"
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "s3:ListBucket",
-                "s3:GetBucketLocation"
-              ],
-              "Resource": "arn:aws:s3:::%s"
-            }
-          ]
+          "Effect": "Allow",
+          "Action": [
+            "s3:GetObject",
+            "s3:PutObject",
+            "s3:DeleteObject"
+          ],
+          "Resource": "arn:aws:s3:::%s/*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:ListBucket",
+            "s3:GetBucketLocation"
+          ],
+          "Resource": "arn:aws:s3:::%s"
         }
-        """
+      ]
+    }
+    """
         .formatted(flociAws.bucket(), flociAws.bucket());
   }
 
   private static String s3PrefixPolicy(FlociAwsAccess flociAws, String prefix) {
     return """
+    {
+      "Version": "2012-10-17",
+      "Statement": [
         {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject"
-              ],
-              "Resource": "arn:aws:s3:::%s/%s*"
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "s3:ListBucket",
-                "s3:GetBucketLocation"
-              ],
-              "Resource": "arn:aws:s3:::%s",
-              "Condition": {
-                "StringLike": {
-                  "s3:prefix": "%s*"
-                }
-              }
+          "Effect": "Allow",
+          "Action": [
+            "s3:GetObject",
+            "s3:PutObject",
+            "s3:DeleteObject"
+          ],
+          "Resource": "arn:aws:s3:::%s/%s*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:ListBucket",
+            "s3:GetBucketLocation"
+          ],
+          "Resource": "arn:aws:s3:::%s",
+          "Condition": {
+            "StringLike": {
+              "s3:prefix": "%s*"
             }
-          ]
+          }
         }
-        """
+      ]
+    }
+    """
         .formatted(flociAws.bucket(), prefix, flociAws.bucket(), prefix);
   }
 

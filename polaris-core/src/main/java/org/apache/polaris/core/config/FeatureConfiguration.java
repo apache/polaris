@@ -64,6 +64,35 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .defaultValue(false)
               .buildFeatureConfiguration();
 
+  /**
+   * When false (default), Iceberg REST {@code GET /v1/config} is not authorization-gated. When
+   * true, {@code CATALOG_READ_CONFIG} (or a catalog-level privilege that subsumes it) is required
+   * for the whole endpoint (403 if missing). Namespace- or table-scoped grants are not enough. A
+   * 200 still includes catalog properties ({@code defaults}) as it does today. Grant privileges
+   * (and update Ranger/OPA policies) before enabling. The default will not flip until client-facing
+   * catalog configuration is defined.
+   */
+  public static final FeatureConfiguration<Boolean> ENFORCE_CATALOG_CONFIG_AUTHORIZATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENFORCE_CATALOG_CONFIG_AUTHORIZATION")
+          .description(
+              "When true, Iceberg REST GET /v1/config requires CATALOG_READ_CONFIG (or a "
+                  + "catalog-level privilege that subsumes it); unauthorized callers get 403. "
+                  + "Namespace- or table-scoped grants are not enough; grant CATALOG_READ_CONFIG "
+                  + "on the catalog. When false (default), the endpoint is not authorization-gated "
+                  + "so upgrades do not 403 bootstrap. On a 200 the response still includes catalog "
+                  + "properties (defaults) as it does today. Enable after granting CATALOG_READ_CONFIG "
+                  + "(or catalog-level content privileges) and after updating Ranger/OPA policies "
+                  + "for GET_CATALOG_CONFIG. Ranger currently maps GET_CATALOG_CONFIG to the existing "
+                  + "catalog-properties-read access type; do not enable this flag for Ranger until a "
+                  + "dedicated catalog-config-read access type exists (or accept that coarse mapping). "
+                  + "This flag is temporary. The default will not flip until client-facing catalog "
+                  + "configuration is defined. A production-readiness warning is emitted while the "
+                  + "flag remains false only when using the internal Polaris authorizer"
+                  + "(`polaris.authorization.type=internal`).")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION =
       PolarisConfiguration.<Boolean>builder()
           .key("SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION")
@@ -682,13 +711,20 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  /**
+   * Checks base-location overlap across the catalog with an index. When the index finds no
+   * conflict, siblings are still listed to check Iceberg tables' write paths if unstructured table
+   * locations are allowed or the catalog is external.
+   */
   public static final FeatureConfiguration<Boolean> OPTIMIZED_SIBLING_CHECK =
       PolarisConfiguration.<Boolean>builder()
           .key("OPTIMIZED_SIBLING_CHECK")
           .description(
-              "When set, Polaris uses an index to perform sibling overlap checks between tables, "
-                  + "views, and namespaces. This is not a bypass mode, but enabling or disabling "
-                  + "it can change overlap-detection coverage for non-standard location layouts. "
+              "When set, Polaris uses an index to check overlap against base locations of tables, "
+                  + "views, and namespaces across the catalog. If ALLOW_UNSTRUCTURED_TABLE_LOCATION "
+                  + "is enabled (or the catalog is external), siblings are still listed when the index "
+                  + "finds no conflict, to check sibling tables' write.data.path and "
+                  + "write.metadata.path properties. "
                   + "Only enable it when the required index and backfill state is known to be "
                   + "correct. Locations written by Polaris always end with a slash; locations "
                   + "stored by older versions without one are still handled. Supported by the "
@@ -836,6 +872,22 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "role ARN, external ID, or Azure tenant ID. When false (default), these "
                   + "changes are restricted: new values can be set when none were previously "
                   + "configured, but existing values cannot be changed to different ones.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_ENTITY_LEVEL_LIST_FILTERING =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_ENTITY_LEVEL_LIST_FILTERING")
+          .catalogConfig("polaris.config.enable-entity-level-list-filtering")
+          .description(
+              "When true, listNamespaces, listTables and listViews no longer return 403 to a "
+                  + "caller who lacks the matching *_LIST privilege on the parent. Instead, the "
+                  + "caller receives only the children it has access to. Under the built-in RBAC "
+                  + "authorizer, a child is accessible if the caller holds *_READ_PROPERTIES (or a "
+                  + "stronger privilege that implies it, such as TABLE_READ_DATA for tables) on "
+                  + "the child or one of its parents. Callers holding *_LIST on the parent are "
+                  + "unaffected and still see every child. When false (default), callers without "
+                  + "*_LIST on the parent receive a 403.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 }
