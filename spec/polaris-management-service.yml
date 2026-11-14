@@ -129,8 +129,11 @@ paths:
     delete:
       operationId: deleteCatalog
       description: >-
-        Delete an existing catalog. The catalog must be empty. Its storage configurations and storage
-        mappings are deleted with it.
+        Delete an existing catalog. A catalog can only be deleted when it contains no namespaces and
+        has no catalog roles other than `catalog_admin`. Deleting the catalog also deletes its
+        `catalog_admin` role, its storage configurations and its storage mappings. Storage mappings
+        don't prevent the deletion, because a storage mapping remains after its namespace or table is
+        dropped.
       responses:
         204:
           description: "Success, no content"
@@ -919,7 +922,8 @@ paths:
         exists, so a storage configuration used by existing objects can only be deleted after they are
         dropped. Dropping a namespace or table does not remove its storage mapping; use
         removeStorageMapping. To find the storage configurations that are not in use, list them with
-        `referenced` set to false. Deleting the catalog deletes its storage configurations.
+        `referenced` set to false. Deleting the catalog deletes its storage configurations and
+        storage mappings.
       responses:
         204:
           description: "Success, no content"
