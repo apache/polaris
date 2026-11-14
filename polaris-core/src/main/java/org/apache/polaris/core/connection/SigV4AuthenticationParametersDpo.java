@@ -18,8 +18,11 @@
  */
 package org.apache.polaris.core.connection;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
@@ -37,7 +40,8 @@ import org.jspecify.annotations.Nullable;
  */
 public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDpo {
 
-  // The aws IAM role arn assumed by polaris userArn when signing requests
+  // The aws IAM role arn assumed by polaris userArn when signing requests. Null when a named
+  // server-side credential (storageName) is used instead.
   @JsonProperty(value = "roleArn")
   private final String roleArn;
 
@@ -62,13 +66,34 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
   @JsonProperty(value = "sessionPolicy")
   private final String sessionPolicy;
 
+  // Name of a server-side AWS credential configuration whose static keys sign requests directly.
+  // Only the name is stored; the keys stay in server configuration.
+  @JsonProperty(value = "storageName")
+  private final String storageName;
+
+  /** Role-assumption form, for AWS services reached through STS. */
   public SigV4AuthenticationParametersDpo(
-      @JsonProperty(value = "roleArn", required = true) String roleArn,
-      @JsonProperty(value = "roleSessionName", required = false) String roleSessionName,
-      @JsonProperty(value = "externalId", required = false) String externalId,
+      String roleArn,
+      String roleSessionName,
+      String externalId,
+      String signingRegion,
+      String signingName,
+      String sessionPolicy) {
+    this(roleArn, roleSessionName, externalId, signingRegion, signingName, sessionPolicy, null);
+  }
+
+  @JsonCreator
+  public SigV4AuthenticationParametersDpo(
+      @JsonProperty(value = "roleArn", required = false) @Nullable String roleArn,
+      @JsonProperty(value = "roleSessionName", required = false) @Nullable String roleSessionName,
+      @JsonProperty(value = "externalId", required = false) @Nullable String externalId,
       @JsonProperty(value = "signingRegion", required = true) String signingRegion,
-      @JsonProperty(value = "signingName", required = false) String signingName,
-      @JsonProperty(value = "sessionPolicy", required = false) String sessionPolicy) {
+      @JsonProperty(value = "signingName", required = false) @Nullable String signingName,
+      @JsonProperty(value = "sessionPolicy", required = false) @Nullable String sessionPolicy,
+      @JsonProperty(value = "storageName", required = false) @Nullable String storageName) {
+    // Deliberately unvalidated: this constructor is also the deserialization entry point, and a
+    // persistence object has to be able to read back anything that was ever written. Input is
+    // validated in validateAuthenticationParameters() on the way in instead.
     super(AuthenticationType.SIGV4.getCode());
     this.roleArn = roleArn;
     this.roleSessionName = roleSessionName;
@@ -76,10 +101,47 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
     this.signingRegion = signingRegion;
     this.signingName = signingName;
     this.sessionPolicy = sessionPolicy;
+    this.storageName = storageName;
   }
 
-  public @NonNull String getRoleArn() {
+  /**
+   * Rejects a caller-supplied combination that is not usable: exactly one of roleArn or
+   * storageName. Called on the write path, not on read.
+   */
+  public static void validateAuthenticationParameters(
+      @Nullable String roleArn,
+      @Nullable String storageName,
+      @Nullable String roleSessionName,
+      @Nullable String externalId,
+      @Nullable String sessionPolicy) {
+    boolean hasRoleArn = StringUtils.isNotEmpty(roleArn);
+    boolean hasStorageName = StringUtils.isNotEmpty(storageName);
+    Preconditions.checkArgument(
+        hasRoleArn || hasStorageName, "Either roleArn or storageName must be provided");
+    Preconditions.checkArgument(
+        !(hasRoleArn && hasStorageName), "roleArn and storageName are mutually exclusive");
+    // These only shape an STS AssumeRole request. Accepting them alongside storageName would
+    // silently ignore them, so they are rejected rather than quietly dropped.
+    Preconditions.checkArgument(
+        !hasStorageName
+            || (StringUtils.isEmpty(roleSessionName)
+                && StringUtils.isEmpty(externalId)
+                && StringUtils.isEmpty(sessionPolicy)),
+        "roleSessionName, externalId and sessionPolicy apply to role assumption only and cannot be "
+            + "combined with storageName");
+  }
+
+  public @Nullable String getRoleArn() {
     return roleArn;
+  }
+
+  public @Nullable String getStorageName() {
+    return storageName;
+  }
+
+  @JsonIgnore
+  public boolean usesStorageCredentials() {
+    return StringUtils.isNotEmpty(storageName);
   }
 
   public @Nullable String getRoleSessionName() {
@@ -126,6 +188,7 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
         .setSigningRegion(getSigningRegion())
         .setSigningName(getSigningName())
         .setSessionPolicy(getSessionPolicy())
+        .setStorageName(getStorageName())
         .build();
   }
 
@@ -139,6 +202,7 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
         .add("signingRegion", getSigningRegion())
         .add("signingName", getSigningName())
         .add("hasSessionPolicy", StringUtils.isNotEmpty(getSessionPolicy()))
+        .add("storageName", getStorageName())
         .toString();
   }
 }

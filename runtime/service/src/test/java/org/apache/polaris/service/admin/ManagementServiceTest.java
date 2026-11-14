@@ -539,7 +539,9 @@ public class ManagementServiceTest {
         ReservedProperties.NONE,
         services.vendingMechanisms(),
         new CatalogConfigValidators(
-            List.of(new BigLakeCatalogValidator(callContext.getRealmConfig()))));
+            List.of(
+                new BigLakeCatalogValidator(callContext.getRealmConfig()),
+                new SigV4CatalogValidator(callContext.getRealmConfig()))));
   }
 
   private Catalog createBigLakeCatalog(

@@ -33,6 +33,14 @@ REST implementation), enabling a Polaris service to access table and view entiti
   `ConnectionConfigInfo.AuthenticationParameters`. OAuth2 client credentials, bearer tokens, GCP,
   and AWS SigV4 are supported; choose the scheme the remote service expects.
 
+  SigV4 comes in two forms. Supply `roleArn` to assume a role through AWS STS, which is the usual
+  path for AWS services such as Glue. Supply `storageName` to sign with named static keys and skip
+  STS. That path works for Iceberg REST catalogs that have no IAM role, and for AWS services when
+  the operator already has a dedicated key pair. Only the name is stored with the catalog; the
+  keys live in server configuration. Combining `storageName` with `roleArn`, `roleSessionName`,
+  `externalId` or `sessionPolicy` is rejected. Named keys require
+  `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` to be enabled.
+
 ## Feature configuration
 
 The catalog federation feature is disabled by default. Enable the necessary feature flag in your application.properties

@@ -902,7 +902,6 @@ public class PolarisAdminService {
                     AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT.name()),
                 "Implicit authentication based catalog federation is not supported.");
           }
-
           // Allocate service identity if needed for the authentication type.
           // The provider will determine if a service identity is required based on the connection
           // config.
