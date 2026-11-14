@@ -122,6 +122,56 @@ public interface StorageConfiguration extends S3AccessConfig {
   @WithName("gcp.expiry")
   Optional<Instant> gcpAccessTokenExpiry();
 
+  @WithName("azure")
+  AzureStorageConfig azure();
+
+  interface AzureStorageConfig {
+    /**
+     * The Microsoft Entra tenant of the service principal to use for authentication. If the tenant,
+     * client ID and client secret are not present, the {@code DefaultAzureCredential} chain is
+     * used. It must match the {@code tenantId} of every storage configuration that uses these
+     * credentials.
+     */
+    @WithName("tenant-id")
+    Optional<String> tenantId();
+
+    /**
+     * The application (client) ID of the service principal to use for authentication. If the
+     * tenant, client ID and client secret are not present, the {@code DefaultAzureCredential} chain
+     * is used.
+     */
+    @WithName("client-id")
+    Optional<String> clientId();
+
+    /**
+     * The client secret of the service principal to use for authentication. If the tenant, client
+     * ID and client secret are not present, the {@code DefaultAzureCredential} chain is used.
+     */
+    @WithName("client-secret")
+    Optional<String> clientSecret();
+
+    @WithParentName
+    @ConfigDocs.ConfigPropertyName("storage")
+    Map<String, AzureNamedStorageConfig> storages();
+  }
+
+  interface AzureNamedStorageConfig {
+    /**
+     * The Microsoft Entra tenant of the service principal when using named storages. It must match
+     * the {@code tenantId} of every storage configuration that uses this name.
+     */
+    @WithName("tenant-id")
+    String tenantId();
+
+    /** The application (client) ID of the service principal when using named storages. */
+    @WithName("client-id")
+    String clientId();
+
+    /** The client secret of the service principal when using named storages. */
+    @WithName("client-secret")
+    String clientSecret();
+  }
+
   default Supplier<StsClient> stsClientSupplier() {
     return stsClientSupplier(true);
   }

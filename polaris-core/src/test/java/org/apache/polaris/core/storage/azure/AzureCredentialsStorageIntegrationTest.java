@@ -27,6 +27,7 @@ import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDEN
 import static org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration.toAccessConfig;
 
 import com.azure.core.credential.AccessToken;
+import com.azure.core.credential.TokenCredential;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.DefaultAzureCredential;
 import com.azure.storage.blob.BlobContainerClient;
@@ -39,11 +40,17 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.core.storage.LocationGrant;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -127,6 +134,119 @@ public class AzureCredentialsStorageIntegrationTest {
     Assertions.assertThat(vendedCredentials.keyEnd()).isEqualTo(vendedCredentials.sasExpiry());
     Assertions.assertThat(vendedCredentials.accessConfig().expiresAt())
         .contains(vendedCredentials.sasExpiry().toInstant());
+  }
+
+  private static final String NAMED_LOCATION =
+      "wasbs://container@account.blob.core.windows.net/path";
+
+  private static TokenCredential credentialWithToken(String token) {
+    TokenCredential credential = Mockito.mock(TokenCredential.class);
+    Mockito.when(credential.getToken(Mockito.any(TokenRequestContext.class)))
+        .thenReturn(Mono.just(new AccessToken(token, OffsetDateTime.now().plusHours(1))));
+    return credential;
+  }
+
+  private static AzureStorageConfigurationInfo namedConfig(String storageName) {
+    return AzureStorageConfigurationInfo.builder()
+        .addAllowedLocation(NAMED_LOCATION)
+        .tenantId("tenant-id")
+        .storageName(storageName)
+        .build();
+  }
+
+  private static AzureStorageCredentialCacheKey cacheKey(
+      String storageName, TokenCredential credential) {
+    return AzureStorageCredentialCacheKey.of(
+        "realm",
+        namedConfig(storageName),
+        false,
+        Set.of(NAMED_LOCATION),
+        Set.of(),
+        credential,
+        Mockito.mock(RealmConfig.class));
+  }
+
+  @Test
+  void twoStorageNamesNeverShareACachedCredential() {
+    TokenCredential teamA = credentialWithToken("token-a");
+    TokenCredential teamB = credentialWithToken("token-b");
+    StorageCredentialCache cache = new StorageCredentialCache(() -> 10_000);
+    RealmConfig realmConfig = new RealmConfigImpl((realm, name) -> null, () -> "realm");
+    List<LocationGrant> grants =
+        List.of(new LocationGrant(Set.of(NAMED_LOCATION), Set.of(PolarisStorageActions.READ)));
+
+    // The SAS names the token of the credential that minted it, so what each name receives shows
+    // which credential was used.
+    try (MockedConstruction<BlobServiceClientBuilder> ignored =
+            Mockito.mockConstruction(
+                BlobServiceClientBuilder.class,
+                Mockito.withSettings().defaultAnswer(Answers.RETURNS_SELF),
+                (builder, context) -> {
+                  String[] token = new String[1];
+                  Mockito.when(builder.credential(Mockito.any(TokenCredential.class)))
+                      .thenAnswer(invocation -> {
+                        token[0] =
+                            invocation
+                                .<TokenCredential>getArgument(0)
+                                .getToken(new TokenRequestContext())
+                                .block()
+                                .getToken();
+                        return builder;
+                      });
+                  BlobServiceClient serviceClient = Mockito.mock(BlobServiceClient.class);
+                  UserDelegationKey delegationKey = Mockito.mock(UserDelegationKey.class);
+                  Mockito.when(delegationKey.getValue()).thenAnswer(i -> token[0]);
+                  Mockito.when(serviceClient.getUserDelegationKey(Mockito.any(), Mockito.any()))
+                      .thenReturn(delegationKey);
+                  Mockito.when(builder.buildClient()).thenReturn(serviceClient);
+                });
+        MockedConstruction<BlobContainerClientBuilder> ignoredContainerBuilder =
+            Mockito.mockConstruction(
+                BlobContainerClientBuilder.class,
+                Mockito.withSettings().defaultAnswer(Answers.RETURNS_SELF),
+                (builder, context) -> {
+                  BlobContainerClient containerClient = Mockito.mock(BlobContainerClient.class);
+                  Mockito.when(
+                          containerClient.generateUserDelegationSas(
+                              Mockito.any(BlobServiceSasSignatureValues.class),
+                              Mockito.any(UserDelegationKey.class)))
+                      .thenAnswer(i -> "sas-of-" + i.<UserDelegationKey>getArgument(1).getValue());
+                  Mockito.when(builder.buildClient()).thenReturn(containerClient);
+                })) {
+      for (int i = 0; i < 2; i++) {
+        Assertions.assertThat(sasOf(teamA, cache, "team-a", realmConfig, grants))
+            .isEqualTo("sas-of-token-a");
+        Assertions.assertThat(sasOf(teamB, cache, "team-b", realmConfig, grants))
+            .isEqualTo("sas-of-token-b");
+      }
+    }
+
+    // The second round came from the cache: each credential was asked for a token only once.
+    Mockito.verify(teamA).getToken(Mockito.any(TokenRequestContext.class));
+    Mockito.verify(teamB).getToken(Mockito.any(TokenRequestContext.class));
+  }
+
+  private static String sasOf(
+      TokenCredential credential,
+      StorageCredentialCache cache,
+      String storageName,
+      RealmConfig realmConfig,
+      List<LocationGrant> grants) {
+    return new AzureCredentialsStorageIntegration(
+            credential, cache, namedConfig(storageName), realmConfig)
+        .getStorageAccessConfig(grants, Optional.empty(), CredentialVendingContext.empty())
+        .credentials()
+        .get(StorageAccessProperty.AZURE_SAS_TOKEN_BARE.getPropertyName());
+  }
+
+  @Test
+  void cacheKeyIdentityFollowsStorageNameNotCredential() {
+    TokenCredential credential = Mockito.mock(TokenCredential.class);
+
+    Assertions.assertThat(cacheKey("team-a", credential))
+        .isEqualTo(cacheKey("team-a", Mockito.mock(TokenCredential.class)))
+        .isNotEqualTo(cacheKey("team-b", credential))
+        .isNotEqualTo(cacheKey(null, credential));
   }
 
   private static VendedCredentials vendCredentials(int configuredDurationSeconds) {
