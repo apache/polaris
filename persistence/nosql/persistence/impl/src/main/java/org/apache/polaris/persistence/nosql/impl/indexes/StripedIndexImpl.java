@@ -242,7 +242,7 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
     var start = firstStripeForIteration(lower);
     var stop =
         lastStripeForIteration(
-            prefix || higher == null ? s.length - 1 : indexForKey(higher), endCheck);
+            prefix || higher == null ? s.length - 1 : indexForKey(higher), endCheck, prefix);
     if (start > stop) {
       return emptyIterator();
     }
@@ -289,7 +289,8 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
     var stop =
         lastStripeForIteration(
             higher == null ? s.length - 1 : indexForKey(higher),
-            higher != null ? k -> higher.compareTo(k) < 0 : k -> false);
+            higher != null ? k -> higher.compareTo(k) < 0 : k -> false,
+            false);
     if (start > stop) {
       return emptyIterator();
     }
@@ -340,16 +341,21 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
     return start;
   }
 
-  private int lastStripeForIteration(int stop, Predicate<IndexKey> endCheck) {
-    // Find the first stripe whose original last key exceeds the upper bound. That stripe
-    // can still contain matching keys, including keys added in the gap before its first key.
-    var low = 0;
-    while (low < stop) {
-      var mid = (low + stop) >>> 1;
-      if (endCheck.test(firstLastKeys[mid * 2 + 1])) {
-        stop = mid;
-      } else {
-        low = mid + 1;
+  private int lastStripeForIteration(int stop, Predicate<IndexKey> endCheck, boolean prefix) {
+    if (prefix) {
+      // Range queries already use indexForKey(higher); only prefix queries need this search.
+      // Find the first stripe whose original last key is beyond the prefix. indexForKey()
+      // routes gap keys to the next stripe, both for additions and iteration bounds, so
+      // matching keys cannot be added past this stripe. It can still contain matches,
+      // including keys added in the gap before its original first key.
+      var low = 0;
+      while (low < stop) {
+        var mid = (low + stop) >>> 1;
+        if (endCheck.test(firstLastKeys[mid * 2 + 1])) {
+          stop = mid;
+        } else {
+          low = mid + 1;
+        }
       }
     }
     for (; stop >= 0; stop--) {
