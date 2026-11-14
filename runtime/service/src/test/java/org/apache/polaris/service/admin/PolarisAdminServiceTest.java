@@ -50,7 +50,9 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
+import org.apache.polaris.core.admin.model.HadoopConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.ImplicitAuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -65,7 +67,9 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
+import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -103,6 +107,7 @@ import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -167,6 +172,78 @@ public class PolarisAdminServiceTest {
 
   protected static void assertSuccess(BaseResult result) {
     Assertions.assertThat(result.isSuccess()).isTrue();
+  }
+
+  @Test
+  void testCreateExternalCatalogWithoutUriIsRejected() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogCreate(secretReference);
+    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES))
+        .thenReturn(List.of("ICEBERG_REST"));
+    ConnectionConfigInfo withoutUri =
+        IcebergRestConnectionConfigInfo.builder(
+                ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setRemoteCatalogName("remote-catalog")
+            .setAuthenticationParameters(
+                OAuthClientCredentialsParameters.builder(
+                        AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
+                    .setClientId("client-id")
+                    .setClientSecret("client-secret")
+                    .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+                    .build())
+            .build();
+    Catalog catalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName("external-catalog")
+            .setProperties(CatalogProperties.builder("s3://bucket/path/to/data").build())
+            .setStorageConfigInfo(createAwsStorageConfig())
+            .setConnectionConfigInfo(withoutUri)
+            .build();
+
+    assertThatThrownBy(() -> adminService.createCatalog(new CreateCatalogRequest(catalog)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("uri is required for ICEBERG_REST connections");
+
+    verify(metaStoreManager, never()).createCatalog(any(), any(), any());
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testCreateHadoopCatalogWithoutUri() {
+    setupExternalCatalogCreate(null, AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT);
+    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES))
+        .thenReturn(List.of("ICEBERG_REST", "HADOOP"));
+    when(metaStoreManager.createCatalog(any(), any(), any()))
+        .thenReturn(
+            new CreateCatalogResult(createBaseCatalog("hadoop-catalog"), createBaseCatalogRole()));
+    ConnectionConfigInfo withoutUri =
+        HadoopConnectionConfigInfo.builder(ConnectionConfigInfo.ConnectionTypeEnum.HADOOP)
+            .setWarehouse("s3://bucket/path/to/data")
+            .setAuthenticationParameters(
+                ImplicitAuthenticationParameters.builder(
+                        AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT)
+                    .build())
+            .build();
+    Catalog catalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName("hadoop-catalog")
+            .setProperties(CatalogProperties.builder("s3://bucket/path/to/data").build())
+            .setStorageConfigInfo(createAwsStorageConfig())
+            .setConnectionConfigInfo(withoutUri)
+            .build();
+
+    adminService.createCatalog(new CreateCatalogRequest(catalog));
+
+    ArgumentCaptor<CatalogEntity> entity = ArgumentCaptor.forClass(CatalogEntity.class);
+    verify(metaStoreManager).createCatalog(any(), entity.capture(), any());
+    ConnectionConfigInfoDpo connectionConfig = entity.getValue().getConnectionConfigInfoDpo();
+    assertThat(connectionConfig).isInstanceOf(HadoopConnectionConfigInfoDpo.class);
+    assertThat(connectionConfig.getUri()).isNull();
+    assertThat(((HadoopConnectionConfigInfoDpo) connectionConfig).getWarehouse())
+        .isEqualTo("s3://bucket/path/to/data");
   }
 
   @Test

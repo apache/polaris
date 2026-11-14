@@ -926,7 +926,10 @@ components:
           description: The type of remote catalog service represented by this connection
         uri:
           type: string
-          description: URI to the remote catalog service
+          description: |
+            URI to the remote catalog service. Required for ICEBERG_REST and HIVE. Optional for
+            BIGQUERY, where it defaults to the public BigQuery endpoint, and for HADOOP, where the
+            catalog is reached through `warehouse` and `uri` is not used.
         authenticationParameters:
           $ref: "#/components/schemas/AuthenticationParameters"
         serviceIdentity:
@@ -960,7 +963,9 @@ components:
 
     HadoopConnectionConfigInfo:
       type: object
-      description: Configuration necessary for connecting to a Hadoop Catalog
+      description: |
+        Configuration necessary for connecting to a Hadoop Catalog. The catalog is initialized from
+        `warehouse`; `uri` is optional and ignored.
       allOf:
         - $ref: '#/components/schemas/ConnectionConfigInfo'
       properties:

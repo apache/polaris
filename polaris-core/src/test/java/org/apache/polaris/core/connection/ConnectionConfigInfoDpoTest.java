@@ -25,6 +25,7 @@ import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HadoopConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HiveConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ImplicitAuthenticationParameters;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
@@ -350,6 +351,84 @@ public class ConnectionConfigInfoDpoTest {
     ConnectionConfigInfo connectionConfigInfoApiModel =
         connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityProvider);
     Assertions.assertEquals(properties, connectionConfigInfoApiModel.getProperties());
+  }
+
+  @Test
+  void testHadoopConnectionConfigWithoutUri() {
+    // `uri` is optional for HADOOP connections: the Hadoop catalog does not use it.
+    ConnectionConfigInfo apiModel =
+        HadoopConnectionConfigInfo.builder()
+            .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.HADOOP)
+            .setWarehouse("hadoop-catalog")
+            .setAuthenticationParameters(
+                ImplicitAuthenticationParameters.builder()
+                    .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT)
+                    .build())
+            .build();
+    ConnectionConfigInfoDpo fromModel =
+        ConnectionConfigInfoDpo.fromConnectionConfigInfoModelWithSecrets(apiModel, Map.of());
+    Assertions.assertNull(fromModel.getUri());
+
+    String json =
+        ""
+            + "{"
+            + "  \"connectionTypeCode\": 2,"
+            + "  \"warehouse\": \"hadoop-catalog\","
+            + "  \"authenticationParameters\": {"
+            + "    \"authenticationTypeCode\": 3"
+            + "  }"
+            + "}";
+    ConnectionConfigInfoDpo connectionConfigInfoDpo = ConnectionConfigInfoDpo.deserialize(json);
+    Assertions.assertNull(connectionConfigInfoDpo.getUri());
+    JsonNode tree1 = objectMapper.readTree(json);
+    JsonNode tree2 = objectMapper.readTree(connectionConfigInfoDpo.serialize());
+    Assertions.assertEquals(tree1, tree2);
+
+    ConnectionConfigInfo connectionConfigInfoApiModel =
+        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityProvider);
+    Assertions.assertNull(connectionConfigInfoApiModel.getUri());
+  }
+
+  @Test
+  void testMissingUriIsRejectedForIcebergRest() {
+    // Every connection type other than HADOOP connects to `uri`, so a missing value is a client
+    // error, not a NullPointerException.
+    ConnectionConfigInfo apiModel =
+        IcebergRestConnectionConfigInfo.builder()
+            .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setRemoteCatalogName("remote")
+            .setAuthenticationParameters(
+                ImplicitAuthenticationParameters.builder()
+                    .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT)
+                    .build())
+            .build();
+    IllegalArgumentException e =
+        Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                ConnectionConfigInfoDpo.fromConnectionConfigInfoModelWithSecrets(
+                    apiModel, Map.of()));
+    Assertions.assertEquals("uri is required for ICEBERG_REST connections", e.getMessage());
+  }
+
+  @Test
+  void testMissingUriIsRejectedForHive() {
+    ConnectionConfigInfo apiModel =
+        HiveConnectionConfigInfo.builder()
+            .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.HIVE)
+            .setWarehouse("hive-warehouse")
+            .setAuthenticationParameters(
+                ImplicitAuthenticationParameters.builder()
+                    .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT)
+                    .build())
+            .build();
+    IllegalArgumentException e =
+        Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                ConnectionConfigInfoDpo.fromConnectionConfigInfoModelWithSecrets(
+                    apiModel, Map.of()));
+    Assertions.assertEquals("uri is required for HIVE connections", e.getMessage());
   }
 
   @Test

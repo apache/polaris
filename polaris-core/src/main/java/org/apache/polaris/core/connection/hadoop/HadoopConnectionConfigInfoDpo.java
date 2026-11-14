@@ -20,6 +20,7 @@ package org.apache.polaris.core.connection.hadoop;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +62,7 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
   private final String warehouse;
 
   public HadoopConnectionConfigInfoDpo(
-      @JsonProperty(value = "uri", required = true) @NonNull String uri,
+      @JsonProperty(value = "uri", required = false) @Nullable String uri,
       @JsonProperty(value = "authenticationParameters", required = true)
           @NonNull AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "serviceIdentity", required = false)
@@ -82,6 +83,24 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
     return warehouse;
   }
 
+  /**
+   * The Hadoop catalog is initialized from {@link #getWarehouse()} and never connects to {@code
+   * uri}, so the value is optional and only has to be a URI when present. This also admits schemes
+   * such as {@code hdfs://} or {@code s3://} that the JVM has no {@link java.net.URL} handler for.
+   * A blank value is treated like a missing one.
+   */
+  @Override
+  protected void validateUri(@Nullable String uri) {
+    if (uri == null || uri.isBlank()) {
+      return;
+    }
+    try {
+      URI.create(uri);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Invalid remote URI: " + uri, e);
+    }
+  }
+
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
@@ -98,7 +117,9 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
   public @NonNull Map<String, String> asIcebergCatalogProperties(
       PolarisCredentialManager credentialManager) {
     HashMap<String, String> properties = new HashMap<>();
-    properties.put(CatalogProperties.URI, getUri());
+    if (getUri() != null && !getUri().isBlank()) {
+      properties.put(CatalogProperties.URI, getUri());
+    }
     if (getWarehouse() != null) {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getWarehouse());
     }
