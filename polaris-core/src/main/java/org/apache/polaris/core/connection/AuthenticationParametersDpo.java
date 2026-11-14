@@ -107,8 +107,8 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
         config = new ImplicitAuthenticationParametersDpo();
         break;
       case SIGV4:
-        // SigV4 authentication is not secret-based: keys come either from STS role assumption or
-        // from a named server-side credential configuration
+        // SigV4 authentication is not secret-based: keys come from STS role assumption, from a
+        // named server-side credential, or from named keys used as the STS client credentials
         SigV4AuthenticationParameters sigV4AuthenticationParametersModel =
             (SigV4AuthenticationParameters) authenticationParameters;
         SigV4AuthenticationParametersDpo.validateAuthenticationParameters(

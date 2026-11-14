@@ -40,8 +40,7 @@ import org.jspecify.annotations.Nullable;
  */
 public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDpo {
 
-  // The aws IAM role arn assumed by polaris userArn when signing requests. Null when a named
-  // server-side credential (storageName) is used instead.
+  // The aws IAM role arn assumed when signing requests. Null when signing with named keys only.
   @JsonProperty(value = "roleArn")
   private final String roleArn;
 
@@ -111,8 +110,9 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
   }
 
   /**
-   * Rejects a caller-supplied combination that is not usable: exactly one of roleArn or
-   * storageName. Called on the write path, not on read.
+   * Rejects a caller-supplied combination that is not usable. At least one of roleArn or
+   * storageName is required. STS session fields require roleArn. Called on the write path, not on
+   * read.
    */
   public static void validateAuthenticationParameters(
       @Nullable String roleArn,
@@ -124,17 +124,13 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
     boolean hasStorageName = StringUtils.isNotEmpty(storageName);
     Preconditions.checkArgument(
         hasRoleArn || hasStorageName, "Either roleArn or storageName must be provided");
+    // These only shape an STS AssumeRole request.
     Preconditions.checkArgument(
-        !(hasRoleArn && hasStorageName), "roleArn and storageName are mutually exclusive");
-    // These only shape an STS AssumeRole request. Accepting them alongside storageName would
-    // silently ignore them, so they are rejected rather than quietly dropped.
-    Preconditions.checkArgument(
-        !hasStorageName
+        hasRoleArn
             || (StringUtils.isEmpty(roleSessionName)
                 && StringUtils.isEmpty(externalId)
                 && StringUtils.isEmpty(sessionPolicy)),
-        "roleSessionName, externalId and sessionPolicy apply to role assumption only and cannot be "
-            + "combined with storageName");
+        "roleSessionName, externalId and sessionPolicy apply to role assumption only");
   }
 
   public @Nullable String getRoleArn() {

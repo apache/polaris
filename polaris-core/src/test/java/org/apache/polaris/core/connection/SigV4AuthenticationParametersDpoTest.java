@@ -40,7 +40,6 @@ class SigV4AuthenticationParametersDpoTest {
         Arguments.of(null, null, null, null, null, "Either roleArn or storageName"),
         // A blank string is not a value; it is treated the same as absent
         Arguments.of("", "", null, null, null, "Either roleArn or storageName"),
-        Arguments.of(ROLE_ARN, "sigv4-catalog", null, null, null, "mutually exclusive"),
         Arguments.of(null, "sigv4-catalog", "a-session", null, null, "role assumption only"),
         Arguments.of(null, "sigv4-catalog", null, "an-external-id", null, "role assumption only"),
         Arguments.of(null, "sigv4-catalog", null, null, "{}", "role assumption only"));
@@ -67,12 +66,14 @@ class SigV4AuthenticationParametersDpoTest {
         Arguments.of(ROLE_ARN, null, "a-session", "an-external-id", "{}"),
         Arguments.of(ROLE_ARN, "", null, null, null),
         Arguments.of(null, "sigv4-catalog", null, null, null),
-        Arguments.of("", "sigv4-catalog", "", "", ""));
+        Arguments.of("", "sigv4-catalog", "", "", ""),
+        Arguments.of(ROLE_ARN, "sigv4-catalog", null, null, null),
+        Arguments.of(ROLE_ARN, "sigv4-catalog", "a-session", "an-external-id", "{}"));
   }
 
   @ParameterizedTest
   @MethodSource("validParameters")
-  void validateAcceptsExactlyOneCredentialSource(
+  void validateAcceptsUsableCombination(
       String roleArn,
       String storageName,
       String roleSessionName,

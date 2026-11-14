@@ -92,7 +92,8 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
 
   private Optional<ServiceIdentityInfoDpo> allocateSigV4ServiceIdentity(
       AuthenticationParameters authenticationParameters) {
-    // Named server-side credentials sign directly; no AWS IAM service identity is used or returned.
+    // Named keys are the STS client credentials when roleArn is set, or they sign directly.
+    // Either way no AWS IAM service identity is used.
     if (authenticationParameters instanceof SigV4AuthenticationParameters sigV4
         && StringUtils.isNotEmpty(sigV4.getStorageName())) {
       return Optional.empty();

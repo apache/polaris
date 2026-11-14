@@ -44,6 +44,7 @@ import org.apache.polaris.service.credentials.CredentialVendorPriorities;
 import org.apache.polaris.service.storage.StorageConfiguration;
 import org.jspecify.annotations.NonNull;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
@@ -51,16 +52,12 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 /**
  * Connection credential vendor for AWS SigV4 authentication.
  *
- * <p>Two forms, chosen by which authentication parameters are set.
+ * <p>STS is used when {@code roleArn} is set. The keys that call AssumeRole come from {@code
+ * storageName} when that is set, otherwise from Polaris's {@link AwsIamServiceIdentityCredential}.
  *
- * <p><b>Role assumption</b> — Polaris uses its own {@link AwsIamServiceIdentityCredential} to
- * assume the customer's role via AWS STS, and returns the temporary access key, secret key and
- * session token. Typical for AWS services such as Glue.
- *
- * <p><b>Named server-side credentials</b> — the static keys configured under {@code
- * polaris.storage.aws.<storage-name>} are handed to the signer directly; STS is not involved. Works
- * for any SigV4 Iceberg REST catalog, including AWS services, when the operator prefers named keys.
- * Requires {@link FeatureConfiguration#RESOLVE_CREDENTIALS_BY_STORAGE_NAME}.
+ * <p>When {@code roleArn} is absent, the static keys under {@code
+ * polaris.storage.aws.<storage-name>} are handed to the signer directly. Named keys require {@link
+ * FeatureConfiguration#RESOLVE_CREDENTIALS_BY_STORAGE_NAME}.
  *
  * <p>This is the default implementation with {@code @Priority(CredentialVendorPriorities.DEFAULT)}.
  * Custom implementations can override this by providing a higher priority value.
@@ -101,30 +98,21 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
     SigV4AuthenticationParametersDpo sigv4Params =
         (SigV4AuthenticationParametersDpo) connectionConfig.getAuthenticationParameters();
 
-    if (sigv4Params.usesStorageCredentials()) {
-      return storageCredentials(sigv4Params.getStorageName());
+    if (StringUtils.isNotEmpty(sigv4Params.getRoleArn())) {
+      return assumeRole(connectionConfig, sigv4Params);
     }
+    return storageCredentials(sigv4Params.getStorageName());
+  }
 
-    // Resolve the service identity credential
-    Optional<ServiceIdentityCredential> serviceCredentialOpt =
-        serviceIdentityProvider.getServiceIdentityCredential(connectionConfig.getServiceIdentity());
-    if (serviceCredentialOpt.isEmpty()) {
+  private ConnectionCredentials assumeRole(
+      @NonNull ConnectionConfigInfoDpo connectionConfig,
+      @NonNull SigV4AuthenticationParametersDpo sigv4Params) {
+    AwsCredentialsProvider baseCredentials = baseCredentials(connectionConfig, sigv4Params);
+    if (baseCredentials == null) {
       return ConnectionCredentials.EMPTY;
     }
 
-    // Validate and cast service identity credential
-    ServiceIdentityCredential serviceCredential = serviceCredentialOpt.get();
-    Preconditions.checkArgument(
-        serviceCredential instanceof AwsIamServiceIdentityCredential,
-        "Expected AwsIamServiceIdentityCredential, got: %s",
-        serviceCredential.getClass().getName());
-    AwsIamServiceIdentityCredential awsCredential =
-        (AwsIamServiceIdentityCredential) serviceCredential;
-
-    // Use Polaris's IAM identity to assume the customer's role
     StsClient stsClient = getStsClient(sigv4Params);
-
-    // Build the AssumeRole request with Polaris's credentials
     AssumeRoleRequest.Builder requestBuilder =
         AssumeRoleRequest.builder()
             .roleArn(sigv4Params.getRoleArn())
@@ -133,18 +121,14 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
                     .orElse(DEFAULT_ROLE_SESSION_NAME))
             .externalId(sigv4Params.getExternalId());
 
-    // Attach user-provided session policy to restrict assumed role permissions (PoLP)
     if (StringUtils.isNotEmpty(sigv4Params.getSessionPolicy())) {
       requestBuilder.policy(sigv4Params.getSessionPolicy());
     }
 
-    // Configure the request to use Polaris's service identity credentials
-    requestBuilder.overrideConfiguration(
-        config -> config.credentialsProvider(awsCredential.getAwsCredentialsProvider()));
+    requestBuilder.overrideConfiguration(config -> config.credentialsProvider(baseCredentials));
 
     AssumeRoleResponse response = stsClient.assumeRole(requestBuilder.build());
 
-    // Build connection credentials from AWS temporary credentials
     Map<CatalogAccessProperty, String> props = new HashMap<>();
     props.put(CatalogAccessProperty.AWS_ACCESS_KEY_ID, response.credentials().accessKeyId());
     props.put(
@@ -159,20 +143,44 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
     return ConnectionCredentials.of(props);
   }
 
+  private AwsCredentialsProvider baseCredentials(
+      @NonNull ConnectionConfigInfoDpo connectionConfig,
+      @NonNull SigV4AuthenticationParametersDpo sigv4Params) {
+    if (sigv4Params.usesStorageCredentials()) {
+      return namedCredentialsProvider(sigv4Params.getStorageName());
+    }
+
+    Optional<ServiceIdentityCredential> serviceCredentialOpt =
+        serviceIdentityProvider.getServiceIdentityCredential(connectionConfig.getServiceIdentity());
+    if (serviceCredentialOpt.isEmpty()) {
+      return null;
+    }
+
+    ServiceIdentityCredential serviceCredential = serviceCredentialOpt.get();
+    Preconditions.checkArgument(
+        serviceCredential instanceof AwsIamServiceIdentityCredential,
+        "Expected AwsIamServiceIdentityCredential, got: %s",
+        serviceCredential.getClass().getName());
+    return ((AwsIamServiceIdentityCredential) serviceCredential).getAwsCredentialsProvider();
+  }
+
   /** Long-lived keys handed to the signer as-is. They do not expire, so no expiry is reported. */
   private ConnectionCredentials storageCredentials(@NonNull String storageName) {
-    // Re-checked here, not only at catalog creation, so turning the flag off takes effect for
-    // catalogs that already reference a storage name.
-    FeatureConfiguration.enforceFeatureEnabledOrThrow(
-        realmConfig, FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME);
-    AwsCredentials credentials =
-        storageConfiguration.stsCredentials(storageName).resolveCredentials();
+    AwsCredentials credentials = namedCredentialsProvider(storageName).resolveCredentials();
     return ConnectionCredentials.of(
         Map.of(
             CatalogAccessProperty.AWS_ACCESS_KEY_ID,
             credentials.accessKeyId(),
             CatalogAccessProperty.AWS_SECRET_ACCESS_KEY,
             credentials.secretAccessKey()));
+  }
+
+  private AwsCredentialsProvider namedCredentialsProvider(@NonNull String storageName) {
+    // Re-checked here, not only at catalog creation, so turning the flag off takes effect for
+    // catalogs that already reference a storage name.
+    FeatureConfiguration.enforceFeatureEnabledOrThrow(
+        realmConfig, FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME);
+    return storageConfiguration.stsCredentials(storageName);
   }
 
   @VisibleForTesting

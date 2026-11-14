@@ -326,6 +326,50 @@ public class SigV4ConnectionCredentialVendorTest {
   }
 
   @Test
+  public void testStorageNameWithRoleArnAssumesRoleUsingNamedKeys() {
+    SigV4AuthenticationParametersDpo authParams =
+        new SigV4AuthenticationParametersDpo(
+            "arn:aws:iam::123456789012:role/customer-role",
+            "my-session",
+            "external-id-123",
+            "us-west-2",
+            "glue",
+            null,
+            "sigv4-catalog");
+    IcebergRestConnectionConfigInfoDpo connectionConfig = createConnectionConfig(authParams, null);
+
+    ConnectionCredentials credentials =
+        vendor(realmConfig(Map.of(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true)))
+            .getConnectionCredentials(connectionConfig);
+
+    Assertions.assertThat(credentials.credentials())
+        .containsEntry(
+            CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "assumed-access-key-id")
+        .containsEntry(
+            CatalogAccessProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
+            "assumed-secret-access-key")
+        .containsEntry(
+            CatalogAccessProperty.AWS_SESSION_TOKEN.getPropertyName(), "assumed-session-token")
+        .hasSize(3);
+
+    ArgumentCaptor<AssumeRoleRequest> requestCaptor =
+        ArgumentCaptor.forClass(AssumeRoleRequest.class);
+    Mockito.verify(mockStsClient).assumeRole(requestCaptor.capture());
+    AssumeRoleRequest capturedRequest = requestCaptor.getValue();
+    Assertions.assertThat(capturedRequest.roleArn())
+        .isEqualTo("arn:aws:iam::123456789012:role/customer-role");
+    Assertions.assertThat(
+            capturedRequest
+                .overrideConfiguration()
+                .flatMap(config -> config.credentialsProvider())
+                .orElseThrow()
+                .resolveCredentials()
+                .accessKeyId())
+        .isEqualTo("named-access-key");
+    Mockito.verifyNoInteractions(mockServiceIdentityProvider);
+  }
+
+  @Test
   public void testStsDestinationUsesDifferentRegions() {
     ServiceIdentityInfoDpo serviceIdentity =
         new AwsIamServiceIdentityInfoDpo(
