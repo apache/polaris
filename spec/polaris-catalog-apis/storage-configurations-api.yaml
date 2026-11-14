@@ -109,9 +109,10 @@ paths:
         mapping is used. If the table is not created, the server removes a mapping created by this
         call. This is best effort: after a server failure the mapping can remain.
         `listStorageMappings` in the management API then shows it with `targetExists` set to false,
-        and `removeStorageMapping` removes it. With `stage-create`, the mapping is kept, so that the
-        commit that creates the table uses the storage configuration; `targetExists` is false until
-        that commit, and stays false if the commit never happens.
+        and `removeStorageMapping` removes it. With `stage-create`, the storage configuration is chosen
+        at staging, as for any staged create (see `createStorageMapping`), and the mapping is kept;
+        `targetExists` is false until the commit creates the table, and stays false if the commit
+        never happens.
       parameters:
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/data-access'
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/idempotency-key'
