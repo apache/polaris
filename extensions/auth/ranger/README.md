@@ -53,6 +53,15 @@ curl -u <ranger-admin-user>:<ranger-admin-password> -X POST \
    access type available to grant through Ranger policies is guaranteed to be understood by the
    authorizer.
 
+   To add or change access types / `impliedGrants` on an already-registered service type, PUT the
+   same file (a Polaris upgrade does not update Ranger Admin):
+```
+curl -u <ranger-admin-user>:<ranger-admin-password> -X PUT \
+  -H "Content-Type: application/json" \
+  -d @polaris-ranger-servicedef.json \
+  http://ranger-admin:6080/service/public/v2/api/servicedef/name/polaris
+```
+
 4. Create a Ranger service instance of type `polaris` (matching the `service-name` configured
    above), then define policies against it.
 

@@ -176,6 +176,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   specification, meaning the client can operate without delegated access. A request that includes
   `none`, alone or together with other values, is handled like a request without the header: the
   table is returned without credentials and no delegation privilege is required.
+- Ranger: dedicated `catalog-config-read` access type for Iceberg REST `GET /v1/config`
+  (`GET_CATALOG_CONFIG`). Existing catalog-level `catalog-properties-read` (and stronger catalog
+  access types) imply `catalog-config-read`. Operators must re-import
+  `polaris-ranger-servicedef.json`.
 - Shared CloudEvents 1.0 JSON mapper for Polaris events (`CloudEventsEventJsonMapper` next to
   the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
   lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners
