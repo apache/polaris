@@ -299,6 +299,11 @@ The check is skipped when `ALLOW_TABLE_LOCATION_OVERLAP` is enabled.
 In external catalogs, overlaps are checked when a table is registered, but not when a table is
 created or updated by a notification.
 
+A multi-table transaction that changes a table's location, `write.data.path`, or
+`write.metadata.path` is rejected with `400 Bad Request`. The overlap check needs to list
+entities, which a transaction cannot do. Commit the change on its own, or enable
+`ALLOW_TABLE_LOCATION_OVERLAP` to skip the check.
+
 ## Summary of settings
 
 | Setting | Default | Catalog property | Effect on the layout |
