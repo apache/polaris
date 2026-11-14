@@ -55,10 +55,9 @@ class SigV4AuthenticationParametersDpoTest {
       String externalId,
       String sessionPolicy,
       String expectedMessage) {
-    assertThatThrownBy(
-            () ->
-                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
-                    roleArn, storageName, roleSessionName, externalId, sessionPolicy))
+    assertThatThrownBy(() ->
+            SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                roleArn, storageName, roleSessionName, externalId, sessionPolicy))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(expectedMessage);
   }
@@ -79,10 +78,9 @@ class SigV4AuthenticationParametersDpoTest {
       String roleSessionName,
       String externalId,
       String sessionPolicy) {
-    assertThatCode(
-            () ->
-                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
-                    roleArn, storageName, roleSessionName, externalId, sessionPolicy))
+    assertThatCode(() ->
+            SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                roleArn, storageName, roleSessionName, externalId, sessionPolicy))
         .doesNotThrowAnyException();
   }
 

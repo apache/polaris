@@ -69,7 +69,7 @@ public class SigV4ConnectionCredentialVendorTest {
 
   private SigV4ConnectionCredentialVendor vendor(RealmConfig realmConfig) {
     return new SigV4ConnectionCredentialVendor(
-        (destination) -> {
+        destination -> {
           capturedDestination.set(destination);
           return mockStsClient;
         },
