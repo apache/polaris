@@ -1652,6 +1652,218 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/v1/{prefix}/namespaces/{namespace}/directories:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/namespace'
+    get:
+      tags:
+        - Directory API
+      summary: List all directory identifiers underneath a given namespace
+      description: |
+        **Beta:** The Directories API is under active development and may change in a
+        backward-incompatible way.
+
+        Return the directory identifiers under this namespace. The identifiers are those of the directories
+        (for example `product-images`), not of their `__inventory` tables.
+
+        The response may be paginated: clients should always check `next-page-token` and, when present,
+        pass it as `pageToken` to fetch the next page. Neither `pageToken` nor `pageSize` is required on the
+        first request. The server decides the actual page size, which may be smaller or larger than the
+        `pageSize` hint, and may return all results in a single response.
+      operationId: listDirectories
+      parameters:
+        - $ref: '#/components/parameters/directory-page-token'
+        - $ref: '#/components/parameters/directory-page-size'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListDirectoriesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '#/components/examples/NoSuchNamespaceError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+    post:
+      tags:
+        - Directory API
+      summary: Create a directory under the given namespace
+      description: |
+        **Beta:** The Directories API is under active development and may change in a
+        backward-incompatible way.
+
+        Create a directory under the given namespace, and return the created directory information as a response.
+
+        Polaris also creates the directory inventory table, empty, in the same namespace, and returns its
+        identifier in `inventory-table`. Creating a directory doesn't scan the `base-location`: the inventory
+        table is populated by the external scanning services.
+      operationId: createDirectory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDirectoryRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/CreateDirectoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '#/components/examples/NoSuchNamespaceError'
+        '409':
+          description: |
+            Conflict - The directory already exists under the given namespace, or its `<name>__inventory` table name is already used by another table or directory in the namespace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                TableAlreadyExists:
+                  $ref: '#/components/examples/TableAlreadyExistsError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/namespace'
+      - $ref: '#/components/parameters/directory'
+    get:
+      tags:
+        - Directory API
+      summary: Load a directory under the given namespace from the catalog
+      operationId: loadDirectory
+      description: |
+        **Beta:** The Directories API is under active development and may change in a
+        backward-incompatible way.
+
+        Load a directory from the catalog under the given namespace.
+
+        The response contains the directory configuration and, when the directory inventory table exists,
+        its identifier.
+      responses:
+        '200':
+          $ref: '#/components/responses/LoadDirectoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - NoSuchTableError, directory to load does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                DirectoryToLoadDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTableError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+    post:
+      tags:
+        - Directory API
+      summary: Update a directory under the given namespace
+      operationId: updateDirectory
+      description: |
+        **Beta:** The Directories API is under active development and may change in a
+        backward-incompatible way.
+
+        Update the mutable configuration of a directory (`scanner-config` and `properties`).
+        Only the fields present in the request are changed, and a provided field replaces the existing value.
+        The `name` and `base-location` cannot be changed. The directory inventory table and its
+        history are preserved. The new scanner configuration applies from the next scan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDirectoryRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/LoadDirectoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - NoSuchTableError, directory to update does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                DirectoryToUpdateDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTableError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+    delete:
+      tags:
+        - Directory API
+      summary: Drop a directory under the given namespace from the catalog
+      operationId: dropDirectory
+      description: |
+        **Beta:** The Directories API is under active development and may change in a
+        backward-incompatible way.
+
+        Remove a directory under the given namespace from the catalog, together with its inventory table.
+        The inventory table is dropped without purging its data and metadata files. The objects under the
+        directory `base-location` are never deleted.
+      responses:
+        '204':
+          description: Success, no content
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - NoSuchTableError, directory to drop does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                DirectoryToDeleteDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTableError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
   /polaris/v1/{prefix}/namespaces/{namespace}/policies:
     parameters:
       - $ref: '#/components/parameters/prefix'
@@ -5023,6 +5235,129 @@ components:
             settings for storage access, such as the client region for S3.
           items:
             $ref: '#/components/schemas/StorageAccessConfig'
+    DirectoryPageToken:
+      description: |
+        An opaque token used to paginate the list of directories. The server returns it as `next-page-token` when more results may be available, and the client passes it unchanged as the `pageToken` query parameter to fetch the next page. The client does not need to send a `pageToken` to start paginating: any response may be paginated, whether or not the request carried a `pageToken` or a `pageSize`. A `null` or missing `next-page-token` means there are no more results.
+      type:
+        - string
+        - 'null'
+    ListDirectoriesResponse:
+      type: object
+      properties:
+        next-page-token:
+          $ref: '#/components/schemas/DirectoryPageToken'
+        identifiers:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/TableIdentifier'
+    DirectoryFilter:
+      type: object
+      description: |
+        Controls which objects are included in the directory table during a scan. If no filter is set, all objects found under the directory base-location are included.
+      properties:
+        include:
+          type: array
+          items:
+            type: string
+          description: A list of regular expressions (`java.util.regex` syntax) matched against the object URI. An object is included if it matches at least one pattern (or if `include` is omitted).
+        exclude:
+          type: array
+          items:
+            type: string
+          description: A list of regular expressions (`java.util.regex` syntax) matched against the object URI. An object matching any pattern is excluded, even if it also matches an include pattern.
+    DirectoryScannerConfig:
+      type: object
+      description: |
+        Configuration used by the external scanning services to populate the directory inventory table. Polaris stores it and returns it when the directory is loaded, but does not act on it.
+      properties:
+        filter:
+          $ref: '#/components/schemas/DirectoryFilter'
+    CreateDirectoryRequest:
+      type: object
+      required:
+        - name
+        - base-location
+      properties:
+        name:
+          type: string
+          description: The name of the directory. It is used in REST endpoint paths and is used, followed by the `__inventory` suffix, as the name of the corresponding Iceberg table.
+        base-location:
+          type: string
+          description: The external object store location to use as a root for scanning objects (e.g. s3://bucket/path/). This is where the scanned objects live, not the location of the Iceberg inventory table, which is assigned by Polaris. It is validated like a table location, so it must be within the catalog's allowed locations and, unless the catalog allows unstructured table locations, within the namespace location.
+        scanner-config:
+          $ref: '#/components/schemas/DirectoryScannerConfig'
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+    Directory:
+      type: object
+      description: |
+        Directory information.
+
+        - `name` (REQUIRED): name of the directory
+
+        - `base-location` (REQUIRED): root location of the directory on the object store
+
+        - `scanner-config` (OPTIONAL): configuration for the scanning services, such as the include and exclude
+        patterns for object filtering
+
+        - `properties` (OPTIONAL): properties for the directory passed on creation
+
+        - `inventory-table` (OPTIONAL): identifier of the directory inventory table, assigned by Polaris. It is
+        absent if the inventory table does not exist, for example if it was dropped through the Iceberg REST API.
+
+        The inventory table is an Iceberg table with one row per object found by the last scan, and the
+        following schema:
+
+        | Field Id | Field Name | Type | Required | Description |
+        |----------|------------|------|----------|-------------|
+        | 1 | `file_uri` | `string` | Yes | The fully qualified URI of the object. |
+        | 2 | `content_type` | `string` | No | The MIME content type (RFC 2045) of the object. |
+        | 3 | `size` | `long` | No | The size of the object in bytes. |
+        | 4 | `checksum_algorithm` | `string` | No | The algorithm of `checksum` (for example `SHA-256`), set per object. |
+        | 5 | `checksum` | `string` | No | The object checksum computed with `checksum_algorithm`. |
+        | 6 | `last_modified` | `timestamptz` | Yes | The last modification time reported by the object store. |
+        | 7 | `metadata` | `map<string, string>` | No | Additional labels and tags from the object store. |
+
+        The fields of this schema are not renamed or removed, and new fields are only added as optional fields,
+        so existing clients can keep reading the inventory table.
+      required:
+        - name
+        - base-location
+      properties:
+        name:
+          type: string
+        base-location:
+          type: string
+        scanner-config:
+          $ref: '#/components/schemas/DirectoryScannerConfig'
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+        inventory-table:
+          $ref: '#/components/schemas/TableIdentifier'
+    LoadDirectoryResponse:
+      description: Result used when a directory is successfully loaded.
+      type: object
+      required:
+        - directory
+      properties:
+        directory:
+          $ref: '#/components/schemas/Directory'
+    UpdateDirectoryRequest:
+      type: object
+      description: |
+        Fields to update on a directory. Omitted fields are left unchanged.
+      properties:
+        scanner-config:
+          $ref: '#/components/schemas/DirectoryScannerConfig'
+        properties:
+          type: object
+          additionalProperties:
+            type: string
     PolicyType:
       description: The type of a policy
       type:
@@ -5506,6 +5841,24 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadGenericTableResponse'
+    ListDirectoriesResponse:
+      description: List of directory identifiers.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListDirectoriesResponse'
+    CreateDirectoryResponse:
+      description: Directory result if successfully created a directory.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadDirectoryResponse'
+    LoadDirectoryResponse:
+      description: Directory result if successfully loaded a directory.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadDirectoryResponse'
     ListPoliciesResponse:
       description: a list of policy identifiers
       content:
@@ -5940,6 +6293,30 @@ components:
       schema:
         type: string
       example: sales
+    directory-page-token:
+      name: pageToken
+      in: query
+      description: Opaque token returned as `next-page-token` by a previous response. Omit it to start listing.
+      required: false
+      schema:
+        type: string
+    directory-page-size:
+      name: pageSize
+      in: query
+      description: |
+        A hint for the maximum number of results per page. The server decides the actual page size and may return fewer or more results, or all of them at once.
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+    directory:
+      name: directory
+      in: path
+      description: A directory name
+      required: true
+      schema:
+        type: string
+      example: product-images
     policy-type:
       name: policyType
       in: query
