@@ -25,6 +25,8 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.exc.InvalidFormatException;
+import tools.jackson.databind.exc.MismatchedInputException;
 import tools.jackson.databind.json.JsonMapper;
 
 public class StorageMappingSerializationTest {
@@ -122,7 +124,8 @@ public class StorageMappingSerializationTest {
             () ->
                 mapper.readValue(
                     "{\"type\":\"view\",\"path\":[\"finance\",\"v\"]}", StorageMappingTarget.class))
-        .isNotNull();
+        .isInstanceOf(InvalidFormatException.class)
+        .hasMessageContaining("view");
   }
 
   @Test
@@ -132,6 +135,7 @@ public class StorageMappingSerializationTest {
                 mapper.readValue(
                     "{\"target\":{\"type\":\"table\",\"path\":[\"a\",\"b\"]}}",
                     CreateStorageMappingRequest.class))
-        .isNotNull();
+        .isInstanceOf(MismatchedInputException.class)
+        .hasMessageContaining("storageConfigurationName");
   }
 }
