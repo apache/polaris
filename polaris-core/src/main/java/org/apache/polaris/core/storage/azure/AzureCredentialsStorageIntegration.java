@@ -25,8 +25,8 @@ import static org.apache.polaris.core.config.FeatureConfiguration.AZURE_TIMEOUT_
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import com.azure.core.credential.AccessToken;
+import com.azure.core.credential.TokenCredential;
 import com.azure.core.credential.TokenRequestContext;
-import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.azure.storage.blob.BlobContainerClientBuilder;
 import com.azure.storage.blob.BlobServiceClient;
@@ -64,6 +64,7 @@ import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
@@ -83,7 +84,7 @@ public class AzureCredentialsStorageIntegration
   // https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-user-delegation-sas-create-java.
   private static final long SAS_CLOCK_SKEW_BUFFER_SECONDS = Duration.ofMinutes(5).toSeconds();
 
-  final DefaultAzureCredential defaultAzureCredential;
+  final TokenCredential credential;
 
   public AzureCredentialsStorageIntegration(
       AzureStorageConfigurationInfo storageConfig, RealmConfig realmConfig) {
@@ -91,13 +92,21 @@ public class AzureCredentialsStorageIntegration
   }
 
   public AzureCredentialsStorageIntegration(
-      org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
+      StorageCredentialCache cache,
+      AzureStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig) {
+    // The DefaultAzureCredential will by default load the environment variables for client id,
+    // client secret, tenant id
+    this(new DefaultAzureCredentialBuilder().build(), cache, storageConfig, realmConfig);
+  }
+
+  public AzureCredentialsStorageIntegration(
+      TokenCredential credential,
+      StorageCredentialCache cache,
       AzureStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig) {
     super(cache, realmConfig, storageConfig);
-    // The DefaultAzureCredential will by default load the environment variables for client id,
-    // client secret, tenant id
-    defaultAzureCredential = new DefaultAzureCredentialBuilder().build();
+    this.credential = credential;
   }
 
   @Override
@@ -147,7 +156,7 @@ public class AzureCredentialsStorageIntegration
         allowList,
         locations,
         writeLocations,
-        defaultAzureCredential,
+        credential,
         realmConfig());
   }
 
@@ -155,7 +164,7 @@ public class AzureCredentialsStorageIntegration
   static StorageAccessConfig compute(AzureStorageCredentialCacheKey key) {
     RealmConfig realmConfig = key.realmConfig();
     AzureStorageConfigurationInfo azureStorageConfig = key.storageConfig();
-    DefaultAzureCredential defaultAzureCredential = key.defaultAzureCredential();
+    TokenCredential credential = key.credential();
     boolean allowList = key.allowedListAction();
     Set<String> locations = key.allowedReadLocations();
     Set<String> writeLocations = key.allowedWriteLocations();
@@ -198,7 +207,7 @@ public class AzureCredentialsStorageIntegration
     Instant start = Instant.now();
 
     AccessToken accessToken =
-        getAccessToken(defaultAzureCredential, realmConfig, azureStorageConfig.getTenantId());
+        getAccessToken(credential, realmConfig, azureStorageConfig.getTenantId());
     // Backdate the user delegation key start time by five minutes, following Microsoft's Java
     // user-delegation SAS example, to prevent authorization failures caused by clock skew.
     // Microsoft's general SAS guidance recommends a 15-minute backdate for an explicit SAS start
@@ -444,7 +453,7 @@ public class AzureCredentialsStorageIntegration
    * @throws RuntimeException if token fetch fails after all retries or times out
    */
   private static AccessToken getAccessToken(
-      DefaultAzureCredential defaultAzureCredential, RealmConfig realmConfig, String tenantId) {
+      TokenCredential credential, RealmConfig realmConfig, String tenantId) {
     int timeoutMillis = realmConfig.getConfig(AZURE_TIMEOUT_MILLIS);
     int retryCount = realmConfig.getConfig(AZURE_RETRY_COUNT);
     int initialDelayMillis = realmConfig.getConfig(AZURE_RETRY_DELAY_MILLIS);
@@ -453,7 +462,7 @@ public class AzureCredentialsStorageIntegration
 
     String scope = "https://storage.azure.com/.default";
     AccessToken accessToken =
-        defaultAzureCredential
+        credential
             .getToken(new TokenRequestContext().addScopes(scope).setTenantId(tenantId))
             .timeout(Duration.ofMillis(timeoutMillis))
             .doOnError(error ->

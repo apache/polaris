@@ -69,7 +69,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       S3CredentialVendingMechanisms mechanisms,
       RealmConfig realmConfig,
       Clock clock,
-      StorageCredentialCache cache) {
+      StorageCredentialCache cache,
+      AzureCredentialsFactory azureCredentials) {
     this.realmConfig = realmConfig;
     this.mechanisms = mechanisms;
     Supplier<GoogleCredentials> gcpCredsProvider =
@@ -81,7 +82,9 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
             new GcpCredentialsStorageIntegration(
                 gcpCredsProvider.get(), gcpTransportFactory, cache, storageConfig, realmConfig);
     this.azureFactory =
-        storageConfig -> new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig);
+        storageConfig ->
+            new AzureCredentialsStorageIntegration(
+                azureCredentials.credential(storageConfig), cache, storageConfig, realmConfig);
   }
 
   public PolarisStorageIntegrationProviderImpl(

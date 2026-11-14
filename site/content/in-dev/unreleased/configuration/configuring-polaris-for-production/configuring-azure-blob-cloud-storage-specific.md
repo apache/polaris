@@ -50,15 +50,95 @@ export AZURE_CLIENT_ID=<appId>
 export AZURE_CLIENT_SECRET=<password>
 ```
 
+You can set the same service principal with Polaris properties instead:
+
+```properties
+polaris.storage.azure.tenant-id=<tenant>
+polaris.storage.azure.client-id=<appId>
+polaris.storage.azure.client-secret=<password>
+```
+
+When all three properties are set, Polaris uses them instead of the `DefaultAzureCredential` chain.
+Set all three or none: if only some are set, Azure storage access fails with an error that names the
+missing properties. The `tenantId` of each Azure storage configuration must match
+`polaris.storage.azure.tenant-id`.
+
 In a Kubernetes deployment, do not embed `AZURE_CLIENT_SECRET` in the pod spec as plain text.
 Store the client secret in a Kubernetes `Secret` (or an external secret store referenced by an
 operator like the Azure Key Vault provider) and project it into the Polaris container with
 `envFrom`/`valueFrom: secretKeyRef`. The same applies to the bootstrap credentials in
-`POLARIS_BOOTSTRAP_CREDENTIALS`.
+`POLARIS_BOOTSTRAP_CREDENTIALS`. With the Helm chart, set `storage.secret.name` and the
+`storage.secret.azureTenantId`, `azureClientId` and `azureClientSecret` keys to load the three
+`polaris.storage.azure.*` properties from a `Secret`.
 
 The `Storage Blob Data Contributor` role at storage-account scope lets Polaris issue SAS tokens
 for any container under that account; scope the role narrower (single container) when you want to
 confine a single Polaris catalog to one container.
+
+### Named credentials
+
+To use different service principals for different storages, enable the
+`RESOLVE_CREDENTIALS_BY_STORAGE_NAME` feature flag and set one service principal per name:
+
+```properties
+polaris.features."RESOLVE_CREDENTIALS_BY_STORAGE_NAME"=true
+polaris.storage.azure.team-a.tenant-id=<tenant>
+polaris.storage.azure.team-a.client-id=<appId>
+polaris.storage.azure.team-a.client-secret=<password>
+```
+
+Then set `storageName` on the Azure storage configuration of the catalog:
+
+```json
+{
+  "storageType": "AZURE",
+  "tenantId": "<tenant>",
+  "allowedLocations": ["abfss://warehouse@example.dfs.core.windows.net/"],
+  "storageName": "team-a"
+}
+```
+
+Polaris signs in with these properties to obtain access tokens. The client secret does not renew:
+it expires on the date set in Microsoft Entra. To rotate it, update the property and restart
+Polaris. Storage account keys are not accepted, because Polaris signs SAS tokens with a user
+delegation key, which requires a Microsoft Entra identity.
+
+The following rules apply:
+
+- A storage without a `storageName` uses the credentials described in
+  [Service principal and Polaris credentials](#service-principal-and-polaris-credentials).
+- A `storageName` with no matching properties fails. Polaris does not fall back to the default
+  credentials. Names are case-sensitive.
+- When the feature flag is disabled, `storageName` is ignored for credential selection.
+- The storage configuration's `tenantId` must match the `tenant-id` of the name, or the request
+  fails. Use the same form in both places: a tenant's domain name does not match its ID.
+- A name missing any of the three properties stops Polaris from starting. Any other problem with a
+  name's values fails only the storages that use it.
+
+In Kubernetes, do not put the client secret in the pod spec or in a `ConfigMap` as plain text. Set
+the tenant and client IDs with the Helm chart's `advancedConfig`, and project the secret into the
+container with `extraEnv`:
+
+```yaml
+advancedConfig:
+  polaris.storage.azure.team-a.tenant-id: <tenant>
+  polaris.storage.azure.team-a.client-id: <appId>
+extraEnv:
+  - name: polaris.storage.azure.team-a.client-secret
+    valueFrom:
+      secretKeyRef:
+        name: polaris-azure-team-a
+        key: client-secret
+```
+
+Kubernetes accepts the property name as the variable name. In a shell, use the uppercase form
+described in [Configuring Polaris]({{% ref "../configuring-polaris.md" %}}).
+
+Named credentials apply to the whole deployment, not to one realm. An administrator who can set
+`storageName` on a catalog in any realm where `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` is enabled can
+select any configured name, and can set the catalog's allowed locations. Polaris then uses that
+service principal directly on those locations. Only configure names whose access is appropriate for
+everyone who can administer catalogs on this server.
 
 ## Storage account requirements
 
