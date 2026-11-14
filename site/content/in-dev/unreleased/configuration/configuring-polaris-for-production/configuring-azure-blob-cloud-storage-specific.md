@@ -112,7 +112,6 @@ The following rules apply:
   fails. Use the same form in both places: a tenant's domain name does not match its ID.
 - A name missing any of the three properties stops Polaris from starting. Any other problem with a
   name's values fails only the storages that use it.
-- A credential is created the first time its name is used, and then kept until Polaris restarts.
 
 In Kubernetes, do not put the client secret in the pod spec or in a `ConfigMap` as plain text. Set
 the tenant and client IDs with the Helm chart's `advancedConfig`, and project the secret into the
