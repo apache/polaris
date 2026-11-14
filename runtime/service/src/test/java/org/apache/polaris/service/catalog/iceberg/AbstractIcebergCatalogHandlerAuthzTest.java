@@ -76,6 +76,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.auth.AuthorizationBatchRequest;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -83,6 +84,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
@@ -98,6 +100,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.admin.PolarisAuthzTestsFactory;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
+import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
@@ -2834,6 +2837,117 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             () -> newHandlerWithAuthorizer(tooFewDecisions).listTables(NS1A, null, null))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("decisions");
+  }
+
+  // ─── referenced-by chain ───────────────────────────────────────────────────
+
+  /**
+   * Records the intents the handler hands to the authorizer in both phases, and otherwise behaves
+   * as the real implementation.
+   */
+  private static class IntentRecordingAuthorizer extends PolarisAuthorizerImpl {
+    final List<AuthorizationIntent> resolved = new ArrayList<>();
+    final List<AuthorizationIntent> authorized = new ArrayList<>();
+
+    @Override
+    public void resolveAuthorizationInputs(
+        AuthorizationState authzState, AuthorizationRequest request) {
+      resolved.addAll(request.intents());
+      super.resolveAuthorizationInputs(authzState, request);
+    }
+
+    @Override
+    public AuthorizationDecision authorize(
+        AuthorizationState authzState, AuthorizationRequest request) {
+      authorized.addAll(request.intents());
+      return super.authorize(authzState, request);
+    }
+  }
+
+  private void assertChainOnIntents(
+      IntentRecordingAuthorizer authorizer, List<TableIdentifier> expectedChain) {
+    List<PolarisSecurable> expected =
+        expectedChain.stream()
+            .map(id -> PolarisSecurableMapper.tableLike(CATALOG_NAME, id))
+            .toList();
+    for (List<AuthorizationIntent> intents : List.of(authorizer.resolved, authorizer.authorized)) {
+      Assertions.assertThat(intents).isNotEmpty();
+      Assertions.assertThat(intents)
+          .allSatisfy(
+              intent ->
+                  Assertions.assertThat(((SingleTargetAuthorizationIntent) intent).referencedBy())
+                      .containsExactlyElementsOf(expected));
+    }
+  }
+
+  private void grantManageContent() {
+    assertSuccess(
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.CATALOG_MANAGE_CONTENT));
+  }
+
+  @Test
+  public void testLoadTablePassesReferencedByToAuthorizer() {
+    grantManageContent();
+    IntentRecordingAuthorizer authorizer = new IntentRecordingAuthorizer();
+    List<TableIdentifier> chain = List.of(VIEW_NS1A_1, VIEW_NS1A_2);
+
+    newHandlerWithAuthorizer(authorizer)
+        .loadTable(
+            TABLE_NS1A_2,
+            "all",
+            null,
+            EnumSet.noneOf(AccessDelegationMode.class),
+            Optional.empty(),
+            chain);
+
+    assertChainOnIntents(authorizer, chain);
+  }
+
+  @Test
+  public void testLoadTableWithDelegationPassesReferencedByToAuthorizer() {
+    grantManageContent();
+    IntentRecordingAuthorizer authorizer = new IntentRecordingAuthorizer();
+    List<TableIdentifier> chain = List.of(VIEW_NS1A_1);
+
+    newHandlerWithAuthorizer(authorizer)
+        .loadTable(
+            TABLE_NS1A_2, "all", null, EnumSet.of(VENDED_CREDENTIALS), Optional.empty(), chain);
+
+    assertChainOnIntents(authorizer, chain);
+  }
+
+  @Test
+  public void testLoadCredentialsPassesReferencedByToAuthorizer() {
+    grantManageContent();
+    IntentRecordingAuthorizer authorizer = new IntentRecordingAuthorizer();
+    List<TableIdentifier> chain = List.of(VIEW_NS1A_1);
+
+    newHandlerWithAuthorizer(authorizer).loadCredentials(TABLE_NS1A_2, Optional.empty(), chain);
+
+    assertChainOnIntents(authorizer, chain);
+  }
+
+  @Test
+  public void testLoadViewPassesReferencedByToAuthorizer() {
+    grantManageContent();
+    IntentRecordingAuthorizer authorizer = new IntentRecordingAuthorizer();
+    List<TableIdentifier> chain = List.of(VIEW_NS1A_2);
+
+    newHandlerWithAuthorizer(authorizer).loadView(VIEW_NS1A_1, chain);
+
+    assertChainOnIntents(authorizer, chain);
+  }
+
+  @Test
+  public void testLoadWithoutReferencedByHasEmptyChain() {
+    grantManageContent();
+    IntentRecordingAuthorizer authorizer = new IntentRecordingAuthorizer();
+
+    newHandlerWithAuthorizer(authorizer).loadView(VIEW_NS1A_1);
+
+    assertChainOnIntents(authorizer, List.of());
   }
 
   private IcebergCatalogHandler newHandlerWithAuthorizer(PolarisAuthorizer authorizer) {

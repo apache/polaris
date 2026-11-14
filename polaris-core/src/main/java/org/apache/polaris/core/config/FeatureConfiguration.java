@@ -863,6 +863,16 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Integer> REFERENCED_BY_MAX_DEPTH =
+      PolarisConfiguration.<Integer>builder()
+          .key("REFERENCED_BY_MAX_DEPTH")
+          .description(
+              "The maximum number of views accepted in the referenced-by chain of a loadTable, "
+                  + "loadView or loadCredentials request. Requests with a deeper chain are "
+                  + "rejected with a 400 error.")
+          .defaultValue(10)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES")

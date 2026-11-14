@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.UUID;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -409,6 +410,7 @@ public class IcebergRestCatalogEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
+    List<TableIdentifier> referencedByChain = ReferencedByChain.parse(referencedBy);
     Namespace namespaceObj =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_LOAD_TABLE)) {
@@ -420,6 +422,7 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, table)
+                  .put(EventAttributes.REFERENCED_BY, referencedByChain)
                   .put(EventAttributes.ACCESS_DELEGATION_MODES, accessDelegationModes)
                   .put(EventAttributes.IF_NONE_MATCH_STRING, ifNoneMatchString)
                   .put(EventAttributes.SNAPSHOTS, snapshots)
@@ -443,7 +446,8 @@ public class IcebergRestCatalogEventServiceDelegator
           ImmutableAttributeMap.builder()
               .put(EventAttributes.CATALOG_NAME, catalogName)
               .put(EventAttributes.NAMESPACE, namespaceObj)
-              .put(EventAttributes.TABLE_NAME, table);
+              .put(EventAttributes.TABLE_NAME, table)
+              .put(EventAttributes.REFERENCED_BY, referencedByChain);
       if (resp.getEntity() instanceof LoadTableResponse loadTableResponse) {
         afterAttributes.put(EventAttributes.LOAD_TABLE_RESPONSE, loadTableResponse);
       }
@@ -797,6 +801,7 @@ public class IcebergRestCatalogEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
+    List<TableIdentifier> referencedByChain = ReferencedByChain.parse(referencedBy);
     Namespace namespaceObj =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_LOAD_CREDENTIALS)) {
@@ -808,6 +813,7 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, table)
+                  .put(EventAttributes.REFERENCED_BY, referencedByChain)
                   .build()));
     }
     Response resp =
@@ -822,6 +828,7 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, table)
+                  .put(EventAttributes.REFERENCED_BY, referencedByChain)
                   .build()));
     }
     return resp;
@@ -836,6 +843,7 @@ public class IcebergRestCatalogEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
+    List<TableIdentifier> referencedByChain = ReferencedByChain.parse(referencedBy);
     Namespace namespaceObj =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_LOAD_VIEW)) {
@@ -847,6 +855,7 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.VIEW_NAME, view)
+                  .put(EventAttributes.REFERENCED_BY, referencedByChain)
                   .build()));
     }
     Response resp =
@@ -860,6 +869,7 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.VIEW_NAME, view)
+                  .put(EventAttributes.REFERENCED_BY, referencedByChain)
                   .put(EventAttributes.LOAD_VIEW_RESPONSE, (LoadViewResponse) resp.getEntity())
                   .build()));
     }

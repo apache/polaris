@@ -456,6 +456,54 @@ public class IcebergCatalogAdapterTest {
     }
   }
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "malformed",
+        "ns\u001fv1,ns\u001fv1",
+        "ns\u001ft",
+        "n\u001f0,n\u001f1,n\u001f2,n\u001f3,n\u001f4,n\u001f5,n\u001f6,n\u001f7,n\u001f8,n\u001f9,n\u001f10"
+      })
+  void testInvalidReferencedByIsRejected(String referencedBy) {
+    Assertions.assertThatThrownBy(
+            () ->
+                catalogAdapter.loadTable(
+                    FEDERATED_CATALOG_NAME,
+                    "ns",
+                    "t",
+                    null,
+                    null,
+                    null,
+                    referencedBy,
+                    testServices.realmContext(),
+                    testServices.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("referenced-by");
+    Assertions.assertThatThrownBy(
+            () ->
+                catalogAdapter.loadCredentials(
+                    FEDERATED_CATALOG_NAME,
+                    "ns",
+                    "t",
+                    null,
+                    referencedBy,
+                    testServices.realmContext(),
+                    testServices.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("referenced-by");
+    Assertions.assertThatThrownBy(
+            () ->
+                catalogAdapter.loadView(
+                    FEDERATED_CATALOG_NAME,
+                    "ns",
+                    "t",
+                    referencedBy,
+                    testServices.realmContext(),
+                    testServices.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("referenced-by");
+  }
+
   private void mockCatalogAdapter(org.apache.iceberg.catalog.Catalog catalog) {
     // Override handler creation to inject in-memory catalog and suppress actual close()
     Mockito.doAnswer(
