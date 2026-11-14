@@ -496,6 +496,42 @@ How many times to retry refreshing metadata when the previous error was retryabl
 
 ---
 
+##### `polaris.features."METRICS_QUERY_DEFAULT_PAGE_SIZE"`
+
+The page size used by the metrics reports query API when a request supplies neither a pageToken nor a pageSize. The metrics query API always paginates; it ignores LIST_PAGINATION_ENABLED. Values below 1 are treated as 1.
+
+- **Type:** `Integer`
+- **Default:** `100`
+
+---
+
+##### `polaris.features."METRICS_QUERY_DEFAULT_TIME_WINDOW_DAYS"`
+
+The time window, in days, applied by the metrics reports query API when a request omits timestampFrom. The window ends at timestampTo, or at the current time when timestampTo is also omitted. Values below 1 are treated as 1.
+
+- **Type:** `Integer`
+- **Default:** `7`
+
+---
+
+##### `polaris.features."METRICS_QUERY_MAX_OBJECTS"`
+
+The maximum number of entries allowed in the objects list of a single metrics reports query. Each entry selects one table, optionally restricted to one snapshot, so this also bounds the number of table/snapshot selectors sent to the metrics backend. Requests above the limit are rejected with a 400.
+
+- **Type:** `Integer`
+- **Default:** `100`
+
+---
+
+##### `polaris.features."METRICS_QUERY_MAX_PAGE_SIZE"`
+
+The largest page size a client may request from the metrics reports query API. Larger requested page sizes are reduced to this value. Values below 1 are treated as 1.
+
+- **Type:** `Integer`
+- **Default:** `1000`
+
+---
+
 ##### `polaris.features."OPTIMIZED_SIBLING_CHECK"`
 
 When set, Polaris uses an index to check overlap against base locations of tables, views, and namespaces across the catalog. If ALLOW_UNSTRUCTURED_TABLE_LOCATION is enabled (or the catalog is external), siblings are still listed when the index finds no conflict, to check sibling tables' write.data.path and write.metadata.path properties. Only enable it when the required index and backfill state is known to be correct. Locations written by Polaris always end with a slash; locations stored by older versions without one are still handled. Supported by the JDBC and NoSQL metastore implementations.

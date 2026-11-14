@@ -176,6 +176,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   specification, meaning the client can operate without delegated access. A request that includes
   `none`, alone or together with other values, is handled like a request without the header: the
   table is returned without credentials and no delegation privilege is required.
+- Added a Table Metrics Reports REST API (beta) for querying persisted Iceberg scan and commit metrics reports. The OpenAPI spec and query SPI ship in the `polaris-extensions-metrics-reports*` extension modules; the HTTP endpoint returns an empty result (HTTP 200) unless a durable query backend (e.g. the JDBC extension) is installed. Report payloads are reconstructed from the persisted metrics records and contain only the persisted fields, not the complete original Iceberg report. Reads are gated by the new `TABLE_READ_METRICS` privilege.
 - Shared CloudEvents 1.0 JSON mapper for Polaris events (`CloudEventsEventJsonMapper` next to
   the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
   lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners
