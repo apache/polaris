@@ -38,6 +38,7 @@ val semanticModelModels =
 
 dependencies {
   implementation(project(":polaris-core"))
+  implementation(project(":polaris-api-catalog-common"))
   // CatalogAdapter and other shared catalog service abstractions.
   implementation(project(":polaris-runtime-service"))
 

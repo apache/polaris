@@ -21,7 +21,7 @@ package org.apache.polaris.service.catalog.semanticmodel;
 import com.google.common.collect.ImmutableSet;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
-import org.apache.polaris.core.rest.PolarisResourcePaths;
+import org.apache.polaris.catalog.common.PolarisResourcePaths;
 
 public class SemanticModelEndpoints {
   private SemanticModelEndpoints() {}
