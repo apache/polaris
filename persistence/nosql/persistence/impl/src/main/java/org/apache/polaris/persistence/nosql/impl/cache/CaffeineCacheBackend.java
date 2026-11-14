@@ -65,6 +65,7 @@ import org.apache.polaris.persistence.nosql.api.cache.ImmutableCacheSizing;
 import org.apache.polaris.persistence.nosql.api.obj.ImmutableObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.api.ref.ImmutableReference;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.apache.polaris.persistence.nosql.impl.indexes.ImmutableIndexStripeObj;
@@ -254,7 +255,7 @@ class CaffeineCacheBackend implements CacheBackend {
     if (value.data == null) {
       return NOT_FOUND_OBJ_SENTINEL;
     }
-    return value.getObj();
+    return value.getObj(objTypeById(id.type()));
   }
 
   @Override
@@ -577,15 +578,13 @@ class CaffeineCacheBackend implements CacheBackend {
           + dataHeapSize;
     }
 
-    Obj getObj() {
+    Obj getObj(ObjType type) {
       var buf = ByteBuffer.wrap(objectMetadata);
       var kind = buf.get();
       checkState(kind != KIND_REFERENCE, "Cache value content is not an object");
       var relevantLen = readVarInt(buf);
       var id = buf.getLong();
       var typeIdLen = relevantLen - Long.BYTES;
-      var typeId = new String(objectMetadata, buf.position(), typeIdLen, UTF_8);
-      var type = objTypeById(typeId);
       buf.position(buf.position() + typeIdLen);
       var numParts = ((kind & KIND_FLAG_NUM_PARTS) == KIND_FLAG_NUM_PARTS) ? readVarInt(buf) : 1;
       var createdAtMicros = ((kind & KIND_FLAG_CREATED) == KIND_FLAG_CREATED) ? buf.getLong() : 0L;
