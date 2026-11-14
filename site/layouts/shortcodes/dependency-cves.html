@@ -1,0 +1,42 @@
+{{/*
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+*/}}
+{{ $section := .Page -}}
+<p>
+  <a href="{{ ($section.OutputFormats.Get "cyclonedx").RelPermalink }}" download>Download the Polaris VEX file (CycloneDX 1.6 JSON)</a><br>
+  <a href="{{ ($section.OutputFormats.Get "openvex").RelPermalink }}" download>Download the Polaris VEX file (OpenVEX JSON)</a>
+</p>
+
+<table class="table">
+<thead>
+<tr><th>ID</th><th>Polaris versions</th><th>Components</th><th>State</th><th>Title</th></tr>
+</thead>
+<tbody>
+{{ range $section.Pages.ByDate.Reverse -}}
+{{ $page := . -}}
+{{ $entry := partial "vex-entry.html" $page -}}
+<tr>
+<td>{{ range $entry.ids }}<a href="{{ $page.RelPermalink }}">{{ . }}</a><br>{{ end }}</td>
+<td>{{ $entry.versions }}</td>
+<td>{{ range $entry.components }}<code>{{ strings.TrimPrefix "pkg:maven/" . }}</code><br>{{ end }}</td>
+<td>{{ replace $entry.analysis.state "_" " " }}</td>
+<td>{{ $page.Title }}</td>
+</tr>
+{{ end -}}
+</tbody>
+</table>
