@@ -128,7 +128,9 @@ paths:
 
     delete:
       operationId: deleteCatalog
-      description: Delete an existing catalog. The catalog must be empty.
+      description: >-
+        Delete an existing catalog. The catalog must be empty. Its storage configurations and storage
+        mappings are deleted with it.
       responses:
         204:
           description: "Success, no content"
@@ -808,6 +810,311 @@ paths:
         404:
           description: "The catalog or the role does not exist"
 
+  /catalogs/{catalogName}/storage-configurations:
+    parameters:
+      - $ref: "#/components/parameters/StorageCatalogName"
+    get:
+      operationId: listStorageConfigurations
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        List the storage configurations of a catalog. The catalog's own `storageConfigInfo` is not
+        listed.
+
+        With `referenced` set to false, only the storage configurations that are not in use are
+        listed: those that deleteStorageConfiguration would not refuse at the time of the listing. With
+        `referenced` set to true, only those in use. To clean up, a client lists the storage
+        configurations that are not in use and deletes the ones it no longer wants, one at a time. A
+        deletion is still refused if the storage configuration has come into use since the listing.
+
+        Results are paginated. A client follows `nextPageToken` until it is absent. A server
+        may return fewer results than `pageSize`, and may paginate even when `pageSize` is not set.
+      parameters:
+        - $ref: "./polaris-pagination.yaml#/components/parameters/PolarisPageToken"
+        - $ref: "./polaris-pagination.yaml#/components/parameters/PolarisPageSize"
+        - name: referenced
+          in: query
+          required: false
+          description: >-
+            If set, only list the storage configurations that are in use (true) or not in use (false),
+            as defined by deleteStorageConfiguration. If not set, list both.
+          schema:
+            type: boolean
+      responses:
+        200:
+          description: A page of the storage configurations in this catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfigurations"
+        400:
+          description: "The page token or the page size is invalid"
+        403:
+          description: "The caller is not authorized to list storage configurations"
+        404:
+          description: "The catalog does not exist"
+    post:
+      operationId: createStorageConfiguration
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Create a storage configuration in the catalog. Storage configurations are immutable; see
+        StorageConfiguration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStorageConfigurationRequest"
+      responses:
+        201:
+          description: "Successful response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfiguration"
+        400:
+          description: "The storage configuration is invalid, its locations overlap another catalog, or its `storageName` can't be resolved"
+        403:
+          description: "The caller is not authorized to create storage configurations"
+        404:
+          description: "The catalog does not exist"
+        409:
+          description: "The request conflicts with the current state of the catalog, for example a storage configuration with the same name already exists"
+
+  /catalogs/{catalogName}/storage-configurations/{storageConfigurationName}:
+    parameters:
+      - $ref: "#/components/parameters/StorageCatalogName"
+      - $ref: "#/components/parameters/StorageConfigurationName"
+    get:
+      operationId: getStorageConfiguration
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Get a storage configuration.
+      responses:
+        200:
+          description: The storage configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageConfiguration"
+        403:
+          description: "The caller is not authorized to read the storage configuration"
+        404:
+          description: "The catalog or the storage configuration does not exist"
+
+    delete:
+      operationId: deleteStorageConfiguration
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Delete a storage configuration. The deletion is refused while the storage configuration is in
+        use, that is, while any storage mapping references it or any existing Iceberg table, view or
+        generic table was created on it. An object keeps its storage configuration for as long as it
+        exists, so a storage configuration used by existing objects can only be deleted after they are
+        dropped. Dropping a namespace or table does not remove its storage mapping; use
+        removeStorageMapping. To find the storage configurations that are not in use, list them with
+        `referenced` set to false. Deleting the catalog deletes its storage configurations.
+      responses:
+        204:
+          description: "Success, no content"
+        403:
+          description: "The caller is not authorized to delete the storage configuration"
+        404:
+          description: "The catalog or the storage configuration does not exist"
+        409:
+          description: "The request conflicts with the current state of the catalog, for example a storage mapping references the storage configuration"
+
+  /catalogs/{catalogName}/storage-mappings:
+    parameters:
+      - $ref: "#/components/parameters/StorageCatalogName"
+    get:
+      operationId: listStorageMappings
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        List storage mappings. A storage mapping says that the namespace or table with a given fully
+        qualified name uses a given storage configuration (see StorageMappingTarget).
+
+        Mappings are listed one level at a time, like namespaces: with `namespace`, the mappings of the
+        namespaces and tables directly inside it; without it, the mappings of the top-level
+        namespaces. Results only include the mappings the caller is authorized to see, so this listing
+        never shows a name to a caller who can't list it.
+
+        With `storageConfigurationName` instead, all the mappings to that storage configuration are
+        listed, at any level of the catalog. This answers which names use a storage configuration,
+        for example before deleting it. It is restricted to callers who are authorized to see all the
+        mappings of the catalog.
+        Setting both `namespace` and `storageConfigurationName` is a bad request (400).
+
+        A mapping whose namespace or table does not exist is listed too, with `targetExists` set to
+        false: a mapping created ahead of its target, or one whose target has been dropped. With the
+        `targetExists` filter, only the mappings whose target exists (true) or does not exist (false)
+        are listed. Listing with `namespace` requires that namespace to exist, so the mappings left
+        behind by a dropped namespace are found with `storageConfigurationName`. A client removes the
+        mappings it no longer wants one at a time, with removeStorageMapping.
+
+        Results are paginated. A client follows `nextPageToken` until it is absent. A server
+        may return fewer results than `pageSize`, and may paginate even when `pageSize` is not set.
+      parameters:
+        - $ref: "./polaris-pagination.yaml#/components/parameters/PolarisPageToken"
+        - $ref: "./polaris-pagination.yaml#/components/parameters/PolarisPageSize"
+        - name: namespace
+          in: query
+          required: false
+          description: >-
+            A namespace identifier as a single string. The parts of a multipart namespace are separated
+            by the unit separator (`0x1F`) byte, as in the Polaris catalog API.
+          schema:
+            type: string
+          examples:
+            singlepart_namespace:
+              value: "accounting"
+            multipart_namespace:
+              value: "accounting%1Ftax"
+        - name: storageConfigurationName
+          in: query
+          required: false
+          description: List all the mappings to this storage configuration, at any level of the catalog.
+          schema:
+            type: string
+            pattern: '^[a-zA-Z0-9_-]{1,128}$'
+        - name: targetExists
+          in: query
+          required: false
+          description: >-
+            If set, only list the mappings whose target namespace or table exists (true) or does not
+            exist (false). If not set, list both.
+          schema:
+            type: boolean
+      responses:
+        200:
+          description: A page of storage mappings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageMappings"
+        400:
+          description: "A parameter or the page token is invalid, or both `namespace` and `storageConfigurationName` are set"
+        403:
+          description: "The caller is not authorized to list these storage mappings"
+        404:
+          description: "The catalog, the namespace or the storage configuration does not exist"
+    post:
+      operationId: createStorageMapping
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        Map the fully qualified name of a namespace or table to a storage configuration. The parent
+        namespace of the target must exist.
+        - A table mapping can only be created while the table does not exist, and only if the name has
+          no mapping yet.
+        - A namespace mapping can be created whether or not the namespace exists. If the namespace
+          already has a mapping, it is replaced.
+
+        A namespace or table created under a mapped name is created on the mapped storage
+        configuration. This applies to creates through the Iceberg REST API (including a staged create
+        and `registerTable`) and through the Polaris catalog API. Anything created inside a namespace
+        without a mapping of its own (a namespace, an Iceberg table, a view or a generic table) is
+        created on the storage configuration of the namespace: the mapping of the nearest enclosing
+        namespace that has one, as it is at the time of the create, or else the catalog's own
+        `storageConfigInfo`. Only namespaces and Iceberg tables can have a mapping of their own.
+
+        Being created on a storage configuration means that:
+        - the location is checked against that storage configuration's `allowedLocations`;
+        - without an explicit location, the object is placed as StorageConfiguration.baseLocation
+          describes;
+        - Polaris uses that storage configuration for all access to the object's storage, including
+          the credentials it vends.
+
+        For a staged create, the mapping that counts is the one in place when the create is
+        committed.
+
+        An Iceberg table, view or generic table keeps the storage configuration it was created on for
+        as long as it exists. A namespace mapping is a default for what is created afterwards:
+        creating, replacing or removing it does not change the storage configuration of any existing
+        table, view or generic table, inside the namespace or below it, and does not move any
+        existing namespace. A table mapping is never changed while its table exists: it can't be
+        created for an existing table, and it can't be removed from one.
+
+        A rename does not change the storage configuration of a table or view, and does not move it.
+        A table with a mapping of its own takes it along: after the rename, the new name is mapped and
+        the old name is not. If the new name of a table has a mapping, the rename is refused unless
+        that mapping names the storage configuration the table uses. Otherwise, a table or view can
+        be renamed into any namespace.
+
+        Storage configurations are compared by identity, not by content: two storage configurations,
+        or a storage configuration and the catalog's own `storageConfigInfo`, are always different.
+
+        A storage mapping stays when its namespace or table is dropped, so a namespace or table created
+        again under the same name uses the same storage configuration. Dropping a namespace does NOT
+        remove the mappings inside it. They remain, with `targetExists` set to false, until they are
+        removed with removeStorageMapping.
+
+        A rename moves a mapping only along with the table it belongs to, so it can't be used to
+        create a table mapping for a name that has none or to remove one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStorageMappingRequest"
+      responses:
+        204:
+          description: "Success, no content"
+        400:
+          description: "The request is invalid"
+        403:
+          description: "The caller is not authorized to create the storage mapping"
+        404:
+          description: "The catalog, the parent namespace or the storage configuration does not exist"
+        409:
+          description: "The request conflicts with the current state of the catalog, for example the target table already exists, or a storage mapping already exists for the target table"
+
+  /catalogs/{catalogName}/storage-mappings/remove:
+    parameters:
+      - $ref: "#/components/parameters/StorageCatalogName"
+    post:
+      operationId: removeStorageMapping
+      description: |
+        **Beta:** The storage mapping API is under active development and may change in a
+        backward-incompatible way.
+
+        Remove the storage mapping of a namespace or table.
+        - A table mapping can only be removed while the table does not exist; drop the table first.
+        - A namespace mapping can be removed whether or not the namespace exists. Whatever was
+          already created in the namespace keeps its storage configuration.
+
+        The parent namespace of the target need not exist, so this also removes the mappings left
+        behind inside a dropped namespace. Afterwards, a namespace or table created under the name,
+        and anything created inside the namespace, uses the storage configuration of the nearest
+        enclosing namespace that has a mapping, or else the catalog's own `storageConfigInfo` (see
+        createStorageMapping).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemoveStorageMappingRequest"
+      responses:
+        204:
+          description: "Success, no content"
+        400:
+          description: "The request is invalid"
+        403:
+          description: "The caller is not authorized to remove the storage mapping"
+        404:
+          description: "The catalog does not exist, or no storage mapping exists for the target"
+        409:
+          description: "The request conflicts with the current state of the catalog, for example the target table exists"
+
 components:
   securitySchemes:
     OAuth2:
@@ -817,6 +1124,26 @@ components:
         implicit:
           authorizationUrl: "{scheme}://{host}/api/v1/oauth/tokens"
           scopes: {}
+
+  parameters:
+    StorageCatalogName:
+      name: catalogName
+      in: path
+      description: The catalog that holds the storage configurations and storage mappings
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 256
+        pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
+    StorageConfigurationName:
+      name: storageConfigurationName
+      in: path
+      description: The name of the storage configuration
+      required: true
+      schema:
+        type: string
+        pattern: '^[a-zA-Z0-9_-]{1,128}$'
 
   schemas:
     Catalogs:
@@ -1122,7 +1449,15 @@ components:
             - "For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/]"
         storageName:
           type: string
-          description: An optional name referencing a server-side storage configuration
+          description: >-
+            This name is meant for associating StorageConfigInfo objects to deployment-specific
+            configuration. The interpretation of this name depends on specific runtime components that
+            are included in a server to support interacting with storage systems. Standard Apache Polaris
+            servers use this name for finding base storage credentials.
+
+
+            Note: this name is optional and unrelated to the name of a storage configuration
+            (StorageConfiguration.name).
       required:
         - storageType
       discriminator:
@@ -1553,6 +1888,200 @@ components:
       required:
         - currentEntityVersion
         - properties
+
+    StorageConfigurations:
+      type: object
+      description: A page of storage configurations
+      properties:
+        storageConfigurations:
+          type: array
+          items:
+            $ref: "#/components/schemas/StorageConfiguration"
+        nextPageToken:
+          $ref: "./polaris-pagination.yaml#/components/schemas/PolarisPageToken"
+      required:
+        - storageConfigurations
+
+    CreateStorageConfigurationRequest:
+      type: object
+      description: Request to create a storage configuration
+      properties:
+        storageConfiguration:
+          $ref: "#/components/schemas/StorageConfiguration"
+      required:
+        - storageConfiguration
+
+    StorageConfiguration:
+      type: object
+      description: |
+        A named storage configuration in a catalog. A catalog can hold several, in addition to its own
+        `storageConfigInfo`, which has no name and stays the catalog's default. Namespaces and tables
+        use a storage configuration through storage mappings (see createStorageMapping).
+
+        A storage configuration is immutable: there is no update operation. To change settings,
+        create a new storage configuration and map namespaces and tables to it. Existing tables, views
+        and generic tables keep the storage configuration they were created on. This does not apply to
+        the catalog's own `storageConfigInfo`, which can still be changed with updateCatalog; the
+        objects that use it follow those changes, as before.
+
+        The `allowedLocations` of a storage configuration must not overlap the locations of another
+        catalog or of another catalog's storage configurations, unless
+        `ALLOW_OVERLAPPING_CATALOG_URLS` is set. Creating or updating a catalog is checked against them
+        too. They may overlap the catalog's own locations and its other storage configurations.
+
+        A storage configuration may name any cloud account or tenant and any supported storage type,
+        whatever the catalog's own `storageConfigInfo` uses. The limits updateCatalog puts on changing
+        the catalog's `storageConfigInfo` (the storage type, the AWS account and external ID, the Azure
+        tenant; see `ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES`) do not apply. So whoever can
+        create a storage configuration chooses the cloud identity and, with `storageName`, the
+        server-side credentials.
+
+        For S3, Azure and GCS, `storageConfigInfo.storageName` selects the server-side credentials Polaris
+        authenticates with for this storage configuration, so several storage configurations can reuse
+        the same credentials by name. A storage configuration always honors it, even on a server that
+        doesn't use the `storageName` of a catalog's own `storageConfigInfo`. These credentials are
+        configured on the server and are never sent through this API. Without `storageName`, Polaris
+        uses the server's default credentials for the `storageType`, not the `storageName` of the
+        catalog's `storageConfigInfo`. Creating a storage configuration fails (400) if the server can't
+        resolve `storageName` to credentials for the `storageType`. The error doesn't say why, and no
+        API lists the names a server knows. If a name stops resolving later, operations that need
+        storage fail; Polaris never falls back to other credentials. FILE storage has no credentials
+        and ignores `storageName`.
+
+        Every location in `allowedLocations` must match the `storageType` (an `abfss://` location on
+        an S3 storage configuration is a bad request), and the `storageType` must be one the server
+        supports.
+
+        When a storage configuration is created, Polaris does not check that its cloud identity (for
+        example an AWS IAM role) or the credentials selected by `storageConfigInfo.storageName` can
+        access its locations, because access is often granted only after the storage configuration
+        exists. Changes made in the cloud provider to that identity, to those credentials or to their
+        permissions take effect without any change in Polaris. So do changes to the credentials behind
+        a name in the server's configuration, which is how they are rotated.
+      properties:
+        name:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{1,128}$'
+          description: >-
+            The name of the storage configuration, unique within its catalog. Case sensitive.
+        storageConfigInfo:
+          $ref: "#/components/schemas/StorageConfigInfo"
+          description: >-
+            The storage settings, validated as for a catalog, and `storageName` must resolve (see
+            StorageConfiguration). `allowedLocations` must not be empty;
+            unlike a catalog, a storage configuration has no default base location to fall back on.
+            A response always holds all the settings in effect.
+        baseLocation:
+          type: string
+          description: |
+            Optional. Must be inside one of `storageConfigInfo.allowedLocations`. It decides where a
+            namespace, table, view or generic table created on this storage configuration without an
+            explicit location is placed:
+            - created under a storage mapping of its own: under `baseLocation`;
+            - created inside a namespace, without a mapping of its own: under the namespace's
+              location, as before, if that location is inside `storageConfigInfo.allowedLocations`;
+              otherwise under `baseLocation`. This happens when a namespace mapping is created,
+              replaced or removed after the namespace was created, since that does not move the
+              namespace.
+
+            Under `baseLocation` means: a namespace at `baseLocation` plus its full namespace path, and
+            any other object at `baseLocation` plus its namespace path and name. Without
+            `baseLocation`, an object that would be placed under it must be created with an explicit
+            location. These are also the locations the server's rules on custom namespace locations
+            and tables outside their namespace compare with, so such an object need not be under its
+            namespace's location.
+
+            The same rule applies to objects created on the catalog's own `storageConfigInfo`, with
+            the catalog's `default-base-location` in place of `baseLocation`. For example, after the
+            mapping is removed from a namespace that was placed in another storage configuration's
+            bucket, a new table in it is placed at the catalog's `default-base-location` plus its
+            namespace path and name.
+        createTimestamp:
+          type: integer
+          format: "int64"
+          readOnly: true
+          description: The creation time represented as unix epoch timestamp in milliseconds
+      required:
+        - name
+        - storageConfigInfo
+
+    StorageMappingTarget:
+      type: object
+      description: The namespace or table a storage mapping applies to.
+      properties:
+        type:
+          type: string
+          enum:
+            - namespace
+            - table
+          example: table
+        path:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: |
+            The fully qualified name of the target, from the top-level namespace down to the target
+            itself. For a table, the last element is the table name, so the path has at least two
+            elements.
+          example: ["finance", "ledger"]
+      required:
+        - type
+        - path
+
+    StorageMapping:
+      type: object
+      description: A storage mapping from the fully qualified name of a namespace or table to a storage configuration.
+      properties:
+        target:
+          $ref: "#/components/schemas/StorageMappingTarget"
+        storageConfigurationName:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{1,128}$'
+          description: The name of the storage configuration the target is mapped to.
+        targetExists:
+          type: boolean
+          description: Whether the target namespace or table currently exists.
+      required:
+        - target
+        - storageConfigurationName
+        - targetExists
+
+    StorageMappings:
+      type: object
+      description: A page of storage mappings
+      properties:
+        storageMappings:
+          type: array
+          items:
+            $ref: "#/components/schemas/StorageMapping"
+        nextPageToken:
+          $ref: "./polaris-pagination.yaml#/components/schemas/PolarisPageToken"
+      required:
+        - storageMappings
+
+    CreateStorageMappingRequest:
+      type: object
+      description: Request to create a storage mapping
+      properties:
+        target:
+          $ref: "#/components/schemas/StorageMappingTarget"
+        storageConfigurationName:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{1,128}$'
+          description: The name of the storage configuration to map the target to.
+      required:
+        - target
+        - storageConfigurationName
+
+    RemoveStorageMappingRequest:
+      type: object
+      description: Request to remove a storage mapping
+      properties:
+        target:
+          $ref: "#/components/schemas/StorageMappingTarget"
+      required:
+        - target
 
     ViewPrivilege:
       type: string

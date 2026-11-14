@@ -2277,6 +2277,128 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/v1/{prefix}/storage-configurations/{storage-configuration-name}/namespaces:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/storage-configuration-name'
+    post:
+      tags:
+        - Storage Configuration API
+      summary: Create a namespace on a storage configuration
+      operationId: createNamespaceOnStorageConfiguration
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Create a namespace on the given storage configuration in one call. The request body, the
+        `Idempotency-Key` header and the response are those of the Iceberg REST `createNamespace`
+        operation. A request replayed with the same `Idempotency-Key` has no additional effects, on
+        the namespace or on the storage mapping.
+
+        The call maps the namespace name to the storage configuration, as `createStorageMapping` in
+        the Polaris management API does, then creates the namespace as the Iceberg REST
+        `createNamespace` operation would. If the name is already mapped to this storage
+        configuration, the existing mapping is used. Unlike `createStorageMapping`, the call does
+        not replace a mapping to a different storage configuration; it is refused (409). If the
+        namespace is not created, the server removes a mapping created by this call. This is best
+        effort: after a server failure the mapping can remain. `listStorageMappings` in the
+        management API then shows it with `targetExists` set to false, and `removeStorageMapping`
+        removes it.
+      parameters:
+        - $ref: '#/components/parameters/idempotency-key'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNamespaceRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/CreateNamespaceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The parent namespace or the storage configuration does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+        '409':
+          description: Conflict - The request conflicts with the current state of the catalog, for example the namespace already exists, or its name is mapped to a different storage configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/v1/{prefix}/storage-configurations/{storage-configuration-name}/namespaces/{namespace}/tables:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/storage-configuration-name'
+      - $ref: '#/components/parameters/namespace'
+    post:
+      tags:
+        - Storage Configuration API
+      summary: Create a table on a storage configuration
+      operationId: createTableOnStorageConfiguration
+      description: |
+        **Beta:** The storage configuration API is under active development and may change in a
+        backward-incompatible way.
+
+        Create a table on the given storage configuration in one call. The request body, the
+        `X-Iceberg-Access-Delegation` and `Idempotency-Key` headers and the response are those of the
+        Iceberg REST `createTable` operation, including `stage-create`. A request replayed with the
+        same `Idempotency-Key` has no additional effects, on the table or on the storage mapping.
+
+        The call maps the table name to the storage configuration, as `createStorageMapping` in the
+        Polaris management API does, then creates the table as the Iceberg REST `createTable`
+        operation would. If the name is already mapped to this storage configuration, the existing
+        mapping is used. If the table is not created, the server removes a mapping created by this
+        call. This is best effort: after a server failure the mapping can remain.
+        `listStorageMappings` in the management API then shows it with `targetExists` set to false,
+        and `removeStorageMapping` removes it. With `stage-create`, the mapping is kept, so that the
+        commit that creates the table uses the storage configuration; `targetExists` is false until
+        that commit, and stays false if the commit never happens.
+      parameters:
+        - $ref: '#/components/parameters/data-access'
+        - $ref: '#/components/parameters/idempotency-key'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTableRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/CreateTableResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The namespace or the storage configuration does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+        '409':
+          description: Conflict - The request conflicts with the current state of the catalog, for example the identifier already exists as a table or view, or the table name is mapped to a different storage configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
   /polaris/discovery/v1/catalogs:
     get:
       tags:
@@ -5273,6 +5395,11 @@ components:
           $ref: '#/components/schemas/SemanticModelDocument'
         entity-version:
           $ref: '#/components/schemas/EntityVersion'
+    StorageConfigurationName:
+      type: string
+      description: The name of a storage configuration, unique within its catalog. Case sensitive.
+      pattern: ^[a-zA-Z0-9_-]{1,128}$
+      example: finance
     AccessibleCatalog:
       type: object
       description: A catalog the caller can access
@@ -5959,6 +6086,12 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/SemanticModelName'
+    storage-configuration-name:
+      name: storage-configuration-name
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/StorageConfigurationName'
     pageToken:
       name: pageToken
       in: query
