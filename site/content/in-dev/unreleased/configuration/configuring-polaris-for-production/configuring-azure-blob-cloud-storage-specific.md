@@ -96,8 +96,7 @@ Then set `storageName` on the Azure storage configuration of the catalog:
 }
 ```
 
-Polaris signs in with these properties to obtain access tokens, which it renews by itself. The
-client secret does not renew: it expires on the date set in Microsoft Entra. To rotate it, update
+Polaris signs in with these properties to obtain access tokens. The client secret does not renew: it expires on the date set in Microsoft Entra. To rotate it, update
 the property and restart Polaris. Storage account keys are not accepted, because Polaris signs SAS
 tokens with a user delegation key, which requires a Microsoft Entra identity.
 
