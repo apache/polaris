@@ -443,6 +443,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             connection,
             QueryGenerator.generateDeleteQuery(
                 ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
+        new RealmPurgeStore(datasourceOperations)
+            .enqueueInTransaction(connection, realmId, System.currentTimeMillis());
         return true;
       });
     } catch (SQLException e) {
