@@ -54,10 +54,11 @@ components:
       description: |
         An opaque token that continues a list operation. Clients must not interpret it.
 
-        - Any response may be paginated. A client must always check for a page token in the
-          response and, when one is present, send it unchanged as the `pageToken` query parameter
-          to get the next page. The server omits the page token from the last page. A client must
-          treat a missing or `null` page token as the end of the results.
+        - Any response of an operation that uses these definitions may be paginated. A client must
+          always check for a page token in the response and, when one is present, send it unchanged
+          as the `pageToken` query parameter to get the next page. The server omits the page token
+          from the last page. A client must treat a missing or `null` page token as the end of the
+          results.
         - A client does not need to send `pageToken` or `pageSize` to start paginating. The server
           may paginate a response to a request that has neither.
         - The server decides the page size. A page may hold fewer results than `pageSize`.
