@@ -672,7 +672,7 @@ If set to true, DROP TABLE without purge marks an INTERNAL Iceberg table as soft
 
 ##### `polaris.features."TABLE_SOFT_DELETE_HOLD_PERIOD"`
 
-ISO-8601 duration to retain a soft-deleted Iceberg table before it becomes eligible for permanent delete. Used only when TABLE_SOFT_DELETE_ENABLED is true. Default is P7D (seven days). After the hold, the next list, create, or drop-namespace in that namespace permanently removes catalog state for eligible tables. There is no dedicated expiration task. When the feature is off, this is a no-op.
+ISO-8601 duration to retain a soft-deleted Iceberg table before it becomes eligible for permanent delete. Used only when TABLE_SOFT_DELETE_ENABLED is true. Default is P7D (seven days). After the hold, run the Admin Tool `expire-soft-deleted-tables` command to permanently remove catalog state. List, create, and drop-namespace do not expire held tables. When the feature is off, this is a no-op.
 
 - **Type:** `String`
 - **Default:** `P7D`

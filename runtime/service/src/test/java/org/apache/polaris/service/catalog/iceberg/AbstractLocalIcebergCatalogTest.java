@@ -46,7 +46,6 @@ import io.quarkus.test.junit.QuarkusMock;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
@@ -136,7 +135,6 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
@@ -144,6 +142,7 @@ import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.SoftDeletedTableExpiration;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
@@ -2397,7 +2396,10 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
     Assertions.assertThat(softCatalog.dropTable(TABLE, false)).isTrue();
     Assertions.assertThat(softCatalog.tableExists(TABLE)).isFalse();
+    Assertions.assertThatThrownBy(() -> softCatalog.buildTable(TABLE, SCHEMA).create())
+        .isInstanceOf(AlreadyExistsException.class);
 
+    expireSoftDeletedTables(softCatalog.name());
     Table recreated = softCatalog.buildTable(TABLE, SCHEMA).create();
     Assertions.assertThat(recreated).isNotNull();
     Assertions.assertThat(softCatalog.tableExists(TABLE)).isTrue();
@@ -2423,29 +2425,27 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         ImmutableMap.of(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
 
-    Assertions.assertThat(refreshedCatalog.listTables(NS)).doesNotContain(TABLE);
+    // Load/HEAD still hide a held table. Cheap listEntities (flag off) includes the reserved name.
+    Assertions.assertThat(refreshedCatalog.tableExists(TABLE)).isFalse();
+    Assertions.assertThatThrownBy(() -> refreshedCatalog.loadTable(TABLE))
+        .isInstanceOf(NoSuchTableException.class);
+    Assertions.assertThat(refreshedCatalog.listTables(NS)).contains(TABLE);
   }
 
   @Test
-  public void testSoftDeleteExpireKeepsEntityWhenMetadataCannotBeRead() throws IOException {
-    LocalIcebergCatalog softCatalog = newSoftDeleteCatalog("PT0S", true);
+  public void testSoftDeleteExpireFreesNameWithoutReadingMetadata() {
+    LocalIcebergCatalog softCatalog = newSoftDeleteCatalog("PT0S", false);
     softCatalog.createNamespace(NS);
     Table table = softCatalog.buildTable(TABLE, SCHEMA).create();
     String metadataLocation = ((BaseTable) table).operations().current().metadataFileLocation();
-    byte[] metadata;
-    try (InputStream in = new InMemoryFileIO().newInputFile(metadataLocation).newStream()) {
-      metadata = in.readAllBytes();
-    }
 
     Assertions.assertThat(softCatalog.dropTable(TABLE, false)).isTrue();
     new InMemoryFileIO().deleteFile(metadataLocation);
 
-    // Expiry runs on list. The metadata read fails, so the held entity must stay.
-    Assertions.assertThat(softCatalog.listTables(NS)).doesNotContain(TABLE);
     Assertions.assertThatThrownBy(() -> softCatalog.buildTable(TABLE, SCHEMA).create())
         .isInstanceOf(AlreadyExistsException.class);
 
-    new InMemoryFileIO().addFile(metadataLocation, metadata);
+    expireSoftDeletedTables(softCatalog.name());
     Table recreated = softCatalog.buildTable(TABLE, SCHEMA).create();
     Assertions.assertThat(recreated).isNotNull();
     Assertions.assertThat(softCatalog.tableExists(TABLE)).isTrue();
@@ -2459,19 +2459,21 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     String tableLocation = table.location();
 
     Assertions.assertThat(softCatalog.dropTable(TABLE, false)).isTrue();
-    softCatalog.listTables(NS);
+    expireSoftDeletedTables(softCatalog.name());
 
     List<PolarisBaseEntity> tasks =
         metaStoreManager
             .loadTasks(polarisContext, "testExecutor", PageToken.readEverything())
             .getEntities();
+    String expectedLocation = tableLocation.replaceAll("/+$", "");
     Assertions.assertThat(
             tasks.stream()
                 .map(TaskEntity::of)
                 .map(TaskEntity::getInternalPropertiesAsMap)
-                .anyMatch(
-                    props ->
-                        tableLocation.equals(props.get(PolarisTaskConstants.STORAGE_LOCATION))))
+                .anyMatch(props ->
+                    TaskUtils.storageLocations(props).stream()
+                        .map(loc -> loc.replaceAll("/+$", ""))
+                        .anyMatch(expectedLocation::equals)))
         .isTrue();
   }
 
@@ -2531,6 +2533,12 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         ImmutableMap.of(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
     return softCatalog;
+  }
+
+  private void expireSoftDeletedTables(String catalogName) {
+    SoftDeletedTableExpiration.Summary summary =
+        new SoftDeletedTableExpiration().expireAll(metaStoreManager, polarisContext, catalogName);
+    Assertions.assertThat(summary.failed()).isZero();
   }
 
   private void updateSoftDeleteCatalogProperties(

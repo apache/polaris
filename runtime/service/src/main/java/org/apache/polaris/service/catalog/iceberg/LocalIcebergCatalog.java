@@ -112,7 +112,6 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -635,6 +634,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     Set<String> storageLocations =
         triggerCleanup ? storedTableLocationsForPurge(tableIdentifier, ops.current()) : Set.of();
 
+    Optional<PolarisEntity> storageInfoEntity =
+        PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
+            CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier));
+
     Map<String, String> storageProperties =
         storageInfoEntity
             .map(PolarisEntity::getInternalPropertiesAsMap)
@@ -911,8 +914,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
     PolarisEntity leafEntity = resolvedEntities.getRawLeafEntity();
-
-    expireEligibleSoftDeletedTables(resolvedEntities.getRawFullPath());
 
     // drop if exists and is empty
     DropEntityResult dropEntityResult =
@@ -3186,7 +3187,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
-    expireEligibleSoftDeletedTables(catalogPath);
 
     if (icebergTableLikeEntity.getParentId() <= 0) {
       // TODO: Validate catalogPath size is at least 1 for catalog entity?
@@ -3345,94 +3345,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       throw new BadRequestException(
           "Invalid table soft-delete hold period '%s'; expected an ISO-8601 duration such as P7D",
           spec);
-    }
-  }
-
-  /**
-   * Permanently delete soft-deleted Iceberg tables in {@code catalogPath} whose hold has expired.
-   * No-op when soft-delete is disabled. Catalog-only: files are purged only if configured.
-   */
-  private void expireEligibleSoftDeletedTables(List<PolarisEntity> catalogPath) {
-    if (!tableSoftDeleteEnabled()) {
-      return;
-    }
-    boolean purgeOnExpire =
-        realmConfig.getConfig(
-            FeatureConfiguration.TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE, catalogEntity);
-    long now = System.currentTimeMillis();
-    List<PolarisBaseEntity> entities =
-        getMetaStoreManager()
-            .listFullEntitiesAll(
-                getCurrentPolarisContext(),
-                PolarisEntity.toCoreList(catalogPath),
-                PolarisEntityType.TABLE_LIKE,
-                PolarisEntitySubType.ICEBERG_TABLE);
-    for (PolarisBaseEntity entity : entities) {
-      if (entity.isDropped()
-          && entity.getToPurgeTimestamp() > 0
-          && now >= entity.getToPurgeTimestamp()) {
-        boolean purgeEntity = purgeOnExpire;
-        Map<String, String> cleanupProperties = Map.of();
-        if (purgeOnExpire) {
-          IcebergTableLikeEntity icebergTableLikeEntity = IcebergTableLikeEntity.of(entity);
-          if (icebergTableLikeEntity == null) {
-            purgeEntity = false;
-          } else {
-            TableIdentifier identifier = icebergTableLikeEntity.getTableIdentifier();
-            String metadataLocation = icebergTableLikeEntity.getMetadataLocation();
-            TableMetadata lastMetadata = null;
-            if (metadataLocation != null) {
-              try {
-                String locationDir =
-                    metadataLocation.substring(0, metadataLocation.lastIndexOf('/'));
-                PolarisResolvedPathWrapper resolvedStorage =
-                    CatalogUtils.findResolvedStorageEntity(resolvedEntityView, identifier);
-                FileIO tableFileIO =
-                    loadFileIOForTableLike(
-                        identifier,
-                        Set.of(locationDir),
-                        resolvedStorage,
-                        new HashMap<>(tableDefaultProperties),
-                        Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
-                lastMetadata = TableMetadataParser.read(tableFileIO, metadataLocation);
-              } catch (RuntimeException e) {
-                // Keep the entity. Dropping it here would free the name and orphan the files,
-                // and a later pass would have nothing left to retry.
-                LOGGER.warn(
-                    "Unable to read metadata at {} for expired soft-deleted table {}, leaving it"
-                        + " in place so expiry can retry",
-                    metadataLocation,
-                    identifier,
-                    e);
-                continue;
-              }
-            } else {
-              purgeEntity = false;
-            }
-            if (purgeEntity) {
-              cleanupProperties = tablePurgeStorageProperties(identifier, lastMetadata);
-              if (cleanupProperties.isEmpty()) {
-                purgeEntity = false;
-              }
-            }
-          }
-        }
-        DropEntityResult expired =
-            getMetaStoreManager()
-                .dropEntityIfExists(
-                    getCurrentPolarisContext(),
-                    PolarisEntity.toCoreList(catalogPath),
-                    entity,
-                    cleanupProperties,
-                    purgeEntity);
-        if (expired.isSuccess() && expired.getCleanupTaskId() != null) {
-          LOGGER.info(
-              "Scheduled cleanup task {} for expired soft-deleted table {}",
-              expired.getCleanupTaskId(),
-              entity.getName());
-          taskExecutor.addTaskHandlerContext(expired.getCleanupTaskId(), callContext);
-        }
-      }
     }
   }
 
@@ -3665,44 +3577,27 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
-    expireEligibleSoftDeletedTables(catalogPath);
-
     Namespace parentNamespace = PolarisCatalogHelpers.parentNamespace(catalogPath);
+    if (subType == PolarisEntitySubType.ICEBERG_TABLE && tableSoftDeleteEnabled()) {
+      return getMetaStoreManager()
+          .listFullEntities(
+              getCurrentPolarisContext(),
+              PolarisEntity.toCoreList(catalogPath),
+              PolarisEntityType.TABLE_LIKE,
+              subType,
+              pageToken)
+          .filter(entity -> !entity.isDropped())
+          .map(entity -> TableIdentifier.of(parentNamespace, entity.getName()));
+    }
     return getMetaStoreManager()
-        .listFullEntities(
+        .listEntities(
             getCurrentPolarisContext(),
             PolarisEntity.toCoreList(catalogPath),
             PolarisEntityType.TABLE_LIKE,
             subType,
             pageToken)
-        .filter(entity -> !entity.isDropped())
-        .map(entity -> TableIdentifier.of(parentNamespace, entity.getName()));
-  }
-
-  private Map<String, String> tablePurgeStorageProperties(
-      TableIdentifier tableIdentifier, TableMetadata lastMetadata) {
-    Optional<PolarisEntity> storageInfoEntity =
-        PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
-            CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier));
-    return storageInfoEntity
-        .map(PolarisEntity::getInternalPropertiesAsMap)
-        .map(
-            properties -> {
-              if (lastMetadata == null) {
-                return Map.<String, String>of();
-              }
-              Map<String, String> clone = new HashMap<>();
-
-              // The user-configurable table properties are the baseline, but then override
-              // with our restricted properties so that table properties can't clobber the
-              // more restricted ones.
-              clone.putAll(lastMetadata.properties());
-              clone.put(CatalogProperties.FILE_IO_IMPL, ioImplClassName);
-              clone.putAll(properties);
-              clone.put(PolarisTaskConstants.STORAGE_LOCATION, lastMetadata.location());
-              return clone;
-            })
-        .orElse(Map.of());
+        .getPage()
+        .map(record -> TableIdentifier.of(parentNamespace, record.getName()));
   }
 
   private int getMaxMetadataRefreshRetries() {

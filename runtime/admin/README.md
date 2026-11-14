@@ -61,6 +61,13 @@ The admin tool can be run from the command line using the following command:
 java -jar polaris-admin-<version>-runner.jar --help
 ```
 
+Expire Iceberg tables whose soft-delete hold has ended (catalog state; file purge is opt-in per catalog):
+
+```shell
+java -jar polaris-admin-<version>-runner.jar expire-soft-deleted-tables -r <realm>
+java -jar polaris-admin-<version>-runner.jar expire-soft-deleted-tables -r <realm> -c <catalog>
+```
+
 Using the Docker image, you can run the admin tool with the following command:
 
 ```shell
