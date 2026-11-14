@@ -1,0 +1,35 @@
+---
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+title: smallrye-polaris_persistence_distributed_cache_invalidations
+build:
+  list: never
+  render: never
+---
+
+| Property | Default Value | Type | Description |
+|----------|---------------|------|-------------|
+| `polaris.persistence.distributed-cache-invalidations.service-names` |  | `list of string` | Host names, IP addresses, or Kubernetes headless-service name of all Polaris server instances  accessing the same repository, used by the default DNS peer discovery implementation.  <br><br>This value is not configured automatically. For a multi-instance deployment, configure peer  discovery; for the default DNS implementation set the host names, IP addresses, or the  Kubernetes headless-service name of all Polaris instances here. Cache invalidations are only  sent between instances when both peer discovery and `valid-tokens` are configured.   <br><br>Names that start with an equal sign are not resolved but used "as is". |
+| `polaris.persistence.distributed-cache-invalidations.valid-tokens` |  | `list of string` | List of cache-invalidation tokens to authenticate incoming cache-invalidation messages. <br><br>The first token is used in outgoing cache-invalidation messages. |
+| `polaris.persistence.distributed-cache-invalidations.uri` | `/polaris-management/cache-coherency` | `string` | URI of the cache-invalidation endpoint, only available on the Quarkus management port, defaults  to 9000.   |
+| `polaris.persistence.distributed-cache-invalidations.service-name-lookup-interval` | `PT10S` | `duration` | Interval between peer discovery refreshes.  |
+| `polaris.persistence.distributed-cache-invalidations.initial-discovery-required` | `true` | `boolean` | Whether startup fails when the initial peer discovery request fails. <br><br>A successful empty peer snapshot does not fail startup. When disabled, discovery failures  are retried in the background.  |
+| `polaris.persistence.distributed-cache-invalidations.batch-size` | `20` | `int` | Maximum number of cache-invalidation messages to send in a single request to peer nodes.  |
+| `polaris.persistence.distributed-cache-invalidations.request-timeout` |  | `duration` | Request timeout for sent cache-invalidation messages. Timeouts trigger a warning or error  message.  |
+| `polaris.persistence.distributed-cache-invalidations.dns.query-timeout` | `PT5S` | `duration` | Timeout for DNS queries performed by the default peer discovery implementation.  |
