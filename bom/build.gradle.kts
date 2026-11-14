@@ -110,6 +110,7 @@ dependencies {
     api(project(":polaris-extensions-metrics-reports-jdbc"))
     api(project(":polaris-extensions-openlineage"))
     api(project(":polaris-extensions-semantic-models"))
+    api(project(":polaris-extensions-storage-cloudflare-r2"))
     api(project(":polaris-hms-testcontainer"))
 
     api(project(":polaris-spark-3.5_2.12"))
