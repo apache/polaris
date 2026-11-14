@@ -271,7 +271,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 .returns(
                                     List.of(
                                         IamAction.create("s3:PutObject"),
-                                        IamAction.create("s3:DeleteObject")),
+                                        IamAction.create("s3:DeleteObject"),
+                                        IamAction.create("s3:AbortMultipartUpload")),
                                     IamStatement::actions),
                         statement ->
                             assertThat(statement)
@@ -381,7 +382,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       .returns(
                           List.of(
                               IamAction.create("s3:PutObject"),
-                              IamAction.create("s3:DeleteObject")),
+                              IamAction.create("s3:DeleteObject"),
+                              IamAction.create("s3:AbortMultipartUpload")),
                           IamStatement::actions)
                       .returns(
                           List.of(
@@ -456,7 +458,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       .returns(
                           List.of(
                               IamAction.create("s3:PutObject"),
-                              IamAction.create("s3:DeleteObject")),
+                              IamAction.create("s3:DeleteObject"),
+                              IamAction.create("s3:AbortMultipartUpload")),
                           IamStatement::actions)
                       .returns(
                           List.of(
@@ -561,7 +564,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 .returns(
                                     List.of(
                                         IamAction.create("s3:PutObject"),
-                                        IamAction.create("s3:DeleteObject")),
+                                        IamAction.create("s3:DeleteObject"),
+                                        IamAction.create("s3:AbortMultipartUpload")),
                                     IamStatement::actions),
                         statement ->
                             assertThat(statement)

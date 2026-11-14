@@ -105,8 +105,8 @@ Polaris assumes a customer-managed IAM role via STS when a client requests crede
 must:
 
 1. Grant the actions required for object access on the bucket and prefix that backs the catalog
-   (`s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket` and, if encryption is in use,
-   the relevant `kms:*` actions).
+   (`s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, `s3:AbortMultipartUpload`, `s3:ListBucket`
+   and, if encryption is in use, the relevant `kms:*` actions).
 2. Trust the Polaris service principal — typically the IAM role that the Polaris server runs as.
    Polaris fills the `sts:AssumeRole` request with an `externalId` when one is configured. The
    trust policy must accept the same external ID.
