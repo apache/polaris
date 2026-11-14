@@ -192,10 +192,9 @@ class IntegrationTestsHelperTest {
     when(testInfo.getTestMethod()).thenReturn(Optional.of(method));
     when(testInfo.getTestClass()).thenReturn(Optional.of(OddPropertiesClass.class));
 
-    assertThatThrownBy(
-            () ->
-                IntegrationTestsHelper.mergeFromAnnotatedElements(
-                    testInfo, TestAnnotation.class, TestAnnotation::properties))
+    assertThatThrownBy(() ->
+            IntegrationTestsHelper.mergeFromAnnotatedElements(
+                testInfo, TestAnnotation.class, TestAnnotation::properties))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Properties must be in key-value pairs");
   }

@@ -433,14 +433,12 @@ public class CatalogFederationIntegrationTest {
 
     // Verify that write is blocked since the vended credential should only have read permission
     assertThatThrownBy(() -> spark.sql("INSERT INTO ns1.test_table VALUES (3, 'Charlie')"))
-        .satisfies(
-            ex -> {
-              Throwable root = ExceptionUtils.getRootCause(ex);
-              assertThat(root)
-                  .isInstanceOf(
-                      software.amazon.awssdk.services.s3.model.AccessDeniedException.class);
-              assertThat(root.getMessage()).matches("(?s).*Access Denied.*Status Code: 403.*");
-            });
+        .satisfies(ex -> {
+          Throwable root = ExceptionUtils.getRootCause(ex);
+          assertThat(root)
+              .isInstanceOf(software.amazon.awssdk.services.s3.model.AccessDeniedException.class);
+          assertThat(root.getMessage()).matches("(?s).*Access Denied.*Status Code: 403.*");
+        });
 
     // Case 3: TABLE_WRITE_DATA should
     managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableReadDataGrant);

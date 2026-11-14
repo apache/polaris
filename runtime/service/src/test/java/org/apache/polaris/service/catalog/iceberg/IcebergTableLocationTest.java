@@ -403,16 +403,15 @@ public class IcebergTableLocationTest {
 
     String someLocation =
         String.format("%s/%s/%s/view-caller-location", baseLocation, CATALOG, NAMESPACE);
-    assertThatThrownBy(
-            () ->
-                services
-                    .restApi()
-                    .createView(
-                        CATALOG,
-                        NAMESPACE,
-                        createViewRequest("view_" + UUID.randomUUID(), someLocation),
-                        services.realmContext(),
-                        services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .restApi()
+                .createView(
+                    CATALOG,
+                    NAMESPACE,
+                    createViewRequest("view_" + UUID.randomUUID(), someLocation),
+                    services.realmContext(),
+                    services.securityContext()))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("the location field");
 
@@ -424,12 +423,11 @@ public class IcebergTableLocationTest {
             viewIdentifier,
             List.of(),
             List.of(new MetadataUpdate.SetLocation(someLocation + "-replacement")));
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogAdapter()
-                    .newHandler(services.securityContext(), CATALOG)
-                    .replaceView(viewIdentifier, setLocation))
+    assertThatThrownBy(() ->
+            services
+                .catalogAdapter()
+                .newHandler(services.securityContext(), CATALOG)
+                .replaceView(viewIdentifier, setLocation))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("the location field");
   }
@@ -467,22 +465,18 @@ public class IcebergTableLocationTest {
     createCatalogAndNamespace(services, Map.of(), baseLocation);
 
     String dataPath = String.format("%s/%s/%s/custom-data", baseLocation, CATALOG, NAMESPACE);
-    assertThatThrownBy(
-            () ->
-                createTableWithProperty(
-                    services,
-                    IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
-                    dataPath))
+    assertThatThrownBy(() ->
+            createTableWithProperty(
+                services, IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, dataPath))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY);
 
     String metadataPath = String.format("%s/%s/%s/custom-meta", baseLocation, CATALOG, NAMESPACE);
-    assertThatThrownBy(
-            () ->
-                createTableWithProperty(
-                    services,
-                    IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
-                    metadataPath))
+    assertThatThrownBy(() ->
+            createTableWithProperty(
+                services,
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                metadataPath))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
   }
@@ -514,12 +508,11 @@ public class IcebergTableLocationTest {
                     Map.of(
                         IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
                         nsPrefix + "/elsewhere"))));
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogAdapter()
-                    .newHandler(services.securityContext(), CATALOG)
-                    .updateTable(tableId, setWriteMetadata))
+    assertThatThrownBy(() ->
+            services
+                .catalogAdapter()
+                .newHandler(services.securityContext(), CATALOG)
+                .updateTable(tableId, setWriteMetadata))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
 
@@ -527,12 +520,11 @@ public class IcebergTableLocationTest {
     UpdateTableRequest setLocation =
         UpdateTableRequest.create(
             tableId, List.of(), List.of(new MetadataUpdate.SetLocation(nsPrefix + "/moved")));
-    assertThatThrownBy(
-            () ->
-                services
-                    .catalogAdapter()
-                    .newHandler(services.securityContext(), CATALOG)
-                    .updateTable(tableId, setLocation))
+    assertThatThrownBy(() ->
+            services
+                .catalogAdapter()
+                .newHandler(services.securityContext(), CATALOG)
+                .updateTable(tableId, setLocation))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("the location field");
   }
@@ -565,16 +557,15 @@ public class IcebergTableLocationTest {
                                 IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
                                 String.format(
                                     "%s/%s/%s/elsewhere", baseLocation, CATALOG, NAMESPACE)))))));
-    assertThatThrownBy(
-            () ->
-                services
-                    .restApi()
-                    .commitTransaction(
-                        CATALOG,
-                        commit,
-                        IDEMPOTENCY_KEY,
-                        services.realmContext(),
-                        services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .restApi()
+                .commitTransaction(
+                    CATALOG,
+                    commit,
+                    IDEMPOTENCY_KEY,
+                    services.realmContext(),
+                    services.securityContext()))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
   }

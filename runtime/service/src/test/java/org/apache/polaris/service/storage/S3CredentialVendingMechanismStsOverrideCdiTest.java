@@ -111,10 +111,9 @@ class S3CredentialVendingMechanismStsOverrideCdiTest {
             RecordingStsCredentialVendingMechanism.FAKE_KEY_FOR_TEST);
     assertThat(override.calls()).isNotEmpty();
     assertThat(override.calls())
-        .allSatisfy(
-            call ->
-                assertThat(call.storageConfig().getCredentialVendingMechanism())
-                    .isEqualTo(explicitSts ? "STS" : null));
+        .allSatisfy(call ->
+            assertThat(call.storageConfig().getCredentialVendingMechanism())
+                .isEqualTo(explicitSts ? "STS" : null));
   }
 
   private static Catalog mechanismCatalog(String name, boolean explicitSts) {

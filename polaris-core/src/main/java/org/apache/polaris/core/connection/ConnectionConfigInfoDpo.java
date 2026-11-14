@@ -158,10 +158,9 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   static {
     DEFAULT_MAPPER =
         JsonMapper.builder()
-            .changeDefaultPropertyInclusion(
-                incl ->
-                    incl.withValueInclusion(JsonInclude.Include.NON_NULL)
-                        .withContentInclusion(JsonInclude.Include.NON_NULL))
+            .changeDefaultPropertyInclusion(incl ->
+                incl.withValueInclusion(JsonInclude.Include.NON_NULL)
+                    .withContentInclusion(JsonInclude.Include.NON_NULL))
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .build();
   }

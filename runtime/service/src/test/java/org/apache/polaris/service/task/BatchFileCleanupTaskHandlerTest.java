@@ -368,13 +368,11 @@ public class BatchFileCleanupTaskHandlerTest {
             .build();
 
     CompletableFuture<Void> future =
-        CompletableFuture.runAsync(
-            () -> {
-              var newTask = addTaskLocation(task);
-              assertThatPredicate(handler::canHandleTask).accepts(newTask);
-              handler.handleTask(
-                  newTask, polarisCallContext); // this will schedule the batch deletion
-            });
+        CompletableFuture.runAsync(() -> {
+          var newTask = addTaskLocation(task);
+          assertThatPredicate(handler::canHandleTask).accepts(newTask);
+          handler.handleTask(newTask, polarisCallContext); // this will schedule the batch deletion
+        });
 
     // Wait for all async tasks to finish
     future.join();

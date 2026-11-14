@@ -293,6 +293,8 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-container-image-docker-common
 * Maven group:artifact IDs: io.quarkus:quarkus-core
 * Maven group:artifact IDs: io.quarkus:quarkus-credentials
+* Maven group:artifact IDs: io.quarkus:quarkus-cyclonedx
+* Maven group:artifact IDs: io.quarkus:quarkus-cyclonedx-endpoint
 * Maven group:artifact IDs: io.quarkus:quarkus-datasource
 * Maven group:artifact IDs: io.quarkus:quarkus-datasource-common
 * Maven group:artifact IDs: io.quarkus:quarkus-development-mode-spi
@@ -1921,6 +1923,7 @@ This product bundles AWS SDK for Java.
 * Maven group:artifact IDs: software.amazon.awssdk:crt-core
 * Maven group:artifact IDs: software.amazon.awssdk:dynamodb
 * Maven group:artifact IDs: software.amazon.awssdk:endpoints-spi
+* Maven group:artifact IDs: software.amazon.awssdk:eventstream
 * Maven group:artifact IDs: software.amazon.awssdk:http-auth
 * Maven group:artifact IDs: software.amazon.awssdk:http-auth-aws
 * Maven group:artifact IDs: software.amazon.awssdk:http-auth-aws-eventstream
@@ -1947,15 +1950,6 @@ This product bundles AWS SDK for Java.
 * Maven group:artifact IDs: software.amazon.awssdk:utils-lite
 
 Project URL: https://aws.amazon.com/sdkforjava
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This product bundles AWS EventStream Java.
-
-* Maven group:artifact IDs: software.amazon.awssdk:eventstream
-
-Project URL: https://github.com/awslabs/aws-eventstream-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------

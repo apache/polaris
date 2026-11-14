@@ -166,17 +166,16 @@ public class CatalogSerializationTest {
                 "arn:aws:iam::123456789012:role/test-role",
                 "arn:aws:iam::123456789012:role/service-role/test-role",
                 "arn:aws:iam::123456789012:role/path/to/role")
-            .map(
-                arn ->
-                    Arguments.of(
-                        "ARN: " + arn,
-                        new Catalog(
-                            Catalog.TypeEnum.INTERNAL,
-                            TEST_CATALOG_NAME,
-                            new CatalogProperties(TEST_LOCATION),
-                            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                                .setRoleArn(arn)
-                                .build())));
+            .map(arn ->
+                Arguments.of(
+                    "ARN: " + arn,
+                    new Catalog(
+                        Catalog.TypeEnum.INTERNAL,
+                        TEST_CATALOG_NAME,
+                        new CatalogProperties(TEST_LOCATION),
+                        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                            .setRoleArn(arn)
+                            .build())));
 
     return Stream.concat(basicCases, arnCases);
   }

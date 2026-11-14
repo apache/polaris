@@ -485,12 +485,11 @@ public abstract class CatalogHandler {
       final PolarisEntitySubType subType,
       List<TableIdentifier> ids) {
     resolutionManifest = newResolutionManifest();
-    ids.forEach(
-        identifier ->
-            resolutionManifest.addPassthroughPath(
-                new ResolverPath(
-                    PolarisCatalogHelpers.tableIdentifierToList(identifier),
-                    PolarisEntityType.TABLE_LIKE)));
+    ids.forEach(identifier ->
+        resolutionManifest.addPassthroughPath(
+            new ResolverPath(
+                PolarisCatalogHelpers.tableIdentifierToList(identifier),
+                PolarisEntityType.TABLE_LIKE)));
 
     AuthorizationRequest authorizationRequest =
         new AuthorizationRequest(

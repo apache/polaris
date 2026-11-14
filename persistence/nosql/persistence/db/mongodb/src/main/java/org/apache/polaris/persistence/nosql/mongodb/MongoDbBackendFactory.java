@@ -54,9 +54,8 @@ public class MongoDbBackendFactory
         MongoClients.create(
             config
                 .connectionString()
-                .orElseThrow(
-                    () ->
-                        new IllegalStateException("Mandatory MongoDb connection string missing"))),
+                .orElseThrow(() ->
+                    new IllegalStateException("Mandatory MongoDb connection string missing"))),
         true,
         config.allowPrefixDeletion().orElse(false));
   }

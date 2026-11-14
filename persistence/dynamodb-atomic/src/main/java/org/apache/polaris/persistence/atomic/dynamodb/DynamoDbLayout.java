@@ -18,11 +18,13 @@
  */
 package org.apache.polaris.persistence.atomic.dynamodb;
 
+import java.util.Locale;
+
 /**
  * Attribute names, item-type markers, and key encodings for the single-table DynamoDB layout.
  *
  * <p>One base table holds the Polaris item types, each partitioned by its own identity so load
- * spreads across partitions; a sparse GSI serves the by-name lookup. The {@code realmId} is only a
+ * spreads across partitions; a sparse GSI lists a parent's children. The {@code realmId} is only a
  * key prefix (tenant isolation), never a partition key on its own.
  */
 public final class DynamoDbLayout {
@@ -33,7 +35,7 @@ public final class DynamoDbLayout {
   public static final String PK = "PK";
   public static final String SK = "SK";
 
-  // by-name GSI (list children): gsi1pk = realmId#catalogId#parentId#typeCode, gsi1sk = name
+  // children GSI (list children): gsi1pk = realmId#catalogId#parentId#typeCode, gsi1sk = padded id
   public static final String GSI1 = "gsi1";
   public static final String GSI1_PK = "gsi1pk";
   public static final String GSI1_SK = "gsi1sk";
@@ -90,8 +92,17 @@ public final class DynamoDbLayout {
         + name;
   }
 
-  /** by-name GSI partition key: {@code realmId#catalogId#parentId#typeCode}. */
-  public static String byNameGsiPk(String realmId, long catalogId, long parentId, int typeCode) {
+  /** Children GSI partition key: {@code realmId#catalogId#parentId#typeCode}. */
+  public static String childrenGsiPk(String realmId, long catalogId, long parentId, int typeCode) {
     return realmId + SEP + catalogId + SEP + parentId + SEP + typeCode;
+  }
+
+  /**
+   * Children GSI sort key: the entity id, zero-padded to 19 digits so that string order matches
+   * numeric order. This lists children in id order, the order Polaris pages by (as {@code
+   * relational-jdbc} does). Entity ids are non-negative.
+   */
+  public static String childrenGsiSk(long id) {
+    return String.format(Locale.ROOT, "%019d", id);
   }
 }

@@ -153,20 +153,18 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @NonNull List<PolarisBaseEntity> entities,
       List<PolarisBaseEntity> originalEntities) {
     try {
-      datasourceOperations.runWithinTransaction(
-          connection -> {
-            for (int i = 0; i < entities.size(); i++) {
-              PolarisBaseEntity entity = entities.get(i);
-              PolarisBaseEntity originalEntity =
-                  originalEntities != null ? originalEntities.get(i) : null;
-              if (originalEntity == null && entityExists(connection, entity.getId())) {
-                continue;
-              }
-              persistEntity(
-                  callCtx, entity, originalEntity, connection, datasourceOperations::execute);
-            }
-            return true;
-          });
+      datasourceOperations.runWithinTransaction(connection -> {
+        for (int i = 0; i < entities.size(); i++) {
+          PolarisBaseEntity entity = entities.get(i);
+          PolarisBaseEntity originalEntity =
+              originalEntities != null ? originalEntities.get(i) : null;
+          if (originalEntity == null && entityExists(connection, entity.getId())) {
+            continue;
+          }
+          persistEntity(callCtx, entity, originalEntity, connection, datasourceOperations::execute);
+        }
+        return true;
+      });
     } catch (SQLException e) {
       throw wrapEntityWriteFailure(e, "Error executing the transaction for writing entities");
     }
@@ -426,30 +424,27 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public void deleteAll(@NonNull PolarisCallContext callCtx) {
     try {
       Map<String, Object> params = Map.of("realm_id", realmId);
-      datasourceOperations.runWithinTransaction(
-          connection -> {
-            datasourceOperations.execute(
-                connection,
-                QueryGenerator.generateDeleteQuery(
-                    ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, params));
-            datasourceOperations.execute(
-                connection,
-                QueryGenerator.generateDeleteQuery(
-                    ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, params));
-            datasourceOperations.execute(
-                connection,
-                QueryGenerator.generateDeleteQuery(
-                    ModelPrincipalAuthenticationData.ALL_COLUMNS,
-                    ModelPrincipalAuthenticationData.TABLE_NAME,
-                    params));
-            datasourceOperations.execute(
-                connection,
-                QueryGenerator.generateDeleteQuery(
-                    ModelPolicyMappingRecord.ALL_COLUMNS,
-                    ModelPolicyMappingRecord.TABLE_NAME,
-                    params));
-            return true;
-          });
+      datasourceOperations.runWithinTransaction(connection -> {
+        datasourceOperations.execute(
+            connection,
+            QueryGenerator.generateDeleteQuery(
+                ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, params));
+        datasourceOperations.execute(
+            connection,
+            QueryGenerator.generateDeleteQuery(
+                ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, params));
+        datasourceOperations.execute(
+            connection,
+            QueryGenerator.generateDeleteQuery(
+                ModelPrincipalAuthenticationData.ALL_COLUMNS,
+                ModelPrincipalAuthenticationData.TABLE_NAME,
+                params));
+        datasourceOperations.execute(
+            connection,
+            QueryGenerator.generateDeleteQuery(
+                ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
+        return true;
+      });
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to delete all due to %s", e.getMessage()), e);
@@ -589,9 +584,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       whereGreater =
           pageToken
               .valueAs(EntityIdToken.class)
-              .map(
-                  entityIdToken ->
-                      Map.<String, Object>of(ModelEntity.ID_COLUMN, entityIdToken.entityId()))
+              .map(entityIdToken ->
+                  Map.<String, Object>of(ModelEntity.ID_COLUMN, entityIdToken.entityId()))
               .orElse(Map.of());
       OptionalInt pageSize = pageToken.pageSize();
       if (applyPageSizeLimit && pageSize.isPresent() && pageSize.getAsInt() < Integer.MAX_VALUE) {
@@ -1093,32 +1087,28 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public void writeToPolicyMappingRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
     try {
-      datasourceOperations.runWithinTransaction(
-          connection -> {
-            PolicyType policyType = PolicyType.fromCode(record.getPolicyTypeCode());
-            Preconditions.checkArgument(
-                policyType != null, "Invalid policy type code: %s", record.getPolicyTypeCode());
-            ModelPolicyMappingRecord modelPolicyMappingRecord =
-                ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
-            List<Object> values =
-                modelPolicyMappingRecord
-                    .toMap(datasourceOperations.getDatabaseType())
-                    .values()
-                    .stream()
-                    .toList();
-            PreparedQuery insertPolicyMappingQuery =
-                QueryGenerator.generateInsertQuery(
-                    ModelPolicyMappingRecord.ALL_COLUMNS,
-                    ModelPolicyMappingRecord.TABLE_NAME,
-                    values,
-                    realmId);
-            if (policyType.isInheritable()) {
-              return handleInheritablePolicy(callCtx, record, insertPolicyMappingQuery, connection);
-            } else {
-              datasourceOperations.execute(connection, insertPolicyMappingQuery);
-            }
-            return true;
-          });
+      datasourceOperations.runWithinTransaction(connection -> {
+        PolicyType policyType = PolicyType.fromCode(record.getPolicyTypeCode());
+        Preconditions.checkArgument(
+            policyType != null, "Invalid policy type code: %s", record.getPolicyTypeCode());
+        ModelPolicyMappingRecord modelPolicyMappingRecord =
+            ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
+        List<Object> values =
+            modelPolicyMappingRecord.toMap(datasourceOperations.getDatabaseType()).values().stream()
+                .toList();
+        PreparedQuery insertPolicyMappingQuery =
+            QueryGenerator.generateInsertQuery(
+                ModelPolicyMappingRecord.ALL_COLUMNS,
+                ModelPolicyMappingRecord.TABLE_NAME,
+                values,
+                realmId);
+        if (policyType.isInheritable()) {
+          return handleInheritablePolicy(callCtx, record, insertPolicyMappingQuery, connection);
+        } else {
+          datasourceOperations.execute(connection, insertPolicyMappingQuery);
+        }
+        return true;
+      });
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write to policy mapping records due to %s", e.getMessage()), e);

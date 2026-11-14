@@ -171,11 +171,10 @@ public class GetConfigTest {
             .build();
     String catalogName = createCatalog(services);
 
-    assertThatThrownBy(
-            () ->
-                services
-                    .restConfigurationApi()
-                    .getConfig(catalogName, services.realmContext(), services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .restConfigurationApi()
+                .getConfig(catalogName, services.realmContext(), services.securityContext()))
         .isInstanceOf(ForbiddenException.class);
   }
 

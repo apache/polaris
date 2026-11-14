@@ -84,22 +84,21 @@ public class CommitTransactionMetadataCleanupTest {
                     "true",
                     "SUPPORTED_CATALOG_STORAGE_TYPES",
                     List.of("FILE")))
-            .metaStoreManagerDecorator(
-                msm -> {
-                  PolarisMetaStoreManager spy = Mockito.spy(msm);
-                  Mockito.doAnswer(
-                          invocation -> {
-                            if (shouldFail.get()) {
-                              return new EntitiesResult(
-                                  BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED,
-                                  "simulated CAS failure");
-                            }
-                            return invocation.callRealMethod();
-                          })
-                      .when(spy)
-                      .updateEntitiesPropertiesIfNotChanged(Mockito.any(), Mockito.any());
-                  return spy;
-                })
+            .metaStoreManagerDecorator(msm -> {
+              PolarisMetaStoreManager spy = Mockito.spy(msm);
+              Mockito.doAnswer(
+                      invocation -> {
+                        if (shouldFail.get()) {
+                          return new EntitiesResult(
+                              BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED,
+                              "simulated CAS failure");
+                        }
+                        return invocation.callRealMethod();
+                      })
+                  .when(spy)
+                  .updateEntitiesPropertiesIfNotChanged(Mockito.any(), Mockito.any());
+              return spy;
+            })
             .build();
 
     createCatalogAndNamespace(testServices, location);
@@ -114,16 +113,15 @@ public class CommitTransactionMetadataCleanupTest {
 
     // Now enable the CAS failure and attempt a commitTransaction
     shouldFail.set(true);
-    assertThatThrownBy(
-            () ->
-                testServices
-                    .restApi()
-                    .commitTransaction(
-                        catalog,
-                        generateCommitTransactionRequest(table1Name, table2Name),
-                        IDEMPOTENCY_KEY,
-                        testServices.realmContext(),
-                        testServices.securityContext()))
+    assertThatThrownBy(() ->
+            testServices
+                .restApi()
+                .commitTransaction(
+                    catalog,
+                    generateCommitTransactionRequest(table1Name, table2Name),
+                    IDEMPOTENCY_KEY,
+                    testServices.realmContext(),
+                    testServices.securityContext()))
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("Transaction commit failed");
 

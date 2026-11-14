@@ -139,22 +139,21 @@ public abstract class RuntimeApplicationIntegrationTest extends PolarisApplicati
               ErrorHandlers.oauthErrorHandler());
       String token = response.token();
       // mimics OAUth2Util.AuthSession refreshing the token
-      assertThatThrownBy(
-              () ->
-                  client.postForm(
-                      path,
-                      Map.of(
-                          "grant_type",
-                          "urn:ietf:params:oauth:grant-type:token-exchange",
-                          "scope",
-                          "PRINCIPAL_ROLE:ALL",
-                          "subject_token",
-                          "invalid",
-                          "subject_token_type",
-                          "urn:ietf:params:oauth:token-type:access_token"),
-                      OAuthTokenResponse.class,
-                      Map.of("Authorization", "Bearer " + token),
-                      ErrorHandlers.oauthErrorHandler()))
+      assertThatThrownBy(() ->
+              client.postForm(
+                  path,
+                  Map.of(
+                      "grant_type",
+                      "urn:ietf:params:oauth:grant-type:token-exchange",
+                      "scope",
+                      "PRINCIPAL_ROLE:ALL",
+                      "subject_token",
+                      "invalid",
+                      "subject_token_type",
+                      "urn:ietf:params:oauth:token-type:access_token"),
+                  OAuthTokenResponse.class,
+                  Map.of("Authorization", "Bearer " + token),
+                  ErrorHandlers.oauthErrorHandler()))
           .isInstanceOf(NotAuthorizedException.class)
           .hasMessageContaining("invalid_client");
     }

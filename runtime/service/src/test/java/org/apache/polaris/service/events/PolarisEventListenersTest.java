@@ -118,10 +118,9 @@ public class PolarisEventListenersTest {
   @Identifier("consume-catalog-and-after-notification-listener")
   public static class ConsumeCatalogAndNotificationEventsListener extends FilteringEventListener {
     ConsumeCatalogAndNotificationEventsListener() {
-      super(
-          event ->
-              event.type().category() == PolarisEventType.Category.CATALOG
-                  || event.type() == PolarisEventType.AFTER_SEND_NOTIFICATION);
+      super(event ->
+          event.type().category() == PolarisEventType.Category.CATALOG
+              || event.type() == PolarisEventType.AFTER_SEND_NOTIFICATION);
     }
   }
 
@@ -197,19 +196,16 @@ public class PolarisEventListenersTest {
 
     // Only catalog events
     await()
-        .until(
-            () ->
-                consumeOnlyCatalogEventListener.receivedEventCount.get()
-                    == CATALOG_EVENT_TYPES.size());
+        .until(() ->
+            consumeOnlyCatalogEventListener.receivedEventCount.get() == CATALOG_EVENT_TYPES.size());
     assertEquals(CATALOG_EVENT_TYPES.size(), consumeOnlyCatalogEventListener.expectedEvents.size());
     expectEventTypes(consumeOnlyCatalogEventListener.expectedEvents, CATALOG_EVENT_TYPES);
 
     // Catalog and after send notification events
     await()
-        .until(
-            () ->
-                consumeCatalogAndNotificationEventListener.receivedEventCount.get()
-                    == CATALOG_EVENT_TYPES.size() + 1);
+        .until(() ->
+            consumeCatalogAndNotificationEventListener.receivedEventCount.get()
+                == CATALOG_EVENT_TYPES.size() + 1);
     assertEquals(
         CATALOG_EVENT_TYPES.size() + 1,
         consumeCatalogAndNotificationEventListener.expectedEvents.size());

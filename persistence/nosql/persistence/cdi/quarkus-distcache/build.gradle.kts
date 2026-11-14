@@ -43,6 +43,9 @@ dependencies {
 
   implementation(libs.jakarta.ws.rs.api)
 
+  implementation(platform(libs.micrometer.bom))
+  implementation("io.micrometer:micrometer-core")
+
   implementation(libs.guava)
   implementation(libs.slf4j.api)
 
@@ -54,6 +57,8 @@ dependencies {
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
+
+  testImplementation(libs.jakarta.enterprise.cdi.api)
 
   // Must stick with the Quarkus platform versions of Vert.X
   // (signature of io.vertx.core.Vertx.createHttpClient() changed from 4.5 to 5.0)
