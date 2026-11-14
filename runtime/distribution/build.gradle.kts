@@ -83,6 +83,10 @@ distributions {
         from("bin/admin")
       }
 
+      // Copy configuration file templates
+      into("admin/config") { from("admin/config") }
+      into("server/config") { from("server/config") }
+
       from("README.md")
       from(licenseNoticeMerge)
     }
