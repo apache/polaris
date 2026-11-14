@@ -177,9 +177,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   configuration's `tenantId` must match the configured tenant.
 - Added `polaris.storage.azure.tenant-id`, `client-id` and `client-secret` to set the Azure service
   principal used when no `storageName` selects a named one, like `polaris.storage.aws.access-key` and
-  `secret-key` for AWS. When unset, the `DefaultAzureCredential` chain is used as before. The Helm
-  chart can load them from a `Secret` with `storage.secret.azureTenantId`, `azureClientId` and
-  `azureClientSecret`.
+  `secret-key` for AWS. When unset, the `DefaultAzureCredential` chain is used as before.
 - The `X-Iceberg-Access-Delegation` header now accepts `none`, as defined by the Iceberg REST
   specification, meaning the client can operate without delegated access. A request that includes
   `none`, alone or together with other values, is handled like a request without the header: the

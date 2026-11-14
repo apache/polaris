@@ -293,9 +293,6 @@ weight: 900
 | storage.secret.awsSecretAccessKey | string | `""` | The key in the secret to pull the AWS secret access key from. Only required when using AWS. |
 | storage.secret.gcpToken | string | `""` | The key in the secret to pull the GCP token from. Only required when using GCP. |
 | storage.secret.gcpTokenLifespan | string | `""` | The key in the secret to pull the GCP token expiration time from. Only required when using GCP. Must be a valid ISO 8601 duration. The default is PT1H (1 hour). |
-| storage.secret.azureTenantId | string | `""` | The key in the secret to pull the Azure tenant ID from. Only required when using Azure with a service principal. |
-| storage.secret.azureClientId | string | `""` | The key in the secret to pull the Azure client ID from. Only required when using Azure with a service principal. |
-| storage.secret.azureClientSecret | string | `""` | The key in the secret to pull the Azure client secret from. Only required when using Azure with a service principal. |
 
 ### Authentication
 

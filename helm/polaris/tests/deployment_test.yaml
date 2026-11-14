@@ -1114,9 +1114,6 @@ tests:
           awsAccessKeyId: awsAccessKeyId
           awsSecretAccessKey: awsSecretAccessKey
           gcpToken: gcpToken
-          azureTenantId: azureTenantId
-          azureClientId: azureClientId
-          azureClientSecret: azureClientSecret
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
@@ -1142,30 +1139,6 @@ tests:
               secretKeyRef:
                 name: polaris-storage-secret
                 key: gcpToken
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: polaris.storage.azure.tenant-id
-            valueFrom:
-              secretKeyRef:
-                name: polaris-storage-secret
-                key: azureTenantId
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: polaris.storage.azure.client-id
-            valueFrom:
-              secretKeyRef:
-                name: polaris-storage-secret
-                key: azureClientId
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: polaris.storage.azure.client-secret
-            valueFrom:
-              secretKeyRef:
-                name: polaris-storage-secret
-                key: azureClientSecret
 
   - it: should set extra env
     template: deployment.yaml

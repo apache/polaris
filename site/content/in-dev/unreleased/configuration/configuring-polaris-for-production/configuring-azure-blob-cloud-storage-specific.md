@@ -67,9 +67,7 @@ In a Kubernetes deployment, do not embed `AZURE_CLIENT_SECRET` in the pod spec a
 Store the client secret in a Kubernetes `Secret` (or an external secret store referenced by an
 operator like the Azure Key Vault provider) and project it into the Polaris container with
 `envFrom`/`valueFrom: secretKeyRef`. The same applies to the bootstrap credentials in
-`POLARIS_BOOTSTRAP_CREDENTIALS`. With the Helm chart, set `storage.secret.name` and the
-`storage.secret.azureTenantId`, `azureClientId` and `azureClientSecret` keys to load the three
-`polaris.storage.azure.*` properties from a `Secret`.
+`POLARIS_BOOTSTRAP_CREDENTIALS`.
 
 The `Storage Blob Data Contributor` role at storage-account scope lets Polaris issue SAS tokens
 for any container under that account; scope the role narrower (single container) when you want to
