@@ -250,6 +250,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   wrapped in a credential that supports refresh, returning the token with a fixed expiry. The expiry
   can be set explicitly via `polaris.storage.gcp.expiry` (an ISO-8601 instant); when unset it is
   computed from `polaris.storage.gcp.lifespan` as before.
+- Registering an Iceberg table with `overwrite=true` now preserves its idempotency keys when
+  the table UUID is unchanged. Within-TTL create and update retries continue to replay success,
+  preventing an older update from overwriting newer table properties. Replacements with a
+  different UUID do not inherit the previous table's keys.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - Maintenance policy content now rejects non-boolean values for the `enable` field again. The
