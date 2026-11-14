@@ -74,7 +74,12 @@ public abstract class CachingStorageIntegration<T extends PolarisStorageConfigur
       @NonNull CredentialVendingContext context) {
     StorageCredentialCacheKey key = buildCacheKey(grants, context);
     StorageAccessConfig accessConfig = cache != null ? cache.getOrLoad(key) : key.load();
-    return addExtraProperties(accessConfig, refreshEndpoint);
+    // The refresh endpoint only makes sense when there are credentials for the client to refresh.
+    // When nothing was vended, keep it out of the returned configuration so clients do not call
+    // the credentials endpoint for nothing.
+    Optional<String> effectiveRefreshEndpoint =
+        accessConfig.credentials().isEmpty() ? Optional.empty() : refreshEndpoint;
+    return addExtraProperties(accessConfig, effectiveRefreshEndpoint);
   }
 
   protected static StorageAccessConfig withExtraProperty(
