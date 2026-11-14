@@ -346,10 +346,9 @@ public class PolarisServiceImplTest {
         .thenReturn(List.of("SIGV4"));
     when(realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)).thenReturn(false);
 
-    assertThatThrownBy(
-            () ->
-                invokeValidateExternalCatalog(
-                    polarisService, sigV4ExternalCatalog("https://sts.us-west-2.amazonaws.com")))
+    assertThatThrownBy(() ->
+            invokeValidateExternalCatalog(
+                polarisService, sigV4ExternalCatalog("https://sts.us-west-2.amazonaws.com")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Explicitly setting STS endpoints is not allowed.");
   }
