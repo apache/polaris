@@ -187,6 +187,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `fair-retries` does not apply to locally synchronized commits, which use FIFO admission;
   conflict retry backoff still applies.
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
+- Admin tool: added the `purge-metrics` command, which deletes scan and commit metrics reports older
+  than a given age from the relational JDBC metrics report tables in batches. Run it periodically to
+  enforce a retention period.
 
 ### Changes
 
