@@ -46,7 +46,7 @@ import tools.jackson.dataformat.smile.SmileMapper;
  * usually just one changed entity per commit.
  */
 final class ChangeSerializer implements IndexValueSerializer<Change> {
-  static ObjectMapper MAPPER =
+  static final ObjectMapper MAPPER =
       SmileMapper.builder()
           .findAndAddModules()
           .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
@@ -60,6 +60,10 @@ final class ChangeSerializer implements IndexValueSerializer<Change> {
 
   @Override
   public int serializedSize(@Nullable Change value) {
+    var cached = cachedEncoding(value);
+    if (cached != null) {
+      return cached.length + varIntLen(cached.length);
+    }
     try (var out = new CountingOutputStream(OutputStream.nullOutputStream())) {
       MAPPER.writeValue(out, value);
       var size = out.getCount();
@@ -73,7 +77,10 @@ final class ChangeSerializer implements IndexValueSerializer<Change> {
   @NonNull
   @Override
   public ByteBuffer serialize(@Nullable Change value, @NonNull ByteBuffer target) {
-    var bytes = MAPPER.writeValueAsBytes(value);
+    var bytes = cachedEncoding(value);
+    if (bytes == null) {
+      bytes = MAPPER.writeValueAsBytes(value);
+    }
     putVarInt(target, bytes.length);
     target.put(bytes);
     return target;
@@ -90,12 +97,53 @@ final class ChangeSerializer implements IndexValueSerializer<Change> {
 
   @Override
   public boolean isNullSerialized(@NonNull ByteBuffer buffer) {
-    var dup = buffer.duplicate();
-    var len = readVarInt(dup);
+    var position = buffer.position();
+    var first = buffer.get(position);
+    int len;
+    if (first >= 0) {
+      len = first;
+      position++;
+    } else {
+      var dup = buffer.duplicate();
+      len = readVarInt(dup);
+      position = dup.position();
+    }
     if (len != NULL.length) {
       return false;
     }
-    return dup.limit(dup.position() + len).mismatch(ByteBuffer.wrap(NULL)) == -1;
+    for (int i = 0; i < len; i++) {
+      if (buffer.get(position + i) != NULL[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static byte @Nullable [] cachedEncoding(@Nullable Change value) {
+    if (value == null) {
+      return NULL;
+    }
+    // Only the generated fieldless implementations have a value-independent encoding.
+    var type = value.getClass();
+    if (type == ImmutableChangeAdd.class) {
+      return Encodings.ADD;
+    }
+    if (type == ImmutableChangeUpdate.class) {
+      return Encodings.UPDATE;
+    }
+    if (type == ImmutableChangeRemove.class) {
+      return Encodings.REMOVE;
+    }
+    return null;
+  }
+
+  // Keep these encodings lazy: eager ChangeAdd initialization can re-enter Change while
+  // Change.CHANGE_SERIALIZER is still null. The holder breaks the
+  // ChangeSerializer -> ChangeAdd -> Change -> CHANGE_SERIALIZER initialization cycle.
+  private static final class Encodings {
+    private static final byte[] ADD = MAPPER.writeValueAsBytes(ChangeAdd.builder().build());
+    private static final byte[] UPDATE = MAPPER.writeValueAsBytes(ChangeUpdate.builder().build());
+    private static final byte[] REMOVE = MAPPER.writeValueAsBytes(ChangeRemove.builder().build());
   }
 
   @Override
