@@ -69,11 +69,25 @@ With the default settings, Polaris also enforces the following rules:
   inside the namespace's location and inside the catalog's allowed locations.
 - A client may also set the `write.data.path` and `write.metadata.path` table properties, but they
   must be inside the table's own location and inside the catalog's allowed locations.
+- A view may set `write.metadata.path` on create or update under the same location restrictions
+  as a table. Existing views with metadata outside their base location may still commit updates
+  that leave both locations unchanged. This also applies to the first commit that records a legacy
+  view's locations: its existing layout is recorded without structured-location or overlap checks.
+  Allowed-location restrictions continue to apply. New or changed paths receive the full checks.
+  Polaris scopes the credentials used to write or purge view metadata to include this path.
+  Purge checks metadata against the view's recorded locations and uses those recorded locations
+  for cleanup credentials. Legacy views without recorded locations use metadata-derived locations.
+
+  Depending on the configured overlap checks and their scope, recording a legacy view's locations
+  can cause later requests to create tables or views at overlapping locations to be rejected.
+  Commits that leave both paths unchanged continue to skip overlap checks while enforcing allowed
+  locations. An overlap error may therefore appear on the new object's creation request while the
+  existing view can still commit.
 - A table's metadata files must be inside the table's location.
 - A new table, view, or namespace location may not overlap the location of a sibling, that is,
-  another table, view, or namespace directly under the same parent. For sibling tables, their
-  `write.data.path` and `write.metadata.path` are included in the check, so two tables in the same
-  namespace cannot share a write path.
+  another table, view, or namespace directly under the same parent. Sibling tables' `write.data.path`
+  and `write.metadata.path` and sibling views' `write.metadata.path` are included in the check, so
+  siblings cannot share a write path.
 - A namespace may only be created with a `location` property if that location is the default one.
 
 Requests that break these rules fail with 403 Forbidden. In internal catalogs, a table or view
@@ -115,10 +129,10 @@ namespaces created later in that namespace are placed under its custom location.
 ## Unstructured table locations
 
 Setting `ALLOW_UNSTRUCTURED_TABLE_LOCATION` to `true` lets table and view locations, and the
-`write.data.path` and `write.metadata.path` table properties, be anywhere inside the catalog's
-allowed locations, instead of only inside their namespace's location or, for write paths, the
-table's own location. Generated locations still follow the default layout unless the object storage
-prefix described below is enabled.
+`write.data.path` and `write.metadata.path` table properties and the `write.metadata.path` view
+property, be anywhere inside the catalog's allowed locations, instead of only inside their
+namespace's location or, for write paths, the table's or view's own location. Generated locations
+still follow the default layout unless the object storage prefix described below is enabled.
 
 Switching `ALLOW_UNSTRUCTURED_TABLE_LOCATION` from `true` to `false` does not check existing tables
 and views, and can cause unexpected location check failures later, for example when updating or

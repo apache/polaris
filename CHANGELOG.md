@@ -96,6 +96,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Tables last committed by a Polaris version older than 1.3.0 have all their locations validated on
   their next commit. That commit fails if the locations do not satisfy the current location rules,
   for example the catalog's allowed locations.
+  Views intentionally behave differently for compatibility: commits that leave the base location
+  and `write.metadata.path` unchanged enforce allowed locations but skip structured-location and
+  overlap checks. This includes the first commit that records a legacy view's locations and
+  continues while both paths remain unchanged. New views and changes to either path are validated
+  under all applicable configured location rules.
 - Loading a table whose metadata location or `write.data.path` / `write.metadata.path` differs from
   the values recorded in Polaris now fails with a `ForbiddenException`, without any commit being
   attempted. Tables last committed before 1.3.0 have no recorded values and are not affected until
@@ -114,6 +119,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Breaking changes
 
+- With `ALLOW_UNSTRUCTURED_TABLE_LOCATION=false` (default), creating a view or changing its
+  location or `write.metadata.path` now rejects metadata paths outside the view's own location
+  with 403 Forbidden. Enable `ALLOW_UNSTRUCTURED_TABLE_LOCATION` to allow such paths within the
+  catalog's allowed locations. Existing views can still commit updates that leave both paths
+  unchanged; allowed-location restrictions continue to apply.
 - Creating a Generic Table with an explicit, non-empty `base-location` now validates that
   location against the catalog's allowed locations and, unless `ALLOW_UNSTRUCTURED_TABLE_LOCATION`
   is enabled, the parent namespace location. Requests that previously stored disallowed locations

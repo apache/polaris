@@ -42,6 +42,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
+import org.apache.iceberg.view.ViewProperties;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -347,6 +348,26 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace")
         .hasMessageContaining(writePath);
+  }
+
+  @Test
+  public void testTableAtSiblingViewMetadataPathIsRejected() {
+    Namespace ns = Namespace.of("ns");
+    catalog().createNamespace(ns);
+    String metadataPath = STORAGE_LOCATION + "/ns/t2";
+    catalog()
+        .buildView(TableIdentifier.of(ns, "v1"))
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(ns)
+        .withQuery("spark", "SELECT * FROM ns.source")
+        .withProperty(ViewProperties.WRITE_METADATA_LOCATION, metadataPath)
+        .create();
+
+    // t2's default location overlaps only the existing view's custom metadata path.
+    assertThatThrownBy(() -> catalog().buildTable(TableIdentifier.of(ns, "t2"), SCHEMA).create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(metadataPath);
   }
 
   @Test

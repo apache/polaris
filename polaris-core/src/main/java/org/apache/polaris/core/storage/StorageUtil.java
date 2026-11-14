@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.view.ViewMetadata;
@@ -83,7 +84,14 @@ public class StorageUtil {
 
   /** Given a ViewMetadata, extracts the locations where the view's [meta]data might be found. */
   public static @NonNull Set<String> getLocationsUsedByTable(ViewMetadata viewMetadata) {
-    return Set.of(viewMetadata.location());
+    List<String> candidates = new ArrayList<>();
+    Optional.ofNullable(viewMetadata.location()).ifPresent(candidates::add);
+    Optional.ofNullable(
+            viewMetadata
+                .properties()
+                .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
+        .ifPresent(candidates::add);
+    return removeRedundantLocations(candidates);
   }
 
   /**
