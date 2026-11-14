@@ -171,6 +171,9 @@ dependencies {
 
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
+  testImplementation("org.testcontainers:testcontainers-cassandra")
+  testImplementation(platform(libs.cassandra.driver.bom))
+  testImplementation("org.apache.cassandra:java-driver-core")
   testImplementation("org.testcontainers:testcontainers-postgresql")
   testImplementation(project(":polaris-floci-aws-testcontainer"))
   testImplementation(project(":polaris-floci-az-testcontainer"))
