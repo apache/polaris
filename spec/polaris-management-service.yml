@@ -1028,8 +1028,9 @@ paths:
         and `registerTable`) and through the Polaris catalog API. Anything created inside a namespace
         without a mapping of its own (a namespace, an Iceberg table, a view or a generic table) is
         created on the storage configuration of the namespace: the mapping of the nearest enclosing
-        namespace that has one, as it is at the time of the create, or else the catalog's own
-        `storageConfigInfo`. Only namespaces and Iceberg tables can have a mapping of their own.
+        namespace that has one, as it is at the time of the create (for a staged create, at staging),
+        or else the catalog's own `storageConfigInfo`. Only namespaces and Iceberg tables can have a
+        mapping of their own.
 
         Being created on a storage configuration means that:
         - the location is checked against that storage configuration's `allowedLocations`;
@@ -1038,11 +1039,16 @@ paths:
         - Polaris uses that storage configuration for all access to the object's storage, including
           the credentials it vends.
 
-        For a staged create, the storage configuration is chosen when the create is staged: it decides
-        the location check and the credentials that are returned. The commit creates the table on the
-        same storage configuration. If the storage configuration the name would get has changed by the
-        time of the commit, the commit is refused with 409. A server may limit how long it keeps a
-        staged create; a commit after that is refused too.
+        For a staged create, the storage configuration is chosen when the create is staged, as for a
+        direct create: the location is checked against it, and any credentials returned come from it.
+        The commit creates the table on that storage configuration and checks the location against it
+        again. If at the commit the name resolves to a different storage configuration (compared by
+        identity, see below), for example because a table or namespace mapping was created, replaced
+        or removed in between, the commit is refused with 409. Editing the catalog's own
+        `storageConfigInfo` is not such a change. The commit is also refused with 409 if the server
+        can no longer tell which storage configuration was chosen at staging, for example because the
+        staged create is older than a limit the server sets. This does not apply while the catalog has
+        no storage configurations.
 
         An Iceberg table, view or generic table keeps the storage configuration it was created on for
         as long as it exists. A namespace mapping is a default for what is created afterwards:

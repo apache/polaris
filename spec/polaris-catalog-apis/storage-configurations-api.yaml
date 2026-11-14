@@ -110,7 +110,8 @@ paths:
         call. This is best effort: after a server failure the mapping can remain.
         `listStorageMappings` in the management API then shows it with `targetExists` set to false,
         and `removeStorageMapping` removes it. With `stage-create`, the storage configuration is chosen
-        at staging, as for any staged create (see `createStorageMapping`), and the mapping is kept;
+        at staging, as for any staged create (see `createStorageMapping`), and a successful staging
+        keeps the mapping;
         `targetExists` is false until the commit creates the table, and stays false if the commit
         never happens.
       parameters:
