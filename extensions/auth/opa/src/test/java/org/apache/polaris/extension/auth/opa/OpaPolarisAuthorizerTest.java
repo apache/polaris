@@ -909,7 +909,8 @@ public class OpaPolarisAuthorizerTest {
         JsonMapper.builder().build(),
         null,
         null,
-        "test-realm") {
+        "test-realm",
+        Map.of()) {
       @Override
       <T> T httpClientExecute(
           ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -1478,7 +1479,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm");
+              "test-realm",
+              Map.of());
 
       PolarisPrincipal principal =
           PolarisPrincipal.of("eve", AttributeMap.EMPTY, Set.of("auditor"));
@@ -1523,7 +1525,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm");
+              "test-realm",
+              Map.of());
 
       PolarisPrincipal principal =
           PolarisPrincipal.of(
@@ -1655,7 +1658,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm");
+              "test-realm",
+              Map.of());
 
       PrincipalEntity entity =
           new PrincipalEntity.Builder()
