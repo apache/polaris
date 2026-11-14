@@ -284,32 +284,35 @@ public class OpaPolarisAuthorizerFactoryTest {
                 opaConfig, Clock.systemUTC(), asyncExec, () -> null, () -> "test-realm");
 
         factory.initialize();
-        OpaPolarisAuthorizer authorizer =
-            (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
+        try {
+          OpaPolarisAuthorizer authorizer =
+              (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
 
-        PolarisPrincipal principal =
-            PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
-        authorizer
-            .authorize(
-                new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                new AuthorizationRequest(
-                    principal,
-                    List.of(
-                        new TargetlessAuthorizationIntent(
-                            PolarisAuthorizableOperation.GET_CATALOG))))
-            .throwIfDenied();
+          PolarisPrincipal principal =
+              PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
+          authorizer
+              .authorize(
+                  new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                  new AuthorizationRequest(
+                      principal,
+                      List.of(
+                          new TargetlessAuthorizationIntent(
+                              PolarisAuthorizableOperation.GET_CATALOG))))
+              .throwIfDenied();
 
-        ObjectMapper mapper = JsonMapper.builder().build();
-        JsonNode properties =
-            mapper
-                .readTree(capturedRequestBody[0])
-                .path("input")
-                .path("context")
-                .path("properties");
-        assertThat(properties.path("group").asText()).isEqualTo("example-group");
-        assertThat(properties.path("tier").asText()).isEqualTo("qa");
-        assertThat(properties.size()).isEqualTo(2);
-        factory.cleanup();
+          ObjectMapper mapper = JsonMapper.builder().build();
+          JsonNode properties =
+              mapper
+                  .readTree(capturedRequestBody[0])
+                  .path("input")
+                  .path("context")
+                  .path("properties");
+          assertThat(properties.path("group").asText()).isEqualTo("example-group");
+          assertThat(properties.path("tier").asText()).isEqualTo("qa");
+          assertThat(properties.size()).isEqualTo(2);
+        } finally {
+          factory.cleanup();
+        }
       }
     } finally {
       server.stop(0);

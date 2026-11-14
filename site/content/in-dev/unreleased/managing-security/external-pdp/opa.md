@@ -189,6 +189,11 @@ allow if {
 }
 ```
 
+This example fails closed. If a deployment does not set `group` or `tier`, `deployment` is
+undefined, no `allow` rule matches, and `default allow := false` denies every request. The same
+happens if the values do not match a key in `data.grants` (for example, `QA` instead of `qa`). If
+a deployment denies everything, check its context properties first.
+
 To add this to an existing policy, such as the one in [Policy Example](#policy-example), copy only
 the `deployment` and `allow` rules. That policy already declares `default allow := false`, and a
 package can declare it only once.
