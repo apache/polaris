@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS version (
     version_value INT4 NOT NULL
 );
 INSERT INTO version (version_key, version_value)
-VALUES ('version', 6)
+VALUES ('version', 7)
 ON CONFLICT (version_key) DO NOTHING;
 COMMENT ON TABLE version IS 'JDBC schema version; updated manually as part of upgrade procedures.';
 
@@ -146,6 +146,9 @@ CREATE TABLE IF NOT EXISTS events (
     additional_properties JSONB NOT NULL DEFAULT '{}'::JSONB,
     PRIMARY KEY (event_id)
 );
+
+-- Supports purging events by age (admin tool purge-events command).
+CREATE INDEX IF NOT EXISTS idx_events_realm_timestamp ON events (realm_id, timestamp_ms);
 
 -- ============================================================================
 -- SCAN METRICS REPORT TABLE

@@ -82,6 +82,16 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   v6 is now **required** before starting this version of Polaris. The first request to any realm
   whose recorded schema version does not match what the binary expects will fail fast with a clear
   error message. See the [Relational JDBC metastore documentation] for the full upgrade path.
+- Relational JDBC: schema version 7 adds an index on `events (realm_id, timestamp_ms)`, used by the new
+  `purge-events` admin command. The migration to schema v7 is **required** before starting this
+  version of Polaris. Existing deployments must create the index and update the schema version
+  manually, for example on PostgreSQL and CockroachDB:
+  ```sql
+  CREATE INDEX IF NOT EXISTS idx_events_realm_timestamp ON polaris_schema.events (realm_id, timestamp_ms);
+  UPDATE polaris_schema.version SET version_value = 7 WHERE version_key = 'version';
+  ```
+  On a large `events` table, PostgreSQL users may prefer `CREATE INDEX CONCURRENTLY` to avoid
+  blocking event writes while the index is built.
 - New privilege `CATALOG_READ_CONFIG` (authorizable operation `GET_CATALOG_CONFIG`) is available for
   the Iceberg REST `GET /v1/config` endpoint. The endpoint hard-gate is **off by default** behind
   `polaris.features."ENFORCE_CATALOG_CONFIG_AUTHORIZATION"`, so upgrades do not 403 bootstrap. When
@@ -187,6 +197,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `fair-retries` does not apply to locally synchronized commits, which use FIFO admission;
   conflict retry backoff still applies.
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
+- Admin tool: added the `purge-events` command, which deletes events older than a given age from
+  the relational JDBC `events` table in batches. Run it periodically to enforce a retention period.
 
 ### Changes
 

@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS version (
 -- CockroachDB scripts. Overwriting would let bootstrap stamp an older, unmigrated database as the
 -- current version and defeat the schema-compatibility check.
 INSERT INTO version (version_key, version_value)
-    SELECT 'version', 6
+    SELECT 'version', 7
     WHERE NOT EXISTS (SELECT 1 FROM version WHERE version_key = 'version');
 
 -- H2 supports COMMENT, but some modes may ignore it
@@ -138,6 +138,9 @@ CREATE TABLE IF NOT EXISTS events (
     additional_properties TEXT NOT NULL,
     PRIMARY KEY (event_id)
 );
+
+-- Supports purging events by age (admin tool purge-events command).
+CREATE INDEX IF NOT EXISTS idx_events_realm_timestamp ON events (realm_id, timestamp_ms);
 
 -- ============================================================================
 -- SCAN METRICS REPORT TABLE

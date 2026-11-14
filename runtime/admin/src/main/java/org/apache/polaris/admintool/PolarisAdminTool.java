@@ -32,6 +32,7 @@ import picocli.CommandLine.HelpCommand;
       HelpCommand.class,
       BootstrapCommand.class,
       PurgeCommand.class,
+      PurgeEventsCommand.class,
       NoSqlCommand.class,
     })
 public class PolarisAdminTool extends BaseCommand {
