@@ -29,9 +29,50 @@ directly. These credentials are returned as key-value properties in the Iceberg 
 (see `LoadTableResult` and `LoadViewResult` in the [Iceberg REST
 spec](https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml)).
 
-Properties with kind `credential` carry sensitive material and are returned in the `credentials`
-map of the API response (never logged). Properties with kind `config` carry non-sensitive
-configuration and are returned in the `config` map.
+Properties marked `credential` contain sensitive authentication material and must not be logged. Properties marked `config`
+contain non-sensitive storage settings, such as region, endpoint, path-style access, or a
+credential-refresh endpoint.
+
+For table load, create, and register responses, when credential vending is requested
+and credentials are provided, Polaris returns these properties in `storage-credentials`
+entries. Each entry contains:
+- `prefix`: the storage location prefix to which the configuration applies.
+- `config`: the credentials and accompanying client-facing storage settings for that prefix.
+
+### Prefix selection and precedence
+
+Clients consuming structured entries should select the entry with the longest
+matching prefix for the storage location being accessed. The selected entry's
+configuration applies to that prefix, rather than to unrelated storage locations.
+
+For clients that overlay the selected entry's `config` onto their existing FileIO properties,
+returned values such as endpoint and region take precedence over client-configured values.
+When constructing an entry, Polaris combines additional storage settings with
+credentials. If a key appears in both, the credential value takes precedence.
+Server-only internal properties are never included.
+
+### Responses without credential vending
+
+When the client omits `X-Iceberg-Access-Delegation`, Polaris does not return storage
+credentials. Client-facing storage settings are returned only in the top-level table
+`config`. Polaris does not add `storage-credentials` entries containing settings alone.
+
+For example, the following response excerpt contains configuration but no credentials:
+
+```json
+{
+  "config": {
+    "client.region": "eu-central-1"
+  }
+}
+```
+
+### Compatibility and scope
+
+Polaris also retains client-facing storage settings in the top-level table `config`
+for compatibility with clients that do not consume structured entries. When
+credentials are vended, they are retained there as well.
+Polaris currently returns at most one storage configuration entry per table.
 
 There is no standard that defines common property names for vended credentials. The names Polaris
 uses match what the Iceberg SDK expects for each storage type. This page documents the exact
@@ -78,6 +119,10 @@ When a client requests vended credentials by setting the `X-Iceberg-Access-Deleg
 endpoint URL in the properties listed above (one per storage type). Iceberg clients that support
 the Iceberg REST credential-refresh protocol can call this endpoint to obtain fresh credentials
 before the current ones expire, avoiding the need to re-load the table.
+
+The endpoint returns `storage-credentials` entries containing only the refreshed
+credentials. Clients retain client-facing storage settings from the initial table
+response. This response has no top-level `config` compatibility copy.
 
 ## When delegation cannot be satisfied
 

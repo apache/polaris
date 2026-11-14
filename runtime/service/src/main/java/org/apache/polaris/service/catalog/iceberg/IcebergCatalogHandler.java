@@ -976,16 +976,17 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     ImmutableLoadCredentialsResponse.Builder responseBuilder =
         ImmutableLoadCredentialsResponse.builder();
 
-    if (!credentialConfig.isEmpty()) {
-      responseBuilder.addCredentials(
-          ImmutableCredential.builder().prefix(baseLocation).config(credentialConfig).build());
-    } else {
+    if (storageAccessConfig.credentials().isEmpty()) {
       Boolean skipCredIndirection =
           realmConfig().getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
       Preconditions.checkArgument(
           !storageAccessConfig.supportsCredentialVending() || skipCredIndirection,
           "Credential vending was requested for table %s, but no credentials are available",
           tableIdentifier);
+    }
+    if (!credentialConfig.isEmpty()) {
+      responseBuilder.addCredentials(
+          ImmutableCredential.builder().prefix(baseLocation).config(credentialConfig).build());
     }
 
     return responseBuilder.build();
@@ -1181,7 +1182,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         ifNoneMatch,
         actionsRequested,
         resolvedMode,
-        refreshCredentialsEndpoint);
+        refreshCredentialsEndpoint,
+        true);
   }
 
   private Optional<LoadTableResponse> loadTableWithResolvedAuthorization(
@@ -1190,7 +1192,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       IfNoneMatch ifNoneMatch,
       Set<PolarisStorageActions> actionsRequested,
       Optional<AccessDelegationMode> resolvedMode,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      boolean includeExtraPropertiesInCredentials) {
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
       IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
@@ -1223,7 +1226,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   tableMetadata,
                   resolvedMode,
                   actionsRequested,
-                  refreshCredentialsEndpoint)
+                  refreshCredentialsEndpoint,
+                  includeExtraPropertiesInCredentials)
               .build();
       return Optional.of(filterResponseToSnapshots(response, snapshots));
     } else if (table instanceof BaseMetadataTable) {
@@ -1241,6 +1245,17 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Optional<AccessDelegationMode> delegationMode,
       Set<PolarisStorageActions> actions,
       Optional<String> refreshCredentialsEndpoint) {
+    return buildLoadTableResponseWithDelegationCredentials(
+        tableIdentifier, tableMetadata, delegationMode, actions, refreshCredentialsEndpoint, true);
+  }
+
+  private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
+      TableIdentifier tableIdentifier,
+      TableMetadata tableMetadata,
+      Optional<AccessDelegationMode> delegationMode,
+      Set<PolarisStorageActions> actions,
+      Optional<String> refreshCredentialsEndpoint,
+      boolean includeExtraPropertiesInCredentials) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
     PolarisResolvedPathWrapper resolvedStoragePath =
@@ -1276,25 +1291,30 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   actions,
                   refreshCredentialsEndpoint,
                   resolvedStoragePath);
-      Map<String, String> credentialConfig = storageAccessConfig.credentials();
+      // Keep client access configuration at the top level for compatibility with older clients.
+      responseBuilder.addAllConfig(storageAccessConfig.extraProperties());
       if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))) {
-        if (!credentialConfig.isEmpty()) {
-          responseBuilder.addAllConfig(credentialConfig);
-          responseBuilder.addCredential(
-              ImmutableCredential.builder()
-                  .prefix(tableMetadata.location())
-                  .config(credentialConfig)
-                  .build());
-        } else {
+        if (storageAccessConfig.credentials().isEmpty()) {
           Boolean skipCredIndirection =
               realmConfig().getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
           Preconditions.checkArgument(
               !storageAccessConfig.supportsCredentialVending() || skipCredIndirection,
               "Credential vending was requested for table %s, but no credentials are available",
               tableIdentifier);
+        } else {
+          responseBuilder.addAllConfig(storageAccessConfig.credentials());
+          Map<String, String> credentialConfig = new HashMap<>();
+          if (includeExtraPropertiesInCredentials) {
+            credentialConfig.putAll(storageAccessConfig.extraProperties());
+          }
+          credentialConfig.putAll(storageAccessConfig.credentials());
+          responseBuilder.addCredential(
+              ImmutableCredential.builder()
+                  .prefix(tableMetadata.location())
+                  .config(credentialConfig)
+                  .build());
         }
       }
-      responseBuilder.addAllConfig(storageAccessConfig.extraProperties());
     }
 
     return responseBuilder;
@@ -1957,7 +1977,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                 null,
                 actionsRequested,
                 resolvedMode,
-                refreshCredentialsEndpoint)
+                refreshCredentialsEndpoint,
+                false)
             .orElseThrow();
     return ImmutableLoadCredentialsResponse.builder()
         .credentials(loadTableResponse.credentials())
