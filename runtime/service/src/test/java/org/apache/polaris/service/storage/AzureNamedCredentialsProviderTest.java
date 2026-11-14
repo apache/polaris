@@ -77,11 +77,10 @@ class AzureNamedCredentialsProviderTest {
             Mockito.withSettings().defaultAnswer(Answers.RETURNS_SELF),
             (builder, context) ->
                 when(builder.build())
-                    .thenAnswer(
-                        invocation -> {
-                          builds.incrementAndGet();
-                          return mock(ClientSecretCredential.class);
-                        }));
+                    .thenAnswer(invocation -> {
+                      builds.incrementAndGet();
+                      return mock(ClientSecretCredential.class);
+                    }));
   }
 
   @AfterEach
@@ -129,12 +128,11 @@ class AzureNamedCredentialsProviderTest {
   /** The client IDs of the credentials built so far, in build order. */
   private List<String> builtClientIds() {
     return builders.constructed().stream()
-        .map(
-            builder -> {
-              ArgumentCaptor<String> clientId = ArgumentCaptor.forClass(String.class);
-              verify(builder).clientId(clientId.capture());
-              return clientId.getValue();
-            })
+        .map(builder -> {
+          ArgumentCaptor<String> clientId = ArgumentCaptor.forClass(String.class);
+          verify(builder).clientId(clientId.capture());
+          return clientId.getValue();
+        })
         .toList();
   }
 
@@ -180,12 +178,11 @@ class AzureNamedCredentialsProviderTest {
     PolarisStorageIntegrationProviderImpl provider = provider(resolveByName());
 
     int defaultBuilds =
-        defaultCredentialBuilds(
-            () -> {
-              PolarisStorageIntegration integration =
-                  provider.getStorageIntegration(entityPath(type, "team-a", TENANT));
-              assertThat(integration).isInstanceOf(AzureCredentialsStorageIntegration.class);
-            });
+        defaultCredentialBuilds(() -> {
+          PolarisStorageIntegration integration =
+              provider.getStorageIntegration(entityPath(type, "team-a", TENANT));
+          assertThat(integration).isInstanceOf(AzureCredentialsStorageIntegration.class);
+        });
 
     assertThat(builds).hasValue(1);
     assertThat(defaultBuilds).isZero();
@@ -196,10 +193,8 @@ class AzureNamedCredentialsProviderTest {
     PolarisStorageIntegrationProviderImpl provider = provider(resolveByName());
 
     int defaultBuilds =
-        defaultCredentialBuilds(
-            () ->
-                provider.getStorageIntegration(
-                    entityPath(PolarisEntityType.CATALOG, null, TENANT)));
+        defaultCredentialBuilds(() ->
+            provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, null, TENANT)));
 
     assertThat(defaultBuilds).isEqualTo(1);
     assertThat(builds).hasValue(0);
@@ -212,15 +207,13 @@ class AzureNamedCredentialsProviderTest {
     PolarisStorageIntegrationProviderImpl unset = provider(Map.of());
 
     int defaultBuilds =
-        defaultCredentialBuilds(
-            () -> {
-              disabled.getStorageIntegration(
-                  entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
-              unset.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "unknown", TENANT));
-              // The tenant check belongs to named credentials, so it does not apply here either.
-              unset.getStorageIntegration(
-                  entityPath(PolarisEntityType.CATALOG, "team-a", OTHER_TENANT));
-            });
+        defaultCredentialBuilds(() -> {
+          disabled.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
+          unset.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "unknown", TENANT));
+          // The tenant check belongs to named credentials, so it does not apply here either.
+          unset.getStorageIntegration(
+              entityPath(PolarisEntityType.CATALOG, "team-a", OTHER_TENANT));
+        });
 
     assertThat(defaultBuilds).isEqualTo(3);
     assertThat(builds).hasValue(0);
@@ -234,13 +227,12 @@ class AzureNamedCredentialsProviderTest {
     PolarisStorageIntegrationProviderImpl provider = provider(resolveByName());
 
     int defaultBuilds =
-        defaultCredentialBuilds(
-            () ->
-                assertThatThrownBy(
-                        () -> provider.getStorageIntegration(entityPath(type, "unknown", TENANT)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("unknown")
-                    .hasMessageContaining("not configured"));
+        defaultCredentialBuilds(() ->
+            assertThatThrownBy(
+                    () -> provider.getStorageIntegration(entityPath(type, "unknown", TENANT)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unknown")
+                .hasMessageContaining("not configured"));
 
     assertThat(defaultBuilds).isZero();
   }
@@ -251,16 +243,14 @@ class AzureNamedCredentialsProviderTest {
     PolarisStorageIntegrationProviderImpl provider = provider(resolveByName());
 
     int defaultBuilds =
-        defaultCredentialBuilds(
-            () ->
-                assertThatThrownBy(
-                        () ->
-                            provider.getStorageIntegration(
-                                entityPath(PolarisEntityType.CATALOG, "team-a", catalogTenant)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("team-a")
-                    .hasMessageContaining("tenant")
-                    .hasMessageNotContaining(TENANT));
+        defaultCredentialBuilds(() ->
+            assertThatThrownBy(() ->
+                    provider.getStorageIntegration(
+                        entityPath(PolarisEntityType.CATALOG, "team-a", catalogTenant)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("team-a")
+                .hasMessageContaining("tenant")
+                .hasMessageNotContaining(TENANT));
 
     assertThat(builds).hasValue(0);
     assertThat(defaultBuilds).isZero();
@@ -283,18 +273,14 @@ class AzureNamedCredentialsProviderTest {
     PolarisStorageIntegrationProviderImpl provider = provider(flags);
 
     int defaultBuilds =
-        defaultCredentialBuilds(
-            () -> {
-              flags.put(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true);
-              provider.getStorageIntegration(
-                  entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
-              flags.put(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), false);
-              provider.getStorageIntegration(
-                  entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
-              flags.put(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true);
-              provider.getStorageIntegration(
-                  entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
-            });
+        defaultCredentialBuilds(() -> {
+          flags.put(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true);
+          provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
+          flags.put(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), false);
+          provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
+          flags.put(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true);
+          provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, "team-a", TENANT));
+        });
 
     // The realm with the flag off gets the default credential; the realms with it on get team-a's.
     assertThat(defaultBuilds).isEqualTo(1);
@@ -306,11 +292,10 @@ class AzureNamedCredentialsProviderTest {
     PolarisStorageIntegrationProviderImpl provider = provider(resolveByName(), teamAAndUnnamed());
 
     int defaultBuilds =
-        defaultCredentialBuilds(
-            () -> {
-              provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, null, TENANT));
-              provider.getStorageIntegration(entityPath(PolarisEntityType.TASK, null, TENANT));
-            });
+        defaultCredentialBuilds(() -> {
+          provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, null, TENANT));
+          provider.getStorageIntegration(entityPath(PolarisEntityType.TASK, null, TENANT));
+        });
 
     assertThat(defaultBuilds).isZero();
     assertThat(builtClientIds()).containsExactly(UNNAMED_CLIENT_ID, UNNAMED_CLIENT_ID);
@@ -321,10 +306,9 @@ class AzureNamedCredentialsProviderTest {
     PolarisStorageIntegrationProviderImpl provider = provider(Map.of(), teamAAndUnnamed());
 
     int defaultBuilds =
-        defaultCredentialBuilds(
-            () ->
-                provider.getStorageIntegration(
-                    entityPath(PolarisEntityType.CATALOG, "team-a", TENANT)));
+        defaultCredentialBuilds(() ->
+            provider.getStorageIntegration(
+                entityPath(PolarisEntityType.CATALOG, "team-a", TENANT)));
 
     assertThat(defaultBuilds).isZero();
     assertThat(builtClientIds()).containsExactly(UNNAMED_CLIENT_ID);
@@ -345,15 +329,13 @@ class AzureNamedCredentialsProviderTest {
     PolarisStorageIntegrationProviderImpl provider = provider(resolveByName(), teamAAndUnnamed());
 
     int defaultBuilds =
-        defaultCredentialBuilds(
-            () ->
-                assertThatThrownBy(
-                        () ->
-                            provider.getStorageIntegration(
-                                entityPath(PolarisEntityType.CATALOG, null, catalogTenant)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("polaris.storage.azure.tenant-id")
-                    .hasMessageNotContaining(TENANT));
+        defaultCredentialBuilds(() ->
+            assertThatThrownBy(() ->
+                    provider.getStorageIntegration(
+                        entityPath(PolarisEntityType.CATALOG, null, catalogTenant)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("polaris.storage.azure.tenant-id")
+                .hasMessageNotContaining(TENANT));
 
     assertThat(defaultBuilds).isZero();
     assertThat(builds).hasValue(0);
@@ -367,16 +349,14 @@ class AzureNamedCredentialsProviderTest {
     PolarisStorageIntegrationProviderImpl provider = provider(resolveByName(), properties);
 
     int defaultBuilds =
-        defaultCredentialBuilds(
-            () ->
-                assertThatThrownBy(
-                        () ->
-                            provider.getStorageIntegration(
-                                entityPath(PolarisEntityType.CATALOG, null, TENANT)))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("polaris.storage.azure.client-id")
-                    .hasMessageNotContaining("tenant-id")
-                    .hasMessageNotContaining("secret-unnamed"));
+        defaultCredentialBuilds(() ->
+            assertThatThrownBy(() ->
+                    provider.getStorageIntegration(
+                        entityPath(PolarisEntityType.CATALOG, null, TENANT)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("polaris.storage.azure.client-id")
+                .hasMessageNotContaining("tenant-id")
+                .hasMessageNotContaining("secret-unnamed"));
 
     assertThat(defaultBuilds).isZero();
     // A named credential is unaffected.

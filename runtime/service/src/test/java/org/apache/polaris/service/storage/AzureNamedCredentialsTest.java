@@ -176,12 +176,11 @@ class AzureNamedCredentialsTest {
 
   @Test
   void incompleteEntryFailsAtStartupNamingThePropertyButNoValues() {
-    assertThatThrownBy(
-            () ->
-                configFrom(
-                    Map.of(
-                        "polaris.storage.azure.team-a.tenant-id", TENANT,
-                        "polaris.storage.azure.team-a.client-secret", SECRET_A)))
+    assertThatThrownBy(() ->
+            configFrom(
+                Map.of(
+                    "polaris.storage.azure.team-a.tenant-id", TENANT,
+                    "polaris.storage.azure.team-a.client-secret", SECRET_A)))
         .isInstanceOf(ConfigValidationException.class)
         .hasMessageContaining("polaris.storage.azure.team-a.client-id")
         .hasMessageNotContaining(SECRET_A);
