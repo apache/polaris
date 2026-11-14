@@ -26,6 +26,7 @@ import io.smallrye.config.WithDefault;
 import java.net.URI;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 
@@ -57,6 +58,14 @@ public interface OpaAuthorizationConfig {
   }
 
   Optional<URI> policyUri();
+
+  /**
+   * Operator-defined static properties emitted verbatim in the OPA input under {@code
+   * context.properties}. Intended for values that identify the deployment, such as an environment
+   * or tier name. These values are visible to OPA and appear in its decision logs; do not use them
+   * for credentials.
+   */
+  Map<String, String> contextProperties();
 
   AuthenticationConfig auth();
 

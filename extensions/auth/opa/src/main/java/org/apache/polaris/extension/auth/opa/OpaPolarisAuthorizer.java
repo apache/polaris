@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -89,6 +90,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private final ObjectMapper objectMapper;
   private final String requestId;
   private final String realm;
+  private final Map<String, String> contextProperties;
 
   /**
    * Public constructor that accepts a complete policy URI and the current realm identifier.
@@ -104,6 +106,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    *     the originating HTTP request. Resolved once by the caller since this authorizer is
    *     constructed fresh per request.
    * @param realm The realm identifier (from RealmContext) for isolation in OPA policies.
+   * @param contextProperties Operator-defined static properties emitted verbatim under {@code
+   *     context.properties} in the OPA input. Empty when none are configured.
    */
   public OpaPolarisAuthorizer(
       @NonNull URI policyUri,
@@ -111,7 +115,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       @NonNull ObjectMapper objectMapper,
       @Nullable BearerTokenProvider tokenProvider,
       @Nullable String requestId,
-      @NonNull String realm) {
+      @NonNull String realm,
+      @NonNull Map<String, String> contextProperties) {
 
     this.policyUri = policyUri;
     this.tokenProvider = tokenProvider;
@@ -119,6 +124,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     this.objectMapper = objectMapper;
     this.requestId = requestId;
     this.realm = realm;
+    this.contextProperties = contextProperties;
   }
 
   /**
@@ -298,6 +304,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     return ImmutableContext.builder()
         .requestId(requestId != null ? requestId : UUID.randomUUID().toString())
         .realm(realm)
+        .putAllProperties(contextProperties)
         .build();
   }
 
