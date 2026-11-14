@@ -48,6 +48,16 @@ class IcebergRESTFederatedCatalogFactoryTest {
             Map.of(),
             "x-goog-user-project",
             "test-project"),
+        Arguments.of(
+            Map.of("header.x-arbitrary-connection-header", "conn-val"),
+            Map.of(),
+            "x-arbitrary-connection-header",
+            "conn-val"),
+        Arguments.of(
+            Map.of("header.x-override", "conn-override"),
+            Map.of("header.x-override", "cat-val"),
+            "x-override",
+            "conn-override"),
         Arguments.of(Map.of(), Map.of("header.x-custom", "test-value"), "x-custom", "test-value"));
   }
 
