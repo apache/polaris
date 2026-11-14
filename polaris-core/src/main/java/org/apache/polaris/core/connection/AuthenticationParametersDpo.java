@@ -117,7 +117,8 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
                 sigV4AuthenticationParametersModel.getExternalId(),
                 sigV4AuthenticationParametersModel.getSigningRegion(),
                 sigV4AuthenticationParametersModel.getSigningName(),
-                sigV4AuthenticationParametersModel.getSessionPolicy());
+                sigV4AuthenticationParametersModel.getSessionPolicy(),
+                sigV4AuthenticationParametersModel.getStsEndpoint());
         break;
       default:
         throw new IllegalStateException(

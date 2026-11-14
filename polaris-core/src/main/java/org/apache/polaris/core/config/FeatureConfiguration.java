@@ -303,9 +303,10 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_SETTING_S3_ENDPOINTS")
           .description(
-              "If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints.\n"
+              "If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints, "
+                  + "and SigV4 connection configurations to set a custom STS endpoint used for credential vending.\n"
                   + "If set to false, Polaris will not accept catalog create and update requests that contain \n"
-                  + "S3 endpoint properties.")
+                  + "S3 endpoint properties, or catalog create requests that set a SigV4 connection STS endpoint.")
           .defaultValue(true)
           .buildFeatureConfiguration();
 

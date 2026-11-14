@@ -23,6 +23,7 @@ import com.google.common.base.Preconditions;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -150,8 +151,10 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
     // Get STS client from the provider (potentially pooled)
     // The Polaris service identity credentials are set on the AssumeRole request via
     // overrideConfiguration, not on the STS client itself
-    // TODO: Configure proper StsDestination with endpoint from sigv4Params
+    // A null endpoint means the SDK default STS endpoint is used
+    String stsEndpoint = sigv4Params.getStsEndpoint();
+    URI endpoint = stsEndpoint == null ? null : URI.create(stsEndpoint);
     return stsClientProvider.stsClient(
-        StsClientProvider.StsDestination.of(null, sigv4Params.getSigningRegion()));
+        StsClientProvider.StsDestination.of(endpoint, sigv4Params.getSigningRegion()));
   }
 }

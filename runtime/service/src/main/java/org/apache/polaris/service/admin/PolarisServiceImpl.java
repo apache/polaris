@@ -23,6 +23,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -58,6 +60,7 @@ import org.apache.polaris.core.admin.model.Principals;
 import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.SemanticModelGrant;
+import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -220,6 +223,36 @@ public class PolarisServiceImpl
             .toList();
     if (!supportedAuthenticationTypes.contains(authenticationType)) {
       throw new IllegalArgumentException("Unsupported authentication type: " + authenticationType);
+    }
+    if (authenticationParameters instanceof SigV4AuthenticationParameters sigV4Parameters
+        && sigV4Parameters.getStsEndpoint() != null) {
+      validateStsEndpoint(sigV4Parameters.getStsEndpoint());
+    }
+  }
+
+  /**
+   * The SigV4 STS endpoint receives requests signed with Polaris's service identity, so setting it
+   * is gated by the same realm feature as custom S3 endpoints.
+   */
+  private void validateStsEndpoint(String stsEndpoint) {
+    if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)) {
+      throw new IllegalArgumentException("Explicitly setting STS endpoints is not allowed.");
+    }
+    URI uri;
+    try {
+      uri = new URI(stsEndpoint);
+    } catch (URISyntaxException e) {
+      throw new IllegalArgumentException("Invalid stsEndpoint URI.", e);
+    }
+    String scheme = uri.getScheme();
+    if (!("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme))
+        || uri.getHost() == null) {
+      throw new IllegalArgumentException("stsEndpoint must be an absolute http or https URI.");
+    }
+    if ("http".equalsIgnoreCase(scheme)) {
+      LOGGER.warn(
+          "SigV4 connection stsEndpoint uses plain http; AssumeRole requests and session "
+              + "credentials will be sent unencrypted.");
     }
   }
 
