@@ -17,12 +17,18 @@
  * under the License.
  */
 
-plugins { id("polaris-server") }
+plugins {
+  alias(libs.plugins.jmh)
+  id("polaris-server")
+}
 
 dependencies {
   implementation(libs.guava)
 
   testFixturesApi(libs.assertj.core)
+
+  jmhImplementation(libs.jmh.core)
+  jmhAnnotationProcessor(libs.jmh.generator.annprocess)
 }
 
 description = "Provides variable length integer encoding"
