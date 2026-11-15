@@ -125,11 +125,12 @@ tasks.register<JavaExec>("generateOpaSchema") {
   // Only execute generation if anything changed
   outputs.cacheIf { true }
   outputs.file("./opa-input-schema.json")
+  outputs.file("./opa-batch-input-schema.json")
   inputs.files(jsonSchemaGenerator.runtimeClasspath).withNormalizer(ClasspathNormalizer::class.java)
 
   classpath = jsonSchemaGenerator.runtimeClasspath
   mainClass.set("org.apache.polaris.extension.auth.opa.model.OpaSchemaGenerator")
-  args("./opa-input-schema.json")
+  args("./opa-input-schema.json", "./opa-batch-input-schema.json")
 }
 
 // Task to validate that the committed schema matches the generated schema
@@ -145,18 +146,27 @@ tasks.register<JavaExec>("validateOpaSchema") {
       .get()
       .asFile
       .relativeTo(projectDir)
+  val tempBatchSchemaFile =
+    layout.buildDirectory
+      .file("opa-schema/opa-batch-input-schema-generated.json")
+      .get()
+      .asFile
+      .relativeTo(projectDir)
   val committedSchemaFile = file("${projectDir}/opa-input-schema.json")
+  val committedBatchSchemaFile = file("${projectDir}/opa-batch-input-schema.json")
   val logFile = layout.buildDirectory.file("opa-schema/generator.log")
 
   // Only execute validation if anything changed
   outputs.cacheIf { true }
   outputs.file(tempSchemaFile)
+  outputs.file(tempBatchSchemaFile)
   inputs.file(committedSchemaFile).withPathSensitivity(PathSensitivity.RELATIVE)
+  inputs.file(committedBatchSchemaFile).withPathSensitivity(PathSensitivity.RELATIVE)
   inputs.files(jsonSchemaGenerator.runtimeClasspath).withNormalizer(ClasspathNormalizer::class.java)
 
   classpath = jsonSchemaGenerator.runtimeClasspath
   mainClass.set("org.apache.polaris.extension.auth.opa.model.OpaSchemaGenerator")
-  args(tempSchemaFile)
+  args(tempSchemaFile, tempBatchSchemaFile)
   isIgnoreExitValue = true
 
   var outStream: OutputStream? = null
@@ -184,28 +194,34 @@ tasks.register<JavaExec>("validateOpaSchema") {
       )
     }
 
-    val generatedContent = prjDir.resolve(tempSchemaFile).readText().trim()
-    val committedContent = committedSchemaFile.readText().trim()
-
-    if (generatedContent != committedContent) {
-      throw GradleException(
-        """
-        |OPA Schema validation failed!
-        |
-        |The committed opa-input-schema.json does not match the generated schema.
-        |This means the schema is out of sync with the model classes.
-        |
-        |To fix this, run:
-        |  ./gradlew :polaris-extensions-auth-opa:generateOpaSchema
-        |
-        |Then commit the updated opa-input-schema.json file.
-        |
-        |Committed file: ${committedSchemaFile.absolutePath}
-        |Generated file: ${tempSchemaFile.absolutePath}
-      """
-          .trimMargin(),
+    listOf(
+        tempSchemaFile to committedSchemaFile,
+        tempBatchSchemaFile to committedBatchSchemaFile,
       )
-    }
+      .forEach { (tempFile, committedFile) ->
+        val generatedContent = prjDir.resolve(tempFile).readText().trim()
+        val committedContent = committedFile.readText().trim()
+
+        if (generatedContent != committedContent) {
+          throw GradleException(
+            """
+            |OPA Schema validation failed!
+            |
+            |The committed ${committedFile.name} does not match the generated schema.
+            |This means the schema is out of sync with the model classes.
+            |
+            |To fix this, run:
+            |  ./gradlew :polaris-extensions-auth-opa:generateOpaSchema
+            |
+            |Then commit the updated ${committedFile.name} file.
+            |
+            |Committed file: ${committedFile.absolutePath}
+            |Generated file: ${tempFile.absolutePath}
+          """
+              .trimMargin(),
+          )
+        }
+      }
 
     logger.info("OPA schema validation passed - schema is up to date")
   }
