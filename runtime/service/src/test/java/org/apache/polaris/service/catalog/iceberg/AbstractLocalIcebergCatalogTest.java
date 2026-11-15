@@ -2477,6 +2477,39 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         .isTrue();
   }
 
+  @Test
+  public void testSoftDeleteExpireWithPurgeRecordsCustomDataAndMetadataLocations() {
+    LocalIcebergCatalog softCatalog = newSoftDeleteCatalog("PT0S", true);
+    softCatalog.createNamespace(NS);
+    CatalogEntity softCatalogEntity =
+        CatalogEntity.of(softCatalogResolvedCatalogEntity(softCatalog));
+    Assertions.assertThat(softCatalogEntity).isNotNull();
+    String catalogLocation = LocationUtil.stripTrailingSlash(softCatalogEntity.getBaseLocation());
+    String dataLocation = "%s/expire-data/%s".formatted(catalogLocation, UUID.randomUUID());
+    String metadataLocation = "%s/expire-metadata/%s".formatted(catalogLocation, UUID.randomUUID());
+    softCatalog
+        .buildTable(TABLE, SCHEMA)
+        .withProperty(TableProperties.WRITE_DATA_LOCATION, dataLocation)
+        .withProperty(TableProperties.WRITE_METADATA_LOCATION, metadataLocation)
+        .create();
+
+    Assertions.assertThat(softCatalog.dropTable(TABLE, false)).isTrue();
+    expireSoftDeletedTables(softCatalog.name());
+
+    List<PolarisBaseEntity> tasks =
+        metaStoreManager
+            .loadTasks(polarisContext, "testExecutor", PageToken.readEverything())
+            .getEntities();
+    Assertions.assertThat(
+            tasks.stream()
+                .map(TaskEntity::of)
+                .map(TaskEntity::getInternalPropertiesAsMap)
+                .map(TaskUtils::storageLocations)
+                .anyMatch(locations ->
+                    locations.contains(dataLocation) && locations.contains(metadataLocation)))
+        .isTrue();
+  }
+
   private PolarisEntity softCatalogResolvedCatalogEntity(LocalIcebergCatalog softCatalog) {
     EntityResult catalogResult =
         metaStoreManager.readEntityByName(
