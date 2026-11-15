@@ -578,6 +578,7 @@ class CaffeineCacheBackend implements CacheBackend {
           + dataHeapSize;
     }
 
+    /** The type must match the type ID used to construct this entry's cache key. */
     Obj getObj(ObjType type) {
       var buf = ByteBuffer.wrap(objectMetadata);
       var kind = buf.get();
