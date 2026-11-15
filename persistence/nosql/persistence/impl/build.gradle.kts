@@ -166,7 +166,7 @@ val mergeJmhServices =
   tasks.register<MergeJmhServices>("mergeJmhServices") {
     classpath.from(configurations.named("jmhRuntimeClasspath"))
     classpath.from(sourceSets.main.map { it.output })
-    val testOutput = sourceSets.test.get().output
+    val testOutput = sourceSets.test.map { it.output }
     classpath.from(jmh.includeTests.map { if (it) testOutput else emptyList<File>() })
     classpath.from(sourceSets.named("jmh").map { it.output })
     destination.set(layout.buildDirectory.dir("generated/jmh-services"))
