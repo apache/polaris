@@ -129,8 +129,10 @@ class StsCredentialVendingMechanismTest {
         grants(), Optional.empty(), CredentialVendingContext.empty());
 
     verify(storageConfiguration).stsCredentials("named-storage");
-    verify(storageConfiguration, never()).stsCredentials();
-    assertThat(captor.getValue().overrideConfiguration()).isPresent();
+    // The default provider is built once up front, but the vend must use the named one.
+    assertThat(captor.getValue().overrideConfiguration())
+        .flatMap(c -> c.credentialsProvider())
+        .containsSame(namedCredentials);
   }
 
   @Test
@@ -225,7 +227,6 @@ class StsCredentialVendingMechanismTest {
 
     verify(storageConfiguration, times(1)).stsCredentials("storage-a");
     verify(storageConfiguration, times(1)).stsCredentials("storage-b");
-    verify(storageConfiguration, never()).stsCredentials();
     assertThat(captor.getAllValues())
         .extracting(request -> request.overrideConfiguration().get().credentialsProvider().get())
         .containsExactly(aCredentials, bCredentials, aCredentials, bCredentials);

@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.storage;
 
-import com.google.common.base.Suppliers;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -26,7 +25,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -51,6 +49,10 @@ public class StsCredentialVendingMechanism implements S3CredentialVendingMechani
       credentialsResolver;
   private final StorageCredentialCache cache;
   private final RealmConfig realmConfig;
+  // One credentials provider per bean: each new DefaultCredentialsProvider fetches the base
+  // credentials again (IMDS, STS web identity, ...).
+  private final AwsCredentialsProvider defaultCredentials;
+  private final Map<String, AwsCredentialsProvider> namedCredentials;
 
   /**
    * For the client proxy ArC generates for this normal-scoped bean: the proxy subclass needs a
@@ -61,6 +63,8 @@ public class StsCredentialVendingMechanism implements S3CredentialVendingMechani
     this.credentialsResolver = null;
     this.cache = null;
     this.realmConfig = null;
+    this.defaultCredentials = null;
+    this.namedCredentials = null;
   }
 
   @Inject
@@ -72,11 +76,8 @@ public class StsCredentialVendingMechanism implements S3CredentialVendingMechani
     this.stsClientProvider = stsClientProvider;
     this.cache = cache;
     this.realmConfig = realmConfig;
-    // stsCredentials() may build a new DefaultCredentialsProvider on every call, and each new one
-    // fetches the base credentials again (IMDS, STS web identity, ...). Reuse one per bean.
-    Supplier<AwsCredentialsProvider> defaultCredentials =
-        Suppliers.memoize(storageConfiguration::stsCredentials);
-    Map<String, AwsCredentialsProvider> namedCredentials = new ConcurrentHashMap<>();
+    this.defaultCredentials = storageConfiguration.stsCredentials();
+    this.namedCredentials = new ConcurrentHashMap<>();
     this.credentialsResolver =
         config -> {
           if (realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)
@@ -85,7 +86,7 @@ public class StsCredentialVendingMechanism implements S3CredentialVendingMechani
                 namedCredentials.computeIfAbsent(
                     config.getStorageName(), storageConfiguration::stsCredentials));
           }
-          return Optional.of(defaultCredentials.get());
+          return Optional.of(defaultCredentials);
         };
   }
 
@@ -98,6 +99,8 @@ public class StsCredentialVendingMechanism implements S3CredentialVendingMechani
     this.stsClientProvider = stsClientProvider;
     this.cache = cache;
     this.realmConfig = realmConfig;
+    this.defaultCredentials = null;
+    this.namedCredentials = null;
     this.credentialsResolver = config -> stsCredentials;
   }
 
