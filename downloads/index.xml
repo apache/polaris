@@ -1,4 +1,408 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Apache Polaris Releases on Apache Polaris</title><link>https://polaris.apache.org/downloads/</link><description>Recent content in Apache Polaris Releases on Apache Polaris</description><generator>Hugo</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/"&gt;Copyright © 2026 The Apache Software Foundation&lt;/a&gt;.&lt;br&gt;Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0"&gt;Apache License, Version 2.0&lt;/a&gt;.</copyright><atom:link href="https://polaris.apache.org/downloads/index.xml" rel="self" type="application/rss+xml"/><item><title>Apache Polaris 1.8.0</title><link>https://polaris.apache.org/downloads/1.8.0/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/downloads/1.8.0/</guid><description>&lt;p&gt;Released on September 28th, 2026.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Apache Polaris Releases on Apache Polaris</title><link>https://polaris.apache.org/downloads/</link><description>Recent content in Apache Polaris Releases on Apache Polaris</description><generator>Hugo</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/"&gt;Copyright © 2026 The Apache Software Foundation&lt;/a&gt;.&lt;br&gt;Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0"&gt;Apache License, Version 2.0&lt;/a&gt;.</copyright><atom:link href="https://polaris.apache.org/downloads/index.xml" rel="self" type="application/rss+xml"/><item><title>Apache Polaris 1.9.0</title><link>https://polaris.apache.org/downloads/1.9.0/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/downloads/1.9.0/</guid><description>&lt;p&gt;Released on November 14th, 2026.&lt;/p&gt;
+&lt;h3 id="downloads" id="downloads"&gt;Downloads&lt;a class="heading-anchor" href="#downloads" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;table&gt;
+ &lt;thead&gt;
+ &lt;tr&gt;
+ &lt;th&gt;Artifact&lt;/th&gt;
+ &lt;th&gt;PGP Sig&lt;/th&gt;
+ &lt;th&gt;SHA-512&lt;/th&gt;
+ &lt;/tr&gt;
+ &lt;/thead&gt;
+ &lt;tbody&gt;
+ &lt;tr&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.9.0/apache-polaris-1.9.0.tar.gz"&gt;source tar.gz&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.9.0/apache-polaris-1.9.0.tar.gz.asc"&gt;.asc&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.9.0/apache-polaris-1.9.0.tar.gz.sha512"&gt;.sha512&lt;/a&gt;&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.9.0/polaris-bin-1.9.0.tgz"&gt;binary tgz&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.9.0/polaris-bin-1.9.0.tgz.asc"&gt;.asc&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.9.0/polaris-bin-1.9.0.tgz.sha512"&gt;.sha512&lt;/a&gt;&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.9.0/polaris-bin-1.9.0.zip"&gt;binary zip&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.9.0/polaris-bin-1.9.0.zip.asc"&gt;.asc&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.9.0/polaris-bin-1.9.0.zip.sha512"&gt;.sha512&lt;/a&gt;&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.9.0/polaris-spark-3.5_2.12-1.9.0-bundle.jar"&gt;Spark 3.5 with Scala 2.12 Client Jar&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.9.0/polaris-spark-3.5_2.12-1.9.0-bundle.jar.asc"&gt;.asc&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.9.0/polaris-spark-3.5_2.12-1.9.0-bundle.jar.sha512"&gt;.sha512&lt;/a&gt;&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.9.0/polaris-spark-3.5_2.13-1.9.0-bundle.jar"&gt;Spark 3.5 with Scala 2.13 Client Jar&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.9.0/polaris-spark-3.5_2.13-1.9.0-bundle.jar.asc"&gt;.asc&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.9.0/polaris-spark-3.5_2.13-1.9.0-bundle.jar.sha512"&gt;.sha512&lt;/a&gt;&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-4.0_2.13/1.9.0/polaris-spark-4.0_2.13-1.9.0-bundle.jar"&gt;Spark 4.0 with Scala 2.13 Client Jar&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-4.0_2.13/1.9.0/polaris-spark-4.0_2.13-1.9.0-bundle.jar.asc"&gt;.asc&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-4.0_2.13/1.9.0/polaris-spark-4.0_2.13-1.9.0-bundle.jar.sha512"&gt;.sha512&lt;/a&gt;&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3 id="release-notes" id="release-notes"&gt;Release Notes&lt;a class="heading-anchor" href="#release-notes" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;h3 id="upgrade-notes" id="upgrade-notes"&gt;Upgrade notes&lt;a class="heading-anchor" href="#upgrade-notes" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;h3 id="highlights" id="highlights"&gt;Highlights&lt;a class="heading-anchor" href="#highlights" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;Table and view commits no longer delete newly written metadata when the metastore write outcome
+is unknown (e.g. a dropped connection during &lt;code&gt;commit()&lt;/code&gt;); they still clean up on known failures.
+JDBC reports that unknown outcome as &lt;code&gt;PersistenceCommitStateUnknownException&lt;/code&gt; (HTTP 500). A
+connection failure before &lt;code&gt;commit()&lt;/code&gt; is a plain failure and the new metadata file is kept.&lt;/li&gt;
+&lt;li&gt;Polaris now fully supports &amp;ldquo;external&amp;rdquo; principals, that is, principals that are not backed by an
+entity in Polaris metastore. By enabling external principals, either globally or per-realm,
+Polaris now skips the principal entity metastore lookup. This means that synchronizing principals
+between an external IDP and Polaris is not necessary anymore. To enable external principals,
+set the &lt;code&gt;polaris.authentication.credential-mode&lt;/code&gt; option to &lt;code&gt;external&lt;/code&gt;. Note: external principals
+are not compatible with internal authentication and internal authorization; you must configure an
+external IDP and an external PDP, such as OPA or Ranger.&lt;/li&gt;
+&lt;li&gt;S3 storage configurations gain an optional string field, &lt;code&gt;credentialVendingMechanism&lt;/code&gt;. A catalog
+that leaves it empty uses the server&amp;rsquo;s default mechanism, STS AssumeRole, and management API
+responses omit the field for it; &lt;code&gt;STS&lt;/code&gt; selects the same mechanism explicitly and is the only value
+this release supports. Mechanisms are CDI beans discovered by their &lt;code&gt;@Identifier&lt;/code&gt; at startup,
+and each one can validate the catalogs that select it at create and update. A realm lists the
+explicit mechanisms it accepts in the new &lt;code&gt;SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS&lt;/code&gt; feature
+(default &lt;code&gt;[STS]&lt;/code&gt;), enforced at catalog create and update and when the server builds the storage
+integration that vends credentials for a catalog. A catalog that names a mechanism this server
+does not provide is refused at create and update, and whenever a credential is vended for it,
+with &amp;ldquo;S3 credential vending mechanism &lt;code&gt;&amp;lt;id&amp;gt;&lt;/code&gt; is not available in this server&amp;rdquo;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="upgrade-notes-1" id="upgrade-notes-1"&gt;Upgrade notes&lt;a class="heading-anchor" href="#upgrade-notes-1" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS&lt;/code&gt; lists the explicit mechanisms a realm accepts; an empty
+&lt;code&gt;credentialVendingMechanism&lt;/code&gt; is always allowed. Startup reports a listed mechanism with no
+installed bean as a non-severe readiness warning. Startup fails (a severe readiness issue) when no
+&lt;code&gt;STS&lt;/code&gt; mechanism is installed, because every catalog with an empty field depends on it.&lt;/li&gt;
+&lt;li&gt;Rolling upgrades: a node still running an earlier release does not know &lt;code&gt;credentialVendingMechanism&lt;/code&gt;.
+It ignores the field in a stored configuration and vends through STS, and it drops the field from
+the catalog create and update requests it serves. Keep S3 storage configurations unchanged during
+the upgrade.&lt;/li&gt;
+&lt;li&gt;Polaris-managed AWS SDK clients now use Apache HttpClient 5, which disables HTTP
+&lt;code&gt;Expect: 100-continue&lt;/code&gt; by default. Set &lt;code&gt;polaris.storage.expect-continue-enabled=true&lt;/code&gt;
+to preserve the previous behavior. Iceberg S3 clients continue to use Apache HttpClient 4
+and retain their existing default.&lt;/li&gt;
+&lt;li&gt;The &lt;code&gt;apache-polaris&lt;/code&gt; Python package no longer depends on &lt;code&gt;boto3&lt;/code&gt;, which it never used. Environments
+that relied on it being installed transitively must now install &lt;code&gt;boto3&lt;/code&gt; explicitly.&lt;/li&gt;
+&lt;li&gt;Relational JDBC: The per-schema-version runtime fallback has been removed. The migration to schema
+v6 is now &lt;strong&gt;required&lt;/strong&gt; before starting this version of Polaris. The first request to any realm
+whose recorded schema version does not match what the binary expects will fail fast with a clear
+error message. See the [Relational JDBC metastore documentation] for the full upgrade path.&lt;/li&gt;
+&lt;li&gt;New privilege &lt;code&gt;CATALOG_READ_CONFIG&lt;/code&gt; (authorizable operation &lt;code&gt;GET_CATALOG_CONFIG&lt;/code&gt;) is available for
+the Iceberg REST &lt;code&gt;GET /v1/config&lt;/code&gt; endpoint. The endpoint hard-gate is &lt;strong&gt;off by default&lt;/strong&gt; behind
+&lt;code&gt;polaris.features.&amp;quot;ENFORCE_CATALOG_CONFIG_AUTHORIZATION&amp;quot;&lt;/code&gt;, so upgrades do not 403 bootstrap. When
+enabled, callers need &lt;code&gt;CATALOG_READ_CONFIG&lt;/code&gt; (or a catalog-level content privilege that subsumes
+it). A 200 still returns catalog properties (&lt;code&gt;defaults&lt;/code&gt;) as today. Before enabling: grant
+&lt;code&gt;CATALOG_READ_CONFIG&lt;/code&gt; and update Ranger/OPA policies for &lt;code&gt;GET_CATALOG_CONFIG&lt;/code&gt;. Ranger currently
+maps that operation to the existing &lt;code&gt;catalog-properties-read&lt;/code&gt; access type — do not enable the flag
+for Ranger until a dedicated &lt;code&gt;catalog-config-read&lt;/code&gt; access type exists (or accept that coarse
+mapping). A production-readiness warning is emitted while the flag remains false. The default will
+not flip until client-facing catalog configuration is defined. Table- or namespace-scoped grants
+alone do not satisfy the catalog-path check used for &lt;code&gt;CATALOG_READ_CONFIG&lt;/code&gt; once enforcement is on.&lt;/li&gt;
+&lt;li&gt;Tables last committed by a Polaris version older than 1.3.0 have all their locations validated on
+their next commit. That commit fails if the locations do not satisfy the current location rules,
+for example the catalog&amp;rsquo;s allowed locations.&lt;/li&gt;
+&lt;li&gt;Loading a table whose metadata location or &lt;code&gt;write.data.path&lt;/code&gt; / &lt;code&gt;write.metadata.path&lt;/code&gt; differs from
+the values recorded in Polaris now fails with a &lt;code&gt;ForbiddenException&lt;/code&gt;, without any commit being
+attempted. Tables last committed before 1.3.0 have no recorded values and are not affected until
+their next commit.&lt;/li&gt;
+&lt;li&gt;Purging a table, and deleting metadata files after a commit
+(&lt;code&gt;write.metadata.delete-after-commit.enabled&lt;/code&gt;), no longer delete files located outside the
+table&amp;rsquo;s location. Such files are left in place and a warning is logged.&lt;/li&gt;
+&lt;li&gt;Purging a table now fails with a 400 error if the table entity has no recorded location, and with
+a 403 error if the locations in the table metadata don&amp;rsquo;t match the ones recorded on the entity.
+For tables created before 1.3.0, custom &lt;code&gt;write.data.path&lt;/code&gt; and &lt;code&gt;write.metadata.path&lt;/code&gt; locations are
+taken from the table metadata, since they were not recorded on the entity. Purge tasks that were
+queued by an older version only carry the table&amp;rsquo;s base location: files under a custom
+&lt;code&gt;write.data.path&lt;/code&gt; or &lt;code&gt;write.metadata.path&lt;/code&gt; outside of it are not deleted by those tasks.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="breaking-changes" id="breaking-changes"&gt;Breaking changes&lt;a class="heading-anchor" href="#breaking-changes" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;Creating a Generic Table with an explicit, non-empty &lt;code&gt;base-location&lt;/code&gt; now validates that
+location against the catalog&amp;rsquo;s allowed locations and, unless &lt;code&gt;ALLOW_UNSTRUCTURED_TABLE_LOCATION&lt;/code&gt;
+is enabled, the parent namespace location. Requests that previously stored disallowed locations
+are now rejected. Omitting the location or sending an empty string retains its previous behavior.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;LIST_PAGINATION_ENABLED&lt;/code&gt; now defaults to true. List APIs honor pagination parameters and reject
+invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
+size or supplying a page token. A request that supplies neither still returns all results, unless
+a positive &lt;code&gt;LIST_PAGINATION_MAX_PAGE_SIZE&lt;/code&gt; is configured and the result does not fit, in which
+case it is rejected rather than truncated. To keep the previous behavior, set
+&lt;code&gt;LIST_PAGINATION_ENABLED=false&lt;/code&gt; or the catalog property &lt;code&gt;polaris.config.list-pagination-enabled=false&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;The &lt;code&gt;PolarisPrincipal&lt;/code&gt; interface has evolved. The &lt;code&gt;getAttributes()&lt;/code&gt; method now returns
+&lt;code&gt;org.apache.polaris.core.collection.ImmutableAttributeMap&lt;/code&gt;. The attribute keys were moved to a
+new &lt;code&gt;org.apache.polaris.core.auth.PolarisPrincipalAttributes&lt;/code&gt; class.&lt;/li&gt;
+&lt;li&gt;Relational JDBC: Per-version schema scripts (&lt;code&gt;schema-v1.sql&lt;/code&gt; through &lt;code&gt;schema-v5.sql&lt;/code&gt;) have been
+replaced by a single &lt;code&gt;schema.sql&lt;/code&gt; that is safe to run on every startup. Per-version runtime
+compatibility fallbacks and the &lt;code&gt;SCHEMA_VERSION_FALL_BACK_ON_DNE&lt;/code&gt; configuration key have been
+removed. Operators must ensure their database is at the right schema version before upgrading to
+this version.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;PolarisAuthorizer&lt;/code&gt; implementations should resolve entities with respect to selectors recorded
+in &lt;code&gt;AuthorizationState&lt;/code&gt;. Implementations that used to call &lt;code&gt;PolarisResolutionManifest.resolveAll()&lt;/code&gt;
+are functionally compatible with the new Polaris code. However, implementations that used to call
+&lt;code&gt;resolveSelections()&lt;/code&gt; may be incompatible with the new Polaris code, because in some cases the
+REST API implementation code requests additional selections via &lt;code&gt;AuthorizationState&lt;/code&gt;.
+All implementations should call &lt;code&gt;AuthorizationState.resolve()&lt;/code&gt; now.&lt;/li&gt;
+&lt;li&gt;The event attribute &lt;code&gt;EventAttributes.ACCESS_DELEGATION_MODE&lt;/code&gt; (&lt;code&gt;String&lt;/code&gt;) has been replaced with
+&lt;code&gt;EventAttributes.ACCESS_DELEGATION_MODES&lt;/code&gt; (&lt;code&gt;List&amp;lt;String&amp;gt;&lt;/code&gt;). Accordingly, the OpenTelemetry event
+listener now emits &lt;code&gt;polaris.access_delegation_modes&lt;/code&gt; instead of &lt;code&gt;polaris.access_delegation_mode&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Table and view renames now validate locations against the destination namespace. Existing tables
+also validate their namespace location during commits and credential vending. With
+&lt;code&gt;ALLOW_UNSTRUCTURED_TABLE_LOCATION=false&lt;/code&gt; (default), operations involving locations outside the
+namespace now return HTTP 403. Catalogs that enable unstructured locations remain subject to
+catalog allowlists and configured overlap checks.&lt;/li&gt;
+&lt;li&gt;With &lt;code&gt;ALLOW_UNSTRUCTURED_TABLE_LOCATION=false&lt;/code&gt;, creating or registering a table whose
+&lt;code&gt;write.data.path&lt;/code&gt; or &lt;code&gt;write.metadata.path&lt;/code&gt; lies outside the table&amp;rsquo;s own location now fails with
+403 Forbidden. Such tables could be created before, but loading them or vending credentials for
+them already failed.&lt;/li&gt;
+&lt;li&gt;Unless &lt;code&gt;ALLOW_TABLE_LOCATION_OVERLAP&lt;/code&gt; is enabled, a table can no longer be created at a location
+that overlaps the &lt;code&gt;write.data.path&lt;/code&gt; or &lt;code&gt;write.metadata.path&lt;/code&gt; of an existing sibling table, and
+sibling tables can no longer share such a path. A namespace can no longer be created at such a
+location unless &lt;code&gt;ALLOW_NAMESPACE_LOCATION_OVERLAP&lt;/code&gt; is enabled.&lt;/li&gt;
+&lt;li&gt;With &lt;code&gt;OPTIMIZED_SIBLING_CHECK&lt;/code&gt; enabled, Polaris now also lists siblings after the indexed
+overlap check when &lt;code&gt;ALLOW_UNSTRUCTURED_TABLE_LOCATION&lt;/code&gt; is enabled or the catalog is external, to
+check sibling tables&amp;rsquo; &lt;code&gt;write.data.path&lt;/code&gt; and &lt;code&gt;write.metadata.path&lt;/code&gt;. Validation may take longer in
+such catalogs for namespaces with many entities. Checks against other tables&amp;rsquo; write paths remain
+limited to siblings under the same parent.&lt;/li&gt;
+&lt;li&gt;With &lt;code&gt;ALLOW_UNSTRUCTURED_TABLE_LOCATION=true&lt;/code&gt;, and in &lt;code&gt;EXTERNAL&lt;/code&gt; catalogs, credentials are no
+longer vended for a table whose &lt;code&gt;write.data.path&lt;/code&gt; or &lt;code&gt;write.metadata.path&lt;/code&gt; lies outside its own
+location and overlaps another table or namespace. Such requests fail with 403 Forbidden. This
+check does not apply when &lt;code&gt;ALLOW_TABLE_LOCATION_OVERLAP&lt;/code&gt; is enabled, and it only applies to
+catalogs served by &lt;code&gt;LocalIcebergCatalog&lt;/code&gt;, not to federated catalogs.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="new-features" id="new-features"&gt;New Features&lt;a class="heading-anchor" href="#new-features" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;The &lt;code&gt;X-Iceberg-Access-Delegation&lt;/code&gt; header now accepts &lt;code&gt;none&lt;/code&gt;, as defined by the Iceberg REST
+specification, meaning the client can operate without delegated access. A request that includes
+&lt;code&gt;none&lt;/code&gt;, alone or together with other values, is handled like a request without the header: the
+table is returned without credentials and no delegation privilege is required.&lt;/li&gt;
+&lt;li&gt;Shared CloudEvents 1.0 JSON mapper for Polaris events (&lt;code&gt;CloudEventsEventJsonMapper&lt;/code&gt; next to
+the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in &lt;code&gt;data&lt;/code&gt;, and a
+lowercased reverse-DNS &lt;code&gt;type&lt;/code&gt; (e.g. &lt;code&gt;org.apache.polaris.after_create_table&lt;/code&gt;). Transport listeners
+(webhook / Kafka / CloudWatch) can adopt this in follow-ups.&lt;/li&gt;
+&lt;li&gt;Python CLI: added &lt;code&gt;register&lt;/code&gt; support for both &lt;code&gt;tables&lt;/code&gt; and &lt;code&gt;views&lt;/code&gt; commands&lt;/li&gt;
+&lt;li&gt;Python CLI: &lt;code&gt;setup export&lt;/code&gt; and &lt;code&gt;setup apply&lt;/code&gt; now support both Iceberg tables and views as register entries.&lt;/li&gt;
+&lt;li&gt;Python CLI: added &lt;code&gt;namespaces update&lt;/code&gt; to set and remove namespace properties&lt;/li&gt;
+&lt;li&gt;NoSQL: the commit retry settings are now configurable via &lt;code&gt;polaris.persistence.retry.*&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;Python CLI: added global &lt;code&gt;--ssl-ca-cert&lt;/code&gt; and &lt;code&gt;--insecure&lt;/code&gt; options to verify the server with a custom CA bundle or to disable TLS certificate verification&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="changes" id="changes"&gt;Changes&lt;a class="heading-anchor" href="#changes" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;Azure credential vending now maps MSAL authentication failures using their HTTP status codes,
+including the existing &lt;code&gt;401&lt;/code&gt; to &lt;code&gt;403&lt;/code&gt; and &lt;code&gt;404&lt;/code&gt; to &lt;code&gt;400&lt;/code&gt; mappings.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;PolarisMetaStoreManager.hasOverlappingSiblings&lt;/code&gt; and &lt;code&gt;BasePersistence.hasOverlappingSiblings&lt;/code&gt; now
+take the ids of the entity&amp;rsquo;s catalog and parent namespaces, so implementations exclude them
+without re-reading the parent chain from the metastore, and return a &lt;code&gt;LocationOverlapResult&lt;/code&gt;. They
+also take an optional search root: when set, only the entities located at or below it are
+considered, which allows renamed entities to be checked against the destination namespace only.
+Implementations must also ignore the entity itself, identified by its id, so that an already
+persisted entity does not conflict with its own location.&lt;/li&gt;
+&lt;li&gt;Apache Iceberg has been upgraded to 1.12.0. The Java REST client now encodes spaces in namespace
+and table names as &lt;code&gt;%20&lt;/code&gt; instead of &lt;code&gt;+&lt;/code&gt; (apache/iceberg#15989). Polaris decodes path segments
+per RFC 3986 and has always treated &lt;code&gt;+&lt;/code&gt; as a literal character, so the server behaves the same for
+all clients.&lt;/li&gt;
+&lt;li&gt;The entity cache now also weighs the grant records of cached entities, so &lt;code&gt;ENTITY_CACHE_WEIGHER_TARGET&lt;/code&gt;
+accounts for them. Entities with many grants weigh more, which can lead to more evictions than before
+with the same configured value. The description of &lt;code&gt;ENTITY_CACHE_WEIGHER_TARGET&lt;/code&gt; now documents that
+its weights approximate bytes.&lt;/li&gt;
+&lt;li&gt;The &lt;code&gt;apache-polaris&lt;/code&gt; Python package now accepts &lt;code&gt;pydantic&lt;/code&gt; from 2.12 up to, but excluding, 3.0
+instead of a single minor version, so it can be installed alongside packages that pin &lt;code&gt;pydantic&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;TABLE_MANAGE_STRUCTURE&lt;/code&gt; and the fine-grained table update privileges (such as
+&lt;code&gt;TABLE_ASSIGN_UUID&lt;/code&gt;, &lt;code&gt;TABLE_ADD_SCHEMA&lt;/code&gt; or &lt;code&gt;TABLE_SET_PROPERTIES&lt;/code&gt;) now subsume
+&lt;code&gt;TABLE_READ_PROPERTIES&lt;/code&gt;, consistent with &lt;code&gt;TABLE_WRITE_PROPERTIES&lt;/code&gt;, because a table update returns
+the full table metadata. Roles holding only one of these privileges can now also load the table,
+get the applicable policies on the table, and load the table as a generic table, since all of these
+operations require &lt;code&gt;TABLE_READ_PROPERTIES&lt;/code&gt;.
+In the Ranger service definition, the corresponding access types (&lt;code&gt;table-structure-manage&lt;/code&gt;,
+&lt;code&gt;table-uuid-assign&lt;/code&gt;, etc.) now imply &lt;code&gt;table-properties-read&lt;/code&gt;; the service definition must be
+re-imported into Ranger for this to take effect.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="fixes" id="fixes"&gt;Fixes&lt;a class="heading-anchor" href="#fixes" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;Credential vending no longer ends up with no allowed read/write locations when a table&amp;rsquo;s data
+or metadata path matches its base location except for the scheme (for example &lt;code&gt;abfss://&lt;/code&gt; vs
+&lt;code&gt;abfs://&lt;/code&gt;) or a trailing slash. Such locations are mutual children, so the previous logic dropped
+both and left the set empty. The base location is now kept as the surviving representative.&lt;/li&gt;
+&lt;li&gt;The Iceberg REST &lt;code&gt;/config&lt;/code&gt; response now advertises the
+&lt;code&gt;GET /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials&lt;/code&gt; endpoint, which Polaris
+already served. Clients that check advertised endpoints before refreshing vended credentials can
+now use it.&lt;/li&gt;
+&lt;li&gt;Creating an external catalog whose &lt;code&gt;connectionConfigInfo&lt;/code&gt; has no &lt;code&gt;authenticationParameters&lt;/code&gt;, or
+uses a connection or authentication type outside the realm&amp;rsquo;s allow-list, now fails with
+&lt;code&gt;400 Bad Request&lt;/code&gt; instead of &lt;code&gt;500 Internal Server Error&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Iceberg REST &lt;code&gt;GET /v1/config&lt;/code&gt; can optionally require &lt;code&gt;CATALOG_READ_CONFIG&lt;/code&gt; (operation
+&lt;code&gt;GET_CATALOG_CONFIG&lt;/code&gt;). The check is off by default behind
+&lt;code&gt;ENFORCE_CATALOG_CONFIG_AUTHORIZATION&lt;/code&gt;; when enabled, unauthorized callers get 403. A 200 still
+returns catalog properties (&lt;code&gt;defaults&lt;/code&gt;) as today. Previously any authenticated principal who
+knew a warehouse name could call the endpoint with no AuthZ.&lt;/li&gt;
+&lt;li&gt;Helm chart: &lt;code&gt;helm test&lt;/code&gt; now runs the chart&amp;rsquo;s connection test. Previously the test was left out of
+the packaged chart, so &lt;code&gt;helm test&lt;/code&gt; ran no tests.&lt;/li&gt;
+&lt;li&gt;Credential vending with a statically configured GCP access token (&lt;code&gt;polaris.storage.gcp.token&lt;/code&gt;)
+failed immediately with an &lt;code&gt;IllegalStateException&lt;/code&gt;, because the token was wrapped in a credential
+that cannot refresh and vending calls refresh before downscoping. The configured token is now
+wrapped in a credential that supports refresh, returning the token with a fixed expiry. The expiry
+can be set explicitly via &lt;code&gt;polaris.storage.gcp.expiry&lt;/code&gt; (an ISO-8601 instant); when unset it is
+computed from &lt;code&gt;polaris.storage.gcp.lifespan&lt;/code&gt; as before.&lt;/li&gt;
+&lt;li&gt;NoSQL commits resend unresolved object writes on retry, preventing successful commits from
+referencing objects left unwritten by a previous attempt.&lt;/li&gt;
+&lt;li&gt;Maintenance policy content now rejects non-boolean values for the &lt;code&gt;enable&lt;/code&gt; field again. The
+strict boolean check (&lt;code&gt;StrictBooleanDeserializer&lt;/code&gt;) stopped running when policy parsing moved to
+Jackson 3, because it was wired through a Jackson 2 &lt;code&gt;@JsonDeserialize&lt;/code&gt; annotation that the Jackson
+3 mapper ignores. As a result values such as &lt;code&gt;&amp;quot;TRUE&amp;quot;&lt;/code&gt;, &lt;code&gt;1&lt;/code&gt; and &lt;code&gt;0&lt;/code&gt; were leniently coerced instead
+of rejected. The deserializer is ported to the Jackson 3 API and applied to the &lt;code&gt;enable&lt;/code&gt; creator
+parameter, so only JSON &lt;code&gt;true&lt;/code&gt;/&lt;code&gt;false&lt;/code&gt; (and the lowercase string forms) are accepted.&lt;/li&gt;
+&lt;li&gt;The H2 relational JDBC init script no longer overwrites the recorded schema version. It now seeds
+the &lt;code&gt;version&lt;/code&gt; table only when absent, matching the &lt;code&gt;ON CONFLICT DO NOTHING&lt;/code&gt; behavior of the
+PostgreSQL and CockroachDB scripts. Previously, running bootstrap against an older, unmigrated H2
+database silently stamped it with the current version, which defeated the schema-compatibility
+check and let the server run against an unmigrated schema.&lt;/li&gt;
+&lt;li&gt;NoSQL maintenance: realm purging now honors its own state filter consistently. &lt;code&gt;purgeRealms&lt;/code&gt;
+keeps only realms in &lt;code&gt;PURGING&lt;/code&gt;/&lt;code&gt;PURGED&lt;/code&gt; state (and logs the rest as &amp;ldquo;will therefore not be
+purged&amp;rdquo;), but the direct &lt;code&gt;backend.deleteRealms(...)&lt;/code&gt; call and the subsequent realm-status update
+used the unfiltered run-spec list, so a realm the filter had excluded (for example an &lt;code&gt;ACTIVE&lt;/code&gt;
+realm whose ID was listed in a stale spec) could still be wiped while the log claimed it was
+skipped, and the attempt to mark it &lt;code&gt;PURGED&lt;/code&gt; failed the whole run on an invalid state transition.
+The direct deletion, the purged-realm count, and the status update now use the same filtered set
+as the scan-based deletion.&lt;/li&gt;
+&lt;li&gt;Creating a table or view at exactly its namespace&amp;rsquo;s own location is now rejected under the
+default (non-optimized) sibling-overlap check, matching the behavior already enforced when
+&lt;code&gt;OPTIMIZED_SIBLING_CHECK&lt;/code&gt; is enabled. Such a location is a prefix of every sibling created later
+under the namespace, which blocked all subsequent sibling creates and over-scoped credentials
+vended for that entity to the whole namespace.&lt;/li&gt;
+&lt;li&gt;Internal token verification now tolerates up to 5 seconds of clock skew on the &lt;code&gt;iat&lt;/code&gt; claim. With
+multiple Polaris nodes, a token minted on one node and immediately used on another node whose
+clock was a few milliseconds behind could be rejected with HTTP 401 when the token was minted
+right after a second boundary. Token expiry is still enforced without leeway.&lt;/li&gt;
+&lt;li&gt;NoSQL maintenance: spilled &lt;code&gt;IndexStripeObj&lt;/code&gt; segments are retained when identify walks an index via
+&lt;code&gt;indexForRead&lt;/code&gt; (&lt;code&gt;RetainedCollectorImpl.buildReadIndex&lt;/code&gt;), and &lt;code&gt;PrincipalsObj.byClientId&lt;/code&gt; is retained
+explicitly. Previously only a subset of indexes got &lt;code&gt;indexRetain&lt;/code&gt;, so after a spill past
+&lt;code&gt;maxEmbeddedIndexSize&lt;/code&gt; maintenance could delete still-needed stripes and leave catalog indexes
+unreadable (&lt;code&gt;references a reference index, which does not exist&lt;/code&gt;).&lt;/li&gt;
+&lt;li&gt;The &lt;code&gt;root&lt;/code&gt; principal can no longer be dropped or renamed. Realm bootstrap identifies a
+bootstrapped realm by the presence of a principal named &lt;code&gt;root&lt;/code&gt;, so removing or renaming it caused
+every newly started process to treat the realm as not bootstrapped (failing all requests,
+including the token endpoint), and re-running bootstrap could not cleanly repair it. It is now
+protected like the &lt;code&gt;service_admin&lt;/code&gt; and &lt;code&gt;catalog_admin&lt;/code&gt; roles.&lt;/li&gt;
+&lt;li&gt;Dropped-table purge on NoSQL no longer fails when a manifest or metadata path is longer than
+the 500-byte index-key limit. Child cleanup task names are a short kind, the parent task id,
+and a UUID. The full paths stay in the task payload.&lt;/li&gt;
+&lt;li&gt;Deleting an external catalog now also deletes the inline connection secrets (OAuth client secret
+or bearer token) that were written to the &lt;code&gt;UserSecretsManager&lt;/code&gt; when the catalog was created.
+Previously they stayed in the secrets store with no entity referencing them.&lt;/li&gt;
+&lt;li&gt;Catalog federation: &lt;code&gt;connectionConfigInfo.properties&lt;/code&gt; is now persisted and returned for &lt;code&gt;HADOOP&lt;/code&gt;
+and &lt;code&gt;HIVE&lt;/code&gt; connection configurations. It was previously accepted by the management API but
+silently dropped, so &lt;code&gt;GET /catalogs/{name}&lt;/code&gt; never showed it.&lt;/li&gt;
+&lt;li&gt;Catalog federation: &lt;code&gt;connectionConfigInfo.properties&lt;/code&gt; is now applied when Polaris initializes
+the Iceberg client for &lt;code&gt;HADOOP&lt;/code&gt; and &lt;code&gt;HIVE&lt;/code&gt; catalogs. As for &lt;code&gt;ICEBERG_REST&lt;/code&gt;, only an explicit
+allow-list is forwarded: &lt;code&gt;suppress-permission-error&lt;/code&gt; (Hadoop), &lt;code&gt;clients&lt;/code&gt; and &lt;code&gt;list-all-tables&lt;/code&gt;
+(Hive), plus the non-secret FileIO settings &lt;code&gt;s3.endpoint&lt;/code&gt;,
+&lt;code&gt;s3.path-style-access&lt;/code&gt; and &lt;code&gt;client.region&lt;/code&gt; for both. Other keys are stored but ignored.&lt;/li&gt;
+&lt;li&gt;Semantic models: a &lt;code&gt;datasets&lt;/code&gt; field that is not a JSON array now returns &lt;code&gt;400 Bad Request&lt;/code&gt;
+instead of being silently skipped, which bypassed every &lt;code&gt;dataset.source&lt;/code&gt; check.&lt;/li&gt;
+&lt;li&gt;Conditional &lt;code&gt;loadTable&lt;/code&gt; (&lt;code&gt;If-None-Match&lt;/code&gt; → HTTP 304) no longer attaches a null
+&lt;code&gt;LOAD_TABLE_RESPONSE&lt;/code&gt; to the &lt;code&gt;AFTER_LOAD_TABLE&lt;/code&gt; event. The persistence event listener also
+skips null attribute values instead of failing while pruning them.&lt;/li&gt;
+&lt;li&gt;NoSQL index keys: &lt;code&gt;IndexKey.skip&lt;/code&gt; now counts decoded key length the same way as
+&lt;code&gt;deserializeKey&lt;/code&gt;. Previously it counted two units per escaped &lt;code&gt;0x01&lt;/code&gt;/&lt;code&gt;0x02&lt;/code&gt; byte against the
+same 500 limit, so a key that had been written successfully (for example 251 bytes of &lt;code&gt;0x01&lt;/code&gt;)
+could make index deserialization throw and leave the index container unreadable.&lt;/li&gt;
+&lt;li&gt;The credential-rotation pre-condition is now enforced by a JAX-RS filter instead of by each
+authorizer. With &lt;code&gt;ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING&lt;/code&gt; enabled, a principal
+whose credentials were reset but never rotated can only call the rotate-credentials endpoint,
+whichever authorizer is configured. Previously the internal and Ranger authorizers enforced it
+but OPA did not, and the rotation state is not part of the OPA input document, so a policy could
+not compensate.&lt;/li&gt;
+&lt;li&gt;Re-creating an existing namespace now returns &lt;code&gt;409 Conflict&lt;/code&gt; instead of &lt;code&gt;403 Forbidden&lt;/code&gt; when
+&lt;code&gt;OPTIMIZED_SIBLING_CHECK&lt;/code&gt; is on. Namespace creation checks for an existing namespace before
+validating locations, as table and view creation already do, so the existing namespace&amp;rsquo;s own
+location is no longer reported as a conflict.&lt;/li&gt;
+&lt;li&gt;A list request whose &lt;code&gt;pageSize&lt;/code&gt; is not a number now returns &lt;code&gt;400 Bad Request&lt;/code&gt; naming the
+parameter, instead of &lt;code&gt;404 Not Found&lt;/code&gt;. The status is now the same on every API that accepts
+&lt;code&gt;pageSize&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Ranger authorizer: a table or policy under a nested namespace is no longer mapped to the wrong
+Ranger resource. Namespace levels now occupy a single namespace resource instead of one each,
+so a policy written for the nested namespace matches.&lt;/li&gt;
+&lt;li&gt;Updating a policy without &lt;code&gt;current-policy-version&lt;/code&gt; now returns &lt;code&gt;400 Bad Request&lt;/code&gt; naming the
+missing field, instead of &lt;code&gt;500 Internal Server Error&lt;/code&gt;. The field is used for the policy&amp;rsquo;s
+optimistic version check, so a request without it is rejected and the policy is unchanged.&lt;/li&gt;
+&lt;li&gt;Ranger authorizer: &lt;code&gt;table-data-write&lt;/code&gt; now confers &lt;code&gt;table-properties-write&lt;/code&gt;, as the built-in
+authorizer already does. Without it, a Ranger policy granting only &lt;code&gt;table-data-write&lt;/code&gt; was
+refused operations the same grant allows under the built-in authorizer. Existing deployments
+must re-register the updated service definition with Ranger Admin for this to take effect;
+upgrading Polaris alone does not change the definition already persisted there.&lt;/li&gt;
+&lt;li&gt;Policy API: detaching a policy from a target it was never attached to now returns
+&lt;code&gt;404 Not Found&lt;/code&gt; with error type &lt;code&gt;NoSuchMappingException&lt;/code&gt;, as the policy API specification
+requires, instead of &lt;code&gt;500 Internal Server Error&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;One failing event no longer fails an entire OpenLineage batch ingest request. It is reported as a
+non-retriable failed entry for that event.&lt;/li&gt;
+&lt;li&gt;Registering a table whose stored metadata file is no longer readable no longer fails: with
+overwrite it replaces the metadata location, and without overwrite it reports the table as
+already existing.&lt;/li&gt;
+&lt;li&gt;Relational JDBC: the location-overlap check now escapes SQL &lt;code&gt;LIKE&lt;/code&gt; wildcards (&lt;code&gt;%&lt;/code&gt;, &lt;code&gt;_&lt;/code&gt;) and the
+escape character (&lt;code&gt;\&lt;/code&gt;) that appear literally in a table or namespace location. Previously these
+characters were interpreted as wildcards, which could over-fetch candidate rows and, for a literal
+&lt;code&gt;\&lt;/code&gt;, silently miss true descendants during the overlapping-siblings check.&lt;/li&gt;
+&lt;li&gt;OPA authorizer HTTP client creation no longer silently falls back to a default client when
+truststore or SSL setup fails. Misconfiguration (for example a bad truststore path) now fails
+startup instead of continuing with system trust and no configured response timeout.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;bootstrap&lt;/code&gt; no longer creates realms whose root principal is unreachable. Credentials were
+required only when none at all were supplied, so an invocation naming credentials for just
+some of its realms bootstrapped the rest with randomly generated secrets that were never
+printed, and reported them successfully bootstrapped. Every &lt;code&gt;--realm&lt;/code&gt; must now have a
+matching &lt;code&gt;--credential&lt;/code&gt; unless &lt;code&gt;--print-credentials&lt;/code&gt; is given; otherwise the command names
+the realms that are missing credentials and exits without bootstrapping anything.
+&lt;code&gt;--credentials-file&lt;/code&gt; is unaffected.&lt;/li&gt;
+&lt;li&gt;Table notifications (&lt;code&gt;CREATE&lt;/code&gt;/&lt;code&gt;UPDATE&lt;/code&gt;) that reference a metadata location outside the catalog&amp;rsquo;s
+allowed locations are now rejected before any missing parent namespaces are auto-created, so a
+rejected notification no longer leaves orphaned namespaces behind.&lt;/li&gt;
+&lt;li&gt;Fixed &lt;code&gt;OPTIMIZED_SIBLING_CHECK&lt;/code&gt; rejecting every entity created under a namespace. The location
+index lookup returns the new entity&amp;rsquo;s own parent namespaces, whose locations contain the new
+location whenever locations follow the namespace tree, and each backend treated them as
+overlapping siblings, so nested namespace creation and default-location table creation failed
+with &lt;code&gt;403 Forbidden&lt;/code&gt;. The JDBC, NoSQL, and in-memory implementations of &lt;code&gt;hasOverlappingSiblings&lt;/code&gt;
+now exclude the entity&amp;rsquo;s ancestors (when they strictly contain it) before reporting an overlap,
+matching the legacy sibling check.&lt;/li&gt;
+&lt;li&gt;Semantic-model create and update requests now require &lt;code&gt;semantic_model&lt;/code&gt; JSON to be an object and
+validate every dataset source. Previously, invalid root shapes could bypass source validation or
+be accepted under the obsolete array contract.&lt;/li&gt;
+&lt;li&gt;Python client deserialization and CLI &lt;code&gt;setup export&lt;/code&gt; now preserve the remote catalog name and
+warehouse for Iceberg REST, Hadoop, and Hive external catalogs.&lt;/li&gt;
+&lt;li&gt;Honored pagination for generic table API.&lt;/li&gt;
+&lt;li&gt;JDBC optimized location-overlap queries no longer include the lone &lt;code&gt;/&lt;/code&gt; prefix term produced by
+scheme stripping (e.g. &lt;code&gt;s3://bucket/path&lt;/code&gt; → &lt;code&gt;//bucket/path&lt;/code&gt;). &lt;code&gt;//&lt;/code&gt; and &lt;code&gt;///&lt;/code&gt; are retained so
+scheme-root ancestors remain visible to the overlap check.&lt;/li&gt;
+&lt;li&gt;Honored pagination for policy API with applicable-policies endpoint excluded.&lt;/li&gt;
+&lt;li&gt;The NoSQL metastore now honors &lt;code&gt;ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG&lt;/code&gt;: dropping a
+non-empty passthrough-facade (federated) catalog previously always failed with NoSQL persistence,
+even when the flag was enabled.&lt;/li&gt;
+&lt;li&gt;The refresh-credentials endpoint advertised by &lt;code&gt;loadTable&lt;/code&gt; and &lt;code&gt;loadCredentials&lt;/code&gt;, and the
+generic-table paths used by the Spark plugin, now encode spaces in namespace and table names as
+&lt;code&gt;%20&lt;/code&gt; instead of &lt;code&gt;+&lt;/code&gt;. Previously, credential refresh failed for tables whose namespace or name
+contained a space.&lt;/li&gt;
+&lt;li&gt;NoSQL: a required credential rotation now invalidates the previous secret. The stored
+credential-rotation state was not considered when deciding whether to drop the previous secret,
+so the secret issued before the rotation stayed usable as the principal&amp;rsquo;s secondary secret,
+unlike on the relational-JDBC and transactional backends.&lt;/li&gt;
+&lt;li&gt;The MongoDB readiness check is now shown in &lt;code&gt;/q/health&lt;/code&gt; only when the NoSQL MongoDB backend is
+selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
+readiness monitoring without configuration changes.&lt;/li&gt;
+&lt;li&gt;Fixed an unbounded memory growth in the in-memory entity cache that could lead to out-of-memory
+errors: lookups by name no longer hold entities outside the cache&amp;rsquo;s weight and expiry limits.&lt;/li&gt;
+&lt;li&gt;Setting a namespace&amp;rsquo;s &lt;code&gt;location&lt;/code&gt; property no longer fails with an internal error when its parent
+is itself a nested namespace that has no stored location.&lt;/li&gt;
+&lt;li&gt;The Ranger authorizer no longer fails with &lt;code&gt;NoClassDefFoundError: javax/ws/rs/core/Cookie&lt;/code&gt; when
+using &lt;code&gt;RangerAdminRESTClient&lt;/code&gt; as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
+API, so &lt;code&gt;javax.ws.rs:jsr311-api&lt;/code&gt; is now shipped with the Ranger extension (see #5728).&lt;/li&gt;
+&lt;li&gt;Iceberg REST: creating a namespace with a request that omits &lt;code&gt;namespace&lt;/code&gt; now returns
+&lt;code&gt;400 Bad Request&lt;/code&gt; instead of &lt;code&gt;500 Internal Server Error&lt;/code&gt;.&lt;/li&gt;
+&lt;/ul&gt;</description></item><item><title>Apache Polaris 1.8.0</title><link>https://polaris.apache.org/downloads/1.8.0/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/downloads/1.8.0/</guid><description>&lt;p&gt;Released on September 28th, 2026.&lt;/p&gt;
 &lt;h3 id="downloads" id="downloads"&gt;Downloads&lt;a class="heading-anchor" href="#downloads" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h3&gt;
 &lt;table&gt;
