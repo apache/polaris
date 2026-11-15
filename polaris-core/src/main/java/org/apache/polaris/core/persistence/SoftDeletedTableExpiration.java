@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -32,6 +33,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
+import org.apache.polaris.core.storage.StorageUtil;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -40,7 +42,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Permanently deletes Iceberg tables whose soft-delete hold has expired. Catalog-state only unless
  * {@link FeatureConfiguration#TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE} is set on the
- * catalog, in which case a cleanup task is enqueued using the entity's stored base location.
+ * catalog, in which case a cleanup task is enqueued using the locations recorded on the entity
+ * ({@link StorageUtil#getLocationsUsedByTable(String, Map)}).
  */
 public final class SoftDeletedTableExpiration {
   private static final Logger LOGGER = LoggerFactory.getLogger(SoftDeletedTableExpiration.class);
@@ -122,10 +125,13 @@ public final class SoftDeletedTableExpiration {
           skipped++;
           continue;
         }
+        Set<String> storageLocations =
+            StorageUtil.getLocationsUsedByTable(
+                baseLocation, icebergTableLikeEntity.getInternalPropertiesAsMap());
         Map<String, String> clone = new HashMap<>(catalogEntity.getInternalPropertiesAsMap());
         clone.put(
             PolarisTaskConstants.STORAGE_LOCATIONS,
-            PolarisObjectMapperUtil.serialize(List.of(baseLocation)));
+            PolarisObjectMapperUtil.serialize(storageLocations));
         cleanupProperties = clone;
       }
       DropEntityResult result =
