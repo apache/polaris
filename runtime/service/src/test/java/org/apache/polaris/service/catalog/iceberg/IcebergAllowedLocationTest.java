@@ -79,6 +79,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.TestServices;
@@ -1039,7 +1040,8 @@ public class IcebergAllowedLocationTest {
                 OPTIMIZED_SIBLING_CHECK.key(),
                 "false"),
             counting,
-            listEntitiesCalls);
+            listEntitiesCalls,
+            EnumSet.allOf(PolarisEntityType.class));
 
     String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
     createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
@@ -1061,7 +1063,7 @@ public class IcebergAllowedLocationTest {
   void testOptimizedSiblingCheckListsSiblingsOnlyForUnstructuredLocations(
       boolean unstructured, @TempDir Path tmpDir) {
     AtomicBoolean counting = new AtomicBoolean(false);
-    AtomicInteger listEntitiesCalls = new AtomicInteger();
+    AtomicInteger siblingTableListCalls = new AtomicInteger();
     TestServices services =
         getListCountingTestServices(
             Map.of(
@@ -1072,7 +1074,8 @@ public class IcebergAllowedLocationTest {
                 OPTIMIZED_SIBLING_CHECK.key(),
                 "true"),
             counting,
-            listEntitiesCalls);
+            siblingTableListCalls,
+            EnumSet.of(PolarisEntityType.TABLE_LIKE));
     String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
     createCatalog(
         services,
@@ -1081,19 +1084,23 @@ public class IcebergAllowedLocationTest {
         List.of(catalogLocation));
     createRenameNamespaces(services);
 
-    // Unless unstructured locations are allowed, the optimized check is sufficient.
+    // The Generic Table scan lists child namespaces in both cases. Only the fallback lists
+    // sibling table names to check their write paths.
     counting.set(true);
     createTable(services, "src", "t", null);
     if (unstructured) {
-      assertThat(listEntitiesCalls.get()).isPositive();
+      assertThat(siblingTableListCalls.get()).isPositive();
     } else {
-      assertThat(listEntitiesCalls.get()).isZero();
+      assertThat(siblingTableListCalls.get()).isZero();
     }
   }
 
-  /** Returns test services counting calls to listEntities while {@code counting} is set. */
+  /** Returns test services counting listEntities calls for the selected entity types. */
   private static TestServices getListCountingTestServices(
-      Map<String, Object> config, AtomicBoolean counting, AtomicInteger listEntitiesCalls) {
+      Map<String, Object> config,
+      AtomicBoolean counting,
+      AtomicInteger listEntitiesCalls,
+      EnumSet<PolarisEntityType> countedEntityTypes) {
     return TestServices.builder()
         .config(config)
         .metaStoreManagerDecorator(msm -> {
@@ -1107,7 +1114,11 @@ public class IcebergAllowedLocationTest {
                   })
               .when(spy)
               .listEntities(
-                  Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+                  Mockito.any(),
+                  Mockito.any(),
+                  Mockito.argThat(countedEntityTypes::contains),
+                  Mockito.any(),
+                  Mockito.any());
           return spy;
         })
         .build();
