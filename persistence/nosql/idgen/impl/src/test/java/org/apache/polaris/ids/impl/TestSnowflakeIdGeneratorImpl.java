@@ -569,6 +569,27 @@ public class TestSnowflakeIdGeneratorImpl {
     soft.assertThat(impl.timeUuidToId(uuid)).isEqualTo(id);
   }
 
+  @SuppressWarnings("ResultOfMethodCallIgnored")
+  @Test
+  public void constructIdRejectsTimestampOutsideOfRange() {
+    var nodeId = 42;
+    var impl =
+        new SnowflakeIdGeneratorImpl(
+            idGeneratorSource(nodeId, () -> ID_EPOCH_MILLIS + TimeUnit.DAYS.toMillis(365)));
+
+    soft.assertThatIllegalArgumentException()
+        .isThrownBy(() -> impl.constructId(1L << DEFAULT_TIMESTAMP_BITS, 0, nodeId));
+    soft.assertThatIllegalArgumentException().isThrownBy(() -> impl.constructId(-2L, 0, nodeId));
+    soft.assertThatIllegalArgumentException()
+        .isThrownBy(() ->
+            impl.timeUuidToId(
+                new UUID(
+                    timeUuidMsbReal(
+                        timeUuidTimestampFromUnixMillis(
+                            ID_EPOCH_MILLIS + (1L << DEFAULT_TIMESTAMP_BITS))),
+                    timeUuidLsb(0, nodeId))));
+  }
+
   @Test
   public void maxIdsPerMillisecondAtNowWithRealClock() {
     var nodeId = 42;
