@@ -58,6 +58,20 @@ public interface OpaAuthorizationConfig {
 
   Optional<URI> policyUri();
 
+  /**
+   * URI of the OPA rule that answers a batch of authorization questions in one call, for example
+   * {@code https://opa.example.com/v1/data/polaris/batch_allow}. When empty, batch requests are
+   * answered with one call per question to {@link #policyUri()}.
+   */
+  Optional<URI> batchPolicyUri();
+
+  /** Default value for {@link #maxBatchSize()}. */
+  String DEFAULT_MAX_BATCH_SIZE = "100";
+
+  /** Maximum number of authorization questions sent to OPA in one batch call. */
+  @WithDefault(DEFAULT_MAX_BATCH_SIZE)
+  int maxBatchSize();
+
   AuthenticationConfig auth();
 
   HttpConfig http();
@@ -67,13 +81,23 @@ public interface OpaAuthorizationConfig {
     checkArgument(
         policyUri().isPresent(), "polaris.authorization.opa.policy-uri must be configured");
 
-    URI uri = policyUri().get();
+    checkHttpScheme("policy-uri", policyUri().get());
+    batchPolicyUri().ifPresent(uri -> checkHttpScheme("batch-policy-uri", uri));
+    checkArgument(
+        maxBatchSize() >= 1,
+        "polaris.authorization.opa.max-batch-size must be at least 1, but got: " + maxBatchSize());
+
+    auth().validate();
+  }
+
+  private static void checkHttpScheme(String property, URI uri) {
     String scheme = uri.getScheme();
     checkArgument(
         "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme),
-        "polaris.authorization.opa.policy-uri must use http or https scheme, but got: " + scheme);
-
-    auth().validate();
+        "polaris.authorization.opa."
+            + property
+            + " must use http or https scheme, but got: "
+            + scheme);
   }
 
   /** HTTP client configuration for OPA communication. */

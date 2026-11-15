@@ -84,6 +84,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpaPolarisAuthorizer.class);
 
   private final URI policyUri;
+  private final @Nullable URI batchPolicyUri;
+  private final int maxBatchSize;
   private final BearerTokenProvider tokenProvider;
   private final CloseableHttpClient httpClient;
   private final ObjectMapper objectMapper;
@@ -95,6 +97,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    *
    * @param policyUri The required URI for the OPA endpoint. For example, {@code
    *     https://opa.example.com/v1/polaris/allow}.
+   * @param batchPolicyUri The optional URI of the OPA batch rule. When {@code null}, batch requests
+   *     are answered with one call per question to {@code policyUri}.
+   * @param maxBatchSize The maximum number of questions sent to OPA in one batch call.
    * @param httpClient Apache HttpClient (required, injected by CDI). SSL configuration should be
    *     handled by the CDI producer.
    * @param objectMapper Jackson ObjectMapper for JSON serialization (required). Shared across
@@ -107,6 +112,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    */
   public OpaPolarisAuthorizer(
       @NonNull URI policyUri,
+      @Nullable URI batchPolicyUri,
+      int maxBatchSize,
       @NonNull CloseableHttpClient httpClient,
       @NonNull ObjectMapper objectMapper,
       @Nullable BearerTokenProvider tokenProvider,
@@ -114,11 +121,32 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       @NonNull String realm) {
 
     this.policyUri = policyUri;
+    this.batchPolicyUri = batchPolicyUri;
+    this.maxBatchSize = maxBatchSize;
     this.tokenProvider = tokenProvider;
     this.httpClient = httpClient;
     this.objectMapper = objectMapper;
     this.requestId = requestId;
     this.realm = realm;
+  }
+
+  /** Creates an authorizer without batch support: batch requests use one call per question. */
+  public OpaPolarisAuthorizer(
+      @NonNull URI policyUri,
+      @NonNull CloseableHttpClient httpClient,
+      @NonNull ObjectMapper objectMapper,
+      @Nullable BearerTokenProvider tokenProvider,
+      @Nullable String requestId,
+      @NonNull String realm) {
+    this(
+        policyUri,
+        null,
+        Integer.parseInt(OpaAuthorizationConfig.DEFAULT_MAX_BATCH_SIZE),
+        httpClient,
+        objectMapper,
+        tokenProvider,
+        requestId,
+        realm);
   }
 
   /**
