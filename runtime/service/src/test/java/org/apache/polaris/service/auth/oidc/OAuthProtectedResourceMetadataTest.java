@@ -34,10 +34,8 @@ import org.junit.jupiter.api.Test;
  * RFC 9728), advertising the authorization server backing the WireMock-issued OIDC tenant used by
  * {@link AbstractOidcAuthTest}.
  *
- * <p>This is purely a discovery document: Quarkus 3.40 does not add a {@code resource_metadata}
- * hint to {@code WWW-Authenticate} challenges on unauthenticated requests (verified against the
- * {@code quarkus-oidc}/{@code quarkus-vertx-http} 3.40.1.1 bytecode -- no such string exists), so
- * there is nothing to assert there.
+ * <p>This is purely a discovery document: Quarkus doesn't add a {@code resource_metadata} hint to
+ * {@code WWW-Authenticate} today, so there is nothing to assert there.
  *
  * <p>See {@link OAuthProtectedResourceMetadataDisabledTest} for the disabled-by-default case.
  */
