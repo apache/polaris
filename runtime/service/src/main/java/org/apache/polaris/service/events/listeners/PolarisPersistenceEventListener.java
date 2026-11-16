@@ -25,17 +25,23 @@ import java.util.Optional;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
+import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.EventEntity.ResourceType;
+import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventType;
+import org.apache.polaris.service.types.CreateGenericTableRequest;
+import org.apache.polaris.service.types.GenericTable;
 import org.jspecify.annotations.Nullable;
 
 public abstract class PolarisPersistenceEventListener implements PolarisEventListener {
@@ -145,6 +151,11 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
       return namespaceIdentifier.get();
     }
 
+    Optional<String> genericTableIdentifier = resolveGenericTableIdentifier(attributes);
+    if (genericTableIdentifier.isPresent()) {
+      return genericTableIdentifier.get();
+    }
+
     return attributes
         .getOptional(EventAttributes.TABLE_NAME)
         .orElseGet(() -> fallbackResourceIdentifier(event, catalogName));
@@ -163,6 +174,18 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
                 .flatMap(namespace ->
                     attributes
                         .getOptional(EventAttributes.VIEW_NAME)
+                        .map(viewName -> TableIdentifier.of(namespace, viewName).toString())))
+        .or(() ->
+            attributes
+                .getOptional(EventAttributes.NAMESPACE)
+                .flatMap(namespace ->
+                    attributes
+                        .getOptional(EventAttributes.CREATE_VIEW_REQUEST)
+                        .map(CreateViewRequest::name)
+                        .or(() ->
+                            attributes
+                                .getOptional(EventAttributes.REGISTER_VIEW_REQUEST)
+                                .map(RegisterViewRequest::name))
                         .map(viewName -> TableIdentifier.of(namespace, viewName).toString())))
         .or(() -> attributes.getOptional(EventAttributes.VIEW_NAME))
         .orElseGet(() -> fallbackResourceIdentifier(event, catalogName));
@@ -207,11 +230,39 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
                 .map(tableName -> TableIdentifier.of(namespace, tableName).toString()));
   }
 
+  /**
+   * Generic table events carry the namespace path parameter and the table name under their own
+   * attributes. Resolves the table identifier, or the namespace for listing events.
+   */
+  private static Optional<String> resolveGenericTableIdentifier(AttributeMap attributes) {
+    return attributes
+        .getOptional(EventAttributes.NAMESPACE_NAME)
+        .map(namespace ->
+            NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR))
+        .map(namespace ->
+            attributes
+                .getOptional(EventAttributes.GENERIC_TABLE_NAME)
+                .or(() ->
+                    attributes
+                        .getOptional(EventAttributes.CREATE_GENERIC_TABLE_REQUEST)
+                        .map(CreateGenericTableRequest::getName))
+                .or(() ->
+                    attributes
+                        .getOptional(EventAttributes.GENERIC_TABLE)
+                        .map(GenericTable::getName))
+                .map(tableName -> TableIdentifier.of(namespace, tableName).toString())
+                .orElseGet(namespace::toString));
+  }
+
   private static String resolveNamespaceResourceIdentifier(
       PolarisEvent event, @Nullable String catalogName) {
     AttributeMap attributes = event.attributes();
     return attributes
         .getOptional(EventAttributes.NAMESPACE)
+        .or(() ->
+            attributes
+                .getOptional(EventAttributes.CREATE_NAMESPACE_REQUEST)
+                .map(CreateNamespaceRequest::namespace))
         .map(Namespace::toString)
         .or(() -> attributes.getOptional(EventAttributes.NAMESPACE_FQN))
         .or(() -> attributes.getOptional(EventAttributes.PARENT_NAMESPACE_FQN))
