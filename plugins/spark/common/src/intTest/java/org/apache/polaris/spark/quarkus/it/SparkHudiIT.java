@@ -152,6 +152,37 @@ public class SparkHudiIT extends SparkIntegrationBase {
   }
 
   @Test
+  public void testDmlOperations() {
+    String huditb = getTableNameWithRandomSuffix();
+    // Hudi requires a record key for UPDATE, DELETE and MERGE
+    sql(
+        "CREATE TABLE %s (id INT, name STRING) USING HUDI TBLPROPERTIES (primaryKey = 'id') LOCATION '%s'",
+        huditb, getTableLocation(huditb));
+    sql("INSERT INTO %s VALUES (1, 'anna'), (2, 'bob'), (3, 'carl')", huditb);
+
+    sql("UPDATE %s SET name = 'anne' WHERE id = 1", huditb);
+    assertThat(sql("SELECT id, name FROM %s ORDER BY id", huditb))
+        .containsExactly(
+            new Object[] {1, "anne"}, new Object[] {2, "bob"}, new Object[] {3, "carl"});
+
+    sql("DELETE FROM %s WHERE id = 3", huditb);
+    assertThat(sql("SELECT id, name FROM %s ORDER BY id", huditb))
+        .containsExactly(new Object[] {1, "anne"}, new Object[] {2, "bob"});
+
+    sql(
+        "MERGE INTO %s t USING (SELECT 2 AS id, 'bobby' AS name UNION ALL SELECT 4, 'dan') s "
+            + "ON t.id = s.id "
+            + "WHEN MATCHED THEN UPDATE SET t.name = s.name "
+            + "WHEN NOT MATCHED THEN INSERT *",
+        huditb);
+    assertThat(sql("SELECT id, name FROM %s ORDER BY id", huditb))
+        .containsExactly(
+            new Object[] {1, "anne"}, new Object[] {2, "bobby"}, new Object[] {4, "dan"});
+
+    sql("DROP TABLE %s", huditb);
+  }
+
+  @Test
   public void testUnsupportedAlterTableOperations() {
     String huditb = getTableNameWithRandomSuffix();
     sql(

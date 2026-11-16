@@ -169,6 +169,39 @@ public class SparkIT extends SparkIntegrationBase {
   }
 
   @Test
+  public void testIcebergDmlOperations() {
+    String namespace = generateName("ns");
+    sql("CREATE NAMESPACE %s", namespace);
+    sql("USE %s", namespace);
+
+    String icebergTable = "icebergtb";
+    sql("CREATE TABLE %s (id INT, name STRING)", icebergTable);
+    sql("INSERT INTO %s VALUES (1, 'anna'), (2, 'bob'), (3, 'carl')", icebergTable);
+
+    sql("UPDATE %s SET name = 'anne' WHERE id = 1", icebergTable);
+    assertThat(sql("SELECT * FROM %s ORDER BY id", icebergTable))
+        .containsExactly(
+            new Object[] {1, "anne"}, new Object[] {2, "bob"}, new Object[] {3, "carl"});
+
+    sql("DELETE FROM %s WHERE id = 3", icebergTable);
+    assertThat(sql("SELECT * FROM %s ORDER BY id", icebergTable))
+        .containsExactly(new Object[] {1, "anne"}, new Object[] {2, "bob"});
+
+    sql(
+        "MERGE INTO %s t USING (SELECT 2 AS id, 'bobby' AS name UNION ALL SELECT 4, 'dan') s "
+            + "ON t.id = s.id "
+            + "WHEN MATCHED THEN UPDATE SET t.name = s.name "
+            + "WHEN NOT MATCHED THEN INSERT *",
+        icebergTable);
+    assertThat(sql("SELECT * FROM %s ORDER BY id", icebergTable))
+        .containsExactly(
+            new Object[] {1, "anne"}, new Object[] {2, "bobby"}, new Object[] {4, "dan"});
+
+    sql("DROP TABLE %s", icebergTable);
+    sql("DROP NAMESPACE %s", namespace);
+  }
+
+  @Test
   public void testMixedTableAndViews() {
     String namespace = generateName("ns");
     sql("CREATE NAMESPACE %s", namespace);
