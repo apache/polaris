@@ -816,10 +816,9 @@ class CloudflareR2CredentialsStorageIntegrationTest {
   @ParameterizedTest
   @ValueSource(strings = {"s3://b//x/", "s3://b/x//", "s3://b/x//y/", "s3://b//", "s3a://b//x/"})
   void aLocationWithAnEmptyPathSegmentIsRefused(String location) {
-    assertThatThrownBy(
-            () ->
-                CloudflareR2CredentialsStorageIntegration.normalizedPrefixes(
-                    List.of(grant(location, PolarisStorageActions.READ))))
+    assertThatThrownBy(() ->
+            CloudflareR2CredentialsStorageIntegration.normalizedPrefixes(
+                List.of(grant(location, PolarisStorageActions.READ))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(emptyPathSegmentMessage(location));
   }
@@ -867,14 +866,12 @@ class CloudflareR2CredentialsStorageIntegrationTest {
                         Set.of("s3://b/x/", "s3a://b/y/"), Set.of(PolarisStorageActions.READ))),
                 CredentialVendingContext.empty()))
         .isEqualTo("b");
-    assertThatThrownBy(
-            () ->
-                CloudflareR2CredentialsStorageIntegration.singleBucket(
-                    List.of(
-                        new LocationGrant(
-                            Set.of("s3://b1/x/", "s3://b2/y/"),
-                            Set.of(PolarisStorageActions.READ))),
-                    CredentialVendingContext.empty()))
+    assertThatThrownBy(() ->
+            CloudflareR2CredentialsStorageIntegration.singleBucket(
+                List.of(
+                    new LocationGrant(
+                        Set.of("s3://b1/x/", "s3://b2/y/"), Set.of(PolarisStorageActions.READ))),
+                CredentialVendingContext.empty()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("b1")
         .hasMessageContaining("b2");
@@ -882,11 +879,10 @@ class CloudflareR2CredentialsStorageIntegrationTest {
 
   @Test
   void locationWithoutABucketIsRejected() {
-    assertThatThrownBy(
-            () ->
-                CloudflareR2CredentialsStorageIntegration.singleBucket(
-                    List.of(grant("s3:///x/", PolarisStorageActions.READ)),
-                    CredentialVendingContext.empty()))
+    assertThatThrownBy(() ->
+            CloudflareR2CredentialsStorageIntegration.singleBucket(
+                List.of(grant("s3:///x/", PolarisStorageActions.READ)),
+                CredentialVendingContext.empty()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("s3:///x/")
         .hasMessageContaining("names no bucket");
@@ -916,24 +912,22 @@ class CloudflareR2CredentialsStorageIntegrationTest {
     assertThat(derivedSecret).isNotBlank();
     assertThat(events)
         .extracting(ILoggingEvent::getFormattedMessage)
-        .anySatisfy(
-            message ->
-                assertThat(message)
-                    .contains("Minted R2 credential")
-                    .contains("storageName=<default>")
-                    .contains("bucket=bucket")
-                    .contains("prefixes=1")
-                    .contains("scope=object-read-write")
-                    .contains("ttl=")
-                    .contains("expiresAt="))
-        .allSatisfy(
-            message ->
-                assertThat(message)
-                    .doesNotContain(parentKeyId)
-                    .doesNotContain(parentSecret)
-                    .doesNotContain(sessionToken)
-                    .doesNotContain(rawJwt)
-                    .doesNotContain(derivedSecret));
+        .anySatisfy(message ->
+            assertThat(message)
+                .contains("Minted R2 credential")
+                .contains("storageName=<default>")
+                .contains("bucket=bucket")
+                .contains("prefixes=1")
+                .contains("scope=object-read-write")
+                .contains("ttl=")
+                .contains("expiresAt="))
+        .allSatisfy(message ->
+            assertThat(message)
+                .doesNotContain(parentKeyId)
+                .doesNotContain(parentSecret)
+                .doesNotContain(sessionToken)
+                .doesNotContain(rawJwt)
+                .doesNotContain(derivedSecret));
     assertThat(events)
         .filteredOn(event -> event.getFormattedMessage().contains("Minted R2 credential"))
         .singleElement()

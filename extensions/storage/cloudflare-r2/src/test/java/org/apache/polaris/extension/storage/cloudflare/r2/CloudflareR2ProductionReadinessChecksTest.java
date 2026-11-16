@@ -85,23 +85,22 @@ class CloudflareR2ProductionReadinessChecksTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.offendingProperty()).isEqualTo(SECRET_KEY_PROPERTY);
-              assertThat(error.severe()).isFalse();
-              assertThat(error.message())
-                  .isEqualTo(
-                      "The default Cloudflare R2 parent token is ignored because "
-                          + SECRET_KEY_PROPERTY
-                          + " is not set. R2_LOCAL_SIGNING catalogs that use the default token"
-                          + " cannot vend credentials until both "
-                          + ACCESS_KEY_PROPERTY
-                          + " and "
-                          + SECRET_KEY_PROPERTY
-                          + " are set.");
-              assertThat(error.message()).doesNotContain(ACCESS_KEY_VALUE);
-              assertThat(error.offendingProperty()).doesNotContain(ACCESS_KEY_VALUE);
-            });
+        .satisfies(error -> {
+          assertThat(error.offendingProperty()).isEqualTo(SECRET_KEY_PROPERTY);
+          assertThat(error.severe()).isFalse();
+          assertThat(error.message())
+              .isEqualTo(
+                  "The default Cloudflare R2 parent token is ignored because "
+                      + SECRET_KEY_PROPERTY
+                      + " is not set. R2_LOCAL_SIGNING catalogs that use the default token"
+                      + " cannot vend credentials until both "
+                      + ACCESS_KEY_PROPERTY
+                      + " and "
+                      + SECRET_KEY_PROPERTY
+                      + " are set.");
+          assertThat(error.message()).doesNotContain(ACCESS_KEY_VALUE);
+          assertThat(error.offendingProperty()).doesNotContain(ACCESS_KEY_VALUE);
+        });
   }
 
   @Test
@@ -113,22 +112,21 @@ class CloudflareR2ProductionReadinessChecksTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.offendingProperty()).isEqualTo(ACCESS_KEY_PROPERTY);
-              assertThat(error.severe()).isFalse();
-              assertThat(error.message())
-                  .isEqualTo(
-                      "The default Cloudflare R2 parent token is ignored because "
-                          + ACCESS_KEY_PROPERTY
-                          + " is not set. R2_LOCAL_SIGNING catalogs that use the default token"
-                          + " cannot vend credentials until both "
-                          + ACCESS_KEY_PROPERTY
-                          + " and "
-                          + SECRET_KEY_PROPERTY
-                          + " are set.");
-              assertThat(error.message()).doesNotContain(SECRET_KEY_VALUE);
-              assertThat(error.offendingProperty()).doesNotContain(SECRET_KEY_VALUE);
-            });
+        .satisfies(error -> {
+          assertThat(error.offendingProperty()).isEqualTo(ACCESS_KEY_PROPERTY);
+          assertThat(error.severe()).isFalse();
+          assertThat(error.message())
+              .isEqualTo(
+                  "The default Cloudflare R2 parent token is ignored because "
+                      + ACCESS_KEY_PROPERTY
+                      + " is not set. R2_LOCAL_SIGNING catalogs that use the default token"
+                      + " cannot vend credentials until both "
+                      + ACCESS_KEY_PROPERTY
+                      + " and "
+                      + SECRET_KEY_PROPERTY
+                      + " are set.");
+          assertThat(error.message()).doesNotContain(SECRET_KEY_VALUE);
+          assertThat(error.offendingProperty()).doesNotContain(SECRET_KEY_VALUE);
+        });
   }
 }

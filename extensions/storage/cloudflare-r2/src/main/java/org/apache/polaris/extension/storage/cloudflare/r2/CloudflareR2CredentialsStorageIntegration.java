@@ -117,10 +117,9 @@ public class CloudflareR2CredentialsStorageIntegration
   protected StorageAccessConfig addExtraProperties(
       @NonNull StorageAccessConfig accessConfig, @NonNull Optional<String> refreshEndpoint) {
     return refreshEndpoint
-        .map(
-            endpoint ->
-                withExtraProperty(
-                    accessConfig, StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint))
+        .map(endpoint ->
+            withExtraProperty(
+                accessConfig, StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint))
         .orElse(accessConfig);
   }
 
@@ -235,12 +234,11 @@ public class CloudflareR2CredentialsStorageIntegration
   private static String forTable(CredentialVendingContext context) {
     return context
         .tableName()
-        .map(
-            table ->
-                " for table "
-                    + Stream.of(context.catalogName(), context.namespace(), Optional.of(table))
-                        .flatMap(Optional::stream)
-                        .collect(Collectors.joining(".")))
+        .map(table ->
+            " for table "
+                + Stream.of(context.catalogName(), context.namespace(), Optional.of(table))
+                    .flatMap(Optional::stream)
+                    .collect(Collectors.joining(".")))
         .orElse("");
   }
 

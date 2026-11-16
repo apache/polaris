@@ -194,10 +194,9 @@ class R2LocalSigningCredentialVendingMechanismTest {
 
   @Test
   void acceptsExplicitFalseForStsUnavailableAndKmsUnavailable() {
-    assertThatCode(
-            () ->
-                defaultMechanism()
-                    .validate(null, r2Config().stsUnavailable(false).kmsUnavailable(false).build()))
+    assertThatCode(() ->
+            defaultMechanism()
+                .validate(null, r2Config().stsUnavailable(false).kmsUnavailable(false).build()))
         .doesNotThrowAnyException();
   }
 

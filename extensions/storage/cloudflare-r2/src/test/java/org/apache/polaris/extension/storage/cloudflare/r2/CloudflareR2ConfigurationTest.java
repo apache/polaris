@@ -218,12 +218,11 @@ class CloudflareR2ConfigurationTest {
     assertThat(mapping.storages().get("prod.eu").accessKey()).isEqualTo(PROD_ACCESS_KEY);
     assertThat(mapping.storages().get("prod.eu").secretKey()).isEqualTo(PROD_SECRET_KEY);
 
-    assertThatThrownBy(
-            () ->
-                mapProperties(
-                    Map.of(
-                        PREFIX + "prod.eu.access-key", PROD_ACCESS_KEY,
-                        PREFIX + "prod.eu.secret-key", PROD_SECRET_KEY)))
+    assertThatThrownBy(() ->
+            mapProperties(
+                Map.of(
+                    PREFIX + "prod.eu.access-key", PROD_ACCESS_KEY,
+                    PREFIX + "prod.eu.secret-key", PROD_SECRET_KEY)))
         .isInstanceOf(ConfigValidationException.class)
         .hasMessageContaining("SRCFG00050");
   }

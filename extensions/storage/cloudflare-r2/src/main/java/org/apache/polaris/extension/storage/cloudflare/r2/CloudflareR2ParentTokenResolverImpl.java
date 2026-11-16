@@ -61,11 +61,9 @@ public class CloudflareR2ParentTokenResolverImpl implements CloudflareR2ParentTo
     Map<String, CloudflareR2ParentToken> named = new HashMap<>();
     configuration
         .storages()
-        .forEach(
-            (storageName, token) ->
-                named.put(
-                    storageName,
-                    new CloudflareR2ParentToken(token.accessKey(), token.secretKey())));
+        .forEach((storageName, token) ->
+            named.put(
+                storageName, new CloudflareR2ParentToken(token.accessKey(), token.secretKey())));
     this.namedTokens = Map.copyOf(named);
   }
 

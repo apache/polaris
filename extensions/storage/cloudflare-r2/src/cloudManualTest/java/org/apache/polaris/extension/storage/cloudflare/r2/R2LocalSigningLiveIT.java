@@ -259,14 +259,10 @@ public class R2LocalSigningLiveIT {
 
       try {
         String[] otherTarget = bucketAndKey(loadedB.tableMetadata().location(), "probe.txt");
-        assertThatThrownBy(
-                () ->
-                    asA.putObject(
-                        PutObjectRequest.builder()
-                            .bucket(otherTarget[0])
-                            .key(otherTarget[1])
-                            .build(),
-                        RequestBody.fromString("nope")))
+        assertThatThrownBy(() ->
+                asA.putObject(
+                    PutObjectRequest.builder().bucket(otherTarget[0]).key(otherTarget[1]).build(),
+                    RequestBody.fromString("nope")))
             .isInstanceOf(S3Exception.class)
             .satisfies(e -> assertThat(((S3Exception) e).statusCode()).isEqualTo(403));
       } finally {
@@ -322,10 +318,9 @@ public class R2LocalSigningLiveIT {
           RequestBody.fromString(TableMetadataParser.toJson(metadata)));
       try {
         Throwable failure =
-            catchThrowable(
-                () ->
-                    catalogApi.registerTable(
-                        foreignCatalogName, Namespace.of("ns"), "t", metadataLocation, false));
+            catchThrowable(() ->
+                catalogApi.registerTable(
+                    foreignCatalogName, Namespace.of("ns"), "t", metadataLocation, false));
         assertThat(failure)
             .as(
                 "a credential signed for and addressed to a foreign account must not complete the"

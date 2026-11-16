@@ -82,10 +82,8 @@ class R2LocalSigningCatalogFlowTest {
         services(Map.of("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS")), FIXED_TOKEN);
 
     Throwable thrown =
-        catchThrowable(
-            () ->
-                createCatalogResponse(stsOnly, catalog("r2-off", r2Config(ALLOWED).build()))
-                    .close());
+        catchThrowable(() ->
+            createCatalogResponse(stsOnly, catalog("r2-off", r2Config(ALLOWED).build())).close());
 
     assertThat(thrown)
         .isInstanceOf(ValidationException.class)
@@ -97,14 +95,13 @@ class R2LocalSigningCatalogFlowTest {
   @Test
   void aBadEndpointIsRefusedWith400() {
     Throwable thrown =
-        catchThrowable(
-            () ->
-                createCatalogResponse(
-                        services,
-                        catalog(
-                            "r2-bad-endpoint",
-                            r2Config(ALLOWED).setEndpoint("https://s3.amazonaws.com").build()))
-                    .close());
+        catchThrowable(() ->
+            createCatalogResponse(
+                    services,
+                    catalog(
+                        "r2-bad-endpoint",
+                        r2Config(ALLOWED).setEndpoint("https://s3.amazonaws.com").build()))
+                .close());
 
     assertThat(thrown)
         .isInstanceOf(IllegalArgumentException.class)
@@ -166,16 +163,12 @@ class R2LocalSigningCatalogFlowTest {
             .setRegion("auto");
 
     Throwable thrown =
-        catchThrowable(
-            () ->
-                createCatalogResponse(
-                        services,
-                        catalog(
-                            "r2-doubled-default",
-                            BUCKET_ROOT + "//r2/",
-                            noAllowedList.build(),
-                            false))
-                    .close());
+        catchThrowable(() ->
+            createCatalogResponse(
+                    services,
+                    catalog(
+                        "r2-doubled-default", BUCKET_ROOT + "//r2/", noAllowedList.build(), false))
+                .close());
 
     assertThat(thrown)
         .isInstanceOf(IllegalArgumentException.class)
