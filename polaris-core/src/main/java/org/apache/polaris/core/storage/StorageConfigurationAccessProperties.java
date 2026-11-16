@@ -80,18 +80,16 @@ public final class StorageConfigurationAccessProperties {
     partitionBag(tableDefaultProperties, extras, internals);
     // Start from AccessConfig; only add table-default keys that are not already set.
     StorageAccessConfig.Builder builder = StorageAccessConfig.builder().from(accessConfig);
-    extras.forEach(
-        (key, value) -> {
-          if (!accessConfig.extraProperties().containsKey(key)) {
-            builder.putExtraProperty(key, value);
-          }
-        });
-    internals.forEach(
-        (key, value) -> {
-          if (!accessConfig.internalProperties().containsKey(key)) {
-            builder.putInternalProperty(key, value);
-          }
-        });
+    extras.forEach((key, value) -> {
+      if (!accessConfig.extraProperties().containsKey(key)) {
+        builder.putExtraProperty(key, value);
+      }
+    });
+    internals.forEach((key, value) -> {
+      if (!accessConfig.internalProperties().containsKey(key)) {
+        builder.putInternalProperty(key, value);
+      }
+    });
     return builder.build();
   }
 

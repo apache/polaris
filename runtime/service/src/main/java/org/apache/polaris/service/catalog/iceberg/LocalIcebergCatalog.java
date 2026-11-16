@@ -2962,7 +2962,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               from,
               Set.of(metadataLocation.substring(0, metadataLocation.lastIndexOf("/"))),
               resolvedEntities,
-              new HashMap<>(tableDefaultProperties),
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
       locations = Set.of(ViewMetadataParser.read(fileIO, metadataLocation).location());
     } else {
