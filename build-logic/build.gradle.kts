@@ -34,4 +34,30 @@ dependencies {
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-testing { suites { named<JvmTestSuite>("test") { useJUnitJupiter() } } }
+testing {
+  suites {
+    named<JvmTestSuite>("test") { useJUnitJupiter() }
+
+    // Gradle TestKit tests of the changelog tasks run real Gradle builds, so they are much slower
+    // than the unit tests and live in a separate suite, run with
+    // `./gradlew :polaris-build-logic:integrationTest`.
+    register<JvmTestSuite>("integrationTest") {
+      useJUnitJupiter()
+      dependencies {
+        implementation(project())
+        implementation(gradleTestKit())
+        implementation(platform(libs.junit.bom))
+        implementation("org.junit.jupiter:junit-jupiter")
+        implementation(libs.assertj.core)
+        runtimeOnly("org.junit.platform:junit-platform-launcher")
+      }
+      targets.configureEach {
+        testTask.configure {
+          // The fixture projects use the task classes of this project
+          dependsOn(tasks.jar)
+          systemProperty("build-logic.jar", tasks.jar.get().archiveFile.get().asFile.absolutePath)
+        }
+      }
+    }
+  }
+}
