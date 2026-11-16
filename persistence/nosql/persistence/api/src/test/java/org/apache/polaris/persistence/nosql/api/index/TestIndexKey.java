@@ -471,9 +471,10 @@ public class TestIndexKey {
   public void toSafeStringIsInjectiveForSpaceVsEscapedX() {
     var withSpace = key("a b");
     var looksLikeEscapedSpace = key("ax20b");
-    soft.assertThat(withSpace.toSafeString("idx-"))
-        .isNotEqualTo(looksLikeEscapedSpace.toSafeString("idx-"));
     soft.assertThat(withSpace.toSafeString("idx-")).isEqualTo("idx-ax20b");
     soft.assertThat(looksLikeEscapedSpace.toSafeString("idx-")).isEqualTo("idx-ax7820b");
+    soft.assertThat(key("x").toSafeString("idx-")).isEqualTo("idx-x78");
+    soft.assertThat(key(ByteBuffer.wrap(new byte[] {(byte) 0x80})).toSafeString("idx-"))
+        .isEqualTo("idx-x80");
   }
 }
