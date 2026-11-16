@@ -24,6 +24,8 @@ Entries are grouped in sections like _Highlights_ or _Upgrade notes_, the provid
 as necessary. Empty sections will not end up in the release notes. Contributors are encouraged to incorporate
 CHANGELOG updates into their PRs when appropriate. Reviewers should be mindful of the impact of PRs and
 request adding CHANGELOG notes for breaking (!) changes and possibly other sections as appropriate.
+Do not add new entries to this file directly: add a changelog fragment under `changelog.d/` instead,
+see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into this file when a release is cut.
 
 ## [Unreleased]
 
