@@ -976,17 +976,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     ImmutableLoadCredentialsResponse.Builder responseBuilder =
         ImmutableLoadCredentialsResponse.builder();
 
-    if (storageAccessConfig.credentials().isEmpty()) {
+    if (!credentialConfig.isEmpty()) {
+      responseBuilder.addCredentials(
+          ImmutableCredential.builder().prefix(baseLocation).config(credentialConfig).build());
+    } else {
       Boolean skipCredIndirection =
           realmConfig().getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
       Preconditions.checkArgument(
           !storageAccessConfig.supportsCredentialVending() || skipCredIndirection,
           "Credential vending was requested for table %s, but no credentials are available",
           tableIdentifier);
-    }
-    if (!credentialConfig.isEmpty()) {
-      responseBuilder.addCredentials(
-          ImmutableCredential.builder().prefix(baseLocation).config(credentialConfig).build());
     }
 
     return responseBuilder.build();
