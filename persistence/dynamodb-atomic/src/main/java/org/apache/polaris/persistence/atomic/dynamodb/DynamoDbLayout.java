@@ -43,6 +43,7 @@ public final class DynamoDbLayout {
   // ---- Sort-key / item-type markers ------------------------------------------------------------
   public static final String SK_ENTITY = "ENTITY";
   public static final String SK_NAME = "NAME";
+  public static final String SK_CHILD_PREFIX = "CHILD#";
 
   // ---- Entity item attributes ------------------------------------------------------------------
   public static final String A_CATALOG_ID = "catalogId";
@@ -104,5 +105,25 @@ public final class DynamoDbLayout {
    */
   public static String childrenGsiSk(long id) {
     return String.format(Locale.ROOT, "%019d", id);
+  }
+
+  /**
+   * Child-record partition key in the base table: {@code realmId#catalogId#parentId#typeCode}. A
+   * child record is a strongly consistent, base-table stand-in for the {@code gsi1} listing copy,
+   * so a listing can read children with {@code ConsistentRead=true}. It shares the children
+   * coordinates with {@link #childrenGsiPk}, but lives on the base table rather than the index.
+   */
+  public static String childPk(String realmId, long catalogId, long parentId, int typeCode) {
+    return realmId + SEP + catalogId + SEP + parentId + SEP + typeCode;
+  }
+
+  /**
+   * Child-record sort key: {@code CHILD#} and the entity id, zero-padded to 19 digits so that
+   * string order matches numeric order. The {@code CHILD#} prefix keeps these items apart from the
+   * {@code ENTITY} and {@code NAME} items that may share a partition key. Entity ids are
+   * non-negative.
+   */
+  public static String childSk(long id) {
+    return SK_CHILD_PREFIX + String.format(Locale.ROOT, "%019d", id);
   }
 }

@@ -26,6 +26,8 @@ import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.PK;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK_ENTITY;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK_NAME;
+import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.childPk;
+import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.childSk;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.entityPk;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.sentinelPk;
 import static org.apache.polaris.persistence.atomic.dynamodb.TransactionFailures.conditionFailedAt;
@@ -54,6 +56,7 @@ import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.persistence.atomic.dynamodb.models.ChildItem;
 import org.apache.polaris.persistence.atomic.dynamodb.models.EntityItem;
 import org.apache.polaris.persistence.atomic.dynamodb.models.NameSentinelItem;
 import org.jspecify.annotations.NonNull;
@@ -151,7 +154,9 @@ public class DynamoDbBasePersistence implements BasePersistence {
     try {
       client.transactWriteItems(b ->
           b.transactItems(
-              putIfAbsent(EntityItem.toItem(realmId, entity)), putIfAbsent(sentinelItem(entity))));
+              putIfAbsent(EntityItem.toItem(realmId, entity)),
+              putIfAbsent(sentinelItem(entity)),
+              putIfAbsent(childItem(entity))));
     } catch (TransactionCanceledException e) {
       if (!onlyConflicts(e)) {
         throw e;
@@ -190,12 +195,22 @@ public class DynamoDbBasePersistence implements BasePersistence {
   private void renameEntity(
       PolarisCallContext callCtx, PolarisBaseEntity entity, PolarisBaseEntity originalEntity) {
     final int newSentinelIndex = 2;
+    // A pure rename keeps the child record's key (it is keyed by parent coordinates and id, not
+    // name), so only a re-parent moves it. When the parent or type changes, delete the child
+    // record under the old parent and put one under the new parent in the same transaction.
+    boolean childMoves = childKeyChanged(entity, originalEntity);
     try {
-      client.transactWriteItems(b ->
-          b.transactItems(
-              putIfVersionsMatch(EntityItem.toItem(realmId, entity), originalEntity),
-              deleteSentinelIfOwned(originalEntity),
-              putIfAbsent(sentinelItem(entity))));
+      client.transactWriteItems(b -> {
+        List<TransactWriteItem> items = new ArrayList<>();
+        items.add(putIfVersionsMatch(EntityItem.toItem(realmId, entity), originalEntity));
+        items.add(deleteSentinelIfOwned(originalEntity));
+        items.add(putIfAbsent(sentinelItem(entity)));
+        if (childMoves) {
+          items.add(deleteChild(originalEntity));
+          items.add(putIfAbsent(childItem(entity)));
+        }
+        b.transactItems(items);
+      });
     } catch (TransactionCanceledException e) {
       if (!onlyConflicts(e)) {
         throw e;
@@ -227,8 +242,11 @@ public class DynamoDbBasePersistence implements BasePersistence {
         return;
       }
       try {
-        client.transactWriteItems(
-            b -> b.transactItems(deleteIfVersionsMatch(current), deleteSentinelIfOwned(current)));
+        client.transactWriteItems(b ->
+            b.transactItems(
+                deleteIfVersionsMatch(current),
+                deleteSentinelIfOwned(current),
+                deleteChild(current)));
         return;
       } catch (TransactionCanceledException e) {
         if (!onlyConflicts(e)) {
@@ -519,6 +537,40 @@ public class DynamoDbBasePersistence implements BasePersistence {
         && a.getParentId() == b.getParentId()
         && a.getTypeCode() == b.getTypeCode()
         && a.getName().equals(b.getName());
+  }
+
+  private Map<String, AttributeValue> childItem(PolarisBaseEntity entity) {
+    return ChildItem.toItem(
+        realmId, entity.getCatalogId(), entity.getParentId(), entity.getTypeCode(), entity.getId());
+  }
+
+  /** True when a rename also re-parents, so the child record's partition key changes. */
+  private static boolean childKeyChanged(PolarisBaseEntity a, PolarisBaseEntity b) {
+    return a.getCatalogId() != b.getCatalogId()
+        || a.getParentId() != b.getParentId()
+        || a.getTypeCode() != b.getTypeCode();
+  }
+
+  /**
+   * Deletes the entity's child record. The record is keyed by the parent's coordinates and the
+   * child id, so it is removed on delete and on a re-parent (under the old parent). No condition:
+   * an absent record is fine, so a delete never gets stuck on a child record already gone.
+   */
+  private TransactWriteItem deleteChild(PolarisBaseEntity entity) {
+    return TransactWriteItem.builder()
+        .delete(
+            Delete.builder()
+                .tableName(tableName)
+                .key(
+                    key(
+                        childPk(
+                            realmId,
+                            entity.getCatalogId(),
+                            entity.getParentId(),
+                            entity.getTypeCode()),
+                        childSk(entity.getId())))
+                .build())
+        .build();
   }
 
   private TransactWriteItem putIfAbsent(Map<String, AttributeValue> item) {

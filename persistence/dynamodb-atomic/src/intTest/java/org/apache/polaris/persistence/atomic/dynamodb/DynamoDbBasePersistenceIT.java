@@ -36,6 +36,7 @@ import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
 class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
 
@@ -267,6 +268,55 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
     assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "revenue")).isNull();
     assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales"))
         .isEqualTo(newSales);
+  }
+
+  @Test
+  void createWritesAChildRecord() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+
+    assertThat(childRecordExists(PARENT, 10L)).isTrue();
+  }
+
+  @Test
+  void reParentMovesTheChildRecord() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    PolarisBaseEntity moved = renamed(sales, PARENT + 1, "sales");
+    persistence.writeEntity(callCtx, moved, true, sales);
+
+    assertThat(childRecordExists(PARENT, 10L)).isFalse();
+    assertThat(childRecordExists(PARENT + 1, 10L)).isTrue();
+  }
+
+  @Test
+  void renameWithoutReParentKeepsTheChildRecord() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    persistence.writeEntity(callCtx, renamed(sales, PARENT, "revenue"), true, sales);
+
+    // The child record is keyed by parent coordinates and id, not name, so it stays put.
+    assertThat(childRecordExists(PARENT, 10L)).isTrue();
+  }
+
+  @Test
+  void deleteRemovesTheChildRecord() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+
+    persistence.deleteEntity(callCtx, sales);
+
+    assertThat(childRecordExists(PARENT, 10L)).isFalse();
+  }
+
+  /** Strongly consistent read of a base-table child record, as a future listing would do. */
+  private boolean childRecordExists(long parentId, long id) {
+    Map<String, AttributeValue> key =
+        Map.of(
+            DynamoDbLayout.PK,
+                AttributeValue.fromS(DynamoDbLayout.childPk("realm1", CATALOG, parentId, TYPE)),
+            DynamoDbLayout.SK, AttributeValue.fromS(DynamoDbLayout.childSk(id)));
+    return client.getItem(b -> b.tableName(table).key(key).consistentRead(true)).hasItem();
   }
 
   private static PolarisBaseEntity entity(long id, long parentId, String name, int version) {
