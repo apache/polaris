@@ -83,13 +83,14 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "so upgrades do not 403 bootstrap. On a 200 the response still includes catalog "
                   + "properties (defaults) as it does today. Enable after granting CATALOG_READ_CONFIG "
                   + "(or catalog-level content privileges) and after updating Ranger/OPA policies "
-                  + "for GET_CATALOG_CONFIG. Ranger currently maps GET_CATALOG_CONFIG to the existing "
-                  + "catalog-properties-read access type; do not enable this flag for Ranger until a "
-                  + "dedicated catalog-config-read access type exists (or accept that coarse mapping). "
-                  + "This flag is temporary. The default will not flip until client-facing catalog "
-                  + "configuration is defined. A production-readiness warning is emitted while the "
-                  + "flag remains false only when using the internal Polaris authorizer"
-                  + "(`polaris.authorization.type=internal`).")
+                  + "for GET_CATALOG_CONFIG. Ranger maps GET_CATALOG_CONFIG to catalog-config-read; "
+                  + "catalog-properties-read implies catalog-config-read. Ranger operators must "
+                  + "re-import polaris-ranger-servicedef.json (PUT the service definition) so the "
+                  + "new access type exists in Ranger Admin; a Polaris upgrade does not update "
+                  + "Ranger Admin. This flag is temporary. The default will not flip until "
+                  + "client-facing catalog configuration is defined. A production-readiness warning "
+                  + "is emitted while the flag remains false only when using the internal Polaris "
+                  + "authorizer (`polaris.authorization.type=internal`).")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
