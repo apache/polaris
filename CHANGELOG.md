@@ -187,6 +187,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `fair-retries` does not apply to locally synchronized commits, which use FIFO admission;
   conflict retry backoff still applies.
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
+- OPA authorizer: optional batch authorization that makes entity-level list filtering much faster.
+  Without it, listing namespaces, tables or views for a caller who is filtered per entity costs one
+  HTTP call to OPA for every candidate, so a list of 1,000 tables means 1,000 round trips. Set
+  `polaris.authorization.opa.batch-policy-uri` to an OPA `batch_allow` rule and Polaris sends the
+  candidates in chunks of `polaris.authorization.opa.max-batch-size` (default 100), so the same list
+  takes 10 calls. It is off by default. When it is on, a failed or malformed batch response fails
+  the request (HTTP 500) instead of denying quietly. See the OPA documentation for the rule and the
+  input format.
 
 ### Changes
 

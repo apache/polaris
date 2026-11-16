@@ -27,7 +27,8 @@ import org.apache.polaris.immutables.PolarisImmutable;
 /**
  * OPA request wrapper containing the batch authorization input.
  *
- * <p>This is the top-level structure sent to OPA's batch rule, containing the input object.
+ * <p>This is the top-level structure sent to OPA's batch rule, containing the input object. One
+ * batch call replaces many single-question calls, which makes large lists faster.
  */
 @PolarisImmutable
 @JsonSerialize(as = ImmutableOpaBatchRequest.class)

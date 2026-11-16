@@ -113,7 +113,7 @@ Validates that committed schema matches the code.
 The generated `opa-input-schema.json` documents the structure of authorization requests sent from Polaris to OPA.
 
 The generated `opa-batch-input-schema.json` documents the structure of the batch request, which carries
-many questions for one actor in a single call. It is only used when a batch policy URI is configured.
+many questions for one actor in a single call. It is only used when a batch policy URI is configured. Batching exists to reduce the number of HTTP calls to OPA, which speeds up large lists.
 
 ## Model Classes Reference
 

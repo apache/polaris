@@ -231,6 +231,7 @@ fun Test.configureOpaTestTask(
   buildDir: DirectoryProperty,
   staticToken: String? = null,
   fileTokenPath: Provider<String>? = null,
+  startupActionClassName: String = "org.apache.polaris.extension.auth.opa.test.OpaStartupAction",
 ) {
   description = "Runs OPA integration tests against an external Polaris server."
   group = LifecycleBasePlugin.VERIFICATION_GROUP
@@ -249,7 +250,7 @@ fun Test.configureOpaTestTask(
 
   withPolarisServer(configurations.polarisServer) {
     startupActionClasspath.from(opaStartupAction.runtimeClasspath)
-    startupActionClass.set("org.apache.polaris.extension.auth.opa.test.OpaStartupAction")
+    startupActionClass.set(startupActionClassName)
 
     environment.put("AWS_REGION", providers.environmentVariable("AWS_REGION").orElse("us-west-2"))
     environment.putAll(mapOf("POLARIS_BOOTSTRAP_CREDENTIALS" to "POLARIS,test-admin,test-secret"))
@@ -304,6 +305,24 @@ testing {
       }
     }
 
+    // Runs against an OPA that has a batch rule and a small max-batch-size (OpaBatchStartupAction).
+    @Suppress("UnstableApiUsage")
+    register<JvmTestSuite>("opaBatchIntTest") {
+      configureIntTest()
+      targets {
+        all {
+          testTask.configure {
+            configureOpaTestTask(
+              buildDir,
+              staticToken = "test-opa-bearer-token-12345",
+              startupActionClassName =
+                "org.apache.polaris.extension.auth.opa.test.OpaBatchStartupAction",
+            )
+          }
+        }
+      }
+    }
+
     @Suppress("UnstableApiUsage")
     register<JvmTestSuite>("opaFileTokenIntTest") {
       configureIntTest()
@@ -330,6 +349,8 @@ listOf(
     intTestBaseSources.runtimeClasspathConfigurationName,
     "bearerTokenIntTestCompileClasspath",
     "bearerTokenIntTestRuntimeClasspath",
+    "opaBatchIntTestCompileClasspath",
+    "opaBatchIntTestRuntimeClasspath",
     "opaFileTokenIntTestCompileClasspath",
     "opaFileTokenIntTestRuntimeClasspath",
     "opaStartupActionCompileClasspath",
@@ -344,7 +365,7 @@ listOf(
 tasks.register("intTest") {
   description = "Runs all OPA integration tests."
   group = LifecycleBasePlugin.VERIFICATION_GROUP
-  dependsOn("bearerTokenIntTest", "opaFileTokenIntTest")
+  dependsOn("bearerTokenIntTest", "opaBatchIntTest", "opaFileTokenIntTest")
 }
 
 tasks.named("check") { dependsOn("validateOpaSchema", "intTest") }

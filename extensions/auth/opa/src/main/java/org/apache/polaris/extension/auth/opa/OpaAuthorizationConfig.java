@@ -61,7 +61,8 @@ public interface OpaAuthorizationConfig {
   /**
    * URI of the OPA rule that answers a batch of authorization questions in one call, for example
    * {@code https://opa.example.com/v1/data/polaris/batch_allow}. When empty, batch requests are
-   * answered with one call per question to {@code policy-uri}.
+   * answered with one call per question to {@code policy-uri}. Setting it reduces the number of
+   * HTTP calls to OPA, which speeds up entity-level list filtering on large lists.
    */
   Optional<URI> batchPolicyUri();
 
