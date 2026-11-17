@@ -205,8 +205,9 @@ COMMENT ON TABLE scan_metrics_report IS 'Scan metrics reports as first-class ent
 -- Index for retention cleanup by timestamp
 CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp ON scan_metrics_report(realm_id, timestamp_ms);
 
--- Index for query lookups by catalog_id and table_id
-CREATE INDEX IF NOT EXISTS idx_scan_report_lookup ON scan_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
+-- Index for query lookups by catalog_id and table_id. Ends in (timestamp_ms, report_id) so the
+-- keyset pagination query, ordered by (timestamp_ms DESC, report_id DESC), stays index-driven.
+CREATE INDEX IF NOT EXISTS idx_scan_report_lookup ON scan_metrics_report(realm_id, catalog_id, table_id, timestamp_ms, report_id);
 
 -- ============================================================================
 -- COMMIT METRICS REPORT TABLE
@@ -274,5 +275,6 @@ COMMENT ON TABLE commit_metrics_report IS 'Commit metrics reports as first-class
 -- Index for retention cleanup by timestamp
 CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp ON commit_metrics_report(realm_id, timestamp_ms);
 
--- Index for query lookups by catalog_id and table_id
-CREATE INDEX IF NOT EXISTS idx_commit_report_lookup ON commit_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
+-- Index for query lookups by catalog_id and table_id. Ends in (timestamp_ms, report_id) so the
+-- keyset pagination query, ordered by (timestamp_ms DESC, report_id DESC), stays index-driven.
+CREATE INDEX IF NOT EXISTS idx_commit_report_lookup ON commit_metrics_report(realm_id, catalog_id, table_id, timestamp_ms, report_id);
