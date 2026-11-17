@@ -133,7 +133,7 @@ If set to true, allows catalog URLs to overlap.
 
 ##### `polaris.features."ALLOW_SETTING_S3_ENDPOINTS"`
 
-If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints. If set to false, Polaris will not accept catalog create and update requests that contain S3 endpoint properties.
+If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints, and SigV4 connection configurations to set a custom STS endpoint used for credential vending. If set to false, Polaris will not accept catalog create and update requests that contain S3 endpoint properties, or catalog create requests that set a SigV4 connection STS endpoint.
 
 - **Type:** `Boolean`
 - **Default:** `true`
