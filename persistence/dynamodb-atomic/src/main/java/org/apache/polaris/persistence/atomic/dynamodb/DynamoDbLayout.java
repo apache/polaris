@@ -113,14 +113,17 @@ public final class DynamoDbLayout {
   }
 
   /**
-   * Child-record partition key in the base table. A child record is a strongly consistent,
+   * Child-record partition key in the base table: {@code
+   * realmId#catalogId#parentId#typeCode#subTypeCode}. A child record is a strongly consistent,
    * base-table stand-in for the {@code gsi1} listing copy, so a listing can read children with
-   * {@code ConsistentRead=true}. It shares the children coordinates with {@link #childrenGsiPk}, so
-   * it delegates to keep the two in sync while both exist; once {@code gsi1} goes away, this stays
-   * as the sole encoder.
+   * {@code ConsistentRead=true}. The subtype is part of the key so that listing one subtype (for
+   * example all Iceberg tables) is a single exact query; types with no subtype always use {@code
+   * 0}, so their listing is unaffected. It differs from {@link #childrenGsiPk} by the subtype
+   * segment, which the {@code gsi1} index does not carry.
    */
-  public static String childPk(String realmId, long catalogId, long parentId, int typeCode) {
-    return childrenGsiPk(realmId, catalogId, parentId, typeCode);
+  public static String childPk(
+      String realmId, long catalogId, long parentId, int typeCode, int subTypeCode) {
+    return realmId + SEP + catalogId + SEP + parentId + SEP + typeCode + SEP + subTypeCode;
   }
 
   /**

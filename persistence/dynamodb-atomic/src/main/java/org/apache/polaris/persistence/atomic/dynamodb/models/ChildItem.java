@@ -33,9 +33,9 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
 /**
  * The child record: a strongly consistent, base-table stand-in for the {@code gsi1} listing copy.
- * One small item per child, keyed by the parent's coordinates (realm, catalog, parent, type) with
- * the child's id in the sort key, so a parent's children can be listed by a base-table {@code
- * Query} with {@code ConsistentRead=true}.
+ * One small item per child, keyed by the parent's coordinates (realm, catalog, parent, type,
+ * subtype) with the child's id in the sort key, so a parent's children, or one subtype of them, can
+ * be listed by a base-table {@code Query} with {@code ConsistentRead=true}.
  *
  * <p>It is written in the same {@code TransactWriteItems} as the entity: added on create, moved on
  * re-parent, and removed on delete. A pure rename leaves it in place, since it is keyed by parent
@@ -47,9 +47,9 @@ public final class ChildItem {
   private ChildItem() {}
 
   public static Map<String, AttributeValue> toItem(
-      String realmId, long catalogId, long parentId, int typeCode, long entityId) {
+      String realmId, long catalogId, long parentId, int typeCode, int subTypeCode, long entityId) {
     Map<String, AttributeValue> item = new HashMap<>();
-    item.put(PK, stringAttr(childPk(realmId, catalogId, parentId, typeCode)));
+    item.put(PK, stringAttr(childPk(realmId, catalogId, parentId, typeCode, subTypeCode)));
     item.put(SK, stringAttr(childSk(entityId)));
     item.put(A_ID, numberAttr(entityId));
     return Map.copyOf(item);

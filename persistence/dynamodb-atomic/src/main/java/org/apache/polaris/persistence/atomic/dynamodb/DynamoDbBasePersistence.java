@@ -548,7 +548,12 @@ public class DynamoDbBasePersistence implements BasePersistence {
 
   private Map<String, AttributeValue> childItem(PolarisBaseEntity entity) {
     return ChildItem.toItem(
-        realmId, entity.getCatalogId(), entity.getParentId(), entity.getTypeCode(), entity.getId());
+        realmId,
+        entity.getCatalogId(),
+        entity.getParentId(),
+        entity.getTypeCode(),
+        entity.getSubTypeCode(),
+        entity.getId());
   }
 
   /** True when a rename also re-parents, so the child record's partition key changes. */
@@ -574,7 +579,8 @@ public class DynamoDbBasePersistence implements BasePersistence {
                             realmId,
                             entity.getCatalogId(),
                             entity.getParentId(),
-                            entity.getTypeCode()),
+                            entity.getTypeCode(),
+                            entity.getSubTypeCode()),
                         childSk(entity.getId())))
                 .build())
         .build();

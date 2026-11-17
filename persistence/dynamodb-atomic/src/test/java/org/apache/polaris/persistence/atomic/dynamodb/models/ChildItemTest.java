@@ -29,16 +29,16 @@ class ChildItemTest {
 
   @Test
   void toItemKeysByParentCoordinatesAndCarriesChildId() {
-    Map<String, AttributeValue> item = ChildItem.toItem("realm1", 7L, 3L, 2, 42L);
+    Map<String, AttributeValue> item = ChildItem.toItem("realm1", 7L, 3L, 2, 3, 42L);
 
-    assertThat(item.get(DynamoDbLayout.PK).s()).isEqualTo("realm1#7#3#2");
+    assertThat(item.get(DynamoDbLayout.PK).s()).isEqualTo("realm1#7#3#2#3");
     assertThat(item.get(DynamoDbLayout.SK).s()).isEqualTo("CHILD#0000000000000000042");
     assertThat(item.get(DynamoDbLayout.A_ID).n()).isEqualTo("42");
   }
 
   @Test
   void entityIdReadsBackTheChildId() {
-    Map<String, AttributeValue> item = ChildItem.toItem("realm1", 7L, 3L, 2, 42L);
+    Map<String, AttributeValue> item = ChildItem.toItem("realm1", 7L, 3L, 2, 3, 42L);
 
     assertThat(ChildItem.entityId(item)).isEqualTo(42L);
   }

@@ -65,8 +65,9 @@ class DynamoDbLayoutTest {
   }
 
   @Test
-  void childPkCombinesParentCoordinates() {
-    assertThat(DynamoDbLayout.childPk("realm1", 7L, 3L, 2)).isEqualTo("realm1#7#3#2");
+  void childPkCombinesParentCoordinatesAndSubtype() {
+    assertThat(DynamoDbLayout.childPk("realm1", 7L, 3L, 2, 0)).isEqualTo("realm1#7#3#2#0");
+    assertThat(DynamoDbLayout.childPk("realm1", 7L, 3L, 1, 2)).isEqualTo("realm1#7#3#1#2");
   }
 
   @Test

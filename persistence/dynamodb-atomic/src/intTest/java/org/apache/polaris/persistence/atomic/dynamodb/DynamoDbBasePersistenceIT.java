@@ -329,10 +329,12 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
 
   /** Strongly consistent read of a base-table child record, as a future listing would do. */
   private boolean childRecordExists(long parentId, long id) {
+    int subType = PolarisEntitySubType.NULL_SUBTYPE.getCode();
     Map<String, AttributeValue> key =
         Map.of(
             DynamoDbLayout.PK,
-                AttributeValue.fromS(DynamoDbLayout.childPk("realm1", CATALOG, parentId, TYPE)),
+                AttributeValue.fromS(
+                    DynamoDbLayout.childPk("realm1", CATALOG, parentId, TYPE, subType)),
             DynamoDbLayout.SK, AttributeValue.fromS(DynamoDbLayout.childSk(id)));
     return client.getItem(b -> b.tableName(table).key(key).consistentRead(true)).hasItem();
   }
