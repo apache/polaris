@@ -1616,14 +1616,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         tableMetadataObjs.add(currentMetadata);
       });
 
-      ConditionalEntityWrite.Builder batch = ConditionalEntityWrite.builder();
-      transactionMetaStoreManager
-          .getPendingUpdates()
-          .forEach(update -> batch.update(update.catalogPath(), update.entity()));
-      transactionMetaStoreManager
-          .getPendingUnchanged()
-          .forEach(checked -> batch.unchanged(checked.catalogPath(), checked.entity()));
-      ConditionalEntityWrite conditionalWrite = batch.build();
+      // Built before the write is attempted, so that a failure to build it cleans up the metadata
+      // files written for the tables above.
+      ConditionalEntityWrite conditionalWrite =
+          conditionalWriteOf(
+              transactionMetaStoreManager.getPendingUpdates(),
+              transactionMetaStoreManager.getPendingUnchanged());
       persistenceAttempted = true;
       ConditionalEntityWriteResult result =
           metaStoreManager()
@@ -1636,8 +1634,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             result.getReturnStatus(), result.getExtraInformation());
       }
     } catch (RuntimeException e) {
-      // No catalog entity is persisted until updateEntitiesPropertiesIfNotChanged is reached, so a
-      // failure before it leaves a definite orphan whatever its type. Once it has been attempted,
+      // No catalog entity is persisted until writeEntitiesIfConditionsHold is reached, so a failure
+      // before it leaves a definite orphan whatever its type. Once it has been attempted,
       // only delete on known failures: an ambiguous outcome must leave the files in place. Same
       // rule as doCommit.
       if (!persistenceAttempted || LocalIcebergCatalog.shouldCleanupMetadataOnCommitFailure(e)) {
@@ -1672,6 +1670,26 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             new FileToDelete(
                 tableFileIOs.get(entity.getTableIdentifier()), entity.getMetadataLocation()))
         .toList();
+  }
+
+  /**
+   * Builds the conditional write of a multi-table commit: the updates of the changed tables, and a
+   * check of every table the commit validates requirements against but does not change.
+   *
+   * <p>Changes are grouped by table before this point, so each table is either updated or checked,
+   * and the write is always valid. If that ever stops holding, the request is rejected as a bad
+   * request.
+   */
+  static ConditionalEntityWrite conditionalWriteOf(
+      List<EntityWithPath> updates, List<EntityWithPath> checks) {
+    ConditionalEntityWrite.Builder write = ConditionalEntityWrite.builder();
+    updates.forEach(update -> write.update(update.catalogPath(), update.entity()));
+    checks.forEach(check -> write.unchanged(check.catalogPath(), check.entity()));
+    try {
+      return write.build();
+    } catch (IllegalArgumentException e) {
+      throw new BadRequestException("Cannot commit transaction: %s", e.getMessage());
+    }
   }
 
   /**

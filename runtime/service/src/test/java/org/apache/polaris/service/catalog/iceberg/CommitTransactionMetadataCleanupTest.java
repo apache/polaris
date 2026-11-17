@@ -76,7 +76,7 @@ public class CommitTransactionMetadataCleanupTest {
   @Test
   void testCommitTransactionCleansUpMetadataOnFailure(@TempDir Path tempDir) throws Exception {
     String location = catalogLocation(tempDir);
-    // The spy fails updateEntitiesPropertiesIfNotChanged only once the tables are created.
+    // The spy fails writeEntitiesIfConditionsHold only once the tables are created.
     AtomicBoolean shouldFail = new AtomicBoolean(false);
     TestServices testServices =
         servicesBuilder()
@@ -234,7 +234,7 @@ public class CommitTransactionMetadataCleanupTest {
                         return invocation.callRealMethod();
                       })
                   .when(spy)
-                  .updateEntitiesPropertiesIfNotChanged(Mockito.any(), Mockito.any());
+                  .writeEntitiesIfConditionsHold(Mockito.any(), Mockito.any());
               return spy;
             })
             .build();

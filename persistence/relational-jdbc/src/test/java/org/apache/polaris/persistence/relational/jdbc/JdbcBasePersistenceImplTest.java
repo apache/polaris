@@ -781,4 +781,44 @@ class JdbcBasePersistenceImplTest {
                 List.of(new BasePersistence.EntityChange.Update(entity, entity))))
         .isNotInstanceOf(RetryOnConcurrencyException.class);
   }
+
+  /**
+   * A check that fails inside the transaction, for example with a serialization failure on
+   * CockroachDB, runs once and is reported as a conflict: the select is not retried within the
+   * aborted transaction, where a retry would fail with a different error and become a 500.
+   */
+  @Test
+  void checkAndWriteEntities_CheckFailingInsideTheTransactionIsAConflict() throws SQLException {
+    DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
+    Connection connection = Mockito.mock(Connection.class);
+    when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.COCKROACHDB);
+    Mockito.doAnswer(
+            invocation -> {
+              invocation
+                  .<DatasourceOperations.TransactionCallback>getArgument(0)
+                  .execute(connection);
+              return null;
+            })
+        .when(datasourceOperations)
+        .runWithinTransaction(any());
+    doThrow(new SQLException("could not serialize access", "40001"))
+        .when(datasourceOperations)
+        .executeSelectOverStreamOnce(any(), any(), any(), any());
+    JdbcBasePersistenceImpl persistence =
+        new JdbcBasePersistenceImpl(
+            new PolarisDefaultDiagServiceImpl(),
+            datasourceOperations,
+            RANDOM_SECRETS,
+            REALM_CONTEXT.getRealmIdentifier());
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, persistence);
+
+    assertThatExceptionOfType(RetryOnConcurrencyException.class)
+        .isThrownBy(() ->
+            persistence.checkAndWriteEntities(
+                callCtx, List.of(new Condition.Unchanged(null, batchEntity(11L))), List.of()));
+    verify(datasourceOperations, Mockito.times(1))
+        .executeSelectOverStreamOnce(any(), any(), any(), any());
+    verify(datasourceOperations, never())
+        .executeSelectOverStream(any(Connection.class), any(), any(), any());
+  }
 }
