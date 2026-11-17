@@ -39,6 +39,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClientResponse;
 import java.io.InputStream;
+import java.net.ServerSocket;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
@@ -943,6 +944,10 @@ public class TestCacheInvalidationSender {
 
   @Test
   public void transportFailureMetrics() throws Exception {
+    int closedPort;
+    try (var socket = new ServerSocket(0)) {
+      closedPort = socket.getLocalPort();
+    }
     var config =
         buildConfig(
             singletonList("token"), Optional.empty(), Duration.ofDays(1), Duration.ofSeconds(1));
@@ -957,7 +962,7 @@ public class TestCacheInvalidationSender {
         sender
             .submit(
                 List.of(cacheInvalidationEvictObj("realm", SOME_OBJ_REF)),
-                List.of(peer("invalid host", 1)),
+                List.of(peer("127.0.0.1", closedPort)),
                 1)
             .getFirst();
     assertThat(future.toCompletionStage().toCompletableFuture()).failsWithin(30, TimeUnit.SECONDS);
