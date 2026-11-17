@@ -201,10 +201,6 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
 
 ### Changes
 
-- Include prefix-scoped storage settings in `storage-credentials` entries in table
-  responses when credentials are vended. Top-level table configuration remains for
-  compatibility. For clients applying scoped configuration, catalog-provided
-  settings take precedence over client-configured values.
 - Azure credential vending now maps MSAL authentication failures using their HTTP status codes,
   including the existing `401` to `403` and `404` to `400` mappings.
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
