@@ -375,7 +375,8 @@ public class AwsCredentialsStorageIntegration
           IamStatement.builder()
               .effect(IamEffect.ALLOW)
               .addAction("s3:PutObject")
-              .addAction("s3:DeleteObject");
+              .addAction("s3:DeleteObject")
+              .addAction("s3:AbortMultipartUpload");
       writeLocations.forEach(location -> {
         StorageUri uri = StorageUri.parse(location);
         String escapedObjectPrefix = escapeIamGlobLiteral(parseS3Path(uri));
