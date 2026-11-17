@@ -23,9 +23,14 @@ import java.util.Locale;
 /**
  * Attribute names, item-type markers, and key encodings for the single-table DynamoDB layout.
  *
- * <p>One base table holds the Polaris item types, each partitioned by its own identity so load
- * spreads across partitions; a sparse GSI lists a parent's children. The {@code realmId} is only a
- * key prefix (tenant isolation), never a partition key on its own.
+ * <p>One base table holds the Polaris item types. The entity item and its name sentinel are each
+ * partitioned by their own identity, so load spreads across partitions. A child record is the
+ * exception: it is partitioned by its parent's coordinates, so a parent's children share one
+ * base-table partition key and can be listed by a strongly consistent {@code Query}. A busy parent,
+ * or a realm's principals and catalogs under {@code realm#0#0#type}, therefore shares one partition
+ * and pays base-table write capacity on every create and delete. A sparse GSI also lists a parent's
+ * children, eventually consistent. The {@code realmId} is only a key prefix (tenant isolation),
+ * never a partition key on its own.
  */
 public final class DynamoDbLayout {
 
@@ -108,13 +113,14 @@ public final class DynamoDbLayout {
   }
 
   /**
-   * Child-record partition key in the base table: {@code realmId#catalogId#parentId#typeCode}. A
-   * child record is a strongly consistent, base-table stand-in for the {@code gsi1} listing copy,
-   * so a listing can read children with {@code ConsistentRead=true}. It shares the children
-   * coordinates with {@link #childrenGsiPk}, but lives on the base table rather than the index.
+   * Child-record partition key in the base table. A child record is a strongly consistent,
+   * base-table stand-in for the {@code gsi1} listing copy, so a listing can read children with
+   * {@code ConsistentRead=true}. It shares the children coordinates with {@link #childrenGsiPk}, so
+   * it delegates to keep the two in sync while both exist; once {@code gsi1} goes away, this stays
+   * as the sole encoder.
    */
   public static String childPk(String realmId, long catalogId, long parentId, int typeCode) {
-    return realmId + SEP + catalogId + SEP + parentId + SEP + typeCode;
+    return childrenGsiPk(realmId, catalogId, parentId, typeCode);
   }
 
   /**

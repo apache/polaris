@@ -145,6 +145,7 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
             EntityAlreadyExistsException.class,
             e -> assertThat(e.getExistingEntity().getId()).isEqualTo(10L));
     assertThat(persistence.lookupEntity(callCtx, CATALOG, 11L, TYPE)).isNull();
+    assertThat(childRecordExists(PARENT, 11L)).isFalse();
   }
 
   @Test
@@ -205,6 +206,22 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
   }
 
   @Test
+  void reParentOntoATakenNameLeavesTheChildRecordUnderTheOldParent() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    PolarisBaseEntity takenInNewParent = entity(11L, PARENT + 1, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    persistence.writeEntity(callCtx, takenInNewParent, false, null);
+
+    // Re-parent sales into PARENT+1, where the name "sales" is already taken: rejected, nothing
+    // lands. The child record stays under the old parent and does not appear under the new one.
+    assertThatThrownBy(() ->
+            persistence.writeEntity(callCtx, renamed(sales, PARENT + 1, "sales"), true, sales))
+        .isInstanceOf(EntityAlreadyExistsException.class);
+    assertThat(childRecordExists(PARENT, 10L)).isTrue();
+    assertThat(childRecordExists(PARENT + 1, 10L)).isFalse();
+  }
+
+  @Test
   void nameChangedFlagWithUnchangedNameIsAPlainUpdate() {
     PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
     persistence.writeEntity(callCtx, sales, false, null);
@@ -252,6 +269,7 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
 
     assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isNull();
     assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales")).isNull();
+    assertThat(childRecordExists(PARENT, 10L)).isFalse();
   }
 
   @Test

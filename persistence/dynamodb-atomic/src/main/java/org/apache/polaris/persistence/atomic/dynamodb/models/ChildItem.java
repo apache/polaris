@@ -37,9 +37,10 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
  * the child's id in the sort key, so a parent's children can be listed by a base-table {@code
  * Query} with {@code ConsistentRead=true}.
  *
- * <p>It is written in the same {@code TransactWriteItems} as the entity on create, rename or
- * re-parent, and delete, so the list a correctness check reads never lags behind a write that
- * already completed. Its sole payload is the child entity's {@code id}.
+ * <p>It is written in the same {@code TransactWriteItems} as the entity: added on create, moved on
+ * re-parent, and removed on delete. A pure rename leaves it in place, since it is keyed by parent
+ * and id, not name. So the list a correctness check reads never lags behind a write that already
+ * completed. Its sole payload is the child entity's {@code id}.
  */
 public final class ChildItem {
 
