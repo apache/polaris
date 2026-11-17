@@ -1262,22 +1262,25 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // allowedLocations before vending credentials. This protects against cases where
       // allowedLocations were tightened after the table was created.
       validateTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
-      if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))
-          && baseCatalog instanceof LocalIcebergCatalog localCatalog) {
+      boolean vendingCredentials = VENDED_CREDENTIALS.equals(delegationMode.orElse(null));
+      if (vendingCredentials && baseCatalog instanceof LocalIcebergCatalog localCatalog) {
         localCatalog.validateNoLocationOverlapForCredentialVending(
             tableIdentifier, tableMetadata.location(), tableLocations, resolvedStoragePath);
       }
 
+      // The storage integration decides whether the refresh endpoint ends up in the response, based
+      // on whether it vended credentials. Only offer it when this request resolves to credential
+      // vending, so a plain metadata load never advertises the credentials endpoint.
       StorageAccessConfig storageAccessConfig =
           storageAccessConfigProvider()
               .getStorageAccessConfig(
                   tableIdentifier,
                   tableLocations,
                   actions,
-                  refreshCredentialsEndpoint,
+                  vendingCredentials ? refreshCredentialsEndpoint : Optional.empty(),
                   resolvedStoragePath);
       Map<String, String> credentialConfig = storageAccessConfig.credentials();
-      if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))) {
+      if (vendingCredentials) {
         if (!credentialConfig.isEmpty()) {
           responseBuilder.addAllConfig(credentialConfig);
           responseBuilder.addCredential(

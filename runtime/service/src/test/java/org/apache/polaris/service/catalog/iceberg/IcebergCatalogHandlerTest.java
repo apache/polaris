@@ -121,6 +121,8 @@ class IcebergCatalogHandlerTest {
   private static final Namespace NS1 = Namespace.of("ns1");
   private static final TableIdentifier TABLE2 = TableIdentifier.of(NS1, "table2");
   private static final String TABLE_LOCATION = "s3://fake-bucket/tables/table2";
+  private static final String REFRESH_ENDPOINT =
+      "v1/" + CATALOG_NAME + "/namespaces/ns1/tables/table2/credentials";
 
   private final PolarisResolutionManifest resolutionManifest =
       mock(PolarisResolutionManifest.class);
@@ -309,6 +311,49 @@ class IcebergCatalogHandlerTest {
     handler.loadTable(TABLE2, null, null, modes, Optional.empty());
 
     assertThat(authorizedOperations()).containsExactly(PolarisAuthorizableOperation.LOAD_TABLE);
+  }
+
+  /**
+   * The adapter always passes the credentials endpoint path; the handler only offers it to the
+   * storage integration when the request resolves to credential vending. A request that includes
+   * {@code none} resolves to no delegation, so the storage layer must not see the endpoint.
+   */
+  @Test
+  void noneRequestedLoadTableDoesNotOfferRefreshEndpointToStorage() {
+    Catalog catalog = mock(Catalog.class);
+    BaseTable table = baseTable();
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.loadTable(TABLE2)).thenReturn(table);
+    EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE, VENDED_CREDENTIALS);
+    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(Optional.empty());
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    handler.loadTable(TABLE2, null, null, modes, Optional.of(REFRESH_ENDPOINT));
+
+    verify(storageAccessConfigProvider)
+        .getStorageAccessConfig(eq(TABLE2), any(), any(), eq(Optional.empty()), eq(resolvedPath));
+  }
+
+  @Test
+  void vendedCredentialsLoadTableOffersRefreshEndpointToStorage() {
+    Catalog catalog = mock(Catalog.class);
+    BaseTable table = baseTable();
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.loadTable(TABLE2)).thenReturn(table);
+    EnumSet<AccessDelegationMode> modes = EnumSet.of(VENDED_CREDENTIALS);
+    when(accessDelegationModeResolver.resolve(eq(modes), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    handler.loadTable(TABLE2, null, null, modes, Optional.of(REFRESH_ENDPOINT));
+
+    verify(storageAccessConfigProvider)
+        .getStorageAccessConfig(
+            eq(TABLE2), any(), any(), eq(Optional.of(REFRESH_ENDPOINT)), eq(resolvedPath));
   }
 
   private List<PolarisAuthorizableOperation> authorizedOperations() {
