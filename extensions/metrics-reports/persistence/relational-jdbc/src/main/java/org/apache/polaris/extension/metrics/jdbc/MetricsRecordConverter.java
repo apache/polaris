@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.apache.iceberg.expressions.ExpressionUtil;
 import org.apache.iceberg.metrics.CommitMetricsResult;
 import org.apache.iceberg.metrics.CommitReport;
 import org.apache.iceberg.metrics.CounterResult;
@@ -165,7 +166,7 @@ public final class MetricsRecordConverter {
           .schemaId(Optional.of(scanReport.schemaId()))
           .filterExpression(
               scanReport.filter() != null
-                  ? Optional.of(scanReport.filter().toString())
+                  ? Optional.of(ExpressionUtil.toSanitizedString(scanReport.filter()))
                   : Optional.empty())
           .projectedFieldIds(
               scanReport.projectedFieldIds() != null

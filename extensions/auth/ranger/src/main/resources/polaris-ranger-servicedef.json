@@ -95,6 +95,7 @@
           "table-drop",
           "table-data-read",
           "table-data-write",
+          "table-metrics-read",
           "table-properties-read",
           "table-properties-write",
           "table-properties-set",
@@ -190,6 +191,7 @@
           "table-drop",
           "table-list",
           "table-data-read",
+          "table-metrics-read",
           "table-data-write",
           "table-metadata-full",
           "table-properties-read",
@@ -465,6 +467,7 @@
       { "itemId": 71, "name": "table-lineage-query",  "label": "Table Lineage Query",  "category": "READ" },
       { "itemId": 72, "name": "table-lineage-ingest", "label": "Table Lineage Ingest", "category": "UPDATE" },
       { "itemId": 73, "name": "view-lineage-query",   "label": "View Lineage Query",   "category": "READ" },
-      { "itemId": 74, "name": "view-lineage-ingest",  "label": "View Lineage Ingest",  "category": "UPDATE" }
+      { "itemId": 74, "name": "view-lineage-ingest",  "label": "View Lineage Ingest",  "category": "UPDATE" },
+      { "itemId": 75, "name": "table-metrics-read", "label": "Table Metrics Read", "category": "READ", "impliedGrants": [ "table-list" ] }
     ]
   }
