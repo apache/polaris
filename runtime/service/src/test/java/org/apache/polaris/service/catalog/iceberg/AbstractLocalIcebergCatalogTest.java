@@ -3366,11 +3366,10 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     ViewMetadata metadata = catalog.newViewOps(TABLE, false).current();
     Assertions.assertThat(metadata.metadataFileLocation()).startsWith(metadataPath + "/");
     Assertions.assertThat(fileIO.fileExists(metadata.metadataFileLocation())).isTrue();
-    Assertions.assertThatThrownBy(
-            () ->
-                view.updateProperties()
-                    .set("write.metadata.path", "s3://forbidden-bucket/metadata")
-                    .commit())
+    Assertions.assertThatThrownBy(() ->
+            view.updateProperties()
+                .set("write.metadata.path", "s3://forbidden-bucket/metadata")
+                .commit())
         .isInstanceOf(ForbiddenException.class);
     Assertions.assertThat(catalog.loadView(TABLE).properties())
         .containsEntry("write.metadata.path", metadataPath);
@@ -3387,15 +3386,14 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     updateCatalogProperties(
         Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false"));
     catalog.createNamespace(NS);
-    assertThatThrownBy(
-            () ->
-                catalog
-                    .buildView(TABLE)
-                    .withSchema(SCHEMA)
-                    .withDefaultNamespace(NS)
-                    .withQuery("spark", VIEW_QUERY)
-                    .withProperty("write.metadata.path", STORAGE_LOCATION + "/outside-view")
-                    .create())
+    assertThatThrownBy(() ->
+            catalog
+                .buildView(TABLE)
+                .withSchema(SCHEMA)
+                .withDefaultNamespace(NS)
+                .withQuery("spark", VIEW_QUERY)
+                .withProperty("write.metadata.path", STORAGE_LOCATION + "/outside-view")
+                .create())
         .isInstanceOf(ForbiddenException.class);
     var view =
         catalog
@@ -3429,13 +3427,12 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
                   .isSuccess())
           .isTrue();
     }
-    Assertions.assertThatThrownBy(
-            () ->
-                view.updateProperties()
-                    .set(
-                        "write.metadata.path",
-                        LocationUtil.stripTrailingSlash(view.location()) + "-outside-view")
-                    .commit())
+    Assertions.assertThatThrownBy(() ->
+            view.updateProperties()
+                .set(
+                    "write.metadata.path",
+                    LocationUtil.stripTrailingSlash(view.location()) + "-outside-view")
+                .commit())
         .isInstanceOf(ForbiddenException.class);
     String metadataPath = LocationUtil.stripTrailingSlash(view.location()) + "/custom-metadata";
     view.updateProperties().set("write.metadata.path", metadataPath).commit();
@@ -3499,12 +3496,11 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     replaced.updateProperties().set("comment", "updated again").commit();
     assertThat(catalog.newViewOps(TABLE, false).current().metadataFileLocation())
         .startsWith(metadataPath + "/");
-    assertThatThrownBy(
-            () ->
-                replaced
-                    .updateProperties()
-                    .set("write.metadata.path", metadataPath + "-changed")
-                    .commit())
+    assertThatThrownBy(() ->
+            replaced
+                .updateProperties()
+                .set("write.metadata.path", metadataPath + "-changed")
+                .commit())
         .isInstanceOf(ForbiddenException.class);
   }
 

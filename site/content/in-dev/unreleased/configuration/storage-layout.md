@@ -298,6 +298,12 @@ checks stay limited to siblings under the same parent. Otherwise write paths are
 table's location and the index alone suffices. Listing siblings can slow validation in namespaces
 with many entities.
 
+The exception is a grandfathered view whose unchanged `write.metadata.path` is outside its base
+location. With `OPTIMIZED_SIBLING_CHECK` enabled and `ALLOW_UNSTRUCTURED_TABLE_LOCATION` disabled,
+Polaris returns after checking the indexed base locations and does not list sibling write paths. A
+new table or view at that metadata path may therefore not be rejected as overlapping. Enabling
+`ALLOW_UNSTRUCTURED_TABLE_LOCATION` makes Polaris list and check those write paths.
+
 `OPTIMIZED_SIBLING_CHECK` is a realm-level setting with no catalog property. Realms created by older
 Polaris versions may not have that index populated, so Polaris refuses to start with
 `OPTIMIZED_SIBLING_CHECK` enabled unless `ALLOW_OPTIMIZED_SIBLING_CHECK` is also set, as an

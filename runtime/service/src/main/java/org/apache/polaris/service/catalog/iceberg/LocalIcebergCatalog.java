@@ -3075,7 +3075,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedNewParent) {
     Set<String> locations;
     if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
-      // Views do not persist their base location: it only exists in the view metadata.
+      // Read metadata so that views created before locations were persisted are also covered.
       String metadataLocation = entity.getMetadataLocation();
       FileIO fileIO =
           loadFileIOForTableLike(
@@ -3084,7 +3084,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               resolvedEntities,
               new HashMap<>(tableDefaultProperties),
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
-      locations = Set.of(ViewMetadataParser.read(fileIO, metadataLocation).location());
+      locations =
+          StorageUtil.getLocationsUsedByTable(ViewMetadataParser.read(fileIO, metadataLocation));
     } else {
       locations =
           StorageUtil.getLocationsUsedByTable(
