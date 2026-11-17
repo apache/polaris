@@ -189,17 +189,18 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @NonNull List<Condition> conditions,
       @NonNull List<EntityChange> changes) {
     List<BatchStep> steps = new ArrayList<>(conditions.size() + changes.size());
+    // Exhaustive switches over the sealed kinds: a new kind fails to compile here until handled.
     for (Condition condition : conditions) {
-      if (!(condition instanceof Condition.Unchanged unchanged)) {
-        throw new IllegalArgumentException("Unsupported condition " + condition);
+      switch (condition) {
+        case Condition.Unchanged unchanged ->
+            steps.add(new BatchStep(unchanged.entity(), null, null));
       }
-      steps.add(new BatchStep(unchanged.entity(), null, null));
     }
     for (EntityChange change : changes) {
-      if (!(change instanceof EntityChange.Update update)) {
-        throw new IllegalArgumentException("Unsupported change " + change);
+      switch (change) {
+        case EntityChange.Update update ->
+            steps.add(new BatchStep(update.entity(), update.entity(), update.originalEntity()));
       }
-      steps.add(new BatchStep(update.entity(), update.entity(), update.originalEntity()));
     }
     // Take the row locks of all batches in the same order, so that two batches that touch the same
     // entities never wait for each other in a cycle, which the database would resolve by failing
@@ -251,7 +252,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private void checkEntityUnchanged(Connection connection, PolarisEntityCore expected)
       throws SQLException {
     AtomicReference<PolarisChangeTrackingVersions> current = new AtomicReference<>();
-    datasourceOperations.executeSelectOverStream(
+    datasourceOperations.executeSelectOverStreamOnce(
         connection,
         QueryGenerator.generateCheckEntityQuery(
             realmId,

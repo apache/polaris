@@ -371,18 +371,18 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence implements SupportsCat
    */
   ConditionalEntityWriteResult writeEntitiesIfConditionsHold(ConditionalEntityWrite batch) {
     var updates = new ArrayList<EntityUpdate>();
+    // Exhaustive switches over the sealed kinds: a new kind fails to compile here until handled.
     for (var condition : batch.conditions()) {
-      if (!(condition instanceof Condition.Unchanged unchanged)) {
-        throw new IllegalArgumentException("Unsupported condition " + condition);
+      switch (condition) {
+        case Condition.Unchanged unchanged ->
+            updates.add(new EntityUpdate(CHECK, identityOf(unchanged.entity())));
       }
-      updates.add(new EntityUpdate(CHECK, identityOf(unchanged.entity())));
     }
     var checks = updates.size();
     for (var write : batch.writes()) {
-      if (!(write instanceof Write.Update update)) {
-        throw new IllegalArgumentException("Unsupported write " + write);
+      switch (write) {
+        case Write.Update update -> updates.add(new EntityUpdate(UPDATE, update.entity()));
       }
-      updates.add(new EntityUpdate(UPDATE, update.entity()));
     }
     if (updates.isEmpty()) {
       return new ConditionalEntityWriteResult(List.of());

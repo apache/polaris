@@ -349,7 +349,10 @@ public interface PolarisMetaStoreManager
    * @param entities the set of entities to update
    * @return list of all entities we updated, or a failure if the client should retry because one
    *     update failed
+   * @deprecated use {@link #writeEntitiesIfConditionsHold(PolarisCallContext,
+   *     ConditionalEntityWrite)}, which this method delegates to
    */
+  @Deprecated
   default @NonNull EntitiesResult updateEntitiesPropertiesIfNotChanged(
       @NonNull PolarisCallContext callCtx, @NonNull List<EntityWithPath> entities) {
     ConditionalEntityWrite.Builder batch = ConditionalEntityWrite.builder();

@@ -28,6 +28,7 @@ import jakarta.ws.rs.core.Response;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.RetryableValidationException;
+import org.apache.iceberg.Schema;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Namespace;
@@ -50,6 +52,7 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.iceberg.types.Types;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -67,6 +70,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
 import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite.Condition;
 import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite.Write;
+import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -629,6 +633,94 @@ public class CommitTransactionTest {
         .containsEntry(propertyName, "concurrent");
     assertThat(loadTable(testServices, "bound-a").tableMetadata().properties())
         .doesNotContainKey(propertyName);
+  }
+
+  /**
+   * A table listed twice, once with updates and once with requirements only, is grouped into one
+   * change: it is updated once and not also checked, and the commit succeeds.
+   */
+  @Test
+  void testTableListedTwiceWithUpdateAndRequirementOnlyCommits() {
+    AtomicReference<BatchWrite> lastBatch = new AtomicReference<>();
+    TestServices testServices = createTestServicesWithBatchHook(lastBatch, new AtomicBoolean());
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+    createTable(testServices, "twice", catalogLocation);
+    TableIdentifier twice = TableIdentifier.of(namespace, "twice");
+    String uuid = loadTable(testServices, "twice").tableMetadata().uuid();
+
+    commit(
+        testServices,
+        new CommitTransactionRequest(
+            List.of(
+                UpdateTableRequest.create(
+                    twice,
+                    List.of(),
+                    List.of(new MetadataUpdate.SetProperties(Map.of(propertyName, "value1")))),
+                UpdateTableRequest.create(
+                    twice, List.of(new UpdateRequirement.AssertTableUUID(uuid)), List.of()))));
+
+    assertThat(lastBatch.get().batch().writes())
+        .extracting(w -> ((Write.Update) w).entity().getName())
+        .containsExactly("twice");
+    assertThat(lastBatch.get().batch().conditions()).isEmpty();
+    assertThat(loadTable(testServices, "twice").tableMetadata().properties())
+        .containsEntry(propertyName, "value1");
+  }
+
+  /**
+   * A table listed twice is validated in request order: a requirement of the second entry is
+   * checked against the metadata as changed by the first, and fails the commit if it no longer
+   * holds.
+   */
+  @Test
+  void testTableListedTwiceFailsWhenItsLaterRequirementNoLongerHolds() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+    createTable(testServices, "twice-stale", catalogLocation);
+    TableIdentifier table = TableIdentifier.of(namespace, "twice-stale");
+    TableMetadata metadata = loadTable(testServices, "twice-stale").tableMetadata();
+    List<Types.NestedField> columns = new ArrayList<>(metadata.schema().columns());
+    columns.add(
+        Types.NestedField.optional(
+            metadata.schema().highestFieldId() + 1, "extra", Types.LongType.get()));
+
+    CommitTransactionRequest request =
+        new CommitTransactionRequest(
+            List.of(
+                UpdateTableRequest.create(
+                    table,
+                    List.of(),
+                    List.of(
+                        new MetadataUpdate.AddSchema(new Schema(columns)),
+                        new MetadataUpdate.SetCurrentSchema(-1))),
+                UpdateTableRequest.create(
+                    table,
+                    List.of(
+                        new UpdateRequirement.AssertCurrentSchemaID(metadata.currentSchemaId())),
+                    List.of())));
+
+    assertThatThrownBy(() -> commit(testServices, request))
+        .isInstanceOf(CommitFailedException.class);
+    assertThat(loadTable(testServices, "twice-stale").tableMetadata().currentSchemaId())
+        .isEqualTo(metadata.currentSchemaId());
+  }
+
+  /**
+   * Defensive: a table that is both updated and checked cannot be written as one conditional write.
+   * That cannot happen while changes are grouped by table, but if it did, the commit is rejected as
+   * a bad request.
+   */
+  @Test
+  void testConditionalWriteOfRejectsATableBothUpdatedAndChecked() {
+    PolarisBaseEntity table =
+        new PolarisBaseEntity(
+            1L, 2L, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, 1L, "t");
+
+    assertThatThrownBy(() ->
+            IcebergCatalogHandler.conditionalWriteOf(
+                List.of(new EntityWithPath(List.of(), table)),
+                List.of(new EntityWithPath(List.of(), table))))
+        .isInstanceOf(BadRequestException.class);
   }
 
   private void createCatalogAndNamespace(

@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.iceberg.MetadataUpdate;
+import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.CommitFailedException;
@@ -73,7 +74,7 @@ public class CommitTransactionMetadataCleanupTest {
       location = location.substring(0, location.length() - 1);
     }
 
-    // Create TestServices with a spy that will fail on updateEntitiesPropertiesIfNotChanged
+    // Create TestServices with a spy that will fail on writeEntitiesIfConditionsHold
     // but only AFTER initial setup (table creation) succeeds.
     AtomicBoolean shouldFail = new AtomicBoolean(false);
     TestServices testServices =
@@ -129,6 +130,62 @@ public class CommitTransactionMetadataCleanupTest {
     // After the failed transaction, no new metadata files should remain (they were cleaned up).
     Set<Path> metadataFilesAfter = metadataFiles(tempDir);
     assertThat(metadataFilesAfter).isEqualTo(metadataFilesBefore);
+  }
+
+  /**
+   * A table that fails while the commit is still being staged, after an earlier table's new
+   * metadata file was written, fails the commit before anything is persisted: the earlier table's
+   * new metadata file is removed.
+   */
+  @Test
+  void testCommitTransactionCleansUpMetadataWhenALaterTableFails(@TempDir Path tempDir)
+      throws Exception {
+    String location = tempDir.toAbsolutePath().toUri().toString();
+    if (location.endsWith("/")) {
+      location = location.substring(0, location.length() - 1);
+    }
+    TestServices testServices =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE")))
+            .build();
+    createCatalogAndNamespace(testServices, location);
+    createTable(testServices, "staged-1", location);
+    createTable(testServices, "staged-2", location);
+    Set<Path> metadataFilesBefore = metadataFiles(tempDir);
+
+    // staged-1 is updated first, which writes its new metadata file; then the requirement on
+    // staged-2 fails.
+    CommitTransactionRequest request =
+        new CommitTransactionRequest(
+            List.of(
+                UpdateTableRequest.create(
+                    TableIdentifier.of(namespace, "staged-1"),
+                    List.of(),
+                    List.of(new MetadataUpdate.SetProperties(Map.of(propertyName, "value1")))),
+                UpdateTableRequest.create(
+                    TableIdentifier.of(namespace, "staged-2"),
+                    List.of(
+                        new UpdateRequirement.AssertTableUUID(
+                            "00000000-0000-0000-0000-000000000000")),
+                    List.of())));
+
+    assertThatThrownBy(() ->
+            testServices
+                .restApi()
+                .commitTransaction(
+                    catalog,
+                    request,
+                    IDEMPOTENCY_KEY,
+                    testServices.realmContext(),
+                    testServices.securityContext()))
+        .isInstanceOf(CommitFailedException.class);
+
+    assertThat(metadataFiles(tempDir)).isEqualTo(metadataFilesBefore);
   }
 
   private static Set<Path> metadataFiles(Path directory) throws Exception {

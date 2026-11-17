@@ -52,9 +52,7 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
 import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWriteResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
-import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -687,7 +685,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
   }
 
   // ---------------------------------------------------------------------------------------------
-  // Batch updates: updateEntitiesPropertiesIfNotChanged (apache/polaris#5807)
+  // Batch updates: conditional writes without conditions (apache/polaris#5807)
   // ---------------------------------------------------------------------------------------------
 
   /** A catalog, a namespace and two tables {@code a} and {@code b}, for the batch-update tests. */
@@ -738,10 +736,15 @@ public abstract class BasePolarisMetaStoreManagerTest {
     return new PolarisBaseEntity.Builder(entity).properties("{\"k\":\"" + value + "\"}").build();
   }
 
-  private EntitiesResult updateBatch(List<PolarisEntityCore> path, PolarisBaseEntity... entities) {
-    return polarisTestMetaStoreManager.polarisMetaStoreManager.updateEntitiesPropertiesIfNotChanged(
-        polarisTestMetaStoreManager.polarisCallContext,
-        Stream.of(entities).map(e -> new EntityWithPath(path, e)).toList());
+  /** Updates all of {@code entities} in one conditional write without conditions. */
+  private ConditionalEntityWriteResult updateBatch(
+      List<PolarisEntityCore> path, PolarisBaseEntity... entities) {
+    ConditionalEntityWrite.Builder write = ConditionalEntityWrite.builder();
+    for (PolarisBaseEntity entity : entities) {
+      write.update(path, entity);
+    }
+    return polarisTestMetaStoreManager.polarisMetaStoreManager.writeEntitiesIfConditionsHold(
+        polarisTestMetaStoreManager.polarisCallContext, write.build());
   }
 
   /**
@@ -765,7 +768,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
       PolarisBaseEntity updatedA = withProperty(tables.a(), "batch");
       PolarisBaseEntity staleB = withProperty(tables.b(), "batch");
-      EntitiesResult result =
+      ConditionalEntityWriteResult result =
           staleFirst
               ? updateBatch(tables.path(), staleB, updatedA)
               : updateBatch(tables.path(), updatedA, staleB);
@@ -792,13 +795,13 @@ public abstract class BasePolarisMetaStoreManagerTest {
         PolarisBaseEntity b = reload(tables.b());
         CyclicBarrier start = new CyclicBarrier(2);
         String r = Integer.toString(round);
-        Future<EntitiesResult> ab =
+        Future<ConditionalEntityWriteResult> ab =
             executor.submit(() -> {
               start.await();
               return updateBatch(
                   tables.path(), withProperty(a, r + "ab"), withProperty(b, r + "ab"));
             });
-        Future<EntitiesResult> ba =
+        Future<ConditionalEntityWriteResult> ba =
             executor.submit(() -> {
               start.await();
               return updateBatch(
@@ -806,9 +809,9 @@ public abstract class BasePolarisMetaStoreManagerTest {
             });
 
         int successes = 0;
-        for (Future<EntitiesResult> future : List.of(ab, ba)) {
+        for (Future<ConditionalEntityWriteResult> future : List.of(ab, ba)) {
           // An exception from the batch (such as a deadlock) fails the test here.
-          EntitiesResult result = future.get(30, TimeUnit.SECONDS);
+          ConditionalEntityWriteResult result = future.get(30, TimeUnit.SECONDS);
           if (result.isSuccess()) {
             successes++;
           } else {
