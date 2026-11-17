@@ -81,13 +81,20 @@ import software.amazon.awssdk.services.dynamodb.model.TransactionConflictExcepti
  * write:
  *
  * <ul>
- *   <li>A create writes the entity item and its name sentinel in one {@code TransactWriteItems},
- *       both {@code attribute_not_exists}, so ids and names stay unique.
+ *   <li>A create writes the entity item, its name sentinel, and its child record in one {@code
+ *       TransactWriteItems}, each {@code attribute_not_exists}, so ids and names stay unique.
  *   <li>An update is a compare-and-set on {@code entityVersion} and {@code grantRecordsVersion}.
  *   <li>A rename or re-parent moves the name sentinel in the same transaction as that
- *       compare-and-set.
+ *       compare-and-set; a re-parent also moves the child record.
+ *   <li>A delete removes the entity item, its name sentinel, and its child record in one
+ *       transaction.
  *   <li>Multi-entity lookups read with {@code TransactGetItems}, so they see one snapshot.
  * </ul>
+ *
+ * <p>The child record is a strongly consistent, base-table stand-in for the {@code gsi1} listing
+ * copy, so a later change can serve listing from a base-table query with {@code
+ * ConsistentRead=true}. This class writes it but does not yet read it: {@code gsi1} and listing are
+ * unchanged.
  *
  * <p>This class currently covers entity writes and lookups. Listing, multi-entity writes, grant
  * records and realm teardown throw {@link UnsupportedOperationException} until they are
