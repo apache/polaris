@@ -115,7 +115,6 @@ public final class IndexKey implements Comparable<IndexKey> {
 
   private final byte[] key;
 
-  private boolean hasHash;
   private int hash;
 
   private IndexKey(byte[] key) {
@@ -407,11 +406,12 @@ public final class IndexKey implements Comparable<IndexKey> {
 
   @Override
   public int hashCode() {
-    if (!hasHash) {
-      hash = Arrays.hashCode(key);
-      hasHash = true;
+    var h = hash;
+    if (h == 0) {
+      h = Arrays.hashCode(key);
+      hash = h;
     }
-    return hash;
+    return h;
   }
 
   @Override
