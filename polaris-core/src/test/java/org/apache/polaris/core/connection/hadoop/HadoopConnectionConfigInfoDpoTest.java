@@ -98,11 +98,12 @@ class HadoopConnectionConfigInfoDpoTest {
         "",
         "hdfs://namenode:8020/warehouse",
         "s3://bucket/warehouse",
-        "abfss://container@account.dfs.core.windows.net/warehouse"
+        "abfss://container@account.dfs.core.windows.net/warehouse",
+        "s3://bucket/my warehouse"
       })
-  void testUriWithoutUrlHandlerIsAccepted(String uri) {
-    // The Hadoop catalog never connects to `uri`, so any URI is fine, including schemes the JVM
-    // has no URL handler for.
+  void testUriIsNotValidated(String uri) {
+    // The Hadoop catalog never uses `uri`, so any value is accepted, including storage locations
+    // that are not valid URIs.
     assertThatCode(() -> createDpo(uri, null)).doesNotThrowAnyException();
   }
 

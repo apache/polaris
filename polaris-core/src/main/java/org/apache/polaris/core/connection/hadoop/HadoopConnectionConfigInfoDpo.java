@@ -20,7 +20,6 @@ package org.apache.polaris.core.connection.hadoop;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
-import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,22 +83,12 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
   }
 
   /**
-   * The Hadoop catalog is initialized from {@link #getWarehouse()} and never connects to {@code
-   * uri}, so the value is optional and only has to be a URI when present. This also admits schemes
-   * such as {@code hdfs://} or {@code s3://} that the JVM has no {@link java.net.URL} handler for.
-   * A blank value is treated like a missing one.
+   * The Hadoop catalog is initialized from {@link #getWarehouse()} and never uses {@code uri}, so
+   * the value is optional and not validated. Storage locations such as {@code hdfs://} or {@code
+   * s3://} paths are not always valid URIs either.
    */
   @Override
-  protected void validateUri(@Nullable String uri) {
-    if (uri == null || uri.isBlank()) {
-      return;
-    }
-    try {
-      URI.create(uri);
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Invalid remote URI: " + uri, e);
-    }
-  }
+  protected void validateUri(@Nullable String uri) {}
 
   @Override
   public String toString() {
