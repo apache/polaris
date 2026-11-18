@@ -14,4 +14,4 @@
 &lt;p&gt;&lt;a href="https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/Authenticator.java"&gt;&lt;code&gt;Authenticator&lt;/code&gt;&lt;/a&gt;: A core interface used to authenticate credentials and resolve principal and principal roles. Roles may be derived from OIDC claims or internal mappings.&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;&lt;a href="https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/InternalPolarisToken.java"&gt;&lt;code&gt;InternalPolarisToken&lt;/code&gt;&lt;/a&gt;: Used in internal auth and inherits from &lt;code&gt;PrincipalCredential&lt;/code&gt;.&lt;/p&gt;</description></item></channel></rss>
+&lt;p&gt;&lt;a href="https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/internal/broker/InternalPolarisToken.java"&gt;&lt;code&gt;InternalPolarisToken&lt;/code&gt;&lt;/a&gt;: Used in internal auth and inherits from &lt;code&gt;PrincipalCredential&lt;/code&gt;.&lt;/p&gt;</description></item></channel></rss>
