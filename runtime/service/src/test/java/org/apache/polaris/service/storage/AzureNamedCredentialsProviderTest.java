@@ -215,7 +215,22 @@ class AzureNamedCredentialsProviderTest {
               entityPath(PolarisEntityType.CATALOG, "team-a", OTHER_TENANT));
         });
 
-    assertThat(defaultBuilds).isEqualTo(3);
+    // One build per provider: each provider has its own factory, which shares its default.
+    assertThat(defaultBuilds).isEqualTo(2);
+    assertThat(builds).hasValue(0);
+  }
+
+  @Test
+  void theDefaultCredentialIsBuiltOnce() {
+    PolarisStorageIntegrationProviderImpl provider = provider(resolveByName());
+
+    int defaultBuilds =
+        defaultCredentialBuilds(() -> {
+          provider.getStorageIntegration(entityPath(PolarisEntityType.CATALOG, null, TENANT));
+          provider.getStorageIntegration(entityPath(PolarisEntityType.TASK, null, OTHER_TENANT));
+        });
+
+    assertThat(defaultBuilds).isEqualTo(1);
     assertThat(builds).hasValue(0);
   }
 

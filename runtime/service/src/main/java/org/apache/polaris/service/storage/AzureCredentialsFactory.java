@@ -21,10 +21,12 @@ package org.apache.polaris.service.storage;
 import com.azure.core.credential.TokenCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.google.common.base.Suppliers;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
@@ -34,7 +36,9 @@ import org.apache.polaris.service.storage.StorageConfiguration.AzureStorageConfi
 /**
  * Selects the Azure credential of a storage configuration from the {@code polaris.storage.azure}
  * properties, or the {@code DefaultAzureCredential} chain when none apply. A new credential is
- * built on every call; the vended credentials are cached by the caller.
+ * built on every call, except the {@code DefaultAzureCredential}, which is built once and shared:
+ * it remembers which credential of its chain works, and that credential caches its tokens. The
+ * vended credentials are cached by the caller.
  *
  * <p>The messages can reach API clients, so they never include a configured value.
  */
@@ -45,6 +49,8 @@ class AzureCredentialsFactory {
 
   private final AzureStorageConfig azure;
   private final RealmConfig realmConfig;
+  private final Supplier<TokenCredential> defaultCredential =
+      Suppliers.memoize(() -> new DefaultAzureCredentialBuilder().build());
 
   /**
    * For the client proxy ArC generates for this normal-scoped bean: the proxy subclass needs a
@@ -98,7 +104,7 @@ class AzureCredentialsFactory {
     }
     if (missing.size() == 3) {
       // Reads the AZURE_* environment variables, among other sources.
-      return new DefaultAzureCredentialBuilder().build();
+      return defaultCredential.get();
     }
     if (!missing.isEmpty()) {
       throw new IllegalStateException(
