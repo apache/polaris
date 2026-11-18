@@ -45,8 +45,9 @@ components:
       required: false
       description: >
         The largest number of results the client wants in one page. A server that paginates returns
-        at most this many results in a page, and fewer when its own maximum page size is smaller.
-        Without `pageSize`, the server chooses the page size.
+        at most this many results in a page. It may return fewer, even none, in a page that is not
+        the last; a client that gets a page with no results and a page token requests the next page
+        with that token. Without `pageSize`, the server chooses the page size.
       schema:
         type: integer
         minimum: 1
@@ -59,8 +60,8 @@ components:
         - Any response of an operation that uses these definitions may be paginated. A client must
           always check for a page token in the response and, when one is present, send it unchanged
           as the `pageToken` query parameter to get the next page. The server omits the page token
-          from the last page. A client must treat a missing or `null` page token as the end of the
-          results.
+          from the last page. A client must treat a missing, `null`, or empty page token as the end
+          of the results.
         - A client does not need to send `pageToken` or `pageSize` to start paginating. The server
           may paginate a response to a request that has neither.
         - A server that does not paginate returns all results in one response, with no page token.
