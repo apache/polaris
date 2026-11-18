@@ -488,7 +488,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             .setMetadataLocation(metadataFileLocation)
             .build();
 
-    updateTableLike(identifier, updatedEntity, false);
+    updateTableLike(identifier, updatedEntity);
 
     TableOperations ops = newTableOps(identifier);
     return new BaseTable(ops, fullTableName(name(), identifier), metricsReporter());
@@ -2194,7 +2194,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         if (null == existingLocation) {
           createTableLike(tableIdentifier, entity);
         } else {
-          updateTableLike(tableIdentifier, entity, false);
+          updateTableLike(tableIdentifier, entity);
         }
         // We diverge from `BaseMetastoreTableOperations`: only update the in-memory state after
         // the metastore persistence succeeds. If we updated it before and persistence threw,
@@ -2684,7 +2684,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         if (null == existingLocation) {
           createTableLike(identifier, entity);
         } else {
-          updateTableLike(identifier, entity, false);
+          updateTableLike(identifier, entity);
         }
         if (makeMetadataCurrentOnCommit) {
           currentMetadata =
@@ -3195,8 +3195,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     LOGGER.debug("Created TableLike entity {} with TableIdentifier {}", resultEntity, identifier);
   }
 
-  private void updateTableLike(
-      TableIdentifier identifier, PolarisEntity entity, boolean validateMetadataLocation) {
+  private void updateTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(
             ResolvedPathKey.ofTableLike(identifier), entity.getSubType());
@@ -3213,12 +3212,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               .setBaseLocation(
                   StorageLocation.ensureTrailingSlash(icebergTableLikeEntity.getBaseLocation()))
               .build();
-    }
-
-    // Make sure the metadata file is valid for our allowed locations.
-    String metadataLocation = icebergTableLikeEntity.getMetadataLocation();
-    if (validateMetadataLocation) {
-      validateLocationForTableLike(identifier, metadataLocation, resolvedEntities);
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
@@ -3436,7 +3429,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             tableIdentifier,
             newLocation);
 
-        updateTableLike(tableIdentifier, entity, false);
+        updateTableLike(tableIdentifier, entity);
       }
     }
     return true;
