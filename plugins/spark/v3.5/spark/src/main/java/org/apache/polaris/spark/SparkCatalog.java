@@ -23,19 +23,27 @@ import org.apache.iceberg.spark.SupportsReplaceView;
 import org.apache.polaris.spark.utils.PolarisCatalogSpark3Utils;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
+import org.apache.spark.sql.catalyst.analysis.NoSuchProcedureException;
 import org.apache.spark.sql.catalyst.analysis.ViewAlreadyExistsException;
 import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.connector.catalog.View;
 import org.apache.spark.sql.connector.catalog.ViewCatalog;
+import org.apache.spark.sql.connector.iceberg.catalog.Procedure;
+import org.apache.spark.sql.connector.iceberg.catalog.ProcedureCatalog;
 import org.apache.spark.sql.types.StructType;
 
 /** Spark 3.5 SparkCatalog implementation. */
 public class SparkCatalog extends BasePolarisSparkCatalog
-    implements ViewCatalog, SupportsReplaceView {
+    implements ViewCatalog, SupportsReplaceView, ProcedureCatalog {
 
   @Override
   protected PolarisCatalogUtils createCatalogUtils() {
     return new PolarisCatalogSpark3Utils();
+  }
+
+  @Override
+  public Procedure loadProcedure(Identifier ident) throws NoSuchProcedureException {
+    return this.icebergsSparkCatalog.loadProcedure(ident);
   }
 
   @Override

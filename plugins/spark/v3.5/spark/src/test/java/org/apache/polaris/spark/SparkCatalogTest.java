@@ -41,6 +41,7 @@ import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
+import org.apache.spark.sql.catalyst.analysis.NoSuchProcedureException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchViewException;
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
@@ -54,6 +55,7 @@ import org.apache.spark.sql.connector.catalog.V1Table;
 import org.apache.spark.sql.connector.catalog.View;
 import org.apache.spark.sql.connector.catalog.ViewChange;
 import org.apache.spark.sql.connector.expressions.Transform;
+import org.apache.spark.sql.connector.iceberg.catalog.Procedure;
 import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
 import org.apache.spark.sql.internal.SQLConf;
@@ -320,6 +322,23 @@ public class SparkCatalogTest {
         .hasMessageContaining("CTAS and RTAS");
 
     assertThat(catalog.listTables(defaultNS)).isEmpty();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"expire_snapshots", "rollback_to_snapshot", "rewrite_data_files"})
+  void testLoadIcebergProcedure(String procedureName) throws Exception {
+    Procedure procedure =
+        catalog.loadProcedure(Identifier.of(new String[] {"system"}, procedureName));
+    assertThat(procedure).isNotNull();
+  }
+
+  @Test
+  void testLoadUnknownProcedure() {
+    assertThatThrownBy(
+            () -> catalog.loadProcedure(Identifier.of(new String[] {"system"}, "unknown_proc")))
+        .isInstanceOf(NoSuchProcedureException.class);
+    assertThatThrownBy(() -> catalog.loadProcedure(Identifier.of(defaultNS, "expire_snapshots")))
+        .isInstanceOf(NoSuchProcedureException.class);
   }
 
   @Test
