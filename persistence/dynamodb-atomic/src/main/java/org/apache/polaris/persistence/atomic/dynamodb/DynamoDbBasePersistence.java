@@ -38,15 +38,20 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.PriorityQueue;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.EventEntity;
@@ -99,14 +104,15 @@ import software.amazon.awssdk.services.dynamodb.model.TransactionConflictExcepti
  *   <li>Multi-entity lookups read with {@code TransactGetItems}, so they see one snapshot.
  * </ul>
  *
- * <p>Listing reads the child records: a strongly consistent base-table {@code Query} on the
+ * <p>Listing reads the child records: a strongly consistent, lazy base-table {@code Query} on the
  * parent's partition key ({@code realmId#catalogId#parentId#typeCode#subTypeCode}) returns the
- * children's ids in id order, then the entities are read with {@code TransactGetItems}. Because the
- * child records live on the base table and are maintained in the same transaction as the entity,
- * listing never misses a write that already completed. Paging uses {@link EntityIdToken}, as {@code
- * relational-jdbc} does. A concrete subtype is a single partition; {@code ANY_SUBTYPE} reads each
- * subtype partition of the type and merges them by id, so the combined stream stays in id order and
- * pages with a single {@link EntityIdToken}.
+ * children's ids in id order, and each id is then read into its entity with a strongly consistent
+ * get. Because the child records live on the base table and are maintained in the same transaction
+ * as the entity, listing never misses a write that already completed. The stream is lazy, so a
+ * filter in {@code listFullEntities} can keep pulling and never leaves a page short. Paging uses
+ * {@link EntityIdToken}, as {@code relational-jdbc} does. A concrete subtype is a single partition;
+ * {@code ANY_SUBTYPE} lazily merges the subtype partitions by id, so the combined stream stays in
+ * id order and pages with a single {@link EntityIdToken}.
  *
  * <p>This class currently covers entity writes, lookups and listing. Multi-entity writes, grant
  * records and realm teardown throw {@link UnsupportedOperationException} until they are
@@ -501,12 +507,13 @@ public class DynamoDbBasePersistence implements BasePersistence {
    * Streams a parent's children from the child records, in id order, strongly consistent. A
    * concrete subtype is one base-table partition. {@code ANY_SUBTYPE} reads each subtype partition
    * of the type and merges them by id, so the combined stream stays in id order and pages with a
-   * single {@link EntityIdToken}. The child records hold only ids, so each page's ids are read into
-   * entities with {@code TransactGetItems} (one snapshot per chunk).
+   * single {@link EntityIdToken}. The child records hold only ids, so each id is read into its
+   * entity with a strongly consistent get.
    *
-   * <p>Each partition query reads at most one more than the page size. That bound is per request,
-   * not per stream: the paginator keeps fetching while the caller wants more, so a filter applied
-   * afterwards cannot leave a page short.
+   * <p>The stream is lazy. Each partition's DynamoDB query uses a per-request {@code Limit} of
+   * {@code pageSize + 1}, but the paginator keeps fetching as the caller consumes, so the stream is
+   * not truncated. A filter applied after this read (as {@code listFullEntities} does) can
+   * therefore keep pulling and never leaves a page short.
    */
   private Stream<PolarisBaseEntity> queryChildren(
       long catalogId,
@@ -519,41 +526,65 @@ public class DynamoDbBasePersistence implements BasePersistence {
             ? childSubtypes(entityType)
             : new int[] {entitySubType.getCode()};
 
-    // Collect the children's ids from each subtype partition, in id order. Each partition is
-    // capped at pageSize + 1 ids (per request, as a stream of pages), so a merged page never reads
-    // more than it needs. One partition needs no merge; several are merged by id.
-    List<Long> ids = new ArrayList<>();
-    for (int subTypeCode : subtypes) {
-      queryChildIds(catalogId, parentId, entityType.getCode(), subTypeCode, pageToken)
-          .forEach(ids::add);
+    Stream<Long> ids;
+    if (subtypes.length == 1) {
+      ids = queryChildIds(catalogId, parentId, entityType.getCode(), subtypes[0], pageToken);
+    } else {
+      // Lazily merge the per-subtype id streams by id. Each stream is already in id order and
+      // resumes after the page token, so a k-way merge keeps the combined stream id-ordered and
+      // lets a single EntityIdToken page across subtypes, without draining any partition.
+      List<Iterator<Long>> iterators = new ArrayList<>();
+      for (int subTypeCode : subtypes) {
+        iterators.add(
+            queryChildIds(catalogId, parentId, entityType.getCode(), subTypeCode, pageToken)
+                .iterator());
+      }
+      ids = mergeById(iterators);
     }
-    if (subtypes.length > 1) {
-      ids.sort(Comparator.naturalOrder());
-    }
-    if (ids.isEmpty()) {
-      return Stream.empty();
-    }
+    // Read each id into its entity with a strongly consistent get, lazily, so the stream keeps
+    // producing while a downstream filter pulls more.
+    return ids.map(this::readEntity).filter(Objects::nonNull);
+  }
 
-    // Read the ids into entities in one snapshot per chunk, then return them in id order. The
-    // child records only hold ids, so this second read is what loads the entities.
-    List<PolarisEntityId> entityIds =
-        ids.stream().map(id -> new PolarisEntityId(catalogId, id)).toList();
-    Map<Long, PolarisBaseEntity> byId = new HashMap<>();
-    for (Map<String, AttributeValue> item : batchReadEntities(entityIds, null)) {
-      PolarisBaseEntity entity = EntityItem.toEntity(item);
-      byId.put(entity.getId(), entity);
+  /** Lazily merges several id-ordered streams into one id-ordered stream. */
+  private static Stream<Long> mergeById(List<Iterator<Long>> iterators) {
+    // A small heap of (nextId, iterator), popping the smallest id each step.
+    PriorityQueue<long[]> heap = new PriorityQueue<>(Comparator.comparingLong(a -> a[0]));
+    for (int i = 0; i < iterators.size(); i++) {
+      if (iterators.get(i).hasNext()) {
+        heap.add(new long[] {iterators.get(i).next(), i});
+      }
     }
-    return ids.stream().map(byId::get).filter(Objects::nonNull);
+    Iterator<Long> merged =
+        new Iterator<>() {
+          @Override
+          public boolean hasNext() {
+            return !heap.isEmpty();
+          }
+
+          @Override
+          public Long next() {
+            long[] top = heap.poll();
+            int source = (int) top[1];
+            if (iterators.get(source).hasNext()) {
+              heap.add(new long[] {iterators.get(source).next(), source});
+            }
+            return top[0];
+          }
+        };
+    return StreamSupport.stream(
+        Spliterators.spliteratorUnknownSize(merged, Spliterator.ORDERED), false);
   }
 
   /**
-   * Streams one (type, subtype) partition's child ids in id order, as a lazy stream of pages each
-   * bounded by {@code pageSize + 1}. That bound is per request, not per stream: the paginator keeps
-   * fetching while the caller consumes, so a filter applied afterwards cannot leave a page short.
+   * Streams one (type, subtype) partition's child ids in id order. The DynamoDB query carries a
+   * per-request {@code Limit} of {@code pageSize + 1}, but the paginator keeps fetching as the
+   * stream is consumed, so the stream itself is not bounded and a later filter cannot under-fill a
+   * page.
    */
   private Stream<Long> queryChildIds(
       long catalogId, long parentId, int typeCode, int subTypeCode, PageToken pageToken) {
-    // One more than the page size, so the page can still tell whether a next page exists.
+    // One more than the page size, so a single request can still tell whether a next page exists.
     OptionalInt pageSize = pageToken.pageSize();
     Integer queryLimit =
         pageSize.isPresent() && pageSize.getAsInt() < Integer.MAX_VALUE
@@ -579,9 +610,7 @@ public class DynamoDbBasePersistence implements BasePersistence {
             .consistentRead(true)
             .limit(queryLimit)
             .build();
-    Stream<Long> all = client.queryPaginator(request).items().stream().map(ChildItem::entityId);
-    // When several partitions are merged, each only needs pageSize + 1 ids for the merged page.
-    return queryLimit == null ? all : all.limit(queryLimit);
+    return client.queryPaginator(request).items().stream().map(ChildItem::entityId);
   }
 
   /**
