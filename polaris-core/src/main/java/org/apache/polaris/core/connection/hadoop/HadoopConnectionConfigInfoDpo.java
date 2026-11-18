@@ -61,7 +61,7 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
   private final String warehouse;
 
   public HadoopConnectionConfigInfoDpo(
-      @JsonProperty(value = "uri", required = true) @NonNull String uri,
+      @JsonProperty(value = "uri", required = false) @Nullable String uri,
       @JsonProperty(value = "authenticationParameters", required = true)
           @NonNull AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "serviceIdentity", required = false)
@@ -82,6 +82,14 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
     return warehouse;
   }
 
+  /**
+   * The Hadoop catalog is initialized from {@link #getWarehouse()} and never uses {@code uri}, so
+   * the value is optional and not validated. Storage locations such as {@code hdfs://} or {@code
+   * s3://} paths are not always valid URIs either.
+   */
+  @Override
+  protected void validateUri(@Nullable String uri) {}
+
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
@@ -98,7 +106,9 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
   public @NonNull Map<String, String> asIcebergCatalogProperties(
       PolarisCredentialManager credentialManager) {
     HashMap<String, String> properties = new HashMap<>();
-    properties.put(CatalogProperties.URI, getUri());
+    if (getUri() != null && !getUri().isBlank()) {
+      properties.put(CatalogProperties.URI, getUri());
+    }
     if (getWarehouse() != null) {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getWarehouse());
     }
