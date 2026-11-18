@@ -30,6 +30,8 @@ Beta Feature: OPA authorization is currently in Beta and is not a stable  releas
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
 | `polaris.authorization.opa.policy-uri` |  | `uri` |  |
+| `polaris.authorization.opa.batch-policy-uri` |  | `uri` | URI of the OPA rule that answers a batch of authorization questions in one call, for example  `https://opa.example.com/v1/data/polaris/batch_allow`. When empty, batch requests are  answered with one call per question to `policy-uri`. Setting it reduces the number of  HTTP calls to OPA, which speeds up entity-level list filtering on large lists.  |
+| `polaris.authorization.opa.max-batch-size` | `100` | `int` | Maximum number of authorization questions sent to OPA in one batch call.  |
 | `polaris.authorization.opa.auth.type` | `none` | `enum (NONE, BEARER)` | Type of authentication  |
 | `polaris.authorization.opa.auth.bearer.static-token.value` |  | `string` | Static bearer token value  |
 | `polaris.authorization.opa.auth.bearer.file-based.path` |  | `path` | Path to file containing bearer token  |

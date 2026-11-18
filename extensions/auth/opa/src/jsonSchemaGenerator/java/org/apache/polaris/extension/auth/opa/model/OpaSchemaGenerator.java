@@ -45,31 +45,41 @@ public class OpaSchemaGenerator {
    * @throws IOException if schema generation fails
    */
   public static String generateSchema() throws IOException {
+    return generateSchema(OpaAuthorizationInput.class);
+  }
+
+  /**
+   * Generates a JSON Schema for the OPA batch authorization input structure.
+   *
+   * @return the JSON Schema as a pretty-printed string
+   * @throws IOException if schema generation fails
+   */
+  public static String generateBatchSchema() throws IOException {
+    return generateSchema(OpaBatchAuthorizationInput.class);
+  }
+
+  private static String generateSchema(Class<?> inputClass) throws IOException {
     ObjectMapper mapper = JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build();
 
     JsonSchemaGenerator schemaGen = new JsonSchemaGenerator(mapper);
-    JsonSchema schema = schemaGen.generateSchema(OpaAuthorizationInput.class);
+    JsonSchema schema = schemaGen.generateSchema(inputClass);
 
     return mapper.writeValueAsString(schema);
   }
 
   /**
-   * Main method to generate and save the JSON Schema to a file.
+   * Main method to generate and save the JSON Schemas to files.
    *
-   * @param args optional output file path (defaults to opa-input-schema.json)
+   * @param args optional output file paths: the input schema (defaults to opa-input-schema.json)
+   *     and the batch input schema (defaults to opa-batch-input-schema.json)
    */
   public static void main(String[] args) throws IOException {
-    String schemaJson = generateSchema();
+    write(generateSchema(), args.length > 0 ? args[0] : "opa-input-schema.json");
+    write(generateBatchSchema(), args.length > 1 ? args[1] : "opa-batch-input-schema.json");
+  }
 
-    // Determine output path
-    Path outputPath;
-    if (args.length > 0) {
-      outputPath = Paths.get(args[0]);
-    } else {
-      outputPath = Paths.get("opa-input-schema.json");
-    }
-
-    // Write schema to file
+  private static void write(String schemaJson, String path) throws IOException {
+    Path outputPath = Paths.get(path);
     Files.writeString(outputPath, schemaJson);
     System.out.println("JSON Schema generated successfully at: " + outputPath.toAbsolutePath());
     System.out.println();

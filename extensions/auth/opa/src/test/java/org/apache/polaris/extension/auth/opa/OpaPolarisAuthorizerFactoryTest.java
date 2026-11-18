@@ -66,6 +66,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     // Build configuration for static token
     OpaAuthorizationConfig opaConfig =
         ImmutableOpaAuthorizationConfig.builder()
+            .maxBatchSize(100)
             .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
             .auth(
                 ImmutableAuthenticationConfig.builder()
@@ -109,6 +110,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     // Build configuration for file-based token
     OpaAuthorizationConfig opaConfig =
         ImmutableOpaAuthorizationConfig.builder()
+            .maxBatchSize(100)
             .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
             .auth(
                 ImmutableAuthenticationConfig.builder()
@@ -166,6 +168,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     // Build configuration with no authentication
     OpaAuthorizationConfig opaConfig =
         ImmutableOpaAuthorizationConfig.builder()
+            .maxBatchSize(100)
             .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
             .auth(
                 ImmutableAuthenticationConfig.builder()
@@ -200,6 +203,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     try {
       OpaAuthorizationConfig opaConfig =
           ImmutableOpaAuthorizationConfig.builder()
+              .maxBatchSize(100)
               .policyUri(
                   URI.create(
                       "http://localhost:"
@@ -259,6 +263,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     try {
       OpaAuthorizationConfig opaConfig =
           ImmutableOpaAuthorizationConfig.builder()
+              .maxBatchSize(100)
               .policyUri(
                   URI.create(
                       "http://localhost:"
@@ -317,6 +322,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     try {
       OpaAuthorizationConfig opaConfig =
           ImmutableOpaAuthorizationConfig.builder()
+              .maxBatchSize(100)
               .policyUri(
                   URI.create(
                       "http://localhost:"
@@ -383,6 +389,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     try {
       OpaAuthorizationConfig opaConfig =
           ImmutableOpaAuthorizationConfig.builder()
+              .maxBatchSize(100)
               .policyUri(
                   URI.create(
                       "http://localhost:"
@@ -466,6 +473,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     Path missingTrustStore = tempDir.resolve("does-not-exist.jks");
     OpaAuthorizationConfig opaConfig =
         ImmutableOpaAuthorizationConfig.builder()
+            .maxBatchSize(100)
             .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
             .auth(
                 ImmutableAuthenticationConfig.builder()
@@ -511,5 +519,64 @@ public class OpaPolarisAuthorizerFactoryTest {
         });
     server.start();
     return server;
+  }
+
+  private static ImmutableOpaAuthorizationConfig.Builder batchConfigBuilder() {
+    return ImmutableOpaAuthorizationConfig.builder()
+        .maxBatchSize(100)
+        .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
+        .auth(
+            ImmutableAuthenticationConfig.builder()
+                .type(OpaAuthorizationConfig.AuthenticationType.NONE)
+                .build())
+        .http(ImmutableHttpConfig.builder().timeout(Duration.ofSeconds(2)).verifySsl(true).build());
+  }
+
+  @Test
+  public void testBatchSettingsAreValidWhenUnsetOrWellFormed() {
+    assertThatNoException().isThrownBy(() -> batchConfigBuilder().build().validate());
+    assertThatNoException()
+        .isThrownBy(() ->
+            batchConfigBuilder()
+                .batchPolicyUri(URI.create("https://opa.example.com/v1/data/polaris/batch_allow"))
+                .maxBatchSize(1)
+                .build()
+                .validate());
+  }
+
+  @Test
+  public void testBatchPolicyUriMustUseHttpScheme() {
+    assertThatThrownBy(() ->
+            batchConfigBuilder()
+                .batchPolicyUri(URI.create("ftp://opa.example.com/batch_allow"))
+                .build()
+                .validate())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("batch-policy-uri must use http or https scheme");
+  }
+
+  @Test
+  public void testMaxBatchSizeMustBePositive() {
+    assertThatThrownBy(() -> batchConfigBuilder().maxBatchSize(0).build().validate())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("max-batch-size must be at least 1");
+  }
+
+  @Test
+  public void testFactoryPassesBatchSettingsToAuthorizer() throws Exception {
+    URI batchUri = URI.create("http://localhost:8181/v1/data/polaris/batch_allow");
+    OpaAuthorizationConfig opaConfig =
+        batchConfigBuilder().batchPolicyUri(batchUri).maxBatchSize(7).build();
+
+    try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+      OpaPolarisAuthorizerFactory factory =
+          new OpaPolarisAuthorizerFactory(
+              opaConfig, Clock.systemUTC(), asyncExec, () -> null, () -> "test-realm");
+      OpaPolarisAuthorizer authorizer =
+          (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
+
+      assertThat(authorizer).hasFieldOrPropertyWithValue("batchPolicyUri", batchUri);
+      assertThat(authorizer).hasFieldOrPropertyWithValue("maxBatchSize", 7);
+    }
   }
 }
