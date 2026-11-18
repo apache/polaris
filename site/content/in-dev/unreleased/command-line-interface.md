@@ -514,9 +514,9 @@ Command Options:
 ##### Examples
 
 ```
-polaris principals update --property key=value --property other_key=other_value some_user
+polaris principals update --set-property key=value --set-property other_key=other_value some_user
 
-polaris principals update --property are_other_keys_removed=yes some_user
+polaris principals update --set-property are_other_keys_removed=yes some_user
 ```
 
 #### access
@@ -718,9 +718,9 @@ Command Options:
 ##### Examples
 
 ```
-polaris principal-roles update --property key=value2 data_engineer
+polaris principal-roles update --set-property key=value2 data_engineer
 
-polaris principal-roles update data_analyst --property key=value3
+polaris principal-roles update data_analyst --set-property key=value3
 ```
 
 #### grant
@@ -931,9 +931,9 @@ Command Options:
 ##### Examples
 
 ```
-polaris catalog-roles update --property contains_pii=true --catalog some_catalog sales_data
+polaris catalog-roles update --set-property contains_pii=true --catalog some_catalog sales_data
 
-polaris catalog-roles update sales_data --catalog some_catalog --property key=value
+polaris catalog-roles update sales_data --catalog some_catalog --set-property key=value
 ```
 
 #### grant
@@ -1650,7 +1650,7 @@ Command Options:
 ##### Examples
 
 ```
-polaris policies list --catalog some_catalog
+polaris policies list --catalog some_catalog --namespace some.schema
 
 polaris policies list --catalog some_catalog --applicable
 ```
