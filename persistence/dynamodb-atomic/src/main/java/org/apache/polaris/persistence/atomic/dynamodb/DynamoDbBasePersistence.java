@@ -42,7 +42,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.PriorityQueue;
@@ -106,13 +105,15 @@ import software.amazon.awssdk.services.dynamodb.model.TransactionConflictExcepti
  *
  * <p>Listing reads the child records: a strongly consistent, lazy base-table {@code Query} on the
  * parent's partition key ({@code realmId#catalogId#parentId#typeCode#subTypeCode}) returns the
- * children's ids in id order, and each id is then read into its entity with a strongly consistent
- * get. Because the child records live on the base table and are maintained in the same transaction
- * as the entity, listing never misses a write that already completed. The stream is lazy, so a
- * filter in {@code listFullEntities} can keep pulling and never leaves a page short. Paging uses
- * {@link EntityIdToken}, as {@code relational-jdbc} does. A concrete subtype is a single partition;
- * {@code ANY_SUBTYPE} lazily merges the subtype partitions by id, so the combined stream stays in
- * id order and pages with a single {@link EntityIdToken}.
+ * children's ids in id order, and those ids are then read into entities a chunk at a time with
+ * {@code TransactGetItems} (one snapshot per chunk), flat-mapped so the read stays lazy. Because
+ * the child records live on the base table and are maintained in the same transaction as the
+ * entity, listing never misses a write that already completed. The stream is lazy, so a filter in
+ * {@code listFullEntities} can keep pulling and never leaves a page short. Paging uses {@link
+ * EntityIdToken}, as {@code relational-jdbc} does. A concrete subtype is a single partition; {@code
+ * ANY_SUBTYPE} lazily merges the subtype partitions by id, so the combined stream stays in id order
+ * and pages with a single {@link EntityIdToken}. Each entity is re-checked against the queried
+ * parent, so one that moved out by a concurrent re-parent is not listed.
  *
  * <p>This class currently covers entity writes, lookups and listing. Multi-entity writes, grant
  * records and realm teardown throw {@link UnsupportedOperationException} until they are
@@ -507,13 +508,18 @@ public class DynamoDbBasePersistence implements BasePersistence {
    * Streams a parent's children from the child records, in id order, strongly consistent. A
    * concrete subtype is one base-table partition. {@code ANY_SUBTYPE} reads each subtype partition
    * of the type and merges them by id, so the combined stream stays in id order and pages with a
-   * single {@link EntityIdToken}. The child records hold only ids, so each id is read into its
-   * entity with a strongly consistent get.
+   * single {@link EntityIdToken}.
    *
    * <p>The stream is lazy. Each partition's DynamoDB query uses a per-request {@code Limit} of
-   * {@code pageSize + 1}, but the paginator keeps fetching as the caller consumes, so the stream is
-   * not truncated. A filter applied after this read (as {@code listFullEntities} does) can
-   * therefore keep pulling and never leaves a page short.
+   * {@code pageSize + 1}, and the paginator keeps fetching as the caller consumes. The ids are then
+   * read into entities a chunk at a time with {@code TransactGetItems} (one snapshot per chunk),
+   * flat-mapped so the read stays lazy: a filter applied after it (as {@code listFullEntities}
+   * does) can keep pulling and never leaves a page short.
+   *
+   * <p>A child's entity is read separately from its child record, so a concurrent re-parent could
+   * return an entity that has moved to another parent. Each entity is therefore re-checked against
+   * the query's catalog, parent and type (and subtype when concrete) and dropped if it moved out.
+   * Missing a child that moved in after the query is fine; that is just a later write.
    */
   private Stream<PolarisBaseEntity> queryChildren(
       long catalogId,
@@ -541,9 +547,79 @@ public class DynamoDbBasePersistence implements BasePersistence {
       }
       ids = mergeById(iterators);
     }
-    // Read each id into its entity with a strongly consistent get, lazily, so the stream keeps
-    // producing while a downstream filter pulls more.
-    return ids.map(this::readEntity).filter(Objects::nonNull);
+
+    // Read ids a chunk at a time, one TransactGetItems per chunk, flat-mapped so the read stays
+    // lazy. Chunk size is pageSize + 1, matching what one page needs; unpaged reads use the
+    // TransactGetItems item cap. Guard each entity so one that moved out is not listed here.
+    OptionalInt pageSize = pageToken.pageSize();
+    int chunkSize =
+        pageSize.isPresent() && pageSize.getAsInt() < MAX_TRANSACT_GET_ITEMS
+            ? pageSize.getAsInt() + 1
+            : MAX_TRANSACT_GET_ITEMS;
+    Integer concreteSubtype =
+        entitySubType == PolarisEntitySubType.ANY_SUBTYPE ? null : entitySubType.getCode();
+    return chunked(ids.iterator(), chunkSize)
+        .flatMap(chunk -> readEntitiesInOrder(catalogId, chunk).stream())
+        .filter(
+            e -> belongsToParent(e, catalogId, parentId, entityType.getCode(), concreteSubtype));
+  }
+
+  /** Reads a chunk of ids into entities with one snapshot, returned in the chunk's id order. */
+  private List<PolarisBaseEntity> readEntitiesInOrder(long catalogId, List<Long> ids) {
+    List<PolarisEntityId> entityIds =
+        ids.stream().map(id -> new PolarisEntityId(catalogId, id)).toList();
+    Map<Long, PolarisBaseEntity> byId = new HashMap<>();
+    for (Map<String, AttributeValue> item : batchReadEntities(entityIds, null)) {
+      PolarisBaseEntity entity = EntityItem.toEntity(item);
+      byId.put(entity.getId(), entity);
+    }
+    List<PolarisBaseEntity> ordered = new ArrayList<>(ids.size());
+    for (long id : ids) {
+      PolarisBaseEntity entity = byId.get(id);
+      if (entity != null) {
+        ordered.add(entity);
+      }
+    }
+    return ordered;
+  }
+
+  /**
+   * True when the entity still sits under the queried parent. Guards against a concurrent re-parent
+   * between the child-record query and the entity read: the record said the entity was a child, but
+   * the entity may have moved. Subtype is checked only for a concrete-subtype query.
+   */
+  private static boolean belongsToParent(
+      PolarisBaseEntity entity,
+      long catalogId,
+      long parentId,
+      int typeCode,
+      @Nullable Integer subTypeCode) {
+    return entity.getCatalogId() == catalogId
+        && entity.getParentId() == parentId
+        && entity.getTypeCode() == typeCode
+        && (subTypeCode == null || entity.getSubTypeCode() == subTypeCode);
+  }
+
+  /** Groups a lazy id iterator into lazily-pulled chunks of at most {@code size}. */
+  private static Stream<List<Long>> chunked(Iterator<Long> ids, int size) {
+    Iterator<List<Long>> chunks =
+        new Iterator<>() {
+          @Override
+          public boolean hasNext() {
+            return ids.hasNext();
+          }
+
+          @Override
+          public List<Long> next() {
+            List<Long> chunk = new ArrayList<>(size);
+            while (ids.hasNext() && chunk.size() < size) {
+              chunk.add(ids.next());
+            }
+            return chunk;
+          }
+        };
+    return StreamSupport.stream(
+        Spliterators.spliteratorUnknownSize(chunks, Spliterator.ORDERED), false);
   }
 
   /** Lazily merges several id-ordered streams into one id-ordered stream. */

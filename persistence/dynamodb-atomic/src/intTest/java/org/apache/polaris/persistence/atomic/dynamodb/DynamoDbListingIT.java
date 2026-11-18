@@ -207,6 +207,42 @@ class DynamoDbListingIT extends AbstractDynamoDbTest {
   }
 
   @Test
+  void aChildMovedToAnotherNamespaceLeavesTheOldOne() {
+    PolarisBaseEntity sales = write(10L, NAMESPACE, "sales", PolarisEntitySubType.ICEBERG_TABLE);
+
+    // Re-parent it into NAMESPACE + 1 (a move), bumping the version for the compare-and-set.
+    PolarisBaseEntity moved =
+        new PolarisBaseEntity.Builder(sales).parentId(NAMESPACE + 1).entityVersion(2).build();
+    persistence.writeEntity(callCtx, moved, true, sales);
+
+    // Gone from the old namespace, present under the new one.
+    assertThat(
+            persistence
+                .listEntities(
+                    callCtx,
+                    CATALOG,
+                    NAMESPACE,
+                    TABLE,
+                    PolarisEntitySubType.ANY_SUBTYPE,
+                    PageToken.readEverything())
+                .items())
+        .isEmpty();
+    assertThat(persistence.hasChildren(callCtx, null, CATALOG, NAMESPACE)).isFalse();
+    assertThat(
+            persistence
+                .listEntities(
+                    callCtx,
+                    CATALOG,
+                    NAMESPACE + 1,
+                    TABLE,
+                    PolarisEntitySubType.ANY_SUBTYPE,
+                    PageToken.readEverything())
+                .items())
+        .extracting(EntityNameLookupRecord::getId)
+        .containsExactly(10L);
+  }
+
+  @Test
   void pagedAnySubtypeInterleavesTablesViewsAndGenericsById() {
     // Ids interleave across the three TABLE_LIKE subtypes, so the merge has to order across
     // partitions, not just concatenate them.
