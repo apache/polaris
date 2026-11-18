@@ -585,11 +585,16 @@ public class ProductionReadinessChecks {
     }
 
     // A realm runs with the override when it has one and with the default otherwise, so judge
-    // each realm by its effective values rather than by the override map alone.
+    // each realm by its effective values rather than by the override map alone. A realm that
+    // overrides neither flag runs with the defaults, which are already checked above.
     featureConfiguration
         .realmOverrides()
         .forEach((realmId, realmOverrides) -> {
           var overrides = realmOverrides.overrides();
+          if (!overrides.containsKey(optimizedSiblingCheck.key())
+              && !overrides.containsKey(allowOverlap.key())) {
+            return;
+          }
           boolean realmOptimized =
               Boolean.parseBoolean(
                   overrides.getOrDefault(

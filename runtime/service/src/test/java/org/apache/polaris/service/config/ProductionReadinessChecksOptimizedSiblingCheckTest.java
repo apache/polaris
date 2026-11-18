@@ -111,18 +111,41 @@ class ProductionReadinessChecksOptimizedSiblingCheckTest {
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors()).hasSize(1);
-    assertThat(result.getErrors().get(0).offendingProperty()).contains("test-realm");
+    assertThat(result.getErrors().get(0).offendingProperty())
+        .contains("test-realm")
+        .contains(OPTIMIZED_KEY);
   }
 
   @Test
   void realmOverrideDisablesInheritedCheckReturnsOk() {
+    // The realm also withdraws the acknowledgement, so the result is only OK if the realm's
+    // OPTIMIZED_SIBLING_CHECK=false override is honored.
     ProductionReadinessCheck result =
         checks.checkOverlappingSiblingCheckSettings(
             mockConfig(
                 Map.of(OPTIMIZED_KEY, "true", ALLOW_KEY, "true"),
-                Map.of("test-realm", mockRealmOverrides(Map.of(OPTIMIZED_KEY, "false")))));
+                Map.of(
+                    "test-realm",
+                    mockRealmOverrides(Map.of(OPTIMIZED_KEY, "false", ALLOW_KEY, "false")))));
 
     assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void realmOverridingUnrelatedFlagsIsNotReportedAgain() {
+    // The realm runs with the default values for both flags, which are already reported once.
+    ProductionReadinessCheck result =
+        checks.checkOverlappingSiblingCheckSettings(
+            mockConfig(
+                Map.of(OPTIMIZED_KEY, "true"),
+                Map.of(
+                    "test-realm",
+                    mockRealmOverrides(
+                        Map.of(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.key(), "true")))));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors()).hasSize(1);
+    assertThat(result.getErrors()).noneMatch(e -> e.offendingProperty().contains("test-realm"));
   }
 
   private static FeaturesConfiguration mockConfig(
