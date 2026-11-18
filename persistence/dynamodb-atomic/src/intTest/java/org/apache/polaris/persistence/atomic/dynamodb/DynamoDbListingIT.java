@@ -206,6 +206,45 @@ class DynamoDbListingIT extends AbstractDynamoDbTest {
     assertThat(persistence.hasChildren(callCtx, null, CATALOG, NAMESPACE)).isFalse();
   }
 
+  @Test
+  void pagedAnySubtypeInterleavesTablesViewsAndGenericsById() {
+    // Ids interleave across the three TABLE_LIKE subtypes, so the merge has to order across
+    // partitions, not just concatenate them.
+    write(10L, NAMESPACE, "t1", PolarisEntitySubType.ICEBERG_TABLE);
+    write(20L, NAMESPACE, "v1", PolarisEntitySubType.ICEBERG_VIEW);
+    write(30L, NAMESPACE, "g1", PolarisEntitySubType.GENERIC_TABLE);
+    write(40L, NAMESPACE, "t2", PolarisEntitySubType.ICEBERG_TABLE);
+    write(50L, NAMESPACE, "v2", PolarisEntitySubType.ICEBERG_VIEW);
+
+    Page<EntityNameLookupRecord> first =
+        list(PolarisEntitySubType.ANY_SUBTYPE, PageToken.fromLimit(2));
+    assertThat(first.items()).extracting(EntityNameLookupRecord::getId).containsExactly(10L, 20L);
+
+    Page<EntityNameLookupRecord> second =
+        list(
+            PolarisEntitySubType.ANY_SUBTYPE,
+            PageToken.build(first.encodedResponseToken(), null, -1, () -> true));
+    assertThat(second.items()).extracting(EntityNameLookupRecord::getId).containsExactly(30L, 40L);
+
+    Page<EntityNameLookupRecord> third =
+        list(
+            PolarisEntitySubType.ANY_SUBTYPE,
+            PageToken.build(second.encodedResponseToken(), null, -1, () -> true));
+    assertThat(third.items()).extracting(EntityNameLookupRecord::getId).containsExactly(50L);
+    assertThat(third.encodedResponseToken()).isNull();
+  }
+
+  @Test
+  void hasChildrenForAnyTypeFindsANestedNamespace() {
+    // The only child is a nested namespace, a different type than the table listing default.
+    writeNamespace(10L, NAMESPACE, "nested");
+
+    assertThat(persistence.hasChildren(callCtx, null, CATALOG, NAMESPACE)).isTrue();
+    assertThat(persistence.hasChildren(callCtx, PolarisEntityType.NAMESPACE, CATALOG, NAMESPACE))
+        .isTrue();
+    assertThat(persistence.hasChildren(callCtx, TABLE, CATALOG, NAMESPACE)).isFalse();
+  }
+
   private Page<EntityNameLookupRecord> list(PolarisEntitySubType subType, PageToken token) {
     return persistence.listEntities(callCtx, CATALOG, NAMESPACE, TABLE, subType, token);
   }
@@ -215,6 +254,23 @@ class DynamoDbListingIT extends AbstractDynamoDbTest {
     PolarisBaseEntity entity = entity(id, parentId, name, subType);
     persistence.writeEntity(callCtx, entity, false, null);
     return entity;
+  }
+
+  private void writeNamespace(long id, long parentId, String name) {
+    PolarisBaseEntity ns =
+        new PolarisBaseEntity.Builder()
+            .id(id)
+            .catalogId(CATALOG)
+            .parentId(parentId)
+            .typeCode(PolarisEntityType.NAMESPACE.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .name(name)
+            .entityVersion(1)
+            .grantRecordsVersion(1)
+            .propertiesAsMap(Map.of())
+            .internalPropertiesAsMap(Map.of())
+            .build();
+    persistence.writeEntity(callCtx, ns, false, null);
   }
 
   private static PolarisBaseEntity entity(

@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.function.Function;
@@ -500,8 +501,8 @@ public class DynamoDbBasePersistence implements BasePersistence {
    * Streams a parent's children from the child records, in id order, strongly consistent. A
    * concrete subtype is one base-table partition. {@code ANY_SUBTYPE} reads each subtype partition
    * of the type and merges them by id, so the combined stream stays in id order and pages with a
-   * single {@link EntityIdToken}. The child records hold only ids, so the ids are read into
-   * entities with a strongly consistent get.
+   * single {@link EntityIdToken}. The child records hold only ids, so each page's ids are read into
+   * entities with {@code TransactGetItems} (one snapshot per chunk).
    *
    * <p>Each partition query reads at most one more than the page size. That bound is per request,
    * not per stream: the paginator keeps fetching while the caller wants more, so a filter applied
@@ -513,28 +514,44 @@ public class DynamoDbBasePersistence implements BasePersistence {
       PolarisEntityType entityType,
       PolarisEntitySubType entitySubType,
       PageToken pageToken) {
-    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
-      return queryOneSubtype(
-          catalogId, parentId, entityType.getCode(), entitySubType.getCode(), pageToken);
-    }
-    int[] subtypes = childSubtypes(entityType);
-    if (subtypes.length == 1) {
-      return queryOneSubtype(catalogId, parentId, entityType.getCode(), subtypes[0], pageToken);
-    }
-    // Merge the per-subtype partitions by id. Each partition is already in id order and already
-    // resumes after the page token, so merging by id keeps the combined stream id-ordered and
-    // lets a single EntityIdToken page across subtypes.
-    List<PolarisBaseEntity> merged = new ArrayList<>();
+    int[] subtypes =
+        entitySubType == PolarisEntitySubType.ANY_SUBTYPE
+            ? childSubtypes(entityType)
+            : new int[] {entitySubType.getCode()};
+
+    // Collect the children's ids from each subtype partition, in id order. Each partition is
+    // capped at pageSize + 1 ids (per request, as a stream of pages), so a merged page never reads
+    // more than it needs. One partition needs no merge; several are merged by id.
+    List<Long> ids = new ArrayList<>();
     for (int subTypeCode : subtypes) {
-      queryOneSubtype(catalogId, parentId, entityType.getCode(), subTypeCode, pageToken)
-          .forEach(merged::add);
+      queryChildIds(catalogId, parentId, entityType.getCode(), subTypeCode, pageToken)
+          .forEach(ids::add);
     }
-    merged.sort(Comparator.comparingLong(PolarisBaseEntity::getId));
-    return merged.stream();
+    if (subtypes.length > 1) {
+      ids.sort(Comparator.naturalOrder());
+    }
+    if (ids.isEmpty()) {
+      return Stream.empty();
+    }
+
+    // Read the ids into entities in one snapshot per chunk, then return them in id order. The
+    // child records only hold ids, so this second read is what loads the entities.
+    List<PolarisEntityId> entityIds =
+        ids.stream().map(id -> new PolarisEntityId(catalogId, id)).toList();
+    Map<Long, PolarisBaseEntity> byId = new HashMap<>();
+    for (Map<String, AttributeValue> item : batchReadEntities(entityIds, null)) {
+      PolarisBaseEntity entity = EntityItem.toEntity(item);
+      byId.put(entity.getId(), entity);
+    }
+    return ids.stream().map(byId::get).filter(Objects::nonNull);
   }
 
-  /** Streams one (type, subtype) partition's children in id order, reading ids then entities. */
-  private Stream<PolarisBaseEntity> queryOneSubtype(
+  /**
+   * Streams one (type, subtype) partition's child ids in id order, as a lazy stream of pages each
+   * bounded by {@code pageSize + 1}. That bound is per request, not per stream: the paginator keeps
+   * fetching while the caller consumes, so a filter applied afterwards cannot leave a page short.
+   */
+  private Stream<Long> queryChildIds(
       long catalogId, long parentId, int typeCode, int subTypeCode, PageToken pageToken) {
     // One more than the page size, so the page can still tell whether a next page exists.
     OptionalInt pageSize = pageToken.pageSize();
@@ -562,26 +579,26 @@ public class DynamoDbBasePersistence implements BasePersistence {
             .consistentRead(true)
             .limit(queryLimit)
             .build();
-    return client.queryPaginator(request).items().stream()
-        .map(ChildItem::entityId)
-        .map(this::readEntity)
-        .filter(e -> e != null);
+    Stream<Long> all = client.queryPaginator(request).items().stream().map(ChildItem::entityId);
+    // When several partitions are merged, each only needs pageSize + 1 ids for the merged page.
+    return queryLimit == null ? all : all.limit(queryLimit);
   }
 
   /**
-   * The subtype codes that children of this type can have. Only {@code TABLE_LIKE} has real
-   * subtypes; every other type stores its children under {@code NULL_SUBTYPE} (0). The set is a
-   * fixed enum, so this list only changes with a release.
+   * The subtype codes that children of this type can have. Derived from {@link
+   * PolarisEntitySubType}, so a newly added subtype of this type is picked up automatically. Only
+   * {@code TABLE_LIKE} has real subtypes; every other type stores its children under {@code
+   * NULL_SUBTYPE} (0).
    */
   private static int[] childSubtypes(PolarisEntityType entityType) {
-    if (entityType == PolarisEntityType.TABLE_LIKE) {
-      return new int[] {
-        PolarisEntitySubType.ICEBERG_TABLE.getCode(),
-        PolarisEntitySubType.ICEBERG_VIEW.getCode(),
-        PolarisEntitySubType.GENERIC_TABLE.getCode()
-      };
-    }
-    return new int[] {PolarisEntitySubType.NULL_SUBTYPE.getCode()};
+    int[] subtypes =
+        Arrays.stream(PolarisEntitySubType.values())
+            .filter(s -> s.getParentType() == entityType)
+            .mapToInt(PolarisEntitySubType::getCode)
+            .toArray();
+    return subtypes.length == 0
+        ? new int[] {PolarisEntitySubType.NULL_SUBTYPE.getCode()}
+        : subtypes;
   }
 
   // ---- Helpers ---------------------------------------------------------------------------------
