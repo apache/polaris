@@ -13,3 +13,6 @@
   403 Forbidden. Enable `ALLOW_UNSTRUCTURED_TABLE_LOCATION` to allow such paths within the catalog's
   allowed locations. Existing views can still commit updates that leave both paths unchanged;
   allowed-location restrictions continue to apply.
+- Renaming a view now checks its `write.metadata.path` against siblings in the destination
+  namespace. A rename that previously succeeded is rejected if the metadata path overlaps a
+  destination sibling.

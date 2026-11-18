@@ -2267,21 +2267,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     }
     builder.create();
     ViewMetadata metadata = catalog.newViewOps(TABLE, false).current();
-    IcebergTableLikeEntity entity = readViewEntity(TABLE);
-    Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
-    internalProperties.remove(IcebergTableLikeEntity.LOCATION);
-    internalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
-    assertThat(
-            metaStoreManager
-                .updateEntityPropertiesIfNotChanged(
-                    polarisContext,
-                    catalogPath(NS),
-                    new IcebergTableLikeEntity.Builder(entity)
-                        .setBaseLocation(missingStoredBase ? null : entity.getBaseLocation())
-                        .setInternalProperties(internalProperties)
-                        .build())
-                .isSuccess())
-        .isTrue();
+    removeRecordedViewLocations(TABLE, missingStoredBase);
 
     assertThat(catalog.dropView(TABLE)).isTrue();
     TaskEntity task =
@@ -3403,29 +3389,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             .withQuery("spark", VIEW_QUERY)
             .create();
     if (legacyView) {
-      IcebergTableLikeEntity entity =
-          IcebergTableLikeEntity.of(
-              metaStoreManager
-                  .readEntityByName(
-                      polarisContext,
-                      catalogPath(NS),
-                      PolarisEntityType.TABLE_LIKE,
-                      PolarisEntitySubType.ICEBERG_VIEW,
-                      TABLE.name())
-                  .getEntity());
-      Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
-      internalProperties.remove(IcebergTableLikeEntity.LOCATION);
-      assertThat(
-              metaStoreManager
-                  .updateEntityPropertiesIfNotChanged(
-                      polarisContext,
-                      catalogPath(NS),
-                      new IcebergTableLikeEntity.Builder(entity)
-                          .setBaseLocation(null)
-                          .setInternalProperties(internalProperties)
-                          .build())
-                  .isSuccess())
-          .isTrue();
+      removeRecordedViewLocations(TABLE, true);
     }
     Assertions.assertThatThrownBy(() ->
             view.updateProperties()
@@ -3457,34 +3421,12 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     String metadataPath = LocationUtil.stripTrailingSlash(view.location()) + "-metadata";
     view.updateProperties().set("write.metadata.path", metadataPath).commit();
     if (missingStoredBase) {
-      IcebergTableLikeEntity entity =
-          IcebergTableLikeEntity.of(
-              metaStoreManager
-                  .readEntityByName(
-                      polarisContext,
-                      catalogPath(NS),
-                      PolarisEntityType.TABLE_LIKE,
-                      PolarisEntitySubType.ICEBERG_VIEW,
-                      TABLE.name())
-                  .getEntity());
-      Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
-      internalProperties.remove(IcebergTableLikeEntity.LOCATION);
-      internalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
-      assertThat(
-              metaStoreManager
-                  .updateEntityPropertiesIfNotChanged(
-                      polarisContext,
-                      catalogPath(NS),
-                      new IcebergTableLikeEntity.Builder(entity)
-                          .setBaseLocation(null)
-                          .setInternalProperties(internalProperties)
-                          .build())
-                  .isSuccess())
-          .isTrue();
+      removeRecordedViewLocations(TABLE, true);
     }
     updateCatalogProperties(
         Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false"));
     view.updateProperties().set("comment", "updated").commit();
+    view.updateProperties().set("write.metadata.path", metadataPath + "/").commit();
     var replaced =
         catalog
             .buildView(TABLE)
@@ -4068,6 +4010,23 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
                 PolarisEntitySubType.ICEBERG_VIEW,
                 identifier.name())
             .getEntity());
+  }
+
+  /** Removes the locations recorded on the view entity, as for legacy entities. */
+  private void removeRecordedViewLocations(TableIdentifier identifier, boolean removeBaseLocation) {
+    IcebergTableLikeEntity entity = readViewEntity(identifier);
+    Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
+    internalProperties.remove(IcebergTableLikeEntity.LOCATION);
+    internalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
+    EntityResult result =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            polarisContext,
+            catalogPath(identifier.namespace()),
+            new IcebergTableLikeEntity.Builder(entity)
+                .setBaseLocation(removeBaseLocation ? null : entity.getBaseLocation())
+                .setInternalProperties(internalProperties)
+                .build());
+    assertThat(result.isSuccess()).isTrue();
   }
 
   private IcebergTableLikeEntity readTableEntity(TableIdentifier identifier) {

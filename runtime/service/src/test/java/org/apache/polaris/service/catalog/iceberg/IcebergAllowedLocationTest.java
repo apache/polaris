@@ -1155,6 +1155,38 @@ public class IcebergAllowedLocationTest {
     }
   }
 
+  @Test
+  void testOptimizedSiblingCheckDoesNotSeeExistingViewMetadataPath(@TempDir Path tmpDir) {
+    var services = getRenameTestServices(true);
+    String catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    createCatalog(
+        services,
+        Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"),
+        catalogLocation,
+        List.of(catalogLocation));
+    newHandler(services)
+        .createNamespace(
+            CreateNamespaceRequest.builder().withNamespace(Namespace.of(namespace)).build());
+    String metadataPath = catalogLocation + "/" + catalog + "/" + namespace + "/shared";
+    newHandler(services)
+        .createView(
+            Namespace.of(namespace),
+            ImmutableCreateViewRequest.builder()
+                .name("view")
+                .schema(SCHEMA)
+                .viewVersion(VIEW_VERSION)
+                .properties(Map.of(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, metadataPath))
+                .build());
+
+    updateCatalogProperties(
+        services, Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false"));
+
+    // The optimized index contains base locations, not write paths. With structured locations
+    // enabled, Polaris does not list siblings and therefore does not see this existing path.
+    createTable(services, namespace, "sibling", metadataPath);
+    newHandler(services).tableExists(TableIdentifier.of(namespace, "sibling"));
+  }
+
   /** Returns test services counting listEntities calls for the selected entity types. */
   private static TestServices getListCountingTestServices(
       Map<String, Object> config,

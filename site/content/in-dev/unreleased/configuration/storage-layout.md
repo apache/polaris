@@ -70,19 +70,7 @@ With the default settings, Polaris also enforces the following rules:
 - A client may also set the `write.data.path` and `write.metadata.path` table properties, but they
   must be inside the table's own location and inside the catalog's allowed locations.
 - A view may set `write.metadata.path` on create or update under the same location restrictions
-  as a table. Existing views with metadata outside their base location may still commit updates
-  that leave both locations unchanged. This also applies to the first commit that records a legacy
-  view's locations: its existing layout is recorded without structured-location or overlap checks.
-  Allowed-location restrictions continue to apply. New or changed paths receive the full checks.
-  Polaris scopes the credentials used to write or purge view metadata to include this path.
-  Purge checks metadata against the view's recorded locations and uses those recorded locations
-  for cleanup credentials. Legacy views without recorded locations use metadata-derived locations.
-
-  Depending on the configured overlap checks and their scope, recording a legacy view's locations
-  can cause later requests to create tables or views at overlapping locations to be rejected.
-  Commits that leave both paths unchanged continue to skip overlap checks while enforcing allowed
-  locations. An overlap error may therefore appear on the new object's creation request while the
-  existing view can still commit.
+  as a table.
 - A table's metadata files must be inside the table's location.
 - A new table, view, or namespace location may not overlap the location of a sibling, that is,
   another table, view, or namespace directly under the same parent. Sibling tables' `write.data.path`
@@ -298,11 +286,16 @@ checks stay limited to siblings under the same parent. Otherwise write paths are
 table's location and the index alone suffices. Listing siblings can slow validation in namespaces
 with many entities.
 
-The exception is a grandfathered view whose unchanged `write.metadata.path` is outside its base
-location. With `OPTIMIZED_SIBLING_CHECK` enabled and `ALLOW_UNSTRUCTURED_TABLE_LOCATION` disabled,
-Polaris returns after checking the indexed base locations and does not list sibling write paths. A
-new table or view at that metadata path may therefore not be rejected as overlapping. Enabling
-`ALLOW_UNSTRUCTURED_TABLE_LOCATION` makes Polaris list and check those write paths.
+If an existing view's `write.metadata.path` already points outside its base location, updates can
+keep using that path as long as both locations stay the same. Allowed-location restrictions still
+apply, but structured-location and overlap checks are skipped. This also applies to the first
+commit that records the existing locations. New views and changes to either location receive all
+applicable checks.
+
+With `OPTIMIZED_SIBLING_CHECK` enabled and `ALLOW_UNSTRUCTURED_TABLE_LOCATION` disabled, Polaris
+returns after checking the indexed base locations and does not list sibling write paths. A new
+table or view at the existing view's metadata path may therefore not be rejected as overlapping.
+Enabling `ALLOW_UNSTRUCTURED_TABLE_LOCATION` makes Polaris list and check those write paths.
 
 `OPTIMIZED_SIBLING_CHECK` is a realm-level setting with no catalog property. Realms created by older
 Polaris versions may not have that index populated, so Polaris refuses to start with
