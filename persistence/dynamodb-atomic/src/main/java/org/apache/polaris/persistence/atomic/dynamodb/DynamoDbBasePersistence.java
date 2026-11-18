@@ -36,6 +36,7 @@ import static org.apache.polaris.persistence.atomic.dynamodb.TransactionFailures
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -103,8 +104,8 @@ import software.amazon.awssdk.services.dynamodb.model.TransactionConflictExcepti
  * child records live on the base table and are maintained in the same transaction as the entity,
  * listing never misses a write that already completed. Paging uses {@link EntityIdToken}, as {@code
  * relational-jdbc} does. A concrete subtype is a single partition; {@code ANY_SUBTYPE} reads each
- * subtype partition of the type and concatenates them, which is only used for read-everything
- * callers (a paged {@code ANY_SUBTYPE} listing is rejected).
+ * subtype partition of the type and merges them by id, so the combined stream stays in id order and
+ * pages with a single {@link EntityIdToken}.
  *
  * <p>This class currently covers entity writes, lookups and listing. Multi-entity writes, grant
  * records and realm teardown throw {@link UnsupportedOperationException} until they are
@@ -497,10 +498,10 @@ public class DynamoDbBasePersistence implements BasePersistence {
 
   /**
    * Streams a parent's children from the child records, in id order, strongly consistent. A
-   * concrete subtype is one base-table partition. {@code ANY_SUBTYPE} reads every subtype partition
-   * of the type and concatenates them; that is only valid when the caller reads everything, so a
-   * paged {@code ANY_SUBTYPE} listing is rejected. The child records hold only ids, so the ids of
-   * each page are read into entities with {@code TransactGetItems} (one snapshot).
+   * concrete subtype is one base-table partition. {@code ANY_SUBTYPE} reads each subtype partition
+   * of the type and merges them by id, so the combined stream stays in id order and pages with a
+   * single {@link EntityIdToken}. The child records hold only ids, so the ids are read into
+   * entities with a strongly consistent get.
    *
    * <p>Each partition query reads at most one more than the page size. That bound is per request,
    * not per stream: the paginator keeps fetching while the caller wants more, so a filter applied
@@ -512,23 +513,24 @@ public class DynamoDbBasePersistence implements BasePersistence {
       PolarisEntityType entityType,
       PolarisEntitySubType entitySubType,
       PageToken pageToken) {
-    if (entitySubType == PolarisEntitySubType.ANY_SUBTYPE) {
-      if (pageToken.paginationRequested()) {
-        throw new UnsupportedOperationException(
-            "Paged listing with ANY_SUBTYPE is not supported by the DynamoDB persistence backend");
-      }
-      int[] subtypes = childSubtypes(entityType);
-      Stream<PolarisBaseEntity> all = Stream.empty();
-      for (int subTypeCode : subtypes) {
-        all =
-            Stream.concat(
-                all,
-                queryOneSubtype(catalogId, parentId, entityType.getCode(), subTypeCode, pageToken));
-      }
-      return all;
+    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
+      return queryOneSubtype(
+          catalogId, parentId, entityType.getCode(), entitySubType.getCode(), pageToken);
     }
-    return queryOneSubtype(
-        catalogId, parentId, entityType.getCode(), entitySubType.getCode(), pageToken);
+    int[] subtypes = childSubtypes(entityType);
+    if (subtypes.length == 1) {
+      return queryOneSubtype(catalogId, parentId, entityType.getCode(), subtypes[0], pageToken);
+    }
+    // Merge the per-subtype partitions by id. Each partition is already in id order and already
+    // resumes after the page token, so merging by id keeps the combined stream id-ordered and
+    // lets a single EntityIdToken page across subtypes.
+    List<PolarisBaseEntity> merged = new ArrayList<>();
+    for (int subTypeCode : subtypes) {
+      queryOneSubtype(catalogId, parentId, entityType.getCode(), subTypeCode, pageToken)
+          .forEach(merged::add);
+    }
+    merged.sort(Comparator.comparingLong(PolarisBaseEntity::getId));
+    return merged.stream();
   }
 
   /** Streams one (type, subtype) partition's children in id order, reading ids then entities. */
