@@ -118,6 +118,7 @@ Tips:
 * When a PR is about to be merged, cross-check the commit summary and message for the merged Git commit.
 * Keep in mind that the Git commit subject and message is going to be read by other people, potentially even after years. The Git commit subject and message will appear "as is" in release notes.
 * Make sure the subject and message are properly formatted and contains a concise description of the changes in way that someone who has no prior knowledge can understand the rationale of the change and the change itself. Remove information that's of no use for someone reading the Git commit log, for example single intermediate commit messages like `formatting` or `fix test`.
+* If the pull request disclosed AI assistance, make sure the final commit message keeps a single `Assisted-By` trailer (see [Disclosing AI usage](#disclosing-ai-usage)). Commit messages are concatenated by default when squashing, so remove duplicated trailers, but do not drop them.
 
 #### Guidelines for AI-assisted Contributions
 
