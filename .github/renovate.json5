@@ -50,6 +50,17 @@
   },
 
   packageRules: [
+    // Keep release JDKs aligned on Java 21, comparing the build number as well.
+    {
+      matchManagers: ["github-actions"],
+      matchFileNames: [".github/workflows/release-3-*.yml", ".github/workflows/release-4-*.yml"],
+      matchDatasources: ["java-version"],
+      matchPackageNames: ["java-jdk"],
+      versioning: "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\+(?<build>\\d+)$",
+      allowedVersions: "/^21\\./",
+      groupName: "release JDK",
+      automerge: false,
+    },
     // Check for updates, do not merge automatically. This rule does effectively nothing, but serves as a
     // reference for the kinds of managers used in Polaris.
     {

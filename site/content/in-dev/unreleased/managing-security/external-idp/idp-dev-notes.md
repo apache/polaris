@@ -35,13 +35,13 @@ Polaris separates authentication into two logical phases using [Quarkus Security
 ### Key Interfaces
 
 - [`Authenticator`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/Authenticator.java): A core interface used to authenticate credentials and resolve principal and principal roles. Roles may be derived from OIDC claims or internal mappings.
-- [`InternalPolarisToken`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/InternalPolarisToken.java): Used in internal auth and inherits from `PrincipalCredential`.
+- [`InternalPolarisToken`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/internal/broker/InternalPolarisToken.java): Used in internal auth and inherits from `PrincipalCredential`.
 
 - The [`DefaultAuthenticator`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/DefaultAuthenticator.java) is used to implement realm-specific logic based on these abstractions.
 
 ### Token Broker Configuration
 
-When internal authentication is enabled, Polaris uses [`TokenBroker`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/TokenBroker.java) to handle the decoding and validation of authentication tokens. These brokers are request-scoped and can be configured per realm. Each realm may use its own strategy, such as RSA key pairs or shared secrets, depending on security requirements.
+When internal authentication is enabled, Polaris uses [`TokenBroker`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/internal/broker/TokenBroker.java) to handle the decoding and validation of authentication tokens. These brokers are request-scoped and can be configured per realm. Each realm may use its own strategy, such as RSA key pairs or shared secrets, depending on security requirements.
 See [Token Broker description]({{< relref "../external-idp#token-broker" >}}) for configuration details.
 
 ## Developer Authentication Workflows
@@ -49,7 +49,7 @@ See [Token Broker description]({{< relref "../external-idp#token-broker" >}}) fo
 ### Internal Authentication
 
 1. [`InternalAuthenticationMechanism`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/internal/InternalAuthenticationMechanism.java) parses the auth header.
-2. Uses [`TokenBroker`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/TokenBroker.java) to decode the token.
+2. Uses [`TokenBroker`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/internal/broker/TokenBroker.java) to decode the token.
 3. Builds [`InternalAuthenticationRequest`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/internal/InternalAuthenticationRequest.java) and generates `SecurityIdentity` (Quarkus).
 4. [`PolarisSecurityIdentityAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/PolarisSecurityIdentityAugmentor.java) invokes `Authenticator.authenticate()`, which validates the credential, resolves the principal and principal roles, then creates the `PolarisPrincipal`.
 

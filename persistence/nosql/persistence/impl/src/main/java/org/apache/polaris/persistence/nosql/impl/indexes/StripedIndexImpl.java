@@ -21,6 +21,7 @@ package org.apache.polaris.persistence.nosql.impl.indexes;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.binarySearch;
+import static java.util.Collections.emptyIterator;
 
 import com.google.common.collect.AbstractIterator;
 import java.nio.ByteBuffer;
@@ -233,17 +234,22 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
     var s = stripes;
 
     var prefix = lower != null && lower.equals(higher);
-    var start = lower == null ? 0 : indexForKey(lower);
-    var stop = prefix || higher == null ? s.length - 1 : indexForKey(higher);
+    Predicate<IndexKey> endCheck =
+        prefix
+            ? k -> lower.compareTo(k) < 0 && !k.startsWith(lower)
+            : (higher != null ? k -> higher.compareTo(k) < 0 : k -> false);
+
+    var start = firstStripeForIteration(lower);
+    var stop =
+        lastStripeForIteration(
+            prefix || higher == null ? s.length - 1 : indexForKey(higher), endCheck, prefix);
+    if (start > stop) {
+      return emptyIterator();
+    }
 
     if (prefetch) {
       loadStripes(start, stop);
     }
-
-    Predicate<IndexKey> endCheck =
-        prefix
-            ? k -> !k.startsWith(lower)
-            : (higher != null ? k -> higher.compareTo(k) < 0 : k -> false);
 
     return new AbstractIterator<>() {
       int stripe = start;
@@ -279,8 +285,15 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
 
     var prefix = lower != null && lower.equals(higher);
     checkArgument(!prefix, "prefix-queries not supported for reverse-iteration");
-    var start = lower == null ? 0 : indexForKey(lower);
-    var stop = higher == null ? s.length - 1 : indexForKey(higher);
+    var start = firstStripeForIteration(lower);
+    var stop =
+        lastStripeForIteration(
+            higher == null ? s.length - 1 : indexForKey(higher),
+            higher != null ? k -> higher.compareTo(k) < 0 : k -> false,
+            false);
+    if (start > stop) {
+      return emptyIterator();
+    }
 
     if (prefetch) {
       loadStripes(start, stop);
@@ -313,6 +326,46 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
         }
       }
     };
+  }
+
+  private int firstStripeForIteration(@Nullable IndexKey lower) {
+    var start = lower == null ? 0 : indexForKey(lower);
+    for (; start < stripes.length; start++) {
+      var stripe = stripes[start];
+      // Loaded stripes can have been modified, so their original bounds may be stale.
+      var last = stripe.isLoaded() ? stripe.last() : firstLastKeys[start * 2 + 1];
+      if (last != null && (lower == null || lower.compareTo(last) <= 0)) {
+        break;
+      }
+    }
+    return start;
+  }
+
+  private int lastStripeForIteration(int stop, Predicate<IndexKey> endCheck, boolean prefix) {
+    if (prefix) {
+      // Range queries already use indexForKey(higher); only prefix queries need this search.
+      // Find the first stripe whose original last key is beyond the prefix. indexForKey()
+      // routes gap keys to the next stripe, both for additions and iteration bounds, so
+      // matching keys cannot be added past this stripe. It can still contain matches,
+      // including keys added in the gap before its original first key.
+      var low = 0;
+      while (low < stop) {
+        var mid = (low + stop) >>> 1;
+        if (endCheck.test(firstLastKeys[mid * 2 + 1])) {
+          stop = mid;
+        } else {
+          low = mid + 1;
+        }
+      }
+    }
+    for (; stop >= 0; stop--) {
+      var stripe = stripes[stop];
+      var first = stripe.isLoaded() ? stripe.first() : firstLastKeys[stop * 2];
+      if (first != null && !endCheck.test(first)) {
+        break;
+      }
+    }
+    return stop;
   }
 
   @NonNull

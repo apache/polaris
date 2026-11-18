@@ -19,9 +19,11 @@
 package org.apache.polaris.persistence.nosql.api.obj;
 
 import static java.lang.String.format;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.Base64;
 import java.util.stream.Stream;
@@ -34,6 +36,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.dataformat.smile.SmileMapper;
@@ -116,6 +119,9 @@ public class TestObjRef {
   @CsvSource(
       value = {
         "foo,0",
+        "entité,42",
+        "🙂x,42",
+        "0123456789abcdef0123456789abcdef,42",
         "elani,9223372036854775807",
         "elaniursus,-9223372036854775808",
         "a234567890123456789012345678901,42",
@@ -126,7 +132,7 @@ public class TestObjRef {
     var type = new AbstractObjType<>(typeId, typeId, Obj.class) {};
     var objId = objRef(type, id, 1);
 
-    var expectedSerializedSize = 1 + typeId.length() + Long.BYTES;
+    var expectedSerializedSize = 1 + typeId.getBytes(UTF_8).length + Long.BYTES;
 
     // ser/deser using byte[]
 
@@ -226,6 +232,46 @@ public class TestObjRef {
     var skipped = buffer.duplicate();
     OBJ_REF_SERIALIZER.skip(skipped);
     soft.assertThat(skipped.remaining()).isEqualTo(0);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"HEAP", "SLICED", "READ_ONLY", "DIRECT"})
+  public void objRefBufferVariants(String kind) {
+    for (var type : new String[] {"entity", "entité", "🙂x", "x\ud800y"}) {
+      var value = objRef(type, 0x123456789abcdefL, 3);
+      var expected = value.toBytes();
+      var target = ByteBuffer.allocate(value.serializedSize());
+      OBJ_REF_SERIALIZER.serialize(value, target);
+      soft.assertThat(target.array()).containsExactly(expected);
+
+      var buffer = objRefBuffer(kind, expected);
+      var limit = buffer.limit();
+      var decoded = OBJ_REF_SERIALIZER.deserialize(buffer);
+      soft.assertThat(decoded)
+          .extracting(ObjRef::type, ObjRef::id, ObjRef::numParts)
+          .containsExactly(new String(type.getBytes(UTF_8), UTF_8), value.id(), value.numParts());
+      soft.assertThat(buffer.position()).isEqualTo(3 + expected.length);
+      soft.assertThat(buffer.limit()).isEqualTo(limit);
+      soft.assertThat(buffer.get()).isEqualTo((byte) 42);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"HEAP", "SLICED", "READ_ONLY", "DIRECT"})
+  public void objRefNameRespectsBufferLimit(String kind) {
+    var buffer = objRefBuffer(kind, objRef("entity", 42L, 1).toBytes()).limit(6);
+    soft.assertThatThrownBy(() -> OBJ_REF_SERIALIZER.deserialize(buffer))
+        .isInstanceOf(BufferUnderflowException.class);
+    soft.assertThat(buffer.position()).isEqualTo(4);
+  }
+
+  private static ByteBuffer objRefBuffer(String kind, byte[] value) {
+    var buffer = kind.equals("DIRECT") ? ByteBuffer.allocateDirect(128) : ByteBuffer.allocate(128);
+    if (kind.equals("SLICED")) {
+      buffer = buffer.position(7).slice();
+    }
+    buffer.position(3).put(value).put((byte) 42).flip().position(3);
+    return kind.equals("READ_ONLY") ? buffer.asReadOnlyBuffer() : buffer;
   }
 
   static Stream<ObjRef> objRefSerialization() {

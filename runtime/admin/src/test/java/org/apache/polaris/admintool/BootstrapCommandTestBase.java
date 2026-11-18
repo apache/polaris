@@ -33,17 +33,21 @@ import java.util.Objects;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @QuarkusMainTest
 public abstract class BootstrapCommandTestBase {
 
   private static Path json;
   private static Path yaml;
+  private static Path tempDir;
 
   @BeforeAll
   static void prepareFiles(@TempDir Path temp) throws IOException {
     json = copyResource(temp, "credentials.json");
     yaml = copyResource(temp, "credentials.yaml");
+    tempDir = temp;
   }
 
   @Test
@@ -121,6 +125,20 @@ public abstract class BootstrapCommandTestBase {
         .contains("No credentials were supplied for realm(s)")
         .contains("realm1");
     assertThat(result.getOutput()).doesNotContain("successfully bootstrapped");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"{}", "", "   \n\n", "# only a comment\n"})
+  public void testCredentialsFileWithoutRealmsIsRefused(
+      String content, QuarkusMainLauncher launcher) throws IOException {
+    Path file =
+        Files.writeString(Files.createTempFile(tempDir, "no-credentials-", ".yaml"), content);
+
+    LaunchResult result = launcher.launch("bootstrap", "-f", file.toString());
+
+    assertThat(result.exitCode()).isNotEqualTo(0);
+    assertThat(result.getErrorOutput()).contains("No root credentials found in");
+    assertThat(result.getOutput()).doesNotContain("Bootstrap completed successfully.");
   }
 
   private static Path copyResource(Path temp, String resource) throws IOException {

@@ -196,7 +196,7 @@ public class CaffeineCacheBackendBench {
 
   @Benchmark
   public Obj binaryDecode(Binary state) {
-    return state.cached.getObj();
+    return state.cached.getObj(state.value.type());
   }
 
   @State(Scope.Thread)

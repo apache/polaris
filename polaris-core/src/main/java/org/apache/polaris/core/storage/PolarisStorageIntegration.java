@@ -47,7 +47,11 @@ public interface PolarisStorageIntegration {
    * @param grants per-location action requests; each grant pairs a set of storage location URIs
    *     with the operations (READ, WRITE, LIST, DELETE, ALL) the credentials should permit on those
    *     locations
-   * @param refreshEndpoint optional endpoint URL for clients to refresh credentials
+   * @param refreshEndpoint optional endpoint URL for clients to refresh credentials. Callers pass
+   *     it whenever the request may lead to credential vending; implementations must include it in
+   *     the returned configuration only when they actually vend credentials, so that clients are
+   *     never told to refresh credentials they did not receive. {@link CachingStorageIntegration}
+   *     enforces this for its subclasses; direct implementations have to do the same
    * @param context metadata (catalog, principal, roles, trace id, etc.) attached to the vending
    *     call — used for audit tagging and cache keying
    */

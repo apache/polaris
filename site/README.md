@@ -19,7 +19,7 @@
 
 # Polaris Website
 
-This folder contains the source for the Apache Polaris website, built using [Hugo](https://gohugo.io/) and (the Docsy theme)[https://www.docsy.dev/docs/].
+This folder contains the source for the Apache Polaris website, built using [Hugo](https://gohugo.io/) and [the Docsy theme](https://www.docsy.dev/docs/).
 
 ## Quickstart
 

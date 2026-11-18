@@ -24,6 +24,8 @@ Entries are grouped in sections like _Highlights_ or _Upgrade notes_, the provid
 as necessary. Empty sections will not end up in the release notes. Contributors are encouraged to incorporate
 CHANGELOG updates into their PRs when appropriate. Reviewers should be mindful of the impact of PRs and
 request adding CHANGELOG notes for breaking (!) changes and possibly other sections as appropriate.
+Do not add new entries to this file directly: add a changelog fragment under `changelog.d/` instead,
+see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into this file when a release is cut.
 
 ## [Unreleased]
 
@@ -122,6 +124,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   location against the catalog's allowed locations and, unless `ALLOW_UNSTRUCTURED_TABLE_LOCATION`
   is enabled, the parent namespace location. Requests that previously stored disallowed locations
   are now rejected. Omitting the location or sending an empty string retains its previous behavior.
+- When table location overlap is disallowed, creating a Generic Table at an explicit location
+  overlapping an existing table or namespace in the check's scope is rejected. With
+  `OPTIMIZED_SIBLING_CHECK`, overlap validation can walk the catalog's namespaces to check
+  unindexed Generic Table locations. This can add metastore reads to table, view, and namespace
+  operations.
 - `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
   invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
   size or supplying a page token. A request that supplies neither still returns all results, unless
@@ -187,6 +194,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   specification, meaning the client can operate without delegated access. A request that includes
   `none`, alone or together with other values, is handled like a request without the header: the
   table is returned without credentials and no delegation privilege is required.
+- Ranger: dedicated `catalog-config-read` access type for Iceberg REST `GET /v1/config`
+  (`GET_CATALOG_CONFIG`). Existing catalog-level `catalog-properties-read` (and stronger catalog
+  access types) imply `catalog-config-read`. Operators must re-import
+  `polaris-ranger-servicedef.json`.
 - Shared CloudEvents 1.0 JSON mapper for Polaris events (`CloudEventsEventJsonMapper` next to
   the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
   lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners
@@ -238,6 +249,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   or metadata path matches its base location except for the scheme (for example `abfss://` vs
   `abfs://`) or a trailing slash. Such locations are mutual children, so the previous logic dropped
   both and left the set empty. The base location is now kept as the surviving representative.
+- Python CLI: `polaris policies create` now reports a clear `Missing required argument:
+  --policy-type` error when the policy type is omitted, instead of failing with a pydantic
+  validation error.
 - The Iceberg REST `/config` response now advertises the
   `GET /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials` endpoint, which Polaris
   already served. Clients that check advertised endpoints before refreshing vended credentials can
@@ -405,6 +419,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   errors: lookups by name no longer hold entities outside the cache's weight and expiry limits.
 - Setting a namespace's `location` property no longer fails with an internal error when its parent
   is itself a nested namespace that has no stored location.
+- `commitTransaction` now returns `400 Bad Request` instead of an internal error when it cannot
+  validate a table's locations: an update changing `write.data.path` or `write.metadata.path`, or
+  any commit on a table whose entity does not record its location, which is the case until the table
+  is next committed by Polaris 1.3.0 or later. It is allowed when `ALLOW_TABLE_LOCATION_OVERLAP` is
+  enabled; `ALLOW_NAMESPACE_LOCATION_OVERLAP` no longer applies and still governs namespaces.
 - The Ranger authorizer no longer fails with `NoClassDefFoundError: javax/ws/rs/core/Cookie` when
   using `RangerAdminRESTClient` as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).

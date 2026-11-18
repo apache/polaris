@@ -22,6 +22,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import org.jspecify.annotations.NonNull;
 
@@ -103,9 +104,18 @@ final class ObjRefSerialization {
     var hasMultipleParts = extractHasMultipleParts(versionAndNameLength);
 
     if (version == 0) {
-      var nameBuf = new byte[nameLen];
-      bytes.get(nameBuf);
-      var type = new String(nameBuf, 0, nameLen, UTF_8);
+      String type;
+      if (bytes.hasArray()) {
+        if (bytes.remaining() < nameLen) {
+          throw new BufferUnderflowException();
+        }
+        type = new String(bytes.array(), bytes.arrayOffset() + bytes.position(), nameLen, UTF_8);
+        bytes.position(bytes.position() + nameLen);
+      } else {
+        var nameBuf = new byte[nameLen];
+        bytes.get(nameBuf);
+        type = new String(nameBuf, 0, nameLen, UTF_8);
+      }
       var id = bytes.getLong();
       var part = hasMultipleParts ? bytes.getInt() : 0;
       return objRef(type, id, part + 1);

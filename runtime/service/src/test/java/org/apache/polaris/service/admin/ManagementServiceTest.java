@@ -380,6 +380,44 @@ public class ManagementServiceTest {
             "Explicitly setting polaris.config.enable-sub-catalog-rbac-for-federated-catalogs is not allowed because ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS is set to false.");
   }
 
+  @Test
+  public void testUpdateCatalogWithoutCurrentEntityVersion() {
+    String catalogName = "mycatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(CatalogProperties.builder("s3://bucket/path/to/data").build())
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder()
+                    .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                    .setExternalId("externalId")
+                    .setUserArn("userArn")
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+                    .build())
+            .build();
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    UpdateCatalogRequest update =
+        UpdateCatalogRequest.builder().setProperties(Map.of("key", "value")).build();
+    assertThatThrownBy(() ->
+            services
+                .catalogsApi()
+                .updateCatalog(
+                    catalogName, update, services.realmContext(), services.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("currentEntityVersion");
+  }
+
   @ParameterizedTest
   @MethodSource("validBigLakeConfigurations")
   public void testCreateAndUpdateValidBigLakeCatalog(

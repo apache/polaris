@@ -157,7 +157,7 @@ public abstract class MemorySize {
       var s = 0;
       var v = bytes;
 
-      while (v.signum() > 0 && v.remainder(KILO_BYTES).signum() == 0) {
+      while (s < SUFFIXES.length - 1 && v.signum() > 0 && v.remainder(KILO_BYTES).signum() == 0) {
         v = v.divide(KILO_BYTES);
         s++;
       }

@@ -34,6 +34,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
+import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -86,6 +87,42 @@ public class EntityIdempotencyUpdateTableTest {
         updateTableProperties(services, tableId, Map.of("p", "v"), IDEMPOTENCY_KEY);
     assertThat(replay.tableMetadata().metadataFileLocation()).isEqualTo(versionAfterFirst);
     assertThat(replay.tableMetadata().properties()).containsEntry("p", "v");
+  }
+
+  @Test
+  void retryAfterRegistrationDoesNotUndoNewerUpdate(@TempDir Path tmpDir) {
+    TestServices services = newServicesWithIdempotency();
+    setUpCatalogAndNamespace(services, tmpDir);
+    TableIdentifier tableId = TableIdentifier.of(Namespace.of(NAMESPACE), "registered-table");
+    createTable(services, tableId.name());
+    updateTableProperties(services, tableId, Map.of("p", "older"), IDEMPOTENCY_KEY);
+    LoadTableResponse newer = updateTableProperties(services, tableId, Map.of("p", "newer"), null);
+    services.idempotencyRequestContext().clearPending();
+    try (Response response =
+        services
+            .restApi()
+            .registerTable(
+                CATALOG,
+                NAMESPACE,
+                ImmutableRegisterTableRequest.builder()
+                    .name(tableId.name())
+                    .metadataLocation(newer.metadataLocation())
+                    .overwrite(true)
+                    .build(),
+                null,
+                null,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      LoadTableResponse registered = (LoadTableResponse) response.getEntity();
+      assertThat(registered.metadataLocation()).isEqualTo(newer.metadataLocation());
+      assertThat(registered.tableMetadata().uuid()).isEqualTo(newer.tableMetadata().uuid());
+      assertThat(registered.tableMetadata().properties()).containsEntry("p", "newer");
+    }
+    LoadTableResponse replay =
+        updateTableProperties(services, tableId, Map.of("p", "older"), IDEMPOTENCY_KEY);
+    assertThat(replay.tableMetadata().properties()).containsEntry("p", "newer");
+    assertThat(replay.metadataLocation()).isEqualTo(newer.metadataLocation());
   }
 
   @Test

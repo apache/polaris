@@ -39,6 +39,7 @@ import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
@@ -185,6 +186,63 @@ public abstract class BasePolarisMetaStoreManagerTest {
             .getEntity();
 
     Assertions.assertThat(principalEntity).isEqualTo(fetchedPrincipal);
+  }
+
+  @Test
+  protected void testReadEntityByNameRequiresMatchingSubType() {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStoreManager.generateNewEntityId(callCtx).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "subTypeCatalog");
+    catalog = metaStoreManager.createCatalog(callCtx, catalog, List.of()).getCatalog();
+
+    PolarisBaseEntity namespace =
+        polarisTestMetaStoreManager.createEntity(
+            List.of(catalog), PolarisEntityType.NAMESPACE, "ns");
+    polarisTestMetaStoreManager.createEntity(
+        List.of(catalog, namespace),
+        PolarisEntityType.TABLE_LIKE,
+        PolarisEntitySubType.ICEBERG_TABLE,
+        "tbl");
+
+    List<PolarisEntityCore> path = List.of(catalog, namespace);
+    Assertions.assertThat(
+            metaStoreManager
+                .readEntityByName(
+                    callCtx,
+                    path,
+                    PolarisEntityType.TABLE_LIKE,
+                    PolarisEntitySubType.ICEBERG_TABLE,
+                    "tbl")
+                .isSuccess())
+        .isTrue();
+    Assertions.assertThat(
+            metaStoreManager
+                .readEntityByName(
+                    callCtx,
+                    path,
+                    PolarisEntityType.TABLE_LIKE,
+                    PolarisEntitySubType.ICEBERG_VIEW,
+                    "tbl")
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+    Assertions.assertThat(
+            metaStoreManager
+                .readEntityByName(
+                    callCtx,
+                    path,
+                    PolarisEntityType.TABLE_LIKE,
+                    PolarisEntitySubType.ANY_SUBTYPE,
+                    "tbl")
+                .isSuccess())
+        .isTrue();
   }
 
   @Test
