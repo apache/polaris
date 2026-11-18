@@ -221,7 +221,7 @@ listOf("intTestCompileClasspath", "intTestRuntimeClasspath").forEach {
     if (scalaVersion == "2.12") {
       // Resolve at.yawk.lz4:lz4-java from Paimon against org.lz4:lz4-java from Spark.
       resolutionStrategy.capabilitiesResolution.withCapability("org.lz4:lz4-java") {
-        select("org.lz4:lz4-java:1.8.0")
+        select("org.lz4:lz4-java:1.8.1")
       }
     }
   }
