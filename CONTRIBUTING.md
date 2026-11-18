@@ -126,8 +126,54 @@ Contributors may use a variety of tools when preparing changes to Polaris, inclu
 * Regardless of how a change is produced, the individual submitting the pull request is considered the author of the contribution and is fully responsible for it.
 * The pull request author **must understand the implementation end-to-end** and be able to **explain and justify the design and code** during review.
 * Tools, including AI systems, **are not** considered contributors. **Responsibility and authorship remain with the human** submitting the change.
-* Contributors are encouraged to **disclose** significant AI assistance in the pull request description for transparency.
 * **Respect ASF policy**. Contributors are responsible for ensuring generated code can be contributed to Polaris under ASF license and [ASF Generative Tooling Guidance](https://www.apache.org/legal/generative-tooling.html).
+
+##### Disclosing AI usage
+
+AI assistance must be disclosed in two places, so that it is visible both in the review and in the project history:
+
+* **Commit messages**: every commit prepared with AI assistance must include an `Assisted-By` trailer, naming the tool and the model, each with its version. There is no standard classification system for AI tools, so these values are free-form:
+
+  ```
+  Assisted-By: <Tool name> <Tool version> (<Model name> <Model version>)
+  ```
+
+  Do not use `Co-Authored-By` for AI tools, since tools are not contributors.
+* **Pull request description**: end the description with an `AI Disclosure` block (the same format is used by Apache Iceberg), and tick the corresponding checkbox in the pull request template:
+
+  ```
+  ---
+  **AI Disclosure**
+  - Model: [model name and version]
+  - Platform/Tool: [tool or platform name and version]
+  - Human Oversight: [fully reviewed | partially reviewed | unreviewed]
+  ```
+
+  `Human Oversight` must be filled in by the human author, and should reflect what was actually reviewed. Where possible, name the parts of the change that were AI-generated, rather than only stating that AI was used.
+
+Example of a pull request description:
+
+```markdown
+Fixes #1234
+
+Bootstrap reported success even when the credentials file names no realms; it
+now fails with an error. Added a unit test, and verified manually with a
+bootstrap run on an empty credentials file.
+
+---
+**AI Disclosure**
+- Model: Claude Opus 4.5
+- Platform/Tool: Claude Code 2.1
+- Human Oversight: fully reviewed
+```
+
+Example of the matching commit message:
+
+```
+Fix bootstrap reporting success when no realms are given
+
+Assisted-By: Claude Code 2.1 (Claude Opus 4.5)
+```
 
 ## Java version requirements
 

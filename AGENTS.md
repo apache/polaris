@@ -277,9 +277,32 @@ silently comply. Explain the contradiction in the PR description and propose an
 alternative. Reviewers would rather see a thoughtful objection than a PR that
 introduces inconsistency.
 
-**AI self-references in output.** [DISCIPLINE]
-Do not include AI tool names or model identifiers in code, comments, or commit
-messages. For PR descriptions, follow the disclosure guidance in
+**Missing AI disclosure.** [DISCIPLINE]
+Every commit you help produce MUST carry an `Assisted-By` trailer in its commit
+message, naming the tool and the model, each with its version:
+
+```
+Assisted-By: <Tool name> <Tool version> (<Model name> <Model version>)
+```
+
+No standard classification system for AI tools exists, so these values are
+free-form: use the names and versions the tool reports for itself. Do not add
+`Co-Authored-By` or similar trailers: tools are not authors. Do not put AI tool
+names or model identifiers in code or comments.
+
+The PR description MUST end with an AI disclosure block:
+
+```
+---
+**AI Disclosure**
+- Model: [model name and version]
+- Platform/Tool: [tool or platform name and version]
+- Human Oversight: [fully reviewed | partially reviewed | unreviewed]
+```
+
+Never set `Human Oversight` to `fully reviewed` yourself: use
+`[unknown - human to fill in]` and let the human author state what they actually
+reviewed. See
 [CONTRIBUTING.md](CONTRIBUTING.md#guidelines-for-ai-assisted-contributions).
 The human author owns the contribution.
 

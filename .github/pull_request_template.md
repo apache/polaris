@@ -10,3 +10,18 @@
 - [ ] 💡 Added comments for complex logic
 - [ ] 🧾 Added a changelog entry in `changelog.d/` (if needed, see `changelog.d/README.md`)
 - [ ] 📚 Updated documentation in `site/content/in-dev/unreleased` (if needed)
+- [ ] 🤖 Disclosed AI usage (if AI was used, see `CONTRIBUTING.md`)
+
+<!--
+🤖 If AI was used, uncomment and fill in this block at the bottom of the description
+   (see https://github.com/apache/polaris/blob/main/CONTRIBUTING.md#guidelines-for-ai-assisted-contributions).
+   Otherwise, leave it as is.
+
+---
+**AI Disclosure**
+- Model: [model name and version]
+- Platform/Tool: [tool or platform name and version]
+- Human Oversight: [fully reviewed | partially reviewed | unreviewed]
+-->
+
+
