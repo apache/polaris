@@ -239,7 +239,8 @@ public final class LocationOverlapValidator {
     if (baseLocation == null || baseLocation.isEmpty()) {
       return Set.of();
     }
-    if (sibling.getSubType() == PolarisEntitySubType.ICEBERG_TABLE) {
+    if (sibling.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
+        || sibling.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
       return StorageUtil.getLocationsUsedByTable(
           baseLocation, sibling.getInternalPropertiesAsMap());
     }

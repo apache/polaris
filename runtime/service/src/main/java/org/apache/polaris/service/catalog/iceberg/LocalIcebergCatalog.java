@@ -132,6 +132,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCat
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.storage.LocationRestrictions;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -495,7 +496,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             .setMetadataLocation(metadataFileLocation)
             .build();
 
-    updateTableLike(identifier, updatedEntity, false);
+    updateTableLike(identifier, updatedEntity);
 
     TableOperations ops = newTableOps(identifier);
     return new BaseTable(ops, fullTableName(name(), identifier), metricsReporter());
@@ -599,6 +600,28 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       storedProperties = metadata.properties();
     }
     return StorageUtil.getLocationsUsedByTable(storedLocation, storedProperties);
+  }
+
+  /**
+   * Returns the recorded view locations after checking that its metadata agrees with them. Views
+   * without recorded locations retain the metadata-derived fallback so legacy views remain
+   * droppable when catalog-level metadata purge is enabled.
+   */
+  private Set<String> storedViewLocationsForPurge(
+      TableIdentifier identifier, ViewMetadata metadata) {
+    PolarisResolvedPathWrapper resolvedView =
+        resolvedEntityView.getResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_VIEW);
+    IcebergTableLikeEntity entity =
+        resolvedView == null ? null : IcebergTableLikeEntity.of(resolvedView.getRawLeafEntity());
+    if (entity == null
+        || entity.getBaseLocation() == null
+        || !entity.getInternalPropertiesAsMap().containsKey(IcebergTableLikeEntity.LOCATION)) {
+      return StorageUtil.getLocationsUsedByTable(metadata);
+    }
+    validateLocationsMatchEntity(identifier, entity, metadata);
+    return StorageUtil.getLocationsUsedByTable(
+        entity.getBaseLocation(), entity.getInternalPropertiesAsMap());
   }
 
   @Override
@@ -1246,7 +1269,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         storageInfoEntity.map(PolarisEntity::getInternalPropertiesAsMap).ifPresent(clone::putAll);
         clone.put(
             PolarisTaskConstants.STORAGE_LOCATIONS,
-            TaskUtils.encodeStorageLocations(Set.of(lastMetadata.location())));
+            TaskUtils.encodeStorageLocations(
+                storedViewLocationsForPurge(identifier, lastMetadata)));
 
         storageProperties = clone;
       }
@@ -1397,7 +1421,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     Set<String> locationsToValidate =
         getLocationsUsedByTableAndDirectMetadataReferences(
             tableMetadata.location(), tableMetadata.properties(), tableMetadata);
-    validateLocationsForTable(
+    validateLocationsForTableLike(
         tableIdentifier, tableMetadata.location(), locationsToValidate, resolvedStorageEntity);
     validateNoLocationsOverlap(
         tableIdentifier,
@@ -1434,7 +1458,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
    * table: unless unstructured table locations are allowed, they must reside under the table's
    * location.
    */
-  private void validateLocationsForTable(
+  private void validateLocationsForTableLike(
       TableIdentifier identifier,
       String tableLocation,
       Set<String> locations,
@@ -1448,6 +1472,17 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       entityPath.add(
           virtualTableEntity(
               identifier, resolvedPath, tableLocation, resolvedStorageEntity.getRawLeafEntity()));
+    } else {
+      IcebergTableLikeEntity entity =
+          IcebergTableLikeEntity.of(resolvedStorageEntity.getRawLeafEntity());
+      if (entity.getBaseLocation() == null) {
+        // Older views have no stored base location, so the entity-location restriction would be
+        // skipped. Validate against a temporary copy with tableLocation as its base, as for a new
+        // view. The real entity receives its base location only when the commit is persisted.
+        entityPath.set(
+            entityPath.size() - 1,
+            new IcebergTableLikeEntity.Builder(entity).setBaseLocation(tableLocation).build());
+      }
     }
     CatalogUtils.validateLocationsForTableLike(realmConfig, identifier, locations, entityPath);
   }
@@ -1483,7 +1518,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       List<PolarisEntity> resolvedNamespace) {
     // checks throwing ForbiddenException (must come first)
     Set<String> tableLocations = StorageUtil.getLocationsUsedByTable(metadata);
-    validateLocationsForTable(
+    validateLocationsForTableLike(
         identifier,
         metadata.location(),
         getLocationsUsedByTableAndDirectMetadataReferences(metadata),
@@ -1691,52 +1726,69 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     locationOverlapValidator.validate(getMetaStoreManager(), entity, parentPath, null);
   }
 
-  /**
-   * Rejects table metadata whose locations differ from the ones recorded on the entity by the last
-   * commit, so that the locations used for the table are always the validated ones.
-   */
   private static void validateLocationsMatchEntity(
       TableIdentifier identifier, IcebergTableLikeEntity entity, TableMetadata metadata) {
-    // Entities written before the locations were recorded (Polaris < 1.3.0) have no LOCATION
-    // internal property. Their base location may be stale, because notifications did not update
-    // it, and an absent write path property means "unknown" rather than "unset": do not reject
-    // the metadata in such cases. The next commit validates and records all locations.
+    validateLocationsMatchEntity(identifier, entity, metadata.location(), metadata.properties());
+  }
+
+  private static void validateLocationsMatchEntity(
+      TableIdentifier identifier, IcebergTableLikeEntity entity, ViewMetadata metadata) {
+    validateLocationsMatchEntity(identifier, entity, metadata.location(), metadata.properties());
+  }
+
+  /**
+   * Rejects metadata whose locations differ from those recorded on the entity by its last commit.
+   */
+  private static void validateLocationsMatchEntity(
+      TableIdentifier identifier,
+      IcebergTableLikeEntity entity,
+      String location,
+      Map<String, String> properties) {
+    // Older entities have no LOCATION marker. Their write paths are unknown rather than unset;
+    // table base locations can also be stale because earlier notifications did not update them.
+    // Callers retain their legacy fallback until a commit records the locations.
     Map<String, String> internalProperties = entity.getInternalPropertiesAsMap();
     if (!internalProperties.containsKey(IcebergTableLikeEntity.LOCATION)) {
       return;
     }
+    boolean isView = entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW;
+    String kind = isView ? "view" : "table";
     String storedLocation = entity.getBaseLocation();
     if (storedLocation != null
-        && !StorageLocation.of(storedLocation)
-            .isSameLocation(StorageLocation.of(metadata.location()))) {
+        && !StorageLocation.of(storedLocation).isSameLocation(StorageLocation.of(location))) {
       LOGGER.debug(
-          "Location mismatch for table {}: metadata has {}, entity has {}",
+          "Location mismatch for {} {}: metadata has {}, entity has {}",
+          kind,
           identifier,
-          metadata.location(),
+          location,
           storedLocation);
       throw new ForbiddenException(
-          "Location %s in the metadata of table %s does not match its stored location %s",
-          metadata.location(), identifier, storedLocation);
+          "Location %s in the metadata of %s %s does not match its stored location %s",
+          location, kind, identifier, storedLocation);
     }
-    for (String key :
-        List.of(
-            IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
-            IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)) {
+    List<String> writePathKeys =
+        isView
+            ? List.of(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)
+            : List.of(
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
+    for (String key : writePathKeys) {
       Optional<StorageLocation> stored =
           Optional.ofNullable(internalProperties.get(key)).map(StorageLocation::of);
       Optional<StorageLocation> actual =
-          Optional.ofNullable(metadata.properties().get(key)).map(StorageLocation::of);
+          Optional.ofNullable(properties.get(key)).map(StorageLocation::of);
       if (stored.isEmpty() != actual.isEmpty()
           || (stored.isPresent() && !stored.get().isSameLocation(actual.get()))) {
         LOGGER.debug(
-            "Property {} mismatch for table {}: metadata has {}, entity has {}",
+            "Property {} mismatch for {} {}: metadata has {}, entity has {}",
             key,
+            kind,
             identifier,
             actual.map(StorageLocation::toString).orElse(null),
             stored.map(StorageLocation::toString).orElse(null));
         throw new ForbiddenException(
-            "Property %s in the metadata of table %s does not match its stored value",
-            key, identifier);
+            "Property %s in the metadata of %s %s does not match its stored value",
+            key, kind, identifier);
       }
     }
   }
@@ -2077,7 +2129,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   .getRawFullPath()
               : resolvedTableEntities.getRawParentPath();
 
-      validateLocationsForTable(
+      validateLocationsForTableLike(
           tableIdentifier, metadata.location(), locationsToValidate, resolvedStorageEntity);
 
       if (tableLocationsChanged) {
@@ -2172,9 +2224,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
         persistenceAttempted = true;
         if (null == existingLocation) {
-          createTableLike(tableIdentifier, entity, false);
+          createTableLike(tableIdentifier, entity);
         } else {
-          updateTableLike(tableIdentifier, entity, false);
+          updateTableLike(tableIdentifier, entity);
         }
         // We diverge from `BaseMetastoreTableOperations`: only update the in-memory state after
         // the metastore persistence succeeds. If we updated it before and persistence threw,
@@ -2559,15 +2611,40 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   .getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()))
                   .getRawFullPath()
               : resolvedEntities.getRawParentPath();
-      if (base == null || !metadata.location().equals(base.location())) {
-        // If location is changing then we must validate that the requested location is valid
-        // for the storage configuration inherited under this entity's path.
-        validateLocationForTableLike(identifier, metadata.location(), resolvedStorageEntity);
+      Set<String> requestedLocations = StorageUtil.getLocationsUsedByTable(metadata);
+      Set<String> locationsToValidate = new HashSet<>(requestedLocations);
+      locationsToValidate.add(
+          metadata.metadataFileLocation() != null
+              ? metadata.metadataFileLocation()
+              : metadataFileLocation(metadata, "metadata.json"));
+      if (base == null
+          || !metadata.location().equals(base.location())
+          || !sameStorageLocation(
+              base.properties().get(ViewProperties.WRITE_METADATA_LOCATION),
+              metadata.properties().get(ViewProperties.WRITE_METADATA_LOCATION))) {
+        validateLocationsForTableLike(
+            identifier, metadata.location(), locationsToValidate, resolvedStorageEntity);
         validateNoLocationsOverlap(
             identifier,
-            Set.of(metadata.location()),
+            requestedLocations,
             resolvedNamespace,
             resolvedStorageEntity.getRawLeafEntity());
+      } else {
+        // Preserve unchanged legacy layouts, including on the first commit that records their
+        // locations. Intentionally skip structured and overlap checks for these existing paths,
+        // but continue enforcing allowed locations. New or changed paths are fully checked above.
+        PolarisStorageConfigurationInfo.findStorageConfigFromHierarchy(
+                resolvedStorageEntity.getRawFullPath())
+            .ifPresentOrElse(
+                config ->
+                    new LocationRestrictions(config)
+                        .validate(realmConfig, identifier, locationsToValidate),
+                () -> {
+                  // Without a storage config, retain the table-like validation that rejects
+                  // disabled FILE locations rather than treating the missing config as allow-all.
+                  validateLocationsForTableLike(
+                      identifier, locationsToValidate, resolvedStorageEntity);
+                });
       }
 
       // Catalog table-default.* only — not metadata.properties() (caller-controlled FileIO keys).
@@ -2621,11 +2698,25 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   + "because it has been concurrently modified to %s",
               identifier, oldLocation, newLocation, existingLocation);
         }
+        Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
+        internalProperties.put(IcebergTableLikeEntity.LOCATION, metadata.location());
+        internalProperties.remove(
+            IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
+        if (metadata.properties().containsKey(ViewProperties.WRITE_METADATA_LOCATION)) {
+          internalProperties.put(
+              IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+              metadata.properties().get(ViewProperties.WRITE_METADATA_LOCATION));
+        }
+        entity =
+            new IcebergTableLikeEntity.Builder(entity)
+                .setBaseLocation(metadata.location())
+                .setInternalProperties(internalProperties)
+                .build();
         persistenceAttempted = true;
         if (null == existingLocation) {
-          createTableLike(identifier, entity, true);
+          createTableLike(identifier, entity);
         } else {
-          updateTableLike(identifier, entity, true);
+          updateTableLike(identifier, entity);
         }
         if (makeMetadataCurrentOnCommit) {
           currentMetadata =
@@ -2692,6 +2783,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             "%s/%s/%s",
             LocationUtil.stripTrailingSlash(metadata.location()), METADATA_FOLDER_NAME, filename);
       }
+    }
+
+    private static boolean sameStorageLocation(String left, String right) {
+      if (left == null || right == null) {
+        return Objects.equal(left, right);
+      }
+      return StorageLocation.of(left).isSameLocation(StorageLocation.of(right));
     }
 
     public FileIO io() {
@@ -3004,7 +3102,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedNewParent) {
     Set<String> locations;
     if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
-      // Views do not persist their base location: it only exists in the view metadata.
+      // Read metadata so that views created before locations were persisted are also covered.
       String metadataLocation = entity.getMetadataLocation();
       FileIO fileIO =
           loadFileIOForTableLike(
@@ -3013,7 +3111,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               resolvedEntities,
               new HashMap<>(tableDefaultProperties),
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
-      locations = Set.of(ViewMetadataParser.read(fileIO, metadataLocation).location());
+      locations =
+          StorageUtil.getLocationsUsedByTable(ViewMetadataParser.read(fileIO, metadataLocation));
     } else {
       locations =
           StorageUtil.getLocationsUsedByTable(
@@ -3066,8 +3165,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
    * duplicate the logic to try to resolve parentIds before constructing the proposed entity. This
    * method will fill in the parentId if needed upon resolution.
    */
-  private void createTableLike(
-      TableIdentifier identifier, PolarisEntity entity, boolean validateMetadataLocation) {
+  private void createTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedParent =
         resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()));
     if (resolvedParent == null) {
@@ -3076,14 +3174,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
 
-    createTableLike(identifier, entity, resolvedParent, validateMetadataLocation);
+    createTableLike(identifier, entity, resolvedParent);
   }
 
   private void createTableLike(
-      TableIdentifier identifier,
-      PolarisEntity entity,
-      PolarisResolvedPathWrapper resolvedParent,
-      boolean validateMetadataLocation) {
+      TableIdentifier identifier, PolarisEntity entity, PolarisResolvedPathWrapper resolvedParent) {
     IcebergTableLikeEntity icebergTableLikeEntity = IcebergTableLikeEntity.of(entity);
     if (icebergTableLikeEntity.getBaseLocation() != null) {
       icebergTableLikeEntity =
@@ -3091,12 +3186,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               .setBaseLocation(
                   StorageLocation.ensureTrailingSlash(icebergTableLikeEntity.getBaseLocation()))
               .build();
-    }
-
-    // Make sure the metadata file is valid for our allowed locations.
-    String metadataLocation = icebergTableLikeEntity.getMetadataLocation();
-    if (validateMetadataLocation) {
-      validateLocationForTableLike(identifier, metadataLocation, resolvedParent);
     }
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
@@ -3138,8 +3227,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     LOGGER.debug("Created TableLike entity {} with TableIdentifier {}", resultEntity, identifier);
   }
 
-  private void updateTableLike(
-      TableIdentifier identifier, PolarisEntity entity, boolean validateMetadataLocation) {
+  private void updateTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(
             ResolvedPathKey.ofTableLike(identifier), entity.getSubType());
@@ -3156,12 +3244,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               .setBaseLocation(
                   StorageLocation.ensureTrailingSlash(icebergTableLikeEntity.getBaseLocation()))
               .build();
-    }
-
-    // Make sure the metadata file is valid for our allowed locations.
-    String metadataLocation = icebergTableLikeEntity.getMetadataLocation();
-    if (validateMetadataLocation) {
-      validateLocationForTableLike(identifier, metadataLocation, resolvedEntities);
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
@@ -3372,14 +3454,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             "Creating table {} for notification with metadataLocation {}",
             tableIdentifier,
             newLocation);
-        createTableLike(tableIdentifier, entity, resolvedParent, false);
+        createTableLike(tableIdentifier, entity, resolvedParent);
       } else {
         LOGGER.debug(
             "Updating table {} for notification with metadataLocation {}",
             tableIdentifier,
             newLocation);
 
-        updateTableLike(tableIdentifier, entity, false);
+        updateTableLike(tableIdentifier, entity);
       }
     }
     return true;
