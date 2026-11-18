@@ -1,0 +1,65 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+# Pagination definitions shared by the Polaris-specific APIs: the Polaris catalog APIs and the
+# management APIs. A list operation references the two parameters and uses the PageToken schema for
+# the token in its response. The response field is named in the style of the API it belongs to:
+# `next-page-token` in the catalog APIs, `nextPageToken` in the management APIs.
+#
+# These rules differ from the Iceberg REST Catalog API, where a server must return all results when
+# the request has no `pageToken`. Operations defined by the Iceberg REST Catalog API keep its rules.
+
+---
+components:
+  parameters:
+    PolarisPageToken:
+      name: pageToken
+      in: query
+      required: false
+      description: >
+        The page token from the previous response of the same list operation, sent unchanged. Omit it
+        to get the first page.
+      schema:
+        type: string
+
+    PolarisPageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: >
+        A hint for the largest number of results the client wants in one page. The server decides
+        the actual page size, which may be smaller.
+      schema:
+        type: integer
+        minimum: 1
+
+  schemas:
+    PolarisPageToken:
+      description: |
+        An opaque token that continues a list operation. Clients must not interpret it.
+
+        - Any response may be paginated. A client must always check for a page token in the
+          response and, when one is present, send it unchanged as the `pageToken` query parameter
+          to get the next page. The server omits the page token from the last page. A client must
+          treat a missing or `null` page token as the end of the results.
+        - A client does not need to send `pageToken` or `pageSize` to start paginating. The server
+          may paginate a response to a request that has neither.
+        - The server decides the page size. A page may hold fewer results than `pageSize`.
+        - A server that does not paginate returns all results in one response, with no page token.
+      type: string
