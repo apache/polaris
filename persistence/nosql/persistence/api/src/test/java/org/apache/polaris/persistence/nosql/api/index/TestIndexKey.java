@@ -466,4 +466,15 @@ public class TestIndexKey {
         key(Integer.MIN_VALUE),
         key(Integer.MAX_VALUE));
   }
+
+  @Test
+  public void toSafeStringIsInjectiveForSpaceVsEscapedX() {
+    var withSpace = key("a b");
+    var looksLikeEscapedSpace = key("ax20b");
+    soft.assertThat(withSpace.toSafeString("idx-")).isEqualTo("idx-ax20b");
+    soft.assertThat(looksLikeEscapedSpace.toSafeString("idx-")).isEqualTo("idx-ax7820b");
+    soft.assertThat(key("x").toSafeString("idx-")).isEqualTo("idx-x78");
+    soft.assertThat(key(ByteBuffer.wrap(new byte[] {(byte) 0x80})).toSafeString("idx-"))
+        .isEqualTo("idx-x80");
+  }
 }
