@@ -119,6 +119,14 @@ testing {
 
         implementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
         implementation("org.apache.hudi:hudi-spark3.5-bundle_${scalaVersion}:1.1.1")
+        // Paimon 1.4.1 does not publish a Spark 3.5 runtime for Scala 2.13.
+        if (scalaVersion == "2.12") {
+          implementation("org.apache.paimon:paimon-spark-3.5_${scalaVersion}:1.4.1") {
+            exclude(group = "org.apache.spark")
+            // Avoid the Quarkus BOM replacing Paimon's Scala 2.12 compiler with Scala 2.13.
+            exclude("org.scala-lang", "scala-compiler")
+          }
+        }
 
         // The hudi-spark-bundle includes most Hive libraries but excludes hive-exec to keep size
         // manageable
@@ -210,6 +218,12 @@ listOf("intTestCompileClasspath", "intTestRuntimeClasspath").forEach {
   // compatibility.
   configurations.named(it).configure {
     attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, intTestJvmVersion)
+    if (scalaVersion == "2.12") {
+      // Resolve at.yawk.lz4:lz4-java from Paimon against org.lz4:lz4-java from Spark.
+      resolutionStrategy.capabilitiesResolution.withCapability("org.lz4:lz4-java") {
+        select("org.lz4:lz4-java:1.8.0")
+      }
+    }
   }
 }
 
