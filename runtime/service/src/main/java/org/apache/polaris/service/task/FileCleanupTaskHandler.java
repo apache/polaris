@@ -235,14 +235,13 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
                 Tasks.foreach(files)
                     .executeWith(isConcurrent ? ThreadPools.getWorkerPool() : null)
                     .noRetry() // The batch retry below owns the retry budget.
-                    .run(
-                        file -> {
-                          try {
-                            fileIO.deleteFile(file);
-                          } catch (NotFoundException nfe) {
-                            // Already removed, including by an earlier attempt of this batch.
-                          }
-                        });
+                    .run(file -> {
+                      try {
+                        fileIO.deleteFile(file);
+                      } catch (NotFoundException nfe) {
+                        // Already removed, including by an earlier attempt of this batch.
+                      }
+                    });
               }
             },
             executorService)

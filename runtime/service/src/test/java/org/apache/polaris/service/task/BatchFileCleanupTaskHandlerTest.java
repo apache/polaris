@@ -328,13 +328,12 @@ public class BatchFileCleanupTaskHandlerTest {
     RuntimeException failure =
         bulk ? new BulkDeletionFailureException(1) : new IllegalStateException("delete failed");
     var deletion =
-        Mockito.doAnswer(
-            invocation -> {
-              if (deleteCalls.incrementAndGet() <= failures) {
-                throw failure;
-              }
-              return null;
-            });
+        Mockito.doAnswer(invocation -> {
+          if (deleteCalls.incrementAndGet() <= failures) {
+            throw failure;
+          }
+          return null;
+        });
     if (bulk) {
       deletion.when((SupportsBulkOperations) fileIO).deleteFiles(List.of(file));
     } else {
@@ -393,18 +392,17 @@ public class BatchFileCleanupTaskHandlerTest {
     BatchFileCleanupTaskHandler handler = newBatchFileCleanupTaskHandler(fileIO);
 
     assertThatNoException()
-        .isThrownBy(
-            () ->
-                handler
-                    .tryDelete(
-                        TableIdentifier.of("db", "table"),
-                        fileIO,
-                        files,
-                        "table_metadata",
-                        concurrent,
-                        null,
-                        1)
-                    .join());
+        .isThrownBy(() ->
+            handler
+                .tryDelete(
+                    TableIdentifier.of("db", "table"),
+                    fileIO,
+                    files,
+                    "table_metadata",
+                    concurrent,
+                    null,
+                    1)
+                .join());
 
     assertThat(deleteCalls.get()).isEqualTo(FileCleanupTaskHandler.MAX_ATTEMPTS);
     for (String file : files) {
@@ -424,12 +422,11 @@ public class BatchFileCleanupTaskHandlerTest {
               remainingFiles.remove(firstFile);
               throw new BulkDeletionFailureException(1);
             })
-        .doAnswer(
-            invocation -> {
-              assertThat(remainingFiles).containsExactly(retryFile);
-              files.forEach(remainingFiles::remove);
-              return null;
-            })
+        .doAnswer(invocation -> {
+          assertThat(remainingFiles).containsExactly(retryFile);
+          files.forEach(remainingFiles::remove);
+          return null;
+        })
         .when(fileIO)
         .deleteFiles(files);
 
