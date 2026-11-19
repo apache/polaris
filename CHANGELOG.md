@@ -198,6 +198,7 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   `fair-retries` does not apply to locally synchronized commits, which use FIFO admission;
   conflict retry backoff still applies.
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
+- OPA: operator-defined static properties configured via `polaris.authorization.opa.context-properties.*` are now sent to OPA under `input.context.properties`
 
 ### Changes
 
