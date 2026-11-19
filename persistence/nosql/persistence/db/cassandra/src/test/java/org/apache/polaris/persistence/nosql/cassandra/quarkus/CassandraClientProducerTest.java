@@ -32,6 +32,7 @@ import com.datastax.oss.driver.api.core.auth.ProgrammaticPlainTextAuthProvider;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.inject.Instance;
 import java.util.Map;
 import org.apache.polaris.persistence.nosql.cassandra.CassandraConfiguration;
@@ -62,7 +63,7 @@ class CassandraClientProducerTest {
     @SuppressWarnings("unchecked")
     Instance<AuthProvider> selected = mock(Instance.class);
     AuthProvider provider = mock(AuthProvider.class);
-    when(providers.select(CassandraAuthentication.Literal.of("default"))).thenReturn(selected);
+    when(providers.select(Identifier.Literal.of("default"))).thenReturn(selected);
     when(selected.get()).thenReturn(provider);
 
     var resolved =
@@ -70,7 +71,7 @@ class CassandraClientProducerTest {
             .orElseThrow();
 
     assertThat(resolved).isInstanceOf(NonClosingAuthProvider.class);
-    verify(providers).select(CassandraAuthentication.Literal.of("default"));
+    verify(providers).select(Identifier.Literal.of("default"));
     resolved.close();
     verifyNoMoreInteractions(provider);
   }
@@ -83,7 +84,7 @@ class CassandraClientProducerTest {
     @SuppressWarnings("unchecked")
     Instance<AuthProvider> selected = mock(Instance.class);
     AuthProvider provider = mock(AuthProvider.class);
-    when(providers.select(CassandraAuthentication.Literal.of("custom"))).thenReturn(selected);
+    when(providers.select(Identifier.Literal.of("custom"))).thenReturn(selected);
     when(selected.get()).thenReturn(provider);
 
     var resolved =
@@ -91,7 +92,7 @@ class CassandraClientProducerTest {
             .orElseThrow();
 
     assertThat(resolved).isInstanceOf(NonClosingAuthProvider.class);
-    verify(providers).select(CassandraAuthentication.Literal.of("custom"));
+    verify(providers).select(Identifier.Literal.of("custom"));
     resolved.close();
     verifyNoMoreInteractions(provider);
   }
@@ -171,7 +172,7 @@ class CassandraClientProducerTest {
     Instance<AuthProvider> providers = mock(Instance.class);
     @SuppressWarnings("unchecked")
     Instance<AuthProvider> selected = mock(Instance.class);
-    when(providers.select(CassandraAuthentication.Literal.of("custom"))).thenReturn(selected);
+    when(providers.select(Identifier.Literal.of("custom"))).thenReturn(selected);
     when(selected.isUnsatisfied()).thenReturn(true);
 
     assertThatIllegalArgumentException()
@@ -187,7 +188,7 @@ class CassandraClientProducerTest {
     Instance<AuthProvider> providers = mock(Instance.class);
     @SuppressWarnings("unchecked")
     Instance<AuthProvider> selected = mock(Instance.class);
-    when(providers.select(CassandraAuthentication.Literal.of("custom"))).thenReturn(selected);
+    when(providers.select(Identifier.Literal.of("custom"))).thenReturn(selected);
     when(selected.isAmbiguous()).thenReturn(true);
 
     assertThatIllegalArgumentException()

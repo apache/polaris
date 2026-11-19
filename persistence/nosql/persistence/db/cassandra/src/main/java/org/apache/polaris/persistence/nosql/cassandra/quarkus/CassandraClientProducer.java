@@ -31,6 +31,7 @@ import com.datastax.oss.driver.internal.core.metrics.TaggingMetricIdGenerator;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.quarkus.tls.TlsConfiguration;
 import io.quarkus.tls.TlsConfigurationRegistry;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Disposes;
@@ -83,7 +84,7 @@ class CassandraClientProducer {
 
   @Produces
   @ApplicationScoped
-  @CassandraAuthentication(DEFAULT_AUTHENTICATION_PROVIDER_NAME)
+  @Identifier(DEFAULT_AUTHENTICATION_PROVIDER_NAME)
   AuthProvider defaultAuthenticationProvider(CassandraConfiguration configuration) {
     return CassandraSessionFactory.plainTextAuthProvider(configuration)
         .orElseThrow(() ->
@@ -92,7 +93,7 @@ class CassandraClientProducer {
   }
 
   void closeDefaultAuthenticationProvider(
-      @Disposes @CassandraAuthentication(DEFAULT_AUTHENTICATION_PROVIDER_NAME)
+      @Disposes @Identifier(DEFAULT_AUTHENTICATION_PROVIDER_NAME)
           AuthProvider authenticationProvider) {
     try {
       authenticationProvider.close();
@@ -122,8 +123,7 @@ class CassandraClientProducer {
           "Cassandra auth.username and auth.password can only be used with the default authentication provider.");
     }
 
-    Instance<AuthProvider> selected =
-        providers.select(CassandraAuthentication.Literal.of(selectedName));
+    Instance<AuthProvider> selected = providers.select(Identifier.Literal.of(selectedName));
     if (selected.isUnsatisfied()) {
       throw new IllegalArgumentException(
           "No Cassandra authentication provider named '%s' is available.".formatted(selectedName));

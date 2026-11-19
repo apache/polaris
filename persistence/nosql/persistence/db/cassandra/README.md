@@ -50,7 +50,8 @@ configured, Polaris creates the default plaintext driver authentication provider
 `auth.authorization-id` is passed to that provider for servers that support proxy authentication.
 
 For custom authentication, an integrator supplies a CDI `AuthProvider` bean qualified with
-`@CassandraAuthentication("name")` and configures `auth.provider-name=name`. Native Java-driver
+`@Identifier("name")` from `io.smallrye.common.annotation` and configures
+`auth.provider-name=name`. Native Java-driver
 authentication options under `driver` cannot be combined with Polaris authentication settings.
 
 ## TLS and mTLS

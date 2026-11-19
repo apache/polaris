@@ -27,8 +27,6 @@ plugins {
 val quarkusRuntimeOnly =
   configurations.dependencyScope("quarkusRuntimeOnly") {
     extendsFrom(configurations.implementation.get(), configurations.runtimeOnly.get())
-    // spotbugs-annotations has only a GPL license.
-    exclude("com.github.spotbugs", "spotbugs-annotations")
   }
 
 configurations.named("testImplementation") { extendsFrom(quarkusRuntimeOnly.get()) }
@@ -56,10 +54,7 @@ dependencies {
   compileOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
 
   implementation(platform(libs.cassandra.driver.bom))
-  implementation("org.apache.cassandra:java-driver-core") {
-    // spotbugs-annotations has only a GPL license!
-    exclude("com.github.spotbugs", "spotbugs-annotations")
-  }
+  implementation("org.apache.cassandra:java-driver-core")
 
   implementation(libs.guava)
   implementation(libs.slf4j.api)
@@ -69,6 +64,7 @@ dependencies {
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
+  compileOnly(libs.smallrye.common.annotation)
   implementation(libs.smallrye.config.core)
   compileOnly(platform(libs.quarkus.bom))
   compileOnly("io.quarkus:quarkus-core")
