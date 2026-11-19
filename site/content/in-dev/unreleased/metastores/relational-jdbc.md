@@ -55,9 +55,9 @@ Using properties file:
 
 ```properties
 polaris.persistence.type=relational-jdbc
-quarkus.datasource.jdbc.username=<your-username>
-quarkus.datasource.jdbc.password=<your-password>
-quarkus.datasource.jdbc.jdbc-url=<jdbc-url-of-postgres>
+quarkus.datasource.username=<your-username>
+quarkus.datasource.password=<your-password>
+quarkus.datasource.jdbc.url=<jdbc-url-of-postgres>
 ```
 
 ### 2. AWS Aurora PostgreSQL metastore using IAM AWS authentication
