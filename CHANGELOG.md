@@ -198,7 +198,6 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   `fair-retries` does not apply to locally synchronized commits, which use FIFO admission;
   conflict retry backoff still applies.
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
-- OAuth 2.0 Protected Resource Metadata (RFC 9728): when `quarkus.oidc.resource-metadata.enabled=true`, Polaris serves `/.well-known/oauth-protected-resource`, advertising the authorization server for the `/api/catalog` resource. This is server-side metadata only -- it benefits clients that already support RFC 9728 discovery; it does not change behavior for clients that don't.
 
 ### Changes
 
