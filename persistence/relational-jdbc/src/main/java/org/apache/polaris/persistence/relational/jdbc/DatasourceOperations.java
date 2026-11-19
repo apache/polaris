@@ -203,6 +203,22 @@ public class DatasourceOperations {
     });
   }
 
+  /**
+   * Like {@link #executeSelectOverStream(Connection, PreparedQuery, Converter, Consumer)}, but runs
+   * the query once, without retrying it. Use it for a statement of a transaction that is retried as
+   * a whole by {@link #runWithinTransaction}: after a statement fails, PostgreSQL and CockroachDB
+   * reject every further statement of the transaction, so retrying the single statement cannot
+   * succeed and would hide the original error.
+   */
+  public <T> void executeSelectOverStreamOnce(
+      @NonNull Connection connection,
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance,
+      @NonNull Consumer<Stream<T>> consumer)
+      throws SQLException {
+    executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
+  }
+
   /** Connection-aware version for use inside runWithinTransaction. */
   public <T> void executeSelectOverStream(
       @NonNull Connection connection,

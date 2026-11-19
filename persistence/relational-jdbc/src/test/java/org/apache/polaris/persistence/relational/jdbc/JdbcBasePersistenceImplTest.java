@@ -49,9 +49,11 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite.Condition;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -716,5 +718,107 @@ class JdbcBasePersistenceImplTest {
     PolarisPrincipalSecrets dbSecrets = impl.loadPrincipalSecrets(callCtx, clientId);
     assertThat(dbSecrets).isNotNull();
     assertThat(dbSecrets.getCredentialsVersionForSecret(secretA)).isPresent();
+  }
+
+  private static PolarisBaseEntity batchEntity(long id) {
+    return new PolarisBaseEntity(
+        1L,
+        id,
+        PolarisEntityType.TABLE_LIKE,
+        PolarisEntitySubType.ICEBERG_TABLE,
+        1L,
+        "table_" + id);
+  }
+
+  private JdbcBasePersistenceImpl persistenceFailingWith(SQLException failure) throws SQLException {
+    DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
+    when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.H2);
+    doThrow(failure).when(datasourceOperations).runWithinTransaction(any());
+    return new JdbcBasePersistenceImpl(
+        new PolarisDefaultDiagServiceImpl(),
+        datasourceOperations,
+        RANDOM_SECRETS,
+        REALM_CONTEXT.getRealmIdentifier());
+  }
+
+  /**
+   * A deadlock or a serialization failure of the database means that a concurrent batch touched the
+   * same entities: it is a conflict to retry, not an error.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "40P01", // deadlock
+        "40001" // serialization failure
+      })
+  void checkAndWriteEntities_MapsDatabaseConflictsToRetryOnConcurrency(String sqlState)
+      throws SQLException {
+    JdbcBasePersistenceImpl persistence =
+        persistenceFailingWith(new SQLException("database conflict", sqlState));
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, persistence);
+    PolarisBaseEntity entity = batchEntity(10L);
+
+    assertThatExceptionOfType(RetryOnConcurrencyException.class)
+        .isThrownBy(() ->
+            persistence.checkAndWriteEntities(
+                callCtx,
+                List.of(new Condition.Unchanged(null, batchEntity(11L))),
+                List.of(new BasePersistence.EntityChange.Update(entity, entity))));
+  }
+
+  @Test
+  void checkAndWriteEntities_OtherDatabaseErrorsAreNotConflicts() throws SQLException {
+    JdbcBasePersistenceImpl persistence =
+        persistenceFailingWith(new SQLException("connection failure", "08006"));
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, persistence);
+    PolarisBaseEntity entity = batchEntity(10L);
+
+    assertThatExceptionOfType(RuntimeException.class)
+        .isThrownBy(() ->
+            persistence.checkAndWriteEntities(
+                callCtx,
+                List.of(),
+                List.of(new BasePersistence.EntityChange.Update(entity, entity))))
+        .isNotInstanceOf(RetryOnConcurrencyException.class);
+  }
+
+  /**
+   * A check that fails inside the transaction, for example with a serialization failure on
+   * CockroachDB, runs once and is reported as a conflict: the select is not retried within the
+   * aborted transaction, where a retry would fail with a different error and become a 500.
+   */
+  @Test
+  void checkAndWriteEntities_CheckFailingInsideTheTransactionIsAConflict() throws SQLException {
+    DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
+    Connection connection = Mockito.mock(Connection.class);
+    when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.COCKROACHDB);
+    Mockito.doAnswer(
+            invocation -> {
+              invocation
+                  .<DatasourceOperations.TransactionCallback>getArgument(0)
+                  .execute(connection);
+              return null;
+            })
+        .when(datasourceOperations)
+        .runWithinTransaction(any());
+    doThrow(new SQLException("could not serialize access", "40001"))
+        .when(datasourceOperations)
+        .executeSelectOverStreamOnce(any(), any(), any(), any());
+    JdbcBasePersistenceImpl persistence =
+        new JdbcBasePersistenceImpl(
+            new PolarisDefaultDiagServiceImpl(),
+            datasourceOperations,
+            RANDOM_SECRETS,
+            REALM_CONTEXT.getRealmIdentifier());
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, persistence);
+
+    assertThatExceptionOfType(RetryOnConcurrencyException.class)
+        .isThrownBy(() ->
+            persistence.checkAndWriteEntities(
+                callCtx, List.of(new Condition.Unchanged(null, batchEntity(11L))), List.of()));
+    verify(datasourceOperations, Mockito.times(1))
+        .executeSelectOverStreamOnce(any(), any(), any(), any());
+    verify(datasourceOperations, never())
+        .executeSelectOverStream(any(Connection.class), any(), any(), any());
   }
 }
