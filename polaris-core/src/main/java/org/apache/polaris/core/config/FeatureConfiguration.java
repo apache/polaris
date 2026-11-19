@@ -525,8 +525,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "have before it is considered stale and evicted. When non-zero, credentials "
                   + "are removed from the cache this many seconds before they expire, ensuring "
                   + "clients always receive credentials with at least this much validity left. "
-                  + "When zero (the default), credentials are kept for half of their remaining "
-                  + "lifetime, which is the legacy behavior. Must be less than "
+                  + "When zero (the default), credentials are instead kept for half of their "
+                  + "remaining lifetime -- a reasonable choice on its own when the actual expiry "
+                  + "timeout can't be estimated upfront. Must be less than "
                   + STORAGE_CREDENTIAL_DURATION_SECONDS.key()
                   + ".")
           .defaultValue(0)

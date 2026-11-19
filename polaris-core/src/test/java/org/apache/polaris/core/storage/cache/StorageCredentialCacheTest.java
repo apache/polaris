@@ -591,11 +591,26 @@ public class StorageCredentialCacheTest {
   }
 
   @ParameterizedTest
-  // -1 is rejected as negative; 3600 is rejected because it's not less than the default
-  // STORAGE_CREDENTIAL_DURATION_SECONDS of 3600 (1 hour) -- same rejection path as a buffer
+  // -1 is out of range as negative; 3600 is out of range because it's not less than the default
+  // STORAGE_CREDENTIAL_DURATION_SECONDS of 3600 (1 hour) -- same out-of-range path as a buffer
   // greater than the credential duration.
+  //
+  // Catching this at request time is too late to fail the request over -- see
+  // ProductionReadinessChecks.checkStorageCredentialRefreshBuffer for the startup-time check
+  // that surfaces the same misconfiguration loudly, before any request is affected. Here, the
+  // cache instead falls back to the default half-lifetime behavior, same as an explicit 0.
   @ValueSource(ints = {-1, 3600})
-  public void testRefreshBufferRejectsOutOfRangeValue(int bufferSeconds) {
+  public void testRefreshBufferOutOfRangeValueFallsBackToDefault(int bufferSeconds) {
+    // Credentials expire in 120 seconds from now. With the fallback (buffer=0) behavior,
+    // effective TTL = 120s / 2 = 60s > 0 -> entry is kept in cache, same as
+    // testRefreshBufferZeroKeepsEntryInCache.
+    long expiresAt = System.currentTimeMillis() + 120_000;
+    StorageAccessConfig config =
+        StorageAccessConfig.builder()
+            .put(StorageAccessProperty.AWS_KEY_ID, "key")
+            .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
+            .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(expiresAt))
+            .build();
     StorageCredentialCacheKey key =
         new TestKey(
             realmContext.getRealmIdentifier(),
@@ -605,15 +620,11 @@ public class StorageCredentialCacheTest {
             Set.of(),
             Optional.empty(),
             realmConfigWithBuffer(bufferSeconds),
-            () ->
-                StorageAccessConfig.builder()
-                    .put(StorageAccessProperty.AWS_KEY_ID, "key")
-                    .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
-                    .build());
+            () -> config);
 
-    Assertions.assertThatThrownBy(() -> storageCredentialCache.getOrLoad(key))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining(FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.key());
+    StorageAccessConfig result = storageCredentialCache.getOrLoad(key);
+    Assertions.assertThat(result).isEqualTo(config);
+    Assertions.assertThat(storageCredentialCache.getIfPresent(key)).isNotNull();
   }
 
   @Test
