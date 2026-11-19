@@ -163,8 +163,8 @@ Here is an example to find all policies that apply to a specific resource (inclu
 GET /polaris/v1/catalog/applicable-policies?namespace=finance%1Fquarterly&target-name=transactions
 ```
 
-The `namespace` field identifies where each policy is defined. Both policies are defined in `finance`.
-The table inherits the snapshot expiry policy from that namespace and the compaction policy from the catalog.
+The `namespace` field shows that both policies are defined in `finance`.
+The `inherited` flag is `true` for both policies, so the table inherits them.
 The `content` field contains a JSON string.
 
 **Sample response:**
