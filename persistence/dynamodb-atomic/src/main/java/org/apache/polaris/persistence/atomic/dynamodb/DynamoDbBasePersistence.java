@@ -34,13 +34,23 @@ import static org.apache.polaris.persistence.atomic.dynamodb.TransactionFailures
 import static org.apache.polaris.persistence.atomic.dynamodb.TransactionFailures.onlyConflicts;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.PriorityQueue;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.EventEntity;
@@ -54,6 +64,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.persistence.atomic.dynamodb.models.ChildItem;
@@ -68,6 +79,7 @@ import software.amazon.awssdk.services.dynamodb.model.Delete;
 import software.amazon.awssdk.services.dynamodb.model.Get;
 import software.amazon.awssdk.services.dynamodb.model.ItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.Put;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.TransactGetItem;
 import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
 import software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException;
@@ -91,12 +103,19 @@ import software.amazon.awssdk.services.dynamodb.model.TransactionConflictExcepti
  *   <li>Multi-entity lookups read with {@code TransactGetItems}, so they see one snapshot.
  * </ul>
  *
- * <p>The child record is a strongly consistent, base-table stand-in for the {@code gsi1} listing
- * copy, so a later change can serve listing from a base-table query with {@code
- * ConsistentRead=true}. This class writes it but does not yet read it: {@code gsi1} and listing are
- * unchanged.
+ * <p>Listing reads the child records: a strongly consistent, lazy base-table {@code Query} on the
+ * parent's partition key ({@code realmId#catalogId#parentId#typeCode#subTypeCode}) returns the
+ * children's ids in id order, and those ids are then read into entities a chunk at a time with
+ * {@code TransactGetItems} (one snapshot per chunk), flat-mapped so the read stays lazy. Because
+ * the child records live on the base table and are maintained in the same transaction as the
+ * entity, listing never misses a write that already completed. The stream is lazy, so a filter in
+ * {@code listFullEntities} can keep pulling and never leaves a page short. Paging uses {@link
+ * EntityIdToken}, as {@code relational-jdbc} does. A concrete subtype is a single partition; {@code
+ * ANY_SUBTYPE} lazily merges the subtype partitions by id, so the combined stream stays in id order
+ * and pages with a single {@link EntityIdToken}. Each entity is re-checked against the queried
+ * parent, so one that moved out by a concurrent re-parent is not listed.
  *
- * <p>This class currently covers entity writes and lookups. Listing, multi-entity writes, grant
+ * <p>This class currently covers entity writes, lookups and listing. Multi-entity writes, grant
  * records and realm teardown throw {@link UnsupportedOperationException} until they are
  * implemented.
  */
@@ -396,7 +415,9 @@ public class DynamoDbBasePersistence implements BasePersistence {
       @NonNull PolarisEntityType entityType,
       @NonNull PolarisEntitySubType entitySubType,
       @NonNull PageToken pageToken) {
-    throw notYetImplemented("listEntities");
+    Stream<PolarisBaseEntity> children =
+        queryChildren(catalogId, parentId, entityType, entitySubType, pageToken);
+    return Page.mapped(pageToken, children, EntityNameLookupRecord::new, EntityIdToken::fromEntity);
   }
 
   @Override
@@ -409,7 +430,10 @@ public class DynamoDbBasePersistence implements BasePersistence {
       @NonNull Predicate<PolarisBaseEntity> entityFilter,
       @NonNull Function<PolarisBaseEntity, T> transformer,
       PageToken pageToken) {
-    throw notYetImplemented("listFullEntities");
+    Stream<PolarisBaseEntity> children =
+        queryChildren(catalogId, parentId, entityType, entitySubType, pageToken)
+            .filter(entityFilter);
+    return Page.mapped(pageToken, children, transformer, EntityIdToken::fromEntity);
   }
 
   @Override
@@ -441,7 +465,245 @@ public class DynamoDbBasePersistence implements BasePersistence {
       @Nullable PolarisEntityType optionalEntityType,
       long catalogId,
       long parentId) {
-    throw notYetImplemented("hasChildren");
+    // Any child record under the parent means the parent is not empty. "Any type" checks every
+    // type; each type checks its subtype partitions. NULL_TYPE and ROOT are never stored as
+    // children. One strongly consistent Limit-1 query per (type, subtype) partition is enough.
+    List<PolarisEntityType> types =
+        optionalEntityType == null
+            ? Arrays.stream(PolarisEntityType.values())
+                .filter(t -> t != PolarisEntityType.NULL_TYPE && t != PolarisEntityType.ROOT)
+                .toList()
+            : List.of(optionalEntityType);
+    for (PolarisEntityType type : types) {
+      for (int subTypeCode : childSubtypes(type)) {
+        boolean any =
+            client
+                    .query(b ->
+                        b.tableName(tableName)
+                            .keyConditionExpression("#pk = :pk")
+                            .expressionAttributeNames(Map.of("#pk", PK))
+                            .expressionAttributeValues(
+                                Map.of(
+                                    ":pk",
+                                    AttributeValue.fromS(
+                                        childPk(
+                                            realmId,
+                                            catalogId,
+                                            parentId,
+                                            type.getCode(),
+                                            subTypeCode))))
+                            .consistentRead(true)
+                            .limit(1))
+                    .count()
+                > 0;
+        if (any) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Streams a parent's children from the child records, in id order, strongly consistent. A
+   * concrete subtype is one base-table partition. {@code ANY_SUBTYPE} reads each subtype partition
+   * of the type and merges them by id, so the combined stream stays in id order and pages with a
+   * single {@link EntityIdToken}.
+   *
+   * <p>The stream is lazy. Each partition's DynamoDB query uses a per-request {@code Limit} of
+   * {@code pageSize + 1}, and the paginator keeps fetching as the caller consumes. The ids are then
+   * read into entities a chunk at a time with {@code TransactGetItems} (one snapshot per chunk),
+   * flat-mapped so the read stays lazy: a filter applied after it (as {@code listFullEntities}
+   * does) can keep pulling and never leaves a page short.
+   *
+   * <p>A child's entity is read separately from its child record, so a concurrent re-parent could
+   * return an entity that has moved to another parent. Each entity is therefore re-checked against
+   * the query's catalog, parent and type (and subtype when concrete) and dropped if it moved out.
+   * Missing a child that moved in after the query is fine; that is just a later write.
+   */
+  private Stream<PolarisBaseEntity> queryChildren(
+      long catalogId,
+      long parentId,
+      PolarisEntityType entityType,
+      PolarisEntitySubType entitySubType,
+      PageToken pageToken) {
+    int[] subtypes =
+        entitySubType == PolarisEntitySubType.ANY_SUBTYPE
+            ? childSubtypes(entityType)
+            : new int[] {entitySubType.getCode()};
+
+    Stream<Long> ids;
+    if (subtypes.length == 1) {
+      ids = queryChildIds(catalogId, parentId, entityType.getCode(), subtypes[0], pageToken);
+    } else {
+      // Lazily merge the per-subtype id streams by id. Each stream is already in id order and
+      // resumes after the page token, so a k-way merge keeps the combined stream id-ordered and
+      // lets a single EntityIdToken page across subtypes, without draining any partition.
+      List<Iterator<Long>> iterators = new ArrayList<>();
+      for (int subTypeCode : subtypes) {
+        iterators.add(
+            queryChildIds(catalogId, parentId, entityType.getCode(), subTypeCode, pageToken)
+                .iterator());
+      }
+      ids = mergeById(iterators);
+    }
+
+    // Read ids a chunk at a time, one TransactGetItems per chunk, flat-mapped so the read stays
+    // lazy. Chunk size is pageSize + 1, matching what one page needs; unpaged reads use the
+    // TransactGetItems item cap. Guard each entity so one that moved out is not listed here.
+    OptionalInt pageSize = pageToken.pageSize();
+    int chunkSize =
+        pageSize.isPresent() && pageSize.getAsInt() < MAX_TRANSACT_GET_ITEMS
+            ? pageSize.getAsInt() + 1
+            : MAX_TRANSACT_GET_ITEMS;
+    Integer concreteSubtype =
+        entitySubType == PolarisEntitySubType.ANY_SUBTYPE ? null : entitySubType.getCode();
+    return chunked(ids.iterator(), chunkSize)
+        .flatMap(chunk -> readEntitiesInOrder(catalogId, chunk).stream())
+        .filter(
+            e -> belongsToParent(e, catalogId, parentId, entityType.getCode(), concreteSubtype));
+  }
+
+  /** Reads a chunk of ids into entities with one snapshot, returned in the chunk's id order. */
+  private List<PolarisBaseEntity> readEntitiesInOrder(long catalogId, List<Long> ids) {
+    List<PolarisEntityId> entityIds =
+        ids.stream().map(id -> new PolarisEntityId(catalogId, id)).toList();
+    Map<Long, PolarisBaseEntity> byId = new HashMap<>();
+    for (Map<String, AttributeValue> item : batchReadEntities(entityIds, null)) {
+      PolarisBaseEntity entity = EntityItem.toEntity(item);
+      byId.put(entity.getId(), entity);
+    }
+    List<PolarisBaseEntity> ordered = new ArrayList<>(ids.size());
+    for (long id : ids) {
+      PolarisBaseEntity entity = byId.get(id);
+      if (entity != null) {
+        ordered.add(entity);
+      }
+    }
+    return ordered;
+  }
+
+  /**
+   * True when the entity still sits under the queried parent. Guards against a concurrent re-parent
+   * between the child-record query and the entity read: the record said the entity was a child, but
+   * the entity may have moved. Subtype is checked only for a concrete-subtype query.
+   */
+  private static boolean belongsToParent(
+      PolarisBaseEntity entity,
+      long catalogId,
+      long parentId,
+      int typeCode,
+      @Nullable Integer subTypeCode) {
+    return entity.getCatalogId() == catalogId
+        && entity.getParentId() == parentId
+        && entity.getTypeCode() == typeCode
+        && (subTypeCode == null || entity.getSubTypeCode() == subTypeCode);
+  }
+
+  /** Groups a lazy id iterator into lazily-pulled chunks of at most {@code size}. */
+  private static Stream<List<Long>> chunked(Iterator<Long> ids, int size) {
+    Iterator<List<Long>> chunks =
+        new Iterator<>() {
+          @Override
+          public boolean hasNext() {
+            return ids.hasNext();
+          }
+
+          @Override
+          public List<Long> next() {
+            List<Long> chunk = new ArrayList<>(size);
+            while (ids.hasNext() && chunk.size() < size) {
+              chunk.add(ids.next());
+            }
+            return chunk;
+          }
+        };
+    return StreamSupport.stream(
+        Spliterators.spliteratorUnknownSize(chunks, Spliterator.ORDERED), false);
+  }
+
+  /** Lazily merges several id-ordered streams into one id-ordered stream. */
+  private static Stream<Long> mergeById(List<Iterator<Long>> iterators) {
+    // A small heap of (nextId, iterator), popping the smallest id each step.
+    PriorityQueue<long[]> heap = new PriorityQueue<>(Comparator.comparingLong(a -> a[0]));
+    for (int i = 0; i < iterators.size(); i++) {
+      if (iterators.get(i).hasNext()) {
+        heap.add(new long[] {iterators.get(i).next(), i});
+      }
+    }
+    Iterator<Long> merged =
+        new Iterator<>() {
+          @Override
+          public boolean hasNext() {
+            return !heap.isEmpty();
+          }
+
+          @Override
+          public Long next() {
+            long[] top = heap.poll();
+            int source = (int) top[1];
+            if (iterators.get(source).hasNext()) {
+              heap.add(new long[] {iterators.get(source).next(), source});
+            }
+            return top[0];
+          }
+        };
+    return StreamSupport.stream(
+        Spliterators.spliteratorUnknownSize(merged, Spliterator.ORDERED), false);
+  }
+
+  /**
+   * Streams one (type, subtype) partition's child ids in id order. The DynamoDB query carries a
+   * per-request {@code Limit} of {@code pageSize + 1}, but the paginator keeps fetching as the
+   * stream is consumed, so the stream itself is not bounded and a later filter cannot under-fill a
+   * page.
+   */
+  private Stream<Long> queryChildIds(
+      long catalogId, long parentId, int typeCode, int subTypeCode, PageToken pageToken) {
+    // One more than the page size, so a single request can still tell whether a next page exists.
+    OptionalInt pageSize = pageToken.pageSize();
+    Integer queryLimit =
+        pageSize.isPresent() && pageSize.getAsInt() < Integer.MAX_VALUE
+            ? pageSize.getAsInt() + 1
+            : null;
+    Map<String, AttributeValue> values = new HashMap<>();
+    values.put(
+        ":pk", AttributeValue.fromS(childPk(realmId, catalogId, parentId, typeCode, subTypeCode)));
+    String keyCondition = "#pk = :pk";
+    Optional<EntityIdToken> after =
+        pageToken.paginationRequested() ? pageToken.valueAs(EntityIdToken.class) : Optional.empty();
+    if (after.isPresent()) {
+      keyCondition += " AND #sk > :sk";
+      values.put(":sk", AttributeValue.fromS(childSk(after.get().entityId())));
+    }
+    QueryRequest request =
+        QueryRequest.builder()
+            .tableName(tableName)
+            .keyConditionExpression(keyCondition)
+            .expressionAttributeNames(
+                after.isPresent() ? Map.of("#pk", PK, "#sk", SK) : Map.of("#pk", PK))
+            .expressionAttributeValues(values)
+            .consistentRead(true)
+            .limit(queryLimit)
+            .build();
+    return client.queryPaginator(request).items().stream().map(ChildItem::entityId);
+  }
+
+  /**
+   * The subtype codes that children of this type can have. Derived from {@link
+   * PolarisEntitySubType}, so a newly added subtype of this type is picked up automatically. Only
+   * {@code TABLE_LIKE} has real subtypes; every other type stores its children under {@code
+   * NULL_SUBTYPE} (0).
+   */
+  private static int[] childSubtypes(PolarisEntityType entityType) {
+    int[] subtypes =
+        Arrays.stream(PolarisEntitySubType.values())
+            .filter(s -> s.getParentType() == entityType)
+            .mapToInt(PolarisEntitySubType::getCode)
+            .toArray();
+    return subtypes.length == 0
+        ? new int[] {PolarisEntitySubType.NULL_SUBTYPE.getCode()}
+        : subtypes;
   }
 
   // ---- Helpers ---------------------------------------------------------------------------------

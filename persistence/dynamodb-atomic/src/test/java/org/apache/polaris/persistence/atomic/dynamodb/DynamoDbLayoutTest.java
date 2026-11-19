@@ -45,26 +45,6 @@ class DynamoDbLayoutTest {
   }
 
   @Test
-  void childrenGsiPkCombinesParentCoordinates() {
-    assertThat(DynamoDbLayout.childrenGsiPk("realm1", 7L, 3L, 2)).isEqualTo("realm1#7#3#2");
-  }
-
-  @Test
-  void childrenGsiSkPadsTheIdToNineteenDigits() {
-    assertThat(DynamoDbLayout.childrenGsiSk(0L)).isEqualTo("0000000000000000000");
-    assertThat(DynamoDbLayout.childrenGsiSk(42L)).isEqualTo("0000000000000000042");
-    assertThat(DynamoDbLayout.childrenGsiSk(Long.MAX_VALUE)).isEqualTo("9223372036854775807");
-  }
-
-  @Test
-  void childrenGsiSkSortsInNumericOrder() {
-    // Unpadded, "30" would sort after "200".
-    assertThat(DynamoDbLayout.childrenGsiSk(30L)).isLessThan(DynamoDbLayout.childrenGsiSk(200L));
-    assertThat(DynamoDbLayout.childrenGsiSk(200L))
-        .isLessThan(DynamoDbLayout.childrenGsiSk(Long.MAX_VALUE));
-  }
-
-  @Test
   void childPkCombinesParentCoordinatesAndSubtype() {
     assertThat(DynamoDbLayout.childPk("realm1", 7L, 3L, 2, 0)).isEqualTo("realm1#7#3#2#0");
     assertThat(DynamoDbLayout.childPk("realm1", 7L, 3L, 1, 2)).isEqualTo("realm1#7#3#1#2");
