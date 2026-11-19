@@ -46,6 +46,7 @@ dependencies {
   implementation(platform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-core")
   implementation("io.quarkus:quarkus-rest-client")
+  implementation("io.quarkus:quarkus-smallrye-fault-tolerance")
   implementation("io.micrometer:micrometer-core")
   implementation(libs.guava)
 
@@ -53,6 +54,7 @@ dependencies {
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.smallrye.config.core)
+  compileOnly(libs.microprofile.fault.tolerance.api)
 
   implementation(libs.slf4j.api)
   implementation(libs.smallrye.common.annotation)

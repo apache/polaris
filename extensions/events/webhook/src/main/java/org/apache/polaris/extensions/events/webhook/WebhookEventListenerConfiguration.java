@@ -31,11 +31,11 @@ import java.util.Optional;
 /**
  * Configuration for the webhook event listener.
  *
- * <p>Delivery is <strong>best-effort and in-process only</strong>: pending and in-flight deliveries
- * are not durable and are lost on process restart; events that exhaust retries or cannot be
- * accepted into the bounded queue are dropped. Ordering is not guaranteed. This listener is not a
- * durable audit spool and is not strengthened by enabling {@code persistence-in-memory-buffer}
- * (that buffer is a separate listener, not a webhook delivery queue).
+ * <p>Delivery is <strong>best-effort and in-process only</strong>: {@code onEvent} POSTs on the
+ * shared event-listener executor. Transient failures retry immediately in that call; events that
+ * exhaust retries are dropped. In-flight work is not durable and is lost on process restart. This
+ * listener is not a durable audit spool and is not strengthened by enabling {@code
+ * persistence-in-memory-buffer} (that buffer is a separate listener, not a webhook delivery queue).
  *
  * <p>HTTP redirects are not followed; the endpoint must respond directly. When {@code
  * require-https} is {@code true} (the default), only {@code https} endpoints are accepted.
@@ -49,7 +49,8 @@ public interface WebhookEventListenerConfiguration {
    * HTTP(S) endpoint that receives webhook POSTs with a JSON body.
    *
    * <p>A 2xx response marks success. Transient failures (network errors, 408/425/429/5xx) are
-   * retried within the concurrency limits; permanent client errors (other 4xx) are not retried.
+   * retried immediately on the shared event-listener executor; permanent client errors (other 4xx)
+   * are not retried.
    *
    * <p>Required when the {@code webhook} event listener is enabled.
    *
@@ -86,53 +87,6 @@ public interface WebhookEventListenerConfiguration {
   @WithName("timeout")
   @WithDefault("10s")
   Duration timeout();
-
-  /**
-   * Maximum delivery attempts per event including the first try. After this, the event is dropped.
-   *
-   * <p>Configuration property: {@code polaris.event-listener.webhook.max-attempts}
-   */
-  @WithName("max-attempts")
-  @WithDefault("3")
-  int maxAttempts();
-
-  /**
-   * Base delay before the first retry. Subsequent delays grow exponentially with full jitter,
-   * capped by {@code max-retry-backoff}.
-   *
-   * <p>Configuration property: {@code polaris.event-listener.webhook.retry-backoff}
-   */
-  @WithName("retry-backoff")
-  @WithDefault("1s")
-  Duration retryBackoff();
-
-  /**
-   * Upper bound on retry delay after exponential growth and jitter.
-   *
-   * <p>Configuration property: {@code polaris.event-listener.webhook.max-retry-backoff}
-   */
-  @WithName("max-retry-backoff")
-  @WithDefault("1m")
-  Duration maxRetryBackoff();
-
-  /**
-   * Maximum concurrent HTTP deliveries (including retries currently executing). Additional work
-   * waits on the concurrency limit while still counting toward {@code max-pending}.
-   *
-   * <p>Configuration property: {@code polaris.event-listener.webhook.max-concurrent}
-   */
-  @WithName("max-concurrent")
-  @WithDefault("16")
-  int maxConcurrent();
-
-  /**
-   * Maximum events accepted for delivery or retry at once. When full, new events are dropped.
-   *
-   * <p>Configuration property: {@code polaris.event-listener.webhook.max-pending}
-   */
-  @WithName("max-pending")
-  @WithDefault("1000")
-  int maxPending();
 
   /**
    * When {@code true}, only {@code https} endpoints are allowed (recommended for production). Set

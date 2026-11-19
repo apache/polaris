@@ -20,11 +20,11 @@ package org.apache.polaris.extensions.events.webhook;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.quarkus.rest.client.reactive.QuarkusRestClientBuilder;
 import io.smallrye.common.annotation.Identifier;
+import io.smallrye.faulttolerance.api.ExponentialBackoff;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -37,25 +37,17 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.time.Clock;
-import java.time.Duration;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.apache.polaris.service.events.CloudEventsEventJsonMapper;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.eclipse.microprofile.faulttolerance.Fallback;
+import org.eclipse.microprofile.faulttolerance.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
@@ -66,9 +58,10 @@ import tools.jackson.core.JacksonException;
  * <p>The JSON body is the shared {@link CloudEventsEventJsonMapper} envelope. Event time is the
  * CloudEvents {@code time} field from {@code PolarisEventMetadata.timestamp()}.
  *
- * <p>Delivery is best-effort and bounded: concurrency and pending work are capped; retries use
- * exponential backoff with full jitter for transient failures only. Ordering is not guaranteed.
- * In-flight and pending work are not durable across restarts.
+ * <p>{@code onEvent} POSTs on the shared event-listener executor. Transient failures (network
+ * errors, 408/425/429/5xx) retry immediately in that call via SmallRye Fault Tolerance; permanent
+ * 4xx responses are not retried. Ordering of events for this listener follows the shared executor.
+ * Delivery is best-effort and not durable across restarts.
  */
 @ApplicationScoped
 @Identifier("webhook")
@@ -92,22 +85,12 @@ public class WebhookEventListener implements PolarisEventListener {
   private final URI endpoint;
   private final String secret;
   private final Map<String, String> headers;
-  private final Duration timeout;
-  private final int maxAttempts;
-  private final Duration retryBackoff;
-  private final Duration maxRetryBackoff;
-  private final int maxConcurrent;
-  private final int maxPending;
+  private final java.time.Duration timeout;
   private final boolean requireHttps;
-  private final Clock clock;
   private final MeterRegistry meterRegistry;
-  private final SecureRandom random = new SecureRandom();
-
-  private final AtomicInteger pending = new AtomicInteger();
-  private final AtomicInteger inFlight = new AtomicInteger();
 
   private WebhookTransport transport;
-  private ScheduledExecutorService executor;
+  private WebhookEventListener self;
 
   private Counter successCounter;
   private Counter failureCounter;
@@ -117,19 +100,18 @@ public class WebhookEventListener implements PolarisEventListener {
 
   @Inject
   public WebhookEventListener(
-      WebhookEventListenerConfiguration config, Clock clock, MeterRegistry meterRegistry) {
+      WebhookEventListenerConfiguration config, MeterRegistry meterRegistry) {
     this.endpoint = config.endpoint().orElse(null);
     this.secret = config.secret().orElse(null);
     this.headers = Map.copyOf(config.headers());
     this.timeout = config.timeout();
-    this.maxAttempts = config.maxAttempts();
-    this.retryBackoff = config.retryBackoff();
-    this.maxRetryBackoff = config.maxRetryBackoff();
-    this.maxConcurrent = Math.max(1, config.maxConcurrent());
-    this.maxPending = Math.max(1, config.maxPending());
     this.requireHttps = config.requireHttps();
-    this.clock = clock;
     this.meterRegistry = meterRegistry;
+  }
+
+  @Inject
+  void setSelf(WebhookEventListener self) {
+    this.self = self;
   }
 
   @PostConstruct
@@ -141,14 +123,6 @@ public class WebhookEventListener implements PolarisEventListener {
     }
     validateEndpoint(endpoint, requireHttps);
     this.transport = createTransport();
-    this.executor =
-        Executors.newScheduledThreadPool(
-            maxConcurrent,
-            runnable -> {
-              Thread thread = new Thread(runnable, "polaris-webhook-event-listener");
-              thread.setDaemon(true);
-              return thread;
-            });
     registerMetrics();
   }
 
@@ -165,22 +139,16 @@ public class WebhookEventListener implements PolarisEventListener {
             .register(meterRegistry);
     retryCounter =
         Counter.builder("polaris.event.webhook.retries")
-            .description("Scheduled webhook delivery retries")
+            .description("Transient webhook delivery failures that will be retried")
             .register(meterRegistry);
     dropCounter =
         Counter.builder("polaris.event.webhook.drops")
-            .description("Events dropped (queue full or non-retryable failure)")
+            .description("Events dropped because the payload could not be encoded")
             .register(meterRegistry);
     deliveryTimer =
         Timer.builder("polaris.event.webhook.delivery")
             .description("Webhook HTTP attempt latency")
             .register(meterRegistry);
-    Gauge.builder("polaris.event.webhook.pending", pending, AtomicInteger::get)
-        .description("Events accepted but not yet finished (in flight or awaiting retry)")
-        .register(meterRegistry);
-    Gauge.builder("polaris.event.webhook.in_flight", inFlight, AtomicInteger::get)
-        .description("Concurrent HTTP attempts in progress")
-        .register(meterRegistry);
   }
 
   @VisibleForTesting
@@ -287,14 +255,13 @@ public class WebhookEventListener implements PolarisEventListener {
 
     @Override
     public void filter(ClientRequestContext requestContext) {
-      customHeaders.forEach(
-          (name, value) -> {
-            if (name != null && !isReservedHeader(name)) {
-              requestContext.getHeaders().putSingle(name, value);
-            } else if (name != null) {
-              LOGGER.debug("Ignoring reserved custom webhook header '{}'", name);
-            }
-          });
+      customHeaders.forEach((name, value) -> {
+        if (name != null && !isReservedHeader(name)) {
+          requestContext.getHeaders().putSingle(name, value);
+        } else if (name != null) {
+          LOGGER.debug("Ignoring reserved custom webhook header '{}'", name);
+        }
+      });
     }
   }
 
@@ -308,71 +275,37 @@ public class WebhookEventListener implements PolarisEventListener {
       }
       transport = null;
     }
-    if (executor != null) {
-      executor.shutdownNow();
-      executor = null;
-    }
   }
 
   @Override
   public void onEvent(PolarisEvent event) {
-    if (!tryAccept()) {
-      dropCounter.increment();
-      LOGGER.warn(
-          "Webhook pending capacity full ({}); dropping event type={}",
-          maxPending,
-          event.type().name());
-      return;
-    }
     String payload = toJson(event);
     if (payload == null) {
-      releaseAccepted();
       dropCounter.increment();
       return;
     }
-    scheduleDelivery(payload, event.type().name(), 1, /*delayMs*/ 0);
-  }
-
-  /** Try to reserve a pending slot for a new event. */
-  private boolean tryAccept() {
-    for (; ; ) {
-      int current = pending.get();
-      if (current >= maxPending) {
-        return false;
-      }
-      if (pending.compareAndSet(current, current + 1)) {
-        return true;
-      }
-    }
-  }
-
-  private void releaseAccepted() {
-    pending.decrementAndGet();
-  }
-
-  @SuppressWarnings("FutureReturnValueIgnored") // retries complete in-task; shutdownNow cancels
-  private void scheduleDelivery(String payload, String eventType, int attempt, long delayMs) {
-    ScheduledExecutorService exec = executor;
-    if (exec == null || exec.isShutdown()) {
-      releaseAccepted();
-      dropCounter.increment();
-      return;
-    }
-    Runnable task = () -> deliverWithConcurrency(payload, eventType, attempt);
+    WebhookEventListener target = self != null ? self : this;
     try {
-      if (delayMs <= 0) {
-        exec.execute(task);
-      } else {
-        exec.schedule(task, delayMs, TimeUnit.MILLISECONDS);
-      }
-    } catch (RuntimeException e) {
-      releaseAccepted();
-      dropCounter.increment();
+      target.deliver(event.type().name(), payload);
+    } catch (WebhookDeliveryException e) {
+      onDeliveryError(event.type().name(), payload, e);
     }
   }
 
-  private void deliverWithConcurrency(String payload, String eventType, int attempt) {
-    inFlight.incrementAndGet();
+  /**
+   * POSTs one event. Fault Tolerance retries transient failures immediately on the calling thread
+   * (the shared event-listener executor). {@code maxRetries} is additional attempts after the first
+   * try (three attempts total, matching the previous default).
+   */
+  @Retry(
+      maxRetries = 2,
+      delay = 1000,
+      jitter = 200,
+      retryOn = TransientWebhookDeliveryException.class,
+      abortOn = PermanentWebhookDeliveryException.class)
+  @ExponentialBackoff(maxDelay = 60_000)
+  @Fallback(fallbackMethod = "onDeliveryError")
+  protected void deliver(String eventType, String payload) {
     long startNanos = System.nanoTime();
     String signature = secret != null ? "sha256=" + sign(payload, secret) : null;
     try {
@@ -381,53 +314,41 @@ public class WebhookEventListener implements PolarisEventListener {
       int status = result.status();
       if (status >= 200 && status < 300) {
         successCounter.increment();
-        releaseAccepted();
         return;
       }
-      handleFailure(payload, eventType, attempt, status, result.retryAfter(), null);
+      throwForStatus(eventType, status);
+    } catch (WebhookDeliveryException e) {
+      throw e;
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
       deliveryTimer.record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
-      handleFailure(payload, eventType, attempt, null, null, e);
-    } finally {
-      inFlight.decrementAndGet();
+      retryCounter.increment();
+      LOGGER.debug("Webhook delivery to {} failed; retrying if attempts remain", endpoint, e);
+      throw new TransientWebhookDeliveryException("Webhook delivery failed", e);
     }
   }
 
-  private void handleFailure(
-      String payload,
-      String eventType,
-      int attempt,
-      Integer status,
-      String retryAfter,
-      Throwable error) {
-    boolean transientFailure = isTransient(status, error);
-    if (transientFailure && attempt < maxAttempts) {
-      long delayMs = computeRetryDelayMillis(attempt, retryAfter);
+  private void throwForStatus(String eventType, int status) {
+    if (isTransient(status, null)) {
       retryCounter.increment();
       LOGGER.debug(
-          "Webhook delivery to {} failed (attempt {}/{}, status: {}); retrying in {} ms",
+          "Webhook delivery to {} failed (status {}); retrying if attempts remain",
           endpoint,
-          attempt,
-          maxAttempts,
-          status,
-          delayMs,
-          error);
-      scheduleDelivery(payload, eventType, attempt + 1, delayMs);
-      return;
+          status);
+      throw new TransientWebhookDeliveryException(
+          "Webhook delivery of " + eventType + " failed with status " + status);
     }
+    throw new PermanentWebhookDeliveryException(
+        "Webhook delivery of " + eventType + " failed with status " + status);
+  }
+
+  @SuppressWarnings("unused")
+  protected void onDeliveryError(String eventType, String payload, Throwable error) {
     failureCounter.increment();
-    releaseAccepted();
     LOGGER.error(
-        "Webhook delivery to {} failed after {} attempt(s), dropping event (status: {}, transient:"
-            + " {})",
-        endpoint,
-        attempt,
-        status,
-        transientFailure,
-        error);
+        "Webhook delivery to {} failed, dropping event type={}", endpoint, eventType, error);
   }
 
   @VisibleForTesting
@@ -442,53 +363,6 @@ public class WebhookEventListener implements PolarisEventListener {
       return true;
     }
     return status >= 500 && status <= 599;
-  }
-
-  @VisibleForTesting
-  long computeRetryDelayMillis(int attempt, String retryAfter) {
-    Optional<Long> retryAfterDelay = parseRetryAfterMillis(retryAfter, clock);
-    if (retryAfterDelay.isPresent()) {
-      return Math.min(retryAfterDelay.get(), maxRetryBackoff.toMillis());
-    }
-    long exp = retryBackoff.toMillis() << Math.min(attempt - 1, 16);
-    long capped = Math.min(exp, maxRetryBackoff.toMillis());
-    // Full jitter: random in [0, capped]
-    if (capped <= 0) {
-      return 0;
-    }
-    return (long) (random.nextDouble() * capped);
-  }
-
-  /**
-   * Parses the {@code Retry-After} header value in either of its two standard forms: delta-seconds
-   * or HTTP-date (RFC 9110). Returns the requested delay in milliseconds, clamped at zero for dates
-   * in the past, or empty when the header is absent or malformed.
-   */
-  @VisibleForTesting
-  static Optional<Long> parseRetryAfterMillis(String retryAfter, Clock clock) {
-    if (retryAfter == null) {
-      return Optional.empty();
-    }
-    String value = retryAfter.trim();
-    try {
-      long seconds = Long.parseLong(value);
-      if (seconds < 0) {
-        return Optional.empty();
-      }
-      return Optional.of(TimeUnit.SECONDS.toMillis(seconds));
-    } catch (NumberFormatException e) {
-      // Not delta-seconds; try HTTP-date below.
-    }
-    try {
-      long delayMs =
-          ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME)
-                  .toInstant()
-                  .toEpochMilli()
-              - clock.millis();
-      return Optional.of(Math.max(delayMs, 0L));
-    } catch (DateTimeParseException e) {
-      return Optional.empty();
-    }
   }
 
   @VisibleForTesting
@@ -523,12 +397,33 @@ public class WebhookEventListener implements PolarisEventListener {
   }
 
   @VisibleForTesting
-  int pendingCount() {
-    return pending.get();
-  }
-
-  @VisibleForTesting
   MeterRegistry meterRegistry() {
     return meterRegistry;
+  }
+
+  static class WebhookDeliveryException extends RuntimeException {
+    WebhookDeliveryException(String message) {
+      super(message);
+    }
+
+    WebhookDeliveryException(String message, Throwable cause) {
+      super(message, cause);
+    }
+  }
+
+  static final class TransientWebhookDeliveryException extends WebhookDeliveryException {
+    TransientWebhookDeliveryException(String message) {
+      super(message);
+    }
+
+    TransientWebhookDeliveryException(String message, Throwable cause) {
+      super(message, cause);
+    }
+  }
+
+  static final class PermanentWebhookDeliveryException extends WebhookDeliveryException {
+    PermanentWebhookDeliveryException(String message) {
+      super(message);
+    }
   }
 }
