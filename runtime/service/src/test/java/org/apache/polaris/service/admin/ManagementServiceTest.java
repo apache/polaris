@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -35,6 +36,8 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
+import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
+import org.apache.polaris.core.admin.model.BigQueryMetastoreConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
@@ -43,6 +46,8 @@ import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GcpAuthenticationParameters;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
+import org.apache.polaris.core.admin.model.HadoopConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.HiveConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
@@ -76,6 +81,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
@@ -579,7 +585,8 @@ public class ManagementServiceTest {
         new CatalogConfigValidators(
             List.of(
                 new BigLakeCatalogValidator(callContext.getRealmConfig()),
-                new SigV4CatalogValidator(callContext.getRealmConfig()))));
+                new SigV4CatalogValidator(callContext.getRealmConfig()),
+                new ImplicitOnlyConnectionValidator())));
   }
 
   private Catalog createBigLakeCatalog(
@@ -618,6 +625,73 @@ public class ManagementServiceTest {
         .setGcsServiceAccount(serviceAccount)
         .setAllowedLocations(List.of(allowedLocation))
         .build();
+  }
+
+  /**
+   * The Hadoop, Hive and BigQuery Metastore federation factories only support IMPLICIT
+   * authentication. A catalog with any other authentication type could never be used, so it is
+   * rejected at creation and never persisted.
+   */
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionConfigInfo.ConnectionTypeEnum.class,
+      names = {"HADOOP", "HIVE", "BIGQUERY"})
+  public void testCreateImplicitOnlyFederatedCatalogWithOtherAuthenticationIsRejected(
+      ConnectionConfigInfo.ConnectionTypeEnum connectionType) {
+    PolarisMetaStoreManager metaStoreManager = Mockito.spy(services.metaStoreManager());
+    PolarisCallContext callContext = services.newCallContext();
+    PolarisAdminService polarisAdminService =
+        setupPolarisAdminService(metaStoreManager, callContext);
+    AuthenticationParameters bearer =
+        BearerAuthenticationParameters.builder()
+            .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.BEARER)
+            .setBearerToken("some-token")
+            .build();
+    Catalog catalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName("federated_" + connectionType.name().toLowerCase(Locale.ROOT))
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder()
+                    .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+                    .build())
+            .setConnectionConfigInfo(implicitOnlyConnection(connectionType, bearer))
+            .build();
+
+    assertThatThrownBy(() -> polarisAdminService.createCatalog(new CreateCatalogRequest(catalog)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            connectionType.name()
+                + " connections only support IMPLICIT authentication, but BEARER was requested");
+    Mockito.verify(metaStoreManager, Mockito.never())
+        .createCatalog(Mockito.any(), Mockito.any(), Mockito.any());
+  }
+
+  private static ConnectionConfigInfo implicitOnlyConnection(
+      ConnectionConfigInfo.ConnectionTypeEnum connectionType,
+      AuthenticationParameters authenticationParameters) {
+    return switch (connectionType) {
+      case HADOOP ->
+          HadoopConnectionConfigInfo.builder(connectionType)
+              .setWarehouse("s3://bucket/path/to/data")
+              .setAuthenticationParameters(authenticationParameters)
+              .build();
+      case HIVE ->
+          HiveConnectionConfigInfo.builder(connectionType)
+              .setUri("thrift://hms:9083")
+              .setWarehouse("s3://bucket/path/to/data")
+              .setAuthenticationParameters(authenticationParameters)
+              .build();
+      case BIGQUERY ->
+          BigQueryMetastoreConnectionConfigInfo.builder(connectionType)
+              .setProperties(Map.of("gcp.bigquery.project-id", "p", "warehouse", "w"))
+              .setAuthenticationParameters(authenticationParameters)
+              .build();
+      default -> throw new IllegalArgumentException(connectionType.name());
+    };
   }
 
   private PrincipalEntity createPrincipal(
