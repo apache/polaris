@@ -200,6 +200,13 @@ class R2LocalSigningCredentialVendingMechanismTest {
         .doesNotThrowAnyException();
   }
 
+  /** R2 has no KMS and the integration never reads the flag, so true is accepted. */
+  @Test
+  void acceptsTrueForKmsUnavailable() {
+    assertThatCode(() -> defaultMechanism().validate(null, r2Config().kmsUnavailable(true).build()))
+        .doesNotThrowAnyException();
+  }
+
   @Test
   void acceptsEmptyKmsKeyLists() {
     AwsStorageConfigurationInfo updated =
@@ -316,7 +323,6 @@ class R2LocalSigningCredentialVendingMechanismTest {
         forbidden("stsEndpoint", "set", b -> b.stsEndpoint("https://sts.example.com")),
         forbidden("stsUnavailable", "true", b -> b.stsUnavailable(true)),
         forbidden("endpointInternal", "set", b -> b.endpointInternal(ENDPOINT)),
-        forbidden("kmsUnavailable", "true", b -> b.kmsUnavailable(true)),
         forbidden("currentKmsKey", "set", b -> b.currentKmsKey(KMS_KEY)),
         forbidden("allowedKmsKeys", "set", b -> b.allowedKmsKeys(List.of(KMS_KEY))),
         // Core stores the request's currentKmsKey and allowedKmsKeys as encryptionKeys, so the
