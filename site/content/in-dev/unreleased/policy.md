@@ -85,6 +85,12 @@ The inheritance follows an override mechanism:
 1. Table-level policies override namespace and catalog policies
 2. Namespace-level policies override parent namespace and catalog policies
 
+{{< alert important >}}
+For an inheritable policy type, the closest attachment to the resource completely overrides
+any attachment of the same type higher in the hierarchy.
+**At most one policy of that type applies to the resource.**
+{{< /alert >}}
+
 ## Working with Policies
 
 ### Creating a Policy
