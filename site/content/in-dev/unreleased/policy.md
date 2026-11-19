@@ -86,8 +86,8 @@ The inheritance follows an override mechanism:
 2. Namespace-level policies override parent namespace and catalog policies
 
 {{< alert important >}}
-Because an override completely replaces the same policy type at higher levels,
-**only one instance of a given policy type can be attached to (and therefore affect) a resource**.
+A resource can have one attachment per inheritable policy type. An attachment on a child resource
+overrides the inherited policy of that type.
 {{< /alert >}}
 
 ## Working with Policies
@@ -164,35 +164,34 @@ Here is an example to find all policies that apply to a specific resource (inclu
 GET /polaris/v1/catalog/applicable-policies?namespace=finance%1Fquarterly&target-name=transactions
 ```
 
+In this example, both policies are defined in the `finance` namespace and inherited by the table.
+The `content` field contains a JSON string.
+
 **Sample response:**
 ```json
 {
-  "policies": [
+  "applicable-policies": [
     {
       "name": "snapshot-expiry-policy",
-      "type": "system.snapshot-expiry",
-      "appliedAt": "namespace",
-      "content": {
-        "version": "2025-02-03",
-        "enable": true,
-        "config": {
-          "min_snapshot_to_keep": 1,
-          "max_snapshot_age_days": 2,
-          "max_ref_age_days": 3
-        }
-      }
+      "policy-type": "system.snapshot-expiry",
+      "version": 0,
+      "inheritable": true,
+      "inherited": true,
+      "namespace": [
+        "finance"
+      ],
+      "content": "{\"version\":\"2025-02-03\",\"enable\":true,\"config\":{\"min_snapshot_to_keep\":1,\"max_snapshot_age_days\":2,\"max_ref_age_days\":3}}"
     },
     {
       "name": "compaction-policy",
-      "type": "system.data-compaction",
-      "appliedAt": "catalog",
-      "content": {
-        "version": "2025-02-03",
-        "enable": true,
-        "config": {
-          "target_file_size_bytes": 134217728
-        }
-      }
+      "policy-type": "system.data-compaction",
+      "version": 0,
+      "inheritable": true,
+      "inherited": true,
+      "namespace": [
+        "finance"
+      ],
+      "content": "{\"version\":\"2025-02-03\",\"enable\":true,\"config\":{\"target_file_size_bytes\":134217728}}"
     }
   ]
 }
