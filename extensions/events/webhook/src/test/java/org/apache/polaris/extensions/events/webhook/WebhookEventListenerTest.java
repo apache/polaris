@@ -32,17 +32,14 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -53,7 +50,6 @@ import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,7 +67,6 @@ class WebhookEventListenerTest {
   private static final Instant EVENT_TIME = Instant.parse("2026-01-15T12:00:00Z");
   private static final PolarisPrincipal PRINCIPAL =
       PolarisPrincipal.of(TEST_USER, AttributeMap.EMPTY, Set.of("role1", "role2"));
-  private static final Clock CLOCK = Clock.systemUTC();
 
   private static final JsonMapper OBJECT_MAPPER = JsonMapper.shared();
 
@@ -80,8 +75,6 @@ class WebhookEventListenerTest {
   private AutoCloseable mockitoContext;
   private HttpServer server;
   private List<RecordedRequest> recordedRequests;
-  private AtomicBoolean failNext;
-  private AtomicBoolean failAlways;
   private AtomicInteger statusToReturn;
   private SimpleMeterRegistry meterRegistry;
 
@@ -92,8 +85,6 @@ class WebhookEventListenerTest {
   void setUp() throws Exception {
     mockitoContext = MockitoAnnotations.openMocks(this);
     recordedRequests = new CopyOnWriteArrayList<>();
-    failNext = new AtomicBoolean(false);
-    failAlways = new AtomicBoolean(false);
     statusToReturn = new AtomicInteger(200);
     meterRegistry = new SimpleMeterRegistry();
     server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
@@ -108,15 +99,7 @@ class WebhookEventListenerTest {
                   exchange.getRequestHeaders().getFirst(WebhookEventListener.SIGNATURE_HEADER),
                   exchange.getRequestHeaders().getFirst(WebhookEventListener.EVENT_TYPE_HEADER),
                   exchange.getRequestHeaders().getFirst("Authorization")));
-          int status;
-          if (failAlways.get()) {
-            status = 500;
-          } else if (failNext.getAndSet(false)) {
-            status = 500;
-          } else {
-            status = statusToReturn.get();
-          }
-          exchange.sendResponseHeaders(status, -1);
+          exchange.sendResponseHeaders(statusToReturn.get(), -1);
           exchange.close();
         });
     server.start();
@@ -125,11 +108,6 @@ class WebhookEventListenerTest {
     when(config.secret()).thenReturn(Optional.of(SECRET));
     when(config.headers()).thenReturn(Map.of());
     when(config.timeout()).thenReturn(Duration.ofSeconds(5));
-    when(config.maxAttempts()).thenReturn(3);
-    when(config.retryBackoff()).thenReturn(Duration.ofMillis(20));
-    when(config.maxRetryBackoff()).thenReturn(Duration.ofSeconds(5));
-    when(config.maxConcurrent()).thenReturn(4);
-    when(config.maxPending()).thenReturn(100);
     when(config.requireHttps()).thenReturn(false);
   }
 
@@ -149,7 +127,7 @@ class WebhookEventListenerTest {
 
   private WebhookEventListener createListener() {
     WebhookEventListener listener =
-        new WebhookEventListener(config, CLOCK, meterRegistry) {
+        new WebhookEventListener(config, meterRegistry) {
           @Override
           WebhookTransport createTransport() {
             return new JdkTransport(endpoint(), config.timeout(), config.headers());
@@ -166,6 +144,9 @@ class WebhookEventListenerTest {
    * {@code RestClientTransport} is covered by {@link
    * #restClientTransportPreservesStatusFromResponse()} and {@link
    * #restClientTransportPreservesStatusAndRetryAfterFromWebApplicationException()}.
+   *
+   * <p>Fault Tolerance retries apply through the CDI proxy in production. These tests construct the
+   * listener directly, so each {@code onEvent} is a single POST.
    */
   private static final class JdkTransport implements WebhookEventListener.WebhookTransport {
     private final HttpClient client;
@@ -195,12 +176,11 @@ class WebhookEventListenerTest {
       if (signature != null) {
         requestBuilder.header(WebhookEventListener.SIGNATURE_HEADER, signature);
       }
-      headers.forEach(
-          (name, value) -> {
-            if (!WebhookEventListener.isReservedHeader(name)) {
-              requestBuilder.header(name, value);
-            }
-          });
+      headers.forEach((name, value) -> {
+        if (!WebhookEventListener.isReservedHeader(name)) {
+          requestBuilder.header(name, value);
+        }
+      });
       HttpResponse<Void> response =
           client.send(requestBuilder.build(), HttpResponse.BodyHandlers.discarding());
       return new Result(
@@ -229,10 +209,7 @@ class WebhookEventListenerTest {
     try {
       listener.onEvent(testEvent());
 
-      Awaitility.await("webhook delivered")
-          .atMost(Duration.ofSeconds(10))
-          .untilAsserted(() -> assertThat(recordedRequests).hasSize(1));
-
+      assertThat(recordedRequests).hasSize(1);
       RecordedRequest request = recordedRequests.getFirst();
       JsonNode json = OBJECT_MAPPER.readTree(request.body());
       assertThat(json.get("specversion").asString())
@@ -276,10 +253,7 @@ class WebhookEventListenerTest {
     try {
       listener.onEvent(testEvent());
 
-      Awaitility.await("webhook delivered")
-          .atMost(Duration.ofSeconds(10))
-          .untilAsserted(() -> assertThat(recordedRequests).hasSize(1));
-
+      assertThat(recordedRequests).hasSize(1);
       assertThat(recordedRequests.getFirst().signature()).isNull();
     } finally {
       listener.shutdown();
@@ -301,10 +275,7 @@ class WebhookEventListenerTest {
     try {
       listener.onEvent(testEvent());
 
-      Awaitility.await("webhook delivered")
-          .atMost(Duration.ofSeconds(10))
-          .untilAsserted(() -> assertThat(recordedRequests).hasSize(1));
-
+      assertThat(recordedRequests).hasSize(1);
       RecordedRequest request = recordedRequests.getFirst();
       assertThat(request.authorization()).isEqualTo("Splunk test-hec-token");
       assertThat(request.signature())
@@ -318,7 +289,7 @@ class WebhookEventListenerTest {
   @Test
   void failsFastWhenEndpointNotConfigured() {
     when(config.endpoint()).thenReturn(Optional.empty());
-    WebhookEventListener listener = new WebhookEventListener(config, CLOCK, meterRegistry);
+    WebhookEventListener listener = new WebhookEventListener(config, meterRegistry);
     assertThatThrownBy(listener::start)
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("polaris.event-listener.webhook.endpoint");
@@ -327,42 +298,19 @@ class WebhookEventListenerTest {
   @Test
   void failsFastWhenHttpsRequiredButHttpConfigured() {
     when(config.requireHttps()).thenReturn(true);
-    WebhookEventListener listener = new WebhookEventListener(config, CLOCK, meterRegistry);
+    WebhookEventListener listener = new WebhookEventListener(config, meterRegistry);
     assertThatThrownBy(listener::start)
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("https");
   }
 
   @Test
-  void retriesTransientFailuresUntilSuccess() {
-    failNext.set(true);
-    WebhookEventListener listener = createListener();
-    try {
-      listener.onEvent(testEvent());
-
-      Awaitility.await("delivery retried and succeeded")
-          .atMost(Duration.ofSeconds(10))
-          .untilAsserted(() -> assertThat(recordedRequests).hasSize(2));
-      assertThat(meterRegistry.find("polaris.event.webhook.retries").counter().count())
-          .isEqualTo(1.0);
-    } finally {
-      listener.shutdown();
-    }
-  }
-
-  @Test
-  void doesNotRetryPermanentClientErrors() {
+  void recordsFailureOnPermanentClientErrorWithoutRetry() {
     statusToReturn.set(400);
-    when(config.maxAttempts()).thenReturn(5);
     WebhookEventListener listener = createListener();
     try {
       listener.onEvent(testEvent());
 
-      Awaitility.await("single attempt only")
-          .atMost(Duration.ofSeconds(5))
-          .untilAsserted(() -> assertThat(recordedRequests).hasSize(1));
-      // Give a short window to ensure no retry is scheduled.
-      Awaitility.await().pollDelay(Duration.ofMillis(200)).until(() -> true);
       assertThat(recordedRequests).hasSize(1);
       assertThat(meterRegistry.find("polaris.event.webhook.retries").counter().count())
           .isEqualTo(0.0);
@@ -372,6 +320,21 @@ class WebhookEventListenerTest {
                   .tag("result", "failure")
                   .counter()
                   .count())
+          .isEqualTo(1.0);
+    } finally {
+      listener.shutdown();
+    }
+  }
+
+  @Test
+  void transientStatusThrowsRetryableException() {
+    statusToReturn.set(500);
+    WebhookEventListener listener = createListener();
+    try {
+      assertThatThrownBy(() -> listener.deliver("AFTER_REFRESH_TABLE", "{}"))
+          .isInstanceOf(WebhookEventListener.TransientWebhookDeliveryException.class);
+      assertThat(recordedRequests).hasSize(1);
+      assertThat(meterRegistry.find("polaris.event.webhook.retries").counter().count())
           .isEqualTo(1.0);
     } finally {
       listener.shutdown();
@@ -405,71 +368,11 @@ class WebhookEventListenerTest {
   }
 
   @Test
-  void givesUpAfterMaxAttempts() {
-    when(config.maxAttempts()).thenReturn(2);
-    failAlways.set(true);
-    WebhookEventListener listener = createListener();
-    try {
-      listener.onEvent(testEvent());
-
-      Awaitility.await("both attempts performed")
-          .atMost(Duration.ofSeconds(10))
-          .untilAsserted(() -> assertThat(recordedRequests).hasSize(2));
-    } finally {
-      listener.shutdown();
-    }
-  }
-
-  @Test
-  void dropsWhenPendingCapacityFull() {
-    when(config.maxPending()).thenReturn(1);
-    when(config.maxConcurrent()).thenReturn(1);
-    // Hold the first delivery so the second is dropped for capacity.
-    Object gate = new Object();
-    AtomicBoolean firstEntered = new AtomicBoolean(false);
-    server.removeContext("/hook");
-    server.createContext(
-        "/hook",
-        exchange -> {
-          firstEntered.set(true);
-          synchronized (gate) {
-            try {
-              gate.wait(5000);
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-            }
-          }
-          exchange.sendResponseHeaders(200, -1);
-          exchange.close();
-        });
-
-    WebhookEventListener listener = createListener();
-    try {
-      listener.onEvent(testEvent());
-      Awaitility.await("first delivery started")
-          .atMost(Duration.ofSeconds(5))
-          .untilTrue(firstEntered);
-
-      listener.onEvent(testEvent());
-      assertThat(meterRegistry.find("polaris.event.webhook.drops").counter().count())
-          .isEqualTo(1.0);
-
-      synchronized (gate) {
-        gate.notifyAll();
-      }
-    } finally {
-      synchronized (gate) {
-        gate.notifyAll();
-      }
-      listener.shutdown();
-    }
-  }
-
-  @Test
   void isTransientClassification() {
     assertThat(WebhookEventListener.isTransient(500, null)).isTrue();
     assertThat(WebhookEventListener.isTransient(429, null)).isTrue();
     assertThat(WebhookEventListener.isTransient(408, null)).isTrue();
+    assertThat(WebhookEventListener.isTransient(425, null)).isTrue();
     assertThat(WebhookEventListener.isTransient(400, null)).isFalse();
     assertThat(WebhookEventListener.isTransient(401, null)).isFalse();
     assertThat(WebhookEventListener.isTransient(404, null)).isFalse();
@@ -477,29 +380,9 @@ class WebhookEventListenerTest {
   }
 
   @Test
-  void parseRetryAfterSeconds() {
-    assertThat(WebhookEventListener.parseRetryAfterMillis("3", CLOCK)).contains(3000L);
-  }
-
-  @Test
-  void parseRetryAfterHttpDate() {
-    Clock fixed = Clock.fixed(EVENT_TIME, ZoneOffset.UTC);
-    assertThat(WebhookEventListener.parseRetryAfterMillis("Thu, 15 Jan 2026 12:00:30 GMT", fixed))
-        .contains(30000L);
-    // Dates in the past clamp to zero delay.
-    assertThat(WebhookEventListener.parseRetryAfterMillis("Thu, 15 Jan 2026 11:59:00 GMT", fixed))
-        .contains(0L);
-    // Malformed values are ignored so computed backoff applies.
-    assertThat(WebhookEventListener.parseRetryAfterMillis("not-a-date", fixed)).isEmpty();
-    // Absent header is ignored as well.
-    assertThat(WebhookEventListener.parseRetryAfterMillis(null, fixed)).isEmpty();
-  }
-
-  @Test
   void validateEndpointHttps() {
-    assertThatThrownBy(
-            () ->
-                WebhookEventListener.validateEndpoint(URI.create("http://example.com/hook"), true))
+    assertThatThrownBy(() ->
+            WebhookEventListener.validateEndpoint(URI.create("http://example.com/hook"), true))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("https");
     WebhookEventListener.validateEndpoint(URI.create("https://example.com/hook"), true);

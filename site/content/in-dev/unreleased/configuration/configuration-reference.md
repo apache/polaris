@@ -202,17 +202,15 @@ duplicates. Fields in `data` are omitted when not applicable. Each request carri
 `Polaris-Event` with the Polaris event type. When `polaris.event-listener.webhook.secret` is set, a `Polaris-Signature-256`
 header contains `sha256=` followed by the hex-encoded HMAC-SHA256 of the raw request body.
 
-Delivery is **best-effort and bounded**: concurrency and pending work are capped
-(`max-concurrent`, `max-pending`); excess events are dropped. Only transient failures (network
-errors, 408/425/429/5xx) are retried, with exponential backoff, full jitter, honoring
-`Retry-After` (delta-seconds or HTTP-date), and a max backoff. Permanent 4xx responses are not
-retried. Retries
-and in-flight work are in-memory only and lost on restart. This is **not** a durable spool; enabling
-`persistence-in-memory-buffer` does not replay webhook deliveries. Deployments that need durable,
-replayable delivery should instead consume Polaris events from Kafka and run their own webhook
-processor with endpoint-specific retry and dead-letter handling. By default only HTTPS endpoints
-are accepted (`require-https=true`). Redirects are not followed. Metrics include
-`polaris.event.webhook.deliveries`, `retries`, `drops`, `pending`, `in_flight`, and `delivery`
+Delivery is **best-effort**. `onEvent` POSTs on the shared event-listener executor. Transient
+failures (network errors, 408/425/429/5xx) retry immediately in that call via SmallRye Fault
+Tolerance (two extra attempts, 1s delay with jitter and exponential backoff, 60s max delay).
+Permanent 4xx responses are not retried. In-flight work is in-memory only and lost on restart.
+This is **not** a durable spool; enabling `persistence-in-memory-buffer` does not replay webhook
+deliveries. Deployments that need durable, replayable delivery should instead consume Polaris
+events from Kafka and run their own webhook processor with endpoint-specific retry and dead-letter
+handling. By default only HTTPS endpoints are accepted (`require-https=true`). Redirects are not
+followed. Metrics include `polaris.event.webhook.deliveries`, `retries`, `drops`, and `delivery`
 latency.
 
 ### `opentelemetry` event listener

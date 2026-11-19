@@ -77,14 +77,13 @@ public class WebhookReceiverStartupAction implements PolarisServerStartupAction 
 
   private static void clearDirectory(Path dir) throws IOException {
     try (Stream<Path> files = Files.list(dir)) {
-      files.forEach(
-          path -> {
-            try {
-              Files.deleteIfExists(path);
-            } catch (IOException e) {
-              throw new UncheckedIOException(e);
-            }
-          });
+      files.forEach(path -> {
+        try {
+          Files.deleteIfExists(path);
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
+      });
     }
   }
 

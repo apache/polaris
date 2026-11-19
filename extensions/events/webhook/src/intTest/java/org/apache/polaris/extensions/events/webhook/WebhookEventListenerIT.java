@@ -115,11 +115,8 @@ public class WebhookEventListenerIT {
 
     Awaitility.await("webhook delivered through Quarkus REST client")
         .atMost(Duration.ofSeconds(15))
-        .untilAsserted(
-            () ->
-                assertThat(findCreateCatalog())
-                    .as("captured POSTs under %s", captureDir)
-                    .isPresent());
+        .untilAsserted(() ->
+            assertThat(findCreateCatalog()).as("captured POSTs under %s", captureDir).isPresent());
 
     RecordedRequest request = findCreateCatalog().orElseThrow();
     JsonNode json = OBJECT_MAPPER.readTree(request.body());
