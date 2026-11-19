@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -45,6 +46,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.function.Function;
@@ -115,7 +117,7 @@ import software.amazon.awssdk.services.dynamodb.model.TransactionConflictExcepti
  * and pages with a single {@link EntityIdToken}. Each entity is re-checked against the queried
  * parent, so one that moved out by a concurrent re-parent is not listed.
  *
- * <p>This class currently covers entity writes, lookups and listing. Multi-entity writes, grant
+ * <p>This class currently covers entity writes, lookups, listing and multi-entity writes. Grant
  * records and realm teardown throw {@link UnsupportedOperationException} until they are
  * implemented.
  */
@@ -123,6 +125,12 @@ public class DynamoDbBasePersistence implements BasePersistence {
 
   /** DynamoDB's limit on items per {@code TransactGetItems} request. */
   private static final int MAX_TRANSACT_GET_ITEMS = 100;
+
+  /** DynamoDB's limit on actions in one {@code TransactWriteItems} request. */
+  private static final int MAX_TRANSACT_WRITE_ITEMS = 100;
+
+  /** Actions a create writes per entity: the entity item, its name sentinel, its child record. */
+  private static final int CREATE_ACTIONS_PER_ENTITY = 3;
 
   /** Upper bound on attempts of a snapshot read cancelled by concurrent writes. */
   private static final int MAX_TRANSACT_GET_ATTEMPTS = 5;
@@ -366,15 +374,140 @@ public class DynamoDbBasePersistence implements BasePersistence {
     return versions == null ? 0 : versions.grantRecordsVersion();
   }
 
-  // ---- Not yet implemented ---------------------------------------------------------------------
+  // ---- Multi-entity writes ---------------------------------------------------------------------
 
+  /**
+   * Writes several entities in one {@code TransactWriteItems}: all land or none. The batch is
+   * either all creates ({@code originalEntities == null}) or all property updates ({@code
+   * originalEntities} fully populated, aligned by index), matching the manager's two call sites
+   * ({@code createEntitiesIfNotExist} and {@code updateEntitiesPropertiesIfNotChanged}).
+   *
+   * <p>The update path is a per-entity compare-and-set on the versions only: the manager passes
+   * {@code nameOrParentChanged = false}, so a name or parent change is never part of a batch and is
+   * rejected here. A create writes the entity, its name sentinel and its child record, each {@code
+   * attribute_not_exists}, as a single create does.
+   *
+   * <p>DynamoDB caps a transaction at {@value #MAX_TRANSACT_WRITE_ITEMS} actions, so a create batch
+   * is limited to {@value #MAX_TRANSACT_WRITE_ITEMS}/{@value #CREATE_ACTIONS_PER_ENTITY} entities
+   * and an update batch to {@value #MAX_TRANSACT_WRITE_ITEMS}; a larger batch is rejected with
+   * {@link IllegalArgumentException}. A failed transaction is translated exactly as the matching
+   * single write: a name collision to {@link EntityAlreadyExistsException}, any other conflict to
+   * {@link RetryOnConcurrencyException}.
+   */
   @Override
   public void writeEntities(
       @NonNull PolarisCallContext callCtx,
       @NonNull List<PolarisBaseEntity> entities,
       @Nullable List<PolarisBaseEntity> originalEntities) {
-    throw notYetImplemented("writeEntities");
+    if (entities.isEmpty()) {
+      return;
+    }
+    if (originalEntities != null && originalEntities.size() != entities.size()) {
+      throw new IllegalArgumentException(
+          "originalEntities must align with entities: "
+              + originalEntities.size()
+              + " vs "
+              + entities.size());
+    }
+    rejectDuplicateIds(entities);
+    if (originalEntities == null) {
+      createEntities(callCtx, entities);
+    } else {
+      updateEntities(entities, originalEntities);
+    }
   }
+
+  private void createEntities(PolarisCallContext callCtx, List<PolarisBaseEntity> entities) {
+    if (entities.size() * CREATE_ACTIONS_PER_ENTITY > MAX_TRANSACT_WRITE_ITEMS) {
+      throw new IllegalArgumentException(
+          "Create batch of "
+              + entities.size()
+              + " entities exceeds the "
+              + MAX_TRANSACT_WRITE_ITEMS
+              + "-action transaction limit");
+    }
+    List<TransactWriteItem> items = new ArrayList<>(entities.size() * CREATE_ACTIONS_PER_ENTITY);
+    for (PolarisBaseEntity entity : entities) {
+      items.add(putIfAbsent(EntityItem.toItem(realmId, entity)));
+      items.add(putIfAbsent(sentinelItem(entity)));
+      items.add(putIfAbsent(childItem(entity)));
+    }
+    try {
+      client.transactWriteItems(b -> b.transactItems(items));
+    } catch (TransactionCanceledException e) {
+      if (!onlyConflicts(e)) {
+        throw e;
+      }
+      // A sentinel action (every 2nd of each entity's three) failing is a name collision. Resolve
+      // it by name, as a single create does; otherwise the batch lost a race and should retry.
+      for (int i = 0; i < entities.size(); i++) {
+        if (conditionFailedAt(e, i * CREATE_ACTIONS_PER_ENTITY + 1)) {
+          PolarisBaseEntity entity = entities.get(i);
+          PolarisBaseEntity existing =
+              lookupEntityByName(
+                  callCtx,
+                  entity.getCatalogId(),
+                  entity.getParentId(),
+                  entity.getTypeCode(),
+                  entity.getName());
+          if (existing != null) {
+            throw new EntityAlreadyExistsException(existing, e);
+          }
+        }
+      }
+      throw new RetryOnConcurrencyException(
+          e, "Create of %s entities conflicted with a concurrent write", entities.size());
+    }
+  }
+
+  private void updateEntities(
+      List<PolarisBaseEntity> entities, List<PolarisBaseEntity> originalEntities) {
+    if (entities.size() > MAX_TRANSACT_WRITE_ITEMS) {
+      throw new IllegalArgumentException(
+          "Update batch of "
+              + entities.size()
+              + " entities exceeds the "
+              + MAX_TRANSACT_WRITE_ITEMS
+              + "-action transaction limit");
+    }
+    List<TransactWriteItem> items = new ArrayList<>(entities.size());
+    for (int i = 0; i < entities.size(); i++) {
+      PolarisBaseEntity entity = entities.get(i);
+      PolarisBaseEntity original = originalEntities.get(i);
+      if (!sameSentinel(entity, original)) {
+        // The manager only sends property updates in a batch (nameOrParentChanged=false). A name
+        // or parent change would also have to move the sentinel and child record, which this path
+        // does not do, so reject it rather than write a half-updated item.
+        throw new IllegalArgumentException(
+            "writeEntities does not support a name or parent change; entity id " + entity.getId());
+      }
+      items.add(putIfVersionsMatch(EntityItem.toItem(realmId, entity), original));
+    }
+    try {
+      client.transactWriteItems(b -> b.transactItems(items));
+    } catch (TransactionCanceledException e) {
+      if (!onlyConflicts(e)) {
+        throw e;
+      }
+      throw new RetryOnConcurrencyException(
+          e, "Update of %s entities conflicted with a concurrent write", entities.size());
+    }
+  }
+
+  /**
+   * Rejects a batch that names the same entity twice; one transaction cannot act on an item twice.
+   */
+  private static void rejectDuplicateIds(List<PolarisBaseEntity> entities) {
+    Set<Long> seen = new HashSet<>();
+    for (PolarisBaseEntity entity : entities) {
+      if (!seen.add(entity.getId())) {
+        throw new IllegalArgumentException(
+            "writeEntities lists entity id " + entity.getId() + " more than once");
+      }
+    }
+  }
+
+  // ---- Not yet implemented ---------------------------------------------------------------------
 
   @Override
   public void writeToGrantRecords(
