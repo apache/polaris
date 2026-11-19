@@ -138,11 +138,10 @@ class WebhookEventListenerTest {
   }
 
   /**
-   * JDK-HttpClient-based transport for listener-behavior tests. Quarkus REST client construction
-   * needs a running CDI context, so production {@code createTransport()} is exercised by {@code
-   * WebhookEventListenerIT} against a spawned Polaris server. Status / Retry-After handling on
-   * {@code RestClientTransport} is covered by {@link
-   * #restClientTransportPreservesStatusFromResponse()} and {@link
+   * JDK-HttpClient-based transport for listener-behavior tests. Production {@code
+   * createTransport()} is exercised by {@link WebhookEventListenerQuarkusTest} and {@code
+   * WebhookEventListenerIT}. Status / Retry-After handling on {@code RestClientTransport} is
+   * covered by {@link #restClientTransportPreservesStatusFromResponse()} and {@link
    * #restClientTransportPreservesStatusAndRetryAfterFromWebApplicationException()}.
    *
    * <p>Fault Tolerance retries apply through the CDI proxy in production. These tests construct the

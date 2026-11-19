@@ -59,8 +59,9 @@ import tools.jackson.databind.json.JsonMapper;
  * spawning a full Polaris server with the webhook listener enabled. A Gradle startup action binds
  * the HTTP receiver before the server starts and records POSTs for this test to read.
  *
- * <p>This module is not a Quarkus application, so {@code @QuarkusTest} cannot build the production
- * client. Unit tests keep a JDK-HttpClient seam for listener logic (HMAC, bounds, retries).
+ * <p>{@code WebhookEventListenerQuarkusTest} covers the same client in-process with
+ * {@code @QuarkusTest}. Unit tests keep a JDK-HttpClient seam for listener logic (HMAC, status
+ * mapping).
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

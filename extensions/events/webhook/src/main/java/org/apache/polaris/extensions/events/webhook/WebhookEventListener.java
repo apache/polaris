@@ -110,7 +110,7 @@ public class WebhookEventListener implements PolarisEventListener {
   }
 
   @Inject
-  void setSelf(WebhookEventListener self) {
+  void setSelf(@Identifier("webhook") WebhookEventListener self) {
     this.self = self;
   }
 

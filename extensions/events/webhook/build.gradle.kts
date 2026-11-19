@@ -19,10 +19,12 @@
 
 import org.gradle.api.attributes.java.TargetJvmVersion
 import org.gradle.api.plugins.jvm.JvmTestSuite
+import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 
 plugins {
-  id("polaris-server")
+  alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
+  id("polaris-server")
   id("polaris-server-test-runner")
 }
 
@@ -53,15 +55,16 @@ dependencies {
   compileOnly(libs.jakarta.enterprise.cdi.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.smallrye.config.core)
   compileOnly(libs.microprofile.fault.tolerance.api)
 
   implementation(libs.slf4j.api)
   implementation(libs.smallrye.common.annotation)
+  implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
 
   testImplementation(libs.assertj.core)
   testImplementation(libs.awaitility)
   testImplementation(libs.mockito.junit.jupiter)
+  testImplementation("io.quarkus:quarkus-junit")
 
   webhookStartupActionCompileOnly(
     "org.apache.polaris.server-test-runner:polaris-server-test-runner",
@@ -158,3 +161,19 @@ listOf(
       attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, intTestJvmVersion)
     }
   }
+
+tasks.named("compileJava") { dependsOn("compileQuarkusGeneratedSourcesJava") }
+
+tasks.named("sourcesJar") { dependsOn("compileQuarkusGeneratedSourcesJava") }
+
+tasks.named("javadoc") { dependsOn("jandex") }
+
+tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }
+
+tasks.withType(Test::class.java).configureEach {
+  systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
+  systemProperty("junit.jupiter.extensions.autodetection.enabled", "true")
+  extensions.configure(JacocoTaskExtension::class) { isEnabled = false }
+  maxParallelForks = 1
+  jvmArgs("-Xshare:off")
+}
