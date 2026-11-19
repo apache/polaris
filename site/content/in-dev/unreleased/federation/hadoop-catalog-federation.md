@@ -52,7 +52,7 @@ polaris.features."ENABLE_CATALOG_FEDERATION"=true
 ```
 
 For Kubernetes deployments, add these properties to the ConfigMap mounted into the Polaris container
-(typically at `/deployment/config/application.properties`).
+(typically at `/deployments/config/application.properties`).
 
 ## Runtime requirements
 
@@ -84,7 +84,7 @@ storage types. Together this leads to the following patterns:
 
 | Pattern                                                                              | Works with the default build       | Notes                                                                                                                                                                                                                                                      |
 |--------------------------------------------------------------------------------------|------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Local or network-mounted directory (`file:///...`) with `FILE` storage               | Yes                                | Simplest setup for tests and single-writer deployments. `FILE` storage is intended for testing; it performs no credential vending.                                                                                                                         |
+| Local or network-mounted directory (`file:///...`) with `FILE` storage               | Yes                                | For tests, enable `FILE` as shown below. It performs no credential vending.                                                                                                                         |
 | HDFS warehouse handled by ambient Hadoop config and process identity                 | Not expressible in `storageConfigInfo` | `hdfs://` is not an accepted location prefix for any storage type, and `default-base-location` must lie within an allowed location, so an HDFS warehouse cannot be described directly. Table loads from a federated catalog also check every table location against `allowedLocations` before vending credentials (unless `ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING` is `false`), so an `hdfs://` table location fails at load time too. The `*` wildcard entry (`ALLOW_WILDCARD_LOCATION=true`) lifts these location checks but still needs a `file://` base location next to it. |
 | `HadoopFileIO` with `s3a://` warehouses                                              | Only with extra runtime packaging  | `hadoop-aws` and related file system dependencies are not included in the Polaris runtime.                                                                                                                                                                 |
 | `S3FileIO` with ambient AWS credentials                                              | Sometimes                          | Set `io-impl=org.apache.iceberg.aws.s3.S3FileIO` in the catalog-level `properties`. Commits still rely on atomic rename, which S3 does not provide, so concurrent writers are unsafe.                                                                       |
@@ -93,25 +93,36 @@ storage types. Together this leads to the following patterns:
 ## Creating a federated catalog
 
 Use the Management API (or the Python CLI) to create an external catalog whose connection type is
-`HADOOP`. The following request registers a catalog whose tables live under
-`file:///data/warehouse/analytics`, a directory mounted into the Polaris container:
+`HADOOP`. Set `POLARIS_URL` to the base URL of your Polaris server, for example
+`http://localhost:8181`.
+
+For the local test example, mount the warehouse at `/data/warehouse/analytics` in the Polaris
+container and add `FILE` to the storage types in the server's `application.properties`:
+
+```properties
+polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"=["S3","GCS","AZURE","FILE"]
+```
+
+Then register the catalog:
 
 ```bash
-curl -X POST https://<polaris-host>/management/v1/catalogs \
+curl -X POST "${POLARIS_URL}/api/management/v1/catalogs" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-        "type": "EXTERNAL",
-        "name": "analytics_hadoop",
-        "storageConfigInfo": {
-          "storageType": "FILE",
-          "allowedLocations": ["file:///data/warehouse/analytics/"]
-        },
-        "properties": { "default-base-location": "file:///data/warehouse/analytics/" },
-        "connectionConfigInfo": {
-          "connectionType": "HADOOP",
-          "warehouse": "file:///data/warehouse/analytics/",
-          "authenticationParameters": { "authenticationType": "IMPLICIT" }
+        "catalog": {
+          "type": "EXTERNAL",
+          "name": "analytics_hadoop",
+          "storageConfigInfo": {
+            "storageType": "FILE",
+            "allowedLocations": ["file:///data/warehouse/analytics/"]
+          },
+          "properties": { "default-base-location": "file:///data/warehouse/analytics/" },
+          "connectionConfigInfo": {
+            "connectionType": "HADOOP",
+            "warehouse": "file:///data/warehouse/analytics/",
+            "authenticationParameters": { "authenticationType": "IMPLICIT" }
+          }
         }
       }'
 ```
@@ -143,26 +154,28 @@ the bucket prefix, and select `S3FileIO` through the catalog-level `properties` 
 does not need the `hadoop-aws` connector (see the warehouse access patterns above):
 
 ```bash
-curl -X POST https://<polaris-host>/management/v1/catalogs \
+curl -X POST "${POLARIS_URL}/api/management/v1/catalogs" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-        "type": "EXTERNAL",
-        "name": "analytics_hadoop_s3",
-        "storageConfigInfo": {
-          "storageType": "S3",
-          "roleArn": "arn:aws:iam::123456789012:role/polaris-warehouse-access",
-          "region": "us-east-1",
-          "allowedLocations": ["s3://analytics-bucket/warehouse/"]
-        },
-        "properties": {
-          "default-base-location": "s3://analytics-bucket/warehouse/",
-          "io-impl": "org.apache.iceberg.aws.s3.S3FileIO"
-        },
-        "connectionConfigInfo": {
-          "connectionType": "HADOOP",
-          "warehouse": "s3://analytics-bucket/warehouse/",
-          "authenticationParameters": { "authenticationType": "IMPLICIT" }
+        "catalog": {
+          "type": "EXTERNAL",
+          "name": "analytics_hadoop_s3",
+          "storageConfigInfo": {
+            "storageType": "S3",
+            "roleArn": "arn:aws:iam::123456789012:role/polaris-warehouse-access",
+            "region": "us-east-1",
+            "allowedLocations": ["s3://analytics-bucket/warehouse/"]
+          },
+          "properties": {
+            "default-base-location": "s3://analytics-bucket/warehouse/",
+            "io-impl": "org.apache.iceberg.aws.s3.S3FileIO"
+          },
+          "connectionConfigInfo": {
+            "connectionType": "HADOOP",
+            "warehouse": "s3://analytics-bucket/warehouse/",
+            "authenticationParameters": { "authenticationType": "IMPLICIT" }
+          }
         }
       }'
 ```
