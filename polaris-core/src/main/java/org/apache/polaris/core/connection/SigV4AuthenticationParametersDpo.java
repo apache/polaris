@@ -82,7 +82,15 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
       String signingRegion,
       String signingName,
       String sessionPolicy) {
-    this(roleArn, roleSessionName, externalId, signingRegion, signingName, sessionPolicy, null, null);
+    this(
+        roleArn,
+        roleSessionName,
+        externalId,
+        signingRegion,
+        signingName,
+        sessionPolicy,
+        null,
+        null);
   }
 
   @JsonCreator

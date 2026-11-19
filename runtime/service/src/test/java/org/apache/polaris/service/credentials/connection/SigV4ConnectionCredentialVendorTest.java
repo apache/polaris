@@ -335,6 +335,7 @@ public class SigV4ConnectionCredentialVendorTest {
             "us-west-2",
             "glue",
             null,
+            null,
             "sigv4-catalog");
     IcebergRestConnectionConfigInfoDpo connectionConfig = createConnectionConfig(authParams, null);
 
