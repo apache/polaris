@@ -31,7 +31,7 @@ scala212 = "2.12.21"
 scala213 = "2.13.18"
 spark35 = "3.5.9"
 spark40 = "4.0.2"
-swagger = "1.6.16"
+swagger = "1.6.17"
 
 [bundles]
 
