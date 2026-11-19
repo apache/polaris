@@ -85,10 +85,6 @@ The inheritance follows an override mechanism:
 1. Table-level policies override namespace and catalog policies
 2. Namespace-level policies override parent namespace and catalog policies
 
-{{< alert important >}}
-A resource can have at most one directly attached policy of each inheritable type.
-{{< /alert >}}
-
 ## Working with Policies
 
 ### Creating a Policy
@@ -151,8 +147,8 @@ PUT /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}/mappings
 }
 ```
 
-For inheritable policies, only one policy of a given type can be attached to a resource. For non-inheritable policies,
-multiple policies of the same type can be attached.
+A resource can have at most one directly attached policy of each inheritable type.
+For non-inheritable policies, multiple policies of the same type can be attached.
 
 ### Retrieving Applicable Policies
 A user can view applicable policies on a resource (e.g., table, namespace, or catalog) as long as they have
@@ -162,10 +158,6 @@ Here is an example to find all policies that apply to a specific resource (inclu
 ```
 GET /polaris/v1/catalog/applicable-policies?namespace=finance%1Fquarterly&target-name=transactions
 ```
-
-The `namespace` field shows that both policies are defined in `finance`.
-The `inherited` flag is `true` for both policies, so the table inherits them.
-The `content` field contains a JSON string.
 
 **Sample response:**
 ```json
@@ -196,6 +188,10 @@ The `content` field contains a JSON string.
   ]
 }
 ```
+
+The `namespace` field shows that both policies are defined in `finance`.
+The `inherited` flag is `true` for both policies, so the table inherits them.
+The `content` field contains a JSON string.
 
 ### API Reference
 
