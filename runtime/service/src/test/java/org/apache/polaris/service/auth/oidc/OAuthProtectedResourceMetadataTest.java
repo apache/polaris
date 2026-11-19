@@ -43,10 +43,12 @@ import org.junit.jupiter.api.Test;
 @TestProfile(OAuthProtectedResourceMetadataTest.Profile.class)
 class OAuthProtectedResourceMetadataTest extends AbstractOidcAuthTest {
 
-  // The catalog resource URI that clients would use to derive the well-known path.
+  // The resource URI that clients would use to derive the well-known path. /api is the shared
+  // parent of Polaris's /api/catalog and /api/management, so advertising it (rather than one of
+  // the two children) covers both under one identifier.
   // RFC 9728: GET /.well-known/oauth-protected-resource<path> where <path> is the
   // path component of the resource URI.
-  static final String CATALOG_RESOURCE = "https://catalog.example.com/api/catalog";
+  static final String API_RESOURCE = "https://catalog.example.com/api";
 
   public static class Profile extends AbstractOidcAuthTest.Profile {
 
@@ -55,7 +57,7 @@ class OAuthProtectedResourceMetadataTest extends AbstractOidcAuthTest {
       ImmutableMap.Builder<String, String> config = ImmutableMap.builder();
       config.putAll(super.getConfigOverrides());
       config.put("quarkus.oidc.resource-metadata.enabled", "true");
-      config.put("quarkus.oidc.resource-metadata.resource", CATALOG_RESOURCE);
+      config.put("quarkus.oidc.resource-metadata.resource", API_RESOURCE);
       // Same real issuer the WireMock OIDC tenant is configured against (see
       // AbstractOidcAuthTest.Profile), so the assertion below is checking that the real
       // authorization server is correctly advertised, not a value we invented for the test.
@@ -69,10 +71,10 @@ class OAuthProtectedResourceMetadataTest extends AbstractOidcAuthTest {
   void wellKnownEndpointAdvertisesAuthorizationServer() {
     // RFC 9728 section 4: the well-known URI is formed by inserting
     // /.well-known/oauth-protected-resource before the path component of the resource URI.
-    // A client starting from CATALOG_RESOURCE derives this path automatically.
+    // A client starting from API_RESOURCE derives this path automatically.
     String body =
         given()
-            .get("/.well-known/oauth-protected-resource/api/catalog")
+            .get("/.well-known/oauth-protected-resource/api")
             .then()
             .statusCode(200)
             .extract()
@@ -80,7 +82,7 @@ class OAuthProtectedResourceMetadataTest extends AbstractOidcAuthTest {
             .asString();
 
     JsonPath json = JsonPath.from(body);
-    assertThat(json.getString("resource")).isEqualTo(CATALOG_RESOURCE);
+    assertThat(json.getString("resource")).isEqualTo(API_RESOURCE);
     assertThat(json.getList("authorization_servers", String.class))
         .hasSize(1)
         .first()

@@ -146,13 +146,13 @@ Independently of tenant configuration, once a tenant is enabled you can optional
 
 ```properties
 quarkus.oidc.resource-metadata.enabled=true
-quarkus.oidc.resource-metadata.resource=https://catalog.example.com/api/catalog
+quarkus.oidc.resource-metadata.resource=https://catalog.example.com/api
 quarkus.oidc.resource-metadata.authorization-server=https://auth.example.com/realms/polaris
 ```
 
 This is server-side metadata only: Polaris publishes the document, but a client has to already support RFC 9728 discovery to use it. The Iceberg REST client does not do this today, and most clients currently don't either -- enabling this setting does not by itself change how existing Iceberg/Spark clients authenticate against Polaris. It benefits clients and tooling that are (or become) RFC 9728-aware.
 
-`quarkus.oidc.resource-metadata.resource` accepts a single value per OIDC tenant. Polaris serves two distinct resources, `/api/catalog` (covering the Iceberg REST, Policy, and Generic Tables APIs) and `/api/management` -- only the former is covered by this metadata document; the management API is not currently advertised.
+`quarkus.oidc.resource-metadata.resource` accepts a single value per OIDC tenant, so it's advertised as `/api`, the shared parent of Polaris's two distinct resources, `/api/catalog` (covering the Iceberg REST, Policy, and Generic Tables APIs) and `/api/management`. This covers both under one identifier rather than picking one and leaving the other unadvertised.
 
 This applies to the default single-tenant configuration. When using named OIDC tenants, resource metadata is configured per-tenant under `quarkus.oidc.<tenant-name>.resource-metadata.*`.
 
