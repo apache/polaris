@@ -162,6 +162,11 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
 
 ### Breaking changes
 
+- Custom Ranger authorizer integrations: the principal attributes copied onto `RangerUserInfo`
+  are now prefixed keys (for example `polaris.system.client_id`) instead of the bare internal
+  names (for example `client_id`). Apache Ranger 2.9.0's embedded plugin does not evaluate these
+  attributes, so built-in behavior is unchanged, but any custom code reading `RangerUserInfo`
+  attributes must use the new keys.
 - Creating a Generic Table with an explicit, non-empty `base-location` now validates that
   location against the catalog's allowed locations and, unless `ALLOW_UNSTRUCTURED_TABLE_LOCATION`
   is enabled, the parent namespace location. Requests that previously stored disallowed locations
@@ -215,6 +220,11 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
 
 ### New Features
 
+- Added the `TABLE_READ_METRICS` privilege, granting read-only access to a table's scan and
+  commit metrics reports without granting access to the table's data. Not implied by
+  `TABLE_FULL_METADATA`; implied by `CATALOG_MANAGE_CONTENT`, consistent with that privilege
+  already implying `TABLE_READ_DATA`. Can be granted on any table, but metrics reports are
+  currently only produced for Iceberg tables.
 - The `X-Iceberg-Access-Delegation` header now accepts `none`, as defined by the Iceberg REST
   specification, meaning the client can operate without delegated access. A request that includes
   `none`, alone or together with other values, is handled like a request without the header: the
@@ -231,6 +241,16 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
 
 ### Changes
 
+- After authentication, a `SecurityIdentityAugmentor` projects selected principal facts onto
+  namespaced `PolarisPrincipal` attributes. External authorizers consume those derived keys rather
+  than walking `PrincipalEntity`: `polaris.user.*` for user-defined principal properties,
+  `polaris.system.client_id` and `polaris.system.credential-rotation-required` for selected
+  internal facts, and `polaris.auth.*` when an authenticator has asserted them. OPA receives the
+  keys as `actor.attributes`. Ranger copies them onto `RangerUserInfo`, but Apache Ranger 2.9.0's
+  embedded plugin evaluates only user name, groups, and roles, so `polaris.user.*` cannot currently
+  change a Ranger policy decision. The raw `PrincipalEntity` is not included in the external PDP
+  payload. A user property cannot shadow a system key because the prefix is part of the
+  attribute name. Empty-string user property values are forwarded as empty attributes, not omitted.
 - Azure credential vending now maps MSAL authentication failures using their HTTP status codes,
   including the existing `401` to `403` and `404` to `400` mappings.
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
@@ -262,6 +282,8 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
 
 ### Fixes
 
+- Iceberg REST federation: `header.*` properties are now sent on every request to the remote
+  catalog. Previously only the initial `/config` request carried them.
 - Credential vending no longer ends up with no allowed read/write locations when a table's data
   or metadata path matches its base location except for the scheme (for example `abfss://` vs
   `abfs://`) or a trailing slash. Such locations are mutual children, so the previous logic dropped
@@ -491,22 +513,12 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   depend on the previous combined-intent input shape may need to be updated. Same applies to other
   PolarisAuthorizer implementations.
 - Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
-- Custom Ranger authorizer integrations: the principal attributes copied onto `RangerUserInfo`
-  are now prefixed keys (for example `polaris.system.client_id`) instead of the bare internal
-  names (for example `client_id`). Apache Ranger 2.9.0's embedded plugin does not evaluate these
-  attributes, so built-in behavior is unchanged, but any custom code reading `RangerUserInfo`
-  attributes must use the new keys.
 
 ### New Features
 
 - Semantic models now support dedicated privileges for listing, creating, reading, updating,
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
-- Added the `TABLE_READ_METRICS` privilege, granting read-only access to a table's scan and
-  commit metrics reports without granting access to the table's data. Not implied by
-  `TABLE_FULL_METADATA`; implied by `CATALOG_MANAGE_CONTENT`, consistent with that privilege
-  already implying `TABLE_READ_DATA`. Can be granted on any table, but metrics reports are
-  currently only produced for Iceberg tables.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
@@ -515,16 +527,6 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
 
 ### Changes
 
-- After authentication, a `SecurityIdentityAugmentor` projects selected principal facts onto
-  namespaced `PolarisPrincipal` attributes. External authorizers consume those derived keys rather
-  than walking `PrincipalEntity`: `polaris.user.*` for user-defined principal properties,
-  `polaris.system.client_id` and `polaris.system.credential-rotation-required` for selected
-  internal facts, and `polaris.auth.*` when an authenticator has asserted them. OPA receives the
-  keys as `actor.attributes`. Ranger copies them onto `RangerUserInfo`, but Apache Ranger 2.9.0's
-  embedded plugin evaluates only user name, groups, and roles, so `polaris.user.*` cannot currently
-  change a Ranger policy decision. The raw `PrincipalEntity` is not included in the external PDP
-  payload. A user property cannot shadow a system key because the prefix is part of the
-  attribute name. Empty-string user property values are forwarded as empty attributes, not omitted.
 - A metastore failure during authentication now returns a fixed `Service unavailable` message
   instead of naming the lookup that failed; the principal lookup previously returned `Unable to
   fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which
@@ -560,8 +562,6 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
 
 ### Fixes
 
-- Iceberg REST federation: `header.*` properties are now sent on every request to the remote
-  catalog. Previously only the initial `/config` request carried them.
 - GCS credential vending no longer fails with HTTP 500 when a table's location or `write.data.path`
   / `write.metadata.path` points at a bucket root without a trailing slash (e.g. `gs://bucket`).
   Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
