@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -93,7 +94,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   private final Clock clock;
 
   public AtomicOperationMetaStoreManager(Clock clock, PolarisDiagnostics diagnostics) {
-    super(diagnostics);
+    super(clock, diagnostics);
     this.clock = clock;
   }
 
@@ -1277,8 +1278,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @NonNull PolarisBaseEntity entityToDrop,
-      long dropTimestamp,
-      long toPurgeTimestamp) {
+      @NonNull Instant dropTimestamp,
+      @NonNull Instant toPurgeTimestamp) {
     BasePersistence ms = callCtx.getMetaStore();
     getDiagnostics().checkNotNull(entityToDrop, "unexpected_null_entity");
 
@@ -1296,7 +1297,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     PolarisBaseEntity softDeleted =
-        prepareToSoftDeleteEntity(refreshEntityToDrop, dropTimestamp, toPurgeTimestamp);
+        prepareToSoftDeleteEntity(
+            refreshEntityToDrop, dropTimestamp.toEpochMilli(), toPurgeTimestamp.toEpochMilli());
     try {
       ms.writeEntity(callCtx, softDeleted, false, refreshEntityToDrop);
     } catch (RetryOnConcurrencyException e) {

@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.admintool;
 
+import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -33,6 +35,8 @@ import picocli.CommandLine;
         "Permanently delete Iceberg tables whose soft-delete hold has expired. Names stay reserved"
             + " until this command runs.")
 public class ExpireSoftDeletedTablesCommand extends BaseMetaStoreCommand {
+
+  @Inject Clock clock;
 
   @CommandLine.Option(
       names = {"-r", "--realm"},
@@ -53,7 +57,7 @@ public class ExpireSoftDeletedTablesCommand extends BaseMetaStoreCommand {
   public Integer call() {
     try {
       boolean anyFailure = false;
-      SoftDeletedTableExpiration expiration = new SoftDeletedTableExpiration();
+      SoftDeletedTableExpiration expiration = new SoftDeletedTableExpiration(clock);
       for (String realm : realms) {
         RealmContext realmContext = () -> realm;
         PolarisMetaStoreManager metaStoreManager =

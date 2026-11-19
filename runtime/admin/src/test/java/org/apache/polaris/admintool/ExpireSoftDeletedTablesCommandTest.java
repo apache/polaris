@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.time.Clock;
 import java.util.Map;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
@@ -43,6 +44,7 @@ class ExpireSoftDeletedTablesCommandTest {
     String failureMessage = "simulated database connection failure";
     ExpireSoftDeletedTablesCommand command = new ExpireSoftDeletedTablesCommand();
     command.metaStoreManagerFactory = new FakeMetaStoreManagerFactory(failureMessage);
+    command.clock = Clock.systemUTC();
 
     CommandLine commandLine = new CommandLine(command);
     StringWriter err = new StringWriter();
@@ -61,6 +63,7 @@ class ExpireSoftDeletedTablesCommandTest {
   void testExpireSucceedsWhenNoCatalogs() {
     ExpireSoftDeletedTablesCommand command = new ExpireSoftDeletedTablesCommand();
     command.metaStoreManagerFactory = new FakeMetaStoreManagerFactory(null);
+    command.clock = Clock.systemUTC();
 
     CommandLine commandLine = new CommandLine(command);
     StringWriter out = new StringWriter();

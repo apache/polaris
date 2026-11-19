@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence;
 
+import java.time.Clock;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -30,10 +31,16 @@ import org.jspecify.annotations.NonNull;
 /** Shared basic PolarisMetaStoreManager logic for transactional and non-transactional impls. */
 public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
 
+  private final Clock clock;
   private final PolarisDiagnostics diagnostics;
 
-  protected BaseMetaStoreManager(PolarisDiagnostics diagnostics) {
+  protected BaseMetaStoreManager(Clock clock, PolarisDiagnostics diagnostics) {
+    this.clock = clock;
     this.diagnostics = diagnostics;
+  }
+
+  protected Clock clock() {
+    return clock;
   }
 
   protected PolarisDiagnostics getDiagnostics() {
@@ -137,7 +144,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
     getDiagnostics().check(createTimestamp != 0, "null_create_timestamp", "entity={}", entity);
 
     // ensure time is not moving backward...
-    long now = System.currentTimeMillis();
+    long now = clock().millis();
     if (now < entity.getCreateTimestamp()) {
       now = entity.getCreateTimestamp() + 1;
     }
@@ -168,7 +175,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
             toPurgeTimestamp,
             original);
 
-    long now = System.currentTimeMillis();
+    long now = clock().millis();
     if (now < original.getCreateTimestamp()) {
       now = original.getCreateTimestamp() + 1;
     }

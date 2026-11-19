@@ -2014,7 +2014,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
               public Duration ttl() {
                 return Duration.ofMinutes(5);
               }
-            })) {
+            }),
+        java.time.Clock.systemUTC()) {
       @Override
       public Catalog createCatalog(PolarisResolutionManifest resolvedManifest) {
         Catalog catalog = super.createCatalog(resolvedManifest);

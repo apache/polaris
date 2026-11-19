@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence;
 
 import com.google.common.collect.ImmutableList;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -260,8 +261,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @NonNull PolarisBaseEntity entityToDrop,
-      long dropTimestamp,
-      long toPurgeTimestamp) {
+      @NonNull Instant dropTimestamp,
+      @NonNull Instant toPurgeTimestamp) {
     throw illegalMethodError("softDeleteEntityIfExists");
   }
 

@@ -2570,7 +2570,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
   private void expireSoftDeletedTables(String catalogName) {
     SoftDeletedTableExpiration.Summary summary =
-        new SoftDeletedTableExpiration().expireAll(metaStoreManager, polarisContext, catalogName);
+        new SoftDeletedTableExpiration(java.time.Clock.systemUTC())
+            .expireAll(metaStoreManager, polarisContext, catalogName);
     Assertions.assertThat(summary.failed()).isZero();
   }
 

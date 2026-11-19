@@ -467,7 +467,8 @@ public record TestServices(
               metaStoreManager,
               callContext,
               principal,
-              idempotencyRequestContext);
+              idempotencyRequestContext,
+              clock);
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 

@@ -28,6 +28,7 @@ import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMa
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.principalObjToPolarisPrincipalSecrets;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -215,8 +216,8 @@ record NoSqlMetaStoreManager(
       @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @NonNull PolarisBaseEntity entityToDrop,
-      long dropTimestamp,
-      long toPurgeTimestamp) {
+      @NonNull Instant dropTimestamp,
+      @NonNull Instant toPurgeTimestamp) {
     requireNonNull(entityToDrop, "entityToDrop");
     if (entityToDrop.cannotBeDroppedOrRenamed()) {
       return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, null);
@@ -227,8 +228,8 @@ record NoSqlMetaStoreManager(
 
     PolarisBaseEntity softDeleted =
         new PolarisBaseEntity.Builder(entityToDrop)
-            .dropTimestamp(dropTimestamp)
-            .toPurgeTimestamp(toPurgeTimestamp)
+            .dropTimestamp(dropTimestamp.toEpochMilli())
+            .toPurgeTimestamp(toPurgeTimestamp.toEpochMilli())
             .build();
     EntityResult updated = ms(callCtx).updateEntity(softDeleted);
     if (!updated.isSuccess()) {

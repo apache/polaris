@@ -20,6 +20,7 @@ package org.apache.polaris.service.context.catalog;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
@@ -57,6 +58,7 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
   private final CallContext callContext;
   private final PolarisPrincipal principal;
   private final IdempotencyRequestContext idempotencyRequestContext;
+  private final Clock clock;
 
   @Inject
   public PolarisLocalCatalogFactory(
@@ -70,7 +72,8 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisPrincipal principal,
-      IdempotencyRequestContext idempotencyRequestContext) {
+      IdempotencyRequestContext idempotencyRequestContext,
+      Clock clock) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
     this.taskExecutor = taskExecutor;
@@ -82,6 +85,7 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
     this.callContext = callContext;
     this.principal = principal;
     this.idempotencyRequestContext = idempotencyRequestContext;
+    this.clock = clock;
   }
 
   @Override
@@ -106,7 +110,8 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
             fileIOFactory,
             polarisEventDispatcher,
             eventMetadataFactory,
-            idempotencyRequestContext);
+            idempotencyRequestContext,
+            clock);
 
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getBaseLocation();

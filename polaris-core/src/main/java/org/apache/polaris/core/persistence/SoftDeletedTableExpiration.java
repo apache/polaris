@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +48,12 @@ import org.slf4j.LoggerFactory;
  */
 public final class SoftDeletedTableExpiration {
   private static final Logger LOGGER = LoggerFactory.getLogger(SoftDeletedTableExpiration.class);
+
+  private final Clock clock;
+
+  public SoftDeletedTableExpiration(Clock clock) {
+    this.clock = clock;
+  }
 
   public record Summary(int expired, int skipped, int failed) {}
 
@@ -97,7 +104,7 @@ public final class SoftDeletedTableExpiration {
             .getConfig(
                 FeatureConfiguration.TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE,
                 catalogEntity);
-    long now = System.currentTimeMillis();
+    long now = clock.millis();
     List<PolarisBaseEntity> tables =
         metaStoreManager.listFullEntitiesAll(
             callCtx,

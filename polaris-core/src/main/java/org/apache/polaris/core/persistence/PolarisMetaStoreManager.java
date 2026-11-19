@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -361,15 +362,15 @@ public interface PolarisMetaStoreManager
    * @param callCtx call context
    * @param catalogPath path to that entity
    * @param entityToDrop entity to soft-delete, must have been resolved by the client
-   * @param dropTimestamp epoch millis when the entity was soft-deleted
-   * @param toPurgeTimestamp epoch millis when the entity becomes eligible for permanent delete
+   * @param dropTimestamp when the entity was soft-deleted
+   * @param toPurgeTimestamp when the entity becomes eligible for permanent delete
    */
   @NonNull DropEntityResult softDeleteEntityIfExists(
       @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @NonNull PolarisBaseEntity entityToDrop,
-      long dropTimestamp,
-      long toPurgeTimestamp);
+      @NonNull Instant dropTimestamp,
+      @NonNull Instant toPurgeTimestamp);
 
   /**
    * Load the entity from backend store. Will return NULL if the entity does not exist, i.e. has

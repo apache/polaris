@@ -35,6 +35,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
@@ -214,6 +215,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   // Entity-property idempotency: when the request context carries a key, it is stamped into the new
   // table entity's internal properties within the same transaction as the create.
   private final IdempotencyRequestContext idempotencyRequestContext;
+  private final Clock clock;
 
   private Consumer<MetadataFileCleanup> deleteRemovedMetadataFiles =
       MetadataFileCleanup::deleteRemovedMetadataFiles;
@@ -248,7 +250,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         fileIOFactory,
         polarisEventDispatcher,
         eventMetadataFactory,
-        IdempotencyRequestContext.DISABLED);
+        IdempotencyRequestContext.DISABLED,
+        Clock.systemUTC());
   }
 
   public LocalIcebergCatalog(
@@ -264,6 +267,36 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       PolarisEventDispatcher polarisEventDispatcher,
       PolarisEventMetadataFactory eventMetadataFactory,
       IdempotencyRequestContext idempotencyRequestContext) {
+    this(
+        diagnostics,
+        resolverFactory,
+        metaStoreManager,
+        callContext,
+        resolvedEntityView,
+        principal,
+        taskExecutor,
+        storageAccessConfigProvider,
+        fileIOFactory,
+        polarisEventDispatcher,
+        eventMetadataFactory,
+        idempotencyRequestContext,
+        Clock.systemUTC());
+  }
+
+  public LocalIcebergCatalog(
+      PolarisDiagnostics diagnostics,
+      ResolverFactory resolverFactory,
+      PolarisMetaStoreManager metaStoreManager,
+      CallContext callContext,
+      PolarisResolutionManifestCatalogView resolvedEntityView,
+      PolarisPrincipal principal,
+      TaskExecutor taskExecutor,
+      StorageAccessConfigProvider storageAccessConfigProvider,
+      FileIOFactory fileIOFactory,
+      PolarisEventDispatcher polarisEventDispatcher,
+      PolarisEventMetadataFactory eventMetadataFactory,
+      IdempotencyRequestContext idempotencyRequestContext,
+      Clock clock) {
     this.diagnostics = diagnostics;
     this.locationOverlapValidator =
         new LocationOverlapValidator(
@@ -284,6 +317,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     this.polarisEventDispatcher = polarisEventDispatcher;
     this.eventMetadataFactory = eventMetadataFactory;
     this.idempotencyRequestContext = idempotencyRequestContext;
+    this.clock = clock;
   }
 
   @Override
@@ -3308,14 +3342,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     if (!purge
         && subType == PolarisEntitySubType.ICEBERG_TABLE
         && realmConfig.getConfig(FeatureConfiguration.TABLE_SOFT_DELETE_ENABLED, catalogEntity)) {
-      long dropTimestamp = System.currentTimeMillis();
+      Instant dropTimestamp = clock.instant();
       return getMetaStoreManager()
           .softDeleteEntityIfExists(
               getCurrentPolarisContext(),
               PolarisEntity.toCoreList(catalogPath),
               leafEntity,
               dropTimestamp,
-              dropTimestamp + softDeleteHoldPeriodMillis());
+              dropTimestamp.plusMillis(softDeleteHoldPeriodMillis()));
     }
 
     return getMetaStoreManager()

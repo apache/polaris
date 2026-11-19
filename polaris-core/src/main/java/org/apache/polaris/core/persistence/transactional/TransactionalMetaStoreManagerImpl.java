@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence.transactional;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -99,7 +100,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   private final Clock clock;
 
   public TransactionalMetaStoreManagerImpl(Clock clock, PolarisDiagnostics diagnostics) {
-    super(diagnostics);
+    super(clock, diagnostics);
     this.clock = clock;
   }
 
@@ -1494,8 +1495,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @NonNull PolarisBaseEntity entityToDrop,
-      long dropTimestamp,
-      long toPurgeTimestamp) {
+      @NonNull Instant dropTimestamp,
+      @NonNull Instant toPurgeTimestamp) {
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
     return ms.runInTransaction(
         callCtx,
@@ -1509,8 +1510,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @NonNull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @NonNull PolarisBaseEntity entityToDrop,
-      long dropTimestamp,
-      long toPurgeTimestamp) {
+      @NonNull Instant dropTimestamp,
+      @NonNull Instant toPurgeTimestamp) {
     getDiagnostics().checkNotNull(entityToDrop, "unexpected_null_entity");
 
     PolarisEntityResolver resolver =
@@ -1533,7 +1534,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     PolarisBaseEntity softDeleted =
-        prepareToSoftDeleteEntity(refreshEntityToDrop, dropTimestamp, toPurgeTimestamp);
+        prepareToSoftDeleteEntity(
+            refreshEntityToDrop, dropTimestamp.toEpochMilli(), toPurgeTimestamp.toEpochMilli());
     ms.writeEntityInCurrentTxn(callCtx, softDeleted, false, refreshEntityToDrop);
     return new DropEntityResult();
   }
