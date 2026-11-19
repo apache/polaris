@@ -86,8 +86,7 @@ The inheritance follows an override mechanism:
 2. Namespace-level policies override parent namespace and catalog policies
 
 {{< alert important >}}
-A resource can have one attachment per inheritable policy type. An attachment on a child resource
-overrides the inherited policy of that type.
+A resource can have at most one directly attached policy of each inheritable type.
 {{< /alert >}}
 
 ## Working with Policies
@@ -164,7 +163,8 @@ Here is an example to find all policies that apply to a specific resource (inclu
 GET /polaris/v1/catalog/applicable-policies?namespace=finance%1Fquarterly&target-name=transactions
 ```
 
-In this example, both policies are defined in the `finance` namespace and inherited by the table.
+The `namespace` field identifies where each policy is defined. Both policies are defined in `finance`.
+The table inherits the snapshot expiry policy from that namespace and the compaction policy from the catalog.
 The `content` field contains a JSON string.
 
 **Sample response:**
