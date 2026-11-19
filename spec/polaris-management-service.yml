@@ -814,8 +814,8 @@ components:
       type: oauth2
       description: Uses OAuth 2 with client credentials flow
       flows:
-        implicit:
-          authorizationUrl: "{scheme}://{host}/api/v1/oauth/tokens"
+        clientCredentials:
+          tokenUrl: /api/catalog/v1/oauth/tokens
           scopes: {}
 
   schemas:
