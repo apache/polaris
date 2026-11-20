@@ -143,10 +143,11 @@ class TableCommand(Command):
             )
             # Metadata
             metadata = resp.metadata
+            snapshots = metadata.snapshots or []
             print("Metadata")
             print(f"  {'Location:':<30} {metadata.location}")
             print(f"  {'Format Version:':<30} {metadata.format_version}")
-            print(f"  {'Snapshots:':<30} {len(metadata.snapshots)}")
+            print(f"  {'Snapshots:':<30} {len(snapshots)}")
             print(f"  {'Current Snapshot ID:':<30} {metadata.current_snapshot_id}")
             print(
                 f"  {'Last Updated:':<30} {format_timestamp(metadata.last_updated_ms)}"
@@ -157,7 +158,7 @@ class TableCommand(Command):
             current_snapshot = next(
                 (
                     snapshot
-                    for snapshot in metadata.snapshots
+                    for snapshot in snapshots
                     if snapshot.snapshot_id == metadata.current_snapshot_id
                 ),
                 None,
