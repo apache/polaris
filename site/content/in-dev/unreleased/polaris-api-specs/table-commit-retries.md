@@ -30,7 +30,8 @@ reference those files.
 
 ## Retrying a request with an idempotency key
 
-For a direct table create or a single table update in a native Polaris catalog, check the
+For a table create with `stage-create` set to `false`, or an update to a single table in a
+native Polaris catalog, check the
 `GET /api/catalog/v1/config` response for `idempotency-key-lifetime`. If present, it gives the
 retry window, measured from the first submission. Polaris disables this feature by default.
 When enabled with `polaris.idempotency.enabled`, the default window is five minutes
@@ -50,6 +51,5 @@ for the snapshot ID from the original request in the history of the branch you w
 that snapshot confirms the append, even if another writer has since advanced the branch. For a
 table create, the name alone cannot establish which request created the table.
 
-If the outcome is still uncertain, retain the
-files and investigate before issuing another write. Sending the append with a new key can apply
-the same logical change twice.
+If the outcome is still uncertain, retain the files and investigate before issuing another write.
+For example, rebuilding an append with a new snapshot ID can add the same data files twice.
