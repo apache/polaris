@@ -438,6 +438,52 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
         .isInstanceOf(IllegalArgumentException.class);
   }
 
+  @Test
+  void writeEntitiesRejectsAnOversizeUpdateBatch() {
+    List<PolarisBaseEntity> entities = new ArrayList<>();
+    List<PolarisBaseEntity> originals = new ArrayList<>();
+    for (long id = 1; id <= 101; id++) {
+      PolarisBaseEntity e = entity(id, PARENT, "t" + id, 1);
+      entities.add(withVersion(e, 2, 1, Map.of()));
+      originals.add(e);
+    }
+    // 101 updates > the 100-action transaction limit.
+    assertThatThrownBy(() -> persistence.writeEntities(callCtx, entities, originals))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void writeEntitiesCreateIsIdempotentOnRetry() {
+    List<PolarisBaseEntity> batch =
+        List.of(entity(10L, PARENT, "a", 1), entity(20L, PARENT, "b", 1));
+    persistence.writeEntities(callCtx, batch, null);
+
+    // The exact same create batch, replayed (a retry after it already landed): every entity
+    // already exists under its own id, so this is an idempotent success, not a collision.
+    assertThatCode(() -> persistence.writeEntities(callCtx, batch, null))
+        .doesNotThrowAnyException();
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isNotNull();
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 20L, TYPE)).isNotNull();
+  }
+
+  @Test
+  void writeEntitiesCreateReportsACollisionFromADifferentId() {
+    persistence.writeEntity(callCtx, entity(10L, PARENT, "taken", 1), false, null);
+
+    // A fresh entity plus one whose name is taken by a DIFFERENT id: a real collision, not an
+    // idempotent retry, so the batch fails and nothing new lands.
+    assertThatThrownBy(() ->
+            persistence.writeEntities(
+                callCtx,
+                List.of(entity(20L, PARENT, "fresh", 1), entity(30L, PARENT, "taken", 1)),
+                null))
+        .isInstanceOfSatisfying(
+            EntityAlreadyExistsException.class,
+            e -> assertThat(e.getExistingEntity().getId()).isEqualTo(10L));
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 20L, TYPE)).isNull();
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 30L, TYPE)).isNull();
+  }
+
   private static PolarisBaseEntity entity(long id, long parentId, String name, int version) {
     return new PolarisBaseEntity.Builder()
         .id(id)

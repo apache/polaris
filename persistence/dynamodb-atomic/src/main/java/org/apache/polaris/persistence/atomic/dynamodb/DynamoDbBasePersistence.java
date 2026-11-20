@@ -426,23 +426,37 @@ public class DynamoDbBasePersistence implements BasePersistence {
               + MAX_TRANSACT_WRITE_ITEMS
               + "-action transaction limit");
     }
-    List<TransactWriteItem> items = new ArrayList<>(entities.size() * CREATE_ACTIONS_PER_ENTITY);
-    for (PolarisBaseEntity entity : entities) {
-      items.add(putIfAbsent(EntityItem.toItem(realmId, entity)));
-      items.add(putIfAbsent(sentinelItem(entity)));
-      items.add(putIfAbsent(childItem(entity)));
-    }
-    try {
-      client.transactWriteItems(b -> b.transactItems(items));
-    } catch (TransactionCanceledException e) {
-      if (!onlyConflicts(e)) {
-        throw e;
+    List<PolarisBaseEntity> remaining = entities;
+    while (!remaining.isEmpty()) {
+      List<TransactWriteItem> items = new ArrayList<>(remaining.size() * CREATE_ACTIONS_PER_ENTITY);
+      for (PolarisBaseEntity entity : remaining) {
+        items.add(putIfAbsent(EntityItem.toItem(realmId, entity)));
+        items.add(putIfAbsent(sentinelItem(entity)));
+        items.add(putIfAbsent(childItem(entity)));
       }
-      // A sentinel action (every 2nd of each entity's three) failing is a name collision. Resolve
-      // it by name, as a single create does; otherwise the batch lost a race and should retry.
-      for (int i = 0; i < entities.size(); i++) {
-        if (conditionFailedAt(e, i * CREATE_ACTIONS_PER_ENTITY + 1)) {
-          PolarisBaseEntity entity = entities.get(i);
+      List<TransactWriteItem> batch = items;
+      try {
+        client.transactWriteItems(b -> b.transactItems(batch));
+        return;
+      } catch (TransactionCanceledException e) {
+        if (!onlyConflicts(e)) {
+          throw e;
+        }
+        // Classify each entity that failed its condition. An entity already present under its own
+        // id is an idempotent create-retry (it already landed) and is dropped, as JDBC and the
+        // transactional backend skip a same-id entity in writeEntities; a name taken by a
+        // different id is a real collision. DynamoDB is all-or-nothing, so nothing in this attempt
+        // persisted: drop the idempotent ones and re-run the transaction with the rest.
+        List<PolarisBaseEntity> retry = new ArrayList<>(remaining.size());
+        for (int i = 0; i < remaining.size(); i++) {
+          PolarisBaseEntity entity = remaining.get(i);
+          boolean failed =
+              conditionFailedAt(e, i * CREATE_ACTIONS_PER_ENTITY) // the entity's id
+                  || conditionFailedAt(e, i * CREATE_ACTIONS_PER_ENTITY + 1); // its name sentinel
+          if (!failed) {
+            retry.add(entity);
+            continue;
+          }
           PolarisBaseEntity existing =
               lookupEntityByName(
                   callCtx,
@@ -450,13 +464,24 @@ public class DynamoDbBasePersistence implements BasePersistence {
                   entity.getParentId(),
                   entity.getTypeCode(),
                   entity.getName());
-          if (existing != null) {
+          if (existing != null && existing.getId() != entity.getId()) {
             throw new EntityAlreadyExistsException(existing, e);
           }
+          // existing == same id: already created (idempotent retry) -> drop it.
+          // existing == null: this entity lost a race on its id with no resolvable name -> retry
+          // it.
+          if (existing == null) {
+            retry.add(entity);
+          }
         }
+        if (retry.size() == remaining.size()) {
+          // Nothing was resolved as an idempotent drop, so re-running would just spin: a genuine
+          // concurrent write is in flight. Let the manager retry the whole operation.
+          throw new RetryOnConcurrencyException(
+              e, "Create of %s entities conflicted with a concurrent write", remaining.size());
+        }
+        remaining = retry;
       }
-      throw new RetryOnConcurrencyException(
-          e, "Create of %s entities conflicted with a concurrent write", entities.size());
     }
   }
 
@@ -483,11 +508,19 @@ public class DynamoDbBasePersistence implements BasePersistence {
       }
       items.add(putIfVersionsMatch(EntityItem.toItem(realmId, entity), original));
     }
+    List<TransactWriteItem> batch = items;
     try {
-      client.transactWriteItems(b -> b.transactItems(items));
+      client.transactWriteItems(b -> b.transactItems(batch));
     } catch (TransactionCanceledException e) {
       if (!onlyConflicts(e)) {
         throw e;
+      }
+      // Name the entity whose compare-and-set failed, like the single update does, instead of
+      // only reporting the batch size.
+      for (int i = 0; i < entities.size(); i++) {
+        if (conditionFailedAt(e, i)) {
+          throw concurrentModification(e, originalEntities.get(i));
+        }
       }
       throw new RetryOnConcurrencyException(
           e, "Update of %s entities conflicted with a concurrent write", entities.size());
