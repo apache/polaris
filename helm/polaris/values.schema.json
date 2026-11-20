@@ -1523,6 +1523,18 @@
                             "description": "The key in the secret to pull the AWS secret access key from. Only required when using AWS.",
                             "type": "string"
                         },
+                        "azureClientId": {
+                            "description": "The key in the secret to pull the Azure client ID from. Only required when using Azure with a service principal.",
+                            "type": "string"
+                        },
+                        "azureClientSecret": {
+                            "description": "The key in the secret to pull the Azure client secret from. Only required when using Azure with a service principal.",
+                            "type": "string"
+                        },
+                        "azureTenantId": {
+                            "description": "The key in the secret to pull the Azure tenant ID from. Only required when using Azure with a service principal.",
+                            "type": "string"
+                        },
                         "gcpToken": {
                             "description": "The key in the secret to pull the GCP token from. Only required when using GCP.",
                             "type": "string"

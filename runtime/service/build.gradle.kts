@@ -112,6 +112,7 @@ dependencies {
   }
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-core")
+  implementation("com.azure:azure-identity")
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
   implementation(libs.msal4j)

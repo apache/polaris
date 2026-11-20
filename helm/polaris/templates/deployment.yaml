@@ -95,6 +95,9 @@ spec:
             {{- include "polaris.secretToEnv" (list .Values.storage.secret "awsAccessKeyId" "polaris.storage.aws.access-key") | indent 12 -}}
             {{- include "polaris.secretToEnv" (list .Values.storage.secret "awsSecretAccessKey" "polaris.storage.aws.secret-key") | indent 12 -}}
             {{- include "polaris.secretToEnv" (list .Values.storage.secret "gcpToken" "polaris.storage.gcp.token") | indent 12 -}}
+            {{- include "polaris.secretToEnv" (list .Values.storage.secret "azureTenantId" "polaris.storage.azure.tenant-id") | indent 12 -}}
+            {{- include "polaris.secretToEnv" (list .Values.storage.secret "azureClientId" "polaris.storage.azure.client-id") | indent 12 -}}
+            {{- include "polaris.secretToEnv" (list .Values.storage.secret "azureClientSecret" "polaris.storage.azure.client-secret") | indent 12 -}}
             {{- include "polaris.persistenceEnv" . | indent 12 -}}
             {{- include "polaris.secretToEnv" (list .Values.oidc.client.secret "key" "quarkus.oidc.credentials.secret") | indent 12 -}}
             {{- if .Values.extraEnv -}}
