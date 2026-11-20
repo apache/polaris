@@ -30,10 +30,10 @@ reference those files.
 
 ## Retrying a request with an idempotency key
 
-For a table create with `stage-create` set to `false`, or an update to a single table in a
-native Polaris catalog, check the
-`GET /api/catalog/v1/config` response for `idempotency-key-lifetime`. If present, it gives the
-retry window, measured from the first submission. Polaris disables this feature by default.
+For a direct table create (`stage-create: false`) or a single table update in a native Polaris
+catalog, check the catalog configuration before the first request. For example, for the
+`analytics` catalog, call `GET /api/catalog/v1/config?warehouse=analytics`. If the response
+contains `idempotency-key-lifetime`, it gives the retry window measured from the first submission. Polaris disables this feature by default.
 When enabled with `polaris.idempotency.enabled`, the default window is five minutes
 (`polaris.idempotency.ttl`).
 
