@@ -18,114 +18,93 @@
  */
 package org.apache.polaris.persistence.nosql.cassandra;
 
+import static java.util.Objects.requireNonNull;
+
 import com.google.errorprone.annotations.concurrent.GuardedBy;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Semaphore;
-import org.apache.polaris.persistence.nosql.api.Persistence;
-import org.apache.polaris.persistence.nosql.api.obj.Obj;
+import java.util.function.Supplier;
 
-/**
- * Synchronization helper for asynchronous "child" queries for {@link CassandraBackend}, {@link
- * Persistence#writeMany(Class, Obj[])}.
- *
- * <p>Note: this implementation does not actively prevent submitting a new query, but it prevents
- * making further progress by blocking inside {@link #submitted(CompletionStage)}.
- */
+/** Bounds asynchronous requests and drains submitted requests when closed. */
 final class LimitedConcurrentRequests implements AutoCloseable {
+  private final Semaphore permits;
 
-  /** Currently available "permits" for child queries. */
-  final Semaphore permits;
-
-  /** Holds the potential failure. */
-  final Throwable[] failureHolder = new Throwable[1];
-
-  /** Number of started queries. */
   @GuardedBy("this")
-  int started;
+  private Throwable failure;
 
-  /** Number of finished queries. */
   @GuardedBy("this")
-  int finished;
+  private int started;
+
+  @GuardedBy("this")
+  private int finished;
 
   LimitedConcurrentRequests(int maxChildQueries) {
     permits = new Semaphore(maxChildQueries);
   }
 
-  void submitted(CompletionStage<?> cs) {
-    synchronized (this) {
-      // Increment the number of started queries.
-      started++;
-    }
-
-    // Acquire a permit for the started query.
+  void submit(Supplier<? extends CompletionStage<?>> request) {
     try {
       permits.acquire();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new RuntimeException(e);
     }
+    synchronized (this) {
+      started++;
+    }
 
-    cs.whenComplete((resultSet, throwable) -> {
-      try {
-        // Release the acquired permit
-        permits.release();
+    CompletionStage<?> stage;
+    try {
+      stage = requireNonNull(request.get());
+    } catch (RuntimeException | Error e) {
+      completed(null);
+      throw e;
+    }
+    stage.whenComplete((result, error) -> completed(error));
+  }
 
-        // Record the failure (if the query failed)
-        if (throwable != null) {
-          while (throwable instanceof CompletionException && throwable.getCause() != null) {
-            throwable = throwable.getCause();
-          }
-          synchronized (failureHolder) {
-            var ex = failureHolder[0];
-            if (ex == null) {
-              failureHolder[0] = throwable;
-            } else {
-              ex.addSuppressed(throwable);
-            }
-          }
-        }
-
-      } finally {
-        synchronized (this) {
-          // Increment the number of finished queries.
-          finished++;
-          // Notify potential waiter (`close()`).
-          notify();
+  private void completed(Throwable error) {
+    while (error instanceof CompletionException && error.getCause() != null) {
+      error = error.getCause();
+    }
+    synchronized (this) {
+      if (error != null) {
+        if (failure == null) {
+          failure = error;
+        } else if (failure != error) {
+          failure.addSuppressed(error);
         }
       }
-    });
+      finished++;
+      notifyAll();
+    }
+    permits.release();
   }
 
   @Override
   public void close() {
+    boolean interrupted = false;
     try {
-      // Wait until all started queries have finished.
-      while (true) {
-        synchronized (this) {
-          if (finished == started) {
-            break;
-          }
+      synchronized (this) {
+        // Drain requests even when interrupted; restore the flag before returning or throwing.
+        while (finished != started) {
           try {
             wait();
           } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            interrupted = true;
           }
+        }
+        if (failure instanceof RuntimeException re) {
+          throw re;
+        }
+        if (failure != null) {
+          throw new RuntimeException(failure);
         }
       }
     } finally {
-      maybeThrow();
-    }
-  }
-
-  private void maybeThrow() {
-    synchronized (failureHolder) {
-      Throwable f = failureHolder[0];
-      if (f != null) {
-        if (f instanceof RuntimeException re) {
-          throw re;
-        }
-        throw new RuntimeException(f);
+      if (interrupted) {
+        Thread.currentThread().interrupt();
       }
     }
   }

@@ -19,6 +19,8 @@
 package org.apache.polaris.persistence.nosql.cassandra;
 
 import static org.apache.polaris.persistence.nosql.cassandra.CassandraConstants.CQL_COL_OBJ_KEY;
+import static org.apache.polaris.persistence.nosql.cassandra.CassandraConstants.CQL_COL_OBJ_VALUE;
+import static org.apache.polaris.persistence.nosql.cassandra.CassandraConstants.CQL_COL_OBJ_VERSION;
 import static org.apache.polaris.persistence.nosql.cassandra.CassandraConstants.CQL_COL_REF_CREATED_AT;
 import static org.apache.polaris.persistence.nosql.cassandra.CassandraConstants.CQL_COL_REF_NAME;
 import static org.apache.polaris.persistence.nosql.cassandra.CassandraConstants.SELECT_BATCH_SIZE;
@@ -32,6 +34,7 @@ import static org.mockito.ArgumentMatchers.endsWith;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_SELF;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -171,6 +174,92 @@ class CassandraBackendTest {
     assertThatThrownBy(() -> backend().write("realm", writes))
         .isInstanceOf(UnknownOperationResultException.class)
         .hasCause(timeout);
+  }
+
+  @Test
+  void immutableWriteLeavesVersionTokenUnset() {
+    when(session.executeAsync(statement))
+        .thenReturn(CompletableFuture.completedFuture(mock(AsyncResultSet.class)));
+
+    backend().write("realm", List.of(new WriteObj("test", 1L, 0, 123L, new byte[] {1}, 1)));
+
+    verify(builder, never()).setString(eq(CQL_COL_OBJ_VERSION.name()), any());
+  }
+
+  @Test
+  void conditionalInsertBindsVersionToken() {
+    var result = mock(ResultSet.class);
+    when(result.wasApplied()).thenReturn(true);
+    when(session.execute(statement)).thenReturn(result);
+
+    assertThat(
+            backend()
+                .conditionalInsert(
+                    "realm", "test", PersistId.persistId(1L, 0), 123L, "version", new byte[] {1}))
+        .isTrue();
+
+    verify(builder).setString(CQL_COL_OBJ_VERSION.name(), "version");
+    verify(builder).setIdempotence(false);
+  }
+
+  @Test
+  void referenceDeletionUsesLwt() {
+    when(session.executeAsync(statement))
+        .thenReturn(CompletableFuture.completedFuture(mock(AsyncResultSet.class)));
+
+    backend().batchDeleteRefs(Map.of("realm", Set.of("ref")));
+
+    verify(session).prepare(endsWith(CQL_COL_REF_NAME + "=? IF EXISTS"));
+    verify(builder).setIdempotence(false);
+    verify(builder).setSerialConsistencyLevel(DefaultConsistencyLevel.LOCAL_SERIAL);
+  }
+
+  @ParameterizedTest
+  @MethodSource("casConnectionFailures")
+  void referenceDeletionPreservesUnknownOutcome(DriverException failure) {
+    when(session.executeAsync(statement)).thenReturn(CompletableFuture.failedFuture(failure));
+
+    assertThatThrownBy(() -> backend().batchDeleteRefs(Map.of("realm", Set.of("ref"))))
+        .isInstanceOf(UnknownOperationResultException.class)
+        .hasCause(failure);
+  }
+
+  @Test
+  void objectDeletionUsesOrdinaryWrites() {
+    when(session.executeAsync(statement))
+        .thenReturn(CompletableFuture.completedFuture(mock(AsyncResultSet.class)));
+    var ids = Set.of(PersistId.persistId(1L, 0));
+
+    backend().delete("realm", ids);
+    backend().batchDeleteObjs(Map.of("realm", ids));
+
+    verify(session, times(2)).prepare(endsWith(CQL_COL_OBJ_KEY + "=?"));
+    verify(builder, times(2)).setIdempotence(true);
+    verify(builder, never()).setSerialConsistencyLevel(any());
+  }
+
+  @ParameterizedTest
+  @MethodSource("serializedBuffers")
+  void fetchUsesOnlyTheSerializedBufferContents(ByteBuffer serialized) {
+    var id = PersistId.persistId(1L, 0);
+    var row = mock(Row.class);
+    when(row.getByteBuffer(CQL_COL_OBJ_KEY.name()))
+        .thenReturn(CassandraBackend.serializePersistId(id));
+    when(row.getByteBuffer(CQL_COL_OBJ_VALUE.name())).thenReturn(serialized);
+    var result = mock(AsyncResultSet.class);
+    when(result.currentPage()).thenReturn(List.of(row));
+    when(session.executeAsync(statement)).thenReturn(CompletableFuture.completedFuture(result));
+
+    assertThat(backend().fetch("realm", Set.of(id)).get(id).serialized()).containsExactly(1, 2, 3);
+  }
+
+  static Stream<ByteBuffer> serializedBuffers() {
+    return Stream.of(
+        ByteBuffer.wrap(new byte[] {1, 2, 3}),
+        ByteBuffer.wrap(new byte[] {9, 1, 2, 3, 9}, 1, 3).slice(),
+        ByteBuffer.wrap(new byte[] {1, 2, 3, 9}).slice(0, 3),
+        ByteBuffer.wrap(new byte[] {1, 2, 3}).asReadOnlyBuffer(),
+        ByteBuffer.allocateDirect(3).put(new byte[] {1, 2, 3}).flip());
   }
 
   @ParameterizedTest

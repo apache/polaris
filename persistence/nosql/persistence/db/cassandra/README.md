@@ -59,6 +59,12 @@ All Polaris instances accessing a realm must use compatible consistency settings
 serial consistency confines Paxos to the local data center; selecting `SERIAL` alone does not
 establish support for writers in multiple data centers.
 
+Reference creation, updates, and deletion all use lightweight transactions. Ordinary object
+writes and deletes are intended for immutable objects whose IDs are not reused. Mutable,
+versioned objects must use the conditional insert, update, and delete operations throughout
+their lifecycle; mixing ordinary deletes with those operations can produce conflicting
+timestamps.
+
 ## Authentication
 
 `auth.provider-name` defaults to `default`. When both `auth.username` and `auth.password` are
@@ -96,3 +102,9 @@ strategy before using the Admin Tool to bootstrap the metastore. The backend cre
 tables but deliberately does not create a keyspace, because replication strategy and topology are
 deployment decisions. The managed schema requires Cassandra 5.0 or later because it uses UCS;
 the public metastore documentation describes the Cassandra 4.x compatibility path.
+
+The server also calls schema setup during startup and creates missing tables. Run the Admin Tool
+from one administrative process and wait for schema initialization to finish before starting
+server replicas. `CREATE TABLE IF NOT EXISTS` does not make concurrent schema initialization safe
+on Cassandra versions before 6.0. With pre-created tables, server startup only validates the schema
+and does not require table-creation permissions. Realm deletion is not supported by this backend.

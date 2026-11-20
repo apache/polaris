@@ -18,26 +18,9 @@
  */
 package org.apache.polaris.persistence.nosql.cassandra;
 
-import java.util.Objects;
-
 record CqlColumn(String name, CqlColumnType type) {
-
   @Override
   public String toString() {
     return name();
-  }
-
-  @Override
-  public int hashCode() {
-    return name().hashCode();
-  }
-
-  @SuppressWarnings("EqualsGetClass")
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    var cqlColumn = (CqlColumn) o;
-    return Objects.equals(name, cqlColumn.name) && type == cqlColumn.type;
   }
 }

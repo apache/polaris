@@ -264,21 +264,23 @@ final class CassandraBackend implements Backend {
       for (var r : realmRefs.entrySet()) {
         var realmId = r.getKey();
         for (var ref : r.getValue()) {
-          requests.submitted(executeAsync(buildIdempotentStatement(DELETE_REF, realmId, ref)));
+          // Reference creation, updates, and deletion all use Paxos timestamps.
+          requests.submit(() -> executeAsync(buildLwtStatement(DELETE_REF, realmId, ref)));
         }
       }
     } catch (DriverException e) {
-      throw unhandledException(e);
+      throw unhandledCasException(e);
     }
   }
 
   @Override
   public void batchDeleteObjs(Map<String, Set<PersistId>> realmObjs) {
+    // Ordinary object deletion is for immutable IDs; versioned rows use conditionalDelete().
     try (var requests = new LimitedConcurrentRequests(MAX_CONCURRENT_DELETES)) {
       for (var r : realmObjs.entrySet()) {
         var realmId = r.getKey();
         for (var obj : r.getValue()) {
-          requests.submitted(
+          requests.submit(() ->
               executeAsync(
                   buildIdempotentStatement(
                       DELETE_OBJ, realmId, serializePersistId(persistId(obj.id(), obj.part())))));
@@ -410,7 +412,9 @@ final class CassandraBackend implements Backend {
           var realPartNum = row.getInt(CQL_COL_OBJ_REAL_PART_NUM.name());
           if (serialized.position() == 0
               && serialized.remaining() == serialized.capacity()
-              && serialized.hasArray()) {
+              && serialized.hasArray()
+              && serialized.arrayOffset() == 0
+              && serialized.array().length == serialized.remaining()) {
             // fast path can use the byte[] of the ByteBuffer
             return new FetchedObj(
                 objTypeId, createdAtMicros, versionToken, serialized.array(), realPartNum);
@@ -459,7 +463,7 @@ final class CassandraBackend implements Backend {
     try (LimitedConcurrentRequests requests =
         new LimitedConcurrentRequests(MAX_CONCURRENT_STORES)) {
       for (var write : writes) {
-        requests.submitted(
+        requests.submit(() ->
             writeSingleObj(
                 realmId,
                 PersistId.persistId(write.id(), write.part()),
@@ -478,10 +482,11 @@ final class CassandraBackend implements Backend {
 
   @Override
   public void delete(@Nonnull String realmId, @Nonnull Set<PersistId> ids) {
+    // Immutable object IDs are not reused. Versioned objects must retain LWT timestamp ordering.
     try (var requests = new LimitedConcurrentRequests(MAX_CONCURRENT_DELETES)) {
       for (var id : ids) {
         if (id != null) {
-          requests.submitted(
+          requests.submit(() ->
               executeAsync(buildIdempotentStatement(DELETE_OBJ, realmId, serializePersistId(id))));
         }
       }
@@ -558,16 +563,19 @@ final class CassandraBackend implements Backend {
       boolean idempotent,
       int partNum,
       WriteSingleObj<R> consumer) {
-    return consumer.apply(
+    var stmt =
         (idempotent ? newBoundStatementBuilder(WRITE_OBJ, true) : newLwtStatementBuilder(STORE_OBJ))
             .setString(CQL_COL_REALM.name(), realmId)
             .setByteBuffer(CQL_COL_OBJ_KEY.name(), serializePersistId(fetchId))
             .setString(CQL_COL_OBJ_TYPE.name(), objTypeId)
             .setLong(CQL_COL_OBJ_CREATED_AT.name(), createdAtMicros)
-            .setString(CQL_COL_OBJ_VERSION.name(), versionToken)
             .setByteBuffer(CQL_COL_OBJ_VALUE.name(), ByteBuffer.wrap(serializedValue))
-            .setInt(CQL_COL_OBJ_REAL_PART_NUM.name(), partNum)
-            .build());
+            .setInt(CQL_COL_OBJ_REAL_PART_NUM.name(), partNum);
+    // Ordinary immutable writes have no version token; leave it unset to avoid cell tombstones.
+    if (versionToken != null) {
+      stmt = stmt.setString(CQL_COL_OBJ_VERSION.name(), versionToken);
+    }
+    return consumer.apply(stmt.build());
   }
 
   static ByteBuffer serializeObjId(@Nonnull Optional<ObjRef> id) {

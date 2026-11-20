@@ -197,7 +197,7 @@ final class CassandraConstants {
           + CQL_COL_REALM
           + "=? AND "
           + CQL_COL_REF_NAME
-          + "=?";
+          + "=? IF EXISTS";
   private static final String SELECT_OBJS =
       "SELECT "
           + CQL_COL_OBJ_KEY
