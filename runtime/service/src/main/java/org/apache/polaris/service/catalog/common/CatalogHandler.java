@@ -409,15 +409,32 @@ public abstract class CatalogHandler {
       AuthorizationState authorizationState,
       PolarisAuthorizableOperation op,
       TableIdentifier identifier) {
+    resolveBasicTableLikeTargetOrThrow(authorizationState, op, identifier, List.of());
+  }
+
+  protected void resolveBasicTableLikeTargetOrThrow(
+      AuthorizationState authorizationState,
+      PolarisAuthorizableOperation op,
+      TableIdentifier identifier,
+      List<TableIdentifier> referencedBy) {
     ensureResolutionManifestForTable(identifier);
 
     AuthorizationRequest authorizationRequest =
         new AuthorizationRequest(
-            polarisPrincipal(),
-            List.of(
-                new SingleTargetAuthorizationIntent(
-                    op, PolarisSecurableMapper.tableLike(catalogName(), identifier))));
+            polarisPrincipal(), List.of(tableLikeIntent(op, identifier, referencedBy)));
     authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
+  }
+
+  private SingleTargetAuthorizationIntent tableLikeIntent(
+      PolarisAuthorizableOperation op,
+      TableIdentifier identifier,
+      List<TableIdentifier> referencedBy) {
+    return new SingleTargetAuthorizationIntent(
+        op,
+        PolarisSecurableMapper.tableLike(catalogName(), identifier),
+        referencedBy.stream()
+            .map(entry -> PolarisSecurableMapper.tableLike(catalogName(), entry))
+            .toList());
   }
 
   protected void authorizeResolvedBasicTableLikeOperationOrThrow(
@@ -425,6 +442,16 @@ public abstract class CatalogHandler {
       PolarisAuthorizableOperation op,
       PolarisEntitySubType subType,
       TableIdentifier identifier) {
+    authorizeResolvedBasicTableLikeOperationOrThrow(
+        authorizationState, op, subType, identifier, List.of());
+  }
+
+  protected void authorizeResolvedBasicTableLikeOperationOrThrow(
+      AuthorizationState authorizationState,
+      PolarisAuthorizableOperation op,
+      PolarisEntitySubType subType,
+      TableIdentifier identifier,
+      List<TableIdentifier> referencedBy) {
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier), subType, true);
     if (target == null) {
@@ -435,10 +462,7 @@ public abstract class CatalogHandler {
         .authorize(
             authorizationState,
             new AuthorizationRequest(
-                polarisPrincipal(),
-                List.of(
-                    new SingleTargetAuthorizationIntent(
-                        op, PolarisSecurableMapper.tableLike(catalogName(), identifier)))))
+                polarisPrincipal(), List.of(tableLikeIntent(op, identifier, referencedBy))))
         .throwIfDenied();
 
     initializeCatalog();
@@ -446,10 +470,19 @@ public abstract class CatalogHandler {
 
   protected void resolveAndAuthorizeBasicTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(op, subType, identifier, List.of());
+  }
+
+  protected void resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+      PolarisAuthorizableOperation op,
+      PolarisEntitySubType subType,
+      TableIdentifier identifier,
+      List<TableIdentifier> referencedBy) {
     ensureResolutionManifestForTable(identifier);
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    resolveBasicTableLikeTargetOrThrow(authorizationState, op, identifier);
-    authorizeResolvedBasicTableLikeOperationOrThrow(authorizationState, op, subType, identifier);
+    resolveBasicTableLikeTargetOrThrow(authorizationState, op, identifier, referencedBy);
+    authorizeResolvedBasicTableLikeOperationOrThrow(
+        authorizationState, op, subType, identifier, referencedBy);
   }
 
   protected void authorizeBasicTableLikeOperationsOrThrow(

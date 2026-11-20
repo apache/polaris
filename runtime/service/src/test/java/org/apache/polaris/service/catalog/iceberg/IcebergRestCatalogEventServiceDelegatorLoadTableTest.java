@@ -22,15 +22,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.collection.MutableAttributeMap;
@@ -155,5 +159,97 @@ public class IcebergRestCatalogEventServiceDelegatorLoadTableTest {
     verify(eventDispatcher).dispatch(eventCaptor.capture());
     assertThat(eventCaptor.getValue().attributes().get(EventAttributes.LOAD_TABLE_RESPONSE))
         .isSameAs(loadTableResponse);
+  }
+
+  @Test
+  void loadTableEventsCarryReferencedByChain() {
+    when(eventDispatcher.hasListeners(PolarisEventType.BEFORE_LOAD_TABLE)).thenReturn(true);
+    when(delegate.loadTable(
+            anyString(),
+            anyString(),
+            anyString(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(RealmContext.class),
+            any(SecurityContext.class)))
+        .thenReturn(Response.notModified().build());
+
+    delegator.loadTable(
+        "prefix",
+        "ns",
+        "t1",
+        null,
+        null,
+        null,
+        "a\u001fb\u001fouter,c\u001finner",
+        mock(RealmContext.class),
+        mock(SecurityContext.class));
+
+    ArgumentCaptor<PolarisEvent> eventCaptor = ArgumentCaptor.forClass(PolarisEvent.class);
+    verify(eventDispatcher, times(2)).dispatch(eventCaptor.capture());
+    assertThat(eventCaptor.getAllValues())
+        .extracting(event -> event.attributes().get(EventAttributes.REFERENCED_BY))
+        .containsOnly(
+            List.of(
+                TableIdentifier.of(Namespace.of("a", "b"), "outer"),
+                TableIdentifier.of("c", "inner")));
+  }
+
+  @Test
+  void loadCredentialsAndLoadViewEventsCarryReferencedByChain() {
+    when(eventDispatcher.hasListeners(any())).thenReturn(true);
+    when(delegate.loadCredentials(
+            anyString(),
+            anyString(),
+            anyString(),
+            any(),
+            anyString(),
+            any(RealmContext.class),
+            any(SecurityContext.class)))
+        .thenReturn(Response.ok().build());
+    when(delegate.loadView(
+            anyString(),
+            anyString(),
+            anyString(),
+            anyString(),
+            any(RealmContext.class),
+            any(SecurityContext.class)))
+        .thenReturn(Response.ok().build());
+
+    delegator.loadCredentials(
+        "prefix",
+        "ns",
+        "t1",
+        null,
+        "n\u001fv",
+        mock(RealmContext.class),
+        mock(SecurityContext.class));
+    delegator.loadView(
+        "prefix", "ns", "v1", "n\u001fv", mock(RealmContext.class), mock(SecurityContext.class));
+
+    ArgumentCaptor<PolarisEvent> eventCaptor = ArgumentCaptor.forClass(PolarisEvent.class);
+    verify(eventDispatcher, times(4)).dispatch(eventCaptor.capture());
+    assertThat(eventCaptor.getAllValues())
+        .extracting(event -> event.attributes().get(EventAttributes.REFERENCED_BY))
+        .containsOnly(List.of(TableIdentifier.of("n", "v")));
+  }
+
+  @Test
+  void eventChainIsEmptyWhenNoReferencedBy() {
+    when(eventDispatcher.hasListeners(any())).thenReturn(true);
+    when(delegate.loadView(
+            anyString(), anyString(), anyString(), any(), any(RealmContext.class), any()))
+        .thenReturn(Response.ok().build());
+
+    delegator.loadView(
+        "prefix", "ns", "v1", null, mock(RealmContext.class), mock(SecurityContext.class));
+
+    ArgumentCaptor<PolarisEvent> eventCaptor = ArgumentCaptor.forClass(PolarisEvent.class);
+    verify(eventDispatcher, times(2)).dispatch(eventCaptor.capture());
+    assertThat(eventCaptor.getAllValues())
+        .extracting(event -> event.attributes().get(EventAttributes.REFERENCED_BY))
+        .containsOnly(List.of());
   }
 }
