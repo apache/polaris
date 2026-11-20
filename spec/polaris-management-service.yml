@@ -1069,8 +1069,9 @@ components:
         storageName:
           type: string
           description: >-
-            An optional name of a server-side AWS credential. When roleArn is also set, those
-            keys call STS AssumeRole. Otherwise they sign requests directly. Applies to any
+            An optional name of a server-side AWS credential. Polaris uses it to sign requests
+            directly when roleArn is missing. When roleArn is set, those keys call STS
+            AssumeRole. Applies to any
             SigV4 Iceberg REST catalog, including AWS services such as Glue.
           example: "my-sigv4-catalog"
         roleSessionName:
