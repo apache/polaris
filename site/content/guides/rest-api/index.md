@@ -181,7 +181,8 @@ export USER_TOKEN=$(curl -s http://localhost:8181/api/catalog/v1/oauth/tokens \
 ```
 
 Iceberg clients start by reading the catalog configuration. The `warehouse` parameter is the
-catalog name, and the returned `prefix` is used in all following paths:
+catalog name, and the returned `prefix` is used in all following paths. Here the prefix is the
+catalog name, which is why the paths below start with `quickstart_catalog`:
 
 ```shell
 curl -s "http://localhost:8181/api/catalog/v1/config?warehouse=quickstart_catalog" \
@@ -267,6 +268,12 @@ curl -s -X DELETE http://localhost:8181/api/management/v1/principals/quickstart_
 ```shell
 curl -s http://localhost:8181/api/management/v1/catalogs \
   -H "Authorization: Bearer $ROOT_TOKEN" | jq -e '.catalogs == []'
+
+curl -s http://localhost:8181/api/management/v1/principals \
+  -H "Authorization: Bearer $ROOT_TOKEN" | jq -e 'all(.principals[]; .name != "quickstart_user")'
+
+curl -s http://localhost:8181/api/management/v1/principal-roles \
+  -H "Authorization: Bearer $ROOT_TOKEN" | jq -e 'all(.roles[]; .name != "quickstart_user_role")'
 ```
 -->
 
