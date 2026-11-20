@@ -1721,11 +1721,11 @@ polaris setup apply setup-config.yaml
 
 #### export
 
-The `export` subcommand retrieves the current Polaris configuration and outputs it in a YAML format. This output is compatible with the apply subcommand, allowing you to easily back up, migrate, or recreate your Polaris environment.
+Use `polaris setup export` to write configuration as YAML for `polaris setup apply`. For disaster recovery, also back up the Polaris metastore and the files in warehouse storage.
 
-Exported policies are represented as a list with explicit `name` and `namespace` fields so policies with the same name in different namespaces are preserved. The `apply` subcommand also accepts the legacy policy mapping keyed by name, but that format cannot represent duplicate policy names because YAML mapping keys must be unique.
+Exported policies are represented as a list with explicit `name` and `namespace` fields so policies with the same name in different namespaces are preserved. The `apply` subcommand also accepts the legacy policy mapping keyed by name, but that format cannot represent duplicate policy names because YAML mapping keys must be unique. The export omits policy attachments. To recreate them with `setup apply`, record the attachment targets separately and add them to each policy’s `attach` list.
 
-Tables and views are exported only when `--include-tables-and-views` is set. They are exported as lists of `{name, namespace, metadata_location}`, sorted by namespace and name. Staged tables within a transaction are skipped. Because each table and view is loaded individually, this can significantly increase export time for catalogs with many tables.
+Add `--include-tables-and-views` to export table and view registrations from internal catalogs. The export lists `{name, namespace, metadata_location}` for each registration, sorted by namespace and name. It does not copy files. `setup apply` registers missing tables and views from those locations and skips existing ones. The referenced metadata and data files must still be accessible. Staged tables within a transaction are skipped. Because each table and view is loaded individually, this can significantly increase export time for catalogs with many tables.
 
 ```
 usage: polaris setup export [-h] [options]
