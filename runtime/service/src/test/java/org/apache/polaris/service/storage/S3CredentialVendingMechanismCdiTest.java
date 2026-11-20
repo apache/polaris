@@ -132,6 +132,9 @@ class S3CredentialVendingMechanismCdiTest {
               "polaris.features.\"SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS\"",
               "[\"STS\",\"" + TEST_MECHANISM + "\",\"" + UNINSTALLED_MECHANISM + "\"]"),
           Map.entry("polaris.event-listener.type", "test"),
+          Map.entry(
+              "polaris.bootstrap.credentials",
+              "POLARIS,test-admin,test-secret;" + NO_SKIP_REALM + ",test-admin,test-secret"),
           Map.entry("polaris.authentication.token-broker.type", "symmetric-key"),
           Map.entry("polaris.authentication.token-broker.symmetric-key.secret", "secret"));
     }
@@ -221,8 +224,9 @@ class S3CredentialVendingMechanismCdiTest {
       // registry) while TEST_MECHANISM is installed in the live registry this test installed
       // above, populated with a namespace and table, then the registry loses the mechanism.
       String testMechCatalog = "cdi-test-mech-cat";
+      String noSkipRealmToken = client.obtainToken(credentials, NO_SKIP_REALM);
       Map<String, String> noSkipRealmHeaders =
-          Map.of("Authorization", "Bearer " + adminToken, "Polaris-Realm", NO_SKIP_REALM);
+          Map.of("Authorization", "Bearer " + noSkipRealmToken, "Polaris-Realm", NO_SKIP_REALM);
       createTestMechanismCatalog(managementApi, noSkipRealmHeaders, testMechCatalog);
       try (Response r =
           catalogApi
@@ -343,8 +347,9 @@ class S3CredentialVendingMechanismCdiTest {
       String adminToken = client.obtainToken(credentials);
       ManagementApi managementApi = client.managementApi(adminToken);
       CatalogApi catalogApi = client.catalogApi(adminToken);
+      String noSkipRealmToken = client.obtainToken(credentials, NO_SKIP_REALM);
       Map<String, String> realmHeaders =
-          Map.of("Authorization", "Bearer " + adminToken, "Polaris-Realm", NO_SKIP_REALM);
+          Map.of("Authorization", "Bearer " + noSkipRealmToken, "Polaris-Realm", NO_SKIP_REALM);
 
       String endpoint = "https://s3.example-compatible-store.test";
       String region = "us-east-1";

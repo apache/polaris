@@ -85,6 +85,17 @@ configuration file:
 polaris.authentication.token-broker.symmetric-key.secret=${POLARIS_SYMMETRIC_KEY_SECRET}
 ```
 
+The properties above apply to every realm that does not override them, so all such realms share the
+same signing key. Tokens issued by Polaris are bound to the realm they were issued for, but you may
+still prefer a distinct key for each realm, for example to limit the impact of a leaked key. To do
+so, set the properties for each realm:
+
+```properties
+polaris.authentication.my-realm.token-broker.type=rsa-key-pair
+polaris.authentication.my-realm.token-broker.rsa-key-pair.public-key-file=/tmp/my-realm/public.key
+polaris.authentication.my-realm.token-broker.rsa-key-pair.private-key-file=/tmp/my-realm/private.key
+```
+
 Finally, you can also configure the token broker to use a maximum lifespan by setting the following
 property:
 

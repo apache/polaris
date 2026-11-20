@@ -38,6 +38,6 @@ public class IcebergTokenAccessManager implements PolarisAccessManager {
   @Override
   public String obtainAccessToken(PolarisApiEndpoints endpoints, ClientCredentials credentials) {
     OAuth2Api api = new OAuth2Api(client, endpoints.catalogApiEndpoint(), "v1/oauth/tokens");
-    return api.obtainAccessToken(credentials, "PRINCIPAL_ROLE:ALL");
+    return api.obtainAccessToken(credentials, "PRINCIPAL_ROLE:ALL", endpoints.extraHeaders());
   }
 }

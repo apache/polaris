@@ -82,6 +82,9 @@ public class RateLimiterFilterTest {
           .put("polaris.realm-context.realms", "POLARIS,POLARIS2")
           .put("polaris.metrics.realm-id-tag.enable-in-api-metrics", "true")
           .put("polaris.metrics.realm-id-tag.enable-in-http-metrics", "true")
+          .put(
+              "polaris.bootstrap.credentials",
+              "POLARIS,test-admin,test-secret;POLARIS2,test-admin,test-secret")
           .put("polaris.authentication.token-broker.type", "symmetric-key")
           .put("polaris.authentication.token-broker.symmetric-key.secret", "secret")
           .put("polaris.event-listener.types", "test")
@@ -99,6 +102,7 @@ public class RateLimiterFilterTest {
   private PolarisApiEndpoints polarisEndpoints;
   private PolarisClient client;
   private String adminToken;
+  private String adminToken2;
 
   @BeforeAll
   public void setUp(
@@ -110,6 +114,7 @@ public class RateLimiterFilterTest {
     client = PolarisClient.polarisClient(polarisEndpoints, quarkusEndpoints);
     platformMetricsApi = client.platformMetricsApi();
     adminToken = client.obtainToken(credentials);
+    adminToken2 = client.obtainToken(credentials, "POLARIS2");
   }
 
   @AfterAll
@@ -141,7 +146,7 @@ public class RateLimiterFilterTest {
     // Ensure that a different realm identifier gets a separate limit
     MockRateLimiter.allowProceed = true;
     Consumer<Status> requestAsserter2 =
-        constructRequestAsserter(polarisEndpoints, adminToken, "POLARIS2");
+        constructRequestAsserter(polarisEndpoints, adminToken2, "POLARIS2");
     requestAsserter2.accept(Status.OK);
   }
 

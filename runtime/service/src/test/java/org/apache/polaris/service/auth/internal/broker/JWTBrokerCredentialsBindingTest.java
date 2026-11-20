@@ -68,7 +68,13 @@ public class JWTBrokerCredentialsBindingTest {
     algorithm = Algorithm.HMAC256("test-hmac-key");
     secrets = new PolarisPrincipalSecrets(PRINCIPAL_ID, CLIENT_ID, MAIN_SECRET, SECONDARY_SECRET);
     broker =
-        new JWTBroker(metaStore, callContext, 3600, algorithm, JWTBroker.buildVerifier(algorithm));
+        new JWTBroker(
+            metaStore,
+            callContext,
+            "test-realm",
+            3600,
+            algorithm,
+            JWTBroker.buildVerifier(algorithm));
 
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
         .thenReturn(new PrincipalSecretsResult(secrets));

@@ -78,6 +78,7 @@ public class SymmetricKeyJWTBrokerFactory implements TokenBrokerFactory {
     return new JWTBroker(
         metaStoreManager,
         polarisCallContext,
+        realmContext.getRealmIdentifier(),
         (int) maxTokenGeneration.toSeconds(),
         algorithmAndVerifier.algorithm(),
         algorithmAndVerifier.verifier());

@@ -158,8 +158,27 @@ public final class PolarisClient implements AutoCloseable {
   }
 
   /**
+   * Requests an access token from the Polaris internal token endpoint for the given credentials in
+   * the given realm. Tokens are bound to the realm they were issued for.
+   *
+   * <p>Note: unlike {@link #obtainToken(ClientCredentials)}, this method bypasses the server
+   * manager's {@link PolarisServerManager#accessManager access manager} and assumes the server uses
+   * the default realm header ({@value Server#DEFAULT_REALM_HEADER}).
+   */
+  public String obtainToken(ClientCredentials credentials, String realmId) {
+    return new OAuth2Api(client, endpoints.catalogApiEndpoint(), "v1/oauth/tokens")
+        .obtainAccessToken(
+            credentials, "PRINCIPAL_ROLE:ALL", Map.of(Server.DEFAULT_REALM_HEADER, realmId));
+  }
+
+  /**
    * Requests an access token from the authorization server denoted by the issuer URL and token
    * endpoint path.
+   *
+   * <p>This method is meant for external authorization servers (e.g. an external identity
+   * provider). It does not send any Polaris-specific headers, including the realm header; to obtain
+   * a token from the Polaris internal token endpoint, use {@link #obtainToken(ClientCredentials)}
+   * instead.
    */
   public String obtainToken(URI issuerUrl, String endpointPath, Map<String, String> requestBody) {
     return new OAuth2Api(client, issuerUrl, endpointPath).obtainAccessToken(requestBody);
