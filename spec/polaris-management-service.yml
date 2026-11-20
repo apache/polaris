@@ -1063,9 +1063,17 @@ components:
       properties:
         roleArn:
           type: string
-          description: The aws IAM role arn assumed by polaris userArn when signing requests
-          examples:
-            - "arn:aws:iam::123456789001:role/role-that-has-remote-catalog-access"
+          description: >-
+            The AWS IAM role ARN assumed by Polaris when signing requests through STS.
+          example: "arn:aws:iam::123456789001:role/role-that-has-remote-catalog-access"
+        storageName:
+          type: string
+          description: >-
+            An optional name of a server-side AWS credential. Polaris uses it to sign requests
+            directly when roleArn is missing. When roleArn is set, those keys call STS
+            AssumeRole. Applies to any
+            SigV4 Iceberg REST catalog, including AWS services such as Glue.
+          example: "my-sigv4-catalog"
         roleSessionName:
           type: string
           description: The role session name to be used by the SigV4 protocol for signing requests
@@ -1104,7 +1112,6 @@ components:
           examples:
             - "https://sts.example.com:1234"
       required:
-        - roleArn
         - signingRegion
 
     ImplicitAuthenticationParameters:
