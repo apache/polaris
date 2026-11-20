@@ -570,11 +570,11 @@ public class ProductionReadinessChecks {
   }
 
   /**
-   * {@link org.apache.polaris.core.storage.cache.StorageCredentialCache} treats an
-   * out-of-range {@code STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS} as a non-fatal
-   * misconfiguration: it logs a warning and falls back to the default half-lifetime behavior
-   * rather than failing a live credential request over an operator's typo. This check instead
-   * surfaces the same problem at startup, loudly, before any request is affected.
+   * {@link org.apache.polaris.core.storage.cache.StorageCredentialCache} treats an out-of-range
+   * {@code STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS} as a non-fatal misconfiguration: it logs a
+   * warning and falls back to the default half-lifetime behavior rather than failing a live
+   * credential request over an operator's typo. This check instead surfaces the same problem at
+   * startup, loudly, before any request is affected.
    */
   @Produces
   public ProductionReadinessCheck checkStorageCredentialRefreshBuffer(

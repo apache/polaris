@@ -60,15 +60,14 @@ public class StorageCredentialCache {
                           Math.max(0, Math.min(effectiveTtl, entry.maxCacheDurationMs()));
                       return Duration.ofMillis(expireAfterMillis);
                     }))
-            .build(
-                key -> {
-                  LOGGER.atDebug().log("StorageCredentialCache::load");
-                  StorageAccessConfig accessConfig = key.load();
-                  return new StorageCredentialCacheEntry(
-                      accessConfig,
-                      maxCacheDurationMs(key.realmConfig()),
-                      refreshBufferMs(key.realmConfig()));
-                });
+            .build(key -> {
+              LOGGER.atDebug().log("StorageCredentialCache::load");
+              StorageAccessConfig accessConfig = key.load();
+              return new StorageCredentialCacheEntry(
+                  accessConfig,
+                  maxCacheDurationMs(key.realmConfig()),
+                  refreshBufferMs(key.realmConfig()));
+            });
   }
 
   /** How long credentials should remain in the cache. */
@@ -91,11 +90,11 @@ public class StorageCredentialCache {
   /**
    * Minimum buffer to keep between credential expiry and cache eviction.
    *
-   * <p>An out-of-range value is a misconfiguration, not something to fail a live credential
-   * request over: {@link org.apache.polaris.service.config.ProductionReadinessChecks} validates
-   * this same flag at server startup, where a bad value is surfaced loudly before any request can
-   * be affected. Here, at request time, it's too late for that -- so an invalid value is logged
-   * and ignored, falling back to the default half-lifetime behavior instead.
+   * <p>An out-of-range value is a misconfiguration, not something to fail a live credential request
+   * over: {@link org.apache.polaris.service.config.ProductionReadinessChecks} validates this same
+   * flag at server startup, where a bad value is surfaced loudly before any request can be
+   * affected. Here, at request time, it's too late for that -- so an invalid value is logged and
+   * ignored, falling back to the default half-lifetime behavior instead.
    */
   private long refreshBufferMs(RealmConfig realmConfig) {
     var refreshBufferSeconds =
