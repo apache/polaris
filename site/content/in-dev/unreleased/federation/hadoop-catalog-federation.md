@@ -84,10 +84,10 @@ storage types. Together this leads to the following patterns:
 
 | Pattern                                                                              | Works with the default build       | Notes                                                                                                                                                                                                                                                      |
 |--------------------------------------------------------------------------------------|------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Local or network-mounted directory (`file:///...`) with `FILE` storage               | Yes                                | For tests, enable `FILE` as shown below. It performs no credential vending.                                                                                                                         |
+| Local or network-mounted directory (`file:///...`) with `FILE` storage               | Yes                                | The local example uses development mode, which enables `FILE` for testing. `FILE` performs no credential vending. |
 | HDFS warehouse handled by ambient Hadoop config and process identity                 | Not expressible in `storageConfigInfo` | `hdfs://` is not an accepted location prefix for any storage type, and `default-base-location` must lie within an allowed location, so an HDFS warehouse cannot be described directly. Table loads from a federated catalog also check every table location against `allowedLocations` before vending credentials (unless `ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING` is `false`), so an `hdfs://` table location fails at load time too. The `*` wildcard entry (`ALLOW_WILDCARD_LOCATION=true`) lifts these location checks but still needs a `file://` base location next to it. |
 | `HadoopFileIO` with `s3a://` warehouses                                              | Only with extra runtime packaging  | `hadoop-aws` and related file system dependencies are not included in the Polaris runtime.                                                                                                                                                                 |
-| `S3FileIO` with ambient AWS credentials                                              | Sometimes                          | Set `io-impl=org.apache.iceberg.aws.s3.S3FileIO` in the catalog-level `properties`. Commits still rely on atomic rename, which S3 does not provide, so concurrent writers are unsafe.                                                                       |
+| `S3FileIO` with ambient AWS credentials | Only with extra runtime packaging | `HadoopCatalog` still needs a Hadoop file system for the warehouse URI. Commits rely on atomic rename, which S3 does not provide, so concurrent writers are unsafe. |
 | **UNSAFE!** Putting object-store credentials in catalog properties                   | **DO NOT USE / THIS IS UNSAFE**    | Secrets placed in catalog properties are returned to authenticated catalog clients through `/config`. This **exposes passwords, access keys, session tokens, or other secrets as plain text**.                                                             |
 
 ## Creating a federated catalog
@@ -96,14 +96,17 @@ Use the Management API (or the Python CLI) to create an external catalog whose c
 `HADOOP`. Set `POLARIS_URL` to the base URL of your Polaris server, for example
 `http://localhost:8181`.
 
-For the local test example, mount the warehouse at `/data/warehouse/analytics` in the Polaris
-container and add `FILE` to the storage types in the server's `application.properties`:
+For the local `FILE` example, configure federation as shown above, then run the following from
+the Polaris source directory. The Gradle development task enables `FILE` storage for local testing.
+A standard server refuses to start if `FILE` is added to the supported storage types with the
+default readiness settings.
 
-```properties
-polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"=["S3","GCS","AZURE","FILE"]
+```bash
+mkdir -p /tmp/polaris/warehouse/analytics
+./gradlew :polaris-server:quarkusDev
 ```
 
-Then register the catalog:
+With the development server running, register the catalog from a second terminal.
 
 ```bash
 curl -X POST "${POLARIS_URL}/api/management/v1/catalogs" \
@@ -115,12 +118,12 @@ curl -X POST "${POLARIS_URL}/api/management/v1/catalogs" \
           "name": "analytics_hadoop",
           "storageConfigInfo": {
             "storageType": "FILE",
-            "allowedLocations": ["file:///data/warehouse/analytics/"]
+            "allowedLocations": ["file:///tmp/polaris/warehouse/analytics/"]
           },
-          "properties": { "default-base-location": "file:///data/warehouse/analytics/" },
+          "properties": { "default-base-location": "file:///tmp/polaris/warehouse/analytics/" },
           "connectionConfigInfo": {
             "connectionType": "HADOOP",
-            "warehouse": "file:///data/warehouse/analytics/",
+            "warehouse": "file:///tmp/polaris/warehouse/analytics/",
             "authenticationParameters": { "authenticationType": "IMPLICIT" }
           }
         }
@@ -133,10 +136,10 @@ The same catalog can be created with the CLI:
 polaris catalogs create analytics_hadoop \
   --type external \
   --storage-type file \
-  --default-base-location file:///data/warehouse/analytics/ \
+  --default-base-location file:///tmp/polaris/warehouse/analytics/ \
   --catalog-connection-type hadoop \
-  --catalog-uri file:///data/warehouse/analytics/ \
-  --hadoop-warehouse file:///data/warehouse/analytics/ \
+  --catalog-uri file:///tmp/polaris/warehouse/analytics/ \
+  --hadoop-warehouse file:///tmp/polaris/warehouse/analytics/ \
   --catalog-authentication-type implicit
 ```
 
@@ -149,9 +152,21 @@ endpoint and is reached through `warehouse`. The value is not validated, so the 
 omitted or used as a label for the warehouse, for example an `hdfs://` or `s3://` location. The
 CLI still asks for `--catalog-uri` on `HADOOP` connections; any value works there.
 
-For an S3 warehouse, use `"storageType": "S3"` with `roleArn` and `region`, point `warehouse` at
-the bucket prefix, and select `S3FileIO` through the catalog-level `properties` so that the server
-does not need the `hadoop-aws` connector (see the warehouse access patterns above):
+For the `s3://` warehouse below, add `hadoop-aws` matching the server's Hadoop version and its
+runtime dependencies to the Polaris server classpath. Configure Hadoop to use S3A for `s3://`
+by adding this property to `core-site.xml` on that classpath before starting Polaris.
+
+```xml
+<configuration>
+  <property>
+    <name>fs.s3.impl</name>
+    <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+  </property>
+</configuration>
+```
+
+`HadoopCatalog` uses this file system to open the warehouse and list tables. The request below
+selects `S3FileIO` for Iceberg file access. Both use the AWS credentials of the Polaris process.
 
 ```bash
 curl -X POST "${POLARIS_URL}/api/management/v1/catalogs" \
@@ -180,8 +195,7 @@ curl -X POST "${POLARIS_URL}/api/management/v1/catalogs" \
       }'
 ```
 
-The server-side `HadoopCatalog` reads and writes this warehouse with the ambient AWS credentials of
-the Polaris process, not with `roleArn`, which only serves credential vending to clients.
+The `roleArn` in the request is used to vend credentials to clients.
 
 Grant catalog roles to principal roles exactly as you would for internal catalogs so engines can
 obtain tokens that authorize against the federated metadata.
