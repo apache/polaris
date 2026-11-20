@@ -411,7 +411,7 @@ public class CatalogHandlerUtils {
             try {
               request.requirements().forEach(requirement -> requirement.validate(base));
             } catch (CommitFailedException e) {
-              if (!rollbackCompactionEnabled) {
+              if (!rollbackCompactionEnabled || base.currentSnapshot() == null) {
                 // wrap and rethrow outside of tasks to avoid unnecessary retry
                 throw new ValidationFailureException(e);
               }
@@ -423,8 +423,11 @@ public class CatalogHandlerUtils {
                   findAssertRefSnapshotID(request);
               MetadataUpdate.SetSnapshotRef setSnapshotRef = findSetSnapshotRefUpdate(request);
 
-              if (assertRefSnapshotId == null || setSnapshotRef == null) {
-                // This implies the request was not trying to add a snapshot.
+              if (assertRefSnapshotId == null
+                  || assertRefSnapshotId.snapshotId() == null
+                  || setSnapshotRef == null
+                  || base.ref(setSnapshotRef.name()) == null) {
+                // This implies the request was not trying to add a snapshot to an existing ref.
                 LOGGER.debug(
                     "Giving up on Rollback replace operations for table={}, with current-snapshot-id={}, as operation doesn't attempts to add a single snapshot",
                     base.uuid(),
