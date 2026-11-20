@@ -25,7 +25,7 @@ build:
 
 Configuration for the webhook event listener. 
 
-Delivery is best-effort and in-process only: `onEvent` POSTs on the  shared event-listener executor. Transient failures retry immediately in that call; events that  exhaust retries are dropped. In-flight work is not durable and is lost on process restart. This  listener is not a durable audit spool and is not strengthened by enabling `persistence-in-memory-buffer` (that buffer is a separate listener, not a webhook delivery  queue).   
+Delivery is best-effort and in-process only: `onEvent` POSTs on the  shared event-listener executor. Transient failures retry immediately in that call; events that  exhaust retries are dropped. In-flight work is not durable and is lost on process restart. This  listener is not a durable audit spool and is not strengthened by enabling `persistence-in-memory-buffer` (that buffer is a separate listener, not a webhook delivery queue).   
 
 HTTP redirects are not followed; the endpoint must respond directly. When `require-https` is `true` (the default), only `https` endpoints are accepted.
 
