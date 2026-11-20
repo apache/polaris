@@ -47,9 +47,11 @@ val quarkusRuntimeElements =
 
 val dynamoDbStartupAction = sourceSets.create("dynamoDbStartupAction")
 val dynamoDbStartupActionCompileOnly =
-  configurations.getByName(dynamoDbStartupAction.compileOnlyConfigurationName)
+  configurations[dynamoDbStartupAction.compileOnlyConfigurationName]
+val dynamoDbStartupActionRuntimeOnly =
+  configurations[dynamoDbStartupAction.runtimeOnlyConfigurationName]
 val dynamoDbStartupActionImplementation =
-  configurations.getByName(dynamoDbStartupAction.implementationConfigurationName)
+  configurations[dynamoDbStartupAction.implementationConfigurationName]
 
 dependencies {
   polarisServer(project(path = ":polaris-server", configuration = "quarkusRunner"))
@@ -57,6 +59,10 @@ dependencies {
     "org.apache.polaris.server-test-runner:polaris-server-test-runner",
   )
   dynamoDbStartupActionImplementation(project(":polaris-floci-aws-testcontainer"))
+  dynamoDbStartupActionRuntimeOnly(platform(libs.quarkus.bom))
+  dynamoDbStartupActionRuntimeOnly("org.jboss.slf4j:slf4j-jboss-logmanager")
+  // The SLF4J binding declares LogManager as provided, so include it explicitly.
+  dynamoDbStartupActionRuntimeOnly("org.jboss.logmanager:jboss-logmanager")
 
   implementation(project(":polaris-persistence-nosql-api"))
   implementation(project(":polaris-persistence-nosql-impl"))
