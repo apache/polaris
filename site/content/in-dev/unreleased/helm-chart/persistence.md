@@ -181,10 +181,9 @@ advancedConfig:
   polaris.persistence.retry.timeout: "PT60S"
 ```
 
-Set [`polaris.persistence.retry.timeout`]({{% relref
-"../configuration/config-sections/smallrye-polaris_persistence" %}}) to at least twice the longer of
-`read-timeout` and `server-selection-timeout`, so that a commit can still be retried after a MongoDB
-operation timed out.
+Set [`polaris.persistence.retry.timeout`]({{% relref "../configuration/configuration-reference.md" %}}#polarispersistence)
+to at least twice the longer of `read-timeout` and `server-selection-timeout`, so that a commit can
+still be retried after a MongoDB operation timed out.
 
 A commit request can take longer than the retry timeout. Keep the request timeouts of proxies, load
 balancers and clients in front of Polaris well above it, so that clients receive the commit result.
