@@ -324,7 +324,7 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
-    String arnPrefix = arnPrefixForPartition(storageConfigurationInfo.getAwsPartition());
+    String arnPrefix = s3ArnPrefix(storageConfigurationInfo);
     List<String> encryptionKeys = storageConfigurationInfo.getEffectiveEncryptionKeys();
     List<String> decryptionKeys = storageConfigurationInfo.getDecryptionKeys();
 
@@ -524,7 +524,13 @@ public class AwsCredentialsStorageIntegration
     return String.format("arn:aws:kms:%s:%s:key/*", region, accountId);
   }
 
-  private static String arnPrefixForPartition(String awsPartition) {
+  private static String s3ArnPrefix(AwsStorageConfigurationInfo storageConfig) {
+    String roleArn = storageConfig.getRoleARN();
+    // Dell ECS uses role URNs, but requires the AWS partition in S3 policy resource ARNs.
+    if (roleArn != null && roleArn.startsWith("urn:ecs:")) {
+      return "arn:aws:s3:::";
+    }
+    String awsPartition = storageConfig.getAwsPartition();
     return String.format("arn:%s:s3:::", awsPartition != null ? awsPartition : "aws");
   }
 

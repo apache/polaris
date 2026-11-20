@@ -362,6 +362,38 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @Test
+  public void testGetSubscopedCredsEcsInlinePolicy() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "urn:ecs:iam::namespace:role/s3assumeRole";
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(invocation -> {
+          AssumeRoleRequest request = invocation.getArgument(0);
+          assertThat(request.roleArn()).isEqualTo(roleARN);
+          assertThat(IamPolicy.fromJson(request.policy()).statements())
+              .hasSize(4)
+              .flatExtracting(IamStatement::resources)
+              .containsOnly(
+                  IamResource.create("arn:aws:s3:::bucket"),
+                  IamResource.create("arn:aws:s3:::bucket/path/to/warehouse/namespace/table/*"));
+          return ASSUME_ROLE_RESPONSE;
+        });
+    String warehouseDir = "s3://bucket/path/to/warehouse";
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(warehouseDir)
+            .roleARN(roleARN)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
+        .getStorageAccessConfig(
+            toGrants(
+                Set.of(warehouseDir + "/namespace/table"),
+                Set.of(warehouseDir + "/namespace/table"),
+                Set.of(warehouseDir + "/namespace/table")),
+            Optional.empty(),
+            CredentialVendingContext.empty());
+  }
+
+  @Test
   public void testGetSubscopedCredsInlinePolicyEscapesIamSpecialCharacters() {
     StsClient stsClient = Mockito.mock(StsClient.class);
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";
