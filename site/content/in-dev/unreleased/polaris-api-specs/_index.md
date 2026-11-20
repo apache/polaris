@@ -25,3 +25,5 @@ weight: 1100
 The Apache Polaris API offers a comprehensive set of endpoints that enable you to manage principals, principal-roles, catalogs, and catalog-roles programmatically.
 
 It follows REST standards, using clear, resource-based URLs, standard HTTP methods, response codes, and secure authentication. With the Polaris API, you can create, manage, and query Iceberg catalogs efficiently.
+
+For guidance on retrying Iceberg writes, see [Recovering from an unknown table commit]({{% relref "./table-commit-retries.md" %}}).
