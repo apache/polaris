@@ -57,8 +57,6 @@ import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 public class PolarisServiceImplTest {
@@ -313,65 +311,9 @@ public class PolarisServiceImplTest {
     when(realmConfig.getConfig(
             FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
         .thenReturn(List.of("SIGV4"));
-    when(realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)).thenReturn(false);
 
     assertThatCode(() -> invokeValidateExternalCatalog(polarisService, sigV4ExternalCatalog(null)))
         .doesNotThrowAnyException();
-  }
-
-  @ParameterizedTest
-  @ValueSource(
-      strings = {
-        "https://sts.us-west-2.amazonaws.com",
-        "http://sts.example.com:9000",
-        "https://user@sts.example.com",
-        "https://sts.example.com/?token=1",
-        "https://sts.example.com/#fragment"
-      })
-  void testValidateExternalCatalog_SigV4StsEndpointAllowed(String stsEndpoint) {
-    when(realmConfig.getConfig(
-            FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
-        .thenReturn(List.of("SIGV4"));
-    when(realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)).thenReturn(true);
-
-    assertThatCode(
-            () -> invokeValidateExternalCatalog(polarisService, sigV4ExternalCatalog(stsEndpoint)))
-        .doesNotThrowAnyException();
-  }
-
-  @Test
-  void testValidateExternalCatalog_SigV4StsEndpointRejectedWhenS3EndpointsDisabled() {
-    when(realmConfig.getConfig(
-            FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
-        .thenReturn(List.of("SIGV4"));
-    when(realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)).thenReturn(false);
-
-    assertThatThrownBy(() ->
-            invokeValidateExternalCatalog(
-                polarisService, sigV4ExternalCatalog("https://sts.us-west-2.amazonaws.com")))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Explicitly setting STS endpoints is not allowed.");
-  }
-
-  @ParameterizedTest
-  @ValueSource(
-      strings = {
-        "sts.us-west-2.amazonaws.com",
-        "ftp://sts.example.com",
-        "file:///tmp/sts",
-        "",
-        "not a uri"
-      })
-  void testValidateExternalCatalog_SigV4InvalidStsEndpointRejected(String stsEndpoint) {
-    when(realmConfig.getConfig(
-            FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
-        .thenReturn(List.of("SIGV4"));
-    when(realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)).thenReturn(true);
-
-    assertThatThrownBy(
-            () -> invokeValidateExternalCatalog(polarisService, sigV4ExternalCatalog(stsEndpoint)))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("stsEndpoint");
   }
 
   private ExternalCatalog sigV4ExternalCatalog(String stsEndpoint) {
