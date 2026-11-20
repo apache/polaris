@@ -47,6 +47,23 @@ client.
 
 {{% include-config-section "storage-aws" %}}
 
+### Revoking table access
+
+Polaris checks a principal’s current table privileges on each request for vended credentials,
+including refresh requests. Revoking the last grant that allows reads prevents the principal
+from obtaining new read credentials through Polaris. A client that already holds STS credentials can still use
+them to read directly from S3 until the AWS session expires, as long as AWS permissions allow it.
+
+For example, if a session expires at 11:00 UTC and you revoke read access in Polaris at 10:15 UTC,
+the client may still read from S3 for the remaining 45 minutes. By default, Polaris requests a
+session of one hour (`STORAGE_CREDENTIAL_DURATION_SECONDS`). The `s3.session-token-expires-at-ms`
+property gives its actual expiration. `STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS` controls how
+long Polaris caches credentials. Evicting a cache entry does not revoke the AWS session.
+
+If access must end sooner, an AWS administrator can
+[revoke older sessions for the IAM role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_revoke-sessions.html).
+This affects every session for that role issued before the cutoff, including sessions used by other principals.
+
 ## Azure ADLS
 
 Polaris generates a
