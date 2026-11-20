@@ -50,9 +50,10 @@ client.
 ### Revoking table access
 
 Polaris checks a principal’s current table privileges on each request for vended credentials,
-including refresh requests. Revoking the last grant that allows reads prevents the principal
-from obtaining new read credentials through Polaris. A client that already holds STS credentials can still use
-them to read directly from S3 until the AWS session expires, as long as AWS permissions allow it.
+including refresh requests. After a principal loses all privileges that grant read or write
+delegation for a table, Polaris denies new credential requests for that table. A client that
+already holds STS credentials can still read directly from S3 until the AWS session expires,
+as long as AWS permissions allow it.
 
 For example, if a session expires at 11:00 UTC and you revoke read access in Polaris at 10:15 UTC,
 the client may still read from S3 for the remaining 45 minutes. By default, Polaris requests a
