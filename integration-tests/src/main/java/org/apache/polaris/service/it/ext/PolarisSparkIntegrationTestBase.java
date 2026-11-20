@@ -94,6 +94,10 @@ public abstract class PolarisSparkIntegrationTestBase {
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
+            .setEndpoint(s3Container.getHttpEndpoint())
+            .setPathStyleAccess(true)
+            .setStsUnavailable(true)
+            .setFileIoProperties(s3Container.getStorageConfigProperties())
             .build();
     CatalogProperties props = new CatalogProperties("s3://my-bucket/path/to/data");
     props.putAll(s3Container.getS3ConfigProperties());

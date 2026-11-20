@@ -125,6 +125,16 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   `OPTIMIZED_SIBLING_CHECK`, overlap validation can walk the catalog's namespaces to check
   unindexed Generic Table locations. This can add metastore reads to table, view, and namespace
   operations.
+- Server-side Iceberg FileIO is built from `StorageAccessConfig` only. Catalog `table-default.*`
+  properties are no longer passed into server FileIO construction. Put FileIO settings on the
+  storage configuration (typed fields such as S3 `endpoint` / `pathStyleAccess`, or
+  `fileIoProperties`). For rolling upgrades that still rely on catalog table defaults, set
+  `polaris.features."PROPAGATE_CATALOG_TABLE_DEFAULTS_TO_STORAGE_ACCESS_CONFIG"=true` (off by
+  default). Catalog `table-default.*` remains available as Iceberg client/table create defaults.
+- Management API `StorageConfigInfo` gains optional `fileIoProperties`. Catalog get/list JSON that
+  includes the new field may fail clients that deserialize with a strict old schema (for example
+  `FAIL_ON_UNKNOWN_PROPERTIES`). Polaris itself ignores unknown storage-config properties when
+  reading stored JSON.
 - `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
   invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
   size or supplying a page token. A request that supplies neither still returns all results, unless
@@ -191,6 +201,10 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
   lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners
   (webhook / Kafka / CloudWatch) can adopt this in follow-ups.
+- Storage configuration (`StorageConfigInfo` / `PolarisStorageConfigurationInfo`) accepts optional
+  `fileIoProperties` for Iceberg FileIO settings not covered by typed fields. Typed fields take
+  precedence when both are set. Polaris applies Java FileIO-relevant properties server-side; all
+  properties are also relayed to clients.
 - Python CLI: added `register` support for both `tables` and `views` commands
 - Python CLI: `setup export` and `setup apply` now support both Iceberg tables and views as register entries.
 - Python CLI: added `namespaces update` to set and remove namespace properties
@@ -232,6 +246,10 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   re-imported into Ranger for this to take effect.
 
 ### Deprecations
+
+- `PROPAGATE_CATALOG_TABLE_DEFAULTS_TO_STORAGE_ACCESS_CONFIG` is a temporary rolling-upgrade bridge
+  (off by default) after server FileIO stopped reading catalog `table-default.*` directly. Prefer
+  storage-configuration typed fields and `fileIoProperties`. Planned for removal in 1.10.0.
 
 ### Fixes
 
