@@ -61,8 +61,8 @@ The backend creates its DynamoDB tables during NoSQL bootstrap. Run the [Admin T
 needs permissions to create, describe, and access the Polaris tables; scope those permissions to
 the configured table prefix where possible.
 
-The generated [DynamoDB configuration reference]({{% relref
-"../configuration/config-sections/smallrye-polaris_persistence_nosql_dynamodb" %}}) lists the
-Polaris-specific settings. Run the regular NoSQL maintenance operations described in the [Admin
+The generated
+[DynamoDB configuration reference]({{% relref "../configuration/configuration-reference.md" %}}#polarispersistencenosqldynamodb)
+lists the Polaris-specific settings. Run the regular NoSQL maintenance operations described in the [Admin
 Tool]({{% ref "../admin-tool" %}}#nosql-specific-operations) documentation with credentials that
 can scan and modify the same DynamoDB tables as Polaris.
