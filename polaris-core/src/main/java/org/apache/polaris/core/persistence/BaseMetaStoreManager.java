@@ -147,6 +147,39 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
     return entityBuilder.build();
   }
 
+  /**
+   * Prepare an in-place soft-delete: set drop/toPurge timestamps, bump version, keep the entity in
+   * the active name index. Does not delete grants or files.
+   */
+  protected @NonNull PolarisBaseEntity prepareToSoftDeleteEntity(
+      @NonNull PolarisBaseEntity original, long dropTimestamp, long toPurgeTimestamp) {
+    getDiagnostics().checkNotNull(original, "unexpected_null_entity");
+    getDiagnostics()
+        .checkNotNull(original.getName(), "unexpected_null_name", "entity={}", original);
+    getDiagnostics()
+        .check(!original.cannotBeDroppedOrRenamed(), "entity_undroppable", "entity={}", original);
+    getDiagnostics().check(dropTimestamp > 0, "null_drop_timestamp", "entity={}", original);
+    getDiagnostics()
+        .check(
+            toPurgeTimestamp >= dropTimestamp,
+            "invalid_to_purge_timestamp",
+            "dropTimestamp={} toPurgeTimestamp={} entity={}",
+            dropTimestamp,
+            toPurgeTimestamp,
+            original);
+
+    long now = System.currentTimeMillis();
+    if (now < original.getCreateTimestamp()) {
+      now = original.getCreateTimestamp() + 1;
+    }
+    return new PolarisBaseEntity.Builder(original)
+        .dropTimestamp(dropTimestamp)
+        .toPurgeTimestamp(toPurgeTimestamp)
+        .lastUpdateTimestamp(now)
+        .entityVersion(original.getEntityVersion() + 1)
+        .build();
+  }
+
   /** {@inheritDoc} */
   @Override
   public @NonNull GenerateEntityIdResult generateNewEntityId(@NonNull PolarisCallContext callCtx) {

@@ -256,6 +256,16 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
+  public @NonNull DropEntityResult softDeleteEntityIfExists(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop,
+      long dropTimestamp,
+      long toPurgeTimestamp) {
+    throw illegalMethodError("softDeleteEntityIfExists");
+  }
+
+  @Override
   public @NonNull PrivilegeResult grantUsageOnRoleToGrantee(
       @NonNull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,

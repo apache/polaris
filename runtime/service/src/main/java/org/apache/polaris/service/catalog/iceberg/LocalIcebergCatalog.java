@@ -35,6 +35,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.DateTimeException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -636,10 +638,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
             CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier));
 
-    // The storageProperties we stash away in the Task should be the superset of the
-    // internalProperties of the StorageInfoEntity to be able to use its StorageIntegration
-    // combined with other miscellaneous FileIO-related initialization properties defined
-    // by the Table.
     Map<String, String> storageProperties =
         storageInfoEntity
             .map(PolarisEntity::getInternalPropertiesAsMap)
@@ -3307,6 +3305,19 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
 
+    if (!purge
+        && subType == PolarisEntitySubType.ICEBERG_TABLE
+        && realmConfig.getConfig(FeatureConfiguration.TABLE_SOFT_DELETE_ENABLED, catalogEntity)) {
+      long dropTimestamp = System.currentTimeMillis();
+      return getMetaStoreManager()
+          .softDeleteEntityIfExists(
+              getCurrentPolarisContext(),
+              PolarisEntity.toCoreList(catalogPath),
+              leafEntity,
+              dropTimestamp,
+              dropTimestamp + softDeleteHoldPeriodMillis());
+    }
+
     return getMetaStoreManager()
         .dropEntityIfExists(
             getCurrentPolarisContext(),
@@ -3314,6 +3325,27 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             leafEntity,
             storageProperties,
             purge);
+  }
+
+  private boolean tableSoftDeleteEnabled() {
+    return realmConfig.getConfig(FeatureConfiguration.TABLE_SOFT_DELETE_ENABLED, catalogEntity);
+  }
+
+  private long softDeleteHoldPeriodMillis() {
+    String spec =
+        realmConfig.getConfig(FeatureConfiguration.TABLE_SOFT_DELETE_HOLD_PERIOD, catalogEntity);
+    try {
+      long millis = Duration.parse(spec).toMillis();
+      if (millis < 0) {
+        throw new BadRequestException(
+            "Invalid table soft-delete hold period '%s'; duration must not be negative", spec);
+      }
+      return millis;
+    } catch (DateTimeException | ArithmeticException e) {
+      throw new BadRequestException(
+          "Invalid table soft-delete hold period '%s'; expected an ISO-8601 duration such as P7D",
+          spec);
+    }
   }
 
   private boolean sendNotificationForTableLike(
@@ -3545,17 +3577,25 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
-    ListEntitiesResult listResult =
-        getMetaStoreManager()
-            .listEntities(
-                getCurrentPolarisContext(),
-                PolarisEntity.toCoreList(catalogPath),
-                PolarisEntityType.TABLE_LIKE,
-                subType,
-                pageToken);
-
     Namespace parentNamespace = PolarisCatalogHelpers.parentNamespace(catalogPath);
-    return listResult
+    if (subType == PolarisEntitySubType.ICEBERG_TABLE && tableSoftDeleteEnabled()) {
+      return getMetaStoreManager()
+          .listFullEntities(
+              getCurrentPolarisContext(),
+              PolarisEntity.toCoreList(catalogPath),
+              PolarisEntityType.TABLE_LIKE,
+              subType,
+              pageToken)
+          .filter(entity -> !entity.isDropped())
+          .map(entity -> TableIdentifier.of(parentNamespace, entity.getName()));
+    }
+    return getMetaStoreManager()
+        .listEntities(
+            getCurrentPolarisContext(),
+            PolarisEntity.toCoreList(catalogPath),
+            PolarisEntityType.TABLE_LIKE,
+            subType,
+            pageToken)
         .getPage()
         .map(record -> TableIdentifier.of(parentNamespace, record.getName()));
   }

@@ -153,4 +153,27 @@ class PolarisConfigurationTest {
         .isEqualTo("polaris.config.allow.client-specified.table.location");
     assertThat(FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.defaultValue()).isTrue();
   }
+
+  @Test
+  void tableSoftDeleteDefaults() {
+    assertThat(FeatureConfiguration.TABLE_SOFT_DELETE_ENABLED.key())
+        .isEqualTo("TABLE_SOFT_DELETE_ENABLED");
+    assertThat(FeatureConfiguration.TABLE_SOFT_DELETE_ENABLED.catalogConfig())
+        .isEqualTo("polaris.config.table-soft-delete.enabled");
+    assertThat(FeatureConfiguration.TABLE_SOFT_DELETE_ENABLED.defaultValue()).isFalse();
+
+    assertThat(FeatureConfiguration.TABLE_SOFT_DELETE_HOLD_PERIOD.key())
+        .isEqualTo("TABLE_SOFT_DELETE_HOLD_PERIOD");
+    assertThat(FeatureConfiguration.TABLE_SOFT_DELETE_HOLD_PERIOD.catalogConfig())
+        .isEqualTo("polaris.config.table-soft-delete.hold-period");
+    assertThat(FeatureConfiguration.TABLE_SOFT_DELETE_HOLD_PERIOD.defaultValue()).isEqualTo("P7D");
+
+    assertThat(FeatureConfiguration.TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE.key())
+        .isEqualTo("TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE");
+    assertThat(
+            FeatureConfiguration.TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE.catalogConfig())
+        .isEqualTo("polaris.config.table-soft-delete.purge-data-on-permanent-delete");
+    assertThat(FeatureConfiguration.TABLE_SOFT_DELETE_PURGE_DATA_ON_PERMANENT_DELETE.defaultValue())
+        .isFalse();
+  }
 }
