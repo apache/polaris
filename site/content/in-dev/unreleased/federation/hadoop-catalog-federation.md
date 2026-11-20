@@ -51,8 +51,8 @@ polaris.features."SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES"=["OAUTH","IMP
 polaris.features."ENABLE_CATALOG_FEDERATION"=true
 ```
 
-For Kubernetes deployments, add these properties to the ConfigMap mounted into the Polaris container
-(typically at `/deployments/config/application.properties`).
+When deploying with the Polaris Helm chart, add these properties to the ConfigMap. By default,
+the chart mounts `application.properties` at `/deployments/config/application.properties`.
 
 ## Runtime requirements
 
