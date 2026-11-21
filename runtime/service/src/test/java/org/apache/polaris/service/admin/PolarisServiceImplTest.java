@@ -28,16 +28,24 @@ import static org.mockito.Mockito.when;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
+import org.apache.polaris.core.admin.model.CreateCatalogRoleRequest;
+import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
+import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.GrantCatalogRoleRequest;
+import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
+import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthorizationDecision;
@@ -153,6 +161,66 @@ public class PolarisServiceImplTest {
     verify(realmConfig, never())
         .getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS);
     verify(metaStoreManager, never()).createCatalog(any(), any(), any());
+  }
+
+  @Test
+  void createPrincipalWithoutPrincipalIsBadRequest() {
+    assertThatThrownBy(() ->
+            polarisService.createPrincipal(new CreatePrincipalRequest(null, null), null, null))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("principal");
+  }
+
+  @Test
+  void createPrincipalRoleWithoutPrincipalRoleIsBadRequest() {
+    assertThatThrownBy(() ->
+            polarisService.createPrincipalRole(new CreatePrincipalRoleRequest(null), null, null))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("principalRole");
+  }
+
+  @Test
+  void createCatalogRoleWithoutCatalogRoleIsBadRequest() {
+    assertThatThrownBy(() ->
+            polarisService.createCatalogRole("cat", new CreateCatalogRoleRequest(null), null, null))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("catalogRole");
+  }
+
+  @Test
+  void assignPrincipalRoleWithoutPrincipalRoleIsBadRequest() {
+    assertThatThrownBy(() ->
+            polarisService.assignPrincipalRole(
+                "principal", new GrantPrincipalRoleRequest(null), null, null))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("principalRole");
+  }
+
+  @Test
+  void assignCatalogRoleWithoutCatalogRoleIsBadRequest() {
+    assertThatThrownBy(() ->
+            polarisService.assignCatalogRoleToPrincipalRole(
+                "principalRole", "cat", new GrantCatalogRoleRequest(null), null, null))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("catalogRole");
+  }
+
+  @Test
+  void addGrantWithoutGrantIsBadRequest() {
+    assertThatThrownBy(() ->
+            polarisService.addGrantToCatalogRole(
+                "cat", "catalogRole", new AddGrantRequest(null), null, null))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("grant");
+  }
+
+  @Test
+  void revokeGrantWithoutGrantIsBadRequest() {
+    assertThatThrownBy(() ->
+            polarisService.revokeGrantFromCatalogRole(
+                "cat", "catalogRole", null, new RevokeGrantRequest(null), null, null))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("grant");
   }
 
   @Test
