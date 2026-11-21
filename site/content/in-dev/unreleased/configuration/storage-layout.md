@@ -131,8 +131,10 @@ for details and how to avoid these failures.
 Related settings:
 
 - `ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION`, which is `true` by default, controls whether clients may
-  supply locations at all. When it is `false`, requests that set a location or a write path
-  property are rejected, whatever the other flags are.
+  supply locations for Iceberg tables and views. When it is `false`, Iceberg requests that set a
+  location or a write path property are rejected. Generic Tables accept an explicit `base-location`
+  even when this flag is `false`, subject to the catalog's allowed-location, namespace-location,
+  and overlap rules.
 - `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` separately allows metadata files outside the table's
   location. `ALLOW_UNSTRUCTURED_TABLE_LOCATION` does not affect this check.
 
@@ -279,12 +281,17 @@ with their `write.data.path` and `write.metadata.path`. That is enough for the d
 each entity's location is inside its parent's, but not for unstructured locations.
 
 `OPTIMIZED_SIBLING_CHECK` first queries a location index kept by the JDBC and NoSQL metastores. The
-index covers the locations of tables, views, and namespaces across the catalog, but not tables'
-write paths. When `ALLOW_UNSTRUCTURED_TABLE_LOCATION` is enabled or the catalog is external, and the
-index finds no conflict, Polaris still lists the siblings to check their write paths, so those
-checks stay limited to siblings under the same parent. Otherwise write paths are inside their
-table's location and the index alone suffices. Listing siblings can slow validation in namespaces
-with many entities.
+index covers Iceberg table and view locations and namespace locations across the catalog. Generic
+Table locations are stored in internal properties and are outside this index, including locations
+of newly created Generic Tables. When the index finds no conflict, validation may walk the catalog's
+namespaces and read Generic Table metadata to check their base locations. This can add metastore
+reads to table, view, and namespace operations.
+
+The index does not cover tables' write paths. When `ALLOW_UNSTRUCTURED_TABLE_LOCATION` is enabled
+or the catalog is external, and the index finds no conflict, Polaris still lists the siblings to
+check their write paths, so those checks stay limited to siblings under the same parent. Otherwise
+write paths are inside their table's location and are covered by its indexed location. Listing
+siblings can slow validation in namespaces with many entities.
 
 If an existing view's `write.metadata.path` already points outside its base location, updates can
 keep using that path as long as both locations stay the same. Allowed-location restrictions still
@@ -324,12 +331,12 @@ entities, which a transaction cannot do. Commit the change on its own, or enable
 | `DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED` | `false` | `polaris.config.default-unique-table-location.enabled` | Adds a unique suffix to generated table and view locations |
 | `ALLOW_NAMESPACE_CUSTOM_LOCATION` (behavior change) | `false` | `polaris.config.namespace-custom-location.enabled` | Allows namespace locations other than the default |
 | `ALLOW_UNSTRUCTURED_TABLE_LOCATION` | `false` | `polaris.config.allow.unstructured.table.location` | Allows table and view locations outside their namespace, and write paths outside their table |
-| `ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION` | `true` | `polaris.config.allow.client-specified.table.location` | Allows clients to supply locations at all |
+| `ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION` | `true` | `polaris.config.allow.client-specified.table.location` | Allows clients to supply Iceberg table and view locations and table write paths. Generic Tables accept explicit base locations independently of this setting |
 | `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` | `false` | `polaris.config.allow.external.metadata.file.location` | Allows metadata files outside the table location |
 | `DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED` | `false` | `polaris.config.default-table-location-object-storage-prefix.enabled` | Places generated table and view locations under a per-table hash |
 | `ALLOW_TABLE_LOCATION_OVERLAP` | `false` | `polaris.config.allow.overlapping.table.location` | Disables overlap checks for tables and views |
 | `ALLOW_NAMESPACE_LOCATION_OVERLAP` | `false` | None | Disables overlap checks for namespaces |
-| `OPTIMIZED_SIBLING_CHECK` | `false` | None | Checks overlaps with table, view, and namespace locations across the catalog using the metastore's location index |
+| `OPTIMIZED_SIBLING_CHECK` | `false` | None | Checks overlaps across the catalog using the metastore's location index and additional Generic Table metadata reads |
 
 ## See also
 
