@@ -480,6 +480,10 @@ jobs:
           exec_process svn export --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
             "${dev_python_client_url}" dist/
 
+          # The dist dev directory also holds the wheel's .asc signature and .sha512 checksum.
+          # They must not be uploaded: twine rejects them as unknown distribution formats.
+          exec_process rm -f dist/*.asc dist/*.sha512
+
       - name: Publish Python client release to PyPI
         if: env.DRY_RUN == '0'
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
