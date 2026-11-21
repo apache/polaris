@@ -37,8 +37,11 @@ import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
+import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
@@ -47,11 +50,14 @@ import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.entity.EventEntity;
+import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.events.DefaultEventSanitizer;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventType;
+import org.apache.polaris.service.types.CreateGenericTableRequest;
+import org.apache.polaris.service.types.GenericTable;
 import org.junit.jupiter.api.Test;
 
 class PolarisPersistenceEventListenerTest {
@@ -356,6 +362,117 @@ class PolarisPersistenceEventListenerTest {
     assertThat(persisted.getResourceType()).isEqualTo(EventEntity.ResourceType.TABLE);
     assertThat(persisted.getResourceIdentifier())
         .isEqualTo(TableIdentifier.of(NAMESPACE, "generic_tbl").toString());
+  }
+
+  @Test
+  void shouldResolveGenericTableIdentifierFromGenericTableEventAttributes() {
+    CapturingPersistenceListener listener = new CapturingPersistenceListener();
+    // The generic table delegator records the namespace path parameter as received and the table
+    // under the generic table attributes, not NAMESPACE / TABLE_NAME.
+    String namespacePathParam =
+        NamespaceUtils.joinNamespace(NAMESPACE, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    String genericTableName = "generic_tbl";
+    Map<PolarisEventType, AttributeMap> events =
+        Map.of(
+            PolarisEventType.BEFORE_CREATE_GENERIC_TABLE,
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(EventAttributes.NAMESPACE_NAME, namespacePathParam)
+                .put(
+                    EventAttributes.CREATE_GENERIC_TABLE_REQUEST,
+                    CreateGenericTableRequest.builder()
+                        .setName(genericTableName)
+                        .setFormat("delta")
+                        .build())
+                .build(),
+            PolarisEventType.AFTER_CREATE_GENERIC_TABLE,
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(EventAttributes.NAMESPACE_NAME, namespacePathParam)
+                .put(
+                    EventAttributes.GENERIC_TABLE,
+                    GenericTable.builder().setName(genericTableName).setFormat("delta").build())
+                .build(),
+            PolarisEventType.BEFORE_DROP_GENERIC_TABLE,
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(EventAttributes.NAMESPACE_NAME, namespacePathParam)
+                .put(EventAttributes.GENERIC_TABLE_NAME, genericTableName)
+                .build());
+
+    events.forEach((eventType, attributes) ->
+        listener.onEvent(new PolarisEvent(eventType, metadata(), attributes)));
+
+    for (PolarisEventType eventType : events.keySet()) {
+      EventEntity persisted = listener.persistedEvent(eventType);
+      assertThat(persisted.getResourceType()).isEqualTo(EventEntity.ResourceType.TABLE);
+      assertThat(persisted.getResourceIdentifier())
+          .as("resource identifier of %s", eventType)
+          .isEqualTo(TableIdentifier.of(NAMESPACE, genericTableName).toString());
+    }
+
+    listener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.BEFORE_LIST_GENERIC_TABLES,
+            metadata(),
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(EventAttributes.NAMESPACE_NAME, namespacePathParam)
+                .build()));
+    assertThat(
+            listener
+                .persistedEvent(PolarisEventType.BEFORE_LIST_GENERIC_TABLES)
+                .getResourceIdentifier())
+        .isEqualTo(NAMESPACE.toString());
+  }
+
+  @Test
+  void shouldResolveIdentifierOfNamespaceOrViewBeingCreated() {
+    CapturingPersistenceListener listener = new CapturingPersistenceListener();
+    CreateViewRequest createViewRequest = mock(CreateViewRequest.class);
+    when(createViewRequest.name()).thenReturn("created_view");
+    RegisterViewRequest registerViewRequest = mock(RegisterViewRequest.class);
+    when(registerViewRequest.name()).thenReturn("registered_view");
+
+    listener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.BEFORE_CREATE_NAMESPACE,
+            metadata(),
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(
+                    EventAttributes.CREATE_NAMESPACE_REQUEST,
+                    CreateNamespaceRequest.builder().withNamespace(NAMESPACE).build())
+                .build()));
+    listener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.BEFORE_CREATE_VIEW,
+            metadata(),
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(EventAttributes.NAMESPACE, NAMESPACE)
+                .put(EventAttributes.CREATE_VIEW_REQUEST, createViewRequest)
+                .build()));
+    listener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.BEFORE_REGISTER_VIEW,
+            metadata(),
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(EventAttributes.NAMESPACE, NAMESPACE)
+                .put(EventAttributes.REGISTER_VIEW_REQUEST, registerViewRequest)
+                .build()));
+
+    assertThat(
+            listener
+                .persistedEvent(PolarisEventType.BEFORE_CREATE_NAMESPACE)
+                .getResourceIdentifier())
+        .isEqualTo(NAMESPACE.toString());
+    assertThat(listener.persistedEvent(PolarisEventType.BEFORE_CREATE_VIEW).getResourceIdentifier())
+        .isEqualTo(TableIdentifier.of(NAMESPACE, "created_view").toString());
+    assertThat(
+            listener.persistedEvent(PolarisEventType.BEFORE_REGISTER_VIEW).getResourceIdentifier())
+        .isEqualTo(TableIdentifier.of(NAMESPACE, "registered_view").toString());
   }
 
   private static PolarisEvent tableEvent(PolarisEventType eventType) {
