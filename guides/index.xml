@@ -15,7 +15,17 @@ docker compose up
 &lt;/h2&gt;
 &lt;p&gt;Run the following command:&lt;/p&gt;
 &lt;div class="highlight"&gt;&lt;pre tabindex="0" style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;curl -s https://raw.githubusercontent.com/apache/polaris/refs/heads/main/site/content/guides/quickstart/docker-compose.yml &lt;span style="color:#000;font-weight:bold"&gt;|&lt;/span&gt; docker compose -p polaris-quickstart -f - up -d
-&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;This command will start Polaris + RustFS and automatically create:&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris, External Authentication and Keycloak</title><link>https://polaris.apache.org/guides/keycloak/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/keycloak/</guid><description>&lt;h2 id="overview" id="overview"&gt;Overview&lt;a class="heading-anchor" href="#overview" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;This command will start Polaris + RustFS and automatically create:&lt;/p&gt;</description></item><item><title>Using the Polaris REST APIs with curl</title><link>https://polaris.apache.org/guides/rest-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/rest-api/</guid><description>&lt;p&gt;This guide shows how to use the Polaris REST APIs with plain &lt;code&gt;curl&lt;/code&gt;, without the Polaris CLI or
+a query engine. It covers the steps most setups need:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Get an access token.&lt;/li&gt;
+&lt;li&gt;Create a catalog (Management API).&lt;/li&gt;
+&lt;li&gt;Create a principal and give it access to the catalog (Management API).&lt;/li&gt;
+&lt;li&gt;Create namespaces and tables as that principal (Iceberg REST API).&lt;/li&gt;
+&lt;li&gt;Clean up.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;The catalog uses &lt;code&gt;FILE&lt;/code&gt; storage inside the Polaris container, so no cloud account or object
+store is needed. &lt;strong&gt;This setup is not intended for production use.&lt;/strong&gt;&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris, External Authentication and Keycloak</title><link>https://polaris.apache.org/guides/keycloak/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/keycloak/</guid><description>&lt;h2 id="overview" id="overview"&gt;Overview&lt;a class="heading-anchor" href="#overview" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
 &lt;p&gt;This example uses Keycloak as an &lt;strong&gt;external&lt;/strong&gt; identity provider for Polaris, while keeping Polaris&amp;rsquo;s &lt;strong&gt;built-in&lt;/strong&gt;
 (internal) authorizer, which authorizes requests using grants recorded in the Polaris metastore. The &amp;ldquo;iceberg&amp;rdquo; realm

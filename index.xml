@@ -1218,7 +1218,17 @@ docker compose up
 &lt;/h2&gt;
 &lt;p&gt;Run the following command:&lt;/p&gt;
 &lt;div class="highlight"&gt;&lt;pre tabindex="0" style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;curl -s https://raw.githubusercontent.com/apache/polaris/refs/heads/main/site/content/guides/quickstart/docker-compose.yml &lt;span style="color:#000;font-weight:bold"&gt;|&lt;/span&gt; docker compose -p polaris-quickstart -f - up -d
-&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;This command will start Polaris + RustFS and automatically create:&lt;/p&gt;</description></item><item><title>Quickstart</title><link>https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/</guid><description>&lt;p&gt;Use the &lt;strong&gt;&lt;a href="https://polaris.apache.org/guides/quickstart/"&gt;Quickstart guide&lt;/a&gt;&lt;/strong&gt; for running Polaris locally with Docker Compose: prerequisites, the one-liner command, default catalog and principal, service URLs, and suggested next steps.&lt;/p&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;This command will start Polaris + RustFS and automatically create:&lt;/p&gt;</description></item><item><title>Using the Polaris REST APIs with curl</title><link>https://polaris.apache.org/guides/rest-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/rest-api/</guid><description>&lt;p&gt;This guide shows how to use the Polaris REST APIs with plain &lt;code&gt;curl&lt;/code&gt;, without the Polaris CLI or
+a query engine. It covers the steps most setups need:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Get an access token.&lt;/li&gt;
+&lt;li&gt;Create a catalog (Management API).&lt;/li&gt;
+&lt;li&gt;Create a principal and give it access to the catalog (Management API).&lt;/li&gt;
+&lt;li&gt;Create namespaces and tables as that principal (Iceberg REST API).&lt;/li&gt;
+&lt;li&gt;Clean up.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;The catalog uses &lt;code&gt;FILE&lt;/code&gt; storage inside the Polaris container, so no cloud account or object
+store is needed. &lt;strong&gt;This setup is not intended for production use.&lt;/strong&gt;&lt;/p&gt;</description></item><item><title>Quickstart</title><link>https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/</guid><description>&lt;p&gt;Use the &lt;strong&gt;&lt;a href="https://polaris.apache.org/guides/quickstart/"&gt;Quickstart guide&lt;/a&gt;&lt;/strong&gt; for running Polaris locally with Docker Compose: prerequisites, the one-liner command, default catalog and principal, service URLs, and suggested next steps.&lt;/p&gt;
 &lt;p&gt;This setup is not intended for production use.&lt;/p&gt;</description></item><item><title>Quickstart</title><link>https://polaris.apache.org/releases/1.3.0/getting-started/quick-start/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.3.0/getting-started/quick-start/</guid><description>&lt;p&gt;Use this guide to quickly start running Polaris. This is not intended for production use.&lt;/p&gt;
 &lt;h2 id="prerequisites" id="prerequisites"&gt;Prerequisites&lt;a class="heading-anchor" href="#prerequisites" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;

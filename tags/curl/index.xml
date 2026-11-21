@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Curl on Apache Polaris</title><link>https://polaris.apache.org/tags/curl/</link><description>Recent content in Curl on Apache Polaris</description><generator>Hugo</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/"&gt;Copyright © 2026 The Apache Software Foundation&lt;/a&gt;.&lt;br&gt;Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0"&gt;Apache License, Version 2.0&lt;/a&gt;.</copyright><atom:link href="https://polaris.apache.org/tags/curl/index.xml" rel="self" type="application/rss+xml"/><item><title>Using the Polaris REST APIs with curl</title><link>https://polaris.apache.org/guides/rest-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/rest-api/</guid><description>&lt;p&gt;This guide shows how to use the Polaris REST APIs with plain &lt;code&gt;curl&lt;/code&gt;, without the Polaris CLI or
+a query engine. It covers the steps most setups need:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Get an access token.&lt;/li&gt;
+&lt;li&gt;Create a catalog (Management API).&lt;/li&gt;
+&lt;li&gt;Create a principal and give it access to the catalog (Management API).&lt;/li&gt;
+&lt;li&gt;Create namespaces and tables as that principal (Iceberg REST API).&lt;/li&gt;
+&lt;li&gt;Clean up.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;The catalog uses &lt;code&gt;FILE&lt;/code&gt; storage inside the Polaris container, so no cloud account or object
+store is needed. &lt;strong&gt;This setup is not intended for production use.&lt;/strong&gt;&lt;/p&gt;</description></item></channel></rss>

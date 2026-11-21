@@ -1,0 +1,13 @@
+{
+  "catalog": {
+    "name": "quickstart_catalog",
+    "type": "INTERNAL",
+    "properties": {
+      "default-base-location": "file:///tmp/quickstart_catalog/"
+    },
+    "storageConfigInfo": {
+      "storageType": "FILE",
+      "allowedLocations": ["file:///tmp/quickstart_catalog/"]
+    }
+  }
+}
