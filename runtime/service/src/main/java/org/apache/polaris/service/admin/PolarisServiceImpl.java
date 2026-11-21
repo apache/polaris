@@ -32,7 +32,6 @@ import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
-import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogRole;
@@ -148,14 +147,6 @@ public class PolarisServiceImpl
           .log("Disallowed storage type in catalog");
       throw new IllegalArgumentException(
           "Unsupported storage type: " + storageConfigInfo.getStorageType());
-    }
-
-    // S3 endpoint settings are checked by AwsEndpointCatalogConfigValidator.
-    if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)) {
-      if (storageConfigInfo instanceof AwsStorageConfigInfo s3Config
-          && s3Config.getStsUnavailable() != null) {
-        throw new IllegalArgumentException("Explicitly disabling STS is not allowed.");
-      }
     }
   }
 

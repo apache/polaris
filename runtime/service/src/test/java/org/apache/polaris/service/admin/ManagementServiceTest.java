@@ -154,25 +154,25 @@ public class ManagementServiceTest {
     storageConfig.setEndpoint("http://example.com");
     assertThatThrownBy(createCatalog::get)
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Explicitly setting S3 endpoints is not allowed.");
+        .hasMessage("This catalog sets custom S3 endpoints, which the realm does not allow.");
 
     storageConfig.setEndpoint(null);
     storageConfig.setStsEndpoint("http://example.com");
     assertThatThrownBy(createCatalog::get)
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Explicitly setting S3 endpoints is not allowed.");
+        .hasMessage("This catalog sets custom S3 endpoints, which the realm does not allow.");
 
     storageConfig.setStsEndpoint(null);
     storageConfig.setEndpointInternal("http://example.com");
     assertThatThrownBy(createCatalog::get)
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Explicitly setting S3 endpoints is not allowed.");
+        .hasMessage("This catalog sets custom S3 endpoints, which the realm does not allow.");
 
     storageConfig.setEndpointInternal(null);
     storageConfig.setStsUnavailable(false);
     assertThatThrownBy(createCatalog::get)
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Explicitly disabling STS is not allowed.");
+        .hasMessage("This catalog disables STS, which the realm does not allow.");
   }
 
   @Test
@@ -255,7 +255,134 @@ public class ManagementServiceTest {
                 .updateCatalog(
                     catalogName, update2, services.realmContext(), services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Explicitly setting S3 endpoints is not allowed.");
+        .hasMessage("This catalog sets custom S3 endpoints, which the realm does not allow.");
+  }
+
+  @Test
+  public void testPropertiesOnlyUpdateRejectedWhenS3EndpointsDisallowed() {
+    Map<String, Object> config = mutableRealmConfig(true, true);
+    TestServices testServices = TestServices.builder().config(config).build();
+    String catalogName = "endpoint-catalog";
+    createS3Catalog(
+        testServices, catalogName, s3StorageConfig().setEndpoint("https://s3.example.com").build());
+
+    config.put("ALLOW_SETTING_S3_ENDPOINTS", false);
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(currentEntityVersion(testServices, catalogName), Map.of(), null);
+    assertThatThrownBy(() -> updateCatalog(testServices, catalogName, updateRequest))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("This catalog sets custom S3 endpoints, which the realm does not allow.");
+  }
+
+  @Test
+  public void testPropertiesOnlyUpdateChecksStoredEndpointUrisWhenValidationEnabled() {
+    Map<String, Object> config = mutableRealmConfig(true, false);
+    TestServices testServices = TestServices.builder().config(config).build();
+    String catalogName = "legacy-endpoint-catalog";
+    createS3Catalog(
+        testServices, catalogName, s3StorageConfig().setEndpoint("ftp://s3.example.com").build());
+
+    config.put("VALIDATE_AWS_ENDPOINT_URIS", true);
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(currentEntityVersion(testServices, catalogName), Map.of(), null);
+    assertThatThrownBy(() -> updateCatalog(testServices, catalogName, updateRequest))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("storageConfigInfo.endpoint must be an absolute http or https URI.");
+
+    config.put("VALIDATE_AWS_ENDPOINT_URIS", false);
+    try (Response response = updateCatalog(testServices, catalogName, updateRequest)) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testPropertiesOnlyUpdateRejectedWhenStsDisabledAndS3EndpointsDisallowed() {
+    Map<String, Object> config = mutableRealmConfig(true, true);
+    TestServices testServices = TestServices.builder().config(config).build();
+    String catalogName = "sts-disabled-catalog";
+    createS3Catalog(testServices, catalogName, s3StorageConfig().setStsUnavailable(true).build());
+
+    config.put("ALLOW_SETTING_S3_ENDPOINTS", false);
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(currentEntityVersion(testServices, catalogName), Map.of(), null);
+    assertThatThrownBy(() -> updateCatalog(testServices, catalogName, updateRequest))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("This catalog disables STS, which the realm does not allow.");
+  }
+
+  @Test
+  public void testPropertiesOnlyUpdateAllowedWhenS3EndpointsDisallowedAndCatalogHasNone() {
+    Map<String, Object> config = mutableRealmConfig(true, true);
+    TestServices testServices = TestServices.builder().config(config).build();
+    String catalogName = "plain-catalog";
+    createS3Catalog(testServices, catalogName, s3StorageConfig().build());
+
+    config.put("ALLOW_SETTING_S3_ENDPOINTS", false);
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(currentEntityVersion(testServices, catalogName), Map.of(), null);
+    try (Response response = updateCatalog(testServices, catalogName, updateRequest)) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  private static Response updateCatalog(
+      TestServices testServices, String catalogName, UpdateCatalogRequest updateRequest) {
+    return testServices
+        .catalogsApi()
+        .updateCatalog(
+            catalogName,
+            updateRequest,
+            testServices.realmContext(),
+            testServices.securityContext());
+  }
+
+  private static Map<String, Object> mutableRealmConfig(
+      boolean allowS3Endpoints, boolean validateUris) {
+    Map<String, Object> config = new HashMap<>();
+    config.put("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE"));
+    config.put("ALLOW_SETTING_S3_ENDPOINTS", allowS3Endpoints);
+    config.put("VALIDATE_AWS_ENDPOINT_URIS", validateUris);
+    config.put("ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS", Boolean.FALSE);
+    config.put("ENABLE_CATALOG_FEDERATION", Boolean.TRUE);
+    return config;
+  }
+
+  private static AwsStorageConfigInfo.Builder s3StorageConfig() {
+    return AwsStorageConfigInfo.builder()
+        .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+        .setExternalId("externalId")
+        .setUserArn("userArn")
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+        .setAllowedLocations(List.of("s3://bucket/path/to/data"));
+  }
+
+  private static void createS3Catalog(
+      TestServices testServices, String catalogName, AwsStorageConfigInfo storageConfig) {
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(storageConfig)
+            .build();
+    try (Response response =
+        testServices
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                testServices.realmContext(),
+                testServices.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  private static int currentEntityVersion(TestServices testServices, String catalogName) {
+    try (Response response =
+        testServices
+            .catalogsApi()
+            .getCatalog(catalogName, testServices.realmContext(), testServices.securityContext())) {
+      return ((Catalog) response.getEntity()).getEntityVersion();
+    }
   }
 
   @Test

@@ -307,16 +307,16 @@ public class PolarisServiceImplTest {
   }
 
   @Test
-  void testValidateExternalCatalog_SigV4WithoutStsEndpointAllowedWhenS3EndpointsDisabled() {
+  void testValidateExternalCatalog_SigV4Allowed() {
     when(realmConfig.getConfig(
             FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
         .thenReturn(List.of("SIGV4"));
 
-    assertThatCode(() -> invokeValidateExternalCatalog(polarisService, sigV4ExternalCatalog(null)))
+    assertThatCode(() -> invokeValidateExternalCatalog(polarisService, sigV4ExternalCatalog()))
         .doesNotThrowAnyException();
   }
 
-  private ExternalCatalog sigV4ExternalCatalog(String stsEndpoint) {
+  private ExternalCatalog sigV4ExternalCatalog() {
     StorageConfigInfo storageConfig =
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(List.of("file://tmp"))
@@ -326,7 +326,6 @@ public class PolarisServiceImplTest {
             .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.SIGV4)
             .setRoleArn("arn:aws:iam::123456789012:role/customer-role")
             .setSigningRegion("us-west-2")
-            .setStsEndpoint(stsEndpoint)
             .build();
     ConnectionConfigInfo connectionConfigInfo = Mockito.mock(ConnectionConfigInfo.class);
     when(connectionConfigInfo.getConnectionType())

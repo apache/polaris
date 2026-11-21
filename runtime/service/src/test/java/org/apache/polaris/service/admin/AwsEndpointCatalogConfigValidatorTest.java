@@ -97,7 +97,23 @@ class AwsEndpointCatalogConfigValidatorTest {
 
     assertThatThrownBy(() -> validator.validate(awsCatalog(storage)))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Explicitly setting S3 endpoints is not allowed.");
+        .hasMessage("This catalog sets custom S3 endpoints, which the realm does not allow.");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void stsDisabledRejectedWhenS3EndpointsDisabled(boolean stsUnavailable) {
+    AwsEndpointCatalogConfigValidator validator = validator(false, true);
+    AwsStorageConfigInfo storage =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/polaris-test")
+            .setAllowedLocations(List.of("s3://bucket/base/"))
+            .setStsUnavailable(stsUnavailable)
+            .build();
+
+    assertThatThrownBy(() -> validator.validate(awsCatalog(storage)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("This catalog disables STS, which the realm does not allow.");
   }
 
   @Test
@@ -128,7 +144,8 @@ class AwsEndpointCatalogConfigValidatorTest {
 
     assertThatThrownBy(() -> validator.validate(sigV4Catalog(S3_ENDPOINT)))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Explicitly setting STS endpoints is not allowed.");
+        .hasMessage(
+            "This catalog sets a custom SigV4 STS endpoint, which the realm does not allow.");
   }
 
   @Test
@@ -155,7 +172,8 @@ class AwsEndpointCatalogConfigValidatorTest {
 
     assertThatThrownBy(() -> validator.validate(sigV4Catalog(S3_ENDPOINT)))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Explicitly setting STS endpoints is not allowed.");
+        .hasMessage(
+            "This catalog sets a custom SigV4 STS endpoint, which the realm does not allow.");
   }
 
   @Test

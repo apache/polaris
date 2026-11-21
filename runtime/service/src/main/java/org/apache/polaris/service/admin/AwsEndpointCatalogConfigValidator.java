@@ -34,7 +34,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Validates AWS endpoint settings on every catalog create and update: the endpoint,
  * endpointInternal and stsEndpoint of AWS storage configurations, and the stsEndpoint of SigV4
- * connection configurations.
+ * connection configurations. When ALLOW_SETTING_S3_ENDPOINTS is false, it also rejects custom
+ * endpoints and disabled STS.
  */
 @ApplicationScoped
 public class AwsEndpointCatalogConfigValidator implements CatalogConfigValidator {
@@ -60,19 +61,22 @@ public class AwsEndpointCatalogConfigValidator implements CatalogConfigValidator
       sigV4StsEndpoint = sigV4Parameters.getStsEndpoint();
     }
 
-    // Custom S3 and STS endpoints are a deployment policy, so they are checked against the full
-    // catalog on every create and update. An update that leaves them unchanged is still rejected
-    // when ALLOW_SETTING_S3_ENDPOINTS is false. This check is not affected by
-    // VALIDATE_AWS_ENDPOINT_URIS.
+    // Checked against the merged catalog on every create and update.
     if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)) {
       if (awsConfig != null
           && (awsConfig.getEndpoint() != null
               || awsConfig.getEndpointInternal() != null
               || awsConfig.getStsEndpoint() != null)) {
-        throw new IllegalArgumentException("Explicitly setting S3 endpoints is not allowed.");
+        throw new IllegalArgumentException(
+            "This catalog sets custom S3 endpoints, which the realm does not allow.");
       }
       if (sigV4StsEndpoint != null) {
-        throw new IllegalArgumentException("Explicitly setting STS endpoints is not allowed.");
+        throw new IllegalArgumentException(
+            "This catalog sets a custom SigV4 STS endpoint, which the realm does not allow.");
+      }
+      if (awsConfig != null && awsConfig.getStsUnavailable() != null) {
+        throw new IllegalArgumentException(
+            "This catalog disables STS, which the realm does not allow.");
       }
     }
 
@@ -80,15 +84,17 @@ public class AwsEndpointCatalogConfigValidator implements CatalogConfigValidator
       return;
     }
 
+    String catalogName = catalog.getName();
     if (awsConfig != null) {
-      validateEndpointUri("storageConfigInfo.endpoint", awsConfig.getEndpoint());
-      validateEndpointUri("storageConfigInfo.endpointInternal", awsConfig.getEndpointInternal());
-      validateEndpointUri("storageConfigInfo.stsEndpoint", awsConfig.getStsEndpoint());
+      validateEndpointUri(catalogName, "storageConfigInfo.endpoint", awsConfig.getEndpoint());
+      validateEndpointUri(
+          catalogName, "storageConfigInfo.endpointInternal", awsConfig.getEndpointInternal());
+      validateEndpointUri(catalogName, "storageConfigInfo.stsEndpoint", awsConfig.getStsEndpoint());
     }
-    validateEndpointUri("authenticationParameters.stsEndpoint", sigV4StsEndpoint);
+    validateEndpointUri(catalogName, "authenticationParameters.stsEndpoint", sigV4StsEndpoint);
   }
 
-  private static void validateEndpointUri(String fieldName, String endpoint) {
+  private static void validateEndpointUri(String catalogName, String fieldName, String endpoint) {
     if (endpoint == null) {
       return;
     }
@@ -104,7 +110,10 @@ public class AwsEndpointCatalogConfigValidator implements CatalogConfigValidator
       throw new IllegalArgumentException(fieldName + " must be an absolute http or https URI.");
     }
     if ("http".equalsIgnoreCase(scheme)) {
-      LOGGER.warn("{} uses plain http; requests sent to it are not encrypted.", fieldName);
+      LOGGER.warn(
+          "Catalog {}: {} uses plain http; requests sent to it are not encrypted.",
+          catalogName,
+          fieldName);
     }
   }
 }
