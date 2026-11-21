@@ -202,6 +202,28 @@ public class SparkIT extends SparkIntegrationBase {
   }
 
   @Test
+  public void testIcebergProcedures() {
+    String namespace = generateName("ns");
+    sql("CREATE NAMESPACE %s", namespace);
+    sql("USE %s", namespace);
+
+    String icebergTable = "icebergtb";
+    sql("CREATE TABLE %s (id INT, name STRING)", icebergTable);
+    sql("INSERT INTO %s VALUES (1, 'anna')", icebergTable);
+    Object afterFirstInsert = sql("SELECT current_timestamp()").get(0)[0];
+    sql("INSERT INTO %s VALUES (2, 'bob')", icebergTable);
+
+    sql(
+        "CALL %s.system.rollback_to_timestamp('%s.%s', TIMESTAMP '%s')",
+        catalogName, namespace, icebergTable, afterFirstInsert);
+    assertThat(sql("SELECT * FROM %s ORDER BY id", icebergTable))
+        .containsExactly(new Object[] {1, "anna"});
+
+    sql("DROP TABLE %s", icebergTable);
+    sql("DROP NAMESPACE %s", namespace);
+  }
+
+  @Test
   public void testMixedTableAndViews() {
     String namespace = generateName("ns");
     sql("CREATE NAMESPACE %s", namespace);

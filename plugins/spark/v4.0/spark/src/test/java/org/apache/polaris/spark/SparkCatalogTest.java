@@ -331,6 +331,15 @@ public class SparkCatalogTest {
   }
 
   @Test
+  void testLoadUnknownProcedure() {
+    assertThatThrownBy(
+            () -> catalog.loadProcedure(Identifier.of(new String[] {"system"}, "unknown_proc")))
+        .hasMessageContaining("not found");
+    assertThatThrownBy(() -> catalog.loadProcedure(Identifier.of(defaultNS, "expire_snapshots")))
+        .hasMessageContaining("not found");
+  }
+
+  @Test
   void testBasicViewOperations() throws Exception {
     Identifier viewIdentifier = Identifier.of(defaultNS, "test-view");
     String viewSql = "select id from test-table where id < 3";
