@@ -167,6 +167,19 @@ leave it unset and match principals by name only. Only set it if your IdP token 
 Polaris-assigned principal ID in a claim (for example, `polaris/principal_id` in Example 1 below) —
 an IdP-native identifier like `sub` is not a Polaris principal ID and should not be used here.
 
+The mappings are resolved as follows:
+
+* **At least one mapping is required** when the credential mode is `INTERNAL`. If
+  neither is configured, the production readiness checks report it, and requests
+  that resolve to that OIDC tenant fail authentication.
+* **The ID mapping takes precedence.** If the ID claim resolves to a value greater
+  than zero, Polaris looks up the principal by ID only and does not fall back to the
+  name. If the ID claim is absent, or its value is zero or negative, Polaris looks
+  up the principal by name.
+* **The ID mapping is ignored in `EXTERNAL` credential mode.** External principals
+  are identified by name only, so `name-claim-path` is required. See
+  [External Principals](#external-principals).
+
 ### Role Mapping 
 
 Similarly, Polaris requires additional configuration to map roles provided by Quarkus to roles defined in Polaris. The process happens in two phases: first, Quarkus maps the JWT claims to security roles, using the `quarkus.oidc.roles.*` properties; then, Polaris-specific properties are used to map the Quarkus-provided security roles to Polaris roles: 
