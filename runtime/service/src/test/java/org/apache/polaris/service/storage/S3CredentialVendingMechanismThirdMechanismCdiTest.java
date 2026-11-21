@@ -157,10 +157,12 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
       // A realm where TEST_MECHANISM is not allowlisted: creation itself is refused with "not
       // enabled", at PolarisAdminService's allowlist-only gate, and the mechanism is never
       // dispatched, so the recorder gains no further call.
+      String killSwitchRealmToken =
+          client.obtainToken(credentials, ThirdMechanismProfile.KILL_SWITCH_REALM);
       Map<String, String> killSwitchRealmHeaders =
           Map.of(
               "Authorization",
-              "Bearer " + adminToken,
+              "Bearer " + killSwitchRealmToken,
               "Polaris-Realm",
               ThirdMechanismProfile.KILL_SWITCH_REALM);
       try (Response refused =

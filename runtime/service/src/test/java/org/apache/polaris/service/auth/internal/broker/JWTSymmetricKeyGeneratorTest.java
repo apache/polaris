@@ -64,6 +64,7 @@ public class JWTSymmetricKeyGeneratorTest {
         new JWTBroker(
             metastoreManager,
             polarisCallContext,
+            "test-realm",
             666,
             algorithm,
             JWTBroker.buildVerifier(algorithm));
@@ -208,6 +209,82 @@ public class JWTSymmetricKeyGeneratorTest {
   }
 
   @ParameterizedTest
+  @CsvSource({"realm1, true", "realm2, false"})
+  public void testVerifyChecksRealm(String verifyingRealm, boolean recognized) {
+    String token = generateToken(tokenBroker("realm1"), "PRINCIPAL_ROLE:TEST").getAccessToken();
+    assertThat(decodedRealm(token)).isEqualTo("realm1");
+
+    assertThat(tokenBroker(verifyingRealm).verify(token))
+        .isInstanceOf(
+            recognized
+                ? TokenVerificationResult.Recognized.class
+                : TokenVerificationResult.Invalid.class);
+  }
+
+  @Test
+  public void testGenerateFromTokenPreservesRealm() {
+    TokenBroker generator = tokenBroker("realm1");
+    TokenResponse subjectToken = generateToken(generator, "PRINCIPAL_ROLE:TEST");
+
+    TokenResponse token =
+        generator.generateFromToken(
+            TokenType.ACCESS_TOKEN,
+            subjectToken.getAccessToken(),
+            TokenRequestValidator.TOKEN_EXCHANGE,
+            null,
+            TokenType.ACCESS_TOKEN);
+
+    assertThat(token.getError()).isNull();
+    assertThat(decodedRealm(token.getAccessToken())).isEqualTo("realm1");
+  }
+
+  @Test
+  public void testGenerateFromTokenRejectsTokenFromOtherRealm() {
+    TokenResponse subjectToken = generateToken(tokenBroker("realm1"), "PRINCIPAL_ROLE:TEST");
+
+    TokenResponse token =
+        tokenBroker("realm2")
+            .generateFromToken(
+                TokenType.ACCESS_TOKEN,
+                subjectToken.getAccessToken(),
+                TokenRequestValidator.TOKEN_EXCHANGE,
+                null,
+                TokenType.ACCESS_TOKEN);
+
+    assertThat(token.getError()).isEqualTo(OAuthError.invalid_client);
+  }
+
+  @Test
+  public void testGenerateFromTokenRejectsTokenWithoutRealm() {
+    // Tokens minted before the realm claim was introduced remain valid bearers until expiry, but
+    // cannot be exchanged.
+    String subjectToken =
+        JWT.create()
+            .withIssuer("polaris")
+            .withSubject("principal")
+            .withClaim("active", true)
+            .withClaim("client_id", "test_client_id")
+            .withClaim("principalId", 123L)
+            .withClaim("scope", "PRINCIPAL_ROLE:TEST")
+            .withClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION, "test-version")
+            .sign(Algorithm.HMAC256("polaris"));
+
+    TokenBroker generator = tokenBroker();
+    assertThat(generator.verify(subjectToken))
+        .isInstanceOf(TokenVerificationResult.Recognized.class);
+
+    TokenResponse token =
+        generator.generateFromToken(
+            TokenType.ACCESS_TOKEN,
+            subjectToken,
+            TokenRequestValidator.TOKEN_EXCHANGE,
+            null,
+            TokenType.ACCESS_TOKEN);
+
+    assertThat(token.getError()).isEqualTo(OAuthError.invalid_grant);
+  }
+
+  @ParameterizedTest
   @CsvSource({
     "  0, true", // issued at the verification instant
     "  4, true",
@@ -259,10 +336,18 @@ public class JWTSymmetricKeyGeneratorTest {
   }
 
   private TokenBroker tokenBroker() {
-    return tokenBroker(Clock.systemUTC());
+    return tokenBroker("test-realm");
+  }
+
+  private TokenBroker tokenBroker(String realmId) {
+    return tokenBroker(Clock.systemUTC(), realmId);
   }
 
   private TokenBroker tokenBroker(Clock clock) {
+    return tokenBroker(clock, "test-realm");
+  }
+
+  private TokenBroker tokenBroker(Clock clock, String realmId) {
     PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     long principalId = 123L;
@@ -282,7 +367,7 @@ public class JWTSymmetricKeyGeneratorTest {
     // expectations the production verifier uses, including the issued-at leeway.
     JWTVerifier verifier =
         ((JWTVerifier.BaseVerification) JWTBroker.verification(algorithm)).build(clock);
-    return new JWTBroker(metastoreManager, polarisCallContext, 666, algorithm, verifier);
+    return new JWTBroker(metastoreManager, polarisCallContext, realmId, 666, algorithm, verifier);
   }
 
   private TokenResponse generateToken(TokenBroker generator, String scope) {
@@ -296,5 +381,9 @@ public class JWTSymmetricKeyGeneratorTest {
 
   private String decodedScope(String token) {
     return JWT.decode(token).getClaim("scope").asString();
+  }
+
+  private String decodedRealm(String token) {
+    return JWT.decode(token).getClaim(JWTBroker.CLAIM_KEY_REALM).asString();
   }
 }

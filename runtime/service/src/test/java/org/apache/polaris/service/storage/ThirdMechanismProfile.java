@@ -61,6 +61,11 @@ public class ThirdMechanismProfile implements QuarkusTestProfile {
         "[\"STS\"]",
         "polaris.event-listener.type",
         "test",
+        "polaris.bootstrap.credentials",
+        ALLOWLISTED_REALM
+            + ",test-admin,test-secret;"
+            + KILL_SWITCH_REALM
+            + ",test-admin,test-secret",
         "polaris.authentication.token-broker.type",
         "symmetric-key",
         "polaris.authentication.token-broker.symmetric-key.secret",

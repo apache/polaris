@@ -42,6 +42,11 @@ public class OAuth2Api extends RestApi {
   }
 
   public String obtainAccessToken(ClientCredentials credentials, String scope) {
+    return obtainAccessToken(credentials, scope, Map.of());
+  }
+
+  public String obtainAccessToken(
+      ClientCredentials credentials, String scope, Map<String, String> headers) {
     return obtainAccessToken(
         Map.of(
             "grant_type",
@@ -51,12 +56,18 @@ public class OAuth2Api extends RestApi {
             "client_secret",
             credentials.clientSecret(),
             "scope",
-            scope));
+            scope),
+        headers);
   }
 
   public String obtainAccessToken(Map<String, String> requestBody) {
+    return obtainAccessToken(requestBody, Map.of());
+  }
+
+  private String obtainAccessToken(Map<String, String> requestBody, Map<String, String> headers) {
     try (Response response =
-        request(endpointPath).post(Entity.form(new MultivaluedHashMap<>(requestBody)))) {
+        request(endpointPath, Map.of(), Map.of(), headers)
+            .post(Entity.form(new MultivaluedHashMap<>(requestBody)))) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       String token = response.readEntity(OAuthTokenResponse.class).token();
       return token;

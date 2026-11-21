@@ -65,6 +65,7 @@ public class RSAKeyPairJWTBrokerTest {
         new JWTBroker(
             metastoreManager,
             polarisCallContext,
+            "test-realm",
             420,
             algorithm,
             JWTBroker.buildVerifier(algorithm));
@@ -106,6 +107,7 @@ public class RSAKeyPairJWTBrokerTest {
         new JWTBroker(
             metastoreManager,
             polarisCallContext,
+            "test-realm",
             420,
             algorithm,
             JWTBroker.buildVerifier(algorithm));
@@ -138,6 +140,7 @@ public class RSAKeyPairJWTBrokerTest {
         new JWTBroker(
             metastoreManager,
             polarisCallContext,
+            "test-realm",
             420,
             algorithm,
             JWTBroker.buildVerifier(algorithm));
@@ -169,6 +172,7 @@ public class RSAKeyPairJWTBrokerTest {
         new JWTBroker(
             metastoreManager,
             polarisCallContext,
+            "test-realm",
             420,
             algorithm,
             JWTBroker.buildVerifier(algorithm));
