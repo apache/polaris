@@ -31,8 +31,10 @@ plugins {
 
 val intTestJvmVersion = 21
 val sparkStartupAction = sourceSets.create("sparkStartupAction")
-val sparkStartupActionCompileOnly = configurations["sparkStartupActionCompileOnly"]
-val sparkStartupActionImplementation = configurations["sparkStartupActionImplementation"]
+val sparkStartupActionCompileOnly = configurations[sparkStartupAction.compileOnlyConfigurationName]
+val sparkStartupActionRuntimeOnly = configurations[sparkStartupAction.runtimeOnlyConfigurationName]
+val sparkStartupActionImplementation =
+  configurations[sparkStartupAction.implementationConfigurationName]
 val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
 val localPolarisServer = files(provider { quarkusBuild.get().fastJar.resolve("quarkus-run.jar") })
 
@@ -80,6 +82,10 @@ dependencies {
 
   sparkStartupActionCompileOnly("org.apache.polaris.server-test-runner:polaris-server-test-runner")
   sparkStartupActionImplementation(project(":polaris-rustfs-testcontainer"))
+  sparkStartupActionRuntimeOnly(platform(libs.quarkus.bom))
+  sparkStartupActionRuntimeOnly("org.jboss.slf4j:slf4j-jboss-logmanager")
+  // The SLF4J binding declares LogManager as provided, so include it explicitly.
+  sparkStartupActionRuntimeOnly("org.jboss.logmanager:jboss-logmanager")
 }
 
 @Suppress("UnstableApiUsage")
