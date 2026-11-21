@@ -251,6 +251,61 @@ Older Polaris versions had each their own versioned schema file. Refer to the [S
 Reference](#schema-version-reference) table for links to the specific SQL file for each database
 type at the desired version.
 
+### Migrating to schema v7
+
+Schema v7 adds the `realm_purge` table, which records realms whose time-series data is still
+pending deletion. Replace `polaris_schema` with your schema name throughout.
+
+The schema version check is a strict equality: a node refuses to serve a realm whose recorded
+version differs from the one the binary expects, in either direction. The table itself is a pure
+addition that no earlier version reads or writes, so creating it and recording the new version can
+be separated, which keeps the window where no node can serve down to the restart.
+
+**Step 1 — create the table.** Safe to run while the previous version is still serving:
+
+```sql
+CREATE TABLE IF NOT EXISTS polaris_schema.realm_purge (
+    realm_id TEXT NOT NULL,
+    requested_at BIGINT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    claimed_by TEXT,
+    claimed_at BIGINT,
+    PRIMARY KEY (realm_id)
+);
+```
+
+**Step 2 — optionally queue the realms purged before the upgrade.** A realm purged by an earlier
+version left its events and metrics reports behind without recording anything in `realm_purge`, so
+the drain will never reach that data. This queues every realm that still has time-series rows but no
+entities, which is what a purged realm looks like:
+
+```sql
+INSERT INTO polaris_schema.realm_purge (realm_id, requested_at, status)
+SELECT realm_id, (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT, 'pending'
+  FROM (SELECT DISTINCT realm_id FROM polaris_schema.events
+        UNION
+        SELECT DISTINCT realm_id FROM polaris_schema.scan_metrics_report
+        UNION
+        SELECT DISTINCT realm_id FROM polaris_schema.commit_metrics_report) purged
+ WHERE NOT EXISTS (SELECT 1
+                     FROM polaris_schema.entities e
+                    WHERE e.realm_id = purged.realm_id)
+ON CONFLICT (realm_id) DO NOTHING;
+```
+
+Run it when no realm is being bootstrapped, since a realm is indistinguishable from a purged one
+until its first entity is written. Skipping this step leaves that data in place; nothing else
+reclaims it, because the realm ids it is keyed by no longer exist.
+
+**Step 3 — record the new version, then start the new binary:**
+
+```sql
+UPDATE polaris_schema.version SET version_value = 7 WHERE version_key = 'version';
+```
+
+See [Draining Queued Realm Purges]({{% ref "../admin-tool" %}}#draining-queued-realm-purges) for
+the command that consumes the new table.
+
 ## Schema Version Reference
 
 The table below maps each released Polaris version to the JDBC schema version it ships with:
@@ -263,6 +318,7 @@ The table below maps each released Polaris version to the JDBC schema version it
 | v4             | 1.4.0 – 1.6.0                                   | Added `scan_metrics_report` and `commit_metrics_report` tables; added `idempotency_records` table; added indexes on `entities` and `grant_records` | [PG][v4-pg] · [CRD][v4-crd] |
 | v5             | 1.7.0                                           | `events.catalog_id` made nullable; `idempotency_records` removed                                                                                   | [PG][v5-pg] · [CRD][v5-crd] |
 | v6             | 1.8.0                                           | Changed `idx_locations` index definition; added missing indexes on CockroachDB                                                                     | [PG][v6-pg] · [CRD][v6-crd] |
+| v7             | 1.10.0                                          | Added `realm_purge` table                                                                                                                          | [PG][v7-pg] · [CRD][v7-crd] |
 
 [Quarkus configuration reference]: https://quarkus.io/guides/config-reference
 [Quarkus datasource documentation]: https://quarkus.io/guides/datasource
@@ -276,3 +332,5 @@ The table below maps each released Polaris version to the JDBC schema version it
 [v5-crd]: https://github.com/apache/polaris/blob/apache-polaris-1.7.0/persistence/relational-jdbc/src/main/resources/cockroachdb/schema-v5.sql
 [v6-pg]: https://github.com/apache/polaris/blob/apache-polaris-1.8.0/persistence/relational-jdbc/src/main/resources/postgres/schema-v6.sql
 [v6-crd]: https://github.com/apache/polaris/blob/apache-polaris-1.8.0/persistence/relational-jdbc/src/main/resources/cockroachdb/schema-v6.sql
+[v7-pg]: https://github.com/apache/polaris/blob/apache-polaris-1.10.0/persistence/relational-jdbc/src/main/resources/postgres/schema.sql
+[v7-crd]: https://github.com/apache/polaris/blob/apache-polaris-1.10.0/persistence/relational-jdbc/src/main/resources/cockroachdb/schema.sql
