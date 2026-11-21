@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage;
 
 import java.net.URI;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.aws.S3Location;
@@ -138,6 +139,38 @@ public class StorageLocation {
    */
   public boolean isSameLocation(StorageLocation other) {
     return this.isChildOf(other) && other.isChildOf(this);
+  }
+
+  /**
+   * Returns the directory that directly contains this location, always ending with {@code /}, or an
+   * empty {@code Optional} if this location is already at its root (for example a bucket,
+   * container, or {@code file:///}).
+   *
+   * <p>The root is the {@code scheme://authority/} prefix of the location. A single trailing {@code
+   * /} on this location is ignored, so the parent of {@code s3://bucket/a/b/} is {@code
+   * s3://bucket/a/}. Locations that do not have a {@code scheme://} prefix have no parent.
+   *
+   * <p>This only uses string operations, so it also works for locations that are not valid {@link
+   * URI}s, such as S3 object keys with spaces or other characters {@link URI} rejects.
+   */
+  public Optional<StorageLocation> parent() {
+    if (location == null) {
+      return Optional.empty();
+    }
+    int schemeSeparator = location.indexOf("://");
+    if (schemeSeparator < 0) {
+      return Optional.empty();
+    }
+    int rootEnd = location.indexOf('/', schemeSeparator + 3);
+    if (rootEnd < 0) {
+      return Optional.empty();
+    }
+    int end = location.endsWith("/") ? location.length() - 1 : location.length();
+    int lastSlash = location.lastIndexOf('/', end - 1);
+    if (lastSlash < rootEnd) {
+      return Optional.empty();
+    }
+    return Optional.of(StorageLocation.of(location.substring(0, lastSlash + 1)));
   }
 
   /** Returns a string representation of the location but without a scheme */
