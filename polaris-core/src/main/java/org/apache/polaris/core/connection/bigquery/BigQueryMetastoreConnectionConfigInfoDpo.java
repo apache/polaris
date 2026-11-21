@@ -22,6 +22,7 @@ package org.apache.polaris.core.connection.bigquery;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.BigQueryMetastoreConnectionConfigInfo;
@@ -44,6 +45,22 @@ import org.jspecify.annotations.Nullable;
 public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
 
   public static final String DEFAULT_URI = "https://bigquery.googleapis.com";
+
+  /**
+   * Connection properties forwarded to Iceberg's {@code BigQueryMetastoreCatalog}. Keys that select
+   * implementations ({@code io-impl}) or carry storage credentials are not forwarded. Other keys
+   * are stored but ignored.
+   */
+  static final List<String> ALLOWED_PROPERTIES =
+      List.of(
+          "gcp.bigquery.project-id",
+          "warehouse",
+          "gcp.bigquery.location",
+          "gcp.bigquery.list-all-tables",
+          "gcp.bigquery.impersonate.service-account",
+          "gcp.bigquery.impersonate.lifetime-seconds",
+          "gcp.bigquery.impersonate.scopes",
+          "gcp.bigquery.impersonate.delegates");
 
   public BigQueryMetastoreConnectionConfigInfoDpo(
       @JsonProperty(value = "uri", required = true) @NonNull String uri,
@@ -78,14 +95,15 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
   public @NonNull Map<String, String> asIcebergCatalogProperties(
       PolarisCredentialManager polarisCredentialManager) {
     HashMap<String, String> properties = new HashMap<>();
-
-    // Add all user provided properties, including required: gcp.bigquery.project-id, warehouse
-    properties.putAll(getProperties());
-
     if (getAuthenticationParameters() != null) {
       // Add authentication-specific metadata (non-credential properties)
       properties.putAll(
           getAuthenticationParameters().asIcebergCatalogProperties(polarisCredentialManager));
+    }
+    // Same order as the other connection types: allow-listed properties after the authentication
+    // metadata, and credentials last.
+    copyAllowedProperties(properties, ALLOWED_PROPERTIES);
+    if (getAuthenticationParameters() != null) {
       // Add connection credentials from Polaris credential manager
       ConnectionCredentials connectionCredentials =
           polarisCredentialManager.getConnectionCredentials(this);

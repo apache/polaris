@@ -159,6 +159,11 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   taken from the table metadata, since they were not recorded on the entity. Purge tasks that were
   queued by an older version only carry the table's base location: files under a custom
   `write.data.path` or `write.metadata.path` outside of it are not deleted by those tasks.
+- Catalog federation: `BIGQUERY` connection properties now follow the same allow-list as
+  `HADOOP`, `HIVE`, and `ICEBERG_REST`. Only the documented BigQuery client keys
+  (`gcp.bigquery.project-id`, `warehouse`, `gcp.bigquery.location`,
+  `gcp.bigquery.list-all-tables`, and the `gcp.bigquery.impersonate.*` keys) are forwarded to
+  the Iceberg client. Other keys, including `io-impl` and credential keys, are stored but ignored.
 
 ### Breaking changes
 
