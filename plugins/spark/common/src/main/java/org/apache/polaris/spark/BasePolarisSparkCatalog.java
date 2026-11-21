@@ -214,7 +214,14 @@ public abstract class BasePolarisSparkCatalog
         // For delta table, we load the delta catalog to help dealing with the
         // delta log creation.
         TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
-        return deltaCatalog.createTable(ident, schema, transforms, properties);
+        // Delta drops the table properties before registering the table with its delegate
+        // catalog, so pass them to the Polaris Spark catalog separately.
+        this.polarisSparkCatalog.setDelegatedCreateProperties(properties);
+        try {
+          return deltaCatalog.createTable(ident, schema, transforms, properties);
+        } finally {
+          this.polarisSparkCatalog.clearDelegatedCreateProperties();
+        }
       } else if (PolarisCatalogUtils.useHudi(provider)) {
         // For creating the hudi table, we load HoodieCatalog
         // to create the .hoodie folder in cloud storage

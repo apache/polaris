@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.spark;
 
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.iceberg.catalog.Namespace;
@@ -53,6 +54,13 @@ public class PolarisSparkCatalog implements TableCatalog {
   private PolarisCatalog polarisCatalog = null;
   private String catalogName = null;
   @VisibleForTesting PolarisCatalogUtils catalogUtils;
+
+  /**
+   * Properties of a table creation that is routed through a delegating catalog, such as the Delta
+   * catalog, which drops the user table properties before calling back into this catalog.
+   */
+  private static final ThreadLocal<Map<String, String>> DELEGATED_CREATE_PROPERTIES =
+      new ThreadLocal<>();
 
   public PolarisSparkCatalog(PolarisCatalog polarisCatalog, PolarisCatalogUtils catalogUtils) {
     this.polarisCatalog = polarisCatalog;
@@ -114,6 +122,19 @@ public class PolarisSparkCatalog implements TableCatalog {
     }
   }
 
+  /**
+   * Records the original properties of a table creation that is delegated to another catalog on
+   * the current thread. They are merged into the properties of the resulting {@link
+   * #createTable} call. Must be paired with {@link #clearDelegatedCreateProperties()}.
+   */
+  void setDelegatedCreateProperties(Map<String, String> properties) {
+    DELEGATED_CREATE_PROPERTIES.set(properties);
+  }
+
+  void clearDelegatedCreateProperties() {
+    DELEGATED_CREATE_PROPERTIES.remove();
+  }
+
   @Override
   @SuppressWarnings({"deprecation", "RedundantSuppression"})
   public Table createTable(
@@ -122,6 +143,14 @@ public class PolarisSparkCatalog implements TableCatalog {
       Transform[] transforms,
       Map<String, String> properties)
       throws TableAlreadyExistsException, NoSuchNamespaceException {
+    Map<String, String> originalProperties = DELEGATED_CREATE_PROPERTIES.get();
+    if (originalProperties != null) {
+      // The delegating catalog may have dropped the user table properties; restore them, keeping
+      // the values it passed (e.g. location and provider) for keys present in both.
+      Map<String, String> mergedProperties = new HashMap<>(originalProperties);
+      mergedProperties.putAll(properties);
+      properties = mergedProperties;
+    }
     try {
       String format = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
 
