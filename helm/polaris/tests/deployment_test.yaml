@@ -449,8 +449,19 @@ tests:
           value: Always
 
   # spec.template.spec.containers[0].env
-  - it: should not set container env by default
+  - it: should set OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS env var when tracing disabled (default)
     template: deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS
+            value: io.opentelemetry.contrib.gcp.resource.GCPResourceProvider
+  - it: should not set OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS env var when tracing enabled
+    template: deployment.yaml
+    set:
+      tracing:
+        enabled: true
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].env
@@ -1211,11 +1222,18 @@ tests:
             configMapRef:
               name: polaris-env-configmap
 
-  - it: should not set any environment variables by default
+  - it: should not set secret-derived env vars by default
     template: deployment.yaml
     asserts:
-      - notExists:
+      - contains:
           path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS
+            value: io.opentelemetry.contrib.gcp.resource.GCPResourceProvider
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: quarkus.datasource.username
 
   - it: should not set envFrom by default
     template: deployment.yaml
