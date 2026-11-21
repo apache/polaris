@@ -453,7 +453,7 @@ public class TaskExecutorImplTest {
   }
 
   @Test
-  void failedBatchCleanupRemainsRetryable() throws IOException {
+  void failedBatchCleanupCanBeRetriedManually() throws IOException {
     String realm = "myrealm";
     TestServices services = TestServices.builder().realmContext(() -> realm).build();
     PolarisCallContext context = services.newCallContext();

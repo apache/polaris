@@ -34,12 +34,16 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.apache.iceberg.ManifestFile;
@@ -407,6 +411,159 @@ public class BatchFileCleanupTaskHandlerTest {
     assertThat(deleteCalls.get()).isEqualTo(FileCleanupTaskHandler.MAX_ATTEMPTS);
     for (String file : files) {
       assertThat(TaskUtils.exists(file, fileIO)).isFalse();
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testDeletesUseSuppliedSingleThreadExecutor(boolean concurrent) throws Exception {
+    executor.close();
+    executor = Executors.newSingleThreadExecutor(r -> new Thread(r, "cleanup-test-executor"));
+    Set<String> threads = ConcurrentHashMap.newKeySet();
+    FileIO fileIO = Mockito.mock(FileIO.class);
+    Mockito.doAnswer(
+            invocation -> {
+              threads.add(Thread.currentThread().getName());
+              return null;
+            })
+        .when(fileIO)
+        .deleteFile(Mockito.anyString());
+
+    newBatchFileCleanupTaskHandler(fileIO)
+        .tryDelete(
+            TableIdentifier.of("db", "table"),
+            fileIO,
+            List.of("first", "second"),
+            "table_metadata",
+            concurrent,
+            null,
+            1)
+        .get(5, TimeUnit.SECONDS);
+
+    assertThat(threads).containsExactly("cleanup-test-executor");
+    Mockito.verify(fileIO).deleteFile("first");
+    Mockito.verify(fileIO).deleteFile("second");
+  }
+
+  @Test
+  public void testConcurrentRetryWaitsForAllDeletes() throws Exception {
+    executor.close();
+    executor = Executors.newFixedThreadPool(2);
+    CountDownLatch slowDeleteStarted = new CountDownLatch(1);
+    CountDownLatch releaseSlowDelete = new CountDownLatch(1);
+    CountDownLatch failureOccurred = new CountDownLatch(1);
+    CountDownLatch retryStarted = new CountDownLatch(1);
+    AtomicInteger failingFileCalls = new AtomicInteger();
+    FileIO fileIO = Mockito.mock(FileIO.class);
+    Mockito.doAnswer(
+            invocation -> {
+              String file = invocation.getArgument(0);
+              if (file.equals("slow")) {
+                slowDeleteStarted.countDown();
+                if (!releaseSlowDelete.await(5, TimeUnit.SECONDS)) {
+                  throw new IllegalStateException("slow delete was not released");
+                }
+              } else if (failingFileCalls.incrementAndGet() == 1) {
+                if (!slowDeleteStarted.await(5, TimeUnit.SECONDS)) {
+                  throw new IllegalStateException("slow delete did not start");
+                }
+                failureOccurred.countDown();
+                throw new IllegalStateException("transient delete failure");
+              } else {
+                retryStarted.countDown();
+              }
+              return null;
+            })
+        .when(fileIO)
+        .deleteFile(Mockito.anyString());
+
+    try {
+      var result =
+          newBatchFileCleanupTaskHandler(fileIO)
+              .tryDelete(
+                  TableIdentifier.of("db", "table"),
+                  fileIO,
+                  List.of("failing", "slow"),
+                  "table_metadata",
+                  true,
+                  null,
+                  1);
+      assertThat(slowDeleteStarted.await(5, TimeUnit.SECONDS)).isTrue();
+      assertThat(failureOccurred.await(5, TimeUnit.SECONDS)).isTrue();
+      assertThat(retryStarted.await(500, TimeUnit.MILLISECONDS)).isFalse();
+      releaseSlowDelete.countDown();
+      result.get(5, TimeUnit.SECONDS);
+      assertThat(failingFileCalls.get()).isEqualTo(2);
+    } finally {
+      releaseSlowDelete.countDown();
+    }
+  }
+
+  @Test
+  public void testConcurrentRetryWaitsForDeletesAfterIterationFailure() throws Exception {
+    executor.close();
+    executor = Executors.newFixedThreadPool(2);
+    CountDownLatch slowDeleteStarted = new CountDownLatch(1);
+    CountDownLatch releaseSlowDelete = new CountDownLatch(1);
+    CountDownLatch iterationFailed = new CountDownLatch(1);
+    CountDownLatch retryStarted = new CountDownLatch(1);
+    AtomicInteger iterations = new AtomicInteger();
+    Iterable<String> files =
+        () -> {
+          if (iterations.incrementAndGet() > 1) {
+            retryStarted.countDown();
+            return List.of("slow").iterator();
+          }
+          return new Iterator<>() {
+            private boolean returned;
+
+            @Override
+            public boolean hasNext() {
+              if (returned) {
+                iterationFailed.countDown();
+                throw new IllegalStateException("transient iteration failure");
+              }
+              return true;
+            }
+
+            @Override
+            public String next() {
+              returned = true;
+              return "slow";
+            }
+          };
+        };
+    FileIO fileIO = Mockito.mock(FileIO.class);
+    Mockito.doAnswer(
+            invocation -> {
+              slowDeleteStarted.countDown();
+              if (!releaseSlowDelete.await(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("slow delete was not released");
+              }
+              return null;
+            })
+        .when(fileIO)
+        .deleteFile("slow");
+
+    try {
+      var result =
+          newBatchFileCleanupTaskHandler(fileIO)
+              .tryDelete(
+                  TableIdentifier.of("db", "table"),
+                  fileIO,
+                  files,
+                  "table_metadata",
+                  true,
+                  null,
+                  1);
+      assertThat(iterationFailed.await(5, TimeUnit.SECONDS)).isTrue();
+      assertThat(slowDeleteStarted.await(5, TimeUnit.SECONDS)).isTrue();
+      assertThat(retryStarted.await(500, TimeUnit.MILLISECONDS)).isFalse();
+      releaseSlowDelete.countDown();
+      result.get(5, TimeUnit.SECONDS);
+      Mockito.verify(fileIO, Mockito.times(2)).deleteFile("slow");
+    } finally {
+      releaseSlowDelete.countDown();
     }
   }
 

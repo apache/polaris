@@ -19,18 +19,20 @@
 package org.apache.polaris.service.task;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.SupportsBulkOperations;
 import org.apache.iceberg.util.Tasks;
-import org.apache.iceberg.util.ThreadPools;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -225,24 +227,35 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
     if (attempt > MAX_ATTEMPTS && e != null) {
       return CompletableFuture.failedFuture(e);
     }
-    return CompletableFuture.runAsync(
-            () -> {
-              // CatalogUtil.deleteFiles suppresses failures, preventing retries and causing
-              // unfinished cleanup tasks to be dropped as successful.
+    return CompletableFuture.<Void>completedFuture(null)
+        .thenComposeAsync(
+            ignored -> {
               if (fileIO instanceof SupportsBulkOperations bulkIO) {
                 bulkIO.deleteFiles(files);
-              } else {
-                Tasks.foreach(files)
-                    .executeWith(isConcurrent ? ThreadPools.getWorkerPool() : null)
-                    .noRetry() // The batch retry below owns the retry budget.
-                    .run(file -> {
-                      try {
-                        fileIO.deleteFile(file);
-                      } catch (NotFoundException nfe) {
-                        // Already removed, including by an earlier attempt of this batch.
-                      }
-                    });
+                return CompletableFuture.<Void>completedFuture(null);
               }
+              Consumer<String> deleteFile =
+                  file -> {
+                    try {
+                      fileIO.deleteFile(file);
+                    } catch (NotFoundException nfe) {
+                      // Already removed, including by an earlier attempt of this batch.
+                    }
+                  };
+              if (!isConcurrent) {
+                Tasks.foreach(files).noRetry().run(deleteFile::accept);
+                return CompletableFuture.<Void>completedFuture(null);
+              }
+              List<CompletableFuture<Void>> deletions = new ArrayList<>();
+              try {
+                for (String file : files) {
+                  deletions.add(
+                      CompletableFuture.runAsync(() -> deleteFile.accept(file), executorService));
+                }
+              } catch (RuntimeException ex) {
+                deletions.add(CompletableFuture.failedFuture(ex));
+              }
+              return CompletableFuture.allOf(deletions.toArray(CompletableFuture[]::new));
             },
             executorService)
         .exceptionallyComposeAsync(
