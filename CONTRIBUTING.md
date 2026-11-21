@@ -118,6 +118,7 @@ Tips:
 * When a PR is about to be merged, cross-check the commit summary and message for the merged Git commit.
 * Keep in mind that the Git commit subject and message is going to be read by other people, potentially even after years. The Git commit subject and message will appear "as is" in release notes.
 * Make sure the subject and message are properly formatted and contains a concise description of the changes in way that someone who has no prior knowledge can understand the rationale of the change and the change itself. Remove information that's of no use for someone reading the Git commit log, for example single intermediate commit messages like `formatting` or `fix test`.
+* If the pull request disclosed AI assistance, make sure the final commit message keeps the AI disclosure trailers (see [Disclosing AI usage](#disclosing-ai-usage)), grouped at the end of the message. Commit messages are concatenated by default when squashing, so remove duplicated trailers, but keep one for each distinct tool and model.
 
 #### Guidelines for AI-assisted Contributions
 
@@ -126,8 +127,43 @@ Contributors may use a variety of tools when preparing changes to Polaris, inclu
 * Regardless of how a change is produced, the individual submitting the pull request is considered the author of the contribution and is fully responsible for it.
 * The pull request author **must understand the implementation end-to-end** and be able to **explain and justify the design and code** during review.
 * Tools, including AI systems, **are not** considered contributors. **Responsibility and authorship remain with the human** submitting the change.
-* Contributors are encouraged to **disclose** significant AI assistance in the pull request description for transparency.
 * **Respect ASF policy**. Contributors are responsible for ensuring generated code can be contributed to Polaris under ASF license and [ASF Generative Tooling Guidance](https://www.apache.org/legal/generative-tooling.html).
+
+##### Disclosing AI usage
+
+Disclosing significant AI assistance is **recommended**, not mandatory. "AI assistance" covers very different workflows, from accepting an IDE completion to generating whole changes, so use your judgment and share meaningful details with reviewers where helpful. As a rule of thumb, disclose when AI generated a meaningful part of the code, tests or documentation; routine assistance (e.g. a code completion, or polishing a commit message) does not need to be disclosed. If you combine several tools or do not know an exact model version, report what you know. What matters most is that you understand the change and can explain it: the pull request template has a checkbox that only the human author can tick to confirm this.
+
+When disclosing, please do it in two places, so that it is visible both in the review and in the project history:
+
+* **Commit messages**: commits prepared with significant AI assistance should include a trailer naming the tool and the model, each with its version. `Assisted-By` is the preferred trailer. There is no standard classification system for AI tools, so these values are free-form:
+
+  ```
+  Assisted-By: <Tool name> <Tool version> (<Model name> <Model version>)
+  ```
+
+  `Generated-By` (the trailer suggested by the ASF Generative Tooling Guidance) and `Co-Authored-By` are also acceptable. Be aware that GitHub may display `Co-Authored-By` trailers as co-authors, and that tools are not contributors: using it for an AI tool may create confusion with human co-authors.
+* **Pull request description**: mention which tool(s) were used and, where possible, which parts of the change were AI-generated, rather than only stating that AI was used. Tick the corresponding checkbox in the pull request template.
+
+Example of a pull request description:
+
+```markdown
+Fixes #1234
+
+Bootstrap reported success even when the credentials file names no realms; it
+now fails with an error. Added a unit test, and verified manually with a
+bootstrap run on an empty credentials file.
+
+The fix and the unit test were drafted with Claude Code 2.1 (Claude Opus 4.5);
+I reviewed all of it.
+```
+
+Example of the matching commit message:
+
+```
+Fix bootstrap reporting success when no realms are given
+
+Assisted-By: Claude Code 2.1 (Claude Opus 4.5)
+```
 
 ## Java version requirements
 
