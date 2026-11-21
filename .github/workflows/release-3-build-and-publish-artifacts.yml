@@ -168,7 +168,11 @@ jobs:
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
-          exec_process ./gradlew assemble sourceTarball releaseBuildEnvironment -Prelease -PuseGpgAgent
+          exec_process rm -rf build/spark-sboms
+          exec_process ./gradlew assemble sourceTarball releaseBuildEnvironment \
+            :polaris-distribution:assembleDistributionSboms \
+            stageSparkSboms \
+            -Prelease -PuseGpgAgent
 
           if [[ ${DRY_RUN:-1} -ne 1 ]]; then
             evidence="build/distributions/polaris-build-environment-${version_without_rc}.json"
@@ -224,6 +228,7 @@ jobs:
           exec_process mkdir -p "${version_dir}"
           exec_process cp build/distributions/* "${version_dir}/"
           exec_process cp runtime/distribution/build/distributions/* "${version_dir}/"
+          exec_process cp build/spark-sboms/*/* "${version_dir}/"
 
           exec_process cd "${dist_dev_dir}"
           exec_process svn add "${version_without_rc}"

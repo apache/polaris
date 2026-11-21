@@ -18,6 +18,7 @@
  */
 
 import org.apache.polaris.gradle.licenses.DistributionLicenseChecksPlugin
+import org.apache.polaris.gradle.sbom.configureBinaryArchiveSboms
 
 // Preserve the applied script classpath boundary used by the runtime Licensee bootstrap.
 buildscript {
@@ -29,3 +30,5 @@ buildscript {
 }
 
 apply<DistributionLicenseChecksPlugin>()
+
+configureBinaryArchiveSboms()

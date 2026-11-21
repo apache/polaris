@@ -24,6 +24,8 @@ import app.cash.licensee.LicenseePlugin
 import app.cash.licensee.LicenseeTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.maven.tasks.AbstractPublishToMaven
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.named
@@ -96,5 +98,15 @@ class LicenseChecksPlugin : Plugin<Project> {
       }
     project.tasks.named("check") { dependsOn(checks) }
     project.tasks.withType(AbstractPublishToMaven::class.java).configureEach { dependsOn(checks) }
+    project.pluginManager.withPlugin("maven-publish") {
+      project.afterEvaluate {
+        // Realize publications after the project has configured its components and source sets.
+        project.extensions
+          .getByType<PublishingExtension>()
+          .publications
+          .withType(MavenPublication::class.java)
+          .forEach { publication -> publication.artifacts.configureEach { builtBy(checks) } }
+      }
+    }
   }
 }
