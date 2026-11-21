@@ -47,11 +47,6 @@ client.
 
 {{% include-config-section "storage-aws" %}}
 
-Polaris requests an STS session of one hour by default (`STORAGE_CREDENTIAL_DURATION_SECONDS`).
-If access must end before the session expires, an AWS administrator can
-[revoke older sessions for the IAM role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_revoke-sessions.html).
-This affects all sessions for that role issued before the cutoff, including sessions used by other principals.
-
 ## Azure ADLS
 
 Polaris generates a
