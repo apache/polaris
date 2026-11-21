@@ -83,6 +83,19 @@ The endpoint is only returned together with credentials: a response that carries
 credentials, for example because the request included `none` or because the storage configuration
 does not vend credentials, does not contain it.
 
+## Revoking table access
+
+Polaris checks the principal’s current table privileges whenever a client requests or refreshes
+vended credentials. Once the principal loses all privileges that allow read or write delegation
+for a table, Polaris denies new credential requests for that table.
+
+Clients use AWS STS credentials, Azure user delegation SAS tokens, and GCS access tokens directly
+with the storage provider. An issued credential can still grant access until it expires, as long
+as the provider permits the operation. For example, if you revoke read access at 10:15 UTC and the
+credential expires at 11:00 UTC, the client may still read for the remaining 45 minutes. Check
+the expiration property in the provider’s table above. The Polaris cache lifetime
+(`STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS`) has no effect on credentials a client already holds.
+
 ## When delegation cannot be satisfied
 
 `X-Iceberg-Access-Delegation` tells Polaris which access mechanisms the client supports. If the
