@@ -81,6 +81,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.BigLakeCatalogValidator;
 import org.apache.polaris.service.admin.CatalogConfigValidators;
+import org.apache.polaris.service.admin.ImplicitOnlyConnectionValidator;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
@@ -613,7 +614,9 @@ public record TestServices(
           };
 
       CatalogConfigValidators catalogConfigValidators =
-          new CatalogConfigValidators(List.of(new BigLakeCatalogValidator(realmConfig)));
+          new CatalogConfigValidators(
+              List.of(
+                  new BigLakeCatalogValidator(realmConfig), new ImplicitOnlyConnectionValidator()));
       Supplier<PolarisCatalogsApi> catalogsApiSupplier =
           () -> {
             PolarisAdminService adminService =
