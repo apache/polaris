@@ -263,6 +263,7 @@ The table below maps each released Polaris version to the JDBC schema version it
 | v4             | 1.4.0 – 1.6.0                                   | Added `scan_metrics_report` and `commit_metrics_report` tables; added `idempotency_records` table; added indexes on `entities` and `grant_records` | [PG][v4-pg] · [CRD][v4-crd] |
 | v5             | 1.7.0                                           | `events.catalog_id` made nullable; `idempotency_records` removed                                                                                   | [PG][v5-pg] · [CRD][v5-crd] |
 | v6             | 1.8.0                                           | Changed `idx_locations` index definition; added missing indexes on CockroachDB                                                                     | [PG][v6-pg] · [CRD][v6-crd] |
+| v7             | 1.9.0                                           | Added `idx_events_realm_timestamp` index on `events`                                                                                               | [PG][v7-pg] · [CRD][v7-crd] |
 
 [Quarkus configuration reference]: https://quarkus.io/guides/config-reference
 [Quarkus datasource documentation]: https://quarkus.io/guides/datasource
@@ -276,3 +277,5 @@ The table below maps each released Polaris version to the JDBC schema version it
 [v5-crd]: https://github.com/apache/polaris/blob/apache-polaris-1.7.0/persistence/relational-jdbc/src/main/resources/cockroachdb/schema-v5.sql
 [v6-pg]: https://github.com/apache/polaris/blob/apache-polaris-1.8.0/persistence/relational-jdbc/src/main/resources/postgres/schema-v6.sql
 [v6-crd]: https://github.com/apache/polaris/blob/apache-polaris-1.8.0/persistence/relational-jdbc/src/main/resources/cockroachdb/schema-v6.sql
+[v7-pg]: https://github.com/apache/polaris/blob/apache-polaris-1.9.0/persistence/relational-jdbc/src/main/resources/postgres/schema.sql
+[v7-crd]: https://github.com/apache/polaris/blob/apache-polaris-1.9.0/persistence/relational-jdbc/src/main/resources/cockroachdb/schema.sql
