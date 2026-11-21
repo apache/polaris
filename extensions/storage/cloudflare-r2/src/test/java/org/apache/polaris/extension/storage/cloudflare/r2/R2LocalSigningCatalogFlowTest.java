@@ -196,7 +196,7 @@ class R2LocalSigningCatalogFlowTest {
 
   /**
    * The Python CLI sends {@code stsUnavailable=false} and {@code kmsUnavailable=false} by default.
-   * Only {@code true} is refused, so a catalog created that way is accepted.
+   * A catalog created that way is accepted.
    */
   @Test
   void aCatalogWithTheCliDefaultFlagsIsAccepted() {
@@ -208,6 +208,18 @@ class R2LocalSigningCatalogFlowTest {
     AwsStorageConfigInfo fetched =
         (AwsStorageConfigInfo) fetchCatalog(services, "r2-cli").getStorageConfigInfo();
     assertThat(fetched.getCredentialVendingMechanism()).isEqualTo(R2_LOCAL_SIGNING);
+  }
+
+  /** R2 has no KMS, so a catalog may say so with {@code kmsUnavailable=true}. */
+  @Test
+  void aCatalogWithKmsUnavailableTrueIsAccepted() {
+    createCatalog(
+        services, catalog("r2-no-kms", r2Config(ALLOWED).setKmsUnavailable(true).build()));
+
+    AwsStorageConfigInfo fetched =
+        (AwsStorageConfigInfo) fetchCatalog(services, "r2-no-kms").getStorageConfigInfo();
+    assertThat(fetched.getCredentialVendingMechanism()).isEqualTo(R2_LOCAL_SIGNING);
+    assertThat(fetched.getKmsUnavailable()).isTrue();
   }
 
   @Test
