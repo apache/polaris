@@ -25,4 +25,4 @@ build:
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.readiness.ignore-severe-issues` | `false` | `boolean` | Setting this to `true` means that Polaris will start up even if severe security risks  have been detected, accepting the risk of denial-of-service, data-loss, corruption and other  risks.   |
+| `polaris.readiness.ignore-severe-issues` | `false` | `boolean` | Setting this to `true` means that Polaris will start up even if severe security risks have been detected, accepting the risk of denial-of-service, data-loss, corruption and other risks.  |

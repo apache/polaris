@@ -25,11 +25,11 @@ build:
 
 Configuration interface for managing service identities across multiple realms in Polaris. 
 
-A service identity represents the Polaris service itself when it needs to authenticate to  external systems (e.g., AWS services for SigV4 authentication). Each realm can configure its own  set of service identities for different cloud providers.   
+A service identity represents the Polaris service itself when it needs to authenticate to external systems (e.g., AWS services for SigV4 authentication). Each realm can configure its own set of service identities for different cloud providers. 
 
-This interface supports multi-tenant deployments where each realm (tenant) can have distinct  service identities, as well as single-tenant deployments with a default configuration shared  across all catalogs.   
+This interface supports multi-tenant deployments where each realm (tenant) can have distinct service identities, as well as single-tenant deployments with a default configuration shared across all catalogs. 
 
-Configuration is loaded from `polaris.service-identity.*` properties at startup and  includes credentials that Polaris uses to assume customer-provided roles when accessing federated  catalogs.   
+Configuration is loaded from `polaris.service-identity.*` properties at startup and includes credentials that Polaris uses to assume customer-provided roles when accessing federated catalogs. 
 
 **Example Configuration:** 
 
@@ -48,11 +48,11 @@ Configuration is loaded from `polaris.service-identity.*` properties at startup 
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.service-identity.aws-iam.iam-arn` |  | `string` | The IAM role or user ARN representing the service identity. If not provided, Polaris won't  surface it in the catalog identity.  |
-| `polaris.service-identity.aws-iam.access-key-id` |  | `string` | Optional AWS access key ID associated with the IAM identity. If not provided, the AWS default  credential chain will be used.  |
-| `polaris.service-identity.aws-iam.secret-access-key` |  | `string` | Optional AWS secret access key associated with the IAM identity. If not provided, the AWS  default credential chain will be used.  |
-| `polaris.service-identity.aws-iam.session-token` |  | `string` | Optional AWS session token associated with the IAM identity. If not provided, the AWS default  credential chain will be used.  |
-| `polaris.service-identity.`_`<realm>`_`.aws-iam.iam-arn` |  | `string` | The IAM role or user ARN representing the service identity. If not provided, Polaris won't  surface it in the catalog identity.  |
-| `polaris.service-identity.`_`<realm>`_`.aws-iam.access-key-id` |  | `string` | Optional AWS access key ID associated with the IAM identity. If not provided, the AWS default  credential chain will be used.  |
-| `polaris.service-identity.`_`<realm>`_`.aws-iam.secret-access-key` |  | `string` | Optional AWS secret access key associated with the IAM identity. If not provided, the AWS  default credential chain will be used.  |
-| `polaris.service-identity.`_`<realm>`_`.aws-iam.session-token` |  | `string` | Optional AWS session token associated with the IAM identity. If not provided, the AWS default  credential chain will be used.  |
+| `polaris.service-identity.aws-iam.iam-arn` |  | `string` | The IAM role or user ARN representing the service identity. If not provided, Polaris won't surface it in the catalog identity. |
+| `polaris.service-identity.aws-iam.access-key-id` |  | `string` | Optional AWS access key ID associated with the IAM identity. If not provided, the AWS default credential chain will be used. |
+| `polaris.service-identity.aws-iam.secret-access-key` |  | `string` | Optional AWS secret access key associated with the IAM identity. If not provided, the AWS default credential chain will be used. |
+| `polaris.service-identity.aws-iam.session-token` |  | `string` | Optional AWS session token associated with the IAM identity. If not provided, the AWS default credential chain will be used. |
+| `polaris.service-identity.`_`<realm>`_`.aws-iam.iam-arn` |  | `string` | The IAM role or user ARN representing the service identity. If not provided, Polaris won't surface it in the catalog identity. |
+| `polaris.service-identity.`_`<realm>`_`.aws-iam.access-key-id` |  | `string` | Optional AWS access key ID associated with the IAM identity. If not provided, the AWS default credential chain will be used. |
+| `polaris.service-identity.`_`<realm>`_`.aws-iam.secret-access-key` |  | `string` | Optional AWS secret access key associated with the IAM identity. If not provided, the AWS default credential chain will be used. |
+| `polaris.service-identity.`_`<realm>`_`.aws-iam.session-token` |  | `string` | Optional AWS session token associated with the IAM identity. If not provided, the AWS default credential chain will be used. |
