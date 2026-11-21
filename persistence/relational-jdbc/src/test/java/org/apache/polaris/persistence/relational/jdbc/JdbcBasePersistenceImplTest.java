@@ -195,6 +195,43 @@ class JdbcBasePersistenceImplTest {
         .withMessageContaining("not visible");
   }
 
+  /** Covers both the insert path (no original entity) and the update path (rename). */
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void writeEntityKeepsUniquenessViolationWhenConflictLookupFails(boolean update)
+      throws SQLException {
+    SQLException uniquenessViolation = new SQLException("Unique constraint violation", "23505");
+    DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
+    when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.H2);
+    doThrow(uniquenessViolation)
+        .when(datasourceOperations)
+        .executeUpdate(any(QueryGenerator.PreparedQuery.class));
+    when(datasourceOperations.executeSelect(any(), any()))
+        .thenThrow(new SQLException("Connection lost", "08006"));
+    doCallRealMethod()
+        .when(datasourceOperations)
+        .isUniquenessConstraintViolation(any(SQLException.class));
+
+    JdbcBasePersistenceImpl basePersistence =
+        new JdbcBasePersistenceImpl(
+            new PolarisDefaultDiagServiceImpl(),
+            datasourceOperations,
+            RANDOM_SECRETS,
+            REALM_CONTEXT.getRealmIdentifier());
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, basePersistence);
+
+    PolarisBaseEntity entity = newTestEntity(101L, "conflicting_name", 1, 0);
+    PolarisBaseEntity originalEntity =
+        update
+            ? new PolarisBaseEntity.Builder(entity).name("original_name").entityVersion(0).build()
+            : null;
+
+    assertThatExceptionOfType(RuntimeException.class)
+        .isThrownBy(() -> basePersistence.writeEntity(callCtx, entity, true, originalEntity))
+        .withMessageContaining("Failed to retrieve polaris entity")
+        .satisfies(e -> assertThat(e.getSuppressed()).containsExactly(uniquenessViolation));
+  }
+
   @Test
   void writeEntity_renameOntoTakenName_throwsEntityAlreadyExistsException()
       throws SQLException, IOException {
