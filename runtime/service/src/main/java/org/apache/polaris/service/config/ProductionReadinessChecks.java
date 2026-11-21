@@ -569,6 +569,64 @@ public class ProductionReadinessChecks {
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
   }
 
+  /**
+   * {@link org.apache.polaris.core.storage.cache.StorageCredentialCache} treats an out-of-range
+   * {@code STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS} as a non-fatal misconfiguration: it logs a
+   * warning and falls back to the default half-lifetime behavior rather than failing a live
+   * credential request over an operator's typo. This check instead surfaces the same problem at
+   * startup, loudly, before any request is affected.
+   */
+  @Produces
+  public ProductionReadinessCheck checkStorageCredentialRefreshBuffer(
+      FeaturesConfiguration featureConfiguration) {
+    var bufferFlag = FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS;
+    var durationFlag = FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+    var message =
+        format(
+            "%s must be >= 0 and less than %s. The invalid value is ignored at runtime and the "
+                + "default half-lifetime behavior is used instead.",
+            bufferFlag.key(), durationFlag.key());
+    var errors = new ArrayList<Error>();
+
+    int defaultDuration =
+        parseIntOrDefault(
+            featureConfiguration.defaults().get(durationFlag.key()), durationFlag.defaultValue());
+    int defaultBuffer =
+        parseIntOrDefault(
+            featureConfiguration.defaults().get(bufferFlag.key()), bufferFlag.defaultValue());
+    if (defaultBuffer < 0 || defaultBuffer >= defaultDuration) {
+      errors.add(Error.of(message, format("polaris.features.\"%s\"", bufferFlag.key())));
+    }
+
+    featureConfiguration
+        .realmOverrides()
+        .forEach((realmId, overrides) -> {
+          String bufferOverride = overrides.overrides().get(bufferFlag.key());
+          if (bufferOverride == null) {
+            return;
+          }
+          int buffer = Integer.parseInt(bufferOverride);
+          int duration =
+              parseIntOrDefault(overrides.overrides().get(durationFlag.key()), defaultDuration);
+          if (buffer < 0 || buffer >= duration) {
+            errors.add(
+                Error.of(
+                    message,
+                    format(
+                        "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                        realmId, bufferFlag.key())));
+          }
+        });
+
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  private static int parseIntOrDefault(String value, int defaultValue) {
+    return value == null ? defaultValue : Integer.parseInt(value);
+  }
+
   @Produces
   public ProductionReadinessCheck checkOverlappingSiblingCheckSettings(
       FeaturesConfiguration featureConfiguration) {
