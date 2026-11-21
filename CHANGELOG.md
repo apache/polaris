@@ -238,6 +238,9 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
 - Python CLI: added `namespaces update` to set and remove namespace properties
 - NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
+- Admin tool: added the `purge-metrics` command, which deletes scan and commit metrics reports older
+  than a given age from the relational JDBC metrics report tables in batches. Run it periodically to
+  enforce a retention period.
 
 ### Changes
 
