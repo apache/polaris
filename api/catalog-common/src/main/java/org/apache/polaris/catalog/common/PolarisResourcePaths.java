@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.rest;
+package org.apache.polaris.catalog.common;
 
-import com.google.common.base.Joiner;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTCatalogProperties;
@@ -31,7 +33,6 @@ public class PolarisResourcePaths {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisResourcePaths.class);
 
-  private static final Joiner SLASH = Joiner.on("/").skipNulls();
   public static final String PREFIX = "prefix";
 
   // Generic Table endpoints
@@ -73,8 +74,15 @@ public class PolarisResourcePaths {
     return new PolarisResourcePaths(properties.get(PREFIX), namespaceSeparatorEncoded);
   }
 
+  private static String join(Object... parts) {
+    return Arrays.stream(parts)
+        .filter(Objects::nonNull)
+        .map(Object::toString)
+        .collect(Collectors.joining("/"));
+  }
+
   public String genericTables(Namespace ns) {
-    return SLASH.join(
+    return join(
         "polaris",
         "v1",
         prefix,
@@ -84,7 +92,7 @@ public class PolarisResourcePaths {
   }
 
   public String credentialsPath(TableIdentifier ident) {
-    return SLASH.join(
+    return join(
         "v1",
         prefix,
         "namespaces",
@@ -95,7 +103,7 @@ public class PolarisResourcePaths {
   }
 
   public String genericTable(TableIdentifier ident) {
-    return SLASH.join(
+    return join(
         "polaris",
         "v1",
         prefix,

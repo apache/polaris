@@ -33,6 +33,9 @@ This directory contains the API modules for Apache Polaris.
   Iceberg REST API.
 - [`polaris-api-catalog-service`](polaris-catalog-service): contains the service classes for the Polaris
   native Catalog REST API.
+- [`polaris-api-catalog-common`](catalog-common): contains hand-written classes shared between the
+  Polaris server and clients (e.g. the Spark plugin), such as the Catalog REST API resource paths.
+  This module is deliberately thin and does not depend on `polaris-core`.
 
-The classes in these modules are generated from the OpenAPI specification files in the
+The classes in the other modules are generated from the OpenAPI specification files in the
 [`spec`](../spec) directory.

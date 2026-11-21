@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.rest;
+package org.apache.polaris.catalog.common;
 
 import java.util.HashMap;
 import java.util.Map;
