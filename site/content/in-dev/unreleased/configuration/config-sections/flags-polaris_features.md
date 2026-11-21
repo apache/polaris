@@ -133,7 +133,7 @@ If set to true, allows catalog URLs to overlap.
 
 ##### `polaris.features."ALLOW_SETTING_S3_ENDPOINTS"`
 
-If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints, and SigV4 connection configurations to set a custom STS endpoint used for credential vending. If set to false, Polaris will not accept catalog create and update requests that contain S3 endpoint properties, or catalog create requests that set a SigV4 connection STS endpoint.
+If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints, and SigV4 connection configurations to set a custom STS endpoint used for credential vending. If set to false, Polaris will reject catalog create and update requests for catalogs that have S3 endpoint properties (endpoint, endpointInternal or stsEndpoint) or a SigV4 connection STS endpoint. This also applies to updates that do not change those settings.
 
 - **Type:** `Boolean`
 - **Default:** `true`
@@ -621,5 +621,14 @@ Metadata batch size for tasks that clean up dropped tables' files.
 
 - **Type:** `Integer`
 - **Default:** `10`
+
+---
+
+##### `polaris.features."VALIDATE_AWS_ENDPOINT_URIS"`
+
+If set to true (default), Polaris validates the endpoint, endpointInternal and stsEndpoint of AWS storage configurations, and the stsEndpoint of SigV4 connection configurations, on catalog create and update. Each must be an absolute http or https URI with a host. Plain http endpoints log a warning on every validation. If set to false, these URI checks are skipped. Use this to keep updating existing catalogs whose endpoints do not pass the checks.
+
+- **Type:** `Boolean`
+- **Default:** `true`
 
 ---
