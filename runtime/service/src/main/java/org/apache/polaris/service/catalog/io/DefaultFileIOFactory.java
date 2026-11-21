@@ -25,10 +25,13 @@ import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.aws.HttpClientProperties;
+import org.apache.iceberg.aws.s3.S3FileIOProperties;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
+import org.apache.polaris.service.storage.aws.SharedDefaultCredentialsProvider;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -67,6 +70,16 @@ public class DefaultFileIOFactory implements FileIOFactory {
     properties.putAll(storageAccessConfig.credentials());
     properties.putAll(storageAccessConfig.extraProperties());
     properties.putAll(storageAccessConfig.internalProperties());
+
+    // No credentials for Polaris's own S3 access (e.g. stsUnavailable without static keys): share
+    // one default provider instead of letting S3FileIO create a new one per client (#6090). Only
+    // when nothing else applies, since Iceberg prefers this property over keys and refresh URIs.
+    if (!properties.containsKey(S3FileIOProperties.ACCESS_KEY_ID)
+        && !properties.containsKey(AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT)) {
+      properties.putIfAbsent(
+          AwsClientProperties.CLIENT_CREDENTIALS_PROVIDER,
+          SharedDefaultCredentialsProvider.class.getName());
+    }
 
     // Apply polaris.storage.* HTTP client settings to Iceberg S3FileIO (and other AWS FileIOs).
     // Previously only applied to the STS client pool. Empty config is a no-op (tests/fixtures).
