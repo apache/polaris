@@ -30,26 +30,34 @@ reference those files.
 
 ## Retrying a request with an idempotency key
 
-For a direct table create (`stage-create: false`) or a single table update in a native Polaris
-catalog, check the catalog configuration before the first request. For example, for the
-`analytics` catalog, call `GET /api/catalog/v1/config?warehouse=analytics`. If the response
-contains `idempotency-key-lifetime`, it gives the retry window measured from the first submission. Polaris disables this feature by default.
-When enabled with `polaris.idempotency.enabled`, the default window is five minutes
-(`polaris.idempotency.ttl`).
+In a native Polaris catalog, the following steps apply to a direct table create
+(`stage-create: false`) or an update to an existing table. The final commit of a staged create
+checks `assert-create` again on retry and can return `409 Conflict` even if the first commit succeeded.
+
+Check the catalog configuration before the first request. For example, for the `analytics`
+catalog, call `GET /api/catalog/v1/config?warehouse=analytics`. If the response contains
+`idempotency-key-lifetime`, it gives the retry window measured from the first submission.
+Polaris disables this feature by default. When enabled with `polaris.idempotency.enabled`,
+the default window is five minutes (`polaris.idempotency.ttl`).
 
 1. Before the first request, generate a UUIDv7 and send it in the `Idempotency-Key` header.
-2. If the outcome is unknown and the window is still open, resend the same request with the same
-   key. If the original request committed, the response can reflect newer table metadata, including
-   changes another writer committed in the meantime.
-3. Generate a new key for each new logical operation.
+   Generate a fresh key for each new logical operation.
+2. Before retrying a create, check whether the table may have been renamed or dropped since the
+   first request. If so, establish what happened first. Polaris stores the key on the table.
+   Once the original name is free, retrying can create a new table even within the retry window.
+3. To retry within the window, resend the same request with the same key. If the original
+   request committed, the response can reflect newer table metadata, including changes another
+   writer committed in the meantime.
 
 ## Checking the table when a retry cannot establish the outcome
 
 If the server omitted `idempotency-key-lifetime`, the original request had no key, or its
-window has expired, reload the table before deciding whether to write again. For an append, look
-for the snapshot ID from the original request in the history of the branch you wrote to. Finding
-that snapshot confirms the append, even if another writer has since advanced the branch. For a
-table create, the name alone cannot establish which request created the table.
+window has expired, reload the table before deciding whether to write again. For a table
+create, the name alone cannot establish which request created the table.
+
+For an append, load the table with `snapshots=all` and look for the original snapshot ID in the
+history of the branch you wrote to. Finding it confirms the append, even if another writer has
+since advanced the branch. A missing snapshot is inconclusive because snapshots can expire.
 
 If the outcome is still uncertain, retain the files and investigate before issuing another write.
-For example, rebuilding an append with a new snapshot ID can add the same data files twice.
+Rebuilding an append with a new snapshot ID can add the same data files twice.
