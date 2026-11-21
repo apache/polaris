@@ -61,6 +61,7 @@ import static org.apache.polaris.persistence.nosql.impl.PersistenceImplementatio
 import com.datastax.oss.driver.api.core.AllNodesFailedException;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.DriverException;
+import com.datastax.oss.driver.api.core.DriverExecutionException;
 import com.datastax.oss.driver.api.core.DriverTimeoutException;
 import com.datastax.oss.driver.api.core.connection.ClosedConnectionException;
 import com.datastax.oss.driver.api.core.connection.HeartbeatException;
@@ -76,8 +77,11 @@ import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.servererrors.QueryConsistencyException;
 import jakarta.annotation.Nonnull;
 import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -260,15 +264,19 @@ final class CassandraBackend implements Backend {
 
   @Override
   public void batchDeleteRefs(Map<String, Set<String>> realmRefs) {
-    try (var requests = new LimitedConcurrentRequests(MAX_CONCURRENT_DELETES)) {
-      for (var r : realmRefs.entrySet()) {
-        var realmId = r.getKey();
-        for (var ref : r.getValue()) {
-          // Reference creation, updates, and deletion all use Paxos timestamps.
-          requests.submit(() -> executeAsync(buildLwtStatement(DELETE_REF, realmId, ref)));
-        }
-      }
-    } catch (DriverException e) {
+    try {
+      LimitedConcurrentRequests.run(
+          MAX_CONCURRENT_DELETES,
+          requests -> {
+            for (var r : realmRefs.entrySet()) {
+              var realmId = r.getKey();
+              for (var ref : r.getValue()) {
+                // Reference creation, updates, and deletion all use Paxos timestamps.
+                requests.submit(() -> executeAsync(buildLwtStatement(DELETE_REF, realmId, ref)));
+              }
+            }
+          });
+    } catch (RuntimeException e) {
       throw unhandledCasException(e);
     }
   }
@@ -276,17 +284,23 @@ final class CassandraBackend implements Backend {
   @Override
   public void batchDeleteObjs(Map<String, Set<PersistId>> realmObjs) {
     // Ordinary object deletion is for immutable IDs; versioned rows use conditionalDelete().
-    try (var requests = new LimitedConcurrentRequests(MAX_CONCURRENT_DELETES)) {
-      for (var r : realmObjs.entrySet()) {
-        var realmId = r.getKey();
-        for (var obj : r.getValue()) {
-          requests.submit(() ->
-              executeAsync(
-                  buildIdempotentStatement(
-                      DELETE_OBJ, realmId, serializePersistId(persistId(obj.id(), obj.part())))));
-        }
-      }
-    } catch (DriverException e) {
+    try {
+      LimitedConcurrentRequests.run(
+          MAX_CONCURRENT_DELETES,
+          requests -> {
+            for (var r : realmObjs.entrySet()) {
+              var realmId = r.getKey();
+              for (var obj : r.getValue()) {
+                requests.submit(() ->
+                    executeAsync(
+                        buildIdempotentStatement(
+                            DELETE_OBJ,
+                            realmId,
+                            serializePersistId(persistId(obj.id(), obj.part())))));
+              }
+            }
+          });
+    } catch (RuntimeException e) {
       throw unhandledException(e);
     }
   }
@@ -363,7 +377,7 @@ final class CassandraBackend implements Backend {
         throw new ReferenceNotFoundException(updatedRef.name());
       }
       return false;
-    } catch (DriverException e) {
+    } catch (RuntimeException e) {
       throw unhandledCasException(e);
     }
   }
@@ -382,7 +396,7 @@ final class CassandraBackend implements Backend {
         throw new ReferenceNotFoundException(name);
       }
       return deserializeReference(row);
-    } catch (DriverException e) {
+    } catch (RuntimeException e) {
       throw unhandledException(e);
     }
   }
@@ -453,29 +467,32 @@ final class CassandraBackend implements Backend {
       }
 
       return batchedQuery.finish();
-    } catch (DriverException e) {
+    } catch (RuntimeException e) {
       throw unhandledException(e);
     }
   }
 
   @Override
   public void write(@Nonnull String realmId, @Nonnull List<WriteObj> writes) {
-    try (LimitedConcurrentRequests requests =
-        new LimitedConcurrentRequests(MAX_CONCURRENT_STORES)) {
-      for (var write : writes) {
-        requests.submit(() ->
-            writeSingleObj(
-                realmId,
-                PersistId.persistId(write.id(), write.part()),
-                write.type(),
-                write.createdAtMicros(),
-                null,
-                write.serialized(),
-                true,
-                write.partNum(),
-                this::executeAsync));
-      }
-    } catch (DriverException e) {
+    try {
+      LimitedConcurrentRequests.run(
+          MAX_CONCURRENT_STORES,
+          requests -> {
+            for (var write : writes) {
+              requests.submit(() ->
+                  writeSingleObj(
+                      realmId,
+                      PersistId.persistId(write.id(), write.part()),
+                      write.type(),
+                      write.createdAtMicros(),
+                      null,
+                      write.serialized(),
+                      true,
+                      write.partNum(),
+                      this::executeAsync));
+            }
+          });
+    } catch (RuntimeException e) {
       throw unhandledException(e);
     }
   }
@@ -483,14 +500,19 @@ final class CassandraBackend implements Backend {
   @Override
   public void delete(@Nonnull String realmId, @Nonnull Set<PersistId> ids) {
     // Immutable object IDs are not reused. Versioned objects must retain LWT timestamp ordering.
-    try (var requests = new LimitedConcurrentRequests(MAX_CONCURRENT_DELETES)) {
-      for (var id : ids) {
-        if (id != null) {
-          requests.submit(() ->
-              executeAsync(buildIdempotentStatement(DELETE_OBJ, realmId, serializePersistId(id))));
-        }
-      }
-    } catch (DriverException e) {
+    try {
+      LimitedConcurrentRequests.run(
+          MAX_CONCURRENT_DELETES,
+          requests -> {
+            for (var id : ids) {
+              if (id != null) {
+                requests.submit(() ->
+                    executeAsync(
+                        buildIdempotentStatement(DELETE_OBJ, realmId, serializePersistId(id))));
+              }
+            }
+          });
+    } catch (RuntimeException e) {
       throw unhandledException(e);
     }
   }
@@ -673,6 +695,9 @@ final class CassandraBackend implements Backend {
       keys.clear();
 
       try {
+        // A permit covers every page of a batch. Driver timeouts complete each page request;
+        // callbacks release the permit when the batch finishes or fails. A separate wait timeout
+        // could reject a progressing read and would also need matching handling in finish().
         permits.acquire();
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -820,7 +845,7 @@ final class CassandraBackend implements Backend {
     try {
       var rs = session.execute(stmt);
       return rs.wasApplied();
-    } catch (DriverException e) {
+    } catch (RuntimeException e) {
       throw unhandledCasException(e);
     }
   }
@@ -828,7 +853,7 @@ final class CassandraBackend implements Backend {
   ResultSet execute(BoundStatement stmt) {
     try {
       return session.execute(stmt);
-    } catch (DriverException e) {
+    } catch (RuntimeException e) {
       throw unhandledException(e);
     }
   }
@@ -837,40 +862,52 @@ final class CassandraBackend implements Backend {
     return session.executeAsync(stmt);
   }
 
-  static RuntimeException unhandledException(DriverException e) {
-    if (isUnknownOperationResult(e)) {
-      return new UnknownOperationResultException(e);
-    } else if (e instanceof AllNodesFailedException all) {
-      if (all.getAllErrors().values().stream()
-          .flatMap(List::stream)
-          .filter(DriverException.class::isInstance)
-          .map(DriverException.class::cast)
-          .anyMatch(CassandraBackend::isUnknownOperationResult)) {
+  static RuntimeException unhandledException(RuntimeException e) {
+    return unhandledException(e, false);
+  }
+
+  static RuntimeException unhandledCasException(RuntimeException e) {
+    return unhandledException(e, true);
+  }
+
+  private static RuntimeException unhandledException(RuntimeException e, boolean cas) {
+    if (e instanceof UnknownOperationResultException) {
+      return e;
+    }
+    var pending = new ArrayDeque<Throwable>();
+    var seen = Collections.newSetFromMap(new IdentityHashMap<Throwable, Boolean>());
+    pending.add(e);
+    while (!pending.isEmpty()) {
+      var error = pending.removeFirst();
+      if (!seen.add(error)) {
+        continue;
+      }
+      if (isUnknownOperationResult(error)
+          || (cas
+              && (error instanceof ClosedConnectionException
+                  || error instanceof HeartbeatException))) {
         return new UnknownOperationResultException(e);
+      }
+      // Driver exceptions describe their own operation. In particular, a heartbeat's cause can
+      // be a probe timeout, not a timeout of the submitted CQL request. Unwrap wrapper causes only.
+      var cause = error.getCause();
+      if (cause != null
+          && (!(error instanceof DriverException) || error instanceof DriverExecutionException)) {
+        pending.addLast(cause);
+      }
+      Collections.addAll(pending, error.getSuppressed());
+      if (error instanceof AllNodesFailedException all) {
+        all.getAllErrors().values().forEach(pending::addAll);
       }
     }
     return e;
   }
 
-  static RuntimeException unhandledCasException(DriverException e) {
-    if (isUnknownCasOperationResult(e)) {
-      return new UnknownOperationResultException(e);
-    }
-    return unhandledException(e);
-  }
-
-  private static boolean isUnknownCasOperationResult(DriverException e) {
-    if (e instanceof ClosedConnectionException || e instanceof HeartbeatException) {
-      return true;
-    }
-    return e instanceof AllNodesFailedException all
-        && all.getAllErrors().values().stream()
-            .flatMap(List::stream)
-            .anyMatch(error ->
-                error instanceof ClosedConnectionException || error instanceof HeartbeatException);
-  }
-
-  private static boolean isUnknownOperationResult(DriverException e) {
-    return e instanceof QueryConsistencyException || e instanceof DriverTimeoutException;
+  private static boolean isUnknownOperationResult(Throwable e) {
+    // The synchronous driver waits through interruption and restores the flag. An interrupted
+    // local permit acquisition has not submitted that request; classify outstanding failures.
+    return e instanceof UnknownOperationResultException
+        || e instanceof QueryConsistencyException
+        || e instanceof DriverTimeoutException;
   }
 }

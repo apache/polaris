@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.persistence.nosql.cassandra;
 
+import static java.util.stream.Collectors.toMap;
 import static org.apache.polaris.persistence.nosql.cassandra.CassandraBackendConfig.DEFAULT_DDL_TIMEOUT;
 import static org.apache.polaris.persistence.nosql.cassandra.CassandraBackendConfig.DEFAULT_DML_TIMEOUT;
 import static org.apache.polaris.persistence.nosql.cassandra.CassandraBackendConfig.DEFAULT_KEYSPACE;
@@ -25,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
+import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
 import io.smallrye.config.EnvConfigSource;
 import io.smallrye.config.PropertiesConfigSource;
@@ -33,6 +35,7 @@ import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 
 class CassandraConfigurationTest {
@@ -42,25 +45,25 @@ class CassandraConfigurationTest {
     var configuration =
         configuration(
             Map.of(
-                "polaris.persistence.nosql.cassandra.driver.basic.contact-points",
+                "driver.basic.contact-points",
                 "cassandra-a.example:9042,cassandra-b.example:9142",
-                "polaris.persistence.nosql.cassandra.driver.basic.load-balancing-policy.local-datacenter",
+                "driver.basic.load-balancing-policy.local-datacenter",
                 "dc1",
-                "polaris.persistence.nosql.cassandra.driver.advanced.connection.connect-timeout",
+                "driver.advanced.connection.connect-timeout",
                 "15s",
-                "polaris.persistence.nosql.cassandra.request-timeout",
+                "request-timeout",
                 "45s",
-                "polaris.persistence.nosql.cassandra.auth.username",
+                "auth.username",
                 "polaris",
-                "polaris.persistence.nosql.cassandra.auth.password",
+                "auth.password",
                 "secret",
-                "polaris.persistence.nosql.cassandra.auth.authorization-id",
+                "auth.authorization-id",
                 "proxy-user",
-                "polaris.persistence.nosql.cassandra.auth.provider-name",
+                "auth.provider-name",
                 "default",
-                "polaris.persistence.nosql.cassandra.tls-configuration-name",
+                "tls-configuration-name",
                 "cassandra",
-                "polaris.persistence.nosql.cassandra.tls-hostname-validation",
+                "tls-hostname-validation",
                 "false"));
 
     assertThat(configuration.keyspace()).isEqualTo("polaris");
@@ -81,14 +84,34 @@ class CassandraConfigurationTest {
   }
 
   @Test
-  void requestTimeoutDefaultsToLongerPersistenceTimeout() {
+  void mapsPolarisTimeoutAndTlsPropertyNames() {
     var configuration =
         configuration(
             Map.of(
-                "polaris.persistence.nosql.cassandra.ddl-timeout",
-                "10s",
-                "polaris.persistence.nosql.cassandra.dml-timeout",
-                "20s"));
+                "request-timeout", "45s",
+                "tls-hostname-validation", "false",
+                "tls-configuration-name", "cassandra"));
+    assertThat(configuration.requestTimeout()).contains(Duration.ofSeconds(45));
+    assertThat(configuration.hostnameValidation()).isFalse();
+    assertThat(
+            CassandraSessionFactory.driverOptions(configuration)
+                .get(TypedDriverOption.REQUEST_TIMEOUT))
+        .isEqualTo(Duration.ofSeconds(45));
+  }
+
+  @Test
+  void mapsEmptyMetricListFromProperties() {
+    var configuration = configuration(Map.of("driver.advanced.metrics.node.enabled", ""));
+    assertThat(configuration.driverOptions()).containsEntry("advanced.metrics.node.enabled", "");
+    assertThat(
+            CassandraSessionFactory.driverOptions(configuration)
+                .get(TypedDriverOption.METRICS_NODE_ENABLED))
+        .isEmpty();
+  }
+
+  @Test
+  void requestTimeoutDefaultsToLongerPersistenceTimeout() {
+    var configuration = configuration(Map.of("ddl-timeout", "10s", "dml-timeout", "20s"));
 
     assertThat(CassandraSessionFactory.requestTimeout(configuration))
         .isEqualTo(Duration.ofSeconds(20));
@@ -99,11 +122,11 @@ class CassandraConfigurationTest {
     var configuration =
         configuration(
             Map.of(
-                "polaris.persistence.nosql.cassandra.driver.basic.request.page-size",
+                "driver.basic.request.page-size",
                 "500",
-                "polaris.persistence.nosql.cassandra.driver.advanced.connection.init-query-timeout",
+                "driver.advanced.connection.init-query-timeout",
                 "15s",
-                "polaris.persistence.nosql.cassandra.driver.advanced.ssl-engine-factory.cipher-suites",
+                "driver.advanced.ssl-engine-factory.cipher-suites",
                 "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384"));
 
     assertThat(configuration.driverOptions())
@@ -121,30 +144,17 @@ class CassandraConfigurationTest {
         .containsExactly("TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384");
   }
 
-  @Test
-  void rejectsPolarisManagedOrUnknownDriverOptions() {
+  @ParameterizedTest
+  @CsvSource({
+    "basic.request.timeout,10s,configured directly by Polaris",
+    "advanced.not-a-driver-option,value,Unknown Cassandra Java driver option",
+    "advanced-metrics-factory-class,example.MetricsFactory,configured directly by Polaris"
+  })
+  void rejectsPolarisManagedOrUnknownDriverOptions(String path, String value, String message) {
     assertThatIllegalArgumentException()
-        .isThrownBy(() ->
-            CassandraDriverOptions.apply(
-                Map.of("basic.request.timeout", "10s"),
-                com.datastax.oss.driver.api.core.config.OptionsMap.driverDefaults()))
-        .withMessageContaining("configured directly by Polaris");
-    assertThatIllegalArgumentException()
-        .isThrownBy(() ->
-            CassandraDriverOptions.apply(
-                Map.of("advanced.not-a-driver-option", "value"),
-                com.datastax.oss.driver.api.core.config.OptionsMap.driverDefaults()))
-        .withMessageContaining("Unknown Cassandra Java driver option");
-  }
-
-  @Test
-  void rejectsNormalizedDriverMetricsFactoryOptions() {
-    assertThatIllegalArgumentException()
-        .isThrownBy(() ->
-            CassandraDriverOptions.apply(
-                Map.of("advanced-metrics-factory-class", "example.MetricsFactory"),
-                com.datastax.oss.driver.api.core.config.OptionsMap.driverDefaults()))
-        .withMessageContaining("configured directly by Polaris");
+        .isThrownBy(
+            () -> CassandraDriverOptions.apply(Map.of(path, value), OptionsMap.driverDefaults()))
+        .withMessageContaining(message);
   }
 
   @Test
@@ -159,30 +169,17 @@ class CassandraConfigurationTest {
         .withMessageContaining("requires the Quarkus CDI integration");
   }
 
-  @Test
-  void rejectsDriverTlsOptionsWithQuarkusTlsConfiguration() {
+  @ParameterizedTest
+  @CsvSource({
+    "advanced.ssl-engine-factory.cipher-suites,TLS_AES_128_GCM_SHA256",
+    "basic.cloud.secure-connect-bundle,secure-connect.zip"
+  })
+  void rejectsDriverTlsOptionsWithQuarkusTlsConfiguration(String option, String value) {
     var configuration =
-        configuration(
-            Map.of(
-                "polaris.persistence.nosql.cassandra.tls-configuration-name",
-                "cassandra",
-                "polaris.persistence.nosql.cassandra.driver.advanced.ssl-engine-factory.cipher-suites",
-                "TLS_AES_128_GCM_SHA256"));
+        configuration(Map.of("tls-configuration-name", "cassandra", "driver." + option, value));
 
     assertThatIllegalArgumentException()
         .isThrownBy(() -> CassandraSessionFactory.driverOptions(configuration))
-        .withMessageContaining("cannot be combined with a Quarkus TLS configuration");
-
-    var secureConnectBundleConfiguration =
-        configuration(
-            Map.of(
-                "polaris.persistence.nosql.cassandra.tls-configuration-name",
-                "cassandra",
-                "polaris.persistence.nosql.cassandra.driver.basic.cloud.secure-connect-bundle",
-                "secure-connect.zip"));
-
-    assertThatIllegalArgumentException()
-        .isThrownBy(() -> CassandraSessionFactory.driverOptions(secureConnectBundleConfiguration))
         .withMessageContaining("cannot be combined with a Quarkus TLS configuration");
   }
 
@@ -212,11 +209,11 @@ class CassandraConfigurationTest {
     var configuration =
         configuration(
             Map.of(
-                "polaris.persistence.nosql.cassandra.auth.username",
+                "auth.username",
                 "polaris",
-                "polaris.persistence.nosql.cassandra.auth.password",
+                "auth.password",
                 "secret",
-                "polaris.persistence.nosql.cassandra.driver.advanced.auth-provider.class",
+                "driver.advanced.auth-provider.class",
                 "example.AuthProvider"));
 
     assertThatIllegalArgumentException()
@@ -227,10 +224,7 @@ class CassandraConfigurationTest {
   @Test
   void rejectsDriverAuthOptionsWithCdiAuthenticationProvider() {
     var configuration =
-        configuration(
-            Map.of(
-                "polaris.persistence.nosql.cassandra.driver.advanced.auth-provider.class",
-                "example.AuthProvider"));
+        configuration(Map.of("driver.advanced.auth-provider.class", "example.AuthProvider"));
 
     assertThatIllegalArgumentException()
         .isThrownBy(() -> CassandraSessionFactory.driverOptions(configuration, true))
@@ -261,8 +255,8 @@ class CassandraConfigurationTest {
     var configuration =
         configuration(
             Map.of(
-                "polaris.persistence.nosql.cassandra.consistency-level", "QUORUM",
-                "polaris.persistence.nosql.cassandra.serial-consistency-level", "SERIAL"));
+                "consistency-level", "QUORUM",
+                "serial-consistency-level", "SERIAL"));
     assertThat(configuration.consistencyLevel()).isEqualTo(DefaultConsistencyLevel.QUORUM);
     assertThat(configuration.serialConsistencyLevel()).isEqualTo(DefaultConsistencyLevel.SERIAL);
     CassandraSessionFactory.driverOptions(configuration);
@@ -302,7 +296,14 @@ class CassandraConfigurationTest {
     return new SmallRyeConfigBuilder()
         .withMapping(CassandraConfiguration.class)
         .addDiscoveredConverters()
-        .withSources(new PropertiesConfigSource(properties, "test"))
+        .withSources(
+            new PropertiesConfigSource(
+                properties.entrySet().stream()
+                    .collect(
+                        toMap(
+                            entry -> "polaris.persistence.nosql.cassandra." + entry.getKey(),
+                            Map.Entry::getValue)),
+                "test"))
         .build()
         .getConfigMapping(CassandraConfiguration.class);
   }

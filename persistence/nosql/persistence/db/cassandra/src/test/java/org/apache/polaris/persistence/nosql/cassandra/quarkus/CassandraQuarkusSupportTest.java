@@ -52,8 +52,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class CassandraQuarkusSupportTest {
   private final BackendConfiguration backendConfiguration = mock(BackendConfiguration.class);
 
-  @SuppressWarnings("unchecked")
-  private final Instance<CqlSession> cqlSession = mock(Instance.class);
+  private final Instance<CqlSession> cqlSession = mock();
 
   private final CqlSession session = mock(CqlSession.class);
   private final CassandraAsyncReadinessHealthCheck healthCheck =

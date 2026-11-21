@@ -47,23 +47,25 @@ class CassandraClientProducerTest {
   @Test
   void leavesAuthenticationUnconfiguredWhenNoAuthenticationSettingsArePresent() {
     var configuration = configuration().build();
-    @SuppressWarnings("unchecked")
-    Instance<AuthProvider> providers = mock(Instance.class);
+    Instance<AuthProvider> providers = mock();
 
     assertThat(CassandraClientProducer.resolveAuthenticationProvider(configuration, providers))
         .isEmpty();
     verifyNoInteractions(providers);
   }
 
-  @Test
-  void selectsDefaultProviderForUsernameAndPassword() throws Exception {
-    var configuration = configuration().authUsername("polaris").authPassword("secret").build();
-    @SuppressWarnings("unchecked")
-    Instance<AuthProvider> providers = mock(Instance.class);
-    @SuppressWarnings("unchecked")
-    Instance<AuthProvider> selected = mock(Instance.class);
+  @ParameterizedTest
+  @ValueSource(strings = {"default", "custom"})
+  void selectsConfiguredProvider(String name) throws Exception {
+    var configuration =
+        ("default".equals(name)
+                ? configuration().authUsername("polaris").authPassword("secret")
+                : configuration().authProviderName(name))
+            .build();
+    Instance<AuthProvider> providers = mock();
+    Instance<AuthProvider> selected = mock();
     AuthProvider provider = mock(AuthProvider.class);
-    when(providers.select(Identifier.Literal.of("default"))).thenReturn(selected);
+    when(providers.select(Identifier.Literal.of(name))).thenReturn(selected);
     when(selected.get()).thenReturn(provider);
 
     var resolved =
@@ -71,28 +73,7 @@ class CassandraClientProducerTest {
             .orElseThrow();
 
     assertThat(resolved).isInstanceOf(NonClosingAuthProvider.class);
-    verify(providers).select(Identifier.Literal.of("default"));
-    resolved.close();
-    verifyNoMoreInteractions(provider);
-  }
-
-  @Test
-  void selectsNamedCustomProvider() throws Exception {
-    var configuration = configuration().authProviderName("custom").build();
-    @SuppressWarnings("unchecked")
-    Instance<AuthProvider> providers = mock(Instance.class);
-    @SuppressWarnings("unchecked")
-    Instance<AuthProvider> selected = mock(Instance.class);
-    AuthProvider provider = mock(AuthProvider.class);
-    when(providers.select(Identifier.Literal.of("custom"))).thenReturn(selected);
-    when(selected.get()).thenReturn(provider);
-
-    var resolved =
-        CassandraClientProducer.resolveAuthenticationProvider(configuration, providers)
-            .orElseThrow();
-
-    assertThat(resolved).isInstanceOf(NonClosingAuthProvider.class);
-    verify(providers).select(Identifier.Literal.of("custom"));
+    verify(providers).select(Identifier.Literal.of(name));
     resolved.close();
     verifyNoMoreInteractions(provider);
   }
@@ -139,8 +120,7 @@ class CassandraClientProducerTest {
   @Test
   void rejectsPartialPlainTextCredentials() {
     var configuration = configuration().authUsername("polaris").build();
-    @SuppressWarnings("unchecked")
-    Instance<AuthProvider> providers = mock(Instance.class);
+    Instance<AuthProvider> providers = mock();
 
     assertThatIllegalArgumentException()
         .isThrownBy(
@@ -156,8 +136,7 @@ class CassandraClientProducerTest {
             .authUsername("polaris")
             .authPassword("secret")
             .build();
-    @SuppressWarnings("unchecked")
-    Instance<AuthProvider> providers = mock(Instance.class);
+    Instance<AuthProvider> providers = mock();
 
     assertThatIllegalArgumentException()
         .isThrownBy(
@@ -165,36 +144,23 @@ class CassandraClientProducerTest {
         .withMessageContaining("only be used with the default authentication provider");
   }
 
-  @Test
-  void rejectsMissingNamedProvider() {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void rejectsUnresolvableNamedProvider(boolean ambiguous) {
     var configuration = configuration().authProviderName("custom").build();
-    @SuppressWarnings("unchecked")
-    Instance<AuthProvider> providers = mock(Instance.class);
-    @SuppressWarnings("unchecked")
-    Instance<AuthProvider> selected = mock(Instance.class);
+    Instance<AuthProvider> providers = mock();
+    Instance<AuthProvider> selected = mock();
     when(providers.select(Identifier.Literal.of("custom"))).thenReturn(selected);
-    when(selected.isUnsatisfied()).thenReturn(true);
+    when(selected.isUnsatisfied()).thenReturn(!ambiguous);
+    when(selected.isAmbiguous()).thenReturn(ambiguous);
 
     assertThatIllegalArgumentException()
         .isThrownBy(
             () -> CassandraClientProducer.resolveAuthenticationProvider(configuration, providers))
-        .withMessageContaining("No Cassandra authentication provider named 'custom' is available");
-  }
-
-  @Test
-  void rejectsAmbiguousNamedProvider() {
-    var configuration = configuration().authProviderName("custom").build();
-    @SuppressWarnings("unchecked")
-    Instance<AuthProvider> providers = mock(Instance.class);
-    @SuppressWarnings("unchecked")
-    Instance<AuthProvider> selected = mock(Instance.class);
-    when(providers.select(Identifier.Literal.of("custom"))).thenReturn(selected);
-    when(selected.isAmbiguous()).thenReturn(true);
-
-    assertThatIllegalArgumentException()
-        .isThrownBy(
-            () -> CassandraClientProducer.resolveAuthenticationProvider(configuration, providers))
-        .withMessageContaining("Cassandra authentication provider 'custom' is ambiguous");
+        .withMessageContaining(
+            ambiguous
+                ? "Cassandra authentication provider 'custom' is ambiguous"
+                : "No Cassandra authentication provider named 'custom' is available");
   }
 
   @Test

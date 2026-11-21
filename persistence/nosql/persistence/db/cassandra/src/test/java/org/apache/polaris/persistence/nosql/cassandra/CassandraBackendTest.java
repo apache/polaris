@@ -44,6 +44,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.datastax.oss.driver.api.core.DefaultProtocolVersion;
 import com.datastax.oss.driver.api.core.DriverException;
+import com.datastax.oss.driver.api.core.DriverExecutionException;
 import com.datastax.oss.driver.api.core.DriverTimeoutException;
 import com.datastax.oss.driver.api.core.connection.ClosedConnectionException;
 import com.datastax.oss.driver.api.core.connection.HeartbeatException;
@@ -173,7 +174,140 @@ class CassandraBackendTest {
 
     assertThatThrownBy(() -> backend().write("realm", writes))
         .isInstanceOf(UnknownOperationResultException.class)
-        .hasCause(timeout);
+        .cause()
+        .hasSuppressedException(timeout);
+  }
+
+  @ParameterizedTest
+  @MethodSource("bulkOperations")
+  void bulkFailureClassificationDoesNotDependOnCompletionOrder(
+      String operation, boolean unknownFirst) {
+    var definite = new IllegalArgumentException("request rejected");
+    var unknown = new DriverTimeoutException("request timed out");
+    RuntimeException first = unknownFirst ? unknown : definite;
+    RuntimeException second = unknownFirst ? definite : unknown;
+    when(session.executeAsync(statement))
+        .thenReturn(CompletableFuture.failedFuture(first))
+        .thenReturn(CompletableFuture.failedFuture(second));
+    var backend = backend();
+    var ids = Set.of(PersistId.persistId(1L, 0), PersistId.persistId(2L, 0));
+
+    assertThatThrownBy(
+            () -> {
+              switch (operation) {
+                case "write" ->
+                    backend.write(
+                        "realm",
+                        List.of(
+                            new WriteObj("test", 1L, 0, 123L, new byte[] {1}, 1),
+                            new WriteObj("test", 2L, 0, 123L, new byte[] {2}, 1)));
+                case "delete" -> backend.delete("realm", ids);
+                case "batchDeleteObjs" -> backend.batchDeleteObjs(Map.of("realm", ids));
+                case "batchDeleteRefs" ->
+                    backend.batchDeleteRefs(Map.of("realm", Set.of("one", "two")));
+                default -> throw new AssertionError(operation);
+              }
+            })
+        .isInstanceOf(UnknownOperationResultException.class)
+        .cause()
+        .hasSuppressedException(first)
+        .hasSuppressedException(second);
+    assertThat(definite.getSuppressed()).isEmpty();
+    assertThat(unknown.getSuppressed()).isEmpty();
+  }
+
+  static Stream<Arguments> bulkOperations() {
+    return Stream.of("write", "delete", "batchDeleteObjs", "batchDeleteRefs")
+        .flatMap(
+            operation -> Stream.of(Arguments.of(operation, false), Arguments.of(operation, true)));
+  }
+
+  @Test
+  void synchronousSubmissionFailurePreservesOutstandingUnknownOutcome() {
+    var unknown = new DriverTimeoutException("request timed out");
+    var submissionFailure = new IllegalArgumentException("submission failed");
+    when(session.executeAsync(statement))
+        .thenReturn(CompletableFuture.failedFuture(unknown))
+        .thenThrow(submissionFailure);
+
+    assertThatThrownBy(() -> backend().batchDeleteRefs(Map.of("realm", Set.of("one", "two"))))
+        .isInstanceOf(UnknownOperationResultException.class)
+        .cause()
+        .hasSuppressedException(unknown)
+        .hasSuppressedException(submissionFailure);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void mapperFindsTimeoutInSuppressedNodeErrors(boolean cas) {
+    var timeout = new DriverTimeoutException("request timed out");
+    var nodeFailure =
+        AllNodesFailedException.fromErrors(List.of(Map.entry(mock(Node.class), timeout)));
+    var failure = new IllegalStateException("batch failed");
+    var sibling = new DriverExecutionException(new IllegalArgumentException("rejected"));
+    sibling.addSuppressed(new CompletionException(nodeFailure));
+    failure.addSuppressed(sibling);
+
+    var mapped =
+        cas
+            ? CassandraBackend.unhandledCasException(failure)
+            : CassandraBackend.unhandledException(failure);
+    assertThat(mapped).isInstanceOf(UnknownOperationResultException.class).hasCause(failure);
+  }
+
+  @ParameterizedTest
+  @MethodSource("casConnectionFailures")
+  void mapperPreservesCasDistinctionForNestedConnectionFailures(DriverException failure) {
+    var aggregate = new IllegalStateException("batch failed");
+    aggregate.addSuppressed(new CompletionException(failure));
+
+    assertThat(CassandraBackend.unhandledCasException(aggregate))
+        .isInstanceOf(UnknownOperationResultException.class)
+        .hasCause(aggregate);
+    assertThat(CassandraBackend.unhandledException(aggregate)).isSameAs(aggregate);
+  }
+
+  @Test
+  void driverExecutionWrapperPreservesUnknownOutcome() {
+    var failure = new DriverExecutionException(new DriverTimeoutException("timed out"));
+    assertThat(CassandraBackend.unhandledCasException(failure))
+        .isInstanceOf(UnknownOperationResultException.class)
+        .hasCause(failure);
+  }
+
+  @Test
+  void mapperHandlesCyclesAndSharedExceptions() {
+    var failure = new IllegalStateException("batch failed");
+    var nested = new IllegalStateException("nested");
+    failure.initCause(nested);
+    nested.initCause(failure);
+    nested.addSuppressed(new DriverTimeoutException("timed out"));
+    failure.addSuppressed(nested);
+
+    assertThat(CassandraBackend.unhandledException(failure))
+        .isInstanceOf(UnknownOperationResultException.class)
+        .hasCause(failure);
+  }
+
+  @Test
+  void localInterruptionAloneIsNotAnUnknownOutcome() {
+    var failure = new RuntimeException(new InterruptedException("waiting for permit"));
+    assertThat(CassandraBackend.unhandledCasException(failure)).isSameAs(failure);
+    failure.addSuppressed(new DriverTimeoutException("outstanding request timed out"));
+    assertThat(CassandraBackend.unhandledCasException(failure))
+        .isInstanceOf(UnknownOperationResultException.class)
+        .hasCause(failure);
+  }
+
+  @Test
+  void fetchMapsWrappedTimeout() {
+    var timeout = new DriverTimeoutException("read timed out");
+    when(session.executeAsync(statement))
+        .thenReturn(CompletableFuture.failedFuture(new CompletionException(timeout)));
+
+    assertThatThrownBy(() -> backend().fetch("realm", Set.of(PersistId.persistId(1L, 0))))
+        .isInstanceOf(UnknownOperationResultException.class)
+        .hasRootCause(timeout);
   }
 
   @Test
@@ -221,7 +355,8 @@ class CassandraBackendTest {
 
     assertThatThrownBy(() -> backend().batchDeleteRefs(Map.of("realm", Set.of("ref"))))
         .isInstanceOf(UnknownOperationResultException.class)
-        .hasCause(failure);
+        .cause()
+        .hasSuppressedException(failure);
   }
 
   @Test
@@ -313,6 +448,19 @@ class CassandraBackendTest {
     assertThat(CassandraBackend.unhandledException(exception)).isSameAs(exception);
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void referenceUpdateTimeoutPreservesUnknownOutcome(boolean nodeFailure) {
+    DriverException failure = new DriverTimeoutException("CAS timed out");
+    if (nodeFailure) {
+      failure = AllNodesFailedException.fromErrors(List.of(Map.entry(mock(Node.class), failure)));
+    }
+    when(session.execute(statement)).thenThrow(failure);
+    assertThatThrownBy(() -> backend().updateReference("realm", reference("ref"), Optional.empty()))
+        .isInstanceOf(UnknownOperationResultException.class)
+        .hasCause(failure);
+  }
+
   static Stream<DriverException> casConnectionFailures() {
     return Stream.of(
             new ClosedConnectionException("connection closed"),
@@ -392,8 +540,9 @@ class CassandraBackendTest {
     completion.join();
   }
 
-  @Test
-  void batchedQueryPropagatesSynchronousSubmissionFailure() {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void batchedQueryPreservesSynchronousFailure(boolean close) {
     var query =
         backend()
             .newBatchedQuery(
@@ -403,26 +552,15 @@ class CassandraBackendTest {
                 row -> row,
                 row -> row,
                 1);
-
     query.add(mock(Row.class));
 
-    assertThatIllegalStateException().isThrownBy(query::finish).withMessage("prepare failed");
-  }
-
-  @Test
-  void batchedQueryDoesNotMaskFailureWhenClosedAfterFinish() {
     assertThatIllegalStateException()
         .isThrownBy(() -> {
-          try (var query =
-              backend()
-                  .newBatchedQuery(
-                      ignored -> {
-                        throw new IllegalStateException("prepare failed");
-                      },
-                      row -> row,
-                      row -> row,
-                      1)) {
-            query.add(mock(Row.class));
+          if (close) {
+            try (query) {
+              query.finish();
+            }
+          } else {
             query.finish();
           }
         })

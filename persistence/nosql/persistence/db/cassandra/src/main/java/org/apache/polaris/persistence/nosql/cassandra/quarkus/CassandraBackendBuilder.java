@@ -20,7 +20,6 @@ package org.apache.polaris.persistence.nosql.cassandra.quarkus;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import jakarta.enterprise.context.Dependent;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.cassandra.CassandraBackendConfig;
@@ -32,20 +31,19 @@ import org.apache.polaris.persistence.nosql.quarkus.backend.BackendType;
 @BackendType(CassandraBackendFactory.NAME)
 @Dependent
 class CassandraBackendBuilder implements BackendBuilder {
-  @Inject Instance<CassandraConfiguration> config;
+  @Inject CassandraConfiguration config;
   @Inject CqlSession client;
 
   @Override
   public Backend buildBackend() {
-    var configuration = config.get();
     var backendConfig =
         new CassandraBackendConfig(
             client,
-            configuration.keyspace(),
-            configuration.ddlTimeout(),
-            configuration.dmlTimeout(),
-            configuration.consistencyLevel(),
-            configuration.serialConsistencyLevel(),
+            config.keyspace(),
+            config.ddlTimeout(),
+            config.dmlTimeout(),
+            config.consistencyLevel(),
+            config.serialConsistencyLevel(),
             false);
     return new CassandraBackendFactory().buildBackend(backendConfig);
   }
