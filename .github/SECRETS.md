@@ -27,7 +27,7 @@ Note: Organization level secrets are _not_ shown the repository's list of secret
 
 | Secret                      | Purpose                                                                                               |
 |-----------------------------|-------------------------------------------------------------------------------------------------------|
-| `DEVELOCITY_ACCESS_KEY`     | Access key to [ASF Develocity](https://develocity.apache.org), used to publish Gradle build scans     |
+| `DEVELOCITY_ACCESS_KEY`     | Access key to [ASF Develocity](https://develocity.apache.org), for Gradle and Docker build scans      |
 | `DOCKERHUB_USER`            | [Docker Hub](https://hub.docker.com/r/apache/polaris) user name, used to publish container images.    |
 | `DOCKERHUB_TOKEN`           | Token for the above.                                                                                  |
 | `NEXUS_STAGE_DEPLOYER_USER` | [Apache Nexus](https://repository.apache.org/) repository, used to stage and publish Maven artifacts. |
