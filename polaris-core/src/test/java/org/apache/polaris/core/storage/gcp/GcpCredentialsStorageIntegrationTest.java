@@ -25,7 +25,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.google.api.client.http.LowLevelHttpRequest;
+import com.google.api.client.http.LowLevelHttpResponse;
 import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.testing.http.MockHttpTransport;
+import com.google.api.client.testing.http.MockLowLevelHttpRequest;
+import com.google.api.client.testing.http.MockLowLevelHttpResponse;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
@@ -571,7 +576,6 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
 
     assertThat(expressionAt(parsedRules, 0))
-        .doesNotContain("/folders/")
         .isEqualTo("resource.name.startsWith('projects/_/buckets/bucket1/objects/data/')");
     assertThat(expressionAt(parsedRules, 1))
         .isEqualTo(
@@ -580,52 +584,40 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @Test
-  public void testGenerateAccessBoundaryWriteRuleCoversHnsParentFoldersExactly() {
-    // HNS creates missing parent folders on first write; parents are matched exactly, never by
-    // prefix, so sibling locations under the same parent stay out of scope.
+  public void testGenerateAccessBoundaryHasNoRuleForParentFolders() {
+    // Missing parent folders are created by Polaris before vending. A folders.create grant on them
+    // would also authorize renaming a folder from one write location into a missing parent of
+    // another, so the boundary covers folders only inside the write locations.
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            Set.of("gs://bucket1/cdr/dwh/probe"), Set.of(), Set.of("gs://bucket1/cdr/dwh/probe"));
-
-    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
-
-    assertThat(expressionAt(parsedRules, 0)).doesNotContain("/folders/");
-    assertThat(expressionAt(parsedRules, 1))
-        .isEqualTo(
-            "resource.name.startsWith('projects/_/buckets/bucket1/objects/cdr/dwh/probe/')"
-                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/cdr/dwh/probe/')"
-                + " || resource.name == 'projects/_/buckets/bucket1/folders/cdr/'"
-                + " || resource.name == 'projects/_/buckets/bucket1/folders/cdr/dwh/'");
-  }
-
-  @Test
-  public void testGenerateAccessBoundaryWriteRuleListsSharedParentFolderOnce() {
-    CredentialAccessBoundary credentialAccessBoundary =
-        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            Set.of(), Set.of(), Set.of("gs://bucket1/cdr/t1", "gs://bucket1/cdr/t2"));
+            Set.of(), Set.of(), Set.of("gs://bucket1/warehouse/ns/table1"));
 
     JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
 
     assertThat(parsedRules.path("accessBoundaryRules")).hasSize(1);
-    String expression = expressionAt(parsedRules, 0);
-    assertThat(expression.split(" \\|\\| "))
-        .containsExactlyInAnyOrder(
-            "resource.name.startsWith('projects/_/buckets/bucket1/objects/cdr/t1/')",
-            "resource.name.startsWith('projects/_/buckets/bucket1/folders/cdr/t1/')",
-            "resource.name.startsWith('projects/_/buckets/bucket1/objects/cdr/t2/')",
-            "resource.name.startsWith('projects/_/buckets/bucket1/folders/cdr/t2/')",
-            "resource.name == 'projects/_/buckets/bucket1/folders/cdr/'");
+    assertThat(expressionOf(parsedRules, "bucket1", "inRole:roles/storage.legacyBucketWriter"))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/warehouse/ns/table1/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/warehouse/ns/table1/')");
   }
 
   @Test
-  public void testGenerateAccessBoundaryWriteRuleAtBucketRootHasNoParentFolders() {
+  public void testGenerateAccessBoundaryWriteRuleCoversFoldersOfEachWriteLocation() {
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            Set.of(), Set.of(), Set.of("gs://bucket1"));
+            Set.of(), Set.of(), Set.of("gs://bucket1/warehouse/t1", "gs://bucket1/warehouse/t2"));
 
     JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
 
-    assertThat(expressionAt(parsedRules, 0)).doesNotContain("resource.name ==");
+    assertThat(parsedRules.path("accessBoundaryRules")).hasSize(1);
+    assertThat(
+            expressionOf(parsedRules, "bucket1", "inRole:roles/storage.legacyBucketWriter")
+                .split(" \\|\\| "))
+        .containsExactlyInAnyOrder(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/warehouse/t1/')",
+            "resource.name.startsWith('projects/_/buckets/bucket1/folders/warehouse/t1/')",
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/warehouse/t2/')",
+            "resource.name.startsWith('projects/_/buckets/bucket1/folders/warehouse/t2/')");
   }
 
   @Test
@@ -636,50 +628,158 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
 
-    assertThat(expressionAt(parsedRules, 0))
+    assertThat(expressionOf(parsedRules, "bucket1", "inRole:roles/storage.legacyBucketWriter"))
         .isEqualTo(
             "resource.name.startsWith('projects/_/buckets/bucket1/objects/a\\'b/c\\\"d/')"
-                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/a\\'b/c\\\"d/')"
-                + " || resource.name == 'projects/_/buckets/bucket1/folders/a\\'b/'");
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/a\\'b/c\\\"d/')");
   }
 
   @Test
-  public void testParentFoldersPreservesEveryFolderBoundary() {
-    assertThat(GcpCredentialsStorageIntegration.parentFolders("table/")).isEmpty();
-    assertThat(GcpCredentialsStorageIntegration.parentFolders("a/b/c/"))
-        .containsExactly("a/", "a/b/");
-    assertThat(GcpCredentialsStorageIntegration.parentFolders("a//b/"))
-        .containsExactly("a/", "a//");
-    assertThat(GcpCredentialsStorageIntegration.parentFolders("")).isEmpty();
-  }
-
-  @Test
-  public void testGenerateAccessBoundaryWriteRuleForCustomNamespaceLocations() {
+  public void testGenerateAccessBoundaryWriteRulesForCustomNamespaceLocations() {
     // With ALLOW_NAMESPACE_CUSTOM_LOCATION a namespace (and its tables) can live at an arbitrary
     // path, possibly in another bucket than the catalog base (e.g. a table under
-    // gs://bucket2/custom/ns/ whose catalog base is gs://bucket1/warehouse/). The write rule is
-    // derived only from the table's own write locations, so parents are exact on whichever
-    // bucket they resolve to and sibling tables in the same custom namespace stay out of scope.
+    // gs://bucket2/custom/ns/ whose catalog base is gs://bucket1/warehouse/). The rules are derived
+    // only from the table's own write locations, so each bucket gets its own write rule.
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
             Set.of(),
             Set.of(),
             Set.of("gs://bucket2/custom/ns/t1", "gs://bucket1/warehouse/data/t1"));
 
-    JsonNode rules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
 
-    assertThat(rules.path("accessBoundaryRules")).hasSize(2);
-    String writeRules = expressionAt(rules, 0) + " || " + expressionAt(rules, 1);
-    assertThat(writeRules.split(" \\|\\| "))
-        .containsExactlyInAnyOrder(
-            "resource.name.startsWith('projects/_/buckets/bucket2/objects/custom/ns/t1/')",
-            "resource.name.startsWith('projects/_/buckets/bucket2/folders/custom/ns/t1/')",
-            "resource.name == 'projects/_/buckets/bucket2/folders/custom/'",
-            "resource.name == 'projects/_/buckets/bucket2/folders/custom/ns/'",
-            "resource.name.startsWith('projects/_/buckets/bucket1/objects/warehouse/data/t1/')",
-            "resource.name.startsWith('projects/_/buckets/bucket1/folders/warehouse/data/t1/')",
-            "resource.name == 'projects/_/buckets/bucket1/folders/warehouse/'",
-            "resource.name == 'projects/_/buckets/bucket1/folders/warehouse/data/'");
+    assertThat(parsedRules.path("accessBoundaryRules")).hasSize(2);
+    assertThat(expressionOf(parsedRules, "bucket2", "inRole:roles/storage.legacyBucketWriter"))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket2/objects/custom/ns/t1/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket2/folders/custom/ns/t1/')");
+    assertThat(expressionOf(parsedRules, "bucket1", "inRole:roles/storage.legacyBucketWriter"))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/warehouse/data/t1/')"
+                + " || resource.name.startsWith("
+                + "'projects/_/buckets/bucket1/folders/warehouse/data/t1/')");
+  }
+
+  private static Stream<Arguments> parentFolderCases() {
+    return Stream.of(
+        Arguments.of(Set.of("gs://b1/ns/tbl"), Map.of("b1", Set.of("ns/"))),
+        Arguments.of(Set.of("gs://b1/a/b/c/tbl/"), Map.of("b1", Set.of("a/b/c/"))),
+        // Bucket-root and single-segment locations have no parent folder.
+        Arguments.of(Set.of("gs://b1/tbl"), Map.of()),
+        Arguments.of(Set.of("gs://b1"), Map.of()),
+        Arguments.of(Set.of("gs://b1/"), Map.of()),
+        // A parent that a deeper parent's recursive creation also creates is dropped.
+        Arguments.of(
+            Set.of("gs://b1/wh/ns/t1", "gs://b1/wh/ns/t1/data/x"),
+            Map.of("b1", Set.of("wh/ns/t1/data/"))),
+        // Two write locations in different subtrees of one bucket: both parent chains.
+        Arguments.of(
+            Set.of("gs://b1/wh/ns/tbl", "gs://b1/wh2/d1/d2/data"),
+            Map.of("b1", Set.of("wh/ns/", "wh2/d1/d2/"))),
+        Arguments.of(
+            Set.of("gs://b1/x/t", "gs://b2/y/z/t"),
+            Map.of("b1", Set.of("x/"), "b2", Set.of("y/z/"))),
+        // Consecutive slashes are kept as they are.
+        Arguments.of(Set.of("gs://b1/a//t"), Map.of("b1", Set.of("a//"))));
+  }
+
+  @ParameterizedTest
+  @MethodSource("parentFolderCases")
+  public void testParentFoldersToCreate(
+      Set<String> writeLocations, Map<String, Set<String>> expected) {
+    assertThat(GcpCredentialsStorageIntegration.parentFoldersToCreate(writeLocations))
+        .isEqualTo(expected);
+  }
+
+  /** Vends with a fake transport that answers every folder request with {@code status}. */
+  private static List<String> vendAndRecordFolderRequests(
+      Set<String> readLocations, Set<String> writeLocations, int status) {
+    List<String> requests = new ArrayList<>();
+    MockHttpTransport transport =
+        new MockHttpTransport() {
+          @Override
+          public LowLevelHttpRequest buildRequest(String method, String url) {
+            return new MockLowLevelHttpRequest(url) {
+              @Override
+              public LowLevelHttpResponse execute() throws IOException {
+                requests.add(
+                    method
+                        + " "
+                        + url
+                        + " "
+                        + getContentAsString()
+                        + " "
+                        + getHeaderValues("Authorization"));
+                if (status < 0) {
+                  throw new IOException("connection refused");
+                }
+                return new MockLowLevelHttpResponse().setStatusCode(status);
+              }
+            };
+          }
+        };
+    GoogleCredentials sourceCredentials = Mockito.mock(GoogleCredentials.class);
+    Mockito.when(sourceCredentials.createScoped(Mockito.any(String.class)))
+        .thenReturn(sourceCredentials);
+    IamCredentialsClient iamClient = Mockito.mock(IamCredentialsClient.class);
+    Mockito.when(iamClient.generateAccessToken(Mockito.any(GenerateAccessTokenRequest.class)))
+        .thenReturn(
+            GenerateAccessTokenResponse.newBuilder()
+                .setAccessToken("impersonated-token")
+                .setExpireTime(
+                    Timestamp.newBuilder()
+                        .setSeconds(System.currentTimeMillis() / 1000 + 3600)
+                        .build())
+                .build());
+    GcpCredentialOps credentialOps =
+        new GcpCredentialOps() {
+          @Override
+          public IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
+            return iamClient;
+          }
+
+          @Override
+          public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
+            return new AccessToken("downscoped-token", new Date());
+          }
+        };
+    GcpStorageConfigurationInfo config =
+        GcpStorageConfigurationInfo.builder()
+            .addAllAllowedLocations(List.of("gs://bucket/"))
+            .gcpServiceAccount("test-sa@project.iam.gserviceaccount.com")
+            .build();
+    StorageAccessConfig accessConfig =
+        new GcpCredentialsStorageIntegration(
+                sourceCredentials, () -> transport, config, EMPTY_REALM_CONFIG, credentialOps)
+            .getStorageAccessConfig(
+                toGrants(readLocations, Set.of(), writeLocations),
+                Optional.empty(),
+                CredentialVendingContext.empty());
+    assertThat(accessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN))
+        .isEqualTo("downscoped-token");
+    return requests;
+  }
+
+  @Test
+  public void testWriteVendCreatesParentFolders() {
+    assertThat(vendAndRecordFolderRequests(Set.of(), Set.of("gs://bucket/ns/tbl"), 200))
+        .containsExactly(
+            "POST https://storage.googleapis.com/storage/v1/b/bucket/folders?recursive=true"
+                + " {\"name\":\"ns/\"} [Bearer impersonated-token]");
+  }
+
+  @Test
+  public void testReadOnlyVendCreatesNoFolders() {
+    assertThat(vendAndRecordFolderRequests(Set.of("gs://bucket/ns/tbl"), Set.of(), 200)).isEmpty();
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {403, 409, 500, -1})
+  public void testFolderCreationFailureDoesNotFailTheVend(int status) {
+    // 409: already exists, or no hierarchical namespace. 403: missing permission, or no
+    // hierarchical namespace. -1: transport failure. The token is returned in every case.
+    assertThat(vendAndRecordFolderRequests(Set.of(), Set.of("gs://bucket/ns/tbl"), status))
+        .hasSize(1);
   }
 
   private static String expressionAt(JsonNode parsedRules, int ruleIndex) {
@@ -689,6 +789,26 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .path("availabilityCondition")
         .path("expression")
         .asString();
+  }
+
+  /**
+   * Returns the expression of the only rule on {@code bucket} whose permissions are exactly {@code
+   * permission}. Rule order follows {@code Set.of} iteration order, so tests with several buckets
+   * must not look rules up by index.
+   */
+  private static String expressionOf(JsonNode parsedRules, String bucket, String permission) {
+    List<JsonNode> matches = new ArrayList<>();
+    for (JsonNode rule : parsedRules.path("accessBoundaryRules")) {
+      if (rule.path("availableResource")
+              .asString()
+              .equals("//storage.googleapis.com/projects/_/buckets/" + bucket)
+          && rule.path("availablePermissions").size() == 1
+          && rule.path("availablePermissions").path(0).asString().equals(permission)) {
+        matches.add(rule);
+      }
+    }
+    assertThat(matches).hasSize(1);
+    return matches.get(0).path("availabilityCondition").path("expression").asString();
   }
 
   private static RealmConfig configWith(Map<String, String> values) {

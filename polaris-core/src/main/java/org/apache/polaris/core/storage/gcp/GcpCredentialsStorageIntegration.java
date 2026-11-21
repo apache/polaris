@@ -21,6 +21,12 @@ package org.apache.polaris.core.storage.gcp;
 import static org.apache.polaris.core.storage.StorageLocation.ensureTrailingSlash;
 import static org.apache.polaris.core.storage.StorageLocation.trimLeadingSlash;
 
+import com.google.api.client.http.ByteArrayContent;
+import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpRequest;
+import com.google.api.client.http.HttpRequestFactory;
+import com.google.api.client.http.HttpResponse;
+import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
@@ -30,6 +36,7 @@ import com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest;
 import com.google.cloud.iam.credentials.v1.GenerateAccessTokenResponse;
 import com.google.cloud.iam.credentials.v1.IamCredentialsClient;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.net.UrlEscapers;
 import com.google.protobuf.Duration;
 import com.google.protobuf.Timestamp;
 import java.io.IOException;
@@ -44,6 +51,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.StructuredLogKeys;
@@ -79,6 +89,12 @@ public class GcpCredentialsStorageIntegration
       "https://www.googleapis.com/auth/devstorage.read_write";
 
   private static final ObjectMapper OBJECT_MAPPER = JsonMapper.shared();
+
+  private static final String GCS_JSON_API_BUCKETS = "https://storage.googleapis.com/storage/v1/b/";
+  private static final int FOLDER_CREATE_TIMEOUT_MS = 5_000;
+  // A bucket without hierarchical namespace rejects folder creation with 403 when the caller lacks
+  // storage.folders.create, so the failure is logged at WARN only once per bucket.
+  private static final Set<String> BUCKETS_WITH_FOLDER_WARNING = ConcurrentHashMap.newKeySet();
 
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;
@@ -336,6 +352,8 @@ public class GcpCredentialsStorageIntegration
       throw new RuntimeException("Unable to fetch access credentials " + e.getMessage());
     }
 
+    createParentFolders(writeLocations, credentialsToDownscope, transportFactory);
+
     // If expires_in missing, use source credential's expire time, which require another api call to
     // get.
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
@@ -426,6 +444,112 @@ public class GcpCredentialsStorageIntegration
     }
   }
 
+  /**
+   * Creates the missing parent folders of each write location on Hierarchical Namespace (HNS)
+   * buckets, using the identity the vended token is downscoped from. HNS creates missing parent
+   * folders when an object is written, which needs {@code storage.folders.create} on each of them;
+   * the vended token does not get that permission outside its write locations, because a folder
+   * rename is authorized by the same permission on its destination. Creating the parents here keeps
+   * the token's folder access inside its write locations, as on buckets without HNS.
+   *
+   * <p>Failures never fail the vend: they leave the token unchanged, and only the first write under
+   * a still-missing parent fails. A bucket without HNS rejects the call with 409, or with 403 when
+   * the identity lacks {@code storage.folders.create}.
+   */
+  private static void createParentFolders(
+      Set<String> writeLocations,
+      GoogleCredentials credentials,
+      HttpTransportFactory transportFactory) {
+    Map<String, Set<String>> parentFolders = parentFoldersToCreate(writeLocations);
+    if (parentFolders.isEmpty()) {
+      return;
+    }
+    HttpRequestFactory requestFactory =
+        transportFactory.create().createRequestFactory(new HttpCredentialsAdapter(credentials));
+    parentFolders.forEach((bucket, folders) ->
+        folders.forEach(folder -> createFolder(requestFactory, bucket, folder)));
+  }
+
+  private static void createFolder(
+      HttpRequestFactory requestFactory, String bucket, String folder) {
+    try {
+      GenericUrl url =
+          new GenericUrl(
+              GCS_JSON_API_BUCKETS
+                  + UrlEscapers.urlPathSegmentEscaper().escape(bucket)
+                  + "/folders");
+      url.set("recursive", true);
+      HttpRequest request =
+          requestFactory
+              .buildPostRequest(
+                  url,
+                  ByteArrayContent.fromString(
+                      "application/json", OBJECT_MAPPER.writeValueAsString(Map.of("name", folder))))
+              .setConnectTimeout(FOLDER_CREATE_TIMEOUT_MS)
+              .setReadTimeout(FOLDER_CREATE_TIMEOUT_MS)
+              .setThrowExceptionOnExecuteError(false);
+      HttpResponse response = request.execute();
+      int status;
+      try {
+        status = response.getStatusCode();
+      } finally {
+        response.disconnect();
+      }
+      // 409: the folder already exists, or the bucket has no hierarchical namespace.
+      if (status == 200 || status == 409) {
+        LOGGER.debug("Parent folder {} in GCS bucket {}: HTTP {}", folder, bucket, status);
+      } else {
+        warnFolderNotCreated(bucket, folder, "HTTP " + status, null);
+      }
+    } catch (IOException | RuntimeException e) {
+      warnFolderNotCreated(bucket, folder, e.getClass().getSimpleName(), e);
+    }
+  }
+
+  private static void warnFolderNotCreated(
+      String bucket, String folder, String reason, Exception cause) {
+    String message =
+        "Could not create parent folder {} in GCS bucket {} ({}). If the bucket has hierarchical"
+            + " namespace enabled, the first write under this folder fails until the identity"
+            + " Polaris downscopes from has storage.folders.create on the bucket. Buckets without"
+            + " hierarchical namespace are not affected.";
+    if (BUCKETS_WITH_FOLDER_WARNING.add(bucket)) {
+      LOGGER.warn(message, folder, bucket, reason, cause);
+    } else {
+      LOGGER.debug(message, folder, bucket, reason, cause);
+    }
+  }
+
+  /**
+   * Returns, per bucket, the parent folder of each write location: {@code a/b/tbl/} gives {@code
+   * a/b/}. Bucket-root and single-segment locations have no parent. A parent that is a prefix of
+   * another parent in the same bucket is dropped, because creating the deeper one recursively also
+   * creates it.
+   */
+  @VisibleForTesting
+  static Map<String, Set<String>> parentFoldersToCreate(Set<String> writeLocations) {
+    Map<String, Set<String>> parentsByBucket = new TreeMap<>();
+    for (String location : writeLocations) {
+      StorageUri uri = StorageUri.parse(location);
+      String path = ensureTrailingSlash(trimLeadingSlash(uri.rawPath()));
+      int parentEnd = path.lastIndexOf('/', path.length() - 2);
+      if (parentEnd > 0) {
+        parentsByBucket
+            .computeIfAbsent(uri.authority(), key -> new TreeSet<>())
+            .add(path.substring(0, parentEnd + 1));
+      }
+    }
+    Map<String, Set<String>> deepestParents = new TreeMap<>();
+    parentsByBucket.forEach((bucket, parents) -> {
+      for (String parent : parents) {
+        if (parents.stream().noneMatch(p -> p.length() > parent.length() && p.startsWith(parent))) {
+          deepestParents.computeIfAbsent(bucket, key -> new TreeSet<>()).add(parent);
+        }
+      }
+    });
+    return deepestParents;
+  }
+
   private static String convertToString(CredentialAccessBoundary accessBoundary) {
     try {
       return OBJECT_MAPPER.writeValueAsString(accessBoundary);
@@ -443,6 +567,12 @@ public class GcpCredentialsStorageIntegration
    * allowedListLocations}; write access only on {@code allowedWriteLocations}. CEL conditions are
    * de-duplicated so a path that appears in both the read and list sets contributes a single {@code
    * resourceNameStartsWith} expression.
+   *
+   * <p>On Hierarchical Namespace (HNS) buckets, the write rule also covers {@code folders/<path>/},
+   * so folders inside a write location can be created, renamed and deleted, as directories can on
+   * buckets without HNS. No folder outside the write locations is covered: the missing parent
+   * folders are created by Polaris before the token is vended (see {@code compute}). Buckets
+   * without HNS have no folder resources, so the folder conditions grant nothing there.
    */
   @VisibleForTesting
   public static CredentialAccessBoundary generateAccessBoundaryRules(
@@ -485,13 +615,10 @@ public class GcpCredentialsStorageIntegration
       LinkedHashSet<String> conditions =
           writeConditionsByBucket.computeIfAbsent(bucket, key -> new LinkedHashSet<>());
       conditions.add(resourceNameStartsWithExpression(bucket, path));
-      // HNS buckets authorize storage.folders.* (from legacyBucketWriter) on folders/<path>.
+      // HNS buckets authorize storage.folders.* (from legacyBucketWriter) on folders/<path>. The
+      // parent folders get no rule: folders.create there would also authorize renaming a folder
+      // from this location into a missing parent of another location.
       conditions.add(folderNameStartsWithExpression(bucket, path));
-      // HNS creates missing parent folders on first write. Match each parent exactly, never by
-      // prefix, so sibling locations under the same parent stay out of scope (e.g. allowing
-      // folder "db/" must not allow "db/other_table/").
-      parentFolders(path)
-          .forEach(parent -> conditions.add(folderNameEqualsExpression(bucket, parent)));
     });
 
     CredentialAccessBoundary.Builder accessBoundaryBuilder = CredentialAccessBoundary.newBuilder();
@@ -529,23 +656,6 @@ public class GcpCredentialsStorageIntegration
     return accessBoundaryBuilder.build();
   }
 
-  /**
-   * Returns the parent folders of {@code path}, shallowest first, excluding {@code path} itself.
-   * Every {@code /} is a folder boundary on HNS buckets, so consecutive slashes are preserved:
-   * {@code "a/b/c/"} gives {@code ["a/", "a/b/"]} and {@code "a//b/"} gives {@code ["a/", "a//"]}.
-   */
-  @VisibleForTesting
-  static List<String> parentFolders(String path) {
-    List<String> parents = new ArrayList<>();
-    int slash = path.indexOf('/');
-    // Stop before the last character: a trailing slash ends the location itself, not a parent.
-    while (slash >= 0 && slash < path.length() - 1) {
-      parents.add(path.substring(0, slash + 1));
-      slash = path.indexOf('/', slash + 1);
-    }
-    return parents;
-  }
-
   @VisibleForTesting
   static String resourceNameStartsWithExpression(String bucket, String path) {
     return String.format(
@@ -557,13 +667,6 @@ public class GcpCredentialsStorageIntegration
   static String folderNameStartsWithExpression(String bucket, String path) {
     return String.format(
         "resource.name.startsWith('projects/_/buckets/%s/folders/%s')",
-        escapeCelLiteral(bucket), escapeCelLiteral(path));
-  }
-
-  @VisibleForTesting
-  static String folderNameEqualsExpression(String bucket, String path) {
-    return String.format(
-        "resource.name == 'projects/_/buckets/%s/folders/%s'",
         escapeCelLiteral(bucket), escapeCelLiteral(path));
   }
 
