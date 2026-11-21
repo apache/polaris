@@ -30,6 +30,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
@@ -109,6 +110,13 @@ public class PolarisServiceImpl
     this.reservedProperties = reservedProperties;
     this.adminService = adminService;
     this.serviceIdentityProvider = serviceIdentityProvider;
+  }
+
+  private static <T> T requireField(T value, String fieldName) {
+    if (value == null) {
+      throw new BadRequestException("%s is required", fieldName);
+    }
+    return value;
   }
 
   private static Response toResponse(BaseResult result, Response.Status successStatus) {
@@ -303,6 +311,7 @@ public class PolarisServiceImpl
   @Override
   public Response createPrincipal(
       CreatePrincipalRequest request, RealmContext realmContext, SecurityContext securityContext) {
+    requireField(request.getPrincipal(), "principal");
     PrincipalEntity principal =
         new PrincipalEntity.Builder()
             .setName(request.getPrincipal().getName())
@@ -382,6 +391,7 @@ public class PolarisServiceImpl
       CreatePrincipalRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    requireField(request.getPrincipalRole(), "principalRole");
     PrincipalRoleEntity entity =
         new PrincipalRoleEntity.Builder()
             .setName(request.getPrincipalRole().getName())
@@ -439,6 +449,7 @@ public class PolarisServiceImpl
       CreateCatalogRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    requireField(request.getCatalogRole(), "catalogRole");
     CatalogRoleEntity entity =
         new CatalogRoleEntity.Builder()
             .setName(request.getCatalogRole().getName())
@@ -506,6 +517,7 @@ public class PolarisServiceImpl
       GrantPrincipalRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    requireField(request.getPrincipalRole(), "principalRole");
     LOGGER.info(
         "Assigning principalRole {} to principal {}",
         request.getPrincipalRole().getName(),
@@ -549,6 +561,7 @@ public class PolarisServiceImpl
       GrantCatalogRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    requireField(request.getCatalogRole(), "catalogRole");
     LOGGER.info(
         "Assigning catalogRole {} in catalog {} to principalRole {}",
         request.getCatalogRole().getName(),
@@ -624,7 +637,10 @@ public class PolarisServiceImpl
         catalogRoleName,
         catalogName);
     return processGrantOperation(
-        grantRequest.getGrant(), catalogName, catalogRoleName, GrantDirection.GRANT);
+        requireField(grantRequest.getGrant(), "grant"),
+        catalogName,
+        catalogRoleName,
+        GrantDirection.GRANT);
   }
 
   /** From PolarisCatalogsApiService */
@@ -647,7 +663,10 @@ public class PolarisServiceImpl
     }
 
     return processGrantOperation(
-        grantRequest.getGrant(), catalogName, catalogRoleName, GrantDirection.REVOKE);
+        requireField(grantRequest.getGrant(), "grant"),
+        catalogName,
+        catalogRoleName,
+        GrantDirection.REVOKE);
   }
 
   private enum GrantDirection {
