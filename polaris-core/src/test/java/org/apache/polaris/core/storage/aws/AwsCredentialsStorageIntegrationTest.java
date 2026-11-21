@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -62,6 +63,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 import software.amazon.awssdk.services.sts.model.StsException;
 import software.amazon.awssdk.services.sts.model.Tag;
+import software.amazon.awssdk.utils.SdkAutoCloseable;
 
 class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
@@ -183,6 +185,43 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .containsEntry(
             StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
             "/namespace/table/credentials");
+    assertThat(storageAccessConfig.internalProperties())
+        .doesNotContainKey(AwsClientProperties.CLIENT_CREDENTIALS_PROVIDER);
+  }
+
+  @Test
+  public void testStsUnavailableUsesSharedDefaultCredentialsProvider() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String warehouseDir = "s3://bucket/path/to/warehouse";
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(warehouseDir)
+            .stsUnavailable(true)
+            .build();
+    StorageAccessConfig storageAccessConfig =
+        new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
+            .getStorageAccessConfig(
+                toGrants(
+                    Set.of(warehouseDir + "/namespace/table"),
+                    Set.of(warehouseDir + "/namespace/table"),
+                    Set.of(warehouseDir + "/namespace/table")),
+                Optional.empty(),
+                CredentialVendingContext.empty());
+
+    Mockito.verifyNoInteractions(stsClient);
+    assertThat(storageAccessConfig.credentials()).isEmpty();
+    assertThat(storageAccessConfig.extraProperties())
+        .doesNotContainKey(AwsClientProperties.CLIENT_CREDENTIALS_PROVIDER);
+    assertThat(storageAccessConfig.internalProperties())
+        .containsEntry(
+            AwsClientProperties.CLIENT_CREDENTIALS_PROVIDER,
+            SharedDefaultCredentialsProvider.class.getName());
+    // Iceberg loads it by name, and closing an S3 client must not close the shared provider.
+    assertThat(
+            new AwsClientProperties(storageAccessConfig.internalProperties())
+                .credentialsProvider(null, null, null))
+        .isInstanceOf(SharedDefaultCredentialsProvider.class)
+        .isNotInstanceOf(SdkAutoCloseable.class);
   }
 
   // uses different realm config with INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL set to true

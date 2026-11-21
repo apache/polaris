@@ -22,17 +22,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.aws.s3.S3FileIOProperties;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
-import org.apache.polaris.service.storage.aws.SharedDefaultCredentialsProvider;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
-import software.amazon.awssdk.utils.SdkAutoCloseable;
 
 /**
  * Verifies AccessConfig overlays contextual properties, and documents the trusted-context contract
@@ -75,8 +72,7 @@ public class DefaultFileIOFactoryAccessConfigTest {
         .containsEntry(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), catalogEndpoint)
         .containsEntry(S3FileIOProperties.ACCESS_KEY_ID, "ak")
         .containsEntry(S3FileIOProperties.SECRET_ACCESS_KEY, "sk")
-        .containsEntry(S3FileIOProperties.SESSION_TOKEN, "token")
-        .doesNotContainKey(AwsClientProperties.CLIENT_CREDENTIALS_PROVIDER);
+        .containsEntry(S3FileIOProperties.SESSION_TOKEN, "token");
   }
 
   @Test
@@ -115,54 +111,6 @@ public class DefaultFileIOFactoryAccessConfigTest {
         .containsEntry(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
         .containsEntry(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true")
         .containsEntry(S3FileIOProperties.ACCESS_KEY_ID, "polaris-access")
-        .containsEntry(S3FileIOProperties.SECRET_ACCESS_KEY, "polaris-secret")
-        .doesNotContainKey(AwsClientProperties.CLIENT_CREDENTIALS_PROVIDER);
-  }
-
-  @Test
-  void noCredentialsUseSharedDefaultCredentialsProvider() {
-    // e.g. stsUnavailable: true without static keys: S3FileIO would otherwise create a new
-    // DefaultCredentialsProvider per client.
-    StorageAccessConfig accessConfig =
-        StorageAccessConfig.builder().supportsCredentialVending(false).build();
-
-    Map<String, String> properties = capturedProperties(accessConfig);
-
-    assertThat(properties)
-        .containsEntry(
-            AwsClientProperties.CLIENT_CREDENTIALS_PROVIDER,
-            SharedDefaultCredentialsProvider.class.getName());
-    // Iceberg loads it by name, and closing the S3 client must not close the shared provider.
-    assertThat(new AwsClientProperties(properties).credentialsProvider(null, null, null))
-        .isInstanceOf(SharedDefaultCredentialsProvider.class)
-        .isNotInstanceOf(SdkAutoCloseable.class);
-  }
-
-  @Test
-  void refreshEndpointKeepsIcebergCredentialsResolution() {
-    StorageAccessConfig accessConfig =
-        StorageAccessConfig.builder()
-            .putExtraProperty(
-                AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, "https://polaris.example/refresh")
-            .supportsCredentialVending(true)
-            .build();
-
-    assertThat(capturedProperties(accessConfig))
-        .doesNotContainKey(AwsClientProperties.CLIENT_CREDENTIALS_PROVIDER);
-  }
-
-  private static Map<String, String> capturedProperties(StorageAccessConfig accessConfig) {
-    AtomicReference<Map<String, String>> captured = new AtomicReference<>();
-    DefaultFileIOFactory factory =
-        new DefaultFileIOFactory(S3AccessConfig.empty()) {
-          @Override
-          FileIO loadFileIOInternal(
-              @NonNull String ioImplClassName, @NonNull Map<String, String> properties) {
-            captured.set(Map.copyOf(properties));
-            return new InMemoryFileIO();
-          }
-        };
-    factory.loadFileIO(accessConfig, InMemoryFileIO.class.getName(), Map.of());
-    return captured.get();
+        .containsEntry(S3FileIOProperties.SECRET_ACCESS_KEY, "polaris-secret");
   }
 }
