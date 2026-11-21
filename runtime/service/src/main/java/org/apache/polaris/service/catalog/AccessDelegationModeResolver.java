@@ -19,7 +19,6 @@
 package org.apache.polaris.service.catalog;
 
 import java.util.EnumSet;
-import java.util.Optional;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -37,13 +36,14 @@ public interface AccessDelegationModeResolver {
    * @param requestedModes The set of delegation modes requested by the client
    * @param catalogEntity The catalog entity, used to determine storage configuration and
    *     capabilities
-   * @return The resolved access delegation mode, or empty if no suitable mode is available.
+   * @return The resolved access delegation mode, or {@link AccessDelegationMode#NONE} if no
+   *     delegation is used for the request.
    * @throws IllegalArgumentException if the client requests a mode that is explicitly disallowed
    *     for the catalog and no viable fallback mode exists (e.g., {@link
    *     AccessDelegationMode#VENDED_CREDENTIALS} on an external catalog whose credential vending
    *     feature is disabled). Never thrown when the request contains {@link
-   *     AccessDelegationMode#NONE}; the result is empty in that case.
+   *     AccessDelegationMode#NONE}; the result is {@link AccessDelegationMode#NONE} in that case.
    */
-  @NonNull Optional<AccessDelegationMode> resolve(
+  @NonNull AccessDelegationMode resolve(
       @NonNull EnumSet<AccessDelegationMode> requestedModes, @Nullable CatalogEntity catalogEntity);
 }

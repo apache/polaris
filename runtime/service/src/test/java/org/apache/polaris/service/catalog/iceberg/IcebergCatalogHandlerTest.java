@@ -135,8 +135,9 @@ class IcebergCatalogHandlerTest {
   private final CallContext callContext = mock(CallContext.class);
   private final RealmConfig realmConfig = mock(RealmConfig.class);
   private final LocalCatalogFactory localCatalogFactory = mock(LocalCatalogFactory.class);
+  // Unstubbed calls answer NONE, like the real resolver when no delegation applies.
   private final AccessDelegationModeResolver accessDelegationModeResolver =
-      mock(AccessDelegationModeResolver.class);
+      mock(AccessDelegationModeResolver.class, invocation -> NONE);
   private final StorageAccessConfigProvider storageAccessConfigProvider =
       mock(StorageAccessConfigProvider.class);
   private final PolarisAuthorizer authorizer = mock(PolarisAuthorizer.class);
@@ -267,8 +268,7 @@ class IcebergCatalogHandlerTest {
   void bothModesRequestedAndResolverDegradesToRemoteSigningFailsWithActionableMessage() {
     mockRegisterTableCatalog(false);
     EnumSet<AccessDelegationMode> bothModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
-    when(accessDelegationModeResolver.resolve(eq(bothModes), any()))
-        .thenReturn(Optional.of(REMOTE_SIGNING));
+    when(accessDelegationModeResolver.resolve(eq(bothModes), any())).thenReturn(REMOTE_SIGNING);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
@@ -289,7 +289,7 @@ class IcebergCatalogHandlerTest {
   void noneRequestedRegisterTableIsAuthorizedWithoutDelegation() {
     Catalog catalog = mockRegisterTableCatalog(false);
     EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE, VENDED_CREDENTIALS);
-    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(Optional.empty());
+    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(NONE);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
@@ -307,7 +307,7 @@ class IcebergCatalogHandlerTest {
     when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
     when(catalog.loadTable(TABLE2)).thenReturn(table);
     EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE, VENDED_CREDENTIALS);
-    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(Optional.empty());
+    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(NONE);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
@@ -329,7 +329,7 @@ class IcebergCatalogHandlerTest {
     when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
     when(catalog.loadTable(TABLE2)).thenReturn(table);
     EnumSet<AccessDelegationMode> modes = EnumSet.of(NONE, VENDED_CREDENTIALS);
-    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(Optional.empty());
+    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(NONE);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
@@ -347,8 +347,7 @@ class IcebergCatalogHandlerTest {
     when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
     when(catalog.loadTable(TABLE2)).thenReturn(table);
     EnumSet<AccessDelegationMode> modes = EnumSet.of(VENDED_CREDENTIALS);
-    when(accessDelegationModeResolver.resolve(eq(modes), any()))
-        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+    when(accessDelegationModeResolver.resolve(eq(modes), any())).thenReturn(VENDED_CREDENTIALS);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
@@ -375,7 +374,7 @@ class IcebergCatalogHandlerTest {
     mockRegisterTableCatalog(false);
     EnumSet<AccessDelegationMode> remoteSigningOnly = EnumSet.of(REMOTE_SIGNING);
     when(accessDelegationModeResolver.resolve(eq(remoteSigningOnly), any()))
-        .thenReturn(Optional.of(REMOTE_SIGNING));
+        .thenReturn(REMOTE_SIGNING);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
@@ -391,7 +390,7 @@ class IcebergCatalogHandlerTest {
   void registerTableWithVendedCredentialsVendsReadWriteActionsWhenWriteDelegationAuthorized() {
     Catalog catalog = mockRegisterTableCatalog(false);
     when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
-        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+        .thenReturn(VENDED_CREDENTIALS);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
@@ -410,7 +409,7 @@ class IcebergCatalogHandlerTest {
   void registerTableWithVendedCredentialsVendsReadActionsWhenWriteDelegationFallsBackToRead() {
     Catalog catalog = mockRegisterTableCatalog(false);
     when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
-        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+        .thenReturn(VENDED_CREDENTIALS);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
@@ -435,7 +434,7 @@ class IcebergCatalogHandlerTest {
     Catalog catalog = mockRegisterTableCatalog(true);
     when(catalogEntity.isExternal()).thenReturn(false);
     when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
-        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+        .thenReturn(VENDED_CREDENTIALS);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
@@ -455,7 +454,7 @@ class IcebergCatalogHandlerTest {
     Catalog catalog = mockRegisterTableCatalog(true);
     when(catalogEntity.isExternal()).thenReturn(false);
     when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
-        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+        .thenReturn(VENDED_CREDENTIALS);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
@@ -497,8 +496,7 @@ class IcebergCatalogHandlerTest {
     Catalog catalog = mockRegisterTableCatalog(false);
     BaseTable table = baseTable();
     when(catalog.loadTable(TABLE2)).thenReturn(table);
-    when(accessDelegationModeResolver.resolve(any(), any()))
-        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+    when(accessDelegationModeResolver.resolve(any(), any())).thenReturn(VENDED_CREDENTIALS);
     @SuppressWarnings("unchecked")
     ArgumentCaptor<AuthorizationRequest> requestCaptor =
         ArgumentCaptor.forClass(AuthorizationRequest.class);
@@ -591,8 +589,7 @@ class IcebergCatalogHandlerTest {
     when(localCatalogFactory.createCatalog(any())).thenReturn(externalCatalog);
 
     // VENDED_CREDENTIALS is what triggers the handler to attach credentials to the response.
-    when(accessDelegationModeResolver.resolve(any(), any()))
-        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+    when(accessDelegationModeResolver.resolve(any(), any())).thenReturn(VENDED_CREDENTIALS);
 
     StorageAccessConfig storageAccessConfig =
         StorageAccessConfig.builder()
@@ -703,8 +700,7 @@ class IcebergCatalogHandlerTest {
     when(icebergCatalog.loadTable(TABLE2)).thenReturn(table);
     when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
 
-    when(accessDelegationModeResolver.resolve(any(), any()))
-        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+    when(accessDelegationModeResolver.resolve(any(), any())).thenReturn(VENDED_CREDENTIALS);
 
     StorageAccessConfig storageAccessConfig =
         StorageAccessConfig.builder()
