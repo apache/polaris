@@ -83,10 +83,10 @@ so they never get out of sync.
 Getting Spark to commit Iceberg tables through Polaris to a local S3-compatible store took a few
 settings that aren't obvious the first time. I hope this list saves someone an afternoon.
 
-### 1. No STS: skip credential subscoping
+### 1. No STS: set `stsUnavailable` on the catalog
 
 SeaweedFS has no STS, so Polaris can't vend scoped credentials. The catalog is created with
-`stsUnavailable: true`:
+`stsUnavailable: true`, and Spark authenticates to object storage with its own static keys:
 
 ```json
 {
@@ -97,7 +97,8 @@ SeaweedFS has no STS, so Polaris can't vend scoped credentials. The catalog is c
     "storageConfigInfo": {
       "storageType": "S3",
       "allowedLocations": ["s3://orderbook-warehouse/"],
-      "endpoint": "http://seaweedfs:8333",
+      "endpoint": "http://localhost:8333",
+      "endpointInternal": "http://seaweedfs:8333",
       "pathStyleAccess": true,
       "stsUnavailable": true
     }
@@ -105,41 +106,33 @@ SeaweedFS has no STS, so Polaris can't vend scoped credentials. The catalog is c
 }
 ```
 
-and the server runs with the `SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION` feature enabled. Spark then
-authenticates to object storage with its own static keys.
-
-### 2. Point Polaris's own S3 client at the local endpoint
+### 2. Give the catalog two S3 endpoints
 
 With a REST catalog, the server performs the commit: Polaris itself writes each new
-`metadata.json` before it moves the table pointer. So Polaris needs to reach the object store
-too, not just the clients. Without an explicit endpoint its S3 client goes to real AWS and table
-commits fail with `403 The AWS Access Key Id you provided does not exist`. The fix is in the
-`polaris` service's environment:
+`metadata.json` before it moves the table pointer. So both Polaris and Spark need to reach the
+object store, and in this setup they see it at different addresses. Polaris runs inside the
+Compose network, where SeaweedFS is `seaweedfs:8333`. Spark runs on the host, where it's
+`localhost:8333`.
+
+The catalog's storage config covers both. Polaris returns `endpoint` to clients when they load
+a table, and that value takes precedence over the client's own `s3.endpoint`, so it has to be
+an address Spark can reach. Polaris uses `endpointInternal` for its own requests, and clients
+never see it. The `polaris` service only needs credentials for its writes:
 
 ```yaml
 AWS_ACCESS_KEY_ID: admin
 AWS_SECRET_ACCESS_KEY: password
 AWS_REGION: us-east-1
-AWS_ENDPOINT_URL_S3: http://seaweedfs:8333
-AWS_ENDPOINT_URL_STS: http://seaweedfs:8333
-polaris.features."SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION": "true"
 polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": '["S3"]'
 ```
 
-### 3. Accept virtual-hosted-style bucket addresses
-
-In this setup, Polaris's server-side requests addressed the bucket virtual-hosted style
-(`orderbook-warehouse.seaweedfs`). Two small changes make that work in Docker: SeaweedFS
-starts with `-s3.domainName=seaweedfs`, and the container gets the network alias
-`orderbook-warehouse.seaweedfs` so the hostname resolves.
-
-### 4. Register S3A next to S3FileIO
+### 3. Register S3A next to S3FileIO
 
 Iceberg's table reads and writes go through `S3FileIO`, but the Spark action behind
 `remove_orphan_files` lists files through Hadoop's `FileSystem` API. Spark's streaming checkpoints
 do too. So the Spark session also registers `S3AFileSystem`, against the same endpoint and keys.
 
-### 5. Bootstrap Polaris explicitly when using PostgreSQL
+### 4. Bootstrap Polaris explicitly when using PostgreSQL
 
 With the relational JDBC persistence, the schema is created up front (an init script in the
 PostgreSQL container), and the realm and root principal come from the admin tool's `bootstrap`
@@ -167,12 +160,13 @@ SparkSession.builder()
   .config(s"$cat.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
   .config(s"$cat.s3.endpoint", "http://localhost:8333")
   .config(s"$cat.s3.path-style-access", "true")
-  // ... S3 keys, region, and the S3A settings from step 4
+  // ... S3 keys, region, and the S3A settings from step 3
   .getOrCreate()
 ```
 
 These addresses assume Spark runs on the host. A Spark process inside the Compose network would
-use the service names (`polaris:8181`, `seaweedfs:8333`) instead.
+use the service names (`polaris:8181`, `seaweedfs:8333`) instead, and the catalog's `endpoint`
+would change to `http://seaweedfs:8333` to match.
 
 `make spark-smoke-test` creates a table, writes two rows, reads them back and drops it, which
 checks the whole chain from Spark to Polaris to SeaweedFS in a few seconds.
