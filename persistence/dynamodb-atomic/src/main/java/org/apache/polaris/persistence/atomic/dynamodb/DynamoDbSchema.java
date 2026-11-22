@@ -24,12 +24,8 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
 import software.amazon.awssdk.services.dynamodb.model.BillingMode;
-import software.amazon.awssdk.services.dynamodb.model.GlobalSecondaryIndex;
-import software.amazon.awssdk.services.dynamodb.model.GlobalSecondaryIndexDescription;
 import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
 import software.amazon.awssdk.services.dynamodb.model.KeyType;
-import software.amazon.awssdk.services.dynamodb.model.Projection;
-import software.amazon.awssdk.services.dynamodb.model.ProjectionType;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
@@ -37,8 +33,8 @@ import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 
 /**
  * Provisions the single DynamoDB table the backend uses: the base table keyed by {@link
- * DynamoDbLayout#PK}/{@link DynamoDbLayout#SK} plus the children global secondary index {@link
- * DynamoDbLayout#GSI1} keyed by {@link DynamoDbLayout#GSI1_PK}/{@link DynamoDbLayout#GSI1_SK}.
+ * DynamoDbLayout#PK}/{@link DynamoDbLayout#SK}. Listing reads child records that live on the base
+ * table, so no secondary index is needed.
  *
  * <p>Provisioning is a control-plane step run at bootstrap, not on the request path.
  */
@@ -49,10 +45,10 @@ public final class DynamoDbSchema {
   private DynamoDbSchema() {}
 
   /**
-   * Creates the table and its children GSI if they do not already exist, then blocks until the
-   * table is active. Safe to call repeatedly: whether this call created the table, found it already
-   * present, or lost a create race to another caller, the table that ends up active is validated
-   * against the expected layout and otherwise left untouched.
+   * Creates the table if it does not already exist, then blocks until the table is active. Safe to
+   * call repeatedly: whether this call created the table, found it already present, or lost a
+   * create race to another caller, the table that ends up active is validated against the expected
+   * layout and otherwise left untouched.
    */
   public static void createIfAbsent(DynamoDbClient client, String tableName) {
     if (!tableExists(client, tableName)) {
@@ -62,13 +58,9 @@ public final class DynamoDbSchema {
                 .tableName(tableName)
                 .billingMode(BillingMode.PAY_PER_REQUEST)
                 .attributeDefinitions(
-                    stringAttribute(DynamoDbLayout.PK),
-                    stringAttribute(DynamoDbLayout.SK),
-                    stringAttribute(DynamoDbLayout.GSI1_PK),
-                    stringAttribute(DynamoDbLayout.GSI1_SK))
+                    stringAttribute(DynamoDbLayout.PK), stringAttribute(DynamoDbLayout.SK))
                 .keySchema(
-                    key(DynamoDbLayout.PK, KeyType.HASH), key(DynamoDbLayout.SK, KeyType.RANGE))
-                .globalSecondaryIndexes(childrenIndex()));
+                    key(DynamoDbLayout.PK, KeyType.HASH), key(DynamoDbLayout.SK, KeyType.RANGE)));
       } catch (ResourceInUseException concurrentCreate) {
         // Another caller created the table between the existence check and here; that is fine. Its
         // layout is validated after the waiter below, so a racing miscreation is still surfaced.
@@ -101,9 +93,8 @@ public final class DynamoDbSchema {
   }
 
   /**
-   * Fails if the active table does not match the layout this backend expects -- key schema and the
-   * children GSI's key schema and {@code ALL} projection -- surfacing a misconfigured table instead
-   * of letting reads and writes misbehave against it.
+   * Fails if the active table does not match the key schema this backend expects, surfacing a
+   * misconfigured table instead of letting reads and writes misbehave against it.
    */
   private static void verifyLayout(TableDescription table) {
     if (!keySchemaMatches(table.keySchema(), DynamoDbLayout.PK, DynamoDbLayout.SK)) {
@@ -111,32 +102,6 @@ public final class DynamoDbSchema {
           String.format(
               "Existing table %s has an unexpected key schema; expected %s (HASH) and %s (RANGE).",
               table.tableName(), DynamoDbLayout.PK, DynamoDbLayout.SK));
-    }
-    GlobalSecondaryIndexDescription gsi =
-        table.globalSecondaryIndexes().stream()
-            .filter(index -> DynamoDbLayout.GSI1.equals(index.indexName()))
-            .findFirst()
-            .orElseThrow(() ->
-                new IllegalStateException(
-                    String.format(
-                        "Existing table %s is missing the %s index.",
-                        table.tableName(), DynamoDbLayout.GSI1)));
-    if (!keySchemaMatches(gsi.keySchema(), DynamoDbLayout.GSI1_PK, DynamoDbLayout.GSI1_SK)) {
-      throw new IllegalStateException(
-          String.format(
-              "Index %s on table %s has an unexpected key schema; expected %s (HASH) and %s (RANGE).",
-              DynamoDbLayout.GSI1,
-              table.tableName(),
-              DynamoDbLayout.GSI1_PK,
-              DynamoDbLayout.GSI1_SK));
-    }
-    ProjectionType projectionType =
-        gsi.projection() == null ? null : gsi.projection().projectionType();
-    if (projectionType != ProjectionType.ALL) {
-      throw new IllegalStateException(
-          String.format(
-              "Index %s on table %s has projection %s; expected %s so listing returns full entities.",
-              DynamoDbLayout.GSI1, table.tableName(), projectionType, ProjectionType.ALL));
     }
   }
 
@@ -152,15 +117,6 @@ public final class DynamoDbSchema {
       }
     }
     return schema.size() == 2 && hashKey.equals(hash) && rangeKey.equals(range);
-  }
-
-  private static GlobalSecondaryIndex childrenIndex() {
-    return GlobalSecondaryIndex.builder()
-        .indexName(DynamoDbLayout.GSI1)
-        .keySchema(
-            key(DynamoDbLayout.GSI1_PK, KeyType.HASH), key(DynamoDbLayout.GSI1_SK, KeyType.RANGE))
-        .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
-        .build();
   }
 
   private static AttributeDefinition stringAttribute(String name) {

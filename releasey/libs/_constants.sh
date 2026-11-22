@@ -36,6 +36,7 @@ BRANCH_VERSION_REGEX="([0-9]+)\.([0-9]+)\.x"
 # Project file constants
 VERSION_FILE="$LIBS_DIR/../../version.txt"
 CHANGELOG_FILE="$LIBS_DIR/../../CHANGELOG.md"
+CHANGELOG_FRAGMENTS_DIR="$LIBS_DIR/../../changelog.d"
 HELM_CHART_YAML_FILE="$LIBS_DIR/../../helm/polaris/Chart.yaml"
 HELM_README_FILE="$LIBS_DIR/../../helm/polaris/README.md"
 HELM_VALUES_FILE="$LIBS_DIR/../../helm/polaris/values.yaml"

@@ -70,6 +70,8 @@ Individual resource with hierarchical context:
 Request metadata:
 - `request_id`: Unique correlation ID for logging
 - `realm`: Realm identifier (allows OPA policies to scope decisions by realm)
+- `properties`: Operator-defined static properties from
+  `polaris.authorization.opa.context-properties.*` (empty when unconfigured)
 
 ## Batch Model Classes
 

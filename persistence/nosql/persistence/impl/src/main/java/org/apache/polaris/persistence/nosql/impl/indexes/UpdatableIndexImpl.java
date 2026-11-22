@@ -119,9 +119,9 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
     var newEmbedded = newStoreIndex(serializer);
     for (var elemIter = embedded.elementIterator(); elemIter.hasNext(); ) {
       var elem = elemIter.next();
-      var key = elem.key();
       var value = elem.valueNullable();
       if (value == null) {
+        var key = elem.key();
         if (reference.contains(key)) {
           // 'key' is being removed, only keep it in the embedded index, if it is required to shadow
           // a value from the reference index.

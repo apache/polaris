@@ -157,9 +157,9 @@ keys, or other secrets in table or view properties.
 | Privilege | Description |
 | -----------------------| ----------- |
 | CATALOG_MANAGE_ACCESS | Includes the ability to grant or revoke privileges on objects in a catalog to catalog roles, and the ability to grant or revoke catalog roles to or from principal roles. |
-| CATALOG_MANAGE_CONTENT | Enables full management of content for the catalog. This privilege encompasses the following privileges:<ul><li>CATALOG_MANAGE_METADATA</li><li>TABLE_FULL_METADATA</li><li>NAMESPACE_FULL_METADATA</li><li>VIEW_FULL_METADATA</li><li>TABLE_WRITE_DATA</li><li>TABLE_READ_DATA</li><li>TABLE_READ_METRICS</li><li>CATALOG_READ_PROPERTIES</li><li>CATALOG_WRITE_PROPERTIES</li><li>CATALOG_READ_CONFIG</li></ul> |
+| CATALOG_MANAGE_CONTENT | Enables full management of content for the catalog. This privilege encompasses the following privileges:<ul><li>CATALOG_MANAGE_METADATA</li><li>TABLE_FULL_METADATA</li><li>NAMESPACE_FULL_METADATA</li><li>VIEW_FULL_METADATA</li><li>TABLE_WRITE_DATA</li><li>TABLE_READ_DATA</li><li>TABLE_READ_METRICS</li><li>TABLE_READ_LINEAGE</li><li>TABLE_INGEST_LINEAGE</li><li>VIEW_READ_LINEAGE</li><li>VIEW_INGEST_LINEAGE</li><li>CATALOG_READ_PROPERTIES</li><li>CATALOG_WRITE_PROPERTIES</li><li>CATALOG_READ_CONFIG</li></ul> |
 | CATALOG_MANAGE_METADATA | Enables full management of the catalog, catalog roles, namespaces, and tables.  |
-| CATALOG_READ_CONFIG | Enables calling the Iceberg REST catalog configuration endpoint (`GET /v1/config`) when `polaris.features."ENFORCE_CATALOG_CONFIG_AUTHORIZATION"` is true (default false). Grant this privilege on the catalog. It is also implied by any catalog-content privilege (namespace, table, or view privileges) granted at catalog level. Namespace- or table-scoped grants (for example `TABLE_WRITE_DATA` on one namespace) do not cover `GET /v1/config` and return 403 once enforcement is on. Ranger currently maps `GET_CATALOG_CONFIG` to `catalog-properties-read`; do not enable the enforcement flag for Ranger until a dedicated `catalog-config-read` access type exists (or accept that coarse mapping). The same catalog-level content grant (for example `TABLE_READ_DATA`) allows `GET /v1/config` under internal RBAC and is denied under Ranger, which only honors `catalog-properties-read`. `CATALOG_READ_CONFIG` does not apply under Ranger. |
+| CATALOG_READ_CONFIG | Enables calling the Iceberg REST catalog configuration endpoint (`GET /v1/config`) when `polaris.features."ENFORCE_CATALOG_CONFIG_AUTHORIZATION"` is true (default false). Grant this privilege on the catalog. It is also implied by any catalog-content privilege (namespace, table, or view privileges) granted at catalog level. Namespace- or table-scoped grants (for example `TABLE_WRITE_DATA` on one namespace) do not cover `GET /v1/config` and return 403 once enforcement is on. Ranger maps `GET_CATALOG_CONFIG` to `catalog-config-read`. Catalog-level `catalog-properties-read`, `catalog-properties-write`, `catalog-content-manage`, `catalog-metadata-full`, `catalog-metadata-manage`, and `service-access-manage` imply `catalog-config-read`. `catalog-config-read` does not confer `catalog-properties-read`. Operators must re-import `polaris-ranger-servicedef.json` (PUT the service definition); a Polaris upgrade does not update Ranger Admin. The same catalog-level content grant (for example `TABLE_READ_DATA`) allows `GET /v1/config` under internal RBAC and is denied under Ranger, which only honors the catalog-* types listed here. |
 | CATALOG_READ_PROPERTIES | Enables listing catalogs and reading properties of the catalog. |
 | CATALOG_WRITE_PROPERTIES | Enables configuring catalog properties. |
 | CATALOG_ATTACH_POLICY | Enables attaching policy to a catalog. |
@@ -245,6 +245,39 @@ They do not permit listing or creating models in the containing namespace; list 
 privileges must be granted at namespace or catalog scope.
 Grant revocation uses the same request body with `POST` to the role's grants endpoint.
 The existing role-grants listing returns grants with their model, namespace, or catalog scope.
+
+### Lineage privileges
+
+| Privilege | Target | Description |
+| --------- | ------ | ----------- |
+| TABLE_READ_LINEAGE | Catalog, namespace, table | Enables querying the lineage graph for a table. |
+| TABLE_INGEST_LINEAGE | Catalog, namespace, table | Enables submitting OpenLineage events that record lineage for a table. |
+| VIEW_READ_LINEAGE | Catalog, namespace, view | Enables querying the lineage graph for a view. |
+| VIEW_INGEST_LINEAGE | Catalog, namespace, view | Enables submitting OpenLineage events that record lineage for a view. |
+
+Lineage is a property of the entity it describes rather than a separate child entity, so these
+privileges ride the entity's existing grants. `TABLE_READ_LINEAGE` is also conferred by
+`TABLE_READ_PROPERTIES`, `TABLE_READ_DATA`, `TABLE_WRITE_PROPERTIES`, `TABLE_WRITE_DATA`,
+`TABLE_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and `CATALOG_MANAGE_CONTENT`.
+`TABLE_INGEST_LINEAGE` is also conferred by the write ones: `TABLE_WRITE_PROPERTIES`,
+`TABLE_WRITE_DATA`, `TABLE_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and `CATALOG_MANAGE_CONTENT`.
+Likewise, `VIEW_READ_LINEAGE` is conferred by `VIEW_READ_PROPERTIES`, `VIEW_WRITE_PROPERTIES`,
+`VIEW_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and `CATALOG_MANAGE_CONTENT`, and
+`VIEW_INGEST_LINEAGE` by `VIEW_WRITE_PROPERTIES`, `VIEW_FULL_METADATA`, `CATALOG_MANAGE_METADATA`,
+and `CATALOG_MANAGE_CONTENT`. A principal that can already read a table or view can therefore read
+its lineage, and a principal that can write one can record lineage for it, without an additional
+grant.
+
+Table and view lineage are separate privileges so that a grant for one never confers access to the
+other: a view privilege granted on a namespace does not expose the lineage of the tables in it, and
+the reverse.
+
+The ingest privileges do not confer the read privileges. Ingest is append-only event submission, so
+a principal granted only `TABLE_INGEST_LINEAGE` or `VIEW_INGEST_LINEAGE` cannot query the lineage
+graph.
+
+Granting any of these privileges on a catalog or namespace covers the matching entities beneath it,
+so a namespace-scoped grant satisfies a table- or view-scoped check without a per-entity grant.
 
 ## RBAC example
 

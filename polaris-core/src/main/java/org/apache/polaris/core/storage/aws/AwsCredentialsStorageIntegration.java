@@ -303,11 +303,11 @@ public class AwsCredentialsStorageIntegration
   /**
    * Generate an IamPolicy honoring per-action grants: {@code readLocations} get GetObject /
    * GetObjectVersion, {@code listLocations} get ListBucket with prefix conditions, {@code
-   * writeLocations} get PutObject / DeleteObject. Buckets that appear in any set get
-   * GetBucketLocation. If the resulting policy would have no statements (e.g. all three location
-   * sets are empty and no KMS configuration applies), a single explicit {@code Deny *} statement is
-   * emitted so we don't send an empty policy to AWS and inadvertently assume the role with full
-   * privileges.
+   * writeLocations} get PutObject / DeleteObject / AbortMultipartUpload. Buckets that appear in any
+   * set get GetBucketLocation. If the resulting policy would have no statements (e.g. all three
+   * location sets are empty and no KMS configuration applies), a single explicit {@code Deny *}
+   * statement is emitted so we don't send an empty policy to AWS and inadvertently assume the role
+   * with full privileges.
    */
   private static IamPolicy policyString(
       AwsStorageConfigurationInfo storageConfigurationInfo,
@@ -375,7 +375,8 @@ public class AwsCredentialsStorageIntegration
           IamStatement.builder()
               .effect(IamEffect.ALLOW)
               .addAction("s3:PutObject")
-              .addAction("s3:DeleteObject");
+              .addAction("s3:DeleteObject")
+              .addAction("s3:AbortMultipartUpload");
       writeLocations.forEach(location -> {
         StorageUri uri = StorageUri.parse(location);
         String escapedObjectPrefix = escapeIamGlobLiteral(parseS3Path(uri));

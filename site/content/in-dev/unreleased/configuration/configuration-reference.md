@@ -90,6 +90,10 @@ set a value at a higher level.
 
 {{% include-config-section "smallrye-polaris_storage" %}}
 
+### `polaris.storage.cloudflare-r2`
+
+{{% include-config-section "smallrye-polaris_storage_cloudflare_r2" %}}
+
 ### `polaris.storage-credential-cache`
 
 {{% include-config-section "smallrye-polaris_storage_credential_cache" %}}
@@ -136,6 +140,10 @@ set a value at a higher level.
 
 {{% include-config-section "smallrye-polaris_persistence_nosql_mongodb" %}}
 
+### `polaris.persistence.nosql.dynamodb`
+
+{{% include-config-section "smallrye-polaris_persistence_nosql_dynamodb" %}}
+
 ### `polaris.persistence.relational.jdbc`
 
 {{% include-config-section "smallrye-polaris_persistence_relational_jdbc" %}}
@@ -153,6 +161,10 @@ set a value at a higher level.
 ### `polaris.event-listener.aws-cloudwatch`
 
 {{% include-config-section "smallrye-polaris_event_listener_aws_cloudwatch" %}}
+
+### `polaris.event-listener.kafka`
+
+{{% include-config-section "smallrye-polaris_event_listener_kafka" %}}
 
 ### `opentelemetry` event listener
 
@@ -216,3 +228,7 @@ configuration details.
 ### `polaris.realm-context`
 
 {{% include-config-section "smallrye-polaris_realm_context" %}}
+
+### `polaris.idempotency`
+
+{{% include-config-section "smallrye-polaris_idempotency" %}}

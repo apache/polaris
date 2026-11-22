@@ -124,9 +124,9 @@ many questions for one actor in a single call. It is only used when a batch poli
 | `Actor` | Principal information | `principal`, `roles` |
 | `Resource` | Resources being accessed | `targets`, `secondaries` |
 | `ResourceEntity` | Individual resource | `type`, `name`, `parents` |
-| `Context` | Request metadata | `request_id` |
 | `OpaBatchRequest` | Top-level wrapper for a batch call | `input` |
 | `OpaBatchAuthorizationInput` | Many questions for one actor | `actor`, `context`, `requests` |
 | `OpaBatchQuery` | One question in a batch | `id`, `action`, `resource` |
+| `Context` | Request metadata | `request_id`, `realm`, `properties` |
 
 See the [model package README](src/main/java/org/apache/polaris/extension/auth/opa/model/README.md) for detailed usage examples.

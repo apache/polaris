@@ -22,23 +22,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.tuple;
 
-import java.util.Map;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.persistence.atomic.dynamodb.models.EntityItem;
 import org.junit.jupiter.api.Test;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.GlobalSecondaryIndexDescription;
 import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
 import software.amazon.awssdk.services.dynamodb.model.KeyType;
-import software.amazon.awssdk.services.dynamodb.model.ProjectionType;
-import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 
 class DynamoDbSchemaIT extends AbstractDynamoDbTest {
 
   @Test
-  void createIfAbsentProvisionsTableAndChildrenGsi() {
+  void createIfAbsentProvisionsTheBaseTable() {
     String table = uniqueTableName();
     DynamoDbSchema.createIfAbsent(client, table);
     try {
@@ -49,15 +41,8 @@ class DynamoDbSchemaIT extends AbstractDynamoDbTest {
           .containsExactly(
               tuple(DynamoDbLayout.PK, KeyType.HASH), tuple(DynamoDbLayout.SK, KeyType.RANGE));
 
-      assertThat(description.globalSecondaryIndexes()).hasSize(1);
-      GlobalSecondaryIndexDescription gsi = description.globalSecondaryIndexes().get(0);
-      assertThat(gsi.indexName()).isEqualTo(DynamoDbLayout.GSI1);
-      assertThat(gsi.keySchema())
-          .extracting(KeySchemaElement::attributeName, KeySchemaElement::keyType)
-          .containsExactly(
-              tuple(DynamoDbLayout.GSI1_PK, KeyType.HASH),
-              tuple(DynamoDbLayout.GSI1_SK, KeyType.RANGE));
-      assertThat(gsi.projection().projectionType()).isEqualTo(ProjectionType.ALL);
+      // Listing reads child records on the base table, so there is no secondary index.
+      assertThat(description.globalSecondaryIndexes()).isEmpty();
     } finally {
       DynamoDbSchema.deleteIfExists(client, table);
     }
@@ -72,67 +57,5 @@ class DynamoDbSchemaIT extends AbstractDynamoDbTest {
     } finally {
       DynamoDbSchema.deleteIfExists(client, table);
     }
-  }
-
-  @Test
-  void childrenGsiReturnsSiblingsInIdOrder() {
-    String table = uniqueTableName();
-    DynamoDbSchema.createIfAbsent(client, table);
-    try {
-      String realmId = "realm1";
-      // Name order (orders, sales) and id order (sales, orders) differ on purpose. Id 200 also
-      // checks the padding: unpadded, "200" would sort before "30".
-      PolarisBaseEntity sales = entity(30L, 7L, 3L, 2, "sales");
-      PolarisBaseEntity orders = entity(200L, 7L, 3L, 2, "orders");
-
-      client.putItem(b -> b.tableName(table).item(EntityItem.toItem(realmId, sales)));
-      client.putItem(b -> b.tableName(table).item(EntityItem.toItem(realmId, orders)));
-
-      // A direct read reconstructs the entity through the mapper.
-      Map<String, AttributeValue> stored =
-          client
-              .getItem(b ->
-                  b.tableName(table)
-                      .key(
-                          Map.of(
-                              DynamoDbLayout.PK,
-                              AttributeValue.fromS(DynamoDbLayout.entityPk(realmId, 30L)),
-                              DynamoDbLayout.SK,
-                              AttributeValue.fromS(DynamoDbLayout.SK_ENTITY))))
-              .item();
-      PolarisBaseEntity roundTripped = EntityItem.toEntity(stored);
-      assertThat(roundTripped.getId()).isEqualTo(30L);
-      assertThat(roundTripped.getName()).isEqualTo("sales");
-      assertThat(roundTripped.getParentId()).isEqualTo(3L);
-
-      // The children GSI lists both children of the same parent, in id order.
-      String gsiPk = DynamoDbLayout.childrenGsiPk(realmId, 7L, 3L, 2);
-      QueryResponse response =
-          client.query(b ->
-              b.tableName(table)
-                  .indexName(DynamoDbLayout.GSI1)
-                  .keyConditionExpression("#pk = :pk")
-                  .expressionAttributeNames(Map.of("#pk", DynamoDbLayout.GSI1_PK))
-                  .expressionAttributeValues(Map.of(":pk", AttributeValue.fromS(gsiPk))));
-      assertThat(response.items())
-          .extracting(item -> item.get(DynamoDbLayout.A_NAME).s())
-          .containsExactly("sales", "orders");
-    } finally {
-      DynamoDbSchema.deleteIfExists(client, table);
-    }
-  }
-
-  private static PolarisBaseEntity entity(
-      long id, long catalogId, long parentId, int typeCode, String name) {
-    return new PolarisBaseEntity.Builder()
-        .id(id)
-        .catalogId(catalogId)
-        .parentId(parentId)
-        .typeCode(typeCode)
-        .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
-        .name(name)
-        .propertiesAsMap(Map.of())
-        .internalPropertiesAsMap(Map.of())
-        .build();
   }
 }

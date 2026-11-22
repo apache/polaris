@@ -1063,6 +1063,9 @@ public class PolarisAdminService {
 
     CatalogEntity currentCatalogEntity = getCatalogByName(resolutionManifest, name);
 
+    if (updateRequest.getCurrentEntityVersion() == null) {
+      throw new BadRequestException("currentEntityVersion is required to update a catalog");
+    }
     if (currentCatalogEntity.getEntityVersion() != updateRequest.getCurrentEntityVersion()) {
       throw new CommitConflictException(
           "Failed to update Catalog; currentEntityVersion '%s', expected '%s'",

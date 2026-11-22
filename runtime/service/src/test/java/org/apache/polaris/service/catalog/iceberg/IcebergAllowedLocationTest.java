@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.iceberg.CatalogProperties.FILE_IO_IMPL;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION;
 import static org.apache.polaris.core.config.FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;
@@ -59,6 +60,7 @@ import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.io.FileIO;
@@ -71,6 +73,7 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.GetNamespaceResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -79,6 +82,8 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
+import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.TestServices;
@@ -342,7 +347,7 @@ public class IcebergAllowedLocationTest {
 
     // create a view with allowed locations
     String customAllowedLocation1 = Paths.get(namespaceLocation, "custom-location1").toString();
-    String customAllowedLocation2 = Paths.get(namespaceLocation, "custom-location2").toString();
+    String customAllowedLocation2 = Paths.get(customAllowedLocation1, "metadata2").toString();
 
     CreateViewRequest createViewRequest =
         getCreateViewRequest(customAllowedLocation2, viewId.name(), customAllowedLocation1);
@@ -359,7 +364,7 @@ public class IcebergAllowedLocationTest {
     assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
 
     // update the view with allowed locations
-    String customAllowedLocation3 = Paths.get(namespaceLocation, "custom-location3").toString();
+    String customAllowedLocation3 = Paths.get(customAllowedLocation1, "metadata3").toString();
 
     Map<String, String> updatedProperties = new HashMap<>();
     updatedProperties.put(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, customAllowedLocation3);
@@ -376,6 +381,64 @@ public class IcebergAllowedLocationTest {
     assertEquals(
         updateResponse.metadata().properties().get(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY),
         customAllowedLocation3);
+  }
+
+  @Test
+  void testUnchangedViewWithoutStorageConfigRejectsDisabledFileStorage(@TempDir Path tmpDir) {
+    Map<String, Object> config =
+        new HashMap<>(
+            Map.of(
+                "ALLOW_INSECURE_STORAGE_TYPES",
+                "true",
+                "ALLOW_SPECIFYING_FILE_IO_IMPL",
+                "true",
+                "SUPPORTED_CATALOG_STORAGE_TYPES",
+                List.of("FILE")));
+    var services = TestServices.builder().config(config).build();
+    // Seed an older catalog without storage configuration; the current REST API requires one.
+    var callContext = services.newCallContext();
+    CatalogEntity catalogEntity =
+        new CatalogEntity.Builder()
+            .setName(catalog)
+            .addProperty(FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .setCatalogType(Catalog.TypeEnum.INTERNAL.name())
+            .setCreateTimestamp(services.clock().millis())
+            .setDefaultBaseLocation(tmpDir.toAbsolutePath().toUri().toString())
+            .setId(services.metaStoreManager().generateNewEntityId(callContext).getId())
+            .build();
+    assertThat(
+            services
+                .metaStoreManager()
+                .createCatalog(callContext, catalogEntity, List.of())
+                .isSuccess())
+        .isTrue();
+    newHandler(services)
+        .createNamespace(
+            CreateNamespaceRequest.builder().withNamespace(Namespace.of(namespace)).build());
+    newHandler(services)
+        .createView(
+            Namespace.of(namespace),
+            ImmutableCreateViewRequest.builder()
+                .name("v")
+                .schema(SCHEMA)
+                .viewVersion(VIEW_VERSION)
+                .build());
+    TableIdentifier viewId = TableIdentifier.of(namespace, "v");
+    UpdateTableRequest update =
+        UpdateTableRequest.create(
+            viewId,
+            List.of(),
+            List.of(new MetadataUpdate.SetProperties(Map.of("comment", "updated"))));
+    newHandler(services).replaceView(viewId, update);
+    config.put("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3"));
+    UpdateTableRequest secondUpdate =
+        UpdateTableRequest.create(
+            viewId,
+            List.of(),
+            List.of(new MetadataUpdate.SetProperties(Map.of("comment", "updated again"))));
+    assertThatThrownBy(() -> newHandler(services).replaceView(viewId, secondUpdate))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("File locations are not allowed");
   }
 
   @Test
@@ -938,6 +1001,121 @@ public class IcebergAllowedLocationTest {
         .hasMessageContaining("has a custom location");
   }
 
+  /**
+   * Removing the stored location does not leave the namespace without one, it falls back to the
+   * default location derived from the namespace name. The removal is rejected when that would move
+   * the namespace and allowed when it already sits at that default. The check does not read
+   * ALLOW_NAMESPACE_CUSTOM_LOCATION, which is enabled below only to store a custom location.
+   */
+  @Test
+  void testNamespaceLocationRemoval(@TempDir Path tmpDir) {
+    String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
+
+    TestServices lenient = testServices(true);
+    createCatalog(lenient, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNestedNamespace(lenient, namespace, null);
+    String defaultLocation = loadNestedNamespaceProperties(lenient, namespace).get("location");
+    updateNestedNamespaceProperties(
+        lenient, namespace, Map.of("location", catalogLocation + "elsewhere"));
+    String customLocation = loadNestedNamespaceProperties(lenient, namespace).get("location");
+
+    assertThatThrownBy(() -> removeNestedNamespaceProperties(lenient, namespace, "location"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("would move the namespace");
+    assertThat(loadNestedNamespaceProperties(lenient, namespace))
+        .containsEntry("location", customLocation);
+
+    // Moving the namespace back has to be stated through a property update, which is where it is
+    // validated, and the removal that was rejected is then allowed.
+    updateNestedNamespaceProperties(lenient, namespace, Map.of("location", defaultLocation));
+    removeNestedNamespaceProperties(lenient, namespace, "location");
+    assertThat(loadNestedNamespaceProperties(lenient, namespace)).doesNotContainKey("location");
+
+    // The same location spelled with a single-slash file scheme is not a move either.
+    updateNestedNamespaceProperties(
+        lenient, namespace, Map.of("location", defaultLocation.replace("file:///", "file:/")));
+    removeNestedNamespaceProperties(lenient, namespace, "location");
+    assertThat(loadNestedNamespaceProperties(lenient, namespace)).doesNotContainKey("location");
+
+    TestServices strict = testServices(false);
+    createCatalog(strict, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNestedNamespace(strict, namespace, null);
+    String tableLocationBefore = createTableLocation(strict, namespace, "tbl1");
+
+    removeNestedNamespaceProperties(strict, namespace, "location");
+
+    assertThat(loadNestedNamespaceProperties(strict, namespace)).doesNotContainKey("location");
+    assertThat(createTableLocation(strict, namespace, "tbl2"))
+        .isEqualTo(tableLocationBefore.replace("tbl1", "tbl2"));
+
+    // The property is gone now, so removing it again resolves the same location either way.
+    removeNestedNamespaceProperties(strict, namespace, "location");
+  }
+
+  /**
+   * A namespace below another namespace derives its default location from its parent rather than
+   * from the catalog. Removing its stored location is rejected when that would move the namespace
+   * and allowed when it already sits at that derived location.
+   */
+  @Test
+  void testNestedNamespaceLocationRemoval(@TempDir Path tmpDir) {
+    String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
+    String child = namespace + NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR + "child";
+
+    TestServices strict = testServices(false);
+    createCatalog(strict, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNestedNamespace(strict, namespace, null);
+    createNestedNamespace(strict, child, null);
+    String tableLocationBefore = createTableLocation(strict, child, "tbl1");
+
+    removeNestedNamespaceProperties(strict, child, "location");
+
+    assertThat(loadNestedNamespaceProperties(strict, child)).doesNotContainKey("location");
+    assertThat(createTableLocation(strict, child, "tbl2"))
+        .isEqualTo(tableLocationBefore.replace("tbl1", "tbl2"));
+
+    TestServices lenient = testServices(true);
+    createCatalog(lenient, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNestedNamespace(lenient, namespace, null);
+    createNestedNamespace(lenient, child, catalogLocation + "elsewhere");
+    String customLocation = loadNestedNamespaceProperties(lenient, child).get("location");
+
+    assertThatThrownBy(() -> removeNestedNamespaceProperties(lenient, child, "location"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("would move the namespace");
+    assertThat(loadNestedNamespaceProperties(lenient, child))
+        .containsEntry("location", customLocation);
+  }
+
+  private TestServices testServices(boolean allowCustomNamespaceLocation) {
+    Map<String, Object> config = new HashMap<>();
+    config.put("ALLOW_INSECURE_STORAGE_TYPES", "true");
+    config.put("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("FILE"));
+    if (allowCustomNamespaceLocation) {
+      config.put("ALLOW_NAMESPACE_CUSTOM_LOCATION", "true");
+    }
+    return TestServices.builder().config(config).build();
+  }
+
+  private String createTableLocation(TestServices services, String nsPath, String tableName) {
+    CreateTableRequest request =
+        CreateTableRequest.builder().withName(tableName).withSchema(SCHEMA).build();
+    try (Response response =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                nsPath,
+                request,
+                null,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return response.readEntity(LoadTableResponse.class).tableMetadata().location();
+    }
+  }
+
   private void createNestedNamespace(TestServices services, String nsPath, String location) {
     CreateNamespaceRequest.Builder builder =
         CreateNamespaceRequest.builder()
@@ -1039,7 +1217,8 @@ public class IcebergAllowedLocationTest {
                 OPTIMIZED_SIBLING_CHECK.key(),
                 "false"),
             counting,
-            listEntitiesCalls);
+            listEntitiesCalls,
+            EnumSet.allOf(PolarisEntityType.class));
 
     String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
     createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
@@ -1061,7 +1240,7 @@ public class IcebergAllowedLocationTest {
   void testOptimizedSiblingCheckListsSiblingsOnlyForUnstructuredLocations(
       boolean unstructured, @TempDir Path tmpDir) {
     AtomicBoolean counting = new AtomicBoolean(false);
-    AtomicInteger listEntitiesCalls = new AtomicInteger();
+    AtomicInteger siblingTableListCalls = new AtomicInteger();
     TestServices services =
         getListCountingTestServices(
             Map.of(
@@ -1072,7 +1251,8 @@ public class IcebergAllowedLocationTest {
                 OPTIMIZED_SIBLING_CHECK.key(),
                 "true"),
             counting,
-            listEntitiesCalls);
+            siblingTableListCalls,
+            EnumSet.of(PolarisEntityType.TABLE_LIKE));
     String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
     createCatalog(
         services,
@@ -1081,19 +1261,55 @@ public class IcebergAllowedLocationTest {
         List.of(catalogLocation));
     createRenameNamespaces(services);
 
-    // Unless unstructured locations are allowed, the optimized check is sufficient.
+    // The Generic Table scan lists child namespaces in both cases. Only the fallback lists
+    // sibling table names to check their write paths.
     counting.set(true);
     createTable(services, "src", "t", null);
     if (unstructured) {
-      assertThat(listEntitiesCalls.get()).isPositive();
+      assertThat(siblingTableListCalls.get()).isPositive();
     } else {
-      assertThat(listEntitiesCalls.get()).isZero();
+      assertThat(siblingTableListCalls.get()).isZero();
     }
   }
 
-  /** Returns test services counting calls to listEntities while {@code counting} is set. */
+  @Test
+  void testOptimizedSiblingCheckDoesNotSeeExistingViewMetadataPath(@TempDir Path tmpDir) {
+    var services = getRenameTestServices(true);
+    String catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    createCatalog(
+        services,
+        Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"),
+        catalogLocation,
+        List.of(catalogLocation));
+    newHandler(services)
+        .createNamespace(
+            CreateNamespaceRequest.builder().withNamespace(Namespace.of(namespace)).build());
+    String metadataPath = catalogLocation + "/" + catalog + "/" + namespace + "/shared";
+    newHandler(services)
+        .createView(
+            Namespace.of(namespace),
+            ImmutableCreateViewRequest.builder()
+                .name("view")
+                .schema(SCHEMA)
+                .viewVersion(VIEW_VERSION)
+                .properties(Map.of(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, metadataPath))
+                .build());
+
+    updateCatalogProperties(
+        services, Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false"));
+
+    // The optimized index contains base locations, not write paths. With structured locations
+    // enabled, Polaris does not list siblings and therefore does not see this existing path.
+    createTable(services, namespace, "sibling", metadataPath);
+    newHandler(services).tableExists(TableIdentifier.of(namespace, "sibling"));
+  }
+
+  /** Returns test services counting listEntities calls for the selected entity types. */
   private static TestServices getListCountingTestServices(
-      Map<String, Object> config, AtomicBoolean counting, AtomicInteger listEntitiesCalls) {
+      Map<String, Object> config,
+      AtomicBoolean counting,
+      AtomicInteger listEntitiesCalls,
+      EnumSet<PolarisEntityType> countedEntityTypes) {
     return TestServices.builder()
         .config(config)
         .metaStoreManagerDecorator(msm -> {
@@ -1107,7 +1323,11 @@ public class IcebergAllowedLocationTest {
                   })
               .when(spy)
               .listEntities(
-                  Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+                  Mockito.any(),
+                  Mockito.any(),
+                  Mockito.argThat(countedEntityTypes::contains),
+                  Mockito.any(),
+                  Mockito.any());
           return spy;
         })
         .build();
@@ -1523,6 +1743,41 @@ public class IcebergAllowedLocationTest {
     // The view's location is under the parent namespace, but also under the child namespace, which
     // becomes the view's sibling.
     assertThatThrownBy(() -> renameView(services, source, TableIdentifier.of(parent, "v")))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+    newHandler(services).viewExists(source);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testRenameViewRejectsCustomMetadataPathOverlappingDestinationSibling(
+      boolean optimizedSiblingCheck, @TempDir Path tmpDir) {
+    var services = getRenameTestServices(optimizedSiblingCheck);
+    var catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    createCatalog(
+        services,
+        Map.of(ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"),
+        catalogLocation,
+        List.of(catalogLocation));
+    newHandler(services)
+        .createNamespace(
+            CreateNamespaceRequest.builder().withNamespace(Namespace.of("src")).build());
+    String metadataPath = catalogLocation + "/" + catalog + "/dst/shared";
+    newHandler(services)
+        .createView(
+            Namespace.of("src"),
+            ImmutableCreateViewRequest.builder()
+                .name("v")
+                .schema(SCHEMA)
+                .viewVersion(VIEW_VERSION)
+                .properties(Map.of(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, metadataPath))
+                .build());
+    newHandler(services)
+        .createNamespace(
+            CreateNamespaceRequest.builder().withNamespace(Namespace.of("dst")).build());
+    createTable(services, "dst", "sibling", metadataPath + "/child");
+    TableIdentifier source = TableIdentifier.of("src", "v");
+    assertThatThrownBy(() -> renameView(services, source, TableIdentifier.of("dst", "v")))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
     newHandler(services).viewExists(source);

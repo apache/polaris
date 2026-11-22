@@ -32,6 +32,7 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.IntStream;
@@ -90,7 +91,8 @@ class OpaPolarisAuthorizerBatchTest {
         MAPPER,
         new StaticBearerTokenProvider("test-token"),
         requestId,
-        "test-realm") {
+        "test-realm",
+        Map.of("environment", "test")) {
       @Override
       <T> T httpClientExecute(
           ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -205,6 +207,8 @@ class OpaPolarisAuthorizerBatchTest {
     assertThat(input.path("actor").path("roles").get(0).asText()).isEqualTo("role-1");
     assertThat(input.path("context").path("request_id").asText()).isEqualTo("req-1");
     assertThat(input.path("context").path("realm").asText()).isEqualTo("test-realm");
+    assertThat(input.path("context").path("properties").path("environment").asText())
+        .isEqualTo("test");
     JsonNode requests = input.path("requests");
     assertThat(requests).hasSize(2);
     assertThat(requests.get(0).path("id").asText()).isEqualTo("0");

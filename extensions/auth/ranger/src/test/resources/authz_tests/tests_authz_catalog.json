@@ -13,6 +13,22 @@
       "result":  { "isAllowed": true }
     },
     {
+      "request": { "authzOp": "GET_CATALOG_CONFIG", "principal": { "name": "admin1" }, "target": "CATALOG:POLARIS/catalog1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "GET_CATALOG_CONFIG", "principal": { "name": "configreader1" }, "target": "CATALOG:POLARIS/catalog1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "GET_CATALOG", "principal": { "name": "configreader1" }, "target": "CATALOG:POLARIS/catalog1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "GET_CATALOG_CONFIG", "principal": { "name": "user1" }, "target": "CATALOG:POLARIS/catalog1" },
+      "result":  { "isAllowed": false }
+    },
+    {
       "request": { "authzOp": "ATTACH_POLICY_TO_CATALOG", "principal": { "name": "admin1" }, "target": "POLICY:POLARIS/catalog1/namespace1/policy1", "secondary": "CATALOG:POLARIS/catalog1" },
       "result":  { "isAllowed": true }
     },

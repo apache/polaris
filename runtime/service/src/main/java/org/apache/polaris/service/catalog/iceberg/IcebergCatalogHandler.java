@@ -1262,22 +1262,25 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // allowedLocations before vending credentials. This protects against cases where
       // allowedLocations were tightened after the table was created.
       validateTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
-      if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))
-          && baseCatalog instanceof LocalIcebergCatalog localCatalog) {
+      boolean vendingCredentials = VENDED_CREDENTIALS.equals(delegationMode.orElse(null));
+      if (vendingCredentials && baseCatalog instanceof LocalIcebergCatalog localCatalog) {
         localCatalog.validateNoLocationOverlapForCredentialVending(
             tableIdentifier, tableMetadata.location(), tableLocations, resolvedStoragePath);
       }
 
+      // The storage integration decides whether the refresh endpoint ends up in the response, based
+      // on whether it vended credentials. Only offer it when this request resolves to credential
+      // vending, so a plain metadata load never advertises the credentials endpoint.
       StorageAccessConfig storageAccessConfig =
           storageAccessConfigProvider()
               .getStorageAccessConfig(
                   tableIdentifier,
                   tableLocations,
                   actions,
-                  refreshCredentialsEndpoint,
+                  vendingCredentials ? refreshCredentialsEndpoint : Optional.empty(),
                   resolvedStoragePath);
       Map<String, String> credentialConfig = storageAccessConfig.credentials();
-      if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))) {
+      if (vendingCredentials) {
         if (!credentialConfig.isEmpty()) {
           responseBuilder.addAllConfig(credentialConfig);
           responseBuilder.addCredential(
@@ -1551,81 +1554,80 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // complex) alternative that would intercept at the MetaStoreManager layer.
     List<TableMetadata> tableMetadataObjs = new ArrayList<>();
     Map<TableIdentifier, FileIO> tableFileIOs = new HashMap<>();
-    changesByTable.forEach((tableIdentifier, changes) -> {
-      Table table = baseCatalog.loadTable(tableIdentifier);
-      if (!(table instanceof BaseTable baseTable)) {
-        throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
-      }
-
-      TableOperations tableOps = baseTable.operations();
-      TableMetadata baseMetadata = tableOps.current();
-
-      // Apply each change sequentially: validate requirements against current state,
-      // then apply updates. This ensures conflicts are detected (e.g., if two changes
-      // both expect schema ID 0, the second will fail after the first increments it).
-      TableMetadata currentMetadata = baseMetadata;
-      for (UpdateTableRequest change : changes) {
-        // A multi-table transaction must not be a way to bypass the caller-specified-location
-        // gate enforced on the single-table updateTable path.
-        rejectClientSpecifiedLocationIfDisallowed(change);
-
-        // Validate requirements against the current metadata state
-        final TableMetadata metadataForValidation = currentMetadata;
-        change.requirements().forEach(requirement -> requirement.validate(metadataForValidation));
-
-        // TODO: Refactor to share/reconcile the update-application logic below with
-        // CatalogHandlerUtils to avoid divergence as complexity grows.
-        TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
-        for (MetadataUpdate singleUpdate : change.updates()) {
-          // Apply updates to builder
-          try {
-            singleUpdate.applyTo(metadataBuilder);
-          } catch (RetryableValidationException e) {
-            // Surface as a retryable 409, matching CatalogHandlerUtils.commit.
-            throw new CommitFailedException(
-                e, "Validation failed, please retry: %s", e.getMessage());
-          }
+    boolean persistenceAttempted = false;
+    try {
+      changesByTable.forEach((tableIdentifier, changes) -> {
+        Table table = baseCatalog.loadTable(tableIdentifier);
+        if (!(table instanceof BaseTable baseTable)) {
+          throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
         }
 
-        // Update currentMetadata to reflect this change for subsequent requirement validation
-        currentMetadata = metadataBuilder.build();
+        TableOperations tableOps = baseTable.operations();
+        TableMetadata baseMetadata = tableOps.current();
+
+        // Apply each change sequentially: validate requirements against current state,
+        // then apply updates. This ensures conflicts are detected (e.g., if two changes
+        // both expect schema ID 0, the second will fail after the first increments it).
+        TableMetadata currentMetadata = baseMetadata;
+        for (UpdateTableRequest change : changes) {
+          // A multi-table transaction must not be a way to bypass the caller-specified-location
+          // gate enforced on the single-table updateTable path.
+          rejectClientSpecifiedLocationIfDisallowed(change);
+
+          // Validate requirements against the current metadata state
+          final TableMetadata metadataForValidation = currentMetadata;
+          change.requirements().forEach(requirement -> requirement.validate(metadataForValidation));
+
+          // TODO: Refactor to share/reconcile the update-application logic below with
+          // CatalogHandlerUtils to avoid divergence as complexity grows.
+          TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
+          for (MetadataUpdate singleUpdate : change.updates()) {
+            // Apply updates to builder
+            try {
+              singleUpdate.applyTo(metadataBuilder);
+            } catch (RetryableValidationException e) {
+              // Surface as a retryable 409, matching CatalogHandlerUtils.commit.
+              throw new CommitFailedException(
+                  e, "Validation failed, please retry: %s", e.getMessage());
+            }
+          }
+
+          // Update currentMetadata to reflect this change for subsequent requirement validation
+          currentMetadata = metadataBuilder.build();
+        }
+
+        // Commit all accumulated changes for this table in a single atomic operation.
+        // The delete logic (set above to collectCleanup) will record instead of delete.
+        if (!currentMetadata.changes().isEmpty()) {
+          tableOps.commit(baseMetadata, currentMetadata);
+          tableFileIOs.put(tableIdentifier, tableOps.io());
+        }
+
+        tableMetadataObjs.add(currentMetadata);
+      });
+
+      List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
+      persistenceAttempted = true;
+      EntitiesResult result =
+          metaStoreManager()
+              .updateEntitiesPropertiesIfNotChanged(
+                  callContext().getPolarisCallContext(), pendingUpdates);
+      if (!result.isSuccess()) {
+        // TODO: Retries on failure
+        throw new CommitFailedException(
+            "Transaction commit failed with status: %s, extraInfo: %s",
+            result.getReturnStatus(), result.getExtraInformation());
       }
-
-      // Commit all accumulated changes for this table in a single atomic operation.
-      // The delete logic (set above to collectCleanup) will record instead of delete.
-      if (!currentMetadata.changes().isEmpty()) {
-        tableOps.commit(baseMetadata, currentMetadata);
-        tableFileIOs.put(tableIdentifier, tableOps.io());
+    } catch (RuntimeException e) {
+      // No catalog entity is persisted until updateEntitiesPropertiesIfNotChanged is reached, so a
+      // failure before it leaves a definite orphan whatever its type. Once it has been attempted,
+      // only delete on known failures: an ambiguous outcome must leave the files in place. Same
+      // rule as doCommit.
+      if (!persistenceAttempted || LocalIcebergCatalog.shouldCleanupMetadataOnCommitFailure(e)) {
+        cleanupWrittenMetadataFiles(
+            writtenMetadataFiles(transactionMetaStoreManager.getPendingUpdates(), tableFileIOs));
       }
-
-      tableMetadataObjs.add(currentMetadata);
-    });
-
-    List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
-    EntitiesResult result =
-        metaStoreManager()
-            .updateEntitiesPropertiesIfNotChanged(
-                callContext().getPolarisCallContext(), pendingUpdates);
-    if (!result.isSuccess()) {
-      // TODO: Retries on failure
-
-      // Clean up metadata files written during doCommit() since the transaction failed.
-      // We derive locations from pendingUpdates (not tableOps.current()) because
-      // requestRefresh() triggers doRefresh() against the store where the entity
-      // hasn't been persisted yet.
-      List<FileToDelete> writtenMetadataFiles =
-          pendingUpdates.stream()
-              .map(ewp -> IcebergTableLikeEntity.of(ewp.entity()))
-              .filter(entity -> entity != null && entity.getMetadataLocation() != null)
-              .filter(entity -> tableFileIOs.containsKey(entity.getTableIdentifier()))
-              .map(entity ->
-                  new FileToDelete(
-                      tableFileIOs.get(entity.getTableIdentifier()), entity.getMetadataLocation()))
-              .toList();
-      cleanupWrittenMetadataFiles(writtenMetadataFiles);
-      throw new CommitFailedException(
-          "Transaction commit failed with status: %s, extraInfo: %s",
-          result.getReturnStatus(), result.getExtraInformation());
+      throw e;
     }
 
     // It is now safe to delete removed metadata files for all tables that were part of
@@ -1636,6 +1638,23 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
 
     eventAttributeMap().put(EventAttributes.TABLE_METADATAS, tableMetadataObjs);
+  }
+
+  /**
+   * Returns the metadata files written during a transaction, derived from the buffered entity
+   * updates rather than from {@code tableOps.current()}: {@code requestRefresh()} triggers {@code
+   * doRefresh()} against the store, where the entity has not been persisted yet.
+   */
+  private static List<FileToDelete> writtenMetadataFiles(
+      List<EntityWithPath> pendingUpdates, Map<TableIdentifier, FileIO> tableFileIOs) {
+    return pendingUpdates.stream()
+        .map(ewp -> IcebergTableLikeEntity.of(ewp.entity()))
+        .filter(entity -> entity != null && entity.getMetadataLocation() != null)
+        .filter(entity -> tableFileIOs.containsKey(entity.getTableIdentifier()))
+        .map(entity ->
+            new FileToDelete(
+                tableFileIOs.get(entity.getTableIdentifier()), entity.getMetadataLocation()))
+        .toList();
   }
 
   record FileToDelete(FileIO io, String location) {
@@ -1779,10 +1798,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
       // suppressHistoricalSnapshots() preserves metadataLocation() while dropping unreferenced
       // snapshots, matching org.apache.iceberg.rest.CatalogHandlers#loadTable's REFS case.
+      // Dropping a snapshot also drops its statistics and partition statistics, which the builder
+      // records as RemoveStatistics/RemovePartitionStatistics changes; build() rejects any change
+      // alongside a metadata location. The response is a view of the already-committed metadata
+      // file, not a new commit, so the change log is discarded.
       TableMetadata filteredMetadata =
           TableMetadata.buildFrom(metadata)
               .withMetadataLocation(metadata.metadataFileLocation())
               .suppressHistoricalSnapshots()
+              .discardChanges()
               .build();
 
       return LoadTableResponse.builder()

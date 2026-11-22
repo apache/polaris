@@ -23,9 +23,13 @@ import java.util.Locale;
 /**
  * Attribute names, item-type markers, and key encodings for the single-table DynamoDB layout.
  *
- * <p>One base table holds the Polaris item types, each partitioned by its own identity so load
- * spreads across partitions; a sparse GSI lists a parent's children. The {@code realmId} is only a
- * key prefix (tenant isolation), never a partition key on its own.
+ * <p>One base table holds the Polaris item types. The entity item and its name sentinel are each
+ * partitioned by their own identity, so load spreads across partitions. A child record is the
+ * exception: it is partitioned by its parent's coordinates, so a parent's children share one
+ * base-table partition key and can be listed by a strongly consistent {@code Query}. A busy parent,
+ * or a realm's principals and catalogs under {@code realm#0#0#type}, therefore shares one partition
+ * and pays base-table write capacity on every create and delete. The {@code realmId} is only a key
+ * prefix (tenant isolation), never a partition key on its own.
  */
 public final class DynamoDbLayout {
 
@@ -35,14 +39,10 @@ public final class DynamoDbLayout {
   public static final String PK = "PK";
   public static final String SK = "SK";
 
-  // children GSI (list children): gsi1pk = realmId#catalogId#parentId#typeCode, gsi1sk = padded id
-  public static final String GSI1 = "gsi1";
-  public static final String GSI1_PK = "gsi1pk";
-  public static final String GSI1_SK = "gsi1sk";
-
   // ---- Sort-key / item-type markers ------------------------------------------------------------
   public static final String SK_ENTITY = "ENTITY";
   public static final String SK_NAME = "NAME";
+  public static final String SK_CHILD_PREFIX = "CHILD#";
 
   // ---- Entity item attributes ------------------------------------------------------------------
   public static final String A_CATALOG_ID = "catalogId";
@@ -92,17 +92,26 @@ public final class DynamoDbLayout {
         + name;
   }
 
-  /** Children GSI partition key: {@code realmId#catalogId#parentId#typeCode}. */
-  public static String childrenGsiPk(String realmId, long catalogId, long parentId, int typeCode) {
-    return realmId + SEP + catalogId + SEP + parentId + SEP + typeCode;
+  /**
+   * Child-record partition key in the base table: {@code
+   * realmId#catalogId#parentId#typeCode#subTypeCode}. A child record is a strongly consistent,
+   * base-table stand-in for a listing copy, so a listing can read children with {@code
+   * ConsistentRead=true}. The subtype is part of the key so that listing one subtype (for example
+   * all Iceberg tables) is a single exact query; types with no subtype always use {@code 0}, so
+   * their listing is unaffected.
+   */
+  public static String childPk(
+      String realmId, long catalogId, long parentId, int typeCode, int subTypeCode) {
+    return realmId + SEP + catalogId + SEP + parentId + SEP + typeCode + SEP + subTypeCode;
   }
 
   /**
-   * Children GSI sort key: the entity id, zero-padded to 19 digits so that string order matches
-   * numeric order. This lists children in id order, the order Polaris pages by (as {@code
-   * relational-jdbc} does). Entity ids are non-negative.
+   * Child-record sort key: {@code CHILD#} and the entity id, zero-padded to 19 digits so that
+   * string order matches numeric order. The {@code CHILD#} prefix keeps these items apart from the
+   * {@code ENTITY} and {@code NAME} items that may share a partition key. Entity ids are
+   * non-negative.
    */
-  public static String childrenGsiSk(long id) {
-    return String.format(Locale.ROOT, "%019d", id);
+  public static String childSk(long id) {
+    return SK_CHILD_PREFIX + String.format(Locale.ROOT, "%019d", id);
   }
 }

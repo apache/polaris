@@ -926,7 +926,9 @@ components:
           description: The type of remote catalog service represented by this connection
         uri:
           type: string
-          description: URI to the remote catalog service
+          description: |
+            URI to the remote catalog service. Required for ICEBERG_REST and HIVE. Optional for
+            BIGQUERY, where it defaults to the public BigQuery endpoint. `uri` is ignored for HADOOP.
         authenticationParameters:
           $ref: "#/components/schemas/AuthenticationParameters"
         serviceIdentity:
@@ -960,7 +962,9 @@ components:
 
     HadoopConnectionConfigInfo:
       type: object
-      description: Configuration necessary for connecting to a Hadoop Catalog
+      description: |
+        Configuration necessary for connecting to a Hadoop Catalog. The catalog is initialized from
+        `warehouse`; `uri` is ignored.
       allOf:
         - $ref: '#/components/schemas/ConnectionConfigInfo'
       properties:
@@ -1091,6 +1095,14 @@ components:
             credentials inherit the full permissions of the assumed role.
           examples:
             - '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["glue:*","s3:GetObject","s3:ListBucket"],"Resource":"*"}]}'
+        stsEndpoint:
+          type: string
+          description: >-
+            An optional STS endpoint URI used by Polaris to call AWS STS AssumeRole for this connection.
+            When omitted, the default AWS STS endpoint for the signing region is used.
+            Must be an absolute http or https URI.
+          examples:
+            - "https://sts.example.com:1234"
       required:
         - roleArn
         - signingRegion
@@ -1236,6 +1248,8 @@ components:
 
                 Apache Polaris supports these values:
                 - `STS`: STS AssumeRole against the configured role.
+                - `R2_LOCAL_SIGNING`: temporary Cloudflare R2 credentials that the server signs
+                  locally, scoped to the table's location.
 
                 Later releases may add values. The server returns HTTP 400 for a value it does not
                 support.
@@ -1563,6 +1577,8 @@ components:
         - VIEW_READ_PROPERTIES
         - VIEW_WRITE_PROPERTIES
         - VIEW_FULL_METADATA
+        - VIEW_READ_LINEAGE
+        - VIEW_INGEST_LINEAGE
 
     TablePrivilege:
       type: string
@@ -1596,6 +1612,8 @@ components:
         - TABLE_REMOVE_STATISTICS
         - TABLE_REMOVE_PARTITION_SPECS
         - TABLE_MANAGE_STRUCTURE
+        - TABLE_READ_LINEAGE
+        - TABLE_INGEST_LINEAGE
 
     SemanticModelPrivilege:
       type: string
@@ -1679,6 +1697,10 @@ components:
         - TABLE_REMOVE_STATISTICS
         - TABLE_REMOVE_PARTITION_SPECS
         - TABLE_MANAGE_STRUCTURE
+        - TABLE_READ_LINEAGE
+        - TABLE_INGEST_LINEAGE
+        - VIEW_READ_LINEAGE
+        - VIEW_INGEST_LINEAGE
 
     CatalogPrivilege:
       type: string
@@ -1743,6 +1765,10 @@ components:
         - TABLE_REMOVE_STATISTICS
         - TABLE_REMOVE_PARTITION_SPECS
         - TABLE_MANAGE_STRUCTURE
+        - TABLE_READ_LINEAGE
+        - TABLE_INGEST_LINEAGE
+        - VIEW_READ_LINEAGE
+        - VIEW_INGEST_LINEAGE
 
     AddGrantRequest:
       type: object

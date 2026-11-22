@@ -66,6 +66,22 @@ public class TestMemorySize {
 
   @ParameterizedTest
   @MethodSource
+  public void beyondLargestSuffix(String in, String expected) {
+    var parsed = requireNonNull(MemorySize.valueOf(in));
+    soft.assertThat(parsed.toString()).isEqualTo(expected);
+    soft.assertThat(MemorySize.valueOf(parsed.toString())).isEqualTo(parsed);
+  }
+
+  static Stream<Arguments> beyondLargestSuffix() {
+    return Stream.of(
+        arguments("1024Y", "1024Y"),
+        arguments("2048Y", "2048Y"),
+        arguments("1048576Y", "1048576Y"),
+        arguments("1048576Z", "1024Y"));
+  }
+
+  @ParameterizedTest
+  @MethodSource
   public void parse(String s, BigInteger expected) {
     var parsed = requireNonNull(MemorySize.valueOf(s));
     soft.assertThat(parsed.asBigInteger()).isEqualTo(expected);

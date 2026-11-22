@@ -55,6 +55,7 @@
         {
           "accesses": [
             { "type": "catalog-drop" },
+            { "type": "catalog-config-read" },
             { "type": "catalog-properties-read" },
             { "type": "catalog-properties-write" },
             { "type": "catalog-metadata-full" },
