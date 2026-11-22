@@ -34,7 +34,7 @@ Note: currently there is only one `ProvilegeProvider` that plugs in the Polaris 
 ## ACLs, ACL entries and ACL chains
 
 Each securable object can have its own ACL. ACLs consist of ACL entries, which define the _granted_ and _restricted_
-privileges by role name. The the number of roles is technically unbounded and the number of ACL entries can become
+privileges by role name. The number of roles is technically unbounded and the number of ACL entries can become
 quite large.
 
 This framework implements [separation of duties](https://en.wikipedia.org/wiki/Separation_of_duties) ("SoD"), which is a
