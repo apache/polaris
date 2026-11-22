@@ -419,11 +419,36 @@ class PolarisPersistenceEventListenerTest {
                 .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
                 .put(EventAttributes.NAMESPACE_NAME, namespacePathParam)
                 .build()));
+    listener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.AFTER_LIST_GENERIC_TABLES,
+            metadata(),
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(EventAttributes.NAMESPACE_NAME, namespacePathParam)
+                .build()));
     assertThat(
             listener
                 .persistedEvent(PolarisEventType.BEFORE_LIST_GENERIC_TABLES)
                 .getResourceIdentifier())
         .isEqualTo(NAMESPACE.toString());
+    assertThat(
+            listener
+                .persistedEvent(PolarisEventType.AFTER_LIST_GENERIC_TABLES)
+                .getResourceIdentifier())
+        .isEqualTo(NAMESPACE.toString());
+
+    // NAMESPACE_NAME alone is not enough for a non-list table event.
+    listener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.BEFORE_LOAD_TABLE,
+            metadata(),
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(EventAttributes.NAMESPACE_NAME, namespacePathParam)
+                .build()));
+    assertThat(listener.persistedEvent(PolarisEventType.BEFORE_LOAD_TABLE).getResourceIdentifier())
+        .isEqualTo(CATALOG_NAME);
   }
 
   @Test

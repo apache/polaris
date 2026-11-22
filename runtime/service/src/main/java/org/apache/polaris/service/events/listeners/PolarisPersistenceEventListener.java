@@ -151,7 +151,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
       return namespaceIdentifier.get();
     }
 
-    Optional<String> genericTableIdentifier = resolveGenericTableIdentifier(attributes);
+    Optional<String> genericTableIdentifier = resolveGenericTableIdentifier(event);
     if (genericTableIdentifier.isPresent()) {
       return genericTableIdentifier.get();
     }
@@ -232,26 +232,36 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
 
   /**
    * Generic table events carry the namespace path parameter and the table name under their own
-   * attributes. Resolves the table identifier, or the namespace for listing events.
+   * attributes. Resolves the table identifier, or the namespace for listing events. Other table
+   * events that happen to carry {@code NAMESPACE_NAME} are left unresolved here.
    */
-  private static Optional<String> resolveGenericTableIdentifier(AttributeMap attributes) {
-    return attributes
-        .getOptional(EventAttributes.NAMESPACE_NAME)
-        .map(namespace ->
-            NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR))
-        .map(namespace ->
-            attributes
-                .getOptional(EventAttributes.GENERIC_TABLE_NAME)
-                .or(() ->
-                    attributes
-                        .getOptional(EventAttributes.CREATE_GENERIC_TABLE_REQUEST)
-                        .map(CreateGenericTableRequest::getName))
-                .or(() ->
-                    attributes
-                        .getOptional(EventAttributes.GENERIC_TABLE)
-                        .map(GenericTable::getName))
-                .map(tableName -> TableIdentifier.of(namespace, tableName).toString())
-                .orElseGet(namespace::toString));
+  private static Optional<String> resolveGenericTableIdentifier(PolarisEvent event) {
+    AttributeMap attributes = event.attributes();
+    Optional<Namespace> namespace =
+        attributes
+            .getOptional(EventAttributes.NAMESPACE_NAME)
+            .map(name ->
+                NamespaceUtils.splitNamespace(name, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR));
+    if (namespace.isEmpty()) {
+      return Optional.empty();
+    }
+    Optional<String> tableName =
+        attributes
+            .getOptional(EventAttributes.GENERIC_TABLE_NAME)
+            .or(() ->
+                attributes
+                    .getOptional(EventAttributes.CREATE_GENERIC_TABLE_REQUEST)
+                    .map(CreateGenericTableRequest::getName))
+            .or(() ->
+                attributes.getOptional(EventAttributes.GENERIC_TABLE).map(GenericTable::getName));
+    if (tableName.isPresent()) {
+      return Optional.of(TableIdentifier.of(namespace.get(), tableName.get()).toString());
+    }
+    if (event.type() == PolarisEventType.BEFORE_LIST_GENERIC_TABLES
+        || event.type() == PolarisEventType.AFTER_LIST_GENERIC_TABLES) {
+      return Optional.of(namespace.get().toString());
+    }
+    return Optional.empty();
   }
 
   private static String resolveNamespaceResourceIdentifier(
