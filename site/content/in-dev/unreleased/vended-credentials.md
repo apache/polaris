@@ -85,16 +85,25 @@ does not vend credentials, does not contain it.
 
 ## Revoking table access
 
-Polaris checks the principal’s current table privileges whenever a client requests or refreshes
+Polaris checks the principal's current table privileges whenever a client requests or refreshes
 vended credentials. Once the principal loses all privileges that allow read or write delegation
 for a table, Polaris denies new credential requests for that table.
 
-Clients use AWS STS credentials, Azure user delegation SAS tokens, and GCS access tokens directly
-with the storage provider. An issued credential can still grant access until it expires, as long
-as the provider permits the operation. For example, if you revoke read access at 10:15 UTC and the
-credential expires at 11:00 UTC, the client may still read for the remaining 45 minutes. Check
-the expiration property in the provider’s table above. The Polaris cache lifetime
-(`STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS`) has no effect on credentials a client already holds.
+Clients use the credentials they already hold directly with the storage provider. For example,
+if you revoke read access in Polaris at 10:15 UTC and the credential expires at 11:00 UTC,
+the client may still read for the remaining 45 minutes if the provider allows it. The credential
+response reports the expiration in milliseconds since the Unix epoch.
+
+* AWS S3, `s3.session-token-expires-at-ms`
+* Azure ADLS, `adls.sas-token-expires-at-ms.<account-host>`
+* GCS, `gcs.oauth2.token-expires-at`
+
+To request shorter lifetimes for new AWS STS sessions and Azure SAS tokens, reduce
+`STORAGE_CREDENTIAL_DURATION_SECONDS` within the provider's supported range. GCS ignores this
+setting. With service account impersonation, Polaris requests one hour for the source token.
+The downscoped token uses the lifetime returned by Google, or the source token's expiration if
+Google omits the lifetime. Changing the Polaris cache lifetime (`STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS`)
+does not shorten the lifetime of a credential a client already holds.
 
 ## When delegation cannot be satisfied
 
