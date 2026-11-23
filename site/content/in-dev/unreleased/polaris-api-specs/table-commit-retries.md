@@ -17,47 +17,57 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'Recovering from an unknown Iceberg table commit'
+title: 'Did my Iceberg table commit succeed?'
 linkTitle: 'Table commit retries'
 type: docs
 weight: 210
 ---
 
-A timeout can leave an Iceberg client unable to tell whether Polaris committed a write.
-The same applies when the service reports that the commit state is unknown. Keep the data and
-metadata files from the attempt while you establish the outcome. A successful commit may already
-reference those files.
+If your request times out or Polaris reports an unknown commit state, **keep the files you wrote**.
+The commit may have succeeded, and the table may already reference those files.
 
-## Retrying a request with an idempotency key
+## Before you send the first request
 
-In a native Polaris catalog, the following steps apply to a direct table create
-(`stage-create: false`) or an update to an existing table. The final commit of a staged create
-checks `assert-create` again on retry and can return `409 Conflict` even if the first commit succeeded.
+Check whether your native Polaris catalog supports idempotency keys. For example, call
+`GET /api/catalog/v1/config?warehouse=analytics` for the `analytics` catalog. If the response
+includes `idempotency-key-lifetime`, generate a UUIDv7 for each new operation and send it in the
+`Idempotency-Key` header. Keep the key and request body for retries. The advertised window starts
+when you first send the request.
 
-Check the catalog configuration before the first request. For example, for the `analytics`
-catalog, call `GET /api/catalog/v1/config?warehouse=analytics`. If the response contains
-`idempotency-key-lifetime`, it gives the retry window measured from the first submission.
-Polaris disables this feature by default. When enabled with `polaris.idempotency.enabled`,
-the default window is five minutes (`polaris.idempotency.ttl`).
+Idempotency is off by default. Administrators can enable it with `polaris.idempotency.enabled`
+and set the retry window with `polaris.idempotency.ttl` (default five minutes).
 
-1. Before the first request, generate a UUIDv7 and send it in the `Idempotency-Key` header.
-   Generate a fresh key for each new logical operation.
-2. Before retrying a create, check whether the table may have been renamed or dropped since the
-   first request. If so, establish what happened first. Polaris stores the key on the table.
-   Once the original name is free, retrying can create a new table even within the retry window.
-3. To retry within the window, resend the same request with the same key. If the original
-   request committed, the response can reflect newer table metadata, including changes another
-   writer committed in the meantime.
+For an update, include `assert-table-uuid` with the UUID of the table you loaded. This prevents
+a retry from changing a different table that later takes the same name. If the update depends
+on a branch, use `assert-ref-snapshot-id` to record the snapshot you expect, or `null` if you
+expect the branch to be absent. For example, removing an absent branch changes nothing, so Polaris
+records no key. Without the branch requirement, a retry could delete a branch someone just created.
 
-## Checking the table when a retry cannot establish the outcome
+## Can I retry after a timeout?
 
-If the server omitted `idempotency-key-lifetime`, the original request had no key, or its
-window has expired, reload the table before deciding whether to write again. For a table
-create, the name alone cannot establish which request created the table.
+If the original request had no key, the catalog omitted `idempotency-key-lifetime`, or the window
+has expired, [check what committed](#check-what-committed). For a retry within the window,
+resend the original request body and key.
 
-For an append, load the table with `snapshots=all` and look for the original snapshot ID in the
-history of the branch you wrote to. Finding it confirms the append, even if another writer has
-since advanced the branch. A missing snapshot is inconclusive because snapshots can expire.
+* **Update an existing table.** If your request committed a change, the retry can return newer
+  metadata from another writer. If the original request lacked the table or branch requirement
+  and the table or branch may have changed, check what committed before retrying.
+* **Create a table directly** (`stage-create: false`). If someone may have renamed or dropped the
+  table, check first. Polaris stores the key on the table. Once the name is free, a retry can create
+  another table under that name. If the retry overlaps the first request, it can
+  return `409 Conflict` even when the first request succeeds.
+* **Finish a staged create.** A retry checks `assert-create` again. If the first request created
+  the table, the retry can return `409 Conflict`. For either kind of create, a conflict alone
+  leaves the outcome uncertain.
 
-If the outcome is still uncertain, retain the files and investigate before issuing another write.
-Rebuilding an append with a new snapshot ID can add the same data files twice.
+## Check what committed
+
+**For a create**, reload the table. If you have the UUID from a staged create, compare it with
+the loaded table's UUID. The table name alone cannot tell you which request created it.
+
+**For an append**, load the table with `snapshots=all`. Start at the target branch's current
+snapshot and follow its parents. Finding your original snapshot ID confirms the append, even if
+another writer has advanced the branch. An expired snapshot can leave that history incomplete.
+
+If the outcome is still unclear, keep the files and investigate before writing again. Rebuilding
+the append with a new snapshot ID can add the same data files twice.
