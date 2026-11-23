@@ -21,6 +21,7 @@ package org.apache.polaris.service.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.config.RealmConfigurationSource;
@@ -43,9 +44,29 @@ public class DefaultConfigurationStore
   // to become a proper Quarkus configuration object
   @Inject
   public DefaultConfigurationStore(
-      ObjectMapper objectMapper, FeaturesConfiguration configurations) {
-    this.defaults = Map.copyOf(configurations.parseDefaults(objectMapper));
-    this.realmOverrides = Map.copyOf(configurations.parseRealmOverrides(objectMapper));
+      ObjectMapper objectMapper,
+      FeaturesConfiguration configurations,
+      BehaviorChangesConfiguration behaviorChanges) {
+    // Behavior changes are set under polaris.behavior-changes and features under
+    // polaris.features; their keys do not overlap. A key set in both places takes the feature
+    // value.
+    Map<String, Object> defaults = new HashMap<>(behaviorChanges.parseDefaults(objectMapper));
+    defaults.putAll(configurations.parseDefaults(objectMapper));
+    this.defaults = Map.copyOf(defaults);
+    Map<String, Map<String, Object>> realmOverrides =
+        new HashMap<>(behaviorChanges.parseRealmOverrides(objectMapper));
+    configurations
+        .parseRealmOverrides(objectMapper)
+        .forEach((realm, overrides) ->
+            realmOverrides.merge(
+                realm,
+                overrides,
+                (behaviorChangeOverrides, featureOverrides) -> {
+                  Map<String, Object> merged = new HashMap<>(behaviorChangeOverrides);
+                  merged.putAll(featureOverrides);
+                  return merged;
+                }));
+    this.realmOverrides = Map.copyOf(realmOverrides);
   }
 
   @Override
