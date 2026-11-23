@@ -504,8 +504,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "Requested lifetime of vended storage credentials in seconds. Supported durations"
                   + " depend on the storage provider. For GCS, this sets the source token lifetime"
-                  + " requested when impersonating a service account. Google determines the"
-                  + " expiration of the downscoped token returned to clients.")
+                  + " requested when impersonating a service account, up to one hour. Google determines"
+                  + " the expiration of the downscoped token returned to clients.")
           .defaultValue(60 * 60) // 1 hour
           .buildFeatureConfiguration();
 

@@ -449,7 +449,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @ParameterizedTest
-  @CsvSource({",3600", "900,900"})
+  @CsvSource({",3600", "900,900", "3600,3600", "7200,3600"})
   public void testImpersonation(String configuredSeconds, int expectedSeconds) throws IOException {
     RealmConfig realmConfig =
         configuredSeconds == null

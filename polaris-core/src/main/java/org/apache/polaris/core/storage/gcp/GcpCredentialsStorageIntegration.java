@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.gcp;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 import static org.apache.polaris.core.storage.StorageLocation.ensureTrailingSlash;
 import static org.apache.polaris.core.storage.StorageLocation.trimLeadingSlash;
 
@@ -79,6 +80,8 @@ public class GcpCredentialsStorageIntegration
       "https://www.googleapis.com/auth/devstorage.read_write";
 
   private static final ObjectMapper OBJECT_MAPPER = JsonMapper.shared();
+  // Google IAM allows one hour without an organization policy extending the service account limit.
+  private static final int MAX_IMPERSONATION_LIFETIME_SECONDS = 3600;
 
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;
@@ -377,7 +380,9 @@ public class GcpCredentialsStorageIntegration
       source = exchanger.federatedCredentials(subject, key.realmId());
     }
     int lifetimeSeconds =
-        key.realmConfig().getConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+        Math.min(
+            key.realmConfig().getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS),
+            MAX_IMPERSONATION_LIFETIME_SECONDS);
     return createImpersonatedCredentials(
         source, serviceAccount, key.credentialOps(), lifetimeSeconds);
   }

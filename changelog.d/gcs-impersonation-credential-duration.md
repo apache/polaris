@@ -1,5 +1,5 @@
 ### Changes
 
-- GCS service account impersonation now requests the source token lifetime configured by
-  `STORAGE_CREDENTIAL_DURATION_SECONDS`. The default remains one hour. If you configured a longer
-  duration, the target service account must be allowed to request it by Google Cloud organization policy.
+- GCS service account impersonation now uses `STORAGE_CREDENTIAL_DURATION_SECONDS`, the same
+  realm setting that S3 and Azure use. Set it below 3600 to request a shorter GCS source token.
+  At 3600 or above, Polaris continues to request one hour from Google IAM.
