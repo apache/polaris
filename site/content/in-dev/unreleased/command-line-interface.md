@@ -1689,7 +1689,7 @@ The `repair` command is a bash script wrapper used to regenerate Python client c
 
 ### Setup
 
-Use `polaris setup` to save your Polaris configuration as YAML or apply a saved configuration.
+The `setup` command is used to automate the creation of various entities in Polaris, such as principals, roles, catalogs, namespaces, tables, views, privileges, and policies, based on a configuration file. This simplifies the process of setting up a Polaris environment. Tables and views are only exported for internal catalogs.
 
 `setup` supports the following subcommands:
 
@@ -1698,8 +1698,7 @@ Use `polaris setup` to save your Polaris configuration as YAML or apply a saved 
 
 #### apply
 
-`polaris setup apply` creates the entities described in a YAML file. If a table or view already exists,
-the command skips it, even when the file specifies a different `metadata_location`.
+The `apply` subcommand reads a configuration file and creates the specified entities in Polaris. The configuration file must be in YAML format and define the entities to be created. Tables and views are registered only if they do not already exist. An existing table or view is left unchanged even if the current `metadata_location` differs from the one in the configuraiton file.
 
 ```
 usage: polaris setup apply [-h] [options] SETUP_CONFIG_FILE
@@ -1722,30 +1721,19 @@ polaris setup apply setup-config.yaml
 
 #### export
 
-Use `polaris setup export` to save the current configuration as YAML. For disaster recovery,
-also back up the Polaris metastore and the storage files it references.
+Use `polaris setup export` to save your Polaris configuration as YAML for `polaris setup apply`.
 
-**Tables and views.** Add `--include-tables-and-views` to include Iceberg tables and views from
-internal catalogs. The export omits generic tables. The CLI loads each table and view individually,
-which can take time in a large catalog. It skips tables without a metadata location, such as staged tables.
+The export saves policy definitions and omits their attachments. Record each attachment's target
+and any parameters separately so you can reattach the policy when you restore the configuration.
+Each exported policy has a `name` and `namespace`, so policies in different namespaces can share a name.
+`setup apply` also accepts the older mapping keyed by policy name if those names are unique.
 
-The YAML lists each registration's `name`, `namespace`, and `metadata_location`, sorted by
-namespace and name. `setup apply` uses these locations to register missing tables and views.
-The export copies no files, so keep the original metadata and data files accessible.
+Add `--include-tables-and-views` to export Iceberg table and view registrations from internal catalogs.
+Entries are sorted by namespace and name. Each contains `name`, `namespace`, and `metadata_location`.
+The CLI skips staged tables. It loads each table and view individually, which can take time in large catalogs.
 
-**Policies.** The export saves each policy definition with its name and namespace, so policies in
-different namespaces can share a name. `setup apply` also accepts the older format keyed by policy
-name if all names in the mapping are unique.
-
-The export omits policy attachments. To recreate them, record each attachment's target type,
-path, and any `parameters` before the backup. Add those values to the policy's `attach` list
-before running `setup apply`. For a catalog target, omit the path.
-
-If a name in the target path contains a literal dot, leave that attachment out of the YAML. The
-CLI splits the path at every dot. After `setup apply`, use the `attachPolicy` operation in the
-[Catalog REST API]({{% relref "polaris-api-specs/polaris-catalog-api.md" %}}). For example, to
-attach a policy to table `orders` in the single namespace `finance.us`, set `target` to
-`{"type": "table-like", "path": ["finance.us", "orders"]}`.
+The export does not copy files. To register a table or view from the YAML, its metadata file must still
+be accessible at the recorded location. Reading a restored table also requires its manifests and data files.
 
 ```
 usage: polaris setup export [-h] [options]
@@ -1759,14 +1747,10 @@ Command Options:
 
 ##### Examples
 
-```shell
-polaris setup export > setup-config.yaml
 ```
+polaris setup export
 
-Use the flag to include Iceberg table and view registrations.
-
-```shell
-polaris setup export --include-tables-and-views > setup-with-tables.yaml
+polaris setup export --include-tables-and-views
 ```
 
 ### Find
