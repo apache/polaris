@@ -1726,7 +1726,6 @@ Use `polaris setup export` to save your Polaris configuration as YAML for `polar
 The export saves policy definitions and omits their attachments. Record each attachment's target
 and any parameters separately so you can reattach the policy when you restore the configuration.
 Each exported policy has a `name` and `namespace`, so policies in different namespaces can share a name.
-`setup apply` also accepts the older mapping keyed by policy name if those names are unique.
 
 Add `--include-tables-and-views` to export Iceberg table and view registrations from internal catalogs.
 Entries are sorted by namespace and name. Each contains `name`, `namespace`, and `metadata_location`.
