@@ -1724,16 +1724,27 @@ polaris setup apply setup-config.yaml
 `polaris setup export` writes principals, roles, catalogs, and other resources as YAML.
 You can use that YAML with `polaris setup apply`.
 
-The export saves policy definitions and omits their attachments. Record each attachment's target
-and any parameters separately so you can reattach the policy when you restore the configuration.
 Each exported policy has a `name` and `namespace`, so policies in different namespaces can share a name.
+The export omits policy attachments. Before running `setup apply`, add an `attach` list to each
+policy you want to reattach. For example, this field attaches a policy to the `sales.orders` table.
+
+```yaml
+attach:
+  - type: table-like
+    path: sales.orders
+```
+
+For a `namespace` or `table-like` target, separate the names in `path` with periods. For a
+`catalog` target, omit `path`. If the original attachment had parameters, include them in a
+`parameters` mapping on that list entry.
 
 `setup apply` can also read older YAML files exported by Polaris 1.4.0 through 1.7.0 that use policy names as keys.
 In that format, policy names must be unique within each catalog.
 
 Add `--include-tables-and-views` to export Iceberg table and view registrations from internal catalogs.
 Entries are sorted by namespace and name. Each contains `name`, `namespace`, and `metadata_location`.
-The CLI skips staged tables. It loads each table and view individually, which can take time in large catalogs.
+The CLI skips tables that have no committed metadata location yet, such as a table staged in an open
+transaction. It loads each table and view individually, which can take time in large catalogs.
 
 The export does not copy files. To register a table or view from the YAML, its metadata file must still
 be accessible at the recorded location. Reading a restored table also requires its manifests and data files.
