@@ -1721,11 +1721,15 @@ polaris setup apply setup-config.yaml
 
 #### export
 
-Use `polaris setup export` to save your Polaris configuration as YAML for `polaris setup apply`.
+`polaris setup export` writes principals, roles, catalogs, and other resources as YAML.
+You can use that YAML with `polaris setup apply`.
 
 The export saves policy definitions and omits their attachments. Record each attachment's target
 and any parameters separately so you can reattach the policy when you restore the configuration.
 Each exported policy has a `name` and `namespace`, so policies in different namespaces can share a name.
+
+`setup apply` can also read older YAML files exported by Polaris 1.4.0 through 1.7.0 that use policy names as keys.
+In that format, policy names must be unique within each catalog.
 
 Add `--include-tables-and-views` to export Iceberg table and view registrations from internal catalogs.
 Entries are sorted by namespace and name. Each contains `name`, `namespace`, and `metadata_location`.
