@@ -17,6 +17,7 @@
   tokens apply only when `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` is true. A realm opts in by adding
   `R2_LOCAL_SIGNING` to `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS`, whose default stays `[STS]`.
   The parent tokens are server-wide: every realm that opts in can use them. Anyone with
-  `CATALOG_CREATE` or `CATALOG_WRITE_PROPERTIES` chooses a catalog's buckets within the reach of
-  its parent token, and its `storageName` when named tokens apply, so each parent token should
-  cover only the buckets its catalogs need. The server bundle includes the module.
+  `CATALOG_CREATE` or `CATALOG_WRITE_PROPERTIES` can point a catalog at any bucket its parent token
+  reaches. When named tokens apply, they can also set the catalog's `storageName` to pick any named
+  token. Scope every parent token, default and named, to only the buckets its catalogs need. The
+  server bundle includes the module.

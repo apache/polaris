@@ -100,7 +100,7 @@ public class R2LocalSigningCredentialVendingMechanism implements S3CredentialVen
    * <ol>
    *   <li>The endpoint is an R2 endpoint ({@link CloudflareR2Endpoint#parse}).
    *   <li>{@code pathStyleAccess} is true and {@code region} is {@code auto}.
-   *   <li>The STS and KMS fields are absent, and {@code stsUnavailable} is not true.
+   *   <li>The STS fields and the KMS key fields are absent, and {@code stsUnavailable} is not true.
    *   <li>No allowed location holds an empty path segment.
    *   <li>A parent token resolves for the config.
    * </ol>
