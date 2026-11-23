@@ -375,6 +375,9 @@ curl -v http://127.0.0.1:8181/api/management/v1/principal-roles -H "Authorizatio
 curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "Authorization: Bearer $POLARIS_TOKEN"
 ```
 
+For a step-by-step walkthrough that creates a catalog, a principal with grants, namespaces, and tables
+using only `curl`, see [Using the Polaris REST APIs with curl](/guides/rest-api/).
+
 ## Next Steps
 * Visit [Using Keycloak as the external identity provider]({{% relref "keycloak-idp" %}}).
 * Visit [Using Keycloak and OPA for fully external principals]({{% relref "keycloak-opa-idp" %}}).

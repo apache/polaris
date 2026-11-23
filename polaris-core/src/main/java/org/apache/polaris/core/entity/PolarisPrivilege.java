@@ -280,6 +280,18 @@ public enum PolarisPrivilege {
       List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
       PolarisEntityType.CATALOG_ROLE),
   CATALOG_READ_CONFIG(111, PolarisEntityType.CATALOG),
+  TABLE_READ_LINEAGE(
+      112,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
+  TABLE_INGEST_LINEAGE(
+      113,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
+  VIEW_READ_LINEAGE(114, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW),
+  VIEW_INGEST_LINEAGE(115, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW),
   ;
 
   /**

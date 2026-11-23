@@ -17,13 +17,14 @@
 # under the License.
 #
 
+import io
 from unittest.mock import patch, MagicMock
 from cli_test_utils import CLITestBase
 from apache_polaris.cli.constants import UNIT_SEPARATOR
 from apache_polaris.cli.exceptions import CLI_ERROR_EXIT_CODE
 from apache_polaris.cli.polaris_cli import PolarisCli
 from apache_polaris.sdk.catalog.exceptions import ApiException
-from apache_polaris.sdk.catalog.models import RegisterTableRequest
+from apache_polaris.sdk.catalog.models import LoadTableResult, RegisterTableRequest
 
 
 class TestTablesCommand(CLITestBase):
@@ -197,25 +198,98 @@ class TestTablesCommand(CLITestBase):
         mock_client = self.build_mock_client()
         mock_iceberg_api = mock_iceberg_api_class.return_value
         mock_policy_api = mock_policy_api_class.return_value
+        mock_policy_api.get_applicable_policies.return_value.applicable_policies = []
+        snapshot = {
+            "snapshot-id": 42,
+            "sequence-number": 1,
+            "timestamp-ms": 1700000000000,
+            "manifest-list": "s3://bucket/ns1/my_table/metadata/snap-42.avro",
+            "summary": {
+                "operation": "append",
+                "total-records": "10",
+                "total-data-files": "2",
+                "total-files-size": "256",
+            },
+        }
 
-        self.mock_execute(
-            mock_client,
-            [
-                "tables",
-                "summarize",
-                "my_table",
-                "--catalog",
-                "my-catalog",
-                "--namespace",
-                "ns1",
-            ],
-        )
-        mock_iceberg_api.load_table.assert_called_with(
-            prefix="my-catalog", namespace="ns1", table="my_table"
-        )
-        mock_policy_api.get_applicable_policies.assert_called_with(
-            prefix="my-catalog", namespace="ns1", target_name="my_table"
-        )
+        for snapshots in (None, [], [snapshot]):
+            with self.subTest(snapshots=snapshots):
+                metadata = {
+                    "format-version": 2,
+                    "table-uuid": "deadbeef-dead-beef-dead-beefdeadbeef",
+                    "location": "s3://bucket/ns1/my_table",
+                    "last-updated-ms": 1700000000000,
+                    "last-sequence-number": int(bool(snapshots)),
+                    "last-column-id": 1,
+                    "schemas": [
+                        {
+                            "type": "struct",
+                            "schema-id": 0,
+                            "fields": [
+                                {
+                                    "id": 1,
+                                    "name": "id",
+                                    "type": "long",
+                                    "required": True,
+                                }
+                            ],
+                        }
+                    ],
+                    "current-schema-id": 0,
+                    "partition-specs": [{"spec-id": 0, "fields": []}],
+                    "default-spec-id": 0,
+                    "last-partition-id": 999,
+                    "sort-orders": [{"order-id": 0, "fields": []}],
+                    "default-sort-order-id": 0,
+                }
+                if snapshots is not None:
+                    metadata["snapshots"] = snapshots
+                if snapshots:
+                    metadata["current-snapshot-id"] = 42
+                mock_iceberg_api.load_table.return_value = LoadTableResult.from_dict(
+                    {"metadata": metadata}
+                )
+                mock_iceberg_api.reset_mock()
+                mock_policy_api.reset_mock()
+
+                with (
+                    patch("sys.stdout", new_callable=io.StringIO) as stdout,
+                    patch("sys.stderr", new_callable=io.StringIO) as stderr,
+                ):
+                    self.mock_execute(
+                        mock_client,
+                        [
+                            "tables",
+                            "summarize",
+                            "my_table",
+                            "--catalog",
+                            "my-catalog",
+                            "--namespace",
+                            "ns1",
+                        ],
+                    )
+
+                self.assertEqual(stderr.getvalue(), "")
+                output = stdout.getvalue()
+                self.assertRegex(output, rf"Snapshots:\s+{len(snapshots or [])}")
+                self.assertIn("\nSchema\n", output)
+                self.assertIn("| id", output)
+                self.assertIn("| long", output)
+                self.assertIn("Table is un-partitioned.", output)
+                self.assertIn("Table is un-sorted.", output)
+                if snapshots:
+                    self.assertRegex(output, r"Total Records:\s+10")
+                    self.assertRegex(output, r"Total Data Files:\s+2")
+                    self.assertRegex(output, r"Total Files Size:\s+256")
+                    self.assertNotIn("Table is empty", output)
+                else:
+                    self.assertIn("Table is empty (no snapshots found)", output)
+                mock_iceberg_api.load_table.assert_called_once_with(
+                    prefix="my-catalog", namespace="ns1", table="my_table"
+                )
+                mock_policy_api.get_applicable_policies.assert_called_once_with(
+                    prefix="my-catalog", namespace="ns1", target_name="my_table"
+                )
 
     @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
     def test_table_register(self, mock_iceberg_api_class: MagicMock) -> None:

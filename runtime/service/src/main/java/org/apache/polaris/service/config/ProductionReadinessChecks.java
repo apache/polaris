@@ -574,20 +574,35 @@ public class ProductionReadinessChecks {
       FeaturesConfiguration featureConfiguration) {
     var optimizedSiblingCheck = FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;
     var allowOverlap = FeatureConfiguration.ALLOW_OPTIMIZED_SIBLING_CHECK;
+    var defaults = featureConfiguration.defaults();
     var errors = new ArrayList<Error>();
-    if (Boolean.parseBoolean(featureConfiguration.defaults().get(optimizedSiblingCheck.key()))
-        && !Boolean.parseBoolean(featureConfiguration.defaults().get(allowOverlap.key()))) {
+    if (Boolean.parseBoolean(defaults.get(optimizedSiblingCheck.key()))
+        && !Boolean.parseBoolean(defaults.get(allowOverlap.key()))) {
       errors.add(
           Error.ofSevere(
               "This setting should be used with care and only enabled in new realms. Enabling it in previously used realms and may lead to incorrect behavior, due to missing data for location_without_scheme column. Set the ALLOW_OPTIMIZED_SIBLING_CHECK flag to acknowledge this warning and enable Polaris to start.",
               format("polaris.features.\"%s\"", optimizedSiblingCheck.key())));
     }
 
+    // A realm runs with the override when it has one and with the default otherwise, so judge
+    // each realm by its effective values rather than by the override map alone. A realm that
+    // overrides neither flag runs with the defaults, which are already checked above.
     featureConfiguration
         .realmOverrides()
-        .forEach((realmId, overrides) -> {
-          if (Boolean.parseBoolean(overrides.overrides().get(optimizedSiblingCheck.key()))
-              && !Boolean.parseBoolean(overrides.overrides().get(allowOverlap.key()))) {
+        .forEach((realmId, realmOverrides) -> {
+          var overrides = realmOverrides.overrides();
+          if (!overrides.containsKey(optimizedSiblingCheck.key())
+              && !overrides.containsKey(allowOverlap.key())) {
+            return;
+          }
+          boolean realmOptimized =
+              Boolean.parseBoolean(
+                  overrides.getOrDefault(
+                      optimizedSiblingCheck.key(), defaults.get(optimizedSiblingCheck.key())));
+          boolean realmAllowed =
+              Boolean.parseBoolean(
+                  overrides.getOrDefault(allowOverlap.key(), defaults.get(allowOverlap.key())));
+          if (realmOptimized && !realmAllowed) {
             errors.add(
                 Error.ofSevere(
                     "This setting should be used with care and only enabled in new realms. Enabling it in previously used realms and may lead to incorrect behavior, due to missing data for location_without_scheme column. Set the ALLOW_OPTIMIZED_SIBLING_CHECK flag to acknowledge this warning and enable Polaris to start.",

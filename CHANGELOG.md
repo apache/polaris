@@ -30,29 +30,6 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
 ## [Unreleased]
 
 ### Highlights
-- Table and view commits no longer delete newly written metadata when the metastore write outcome
-  is unknown (e.g. a dropped connection during `commit()`); they still clean up on known failures.
-  JDBC reports that unknown outcome as `PersistenceCommitStateUnknownException` (HTTP 500). A
-  connection failure before `commit()` is a plain failure and the new metadata file is kept.
-
-- Polaris now fully supports "external" principals, that is, principals that are not backed by an 
-  entity in Polaris metastore. By enabling external principals, either globally or per-realm,
-  Polaris now skips the principal entity metastore lookup. This means that synchronizing principals 
-  between an external IDP and Polaris is not necessary anymore. To enable external principals, 
-  set the `polaris.authentication.credential-mode` option to `external`. Note: external principals
-  are not compatible with internal authentication and internal authorization; you must configure an
-  external IDP and an external PDP, such as OPA or Ranger.
-
-- S3 storage configurations gain an optional string field, `credentialVendingMechanism`. A catalog
-  that leaves it empty uses the server's default mechanism, STS AssumeRole, and management API
-  responses omit the field for it; `STS` selects the same mechanism explicitly and is the only value
-  this release supports. Mechanisms are CDI beans discovered by their `@Identifier` at startup,
-  and each one can validate the catalogs that select it at create and update. A realm lists the
-  explicit mechanisms it accepts in the new `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` feature
-  (default `[STS]`), enforced at catalog create and update and when the server builds the storage
-  integration that vends credentials for a catalog. A catalog that names a mechanism this server
-  does not provide is refused at create and update, and whenever a credential is vended for it,
-  with "S3 credential vending mechanism `<id>` is not available in this server".
 
 ### Upgrade notes
 
@@ -66,6 +43,76 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   `storageConfigInfo.gcsServiceAccount` selects service-account impersonation and must be non-empty
   when supplied; omit it to downscope ambient GCS credentials directly. Updates to existing catalogs
   that do not meet these requirements are rejected until the configuration is corrected.
+
+### Breaking changes
+
+- When table location overlap is disallowed, creating a Generic Table at an explicit location
+  overlapping an existing table or namespace in the check's scope is rejected. With
+  `OPTIMIZED_SIBLING_CHECK`, overlap validation can walk the catalog's namespaces to check
+  unindexed Generic Table locations. This can add metastore reads to table, view, and namespace
+  operations.
+- When external principals are enabled, `PolarisAuthorizer` implementations must not call
+  `PolarisResolutionManifest.resolveAll()`, nor resolve the caller principal or its roles in any
+  other way: external principals have no entity in the Polaris metastore, and such resolution now
+  fails with an HTTP 500 error. Implementations should call `AuthorizationState.resolve()` and only 
+  select the securables that are actually needed for authorization.
+
+
+### New Features
+
+- Ranger: dedicated `catalog-config-read` access type for Iceberg REST `GET /v1/config`
+  (`GET_CATALOG_CONFIG`). Existing catalog-level `catalog-properties-read` (and stronger catalog
+  access types) imply `catalog-config-read`. Operators must re-import
+  `polaris-ranger-servicedef.json`.
+
+### Changes
+
+- NoSQL: `fair-retries` does not apply to locally synchronized commits, which use FIFO admission;
+  conflict retry backoff still applies.
+
+### Deprecations
+
+### Fixes
+
+- Python CLI: `polaris policies create` now reports a clear `Missing required argument:
+  --policy-type` error when the policy type is omitted, instead of failing with a pydantic
+  validation error.
+- `commitTransaction` now returns `400 Bad Request` instead of an internal error when it cannot
+  validate a table's locations: an update changing `write.data.path` or `write.metadata.path`, or
+  any commit on a table whose entity does not record its location, which is the case until the table
+  is next committed by Polaris 1.3.0 or later. It is allowed when `ALLOW_TABLE_LOCATION_OVERLAP` is
+  enabled; `ALLOW_NAMESPACE_LOCATION_OVERLAP` no longer applies and still governs namespaces.
+
+### Commits
+
+## [1.9.0]
+
+### Highlights
+
+- Table and view commits no longer delete newly written metadata when the metastore write outcome
+  is unknown (e.g. a dropped connection during `commit()`); they still clean up on known failures.
+  JDBC reports that unknown outcome as `PersistenceCommitStateUnknownException` (HTTP 500). A
+  connection failure before `commit()` is a plain failure and the new metadata file is kept.
+- Polaris now fully supports "external" principals, that is, principals that are not backed by an 
+  entity in Polaris metastore. By enabling external principals, either globally or per-realm,
+  Polaris now skips the principal entity metastore lookup. This means that synchronizing principals 
+  between an external IDP and Polaris is not necessary anymore. To enable external principals, 
+  set the `polaris.authentication.credential-mode` option to `external`. Note: external principals
+  are not compatible with internal authentication and internal authorization; you must configure an
+  external IDP and an external PDP, such as OPA or Ranger.
+- S3 storage configurations gain an optional string field, `credentialVendingMechanism`. A catalog
+  that leaves it empty uses the server's default mechanism, STS AssumeRole, and management API
+  responses omit the field for it; `STS` selects the same mechanism explicitly and is the only value
+  this release supports. Mechanisms are CDI beans discovered by their `@Identifier` at startup,
+  and each one can validate the catalogs that select it at create and update. A realm lists the
+  explicit mechanisms it accepts in the new `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` feature
+  (default `[STS]`), enforced at catalog create and update and when the server builds the storage
+  integration that vends credentials for a catalog. A catalog that names a mechanism this server
+  does not provide is refused at create and update, and whenever a credential is vended for it,
+  with "S3 credential vending mechanism `<id>` is not available in this server".
+
+### Upgrade notes
+
 - `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists the explicit mechanisms a realm accepts; an empty
   `credentialVendingMechanism` is always allowed. Startup reports a listed mechanism with no
   installed bean as a non-severe readiness warning. Startup fails (a severe readiness issue) when no
@@ -112,19 +159,17 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   queued by an older version only carry the table's base location: files under a custom
   `write.data.path` or `write.metadata.path` outside of it are not deleted by those tasks.
 
-[Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
-
 ### Breaking changes
 
+- Custom Ranger authorizer integrations: the principal attributes copied onto `RangerUserInfo`
+  are now prefixed keys (for example `polaris.system.client_id`) instead of the bare internal
+  names (for example `client_id`). Apache Ranger 2.9.0's embedded plugin does not evaluate these
+  attributes, so built-in behavior is unchanged, but any custom code reading `RangerUserInfo`
+  attributes must use the new keys.
 - Creating a Generic Table with an explicit, non-empty `base-location` now validates that
   location against the catalog's allowed locations and, unless `ALLOW_UNSTRUCTURED_TABLE_LOCATION`
   is enabled, the parent namespace location. Requests that previously stored disallowed locations
   are now rejected. Omitting the location or sending an empty string retains its previous behavior.
-- When table location overlap is disallowed, creating a Generic Table at an explicit location
-  overlapping an existing table or namespace in the check's scope is rejected. With
-  `OPTIMIZED_SIBLING_CHECK`, overlap validation can walk the catalog's namespaces to check
-  unindexed Generic Table locations. This can add metastore reads to table, view, and namespace
-  operations.
 - `LIST_PAGINATION_ENABLED` now defaults to true. List APIs honor pagination parameters and reject
   invalid values. Clients must follow next-page-token to retrieve all results when requesting a page
   size or supplying a page token. A request that supplies neither still returns all results, unless
@@ -145,11 +190,6 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   `resolveSelections()` may be incompatible with the new Polaris code, because in some cases the
   REST API implementation code requests additional selections via `AuthorizationState`.
   All implementations should call `AuthorizationState.resolve()` now.
-- When external principals are enabled, `PolarisAuthorizer` implementations must not call
-  `PolarisResolutionManifest.resolveAll()`, nor resolve the caller principal or its roles in any
-  other way: external principals have no entity in the Polaris metastore, and such resolution now
-  fails with an HTTP 500 error. Implementations should call `AuthorizationState.resolve()` and only 
-  select the securables that are actually needed for authorization.
 - The event attribute `EventAttributes.ACCESS_DELEGATION_MODE` (`String`) has been replaced with
   `EventAttributes.ACCESS_DELEGATION_MODES` (`List<String>`). Accordingly, the OpenTelemetry event
   listener now emits `polaris.access_delegation_modes` instead of `polaris.access_delegation_mode`.
@@ -179,14 +219,15 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
 
 ### New Features
 
+- Added the `TABLE_READ_METRICS` privilege, granting read-only access to a table's scan and
+  commit metrics reports without granting access to the table's data. Not implied by
+  `TABLE_FULL_METADATA`; implied by `CATALOG_MANAGE_CONTENT`, consistent with that privilege
+  already implying `TABLE_READ_DATA`. Can be granted on any table, but metrics reports are
+  currently only produced for Iceberg tables.
 - The `X-Iceberg-Access-Delegation` header now accepts `none`, as defined by the Iceberg REST
   specification, meaning the client can operate without delegated access. A request that includes
   `none`, alone or together with other values, is handled like a request without the header: the
   table is returned without credentials and no delegation privilege is required.
-- Ranger: dedicated `catalog-config-read` access type for Iceberg REST `GET /v1/config`
-  (`GET_CATALOG_CONFIG`). Existing catalog-level `catalog-properties-read` (and stronger catalog
-  access types) imply `catalog-config-read`. Operators must re-import
-  `polaris-ranger-servicedef.json`.
 - Shared CloudEvents 1.0 JSON mapper for Polaris events (`CloudEventsEventJsonMapper` next to
   the events SPI): CE context attributes at the top, Kafka-parity Polaris fields in `data`, and a
   lowercased reverse-DNS `type` (e.g. `org.apache.polaris.after_create_table`). Transport listeners
@@ -194,13 +235,21 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
 - Python CLI: added `register` support for both `tables` and `views` commands
 - Python CLI: `setup export` and `setup apply` now support both Iceberg tables and views as register entries.
 - Python CLI: added `namespaces update` to set and remove namespace properties
-- NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`.
-  `fair-retries` does not apply to locally synchronized commits, which use FIFO admission;
-  conflict retry backoff still applies.
+- NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
 
 ### Changes
 
+- After authentication, a `SecurityIdentityAugmentor` projects selected principal facts onto
+  namespaced `PolarisPrincipal` attributes. External authorizers consume those derived keys rather
+  than walking `PrincipalEntity`: `polaris.user.*` for user-defined principal properties,
+  `polaris.system.client_id` and `polaris.system.credential-rotation-required` for selected
+  internal facts, and `polaris.auth.*` when an authenticator has asserted them. OPA receives the
+  keys as `actor.attributes`. Ranger copies them onto `RangerUserInfo`, but Apache Ranger 2.9.0's
+  embedded plugin evaluates only user name, groups, and roles, so `polaris.user.*` cannot currently
+  change a Ranger policy decision. The raw `PrincipalEntity` is not included in the external PDP
+  payload. A user property cannot shadow a system key because the prefix is part of the
+  attribute name. Empty-string user property values are forwarded as empty attributes, not omitted.
 - Azure credential vending now maps MSAL authentication failures using their HTTP status codes,
   including the existing `401` to `403` and `404` to `400` mappings.
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
@@ -230,17 +279,14 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   `table-uuid-assign`, etc.) now imply `table-properties-read`; the service definition must be
   re-imported into Ranger for this to take effect.
 
-### Deprecations
-
 ### Fixes
 
+- Iceberg REST federation: `header.*` properties are now sent on every request to the remote
+  catalog. Previously only the initial `/config` request carried them.
 - Credential vending no longer ends up with no allowed read/write locations when a table's data
   or metadata path matches its base location except for the scheme (for example `abfss://` vs
   `abfs://`) or a trailing slash. Such locations are mutual children, so the previous logic dropped
   both and left the set empty. The base location is now kept as the surviving representative.
-- Python CLI: `polaris policies create` now reports a clear `Missing required argument:
-  --policy-type` error when the policy type is omitted, instead of failing with a pydantic
-  validation error.
 - The Iceberg REST `/config` response now advertises the
   `GET /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials` endpoint, which Polaris
   already served. Clients that check advertised endpoints before refreshing vended credentials can
@@ -408,18 +454,11 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   errors: lookups by name no longer hold entities outside the cache's weight and expiry limits.
 - Setting a namespace's `location` property no longer fails with an internal error when its parent
   is itself a nested namespace that has no stored location.
-- `commitTransaction` now returns `400 Bad Request` instead of an internal error when it cannot
-  validate a table's locations: an update changing `write.data.path` or `write.metadata.path`, or
-  any commit on a table whose entity does not record its location, which is the case until the table
-  is next committed by Polaris 1.3.0 or later. It is allowed when `ALLOW_TABLE_LOCATION_OVERLAP` is
-  enabled; `ALLOW_NAMESPACE_LOCATION_OVERLAP` no longer applies and still governs namespaces.
 - The Ranger authorizer no longer fails with `NoClassDefFoundError: javax/ws/rs/core/Cookie` when
   using `RangerAdminRESTClient` as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
 - Iceberg REST: creating a namespace with a request that omits `namespace` now returns
   `400 Bad Request` instead of `500 Internal Server Error`.
-
-### Commits
 
 ## [1.8.0]
 
@@ -473,22 +512,12 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   depend on the previous combined-intent input shape may need to be updated. Same applies to other
   PolarisAuthorizer implementations.
 - Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
-- Custom Ranger authorizer integrations: the principal attributes copied onto `RangerUserInfo`
-  are now prefixed keys (for example `polaris.system.client_id`) instead of the bare internal
-  names (for example `client_id`). Apache Ranger 2.9.0's embedded plugin does not evaluate these
-  attributes, so built-in behavior is unchanged, but any custom code reading `RangerUserInfo`
-  attributes must use the new keys.
 
 ### New Features
 
 - Semantic models now support dedicated privileges for listing, creating, reading, updating,
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
-- Added the `TABLE_READ_METRICS` privilege, granting read-only access to a table's scan and
-  commit metrics reports without granting access to the table's data. Not implied by
-  `TABLE_FULL_METADATA`; implied by `CATALOG_MANAGE_CONTENT`, consistent with that privilege
-  already implying `TABLE_READ_DATA`. Can be granted on any table, but metrics reports are
-  currently only produced for Iceberg tables.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
@@ -497,16 +526,6 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
 
 ### Changes
 
-- After authentication, a `SecurityIdentityAugmentor` projects selected principal facts onto
-  namespaced `PolarisPrincipal` attributes. External authorizers consume those derived keys rather
-  than walking `PrincipalEntity`: `polaris.user.*` for user-defined principal properties,
-  `polaris.system.client_id` and `polaris.system.credential-rotation-required` for selected
-  internal facts, and `polaris.auth.*` when an authenticator has asserted them. OPA receives the
-  keys as `actor.attributes`. Ranger copies them onto `RangerUserInfo`, but Apache Ranger 2.9.0's
-  embedded plugin evaluates only user name, groups, and roles, so `polaris.user.*` cannot currently
-  change a Ranger policy decision. The raw `PrincipalEntity` is not included in the external PDP
-  payload. A user property cannot shadow a system key because the prefix is part of the
-  attribute name. Empty-string user property values are forwarded as empty attributes, not omitted.
 - A metastore failure during authentication now returns a fixed `Service unavailable` message
   instead of naming the lookup that failed; the principal lookup previously returned `Unable to
   fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which
@@ -542,8 +561,6 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
 
 ### Fixes
 
-- Iceberg REST federation: `header.*` properties are now sent on every request to the remote
-  catalog. Previously only the initial `/config` request carried them.
 - GCS credential vending no longer fails with HTTP 500 when a table's location or `write.data.path`
   / `write.metadata.path` points at a bucket root without a trailing slash (e.g. `gs://bucket`).
   Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
@@ -1038,7 +1055,8 @@ Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
 
 Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release. Only the source distribution is available for this release.
 
-[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.8.0...HEAD
+[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.9.0...HEAD
+[1.9.0]: https://github.com/apache/polaris/compare/apache-polaris-1.8.0...apache-polaris-1.9.0
 [1.8.0]: https://github.com/apache/polaris/compare/apache-polaris-1.7.0...apache-polaris-1.8.0
 [1.7.0]: https://github.com/apache/polaris/compare/apache-polaris-1.6.0...apache-polaris-1.7.0
 [1.6.0]: https://github.com/apache/polaris/compare/apache-polaris-1.5.0...apache-polaris-1.6.0
@@ -1049,6 +1067,7 @@ Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release
 [1.1.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.0.1-incubating...apache-polaris-1.1.0-incubating
 [1.0.1-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.0.0-incubating...apache-polaris-1.0.1-incubating
 [1.0.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-0.9.0-incubating...apache-polaris-1.0.0-incubating
+[Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 [0.9.0-incubating]: https://github.com/apache/polaris/commits/apache-polaris-0.9.0-incubating
 [Open Policy Agent (OPA)]: https://www.openpolicyagent.org/
 [Iceberg Metrics Reporting]: https://iceberg.apache.org/docs/latest/metrics-reporting/

@@ -1,0 +1,11 @@
+{
+  "name": "quickstart_table",
+  "schema": {
+    "type": "struct",
+    "schema-id": 0,
+    "fields": [
+      {"id": 1, "name": "id", "type": "long", "required": true},
+      {"id": 2, "name": "data", "type": "string", "required": false}
+    ]
+  }
+}
