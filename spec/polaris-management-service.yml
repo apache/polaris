@@ -258,8 +258,11 @@ paths:
 
         With the built-in token broker, the previous primary client secret can still be used to request
         tokens until the next rotation or reset. Unexpired tokens issued with that secret can still be
-        exchanged during that time. If the principal was created with `credentialRotationRequired`,
-        its first rotation invalidates the initial secret immediately.
+        exchanged during that time, except for legacy tokens without the `polaris-cv` claim. The broker
+        rejects those exchanges with `invalid_grant`. If the principal was created with
+        `credentialRotationRequired`, its first rotation invalidates the initial secret immediately.
+
+        If a client secret may have been exposed, use `resetCredentials` to replace the previous secrets.
 
         Existing bearer tokens can still authenticate to the Polaris API until they expire, subject to
         the usual authentication checks. To remove access granted by a role, revoke that role from the
