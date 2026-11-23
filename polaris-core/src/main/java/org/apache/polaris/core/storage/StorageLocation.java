@@ -148,7 +148,13 @@ public class StorageLocation {
    *
    * <p>The root is the {@code scheme://authority/} prefix of the location. A single trailing {@code
    * /} on this location is ignored, so the parent of {@code s3://bucket/a/b/} is {@code
-   * s3://bucket/a/}. Locations that do not have a {@code scheme://} prefix have no parent.
+   * s3://bucket/a/}. Only that one slash is ignored: empty path segments are kept, so the parent of
+   * {@code s3://bucket/a//} is {@code s3://bucket/a/} and the parent of {@code s3://bucket//} is
+   * the bucket root {@code s3://bucket/}.
+   *
+   * <p>Local paths such as {@code /tmp/a/file} are normalized to {@code file:///tmp/a/file} when
+   * the location is created, so they have a parent. Other locations that do not have a {@code
+   * scheme://} prefix have no parent.
    *
    * <p>This only uses string operations, so it also works for locations that are not valid {@link
    * URI}s, such as S3 object keys with spaces or other characters {@link URI} rejects.

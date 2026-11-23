@@ -123,7 +123,10 @@ public class StorageLocationTest {
     // S3 keys that are not valid URIs
     "'s3://bucket/my dir/file{1}.avro', 's3://bucket/my dir/'",
     "s3://bucket/a%b/file.avro, s3://bucket/a%b/",
+    // empty path segments are kept; only one trailing slash is ignored
     "s3://bucket/a//file.avro, s3://bucket/a//",
+    "s3://bucket/a//, s3://bucket/a/",
+    "s3://bucket//, s3://bucket/",
     "gs://bucket/a/file.avro, gs://bucket/a/",
     "abfss://container@account.dfs.core.windows.net/a/file.avro, abfss://container@account.dfs.core.windows.net/a/",
     "abfss://container@account.dfs.core.windows.net/file.avro, abfss://container@account.dfs.core.windows.net/",
