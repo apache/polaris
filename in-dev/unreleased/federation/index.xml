@@ -3,16 +3,14 @@ REST implementation), enabling a Polaris service to access table and view entiti
 &lt;h2 id="runtime-requirements" id="runtime-requirements"&gt;Runtime requirements&lt;a class="heading-anchor" href="#runtime-requirements" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
 &lt;ul&gt;
-&lt;li&gt;&lt;strong&gt;REST endpoint:&lt;/strong&gt; The remote service must expose the Iceberg REST specification. Configure
-firewalls so Polaris can reach the base URI you provide in the connection config.&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;Authentication:&lt;/strong&gt; Polaris forwards requests using the credentials defined in
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;REST endpoint:&lt;/strong&gt; The remote service must expose the Iceberg REST specification. Configure
+firewalls so Polaris can reach the base URI you provide in the connection config.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Authentication:&lt;/strong&gt; Polaris forwards requests using the credentials defined in
 &lt;code&gt;ConnectionConfigInfo.AuthenticationParameters&lt;/code&gt;. OAuth2 client credentials, bearer tokens, GCP,
-and AWS SigV4 are supported; choose the scheme the remote service expects.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;h2 id="feature-configuration" id="feature-configuration"&gt;Feature configuration&lt;a class="heading-anchor" href="#feature-configuration" aria-label="Anchor"&gt;🔗&lt;/a&gt;
-&lt;/h2&gt;
-&lt;p&gt;The catalog federation feature is disabled by default. Enable the necessary feature flag in your application.properties
-file (or equivalent configuration mechanism such as environment variables or a Kubernetes ConfigMap):&lt;/p&gt;</description></item><item><title>Hive Metastore Federation</title><link>https://polaris.apache.org/in-dev/unreleased/federation/hive-metastore-federation/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/federation/hive-metastore-federation/</guid><description>&lt;p&gt;Polaris can federate catalog operations to an existing Hive Metastore (HMS). This lets an external
+and AWS SigV4 are supported; choose the scheme the remote service expects.&lt;/p&gt;</description></item><item><title>Hive Metastore Federation</title><link>https://polaris.apache.org/in-dev/unreleased/federation/hive-metastore-federation/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/federation/hive-metastore-federation/</guid><description>&lt;p&gt;Polaris can federate catalog operations to an existing Hive Metastore (HMS). This lets an external
 HMS remain the source of truth for table metadata while Polaris brokers access, policies, and
 multi-engine connectivity.&lt;/p&gt;
 &lt;h2 id="build-time-enablement" id="build-time-enablement"&gt;Build-time enablement&lt;a class="heading-anchor" href="#build-time-enablement" aria-label="Anchor"&gt;🔗&lt;/a&gt;
