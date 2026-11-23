@@ -256,11 +256,14 @@ paths:
       description: >-
         Rotate a principal's credentials and return the new credentials. This operation is *not* idempotent.
 
-        With the built-in token broker, a routine rotation keeps the previous primary client secret valid for
-        token issuance until the next rotation or reset. Unexpired tokens tied to that secret remain eligible
-        for exchange during the same period. Previously issued bearer tokens can still authenticate until
-        they expire, provided the principal still exists. To cut off the principal's access before then,
-        revoke its role grants or delete the principal.
+        With the built-in token broker, the previous primary client secret can still be used to request
+        tokens until the next rotation or reset. Unexpired tokens issued with that secret can still be
+        exchanged during that time. If the principal was created with `credentialRotationRequired`,
+        its first rotation invalidates the initial secret immediately.
+
+        Existing bearer tokens can still authenticate to the Polaris API until they expire, subject to
+        the usual authentication checks. To remove access granted by a role, revoke that role from the
+        principal. To block authentication to Polaris with its existing tokens, delete the principal.
       responses:
         200:
           description: The principal details along with the newly rotated credentials
@@ -287,14 +290,14 @@ paths:
     post:
       operationId: resetCredentials
       description: >-
-        Reset a principal's credentials to a new set. By default, the system generates random credentials unless
-        explicitly allowed to accept user-provided credentials via configuration.
-        This operation returns the new credentials and is *not* idempotent.
+        Replace a principal's credentials and return the new credentials. Polaris generates them by default.
+        If the deployment allows it, the caller can supply credential values. This operation is *not* idempotent.
 
-        With the built-in token broker, a reset replaces the previous client secrets and prevents tokens tied
-        to them from being exchanged. Previously issued bearer tokens can still authenticate until they expire,
-        provided the principal still exists. To cut off the principal's access before then, revoke its role
-        grants or delete the principal.
+        With the built-in token broker, tokens issued with the previous credentials can no longer be
+        exchanged for new tokens. Existing bearer tokens can still authenticate to the Polaris API until
+        they expire, subject to the usual authentication checks. To remove access granted by a role,
+        revoke that role from the principal. To block authentication to Polaris with its existing tokens,
+        delete the principal.
       requestBody:
         required: false
         content:
