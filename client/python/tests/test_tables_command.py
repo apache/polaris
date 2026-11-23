@@ -18,6 +18,7 @@
 #
 
 import io
+from typing import Any, Dict, List, NamedTuple, Optional
 from unittest.mock import patch, MagicMock
 from cli_test_utils import CLITestBase
 from apache_polaris.cli.constants import UNIT_SEPARATOR
@@ -25,6 +26,17 @@ from apache_polaris.cli.exceptions import CLI_ERROR_EXIT_CODE
 from apache_polaris.cli.polaris_cli import PolarisCli
 from apache_polaris.sdk.catalog.exceptions import ApiException
 from apache_polaris.sdk.catalog.models import LoadTableResult, RegisterTableRequest
+
+
+class MetadataTestCase(NamedTuple):
+    name: str
+    schemas: Optional[List[Dict[str, Any]]]
+    partition_specs: Optional[List[Dict[str, Any]]]
+    sort_orders: Optional[List[Dict[str, Any]]]
+    expected_schema: str
+    expected_partition: str
+    expected_sort: str
+    omit_snapshots: bool = False
 
 
 class TestTablesCommand(CLITestBase):
@@ -341,73 +353,66 @@ class TestTablesCommand(CLITestBase):
             }
         ]
 
-        test_cases = [
-            (
-                "all_present_populated",
-                populated_schemas,
-                populated_partition_specs,
-                populated_sort_orders,
-                lambda out: self.assertIn("| id", out),
-                lambda out: self.assertIn("| id_part", out),
-                lambda out: self.assertIn("| nulls-first", out),
+        cases = [
+            MetadataTestCase(
+                name="all_present_populated",
+                schemas=populated_schemas,
+                partition_specs=populated_partition_specs,
+                sort_orders=populated_sort_orders,
+                expected_schema="| long |",
+                expected_partition="| id_part",
+                expected_sort="| nulls-first",
             ),
-            (
-                "schemas_omitted",
-                None,
-                populated_partition_specs,
-                populated_sort_orders,
-                lambda out: self.assertIn("No schema information available", out),
-                lambda out: self.assertIn("| id_part", out),
-                lambda out: self.assertIn("| nulls-first", out),
+            MetadataTestCase(
+                name="schemas_omitted",
+                schemas=None,
+                partition_specs=populated_partition_specs,
+                sort_orders=populated_sort_orders,
+                expected_schema="No schema information available",
+                expected_partition="| id_part",
+                expected_sort="| nulls-first",
             ),
-            (
-                "partition_specs_omitted",
-                populated_schemas,
-                None,
-                populated_sort_orders,
-                lambda out: self.assertIn("| id", out),
-                lambda out: self.assertIn("No partitioning information available", out),
-                lambda out: self.assertIn("| nulls-first", out),
+            MetadataTestCase(
+                name="partition_specs_omitted",
+                schemas=populated_schemas,
+                partition_specs=None,
+                sort_orders=populated_sort_orders,
+                expected_schema="| long |",
+                expected_partition="No partitioning information available",
+                expected_sort="| nulls-first",
             ),
-            (
-                "sort_orders_omitted",
-                populated_schemas,
-                populated_partition_specs,
-                None,
-                lambda out: self.assertIn("| id", out),
-                lambda out: self.assertIn("| id_part", out),
-                lambda out: self.assertIn("No sort order information available", out),
+            MetadataTestCase(
+                name="sort_orders_omitted",
+                schemas=populated_schemas,
+                partition_specs=populated_partition_specs,
+                sort_orders=None,
+                expected_schema="| long |",
+                expected_partition="| id_part",
+                expected_sort="No sort order information available",
             ),
-            (
-                "all_three_omitted",
-                None,
-                None,
-                None,
-                lambda out: self.assertIn("No schema information available", out),
-                lambda out: self.assertIn("No partitioning information available", out),
-                lambda out: self.assertIn("No sort order information available", out),
+            MetadataTestCase(
+                name="all_three_omitted",
+                schemas=None,
+                partition_specs=None,
+                sort_orders=None,
+                expected_schema="No schema information available",
+                expected_partition="No partitioning information available",
+                expected_sort="No sort order information available",
+                omit_snapshots=True,
             ),
-            (
-                "explicit_empty_lists",
-                [],
-                [],
-                [],
-                lambda out: self.assertIn("No schema information available", out),
-                lambda out: self.assertIn("Table is un-partitioned.", out),
-                lambda out: self.assertIn("Table is un-sorted.", out),
+            MetadataTestCase(
+                name="explicit_empty_lists",
+                schemas=[],
+                partition_specs=[],
+                sort_orders=[],
+                expected_schema="No schema information available",
+                expected_partition="Table is un-partitioned.",
+                expected_sort="Table is un-sorted.",
             ),
         ]
 
-        for (
-            case_id,
-            schemas,
-            partition_specs,
-            sort_orders,
-            check_schema,
-            check_partition,
-            check_sort,
-        ) in test_cases:
-            with self.subTest(case_id=case_id):
+        for case in cases:
+            with self.subTest(case_id=case.name):
                 metadata = {
                     "format-version": 2,
                     "table-uuid": "00000000-0000-0000-0000-000000000000",
@@ -417,14 +422,15 @@ class TestTablesCommand(CLITestBase):
                     "current-schema-id": 0,
                     "default-spec-id": 0,
                     "default-sort-order-id": 0,
-                    "snapshots": [],
                 }
-                if schemas is not None:
-                    metadata["schemas"] = schemas
-                if partition_specs is not None:
-                    metadata["partition-specs"] = partition_specs
-                if sort_orders is not None:
-                    metadata["sort-orders"] = sort_orders
+                if not case.omit_snapshots:
+                    metadata["snapshots"] = []
+                if case.schemas is not None:
+                    metadata["schemas"] = case.schemas
+                if case.partition_specs is not None:
+                    metadata["partition-specs"] = case.partition_specs
+                if case.sort_orders is not None:
+                    metadata["sort-orders"] = case.sort_orders
 
                 mock_iceberg_api.load_table.return_value = LoadTableResult.from_dict(
                     {"metadata": metadata}
@@ -457,11 +463,11 @@ class TestTablesCommand(CLITestBase):
                 self.assertIn("\nStatistics\n", output)
                 self.assertIn("Table is empty (no snapshots found)", output)
                 self.assertIn("\nSchema\n", output)
-                check_schema(output)
+                self.assertIn(case.expected_schema, output)
                 self.assertIn("\nPartitioning\n", output)
-                check_partition(output)
+                self.assertIn(case.expected_partition, output)
                 self.assertIn("\nSort order\n", output)
-                check_sort(output)
+                self.assertIn(case.expected_sort, output)
                 self.assertIn("\nEffective policies\n", output)
                 self.assertIn("No policies apply to this table", output)
 

@@ -179,40 +179,36 @@ class TableCommand(Command):
 
             # Schema
             print("\nSchema")
-            if metadata.schemas is None:
-                print("  No schema information available")
-            else:
-                current_schema = next(
-                    (
-                        schema
-                        for schema in metadata.schemas
-                        if schema.schema_id == metadata.current_schema_id
-                    ),
-                    None,
+            current_schema = next(
+                (
+                    schema
+                    for schema in metadata.schemas or []
+                    if schema.schema_id == metadata.current_schema_id
+                ),
+                None,
+            )
+            if current_schema and current_schema.fields:
+                table = PrettyTable(
+                    field_names=["ID", "Field Name", "Type", "Required", "Comment"],
+                    align="l",
                 )
-                if current_schema and current_schema.fields:
-                    table = PrettyTable(
-                        field_names=["ID", "Field Name", "Type", "Required", "Comment"],
-                        align="l",
+                for field in current_schema.fields:
+                    required = "*" if field.required else ""
+                    type_str = format_iceberg_type(field.type)
+                    column_comment = field.doc if getattr(field, "doc", None) else ""
+                    table.add_row(
+                        [field.id, field.name, type_str, required, column_comment]
                     )
-                    for field in current_schema.fields:
-                        required = "*" if field.required else ""
-                        type_str = format_iceberg_type(field.type)
-                        column_comment = (
-                            field.doc if getattr(field, "doc", None) else ""
-                        )
-                        table.add_row(
-                            [field.id, field.name, type_str, required, column_comment]
-                        )
-                    indented_table = "\n".join(
-                        " " * 2 + line for line in table.get_string().splitlines()
-                    )
-                    print(indented_table)
-                else:
-                    print("  No schema information available")
+                indented_table = "\n".join(
+                    " " * 2 + line for line in table.get_string().splitlines()
+                )
+                print(indented_table)
+            else:
+                print("  No schema information available")
 
             # Partitioning
             print("\nPartitioning")
+            # An omitted partition spec doesn't establish that the table is un-partitioned
             if metadata.partition_specs is None:
                 print("  No partitioning information available")
             else:
@@ -239,6 +235,7 @@ class TableCommand(Command):
 
             # Sort Order
             print("\nSort order")
+            # An omitted sort order doesn't establish that the table is un-sorted
             if metadata.sort_orders is None:
                 print("  No sort order information available")
             else:
