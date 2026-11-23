@@ -71,6 +71,7 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
@@ -159,12 +160,14 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
 
   @Override
   @Disabled(
-      "Nothing in the code base calls 'loadTasks', the contract of that function is not what the test exercises")
+      "Nothing in the code base calls 'loadTasks', the contract of that function is not what the"
+          + " test exercises")
   protected void testLoadTasksInParallel() {}
 
   @Override
   @Disabled(
-      "Nothing in the code base calls 'loadTasks', the contract of that function is not what the test exercises")
+      "Nothing in the code base calls 'loadTasks', the contract of that function is not what the"
+          + " test exercises")
   protected void testLoadTasks() {}
 
   @Override
@@ -313,6 +316,90 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
             () -> catalogChangeCommitter().commitCatalogChange(catalogId, String.class, wrapper))
         .isSameAs(failure);
     soft.assertThat(fetchCatalogState(catalogId)).isEqualTo(stateBefore);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void purgeAndUnregisterAllowOnlyOneDeletionAfterCommitRetry(boolean unregisterWins) {
+    long catalogId = createCatalogForCommit("concurrentDeletion");
+    PolarisBaseEntity catalog =
+        metaStore.loadEntity(callContext, 0L, catalogId, CATALOG).getEntity();
+    EntityResult created =
+        createEntity(
+            List.of(catalog),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            "table",
+            Map.of());
+    assertThat(created.isSuccess()).isTrue();
+    PolarisBaseEntity table = created.getEntity();
+    Persistence sidePersistence = readPersistence();
+    NoSqlMetaStore sideStore =
+        new NoSqlMetaStore(sidePersistence, privileges) {
+          @Override
+          public <T> T commitCatalogChange(
+              long id, Class<T> resultType, CatalogChangeCommitterWrapper<T> wrapper) {
+            // A different server does not hold this process's local commit lock.
+            return sidePersistence
+                .createCommitter(
+                    format(CATALOG_STATE_REF_NAME_PATTERN, id), CatalogStateObj.class, resultType)
+                .commitRuntimeException(wrapper)
+                .orElseThrow();
+          }
+        };
+    PolarisCallContext sideContext =
+        new PolarisCallContext(realmContext, sideStore, configurationSource);
+    AtomicInteger attempts = new AtomicInteger();
+    NoSqlMetaStore competingStore =
+        new NoSqlMetaStore(readPersistence(), privileges) {
+          @Override
+          public <T> T commitCatalogChange(
+              long id, Class<T> resultType, CatalogChangeCommitterWrapper<T> wrapper) {
+            return super.commitCatalogChange(
+                id,
+                resultType,
+                new CatalogChangeCommitterWrapper<>(
+                    (state, ref, byName, byId, changes, locations) -> {
+                      var result =
+                          wrapper
+                              .changeCommitter()
+                              .change(state, ref, byName, byId, changes, locations);
+                      if (attempts.incrementAndGet() == 1) {
+                        DropEntityResult winner =
+                            unregisterWins
+                                ? metaStore.dropEntityIfNotChanged(
+                                    sideContext, List.of(catalog), table)
+                                : metaStore.dropEntityIfExists(
+                                    sideContext, List.of(catalog), table, Map.of(), true);
+                        assertThat(winner.isSuccess()).isTrue();
+                        assertThat(winner.getCleanupTaskId() == null).isEqualTo(unregisterWins);
+                      }
+                      return result;
+                    }));
+          }
+        };
+    PolarisCallContext competingContext =
+        new PolarisCallContext(realmContext, competingStore, configurationSource);
+
+    DropEntityResult loser =
+        unregisterWins
+            ? metaStore.dropEntityIfExists(
+                competingContext, List.of(catalog), table, Map.of(), true)
+            : metaStore.dropEntityIfNotChanged(competingContext, List.of(catalog), table);
+
+    assertThat(attempts.get()).isGreaterThanOrEqualTo(2);
+    assertThat(loser.getReturnStatus()).isEqualTo(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+    assertThat(loser.getCleanupTaskId()).isNull();
+    assertThat(
+            metaStore
+                .loadEntity(competingContext, catalogId, table.getId(), table.getType())
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+    assertThat(
+            metaStore
+                .loadTasks(competingContext, "testExecutor", PageToken.readEverything())
+                .getEntities())
+        .hasSize(unregisterWins ? 0 : 1);
   }
 
   @Test
@@ -1071,9 +1158,9 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   @Override
   @Test
   @Disabled(
-      "The test is not applicable to the NoSQL metastore implementation, "
-          + "because both the creation and modification timestamps are enforced by the implementation and "
-          + "cannot be tweaked by call sites")
+      "The test is not applicable to the NoSQL metastore implementation, because both the creation"
+          + " and modification timestamps are enforced by the implementation and cannot be tweaked"
+          + " by call sites")
   protected void testCreatePrincipalReturnedEntitySameAsPersisted() {}
 
   @Test

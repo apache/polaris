@@ -708,8 +708,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
   /** Remove the registry entry only if it still points to the metadata returned to the caller. */
   public TableMetadata unregisterTable(TableIdentifier identifier) {
+    // Use the request's resolved state; conditional deletion rejects a newer version.
     PolarisResolvedPathWrapper resolved =
-        resolvedEntityView.getPassthroughResolvedPath(
+        resolvedEntityView.getResolvedPath(
             ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_TABLE);
     if (resolved == null) {
       throw notFoundExceptionForTableLikeEntity(identifier, PolarisEntitySubType.ICEBERG_TABLE);

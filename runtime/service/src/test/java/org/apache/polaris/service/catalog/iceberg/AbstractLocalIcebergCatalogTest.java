@@ -152,6 +152,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -2135,6 +2136,59 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     TableMetadata unregistered = catalog.unregisterTable(TABLE);
     assertThat(unregistered.properties()).containsEntry("concurrent-commit", "kept");
     assertThat(catalog.tableExists(TABLE)).isFalse();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testUnregisterTableUsesResolvedVersion(boolean changed) throws IOException {
+    catalog.createNamespace(NS);
+    BaseTable table = (BaseTable) catalog.buildTable(TABLE, SCHEMA).create();
+    TableMetadata metadata = table.operations().current();
+    PolarisPassthroughResolutionView view =
+        spy(
+            new PolarisPassthroughResolutionView(
+                resolutionManifestFactory, authenticatedRoot, CATALOG_NAME));
+    ResolvedPathKey key = ResolvedPathKey.ofTableLike(TABLE);
+    doReturn(view.getResolvedPath(key, PolarisEntitySubType.ICEBERG_TABLE))
+        .when(view)
+        .getResolvedPath(key, PolarisEntitySubType.ICEBERG_TABLE);
+    if (changed) {
+      table.updateProperties().set("new-version", "retained").commit();
+    }
+
+    try (LocalIcebergCatalog requestCatalog =
+        new LocalIcebergCatalog(
+            diagServices,
+            resolverFactory,
+            metaStoreManager,
+            polarisContext,
+            view,
+            authenticatedRoot,
+            mock(TaskExecutor.class),
+            storageAccessConfigProvider,
+            fileIOFactory,
+            polarisEventDispatcher,
+            eventMetadataFactory)) {
+      requestCatalog.setCatalogFileIo(fileIO);
+      requestCatalog.initialize(
+          CATALOG_NAME,
+          Map.of(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+      if (changed) {
+        assertThatThrownBy(() -> requestCatalog.unregisterTable(TABLE))
+            .isInstanceOf(PolarisServiceUnavailableException.class);
+        assertThat(catalog.loadTable(TABLE).properties()).containsEntry("new-version", "retained");
+      } else {
+        assertThat(requestCatalog.unregisterTable(TABLE).metadataFileLocation())
+            .isEqualTo(metadata.metadataFileLocation());
+      }
+    }
+    assertThat(catalog.tableExists(TABLE)).isEqualTo(changed);
+    assertThat(fileIO.newInputFile(metadata.metadataFileLocation()).exists()).isTrue();
+    assertThat(
+            metaStoreManager
+                .loadTasks(polarisContext, "testExecutor", PageToken.readEverything())
+                .getEntities())
+        .isEmpty();
   }
 
   @Test
