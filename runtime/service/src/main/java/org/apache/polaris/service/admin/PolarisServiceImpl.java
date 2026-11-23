@@ -311,13 +311,13 @@ public class PolarisServiceImpl
   @Override
   public Response createPrincipal(
       CreatePrincipalRequest request, RealmContext realmContext, SecurityContext securityContext) {
-    requireField(request.getPrincipal(), "principal");
+    Principal principalModel = requireField(request.getPrincipal(), "principal");
     PrincipalEntity principal =
         new PrincipalEntity.Builder()
-            .setName(request.getPrincipal().getName())
-            .setClientId(request.getPrincipal().getClientId())
+            .setName(principalModel.getName())
+            .setClientId(principalModel.getClientId())
             .setProperties(
-                reservedProperties.removeReservedProperties(request.getPrincipal().getProperties()))
+                reservedProperties.removeReservedProperties(principalModel.getProperties()))
             .build();
     if (Boolean.TRUE.equals(request.getCredentialRotationRequired())) {
       principal =
@@ -391,14 +391,13 @@ public class PolarisServiceImpl
       CreatePrincipalRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    requireField(request.getPrincipalRole(), "principalRole");
+    PrincipalRole principalRole = requireField(request.getPrincipalRole(), "principalRole");
     PrincipalRoleEntity entity =
         new PrincipalRoleEntity.Builder()
-            .setName(request.getPrincipalRole().getName())
+            .setName(principalRole.getName())
             .setProperties(
-                reservedProperties.removeReservedProperties(
-                    request.getPrincipalRole().getProperties()))
-            .setFederated(request.getPrincipalRole().getFederated())
+                reservedProperties.removeReservedProperties(principalRole.getProperties()))
+            .setFederated(principalRole.getFederated())
             .build();
     PrincipalRole newPrincipalRole =
         new PrincipalRoleEntity(adminService.createPrincipalRole(entity)).asPrincipalRole();
@@ -449,13 +448,11 @@ public class PolarisServiceImpl
       CreateCatalogRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    requireField(request.getCatalogRole(), "catalogRole");
+    CatalogRole catalogRole = requireField(request.getCatalogRole(), "catalogRole");
     CatalogRoleEntity entity =
         new CatalogRoleEntity.Builder()
-            .setName(request.getCatalogRole().getName())
-            .setProperties(
-                reservedProperties.removeReservedProperties(
-                    request.getCatalogRole().getProperties()))
+            .setName(catalogRole.getName())
+            .setProperties(reservedProperties.removeReservedProperties(catalogRole.getProperties()))
             .build();
     CatalogRole newCatalogRole =
         new CatalogRoleEntity(adminService.createCatalogRole(catalogName, entity)).asCatalogRole();
@@ -517,13 +514,11 @@ public class PolarisServiceImpl
       GrantPrincipalRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    requireField(request.getPrincipalRole(), "principalRole");
+    PrincipalRole principalRole = requireField(request.getPrincipalRole(), "principalRole");
     LOGGER.info(
-        "Assigning principalRole {} to principal {}",
-        request.getPrincipalRole().getName(),
-        principalName);
+        "Assigning principalRole {} to principal {}", principalRole.getName(), principalName);
     PrivilegeResult result =
-        adminService.assignPrincipalRole(principalName, request.getPrincipalRole().getName());
+        adminService.assignPrincipalRole(principalName, principalRole.getName());
     return toResponse(result, Response.Status.CREATED);
   }
 
@@ -561,15 +556,15 @@ public class PolarisServiceImpl
       GrantCatalogRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    requireField(request.getCatalogRole(), "catalogRole");
+    CatalogRole catalogRole = requireField(request.getCatalogRole(), "catalogRole");
     LOGGER.info(
         "Assigning catalogRole {} in catalog {} to principalRole {}",
-        request.getCatalogRole().getName(),
+        catalogRole.getName(),
         catalogName,
         principalRoleName);
     PrivilegeResult result =
         adminService.assignCatalogRoleToPrincipalRole(
-            principalRoleName, catalogName, request.getCatalogRole().getName());
+            principalRoleName, catalogName, catalogRole.getName());
     return toResponse(result, Response.Status.CREATED);
   }
 

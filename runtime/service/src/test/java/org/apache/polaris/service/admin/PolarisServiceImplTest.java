@@ -20,6 +20,7 @@ package org.apache.polaris.service.admin;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -28,6 +29,8 @@ import static org.mockito.Mockito.when;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
@@ -66,6 +69,8 @@ import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
@@ -163,64 +168,64 @@ public class PolarisServiceImplTest {
     verify(metaStoreManager, never()).createCatalog(any(), any(), any());
   }
 
-  @Test
-  void createPrincipalWithoutPrincipalIsBadRequest() {
-    assertThatThrownBy(() ->
-            polarisService.createPrincipal(new CreatePrincipalRequest(null, null), null, null))
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("requestsMissingWrappedField")
+  void requestMissingWrappedFieldIsBadRequest(
+      String operation, Consumer<PolarisServiceImpl> call, String missingField) {
+    assertThatThrownBy(() -> call.accept(polarisService))
         .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("principal");
+        .hasMessageContaining(missingField);
   }
 
-  @Test
-  void createPrincipalRoleWithoutPrincipalRoleIsBadRequest() {
-    assertThatThrownBy(() ->
-            polarisService.createPrincipalRole(new CreatePrincipalRoleRequest(null), null, null))
-        .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("principalRole");
-  }
-
-  @Test
-  void createCatalogRoleWithoutCatalogRoleIsBadRequest() {
-    assertThatThrownBy(() ->
-            polarisService.createCatalogRole("cat", new CreateCatalogRoleRequest(null), null, null))
-        .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("catalogRole");
-  }
-
-  @Test
-  void assignPrincipalRoleWithoutPrincipalRoleIsBadRequest() {
-    assertThatThrownBy(() ->
-            polarisService.assignPrincipalRole(
-                "principal", new GrantPrincipalRoleRequest(null), null, null))
-        .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("principalRole");
-  }
-
-  @Test
-  void assignCatalogRoleWithoutCatalogRoleIsBadRequest() {
-    assertThatThrownBy(() ->
-            polarisService.assignCatalogRoleToPrincipalRole(
-                "principalRole", "cat", new GrantCatalogRoleRequest(null), null, null))
-        .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("catalogRole");
-  }
-
-  @Test
-  void addGrantWithoutGrantIsBadRequest() {
-    assertThatThrownBy(() ->
-            polarisService.addGrantToCatalogRole(
-                "cat", "catalogRole", new AddGrantRequest(null), null, null))
-        .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("grant");
-  }
-
-  @Test
-  void revokeGrantWithoutGrantIsBadRequest() {
-    assertThatThrownBy(() ->
-            polarisService.revokeGrantFromCatalogRole(
-                "cat", "catalogRole", null, new RevokeGrantRequest(null), null, null))
-        .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("grant");
+  static Stream<Arguments> requestsMissingWrappedField() {
+    return Stream.of(
+        arguments(
+            "createPrincipal",
+            (Consumer<PolarisServiceImpl>)
+                service ->
+                    service.createPrincipal(new CreatePrincipalRequest(null, null), null, null),
+            "principal"),
+        arguments(
+            "createPrincipalRole",
+            (Consumer<PolarisServiceImpl>)
+                service ->
+                    service.createPrincipalRole(new CreatePrincipalRoleRequest(null), null, null),
+            "principalRole"),
+        arguments(
+            "createCatalogRole",
+            (Consumer<PolarisServiceImpl>)
+                service ->
+                    service.createCatalogRole(
+                        "cat", new CreateCatalogRoleRequest(null), null, null),
+            "catalogRole"),
+        arguments(
+            "assignPrincipalRole",
+            (Consumer<PolarisServiceImpl>)
+                service ->
+                    service.assignPrincipalRole(
+                        "principal", new GrantPrincipalRoleRequest(null), null, null),
+            "principalRole"),
+        arguments(
+            "assignCatalogRoleToPrincipalRole",
+            (Consumer<PolarisServiceImpl>)
+                service ->
+                    service.assignCatalogRoleToPrincipalRole(
+                        "principalRole", "cat", new GrantCatalogRoleRequest(null), null, null),
+            "catalogRole"),
+        arguments(
+            "addGrantToCatalogRole",
+            (Consumer<PolarisServiceImpl>)
+                service ->
+                    service.addGrantToCatalogRole(
+                        "cat", "catalogRole", new AddGrantRequest(null), null, null),
+            "grant"),
+        arguments(
+            "revokeGrantFromCatalogRole",
+            (Consumer<PolarisServiceImpl>)
+                service ->
+                    service.revokeGrantFromCatalogRole(
+                        "cat", "catalogRole", null, new RevokeGrantRequest(null), null, null),
+            "grant"));
   }
 
   @Test
