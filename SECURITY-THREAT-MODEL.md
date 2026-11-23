@@ -183,6 +183,14 @@ The following properties must hold:
 - Token issuance, token exchange, credential reset, and credential rotation must
   preserve the intended principal, realm, role scope, expiration, and revocation
   semantics.
+  With the built-in token broker, a credential reset replaces the principal's
+  previous client secrets and prevents tokens tied to those secrets from being
+  exchanged. A routine rotation keeps the previous primary secret usable for
+  token issuance and keeps its unexpired tokens eligible for exchange until the
+  next rotation or reset. In both cases, previously issued access tokens can
+  still authenticate as bearer tokens until they expire, provided the principal
+  still exists. Revoking a role removes access granted by that role. Deleting
+  the principal blocks authentication with its outstanding tokens.
 - Tokens, credentials, and secrets must not be logged, returned in API
   responses, or persisted in plaintext unless explicitly required and protected
   by deployment controls.
