@@ -285,6 +285,21 @@ public class DynamoDbBasePersistence implements BasePersistence {
     }
   }
 
+  @Override
+  public void deleteEntityIfNotChanged(
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity) {
+    try {
+      client.transactWriteItems(b ->
+          b.transactItems(
+              deleteIfVersionsMatch(entity), deleteSentinelIfOwned(entity), deleteChild(entity)));
+    } catch (TransactionCanceledException e) {
+      if (!onlyConflicts(e)) {
+        throw e;
+      }
+      throw concurrentModification(e, entity);
+    }
+  }
+
   // ---- Entity lookups --------------------------------------------------------------------------
 
   @Override
@@ -926,7 +941,8 @@ public class DynamoDbBasePersistence implements BasePersistence {
       Exception cause, PolarisBaseEntity expected) {
     return new RetryOnConcurrencyException(
         cause,
-        "Entity '%s' id '%s' concurrently modified; expected entityVersion=%s, grantRecordsVersion=%s",
+        "Entity '%s' id '%s' concurrently modified; expected entityVersion=%s,"
+            + " grantRecordsVersion=%s",
         expected.getName(),
         expected.getId(),
         expected.getEntityVersion(),

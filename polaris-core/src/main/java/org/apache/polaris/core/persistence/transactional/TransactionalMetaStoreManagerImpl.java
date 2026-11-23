@@ -1489,6 +1489,32 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                 callCtx, ms, catalogPath, entityToDrop, cleanupProperties, cleanup));
   }
 
+  @Override
+  public @NonNull DropEntityResult dropEntityIfNotChanged(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop) {
+    TransactionalPersistence ms = (TransactionalPersistence) callCtx.getMetaStore();
+    return ms.runInTransaction(
+        callCtx,
+        () -> {
+          PolarisBaseEntity current =
+              ms.lookupEntityInCurrentTxn(
+                  callCtx,
+                  entityToDrop.getCatalogId(),
+                  entityToDrop.getId(),
+                  entityToDrop.getTypeCode());
+          if (current == null) {
+            return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+          }
+          if (current.getEntityVersion() != entityToDrop.getEntityVersion()) {
+            return new DropEntityResult(
+                BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
+          }
+          return dropEntityIfExists(callCtx, ms, catalogPath, entityToDrop, null, false);
+        });
+  }
+
   /**
    * Resolve the arguments of granting/revoking a usage grant between a role (catalog or principal
    * role) and a grantee (either a principal role or a principal)

@@ -102,6 +102,46 @@ public abstract class BasePolarisMetaStoreManagerTest {
   }
 
   @Test
+  protected void testDropEntityIfNotChanged() {
+    PolarisMetaStoreManager manager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext context = polarisTestMetaStoreManager.polarisCallContext;
+    PolarisBaseEntity original =
+        polarisTestMetaStoreManager.createEntity(
+            null,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            "conditional-drop");
+    EntityResult updated =
+        manager.updateEntityPropertiesIfNotChanged(
+            context,
+            null,
+            new PolarisBaseEntity.Builder(original)
+                .propertiesAsMap(Map.of("updated", "true"))
+                .build());
+    Assertions.assertThat(updated.isSuccess()).isTrue();
+
+    Assertions.assertThat(manager.dropEntityIfNotChanged(context, null, original).getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+    Assertions.assertThat(
+            manager
+                .loadEntity(context, original.getCatalogId(), original.getId(), original.getType())
+                .isSuccess())
+        .isTrue();
+
+    Assertions.assertThat(
+            manager.dropEntityIfNotChanged(context, null, updated.getEntity()).isSuccess())
+        .isTrue();
+    Assertions.assertThat(
+            manager
+                .loadEntity(context, original.getCatalogId(), original.getId(), original.getType())
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+    Assertions.assertThat(
+            manager.loadTasks(context, "testExecutor", PageToken.readEverything()).getEntities())
+        .isEmpty();
+  }
+
+  @Test
   protected void testCreateTestCatalog() {
     // allocate test driver
     polarisTestMetaStoreManager.testCreateTestCatalog();

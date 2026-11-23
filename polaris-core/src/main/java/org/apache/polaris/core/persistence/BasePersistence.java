@@ -159,6 +159,15 @@ public interface BasePersistence extends PolicyMappingPersistence {
   void deleteEntity(@NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity);
 
   /**
+   * Delete an entity only if its persisted version still matches the supplied entity. A concurrent
+   * update or removal must throw {@link RetryOnConcurrencyException} without deleting the entity.
+   */
+  default void deleteEntityIfNotChanged(
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity) {
+    throw new UnsupportedOperationException("Conditional entity deletion is not supported");
+  }
+
+  /**
    * Delete the specified grantRecord to the grant_records table.
    *
    * @param callCtx call context

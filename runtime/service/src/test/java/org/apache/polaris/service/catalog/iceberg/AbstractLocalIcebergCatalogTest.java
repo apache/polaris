@@ -70,6 +70,7 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.ContentFile;
 import org.apache.iceberg.ContentScanTask;
+import org.apache.iceberg.DataFiles;
 import org.apache.iceberg.DataOperations;
 import org.apache.iceberg.DeleteFile;
 import org.apache.iceberg.FileMetadata;
@@ -98,6 +99,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.iceberg.exceptions.ValidationException;
@@ -1854,7 +1856,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request2))
         .isInstanceOf(AlreadyExistsException.class)
         .hasMessageContaining(
-            "A notification with a newer timestamp has been processed for table parent.child1.table");
+            "A notification with a newer timestamp has been processed for table"
+                + " parent.child1.table");
 
     // Verify that DROP notification won't be rejected due to timestamp
     NotificationRequest request3 = new NotificationRequest();
@@ -2045,6 +2048,83 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThat(catalog.tableExists(table))
         .as("Table should be dropped on receiving notification")
         .isFalse();
+  }
+
+  @Test
+  public void testUnregisterTablePreservesFiles() throws IOException {
+    catalog.createNamespace(NS);
+    BaseTable table =
+        (BaseTable) catalog.buildTable(TABLE, SCHEMA).withPartitionSpec(SPEC).create();
+    String dataPath = table.location() + "/data.parquet";
+    try (var output = fileIO.newOutputFile(dataPath).create()) {
+      output.write(new byte[] {1, 2, 3});
+    }
+    table
+        .newAppend()
+        .appendFile(
+            DataFiles.builder(SPEC)
+                .withPath(dataPath)
+                .withPartitionPath("id_bucket=0")
+                .withFileSizeInBytes(3)
+                .withRecordCount(1)
+                .build())
+        .commit();
+    TableMetadata before = table.operations().current();
+    List<String> files = new ArrayList<>();
+    files.add(dataPath);
+    files.add(before.metadataFileLocation());
+    before.previousFiles().forEach(file -> files.add(file.file()));
+    files.add(before.currentSnapshot().manifestListLocation());
+    before.currentSnapshot().allManifests(fileIO).forEach(manifest -> files.add(manifest.path()));
+    assertThat(files).allMatch(file -> fileIO.newInputFile(file).exists());
+
+    TableMetadata unregistered = catalog.unregisterTable(TABLE);
+
+    assertThat(unregistered.metadataFileLocation()).isEqualTo(before.metadataFileLocation());
+    assertThat(unregistered.uuid()).isEqualTo(before.uuid());
+    assertThat(unregistered.currentSnapshot().snapshotId())
+        .isEqualTo(before.currentSnapshot().snapshotId());
+    assertThat(catalog.tableExists(TABLE)).isFalse();
+    assertThat(files).allMatch(file -> fileIO.newInputFile(file).exists());
+    assertThat(
+            metaStoreManager
+                .loadTasks(polarisContext, "testExecutor", PageToken.readEverything())
+                .getEntities())
+        .isEmpty();
+    assertThatThrownBy(() -> catalog.unregisterTable(TABLE))
+        .isInstanceOf(NoSuchTableException.class);
+    assertThatThrownBy(() -> table.updateProperties().set("after-unregister", "true").commit())
+        .isInstanceOf(NoSuchTableException.class);
+
+    Table registered = catalog.registerTable(TABLE, unregistered.metadataFileLocation());
+    assertThat(registered.currentSnapshot().snapshotId())
+        .isEqualTo(before.currentSnapshot().snapshotId());
+  }
+
+  @Test
+  public void testUnregisterTableRejectsConcurrentCommit() {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    PolarisMetaStoreManager concurrentManager = spy(metaStoreManager);
+    doAnswer(
+            invocation -> {
+              table.updateProperties().set("concurrent-commit", "kept").commit();
+              return invocation.callRealMethod();
+            })
+        .when(concurrentManager)
+        .dropEntityIfNotChanged(any(), anyList(), any());
+    catalog.setMetaStoreManager(concurrentManager);
+
+    assertThatThrownBy(() -> catalog.unregisterTable(TABLE))
+        .isInstanceOf(ServiceFailureException.class)
+        .hasMessageContaining("retry unregister");
+    assertThat(catalog.tableExists(TABLE)).isTrue();
+    assertThat(catalog.loadTable(TABLE).properties()).containsEntry("concurrent-commit", "kept");
+
+    catalog.setMetaStoreManager(metaStoreManager);
+    TableMetadata unregistered = catalog.unregisterTable(TABLE);
+    assertThat(unregistered.properties()).containsEntry("concurrent-commit", "kept");
+    assertThat(catalog.tableExists(TABLE)).isFalse();
   }
 
   @Test

@@ -388,7 +388,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     int lastSlashIndex = metadataFileLocation.lastIndexOf("/");
     Preconditions.checkArgument(
         lastSlashIndex != -1,
-        "Invalid metadata file location; metadata file location must be absolute and contain a '/': %s",
+        "Invalid metadata file location; metadata file location must be absolute and contain a '/':"
+            + " %s",
         metadataFileLocation);
 
     PolarisResolvedPathWrapper resolvedTableLike =
@@ -699,6 +700,53 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     return true;
+  }
+
+  /** Remove the registry entry only if it still points to the metadata returned to the caller. */
+  public TableMetadata unregisterTable(TableIdentifier identifier) {
+    PolarisResolvedPathWrapper resolved =
+        resolvedEntityView.getPassthroughResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_TABLE);
+    if (resolved == null) {
+      throw notFoundExceptionForTableLikeEntity(identifier, PolarisEntitySubType.ICEBERG_TABLE);
+    }
+    IcebergTableLikeEntity entity = IcebergTableLikeEntity.of(resolved.getRawLeafEntity());
+    String metadataLocation = entity.getMetadataLocation();
+    String metadataDirectory = metadataLocation.substring(0, metadataLocation.lastIndexOf('/'));
+    FileIO fileIO =
+        loadFileIOForTableLike(
+            identifier,
+            Set.of(metadataDirectory),
+            resolved,
+            new HashMap<>(tableDefaultProperties),
+            Set.of(PolarisStorageActions.READ));
+    TableMetadata metadata = TableMetadataParser.read(fileIO, metadataLocation);
+    validateLocationsMatchEntity(identifier, entity, metadata);
+
+    // A load followed by an unconditional drop could return metadata that omits a concurrent
+    // commit. The version check and registry removal must be one atomic operation.
+    DropEntityResult result =
+        getMetaStoreManager()
+            .dropEntityIfNotChanged(
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(resolved.getRawParentPath()),
+                entity);
+    if (!result.isSuccess()) {
+      switch (result.getReturnStatus()) {
+        case ENTITY_NOT_FOUND, CATALOG_PATH_CANNOT_BE_RESOLVED ->
+            throw notFoundExceptionForTableLikeEntity(
+                identifier, PolarisEntitySubType.ICEBERG_TABLE);
+        case ENTITY_UNDROPPABLE ->
+            throw new ForbiddenException("Table %s cannot be unregistered", identifier);
+        case TARGET_ENTITY_CONCURRENTLY_MODIFIED ->
+            throw new ServiceFailureException(
+                "Table %s changed concurrently; retry unregister", identifier);
+        default ->
+            throw new ServiceFailureException(
+                "Failed to unregister table %s: %s", identifier, result.getReturnStatus());
+      }
+    }
+    return metadata;
   }
 
   @Override
@@ -1048,7 +1096,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               + namespace.level(namespace.length() - 1);
       if (!StorageLocation.of(storedLocation).isSameLocation(StorageLocation.of(derivedLocation))) {
         throw new BadRequestException(
-            "Cannot remove the '%s' property of namespace %s, because it would move the namespace from '%s' to '%s'",
+            "Cannot remove the '%s' property of namespace %s, because it would move the namespace"
+                + " from '%s' to '%s'",
             PolarisEntityConstants.ENTITY_BASE_LOCATION,
             namespace,
             storedLocation,
@@ -1192,7 +1241,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     int lastSlashIndex = metadataFileLocation.lastIndexOf("/");
     Preconditions.checkArgument(
         lastSlashIndex != -1,
-        "Invalid metadata file location; metadata file location must be absolute and contain a '/': %s",
+        "Invalid metadata file location; metadata file location must be absolute and contain a '/':"
+            + " %s",
         metadataFileLocation);
 
     // Throw an exception if this view already exists in the catalog.
@@ -1379,18 +1429,18 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       if (!optimizedSiblingCheck) {
         throw new IllegalStateException(
             String.format(
-                "%s and %s are both disabled, which means that table location overlap checks are being"
-                    + " performed, but only within each namespace. However, %s is enabled, which indicates"
-                    + " that tables may be created outside of their parent namespace. This is not a safe"
-                    + " combination of configurations.",
+                "%s and %s are both disabled, which means that table location overlap checks are"
+                    + " being performed, but only within each namespace. However, %s is enabled,"
+                    + " which indicates that tables may be created outside of their parent"
+                    + " namespace. This is not a safe combination of configurations.",
                 FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.key(),
                 FeatureConfiguration.OPTIMIZED_SIBLING_CHECK.key(),
                 FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.key()));
       } else if (!loggedPrefixOverlapWarning.getAndSet(true)) {
         LOGGER.warn(
-            "A table is being created with {} and {} enabled, but with {} disabled. "
-                + "This is a safe combination of configurations which may prevent table overlap, but only if the "
-                + "underlying persistence actually implements %s. Exercise caution.",
+            "A table is being created with {} and {} enabled, but with {} disabled. This is a safe"
+                + " combination of configurations which may prevent table overlap, but only if the"
+                + " underlying persistence actually implements %s. Exercise caution.",
             FeatureConfiguration.DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.key(),
             FeatureConfiguration.OPTIMIZED_SIBLING_CHECK.key(),
             FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.key());
@@ -2184,7 +2234,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         }
 
         throw new CommitFailedException(
-            "Cannot commit to table %s: base metadata location %s has been concurrently modified to %s",
+            "Cannot commit to table %s: base metadata location %s has been concurrently modified to"
+                + " %s",
             tableIdentifier, oldLocation, existingLocation);
       }
 
@@ -3299,8 +3350,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       if (!dropWithPurgeEnabled) {
         throw new ForbiddenException(
             String.format(
-                "Unable to purge entity: %s. To enable this feature, set the Polaris configuration %s "
-                    + "or the catalog configuration %s",
+                "Unable to purge entity: %s. To enable this feature, set the Polaris configuration"
+                    + " %s or the catalog configuration %s",
                 identifier.name(),
                 FeatureConfiguration.DROP_WITH_PURGE_ENABLED.key(),
                 FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig()));

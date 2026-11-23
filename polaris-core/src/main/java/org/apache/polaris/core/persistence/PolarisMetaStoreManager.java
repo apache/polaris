@@ -350,6 +350,17 @@ public interface PolarisMetaStoreManager
       boolean cleanup);
 
   /**
+   * Drop an entity only if its version still matches the supplied entity. This never schedules
+   * cleanup of files. A concurrent change returns {@code TARGET_ENTITY_CONCURRENTLY_MODIFIED}.
+   */
+  default @NonNull DropEntityResult dropEntityIfNotChanged(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop) {
+    throw new UnsupportedOperationException("Conditional entity deletion is not supported");
+  }
+
+  /**
    * Load the entity from backend store. Will return NULL if the entity does not exist, i.e. has
    * been purged. The entity being loaded might have been dropped
    *

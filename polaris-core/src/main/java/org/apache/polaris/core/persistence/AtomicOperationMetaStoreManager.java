@@ -185,6 +185,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @NonNull PolarisCallContext callCtx,
       @NonNull BasePersistence ms,
       @NonNull PolarisBaseEntity entity) {
+    dropEntity(callCtx, ms, entity, false);
+  }
+
+  private boolean dropEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull BasePersistence ms,
+      @NonNull PolarisBaseEntity entity,
+      boolean requireUnchanged) {
 
     // validate the entity type and subtype
     getDiagnostics().checkNotNull(entity, "unexpected_null_dpo");
@@ -195,7 +203,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // Remove the main entity itself first-thing; once its id no longer resolves successfully
     // it will be pruned out of any grant-record lookups anyways.
-    ms.deleteEntity(callCtx, entity);
+    if (requireUnchanged) {
+      try {
+        ms.deleteEntityIfNotChanged(callCtx, entity);
+      } catch (RetryOnConcurrencyException e) {
+        return false;
+      }
+    } else {
+      ms.deleteEntity(callCtx, entity);
+    }
 
     // Best-effort cleanup - drop grant records, update grantRecordVersions for affected
     // other entities.
@@ -270,6 +286,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       // delete it from the secret slice
       ((IntegrationPersistence) ms).deletePrincipalSecrets(callCtx, clientId, entity.getId());
     }
+    return true;
   }
 
   /**
@@ -1117,6 +1134,25 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @NonNull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
+    return dropEntityIfExists(
+        callCtx, catalogPath, entityToDrop, cleanupProperties, cleanup, false);
+  }
+
+  @Override
+  public @NonNull DropEntityResult dropEntityIfNotChanged(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop) {
+    return dropEntityIfExists(callCtx, catalogPath, entityToDrop, null, false, true);
+  }
+
+  private @NonNull DropEntityResult dropEntityIfExists(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop,
+      @Nullable Map<String, String> cleanupProperties,
+      boolean cleanup,
+      boolean requireUnchanged) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -1136,6 +1172,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // if this entity was not found, return failure
     if (refreshEntityToDrop == null) {
       return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    if (requireUnchanged
+        && refreshEntityToDrop.getEntityVersion() != entityToDrop.getEntityVersion()) {
+      return new DropEntityResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
     }
 
     // ensure that this entity is droppable
@@ -1235,7 +1277,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // simply delete that entity. Will be removed from entities_active, added to the
     // entities_dropped and its version will be changed.
-    this.dropEntity(callCtx, ms, refreshEntityToDrop);
+    if (!dropEntity(callCtx, ms, refreshEntityToDrop, requireUnchanged)) {
+      return new DropEntityResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
+    }
 
     // if cleanup, schedule a cleanup task for the entity. do this here, so that drop and scheduling
     // the cleanup task is transactional. Otherwise, we'll be unable to schedule the cleanup task

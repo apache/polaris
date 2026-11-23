@@ -29,6 +29,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
@@ -501,6 +502,46 @@ public class IcebergRestCatalogEventServiceDelegator
       Boolean purgeRequested,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    return withDropTableEvents(
+        prefix,
+        namespace,
+        table,
+        purgeRequested,
+        () ->
+            delegate.dropTable(
+                prefix,
+                namespace,
+                table,
+                idempotencyKey,
+                purgeRequested,
+                realmContext,
+                securityContext));
+  }
+
+  @Override
+  public Response unregisterTable(
+      String prefix,
+      String namespace,
+      String table,
+      UUID idempotencyKey,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return withDropTableEvents(
+        prefix,
+        namespace,
+        table,
+        false,
+        () ->
+            delegate.unregisterTable(
+                prefix, namespace, table, idempotencyKey, realmContext, securityContext));
+  }
+
+  private Response withDropTableEvents(
+      String prefix,
+      String namespace,
+      String table,
+      Boolean purgeRequested,
+      Supplier<Response> action) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
     Namespace namespaceObj =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
@@ -517,15 +558,7 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.PURGE_REQUESTED, purgeRequested)
                   .build()));
     }
-    Response resp =
-        delegate.dropTable(
-            prefix,
-            namespace,
-            table,
-            idempotencyKey,
-            purgeRequested,
-            realmContext,
-            securityContext);
+    Response resp = action.get();
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_DROP_TABLE)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(

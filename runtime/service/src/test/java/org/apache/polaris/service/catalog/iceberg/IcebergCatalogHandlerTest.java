@@ -63,6 +63,7 @@ import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.catalog.ViewCatalog;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
@@ -117,6 +118,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 
 class IcebergCatalogHandlerTest {
@@ -209,6 +211,54 @@ class IcebergCatalogHandlerTest {
         .accessDelegationModeResolver(accessDelegationModeResolver)
         .idempotencyRequestContext(idempotencyRequestContext)
         .build();
+  }
+
+  @Test
+  void unregisterRequiresDropAndMetadataReadPermissions() throws Exception {
+    LocalIcebergCatalog catalog = mock(LocalIcebergCatalog.class);
+    TableMetadata metadata =
+        TableMetadata.newTableMetadata(
+            new Schema(), PartitionSpec.unpartitioned(), TABLE_LOCATION, Map.of());
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.unregisterTable(TABLE2)).thenReturn(metadata);
+    try (IcebergCatalogHandler handler = newHandler()) {
+      assertThat(handler.unregisterTable(TABLE2).tableMetadata()).isSameAs(metadata);
+    }
+    assertThat(authorizedOperations())
+        .containsExactlyInAnyOrder(
+            PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE,
+            PolarisAuthorizableOperation.LOAD_TABLE);
+    verify(catalog).unregisterTable(TABLE2);
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = PolarisAuthorizableOperation.class,
+      names = {"DROP_TABLE_WITHOUT_PURGE", "LOAD_TABLE"})
+  void unregisterDoesNotRemoveTableWithoutRequiredPermissions(
+      PolarisAuthorizableOperation operation) throws Exception {
+    LocalIcebergCatalog catalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    try (IcebergCatalogHandler handler = newHandler()) {
+      when(authorizer.authorize(
+              any(), argThat((AuthorizationRequest request) -> hasOperation(request, operation))))
+          .thenReturn(AuthorizationDecision.deny("denied"));
+      assertThatThrownBy(() -> handler.unregisterTable(TABLE2))
+          .isInstanceOf(ForbiddenException.class);
+    }
+    verify(catalog, never()).unregisterTable(any());
+  }
+
+  @Test
+  void unregisterRejectsFederatedCatalogWithoutDroppingTable() throws Exception {
+    Catalog catalog = mock(Catalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    try (IcebergCatalogHandler handler = newHandler()) {
+      assertThatThrownBy(() -> handler.unregisterTable(TABLE2))
+          .isInstanceOf(BadRequestException.class)
+          .hasMessageContaining("federated");
+    }
+    verify(catalog, never()).dropTable(any(), anyBoolean());
   }
 
   private Catalog mockRegisterTableCatalog(boolean overwrite) {

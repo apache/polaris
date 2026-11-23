@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -49,9 +50,11 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -78,6 +81,40 @@ class JdbcBasePersistenceImplTest {
   private static final long POLICY_TARGET_ID = 12L;
   private static final long POLICY_CATALOG_ID = 13L;
   private static final long POLICY_ID = 14L;
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void conditionalDropRejectsUpdateBetweenReadAndDelete(boolean changeGrantVersion)
+      throws SQLException, IOException {
+    TestPersistence tp = newTestPersistence(newH2DatasourceOperations("conditional_drop"));
+    JdbcBasePersistenceImpl persistence = Mockito.spy(tp.impl());
+    PolarisCallContext context = new PolarisCallContext(REALM_CONTEXT, persistence);
+    AtomicOperationMetaStoreManager manager =
+        new AtomicOperationMetaStoreManager(Clock.systemUTC(), new PolarisDefaultDiagServiceImpl());
+    PolarisBaseEntity original = newTestEntity(701L, "conditional", 1, 1);
+    PolarisBaseEntity updated =
+        newTestEntity(701L, "conditional", changeGrantVersion ? 1 : 2, changeGrantVersion ? 2 : 1);
+    persistence.writeEntity(context, original, false, null);
+    Mockito.doAnswer(
+            invocation -> {
+              persistence.writeEntity(context, updated, false, original);
+              return invocation.callRealMethod();
+            })
+        .when(persistence)
+        .deleteEntityIfNotChanged(any(), any());
+
+    assertThat(manager.dropEntityIfNotChanged(context, null, original).getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+    PolarisBaseEntity retained =
+        persistence.lookupEntity(context, 0L, original.getId(), original.getTypeCode());
+    assertThat(retained.getEntityVersion()).isEqualTo(updated.getEntityVersion());
+    assertThat(retained.getGrantRecordsVersion()).isEqualTo(updated.getGrantRecordsVersion());
+
+    doCallRealMethod().when(persistence).deleteEntityIfNotChanged(any(), any());
+    persistence.deleteEntityIfNotChanged(context, retained);
+    assertThat(persistence.lookupEntity(context, 0L, original.getId(), original.getTypeCode()))
+        .isNull();
+  }
 
   @Test
   void writeToGrantRecordsIsIdempotent() throws SQLException {

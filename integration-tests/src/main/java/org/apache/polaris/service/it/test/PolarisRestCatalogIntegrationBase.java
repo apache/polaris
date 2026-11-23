@@ -73,10 +73,12 @@ import org.apache.iceberg.metrics.ImmutableScanReport;
 import org.apache.iceberg.metrics.ScanMetrics;
 import org.apache.iceberg.metrics.ScanMetricsResult;
 import org.apache.iceberg.metrics.ScanReport;
+import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
+import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
@@ -852,6 +854,92 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         restCatalog.loadTable(TableIdentifier.of(ns1, "my_table"));
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  @Test
+  public void testUnregisterTable() {
+    try (Response response =
+        catalogApi.request("v1/config", Map.of(), Map.of("warehouse", currentCatalogName)).get()) {
+      assertThat(response.getStatus()).isEqualTo(200);
+      assertThat(response.readEntity(ConfigResponse.class).endpoints())
+          .contains(
+              Endpoint.create(
+                  "POST", "/v1/{prefix}/namespaces/{namespace}/tables/{table}/unregister"));
+    }
+    Namespace namespace = Namespace.of("unregister_ns");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier identifier = TableIdentifier.of(namespace, "table");
+    BaseTable table = (BaseTable) restCatalog.buildTable(identifier, SCHEMA).create();
+    table.updateProperties().set("last-commit", "included").commit();
+    TableMetadata expected = table.operations().current();
+    Invocation.Builder endpoint =
+        catalogApi.request(
+            "v1/{cat}/namespaces/{ns}/tables/{table}/unregister",
+            Map.of(
+                "cat", currentCatalogName, "ns", namespace.toString(), "table", identifier.name()));
+
+    try (Response response = endpoint.post(null)) {
+      assertThat(response.getStatus()).isEqualTo(200);
+      LoadTableResponse unregistered = response.readEntity(LoadTableResponse.class);
+      assertThat(unregistered.metadataLocation()).isEqualTo(expected.metadataFileLocation());
+      assertThat(unregistered.tableMetadata().uuid()).isEqualTo(expected.uuid());
+      assertThat(unregistered.tableMetadata().properties())
+          .containsEntry("last-commit", "included");
+      assertThat(unregistered.config()).isEmpty();
+    }
+    restCatalog.invalidateTable(identifier);
+    assertThat(restCatalog.tableExists(identifier)).isFalse();
+    assertThat(restCatalog.listTables(namespace)).doesNotContain(identifier);
+    assertThat(table.io().newInputFile(expected.metadataFileLocation()).exists()).isTrue();
+    try (Response response = endpoint.post(null)) {
+      assertThat(response.getStatus()).isEqualTo(404);
+    }
+    assertThat(restCatalog.registerTable(identifier, expected.metadataFileLocation()).properties())
+        .containsEntry("last-commit", "included");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"missing", "generic", "view"})
+  public void testUnregisterRejectsNonIcebergTables(String kind) {
+    Namespace namespace = Namespace.of("unregister_ns");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier identifier = TableIdentifier.of(namespace, "not_iceberg");
+    if (kind.equals("generic")) {
+      genericTableApi.createGenericTable(currentCatalogName, identifier, "delta", Map.of());
+    } else if (kind.equals("view")) {
+      restCatalog
+          .buildView(identifier)
+          .withSchema(SCHEMA)
+          .withDefaultNamespace(namespace)
+          .withQuery("spark", "select 1")
+          .create();
+    }
+    try {
+      try (Response response =
+          catalogApi
+              .request(
+                  "v1/{cat}/namespaces/{ns}/tables/{table}/unregister",
+                  Map.of(
+                      "cat",
+                      currentCatalogName,
+                      "ns",
+                      namespace.toString(),
+                      "table",
+                      identifier.name()))
+              .post(null)) {
+        assertThat(response.getStatus()).isEqualTo(404);
+      }
+      if (kind.equals("generic")) {
+        assertThat(genericTableApi.getGenericTable(currentCatalogName, identifier).getFormat())
+            .isEqualTo("delta");
+      } else if (kind.equals("view")) {
+        assertThat(restCatalog.viewExists(identifier)).isTrue();
+      }
+    } finally {
+      if (kind.equals("generic")) {
+        genericTableApi.purge(currentCatalogName, namespace);
       }
     }
   }
