@@ -30,9 +30,10 @@ The commit may have succeeded, and the table may already reference those files.
 
 Check whether your native Polaris catalog supports idempotency keys. For example, call
 `GET /api/catalog/v1/config?warehouse=analytics` for the `analytics` catalog. If the response
-includes `idempotency-key-lifetime`, generate a UUIDv7 for each new operation and send it in the
-`Idempotency-Key` header. Keep the key and request body for retries. The advertised window starts
-when you first send the request.
+includes `idempotency-key-lifetime`, generate a new key for each operation and send it in the
+`Idempotency-Key` header. The Iceberg REST specification calls for UUIDv7. Polaris also accepts
+other UUID versions. Keep the key and request body for retries. The advertised window starts when
+you first send the request.
 
 Idempotency is off by default. Administrators can enable it with `polaris.idempotency.enabled`
 and set the retry window with `polaris.idempotency.ttl` (default five minutes).
@@ -40,8 +41,9 @@ and set the retry window with `polaris.idempotency.ttl` (default five minutes).
 For an update, include `assert-table-uuid` with the UUID of the table you loaded. This prevents
 a retry from changing a different table that later takes the same name. If the update depends
 on a branch, use `assert-ref-snapshot-id` to record the snapshot you expect, or `null` if you
-expect the branch to be absent. For example, removing an absent branch changes nothing, so Polaris
-records no key. Without the branch requirement, a retry could delete a branch someone just created.
+expect the branch to be absent. For example, if you try to remove a branch that does not exist,
+Polaris records no key. If someone then creates that branch, retrying without
+`assert-ref-snapshot-id` could delete their new branch.
 
 ## Can I retry after a timeout?
 
