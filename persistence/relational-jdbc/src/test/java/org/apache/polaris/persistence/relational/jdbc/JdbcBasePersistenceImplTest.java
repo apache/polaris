@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -50,6 +51,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
@@ -114,6 +116,66 @@ class JdbcBasePersistenceImplTest {
     persistence.deleteEntityIfNotChanged(context, retained);
     assertThat(persistence.lookupEntity(context, 0L, original.getId(), original.getTypeCode()))
         .isNull();
+  }
+
+  @Test
+  void conditionalDropSucceedsWhenConcurrentCleanupChangesRoleVersion()
+      throws SQLException, IOException {
+    TestPersistence tp = newTestPersistence(newH2DatasourceOperations("conditional_drop_cleanup"));
+    JdbcBasePersistenceImpl persistence = Mockito.spy(tp.impl());
+    PolarisCallContext context = new PolarisCallContext(REALM_CONTEXT, persistence);
+    AtomicOperationMetaStoreManager manager =
+        new AtomicOperationMetaStoreManager(Clock.systemUTC(), new PolarisDefaultDiagServiceImpl());
+    PolarisBaseEntity first =
+        new PolarisBaseEntity.Builder(newTestEntity(711L, "first", 1, 1))
+            .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+            .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
+            .build();
+    PolarisBaseEntity second = new PolarisBaseEntity.Builder(first).id(712L).name("second").build();
+    PolarisBaseEntity role =
+        new PolarisBaseEntity.Builder(newTestEntity(713L, "reader", 1, 1))
+            .typeCode(PolarisEntityType.CATALOG_ROLE.getCode())
+            .build();
+    for (PolarisBaseEntity entity : List.of(first, second, role)) {
+      persistence.writeEntity(context, entity, false, null);
+    }
+    for (PolarisBaseEntity table : List.of(first, second)) {
+      persistence.writeToGrantRecords(
+          context,
+          new PolarisGrantRecord(
+              table.getCatalogId(),
+              table.getId(),
+              role.getCatalogId(),
+              role.getId(),
+              PolarisPrivilege.TABLE_READ_PROPERTIES.getCode()));
+    }
+    Mockito.doAnswer(
+            invocation -> {
+              Object rolesBeforeConcurrentDrop = invocation.callRealMethod();
+              assertThat(manager.dropEntityIfNotChanged(tp.callCtx(), null, second).isSuccess())
+                  .isTrue();
+              return rolesBeforeConcurrentDrop;
+            })
+        .when(persistence)
+        .lookupEntities(any(), anyList());
+
+    assertThat(manager.dropEntityIfNotChanged(context, null, first).isSuccess()).isTrue();
+
+    for (PolarisBaseEntity table : List.of(first, second)) {
+      assertThat(
+              persistence.lookupEntity(
+                  context, table.getCatalogId(), table.getId(), table.getTypeCode()))
+          .isNull();
+      assertThat(
+              persistence.loadAllGrantRecordsOnSecurable(
+                  context, table.getCatalogId(), table.getId()))
+          .isEmpty();
+    }
+    assertThat(
+            persistence
+                .lookupEntity(context, role.getCatalogId(), role.getId(), role.getTypeCode())
+                .getGrantRecordsVersion())
+        .isEqualTo(2);
   }
 
   @Test

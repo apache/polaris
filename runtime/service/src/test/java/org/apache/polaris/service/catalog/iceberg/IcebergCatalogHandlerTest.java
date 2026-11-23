@@ -40,12 +40,14 @@ import static org.mockito.Mockito.withSettings;
 
 import jakarta.enterprise.inject.Instance;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.GenericStatisticsFile;
 import org.apache.iceberg.ImmutableGenericPartitionStatisticsFile;
@@ -67,6 +69,7 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
+import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.credentials.Credential;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
@@ -119,6 +122,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 class IcebergCatalogHandlerTest {
@@ -143,6 +147,10 @@ class IcebergCatalogHandlerTest {
       mock(StorageAccessConfigProvider.class);
   private final PolarisAuthorizer authorizer = mock(PolarisAuthorizer.class);
   private final CatalogHandlerUtils catalogHandlerUtils = mock(CatalogHandlerUtils.class);
+  private final IdempotencyConfiguration idempotencyConfiguration =
+      mock(IdempotencyConfiguration.class);
+  private final IdempotencyRequestContext idempotencyRequestContext =
+      new IdempotencyRequestContext(idempotencyConfiguration);
 
   @BeforeEach
   void setUp() {
@@ -184,11 +192,6 @@ class IcebergCatalogHandlerTest {
     when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(catalogEntity);
     when(catalogEntity.getConnectionConfigInfoDpo()).thenReturn(null);
 
-    IdempotencyConfiguration idempotencyConfiguration = mock(IdempotencyConfiguration.class);
-    when(idempotencyConfiguration.enabled()).thenReturn(false);
-    IdempotencyRequestContext idempotencyRequestContext =
-        new IdempotencyRequestContext(idempotencyConfiguration);
-
     return ImmutableIcebergCatalogHandler.builder()
         .catalogName(CATALOG_NAME)
         .polarisPrincipal(PolarisPrincipal.of("test", AttributeMap.EMPTY, Set.of()))
@@ -211,6 +214,37 @@ class IcebergCatalogHandlerTest {
         .accessDelegationModeResolver(accessDelegationModeResolver)
         .idempotencyRequestContext(idempotencyRequestContext)
         .build();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void unregisterIsUnavailableWhenIdempotencyEnabled(boolean withKey) throws Exception {
+    LocalIcebergCatalog catalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(idempotencyConfiguration.enabled()).thenReturn(true);
+    if (withKey) {
+      when(idempotencyConfiguration.ttl()).thenReturn(Duration.ofMinutes(5));
+      idempotencyRequestContext.setPendingKey(UUID.randomUUID());
+    }
+
+    try (IcebergCatalogHandler handler = newHandler()) {
+      assertThatThrownBy(() -> handler.unregisterTable(TABLE2))
+          .isInstanceOf(BadRequestException.class)
+          .hasMessage("Cannot unregister tables when idempotency is enabled");
+    }
+    verify(catalog, never()).unregisterTable(any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void unregisterEndpointAdvertisedOnlyWithoutIdempotency(boolean enabled) {
+    when(idempotencyConfiguration.enabled()).thenReturn(enabled);
+
+    Set<Endpoint> endpoints = new IcebergRestConfigEndpoints(idempotencyConfiguration).endpoints();
+
+    assertThat(endpoints).contains(Endpoint.V1_CREATE_TABLE);
+    assertThat(endpoints.contains(IcebergRestConfigEndpoints.UNREGISTER_TABLE_ENDPOINT))
+        .isEqualTo(!enabled);
   }
 
   @Test

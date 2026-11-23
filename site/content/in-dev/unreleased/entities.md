@@ -96,8 +96,10 @@ before removal, the operation returns `503` and the client must retry. A success
 response includes every commit completed before removal. Further commits to the
 removed registry entry fail.
 
-This operation does not replay successful requests through `Idempotency-Key`. A repeat
-request after successful removal returns `404`.
+This operation is unavailable when `polaris.idempotency.enabled=true`: catalog
+configuration omits the endpoint, and direct requests return `400` before removal.
+Unregister cannot replay a result after deleting the entity that stores its idempotency
+keys. With idempotency disabled, a repeat request after successful removal returns `404`.
 
 ## View
 

@@ -213,78 +213,86 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       ms.deleteEntity(callCtx, entity);
     }
 
-    // Best-effort cleanup - drop grant records, update grantRecordVersions for affected
-    // other entities.
-    // TODO: Support some more formal garbage-collection mechanism so that a garbage-collector
-    // doesn't have to "guess" at whether orphaned id links are garbage vs "newly allocated" ids
-    // that just haven't been fully committed yet. Potentially pre-populate a tombstone
-    // record that only behaves as a tombstone if the main entity is also verified to be
-    // gone; then garbage-collection looks for cleanup grants based on the tombstone and only
-    // removes the tombstone once cleanup is done; cleanup can occur incrementally.
+    try {
+      // Best-effort cleanup - drop grant records, update grantRecordVersions for affected
+      // other entities.
+      // TODO: Support some more formal garbage-collection mechanism so that a garbage-collector
+      // doesn't have to "guess" at whether orphaned id links are garbage vs "newly allocated" ids
+      // that just haven't been fully committed yet. Potentially pre-populate a tombstone
+      // record that only behaves as a tombstone if the main entity is also verified to be
+      // gone; then garbage-collection looks for cleanup grants based on the tombstone and only
+      // removes the tombstone once cleanup is done; cleanup can occur incrementally.
 
-    // delete ALL grant records to (if the entity is a grantee) and from that entity
-    final List<PolarisGrantRecord> grantsOnGrantee =
-        (entity.getType().isGrantee())
-            ? ms.loadAllGrantRecordsOnGrantee(callCtx, entity.getCatalogId(), entity.getId())
-            : List.of();
-    final List<PolarisGrantRecord> grantsOnSecurable =
-        ms.loadAllGrantRecordsOnSecurable(callCtx, entity.getCatalogId(), entity.getId());
-    ms.deleteAllEntityGrantRecords(callCtx, entity, grantsOnGrantee, grantsOnSecurable);
+      // delete ALL grant records to (if the entity is a grantee) and from that entity
+      final List<PolarisGrantRecord> grantsOnGrantee =
+          (entity.getType().isGrantee())
+              ? ms.loadAllGrantRecordsOnGrantee(callCtx, entity.getCatalogId(), entity.getId())
+              : List.of();
+      final List<PolarisGrantRecord> grantsOnSecurable =
+          ms.loadAllGrantRecordsOnSecurable(callCtx, entity.getCatalogId(), entity.getId());
+      ms.deleteAllEntityGrantRecords(callCtx, entity, grantsOnGrantee, grantsOnSecurable);
 
-    if (entity.getType() == PolarisEntityType.POLICY
-        || PolicyMappingUtil.isValidTargetEntityType(entity.getType(), entity.getSubType())) {
-      // Best-effort cleanup - for policy and potential target entities, drop all policy mapping
-      // records related
-      // TODO: Support some more formal garbage-collection mechanism similar to grant records case
-      // above
-      try {
-        final List<PolarisPolicyMappingRecord> mappingOnPolicy =
-            (entity.getType() == PolarisEntityType.POLICY)
-                ? ms.loadAllTargetsOnPolicy(
-                    callCtx,
-                    entity.getCatalogId(),
-                    entity.getId(),
-                    PolicyEntity.of(entity).getPolicyTypeCode())
-                : List.of();
-        final List<PolarisPolicyMappingRecord> mappingOnTarget =
-            (entity.getType() == PolarisEntityType.POLICY)
-                ? List.of()
-                : ms.loadAllPoliciesOnTarget(callCtx, entity.getCatalogId(), entity.getId());
-        ms.deleteAllEntityPolicyMappingRecords(callCtx, entity, mappingOnTarget, mappingOnPolicy);
-      } catch (UnsupportedOperationException e) {
-        // Policy mapping persistence not implemented, but we should not block dropping entities
+      if (entity.getType() == PolarisEntityType.POLICY
+          || PolicyMappingUtil.isValidTargetEntityType(entity.getType(), entity.getSubType())) {
+        // Best-effort cleanup - for policy and potential target entities, drop all policy mapping
+        // records related
+        // TODO: Support some more formal garbage-collection mechanism similar to grant records case
+        // above
+        try {
+          final List<PolarisPolicyMappingRecord> mappingOnPolicy =
+              (entity.getType() == PolarisEntityType.POLICY)
+                  ? ms.loadAllTargetsOnPolicy(
+                      callCtx,
+                      entity.getCatalogId(),
+                      entity.getId(),
+                      PolicyEntity.of(entity).getPolicyTypeCode())
+                  : List.of();
+          final List<PolarisPolicyMappingRecord> mappingOnTarget =
+              (entity.getType() == PolarisEntityType.POLICY)
+                  ? List.of()
+                  : ms.loadAllPoliciesOnTarget(callCtx, entity.getCatalogId(), entity.getId());
+          ms.deleteAllEntityPolicyMappingRecords(callCtx, entity, mappingOnTarget, mappingOnPolicy);
+        } catch (UnsupportedOperationException e) {
+          // Policy mapping persistence not implemented, but we should not block dropping entities
+        }
       }
-    }
 
-    // Now determine the set of entities on the other side of the grants we just removed. Grants
-    // from/to these entities has been removed, hence we need to update the grant version of
-    // each entity. Collect the id of each.
-    Set<PolarisEntityId> entityIdsGrantChanged = new HashSet<>();
-    grantsOnGrantee.forEach(gr ->
-        entityIdsGrantChanged.add(
-            new PolarisEntityId(gr.getSecurableCatalogId(), gr.getSecurableId())));
-    grantsOnSecurable.forEach(gr ->
-        entityIdsGrantChanged.add(
-            new PolarisEntityId(gr.getGranteeCatalogId(), gr.getGranteeId())));
+      // Now determine the set of entities on the other side of the grants we just removed. Grants
+      // from/to these entities has been removed, hence we need to update the grant version of
+      // each entity. Collect the id of each.
+      Set<PolarisEntityId> entityIdsGrantChanged = new HashSet<>();
+      grantsOnGrantee.forEach(gr ->
+          entityIdsGrantChanged.add(
+              new PolarisEntityId(gr.getSecurableCatalogId(), gr.getSecurableId())));
+      grantsOnSecurable.forEach(gr ->
+          entityIdsGrantChanged.add(
+              new PolarisEntityId(gr.getGranteeCatalogId(), gr.getGranteeId())));
 
-    // Bump up the grant version of these entities
-    List<PolarisBaseEntity> entities =
-        ms.lookupEntities(callCtx, new ArrayList<>(entityIdsGrantChanged));
-    for (PolarisBaseEntity originalEntity : entities) {
-      if (originalEntity == null) {
-        continue; // entity was concurrently dropped/purged after grants were removed
+      // Bump up the grant version of these entities
+      List<PolarisBaseEntity> entities =
+          ms.lookupEntities(callCtx, new ArrayList<>(entityIdsGrantChanged));
+      for (PolarisBaseEntity originalEntity : entities) {
+        if (originalEntity == null) {
+          continue; // entity was concurrently dropped/purged after grants were removed
+        }
+        PolarisBaseEntity entityGrantChanged =
+            originalEntity.withGrantRecordsVersion(originalEntity.getGrantRecordsVersion() + 1);
+        ms.writeEntity(callCtx, entityGrantChanged, false, originalEntity);
       }
-      PolarisBaseEntity entityGrantChanged =
-          originalEntity.withGrantRecordsVersion(originalEntity.getGrantRecordsVersion() + 1);
-      ms.writeEntity(callCtx, entityGrantChanged, false, originalEntity);
-    }
 
-    // if it is a principal, we also need to drop the secrets
-    if (entity.getType() == PolarisEntityType.PRINCIPAL) {
-      PrincipalEntity principalEntity = PrincipalEntity.of(entity);
-      String clientId = principalEntity.getClientId();
-      // delete it from the secret slice
-      ((IntegrationPersistence) ms).deletePrincipalSecrets(callCtx, clientId, entity.getId());
+      // if it is a principal, we also need to drop the secrets
+      if (entity.getType() == PolarisEntityType.PRINCIPAL) {
+        PrincipalEntity principalEntity = PrincipalEntity.of(entity);
+        String clientId = principalEntity.getClientId();
+        // delete it from the secret slice
+        ((IntegrationPersistence) ms).deletePrincipalSecrets(callCtx, clientId, entity.getId());
+      }
+    } catch (RuntimeException e) {
+      if (!requireUnchanged) {
+        throw e;
+      }
+      // The deletion has committed. Cleanup must not hide the successful unregister result.
+      LOGGER.warn("Failed to clean up records for deleted entity {}", entity.getId(), e);
     }
     return true;
   }

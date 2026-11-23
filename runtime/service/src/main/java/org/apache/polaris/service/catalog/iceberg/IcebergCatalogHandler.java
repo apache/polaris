@@ -1475,6 +1475,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (!(baseCatalog instanceof LocalIcebergCatalog localCatalog)) {
       throw new BadRequestException("Cannot unregister tables in federated catalogs");
     }
+    if (idempotencyRequestContext().isEnabled()) {
+      // Entity-bound keys cannot replay the final metadata after the entity has been removed.
+      throw new BadRequestException("Cannot unregister tables when idempotency is enabled");
+    }
     TableMetadata metadata = localCatalog.unregisterTable(tableIdentifier);
     return LoadTableResponse.builder().withTableMetadata(metadata).build();
   }
