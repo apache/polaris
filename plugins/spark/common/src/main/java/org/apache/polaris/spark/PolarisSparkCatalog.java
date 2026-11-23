@@ -146,8 +146,15 @@ public class PolarisSparkCatalog implements TableCatalog {
     Map<String, String> originalProperties = DELEGATED_CREATE_PROPERTIES.get();
     if (originalProperties != null) {
       // The delegating catalog may have dropped the user table properties; restore them, keeping
-      // the values it passed (e.g. location and provider) for keys present in both.
-      Map<String, String> mergedProperties = new HashMap<>(originalProperties);
+      // the values it passed (e.g. location and provider) for keys present in both. Write options
+      // from OPTIONS (...) are not table properties, and Delta does not persist them either.
+      Map<String, String> mergedProperties = new HashMap<>();
+      originalProperties.forEach(
+          (key, value) -> {
+            if (!key.startsWith(TableCatalog.OPTION_PREFIX)) {
+              mergedProperties.put(key, value);
+            }
+          });
       mergedProperties.putAll(properties);
       properties = mergedProperties;
     }

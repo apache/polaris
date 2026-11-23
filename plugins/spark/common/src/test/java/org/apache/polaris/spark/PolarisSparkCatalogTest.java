@@ -65,10 +65,12 @@ public class PolarisSparkCatalogTest {
     sparkCatalog.setDelegatedCreateProperties(
         Map.of(
             "test-owner", "test-user",
+            TableCatalog.OPTION_PREFIX + "fs.s3a.secret.key", "secret",
             PolarisCatalogUtils.TABLE_PROVIDER_KEY, "user-provider",
             TableCatalog.PROP_LOCATION, "file:///user/location"));
 
-    // The delegating catalog drops the user properties and passes its own values.
+    // The delegating catalog drops the user properties and passes its own values. The write option
+    // is not a table property and must not be restored.
     sparkCatalog.createTable(
         IDENT,
         SCHEMA,
