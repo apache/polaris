@@ -23,6 +23,7 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyEx
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.entityNameForSubType;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
+import static org.apache.polaris.service.exception.IcebergExceptionMapper.extractHttpCodeFromCloudException;
 import static org.apache.polaris.service.exception.IcebergExceptionMapper.isStorageProviderRetryableException;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -32,9 +33,11 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import java.io.Closeable;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.NoSuchFileException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -725,7 +728,34 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             resolved,
             new HashMap<>(tableDefaultProperties),
             Set.of(PolarisStorageActions.READ));
-    TableMetadata metadata = TableMetadataParser.read(fileIO, metadataLocation);
+    TableMetadata metadata;
+    try {
+      metadata = TableMetadataParser.read(fileIO, metadataLocation);
+    } catch (RuntimeException e) {
+      boolean metadataMissing =
+          Throwables.getCausalChain(e).stream()
+              .anyMatch(cause ->
+                  cause instanceof NotFoundException
+                      || cause instanceof FileNotFoundException
+                      || cause instanceof NoSuchFileException
+                      || extractHttpCodeFromCloudException(cause) == 404);
+      if (metadataMissing) {
+        // Metadata cleanup can remove a stale request's file before the version check.
+        EntityResult current =
+            getMetaStoreManager()
+                .loadEntity(
+                    getCurrentPolarisContext(),
+                    entity.getCatalogId(),
+                    entity.getId(),
+                    entity.getType());
+        if (current.isSuccess()
+            && current.getEntity().getEntityVersion() != entity.getEntityVersion()) {
+          throw new PolarisServiceUnavailableException(
+              3, "Table %s changed concurrently; retry unregister", identifier);
+        }
+      }
+      throw e;
+    }
     validateLocationsMatchEntity(identifier, entity, metadata);
 
     // A load followed by an unconditional drop could return metadata that omits a concurrent
