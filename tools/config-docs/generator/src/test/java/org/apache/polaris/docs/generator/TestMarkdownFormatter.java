@@ -75,6 +75,24 @@ public class TestMarkdownFormatter {
   }
 
   @Test
+  public void codeClosedOnTheNextLineIsFollowedDirectlyByPunctuation() {
+    var target = new MarkdownFormatter.RootTarget();
+    target.addText("set it to ");
+    target.addCode("EXTERNAL\n ");
+    target.addText(". Use");
+    assertThat(target.text.toString()).isEqualTo("set it to `EXTERNAL`. Use");
+  }
+
+  @Test
+  public void codeEndingInWhitespaceKeepsOneSpaceBeforeTheNextWord() {
+    var target = new MarkdownFormatter.RootTarget();
+    target.addText("the value ");
+    target.addCode("foo ");
+    target.addText(" is the default");
+    assertThat(target.text.toString()).isEqualTo("the value `foo` is the default");
+  }
+
+  @Test
   public void codeOnOneLineKeepsItsPunctuation() {
     var target = new MarkdownFormatter.RootTarget();
     target.addText("and ");

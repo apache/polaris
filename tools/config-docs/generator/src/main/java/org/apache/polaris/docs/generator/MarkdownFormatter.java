@@ -244,6 +244,10 @@ public abstract class MarkdownFormatter {
       // A line break and the indentation around it become one space.
       var t = text.replaceAll("\\s*\n\\s*", " ");
       t = t.replaceFirst("^\\s*", "");
+      if (code) {
+        // A code body that ends before a closing brace on the next line ends with whitespace.
+        t = t.stripTrailing();
+      }
 
       if (t.isEmpty() && !text.isEmpty()) {
         maybeAddSeparator();
