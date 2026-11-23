@@ -64,7 +64,6 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   (`GET_CATALOG_CONFIG`). Existing catalog-level `catalog-properties-read` (and stronger catalog
   access types) imply `catalog-config-read`. Operators must re-import
   `polaris-ranger-servicedef.json`.
-- OPA: operator-defined static properties configured via `polaris.authorization.opa.context-properties.*` are now sent to OPA under `input.context.properties`
 
 ### Changes
 
