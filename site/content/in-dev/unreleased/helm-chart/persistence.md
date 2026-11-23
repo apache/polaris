@@ -194,12 +194,19 @@ When deploying Polaris in production, consider the following recommendations:
 
 4. **Set up monitoring**: Monitor database performance and connection metrics to identify issues early.
 
-5. **Test a restore**. Back up the Polaris metastore and protect the warehouse files it references. Restore the metastore in an isolated deployment with read access to the corresponding warehouse files. Read a representative table through an Iceberg client and compare its applicable policies with those recorded before the backup. For example, use this command for the `sales.orders` table in the `analytics` catalog.
+5. **Test a restore.** Back up the Polaris metastore together with the warehouse files it
+   references. Restore the metastore in an isolated deployment with read access to those files.
+   Point an Iceberg client at the restored deployment and read data from a representative table.
+
+   Compare the policies that apply to the same table before and after the restore. Run this
+   example against the source before the backup, then against the restored deployment.
 
    ```shell
    polaris policies list --catalog analytics --namespace sales --target-name orders --applicable
    ```
 
-   See [what the CLI configuration export includes]({{% relref "../command-line-interface.md#export" %}}).
+   Check which policies are inherited as well as which are attached directly. The output omits
+   attachment parameters. Save those separately if you plan to recreate attachments from a
+   [CLI configuration export]({{% relref "../command-line-interface.md#export" %}}).
 
 6. **Test failover**: If using a high-availability database setup, test failover scenarios to ensure your application handles them gracefully.

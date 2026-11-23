@@ -1689,7 +1689,7 @@ The `repair` command is a bash script wrapper used to regenerate Python client c
 
 ### Setup
 
-The `setup` command is used to automate the creation of various entities in Polaris, such as principals, roles, catalogs, namespaces, tables, views, privileges, and policies, based on a configuration file. This simplifies the process of setting up a Polaris environment. Tables and views are only exported for internal catalogs.
+Use `polaris setup` to save your Polaris configuration as YAML or apply a saved configuration.
 
 `setup` supports the following subcommands:
 
@@ -1698,7 +1698,8 @@ The `setup` command is used to automate the creation of various entities in Pola
 
 #### apply
 
-The `apply` subcommand reads a configuration file and creates the specified entities in Polaris. The configuration file must be in YAML format and define the entities to be created. Tables and views are registered only if they do not already exist. An existing table or view is left unchanged even if the current `metadata_location` differs from the one in the configuraiton file.
+`polaris setup apply` creates the entities described in a YAML file. If a table or view already exists,
+the command skips it, even when the file specifies a different `metadata_location`.
 
 ```
 usage: polaris setup apply [-h] [options] SETUP_CONFIG_FILE
@@ -1721,11 +1722,30 @@ polaris setup apply setup-config.yaml
 
 #### export
 
-Use `polaris setup export` to write configuration as YAML for `polaris setup apply`. For disaster recovery, also back up the Polaris metastore and the files in warehouse storage.
+Use `polaris setup export` to save the current configuration as YAML. For disaster recovery,
+also back up the Polaris metastore and the storage files it references.
 
-Exported policies are represented as a list with explicit `name` and `namespace` fields so policies with the same name in different namespaces are preserved. The `apply` subcommand also accepts the legacy policy mapping keyed by name, but that format cannot represent duplicate policy names because YAML mapping keys must be unique. The export omits policy attachments. To recreate them with `setup apply`, record the attachment targets separately and add them to each policy’s `attach` list.
+**Tables and views.** Add `--include-tables-and-views` to include Iceberg tables and views from
+internal catalogs. The export omits generic tables. The CLI loads each table and view individually,
+which can take time in a large catalog. It skips tables without a metadata location, such as staged tables.
 
-Add `--include-tables-and-views` to export table and view registrations from internal catalogs. The export lists `{name, namespace, metadata_location}` for each registration, sorted by namespace and name. It does not copy files. `setup apply` registers missing tables and views from those locations and skips existing ones. The referenced metadata and data files must still be accessible. Staged tables within a transaction are skipped. Because each table and view is loaded individually, this can significantly increase export time for catalogs with many tables.
+The YAML lists each registration's `name`, `namespace`, and `metadata_location`, sorted by
+namespace and name. `setup apply` uses these locations to register missing tables and views.
+The export copies no files, so keep the original metadata and data files accessible.
+
+**Policies.** The export saves each policy definition with its name and namespace, so policies in
+different namespaces can share a name. `setup apply` also accepts the older format keyed by policy
+name if all names in the mapping are unique.
+
+The export omits policy attachments. To recreate them, record each attachment's target type,
+path, and any `parameters` before the backup. Add those values to the policy's `attach` list
+before running `setup apply`. For a catalog target, omit the path.
+
+If a name in the target path contains a literal dot, leave that attachment out of the YAML. The
+CLI splits the path at every dot. After `setup apply`, use the `attachPolicy` operation in the
+[Catalog REST API]({{% relref "polaris-api-specs/polaris-catalog-api.md" %}}). For example, to
+attach a policy to table `orders` in the single namespace `finance.us`, set `target` to
+`{"type": "table-like", "path": ["finance.us", "orders"]}`.
 
 ```
 usage: polaris setup export [-h] [options]
@@ -1739,10 +1759,14 @@ Command Options:
 
 ##### Examples
 
+```shell
+polaris setup export > setup-config.yaml
 ```
-polaris setup export
 
-polaris setup export --include-tables-and-views
+Use the flag to include Iceberg table and view registrations.
+
+```shell
+polaris setup export --include-tables-and-views > setup-with-tables.yaml
 ```
 
 ### Find
