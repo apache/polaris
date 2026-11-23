@@ -185,14 +185,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @NonNull PolarisCallContext callCtx,
       @NonNull BasePersistence ms,
       @NonNull PolarisBaseEntity entity) {
-    dropEntity(callCtx, ms, entity, false);
+    dropEntity(callCtx, ms, entity, false, false);
   }
 
   private boolean dropEntity(
       @NonNull PolarisCallContext callCtx,
       @NonNull BasePersistence ms,
       @NonNull PolarisBaseEntity entity,
-      boolean requireUnchanged) {
+      boolean requireUnchanged,
+      boolean cleanup) {
 
     // validate the entity type and subtype
     getDiagnostics().checkNotNull(entity, "unexpected_null_dpo");
@@ -203,7 +204,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // Remove the main entity itself first-thing; once its id no longer resolves successfully
     // it will be pruned out of any grant-record lookups anyways.
-    if (requireUnchanged) {
+    // An Iceberg table purge must remove the entity before it can schedule file cleanup. A
+    // concurrent unregister may have already removed it and returned its metadata to the caller.
+    if (requireUnchanged
+        || (cleanup && entity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE)) {
       try {
         ms.deleteEntityIfNotChanged(callCtx, entity);
       } catch (RetryOnConcurrencyException e) {
@@ -1285,7 +1289,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // simply delete that entity. Will be removed from entities_active, added to the
     // entities_dropped and its version will be changed.
-    if (!dropEntity(callCtx, ms, refreshEntityToDrop, requireUnchanged)) {
+    if (!dropEntity(callCtx, ms, refreshEntityToDrop, requireUnchanged, cleanup)) {
       return new DropEntityResult(
           BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
     }

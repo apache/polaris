@@ -57,6 +57,7 @@ import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -83,6 +84,54 @@ class JdbcBasePersistenceImplTest {
   private static final long POLICY_TARGET_ID = 12L;
   private static final long POLICY_CATALOG_ID = 13L;
   private static final long POLICY_ID = 14L;
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void purgeAndUnregisterAllowOnlyOneDeletion(boolean unregisterWins)
+      throws SQLException, IOException {
+    TestPersistence tp = newTestPersistence(newH2DatasourceOperations("purge_unregister"));
+    JdbcBasePersistenceImpl persistence = Mockito.spy(tp.impl());
+    PolarisCallContext context = new PolarisCallContext(REALM_CONTEXT, persistence);
+    AtomicOperationMetaStoreManager manager =
+        new AtomicOperationMetaStoreManager(Clock.systemUTC(), new PolarisDefaultDiagServiceImpl());
+    PolarisBaseEntity table =
+        new PolarisBaseEntity.Builder(newTestEntity(721L, "table", 1, 1))
+            .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+            .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
+            .build();
+    persistence.writeEntity(context, table, false, null);
+    Mockito.doAnswer(
+            invocation -> {
+              Object beforeConcurrentDeletion = invocation.callRealMethod();
+              DropEntityResult winner =
+                  unregisterWins
+                      ? manager.dropEntityIfNotChanged(tp.callCtx(), null, table)
+                      : manager.dropEntityIfExists(tp.callCtx(), null, table, Map.of(), true);
+              assertThat(winner.isSuccess()).isTrue();
+              return beforeConcurrentDeletion;
+            })
+        .when(persistence)
+        .lookupEntity(context, table.getCatalogId(), table.getId(), table.getTypeCode());
+
+    DropEntityResult loser =
+        unregisterWins
+            ? manager.dropEntityIfExists(context, null, table, Map.of(), true)
+            : manager.dropEntityIfNotChanged(context, null, table);
+
+    assertThat(loser.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+    assertThat(loser.getCleanupTaskId()).isNull();
+    assertThat(
+            tp.impl()
+                .lookupEntity(
+                    tp.callCtx(), table.getCatalogId(), table.getId(), table.getTypeCode()))
+        .isNull();
+    assertThat(
+            manager
+                .loadTasks(tp.callCtx(), "testExecutor", PageToken.readEverything())
+                .getEntities())
+        .hasSize(unregisterWins ? 0 : 1);
+  }
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})

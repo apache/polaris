@@ -96,6 +96,9 @@ before removal, the operation returns `503` with a `Retry-After` header so the c
 can retry. A successful response includes every commit completed before removal.
 Further commits to the removed registry entry fail.
 
+A concurrent purge must remove the registry entry before it can schedule file cleanup.
+If unregister removes the entry first, the purge fails without scheduling cleanup.
+
 This operation is unavailable when `polaris.idempotency.enabled=true`: catalog
 configuration omits the endpoint, and direct requests return `400` before removal.
 Unregister cannot replay a result after deleting the entity that stores its idempotency

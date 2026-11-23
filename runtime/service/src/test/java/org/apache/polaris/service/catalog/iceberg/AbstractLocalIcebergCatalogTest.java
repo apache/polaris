@@ -2530,6 +2530,38 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         .hasMessageContaining("UNEXPECTED_ERROR_SIGNALED");
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testDropTableWithConcurrentChange(boolean purge) {
+    catalog.createNamespace(NS);
+    BaseTable table = (BaseTable) catalog.buildTable(TABLE, SCHEMA).create();
+    String metadataLocation = table.operations().current().metadataFileLocation();
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(
+            new DropEntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+    catalog.setMetaStoreManager(spiedManager);
+
+    assertThatThrownBy(() -> catalog.dropTable(TABLE, purge))
+        .isInstanceOfSatisfying(
+            PolarisServiceUnavailableException.class,
+            failure -> {
+              try (Response response = new PolarisExceptionMapper().toResponse(failure)) {
+                assertThat(response.getStatus()).isEqualTo(503);
+                assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo("3");
+              }
+            })
+        .hasMessageContaining("retry drop");
+    assertThat(catalog.tableExists(TABLE)).isTrue();
+    assertThat(fileIO.newInputFile(metadataLocation).exists()).isTrue();
+    assertThat(
+            metaStoreManager
+                .loadTasks(polarisContext, "testExecutor", PageToken.readEverything())
+                .getEntities())
+        .isEmpty();
+  }
+
   @Test
   public void testDropTableWithUndroppableEntity() {
     catalog.createNamespace(NS);

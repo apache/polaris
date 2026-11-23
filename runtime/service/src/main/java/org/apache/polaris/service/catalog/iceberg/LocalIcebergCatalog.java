@@ -682,6 +682,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               "Table %s cannot be dropped: %s",
               tableIdentifier, dropEntityResult.getExtraInformation());
 
+        case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
+          throw new PolarisServiceUnavailableException(
+              3, "Table %s changed concurrently; retry drop", tableIdentifier);
+
         default:
           throw new ServiceFailureException(
               "Failed to drop table %s, status=%s, extraInfo=%s",
