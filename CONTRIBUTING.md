@@ -141,7 +141,7 @@ When disclosing, please do it in two places, so that it is visible both in the r
   Assisted-By: <Tool name> <Tool version> (<Model name> <Model version>)
   ```
 
-  `Generated-By` (the trailer suggested by the ASF Generative Tooling Guidance) and `Co-Authored-By` are also acceptable. Be aware that GitHub may display `Co-Authored-By` trailers as co-authors, and that tools are not contributors: using it for an AI tool may create confusion with human co-authors.
+  `Generated-By` (the trailer suggested by the ASF Generative Tooling Guidance) is also fine. Please avoid `Co-Authored-By` for AI tools: tools are not contributors, and that trailer is meant for people who can be contacted about the change. GitHub may also display it as a co-author, which can be confused with human co-authors. If a pull request already uses it, there is no need to rewrite history; committers may adjust it when merging.
 * **Pull request description**: mention which tool(s) were used and, where possible, which parts of the change were AI-generated, rather than only stating that AI was used. Tick the corresponding checkbox in the pull request template.
 
 Example of a pull request description:

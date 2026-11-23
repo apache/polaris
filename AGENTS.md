@@ -294,8 +294,9 @@ code or comments.
 
 The PR description SHOULD also mention the tool and model used, and which parts of
 the change were AI-generated. Never tick the PR template checkbox confirming that
-the author understands the change and can explain it: only the human author can 
-do it. See
+the author understands the change and can explain it: only the human author can
+do it. Tell the human author what disclosure you added, and which checkbox is
+theirs to tick, in your output (e.g. the CLI log). See
 [CONTRIBUTING.md](CONTRIBUTING.md#guidelines-for-ai-assisted-contributions).
 The human author owns the contribution.
 
