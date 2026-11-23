@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth.internal.broker;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.IncorrectClaimException;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
@@ -156,8 +157,16 @@ public class JWTBroker implements TokenBroker {
     // enforced on the token-exchange path. Token construction stays inside the try: a well-signed
     // token that misses a mandatory claim must not surface as a raw NPE.
     final InternalPolarisToken internalToken;
+    final String tokenRealm;
     try {
       verifier.verify(decodedJWT);
+      tokenRealm = decodedJWT.getClaim(CLAIM_KEY_REALM).asString();
+      if (tokenRealm != null && !tokenRealm.equals(realmId)) {
+        throw new IncorrectClaimException(
+            String.format("The Claim '%s' value doesn't match the required one.", CLAIM_KEY_REALM),
+            CLAIM_KEY_REALM,
+            decodedJWT.getClaim(CLAIM_KEY_REALM));
+      }
       internalToken =
           InternalPolarisToken.of(
               decodedJWT.getSubject(),
@@ -167,10 +176,6 @@ public class JWTBroker implements TokenBroker {
     } catch (Exception e) {
       throw (NotAuthorizedException)
           new NotAuthorizedException("Failed to verify the token").initCause(e);
-    }
-    String tokenRealm = decodedJWT.getClaim(CLAIM_KEY_REALM).asString();
-    if (tokenRealm != null && !tokenRealm.equals(realmId)) {
-      throw new NotAuthorizedException("Failed to verify the token");
     }
     String credentialsVersion = decodedJWT.getClaim(CLAIM_KEY_CREDENTIALS_VERSION).asString();
     return new VerifiedToken(internalToken, credentialsVersion, tokenRealm);

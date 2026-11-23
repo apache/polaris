@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.IncorrectClaimException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.time.Clock;
 import java.time.Instant;
@@ -208,17 +209,28 @@ public class JWTSymmetricKeyGeneratorTest {
     assertThat(decodedScope(token.getAccessToken())).isEqualTo("PRINCIPAL_ROLE:TEST");
   }
 
-  @ParameterizedTest
-  @CsvSource({"realm1, true", "realm2, false"})
-  public void testVerifyChecksRealm(String verifyingRealm, boolean recognized) {
+  @Test
+  public void testVerifyAcceptsTokenFromSameRealm() {
     String token = generateToken(tokenBroker("realm1"), "PRINCIPAL_ROLE:TEST").getAccessToken();
     assertThat(decodedRealm(token)).isEqualTo("realm1");
 
-    assertThat(tokenBroker(verifyingRealm).verify(token))
-        .isInstanceOf(
-            recognized
-                ? TokenVerificationResult.Recognized.class
-                : TokenVerificationResult.Invalid.class);
+    assertThat(tokenBroker("realm1").verify(token))
+        .isInstanceOf(TokenVerificationResult.Recognized.class);
+  }
+
+  @Test
+  public void testVerifyRejectsTokenFromOtherRealm() {
+    String token = generateToken(tokenBroker("realm1"), "PRINCIPAL_ROLE:TEST").getAccessToken();
+
+    assertThat(tokenBroker("realm2").verify(token))
+        .isInstanceOfSatisfying(
+            TokenVerificationResult.Invalid.class,
+            invalid -> {
+              assertThat(invalid.message()).isEqualTo("Failed to verify the token");
+              assertThat(invalid.cause())
+                  .isInstanceOf(IncorrectClaimException.class)
+                  .hasMessageContaining(JWTBroker.CLAIM_KEY_REALM);
+            });
   }
 
   @Test
