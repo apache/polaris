@@ -739,8 +739,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         case ENTITY_UNDROPPABLE ->
             throw new ForbiddenException("Table %s cannot be unregistered", identifier);
         case TARGET_ENTITY_CONCURRENTLY_MODIFIED ->
-            throw new ServiceFailureException(
-                "Table %s changed concurrently; retry unregister", identifier);
+            throw new PolarisServiceUnavailableException(
+                3, "Table %s changed concurrently; retry unregister", identifier);
         default ->
             throw new ServiceFailureException(
                 "Failed to unregister table %s: %s", identifier, result.getReturnStatus());

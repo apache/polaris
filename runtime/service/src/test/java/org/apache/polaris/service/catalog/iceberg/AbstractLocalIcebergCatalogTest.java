@@ -45,6 +45,8 @@ import com.google.common.collect.Streams;
 import io.quarkus.test.junit.QuarkusMock;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
@@ -180,6 +182,7 @@ import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
+import org.apache.polaris.service.exception.PolarisExceptionMapper;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -2116,7 +2119,14 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     catalog.setMetaStoreManager(concurrentManager);
 
     assertThatThrownBy(() -> catalog.unregisterTable(TABLE))
-        .isInstanceOf(ServiceFailureException.class)
+        .isInstanceOfSatisfying(
+            PolarisServiceUnavailableException.class,
+            failure -> {
+              try (Response response = new PolarisExceptionMapper().toResponse(failure)) {
+                assertThat(response.getStatus()).isEqualTo(503);
+                assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo("3");
+              }
+            })
         .hasMessageContaining("retry unregister");
     assertThat(catalog.tableExists(TABLE)).isTrue();
     assertThat(catalog.loadTable(TABLE).properties()).containsEntry("concurrent-commit", "kept");
@@ -2125,6 +2135,61 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     TableMetadata unregistered = catalog.unregisterTable(TABLE);
     assertThat(unregistered.properties()).containsEntry("concurrent-commit", "kept");
     assertThat(catalog.tableExists(TABLE)).isFalse();
+  }
+
+  @Test
+  public void testUnregisterTableRejectsInFlightCommit() {
+    catalog.createNamespace(NS);
+    BaseTable table = (BaseTable) catalog.buildTable(TABLE, SCHEMA).create();
+    TableOperations operations = table.operations();
+    TableMetadata before = operations.current();
+    TableMetadata updated =
+        TableMetadata.buildFrom(before).setProperties(Map.of("late-commit", "rejected")).build();
+    IcebergTableLikeEntity entity = readTableEntity(TABLE);
+    List<PolarisEntityCore> parentPath = catalogPath(NS);
+    List<EntityResult> updateResults = new ArrayList<>();
+    PolarisMetaStoreManager concurrentManager = spy(metaStoreManager);
+    doAnswer(
+            invocation -> {
+              TableMetadata unregistered = catalog.unregisterTable(TABLE);
+              assertThat(unregistered.metadataFileLocation())
+                  .isEqualTo(before.metadataFileLocation());
+              EntityResult result = (EntityResult) invocation.callRealMethod();
+              updateResults.add(result);
+              return result;
+            })
+        .when(concurrentManager)
+        .updateEntityPropertiesIfNotChanged(any(), anyList(), any());
+    catalog.setMetaStoreManager(concurrentManager);
+
+    assertThatThrownBy(() -> operations.commit(before, updated))
+        .isInstanceOf(RuntimeException.class);
+
+    assertThat(updateResults)
+        .singleElement()
+        .satisfies(result ->
+            assertThat(result.getReturnStatus())
+                .isIn(
+                    BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
+                    BaseResult.ReturnStatus.ENTITY_NOT_FOUND,
+                    BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED));
+    assertThat(
+            metaStoreManager
+                .loadEntity(polarisContext, entity.getCatalogId(), entity.getId(), entity.getType())
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+    assertThat(
+            metaStoreManager
+                .readEntityByName(
+                    polarisContext,
+                    parentPath,
+                    PolarisEntityType.TABLE_LIKE,
+                    PolarisEntitySubType.ICEBERG_TABLE,
+                    TABLE.name())
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+    assertThat(catalog.listTables(NS)).doesNotContain(TABLE);
+    assertThat(fileIO.newInputFile(before.metadataFileLocation()).exists()).isTrue();
   }
 
   @Test

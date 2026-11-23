@@ -92,9 +92,9 @@ to register the table again or register it in another catalog.
 The caller needs `TABLE_DROP` and `TABLE_READ_PROPERTIES`. The operation applies only
 to Iceberg tables. Generic tables and views return
 `404`; federated catalogs are not supported. If a concurrent commit changes the table
-before removal, the operation returns `503` and the client must retry. A successful
-response includes every commit completed before removal. Further commits to the
-removed registry entry fail.
+before removal, the operation returns `503` with a `Retry-After` header so the client
+can retry. A successful response includes every commit completed before removal.
+Further commits to the removed registry entry fail.
 
 This operation is unavailable when `polaris.idempotency.enabled=true`: catalog
 configuration omits the endpoint, and direct requests return `400` before removal.
