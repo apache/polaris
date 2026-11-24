@@ -120,21 +120,19 @@ public class StorageMappingSerializationTest {
 
   @Test
   public void testUnknownTargetTypeIsRejected() {
-    assertThatThrownBy(
-            () ->
-                mapper.readValue(
-                    "{\"type\":\"view\",\"path\":[\"finance\",\"v\"]}", StorageMappingTarget.class))
+    assertThatThrownBy(() ->
+            mapper.readValue(
+                "{\"type\":\"view\",\"path\":[\"finance\",\"v\"]}", StorageMappingTarget.class))
         .isInstanceOf(InvalidFormatException.class)
         .hasMessageContaining("view");
   }
 
   @Test
   public void testMissingRequiredFieldIsRejected() {
-    assertThatThrownBy(
-            () ->
-                mapper.readValue(
-                    "{\"target\":{\"type\":\"table\",\"path\":[\"a\",\"b\"]}}",
-                    CreateStorageMappingRequest.class))
+    assertThatThrownBy(() ->
+            mapper.readValue(
+                "{\"target\":{\"type\":\"table\",\"path\":[\"a\",\"b\"]}}",
+                CreateStorageMappingRequest.class))
         .isInstanceOf(MismatchedInputException.class)
         .hasMessageContaining("storageConfigurationName");
   }
