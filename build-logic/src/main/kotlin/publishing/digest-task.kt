@@ -43,22 +43,23 @@ abstract class GenerateDigest @Inject constructor(objectFactory: ObjectFactory) 
   @Suppress("unused", "UnstableApiUsage")
   @get:OutputFiles
   val outputFiles =
-    objectFactory.fileCollection().convention(files.map { file -> digestFileForInput(file) })
+    objectFactory
+      .fileCollection()
+      .convention(
+        files.elements.zip(algorithm) { inputs, algo ->
+          inputs.map { digestFileForInput(it.asFile, algo) }
+        },
+      )
 
   @TaskAction
   fun generate() {
     files.files.forEach { input -> digest(input) }
   }
 
-  private fun digestFileForInput(input: File): File {
-    val algo = algorithm.get()
-    return input.parentFile.resolve("${input.name}.${algo.replace("-", "").lowercase()}")
-  }
-
   private fun digest(input: File) {
     val algo = algorithm.get()
     logger.info("Generating {} digest for '{}'", algo, input)
-    val digestFile = digestFileForInput(input)
+    val digestFile = digestFileForInput(input, algo)
     val md = MessageDigest.getInstance(algo)
     input.inputStream().use {
       val buf = ByteArray(8192)
@@ -76,6 +77,9 @@ abstract class GenerateDigest @Inject constructor(objectFactory: ObjectFactory) 
     }
   }
 }
+
+private fun digestFileForInput(input: File, algorithm: String): File =
+  input.parentFile.resolve("${input.name}.${algorithm.replace("-", "").lowercase()}")
 
 fun Project.digestTaskOutputs(task: TaskProvider<*>): TaskProvider<GenerateDigest> {
   val digestTask = tasks.register("digest${task.name.capitalized()}", GenerateDigest::class.java)
