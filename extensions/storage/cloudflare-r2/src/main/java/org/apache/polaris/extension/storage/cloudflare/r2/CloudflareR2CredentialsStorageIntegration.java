@@ -50,9 +50,8 @@ import org.slf4j.LoggerFactory;
  * credentialVendingMechanism} is {@code R2_LOCAL_SIGNING}, scoped to one bucket and the table's key
  * prefixes. Credentials are minted locally from the server-side parent token (see {@link
  * CloudflareR2TemporaryCredentialSigner}); no call to Cloudflare is made. The token subject and
- * audience come from the catalog's {@code endpoint}. Each time a credential is minted, the
- * integration checks the {@code endpoint}, {@code pathStyleAccess}, and {@code region} again, so a
- * stored config that never passed the mechanism's {@code validate} fails closed.
+ * audience come from the catalog's {@code endpoint}. {@link #compute} states the checks that run
+ * again each time a credential is minted.
  */
 public class CloudflareR2CredentialsStorageIntegration
     extends CachingStorageIntegration<AwsStorageConfigurationInfo> {
@@ -247,11 +246,9 @@ public class CloudflareR2CredentialsStorageIntegration
    * grant location's raw path minus exactly one leading slash, with one trailing slash added only
    * when the path has none.
    *
-   * <p>The module refuses a location with an empty path segment. This method throws an {@link
-   * IllegalArgumentException} for a grant location that holds {@code //} anywhere after the bucket,
-   * including right after it. It checks every location before it returns, so the result does not
-   * depend on the order of the locations. {@link R2LocalSigningCredentialVendingMechanism#validate}
-   * applies the same rule to the allowed locations at create and update.
+   * <p>Every grant location must pass {@link
+   * R2LocalSigningCredentialVendingMechanism#requireNoEmptyPathSegment}. This method checks every
+   * location before it returns, so the result does not depend on the order of the locations.
    *
    * <p>An empty result scopes the credential to the whole bucket, so it is returned only when a
    * grant is literally at bucket root ({@code s3://bucket} or {@code s3://bucket/}). That path is

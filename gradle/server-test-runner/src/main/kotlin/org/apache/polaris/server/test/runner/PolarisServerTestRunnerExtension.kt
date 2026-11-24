@@ -45,6 +45,9 @@ constructor(project: Project, internal val service: Provider<PolarisServerTestSe
   /**
    * Classpath used to load the optional startup action in an isolated child classloader.
    *
+   * Only JDK classes and the startup-action SPI are shared with the plugin classloader. Include all
+   * other action dependencies, including any logging provider, on this classpath.
+   *
    * The startup action can prepare external services before the Polaris server starts and can add
    * dynamic server system properties or environment variables through the startup context.
    */
