@@ -25,4 +25,4 @@ build:
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.secrets-manager.type` |  | `string` | The type of the UserSecretsManagerFactory to use. This is the (`org.apache.polaris.core.secrets.UserSecretsManagerFactory`) identifier.  |
+| `polaris.secrets-manager.type` |  | `string` | The type of the UserSecretsManagerFactory to use. This is the (`org.apache.polaris.core.secrets.UserSecretsManagerFactory`) identifier. |

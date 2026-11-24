@@ -25,7 +25,7 @@ build:
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.realm-context.realms` |  | `list of string` | The set of realms that are supported by the realm context resolver. The first realm is  considered the default realm.  |
+| `polaris.realm-context.realms` |  | `list of string` | The set of realms that are supported by the realm context resolver. The first realm is considered the default realm. |
 | `polaris.realm-context.header-name` |  | `string` | The header name that contains the realm identifier.  |
-| `polaris.realm-context.require-header` |  | `boolean` | Whether to require the realm header to be present in the request. If this is true and the realm  header is not present, the request will be rejected. If this is false and the realm header is  not present, the default realm will be used.   <br><br>Note: this is actually only enforced in production setups. |
-| `polaris.realm-context.type` |  | `string` | The type of the realm context resolver. Must be a registered (`org.apache.polaris.service.context.RealmContextResolver`) identifier.  |
+| `polaris.realm-context.require-header` |  | `boolean` | Whether to require the realm header to be present in the request. If this is true and the realm header is not present, the request will be rejected. If this is false and the realm header is not present, the default realm will be used. <br><br>Note: this is actually only enforced in production setups. |
+| `polaris.realm-context.type` |  | `string` | The type of the realm context resolver. Must be a registered (`org.apache.polaris.service.context.RealmContextResolver`) identifier. |
