@@ -1068,14 +1068,17 @@ paths:
 
         For a staged create, the storage configuration is chosen when the create is staged, as for a
         direct create: the location is checked against it, and any credentials returned come from it.
-        The commit creates the table on that storage configuration and checks the location against it
-        again. If at the commit the name resolves to a different storage configuration (compared by
-        identity, see below), for example because a table or namespace mapping was created, replaced
-        or removed in between, the commit is refused with 409. Editing the catalog's own
-        `storageConfigInfo` is not such a change. The commit is also refused with 409 if the server
-        can no longer tell which storage configuration was chosen at staging, for example because the
-        staged create is older than a limit the server sets. This does not apply while the catalog has
-        no storage configurations.
+        The server records the choice for the staged table. The commit creates the table on that
+        storage configuration, checks the location against it again, and records the mapping for the
+        table's name; the mapping is not listed before the commit. Creating, replacing or removing a
+        namespace mapping, or changing the catalog's own `storageConfigInfo`, between staging and
+        commit does not change the storage configuration of the staged table. The commit is refused
+        with 409 if by then the table's name has an explicit mapping to a different storage
+        configuration (compared by identity, see below), if the storage configuration chosen at
+        staging has been deleted, or if the server can't match the commit to its staging. None of
+        this applies until a storage configuration has been created in the catalog. Several staged
+        creates of the same name can be in progress at once, each with its own storage configuration;
+        the first commit creates the table and the others fail, as they do today.
 
         An Iceberg table or view keeps the storage configuration it was created on for as long as it
         exists. A namespace mapping is a default for what is created afterwards: creating, replacing
