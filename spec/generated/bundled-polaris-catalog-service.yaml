@@ -2359,13 +2359,16 @@ paths:
         The call maps the table name to the storage configuration, as `createStorageMapping` in the
         Polaris management API does, then creates the table as the Iceberg REST `createTable`
         operation would. If the name is already mapped to this storage configuration, the existing
-        mapping is used. If the table is not created, the server removes a mapping created by this
-        call. This is best effort: after a server failure the mapping can remain.
-        `listStorageMappings` in the management API then shows it with `targetExists` set to false,
-        and `removeStorageMapping` removes it. With `stage-create`, the mapping is made at staging for
-        the staged table, as for any staged create (see `createStorageMapping`), and recorded for the
-        table name when the commit creates the table. So it is not listed before the commit, and not
-        at all if the commit never happens.
+        mapping is used. This is the same as an Iceberg REST `createTable` with the table property
+        `polaris.storage-configuration` set to the storage configuration's name (see
+        `createStorageMapping`). If the request also sets that property, it must name the same
+        storage configuration, or the request is a bad request. If the table is not created, the
+        server removes a mapping created by this call. This is best effort: after a server failure
+        the mapping can remain. `listStorageMappings` in the management API then shows it with
+        `targetExists` set to false, and `removeStorageMapping` removes it. With `stage-create`, the
+        mapping is made at staging for the staged table, as for any staged create (see
+        `createStorageMapping`), and recorded for the table name when the commit creates the table.
+        So it is not listed before the commit, and not at all if the commit never happens.
       parameters:
         - $ref: '#/components/parameters/data-access'
         - $ref: '#/components/parameters/idempotency-key'

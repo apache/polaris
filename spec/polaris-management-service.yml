@@ -1035,17 +1035,28 @@ paths:
         - A namespace mapping can be created whether or not the namespace exists. If the namespace
           already has a mapping, it is replaced.
 
-        Storage mappings are where Polaris records which storage configuration a namespace, table or
-        view uses. A mapping is explicit or automatic (see StorageMapping.origin). This operation
-        creates explicit mappings, and so do createNamespaceOnStorageConfiguration and
-        createTableOnStorageConfiguration in the Polaris catalog API. Only namespaces and Iceberg
-        tables can have an explicit mapping, so a target of type `view` is a bad request.
+        Storage mappings are where Polaris records which storage configuration a table or view uses,
+        and which one a namespace gives to what is created inside it. A mapping is explicit or
+        automatic (see StorageMapping.origin). This operation creates explicit mappings, and so do
+        createNamespaceOnStorageConfiguration and createTableOnStorageConfiguration in the Polaris
+        catalog API, and the table property below. Only namespaces and Iceberg tables can have an
+        explicit mapping, so a target of type `view` is a bad request.
+
+        An Iceberg REST createTable request, direct or staged, can name a storage configuration in
+        the table property `polaris.storage-configuration`. This has the same effect as
+        createTableOnStorageConfiguration: the table name is mapped explicitly to that storage
+        configuration, and the table is created on it. The request is refused (409) if the name
+        already has an explicit mapping to a different storage configuration, and is a bad request if
+        the catalog has no storage configuration with that name. Polaris removes the property before
+        it creates the table metadata, so it is never part of the table's metadata or properties.
+        Like other properties that start with `polaris.`, it can't be set by a table commit. Without
+        the property, the table is created as described below.
 
         A namespace, Iceberg table or view is created on the first of these that applies, through the
         Iceberg REST API (including a staged create and `registerTable`) and through the Polaris
         catalog API:
         1. the storage configuration of the explicit mapping of its own name (namespaces and Iceberg
-           tables only);
+           tables only), including one made by the create itself;
         2. the storage configuration of the mapping of the nearest enclosing namespace that has one,
            as it is at the time of the create (for a staged create, at staging);
         3. the catalog's own `storageConfigInfo`. Once a storage configuration has been created in
@@ -1075,18 +1086,18 @@ paths:
         commit does not change the storage configuration of the staged table. The commit is refused
         with 409 if by then the table's name has an explicit mapping to a different storage
         configuration (compared by identity, see below), if the storage configuration chosen at
-        staging has been deleted, or if the server can't match the commit to its staging. None of
-        this applies until a storage configuration has been created in the catalog. Several staged
-        creates of the same name can be in progress at once, each with its own storage configuration;
-        the first commit creates the table and the others fail, as they do today.
+        staging has been deleted, or if the server can't match the commit to its staging. Until a
+        storage configuration has been created in the catalog, staged creates work as before.
+        Several staged creates of the same name can be in progress at once, each with its own storage
+        configuration; the first commit creates the table and the others fail, as they do today.
 
         An Iceberg table or view keeps the storage configuration it was created on for as long as it
         exists. A namespace mapping is a default for what is created afterwards: creating, replacing
         or removing it does not change the storage configuration of any existing table or view,
-        inside the namespace or below it, and does not move any existing namespace. The mapping of an
-        existing table or view is never changed: an explicit table mapping can't be created for an
-        existing table or removed from one, and automatic mappings are only created and removed by
-        the server.
+        inside the namespace or below it, and does not move any existing namespace. The storage
+        configuration in the mapping of an existing table or view never changes: an explicit table
+        mapping can't be created for an existing table or removed from one, and automatic mappings
+        are only created and removed by the server.
 
         A rename does not change the storage configuration of a table or view, and does not move it.
         Its mapping, explicit or automatic, moves with it: after the rename, the new name is mapped and
@@ -2132,8 +2143,9 @@ components:
             - automatic
           description: |
             How the mapping was created.
-            - `explicit`: by createStorageMapping, or by a create on a storage configuration in the
-              Polaris catalog API. It stays when its target is dropped.
+            - `explicit`: by createStorageMapping, by a create on a storage configuration in the
+              Polaris catalog API, or by a table create with the `polaris.storage-configuration`
+              property. It stays when its target is dropped.
             - `automatic`: by the server, for an Iceberg table or view created without an explicit
               mapping of its own. It names the storage configuration the table or view was created
               on, and it is removed when the table or view is dropped (see createStorageMapping).
