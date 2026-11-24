@@ -941,8 +941,7 @@ public class DynamoDbBasePersistence implements BasePersistence {
       Exception cause, PolarisBaseEntity expected) {
     return new RetryOnConcurrencyException(
         cause,
-        "Entity '%s' id '%s' concurrently modified; expected entityVersion=%s,"
-            + " grantRecordsVersion=%s",
+        "Entity '%s' id '%s' concurrently modified; expected entityVersion=%s, grantRecordsVersion=%s",
         expected.getName(),
         expected.getId(),
         expected.getEntityVersion(),

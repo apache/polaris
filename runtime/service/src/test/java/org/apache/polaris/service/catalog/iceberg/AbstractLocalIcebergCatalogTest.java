@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.iceberg;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Fail.fail;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
@@ -2258,17 +2259,24 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         .updateEntityPropertiesIfNotChanged(any(), anyList(), any());
     catalog.setMetaStoreManager(concurrentManager);
 
-    assertThatThrownBy(() -> operations.commit(before, updated))
-        .isInstanceOf(RuntimeException.class);
+    Throwable commitFailure = catchThrowable(() -> operations.commit(before, updated));
 
     assertThat(updateResults)
         .singleElement()
-        .satisfies(result ->
-            assertThat(result.getReturnStatus())
-                .isIn(
-                    BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
-                    BaseResult.ReturnStatus.ENTITY_NOT_FOUND,
-                    BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED));
+        .satisfies(result -> {
+          switch (result.getReturnStatus()) {
+            case TARGET_ENTITY_CONCURRENTLY_MODIFIED ->
+                assertThat(commitFailure).isInstanceOf(CommitConflictException.class);
+            case ENTITY_NOT_FOUND ->
+                assertThat(commitFailure)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Unknown error status for identifier " + TABLE)
+                    .hasMessageContaining("ENTITY_NOT_FOUND");
+            case CATALOG_PATH_CANNOT_BE_RESOLVED ->
+                assertThat(commitFailure).isInstanceOf(NotFoundException.class);
+            default -> fail("Unexpected commit status: %s", result.getReturnStatus());
+          }
+        });
     assertThat(
             metaStoreManager
                 .loadEntity(polarisContext, entity.getCatalogId(), entity.getId(), entity.getType())

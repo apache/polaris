@@ -234,8 +234,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                     ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, values, params));
         if (rowsUpdated == 0) {
           throw new RetryOnConcurrencyException(
-              "Entity '%s' id '%s' concurrently modified; expected entity_version=%s,"
-                  + " grant_records_version=%s",
+              "Entity '%s' id '%s' concurrently modified; expected entity_version=%s, grant_records_version=%s",
               originalEntity.getName(),
               originalEntity.getId(),
               originalEntity.getEntityVersion(),
@@ -775,8 +774,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format(
-              "Failed to retrieve grant records for securableCatalogId: %s securableId: %s due to"
-                  + " %s",
+              "Failed to retrieve grant records for securableCatalogId: %s securableId: %s due to %s",
               securableCatalogId, securableId, e.getMessage()),
           e);
     }

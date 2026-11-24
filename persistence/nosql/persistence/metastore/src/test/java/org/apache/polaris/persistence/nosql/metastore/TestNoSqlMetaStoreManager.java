@@ -160,14 +160,12 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
 
   @Override
   @Disabled(
-      "Nothing in the code base calls 'loadTasks', the contract of that function is not what the"
-          + " test exercises")
+      "Nothing in the code base calls 'loadTasks', the contract of that function is not what the test exercises")
   protected void testLoadTasksInParallel() {}
 
   @Override
   @Disabled(
-      "Nothing in the code base calls 'loadTasks', the contract of that function is not what the"
-          + " test exercises")
+      "Nothing in the code base calls 'loadTasks', the contract of that function is not what the test exercises")
   protected void testLoadTasks() {}
 
   @Override
@@ -1158,9 +1156,9 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   @Override
   @Test
   @Disabled(
-      "The test is not applicable to the NoSQL metastore implementation, because both the creation"
-          + " and modification timestamps are enforced by the implementation and cannot be tweaked"
-          + " by call sites")
+      "The test is not applicable to the NoSQL metastore implementation, "
+          + "because both the creation and modification timestamps are enforced by the implementation and "
+          + "cannot be tweaked by call sites")
   protected void testCreatePrincipalReturnedEntitySameAsPersisted() {}
 
   @Test

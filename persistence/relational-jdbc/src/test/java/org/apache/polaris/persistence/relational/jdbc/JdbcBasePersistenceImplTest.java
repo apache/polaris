@@ -22,6 +22,7 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doCallRealMethod;
@@ -225,6 +226,43 @@ class JdbcBasePersistenceImplTest {
                 .lookupEntity(context, role.getCatalogId(), role.getId(), role.getTypeCode())
                 .getGrantRecordsVersion())
         .isEqualTo(2);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void dropCleanupFailureDependsOnConditionalDeletion(boolean conditional)
+      throws SQLException, IOException {
+    TestPersistence tp = newTestPersistence(newH2DatasourceOperations("drop_cleanup_failure"));
+    JdbcBasePersistenceImpl persistence = Mockito.spy(tp.impl());
+    PolarisCallContext context = new PolarisCallContext(REALM_CONTEXT, persistence);
+    AtomicOperationMetaStoreManager manager =
+        new AtomicOperationMetaStoreManager(Clock.systemUTC(), new PolarisDefaultDiagServiceImpl());
+    PolarisBaseEntity table =
+        new PolarisBaseEntity.Builder(newTestEntity(731L, "table", 1, 1))
+            .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+            .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
+            .build();
+    persistence.writeEntity(context, table, false, null);
+    RuntimeException cleanupFailure = new IllegalStateException("Grant cleanup failed");
+    doThrow(cleanupFailure)
+        .when(persistence)
+        .loadAllGrantRecordsOnSecurable(context, table.getCatalogId(), table.getId());
+
+    if (conditional) {
+      assertThat(manager.dropEntityIfNotChanged(context, null, table).isSuccess()).isTrue();
+    } else {
+      assertThatThrownBy(() -> manager.dropEntityIfExists(context, null, table, Map.of(), false))
+          .isSameAs(cleanupFailure);
+    }
+
+    verify(persistence)
+        .loadAllGrantRecordsOnSecurable(context, table.getCatalogId(), table.getId());
+    assertThat(
+            persistence.lookupEntity(
+                context, table.getCatalogId(), table.getId(), table.getTypeCode()))
+        .isNull();
+    assertThat(manager.loadTasks(context, "testExecutor", PageToken.readEverything()).getEntities())
+        .isEmpty();
   }
 
   @Test

@@ -352,6 +352,10 @@ public interface PolarisMetaStoreManager
   /**
    * Drop an entity only if its version still matches the supplied entity. This never schedules
    * cleanup of files. A concurrent change returns {@code TARGET_ENTITY_CONCURRENTLY_MODIFIED}.
+   *
+   * <p>Implementations can clean up auxiliary records, including grants, policy mappings, and
+   * principal secrets, on a best-effort basis after deletion. Success guarantees removal of the
+   * entity. Auxiliary records can remain after success.
    */
   default @NonNull DropEntityResult dropEntityIfNotChanged(
       @NonNull PolarisCallContext callCtx,
