@@ -94,16 +94,19 @@ if you revoke read access in Polaris at 10:15 UTC and the credential expires at 
 the client may still read for the remaining 45 minutes if the provider allows it. The credential
 response reports the expiration in milliseconds since the Unix epoch.
 
-* AWS S3, `s3.session-token-expires-at-ms`
+* AWS S3 and Cloudflare R2, `s3.session-token-expires-at-ms`
 * Azure ADLS, `adls.sas-token-expires-at-ms.<account-host>`
 * GCS, `gcs.oauth2.token-expires-at`
 
-To request shorter lifetimes for new AWS STS sessions and Azure SAS tokens, reduce
-`STORAGE_CREDENTIAL_DURATION_SECONDS` within the provider's supported range. GCS ignores this
-setting. With service account impersonation, Polaris requests one hour for the source token.
-The downscoped token uses the lifetime returned by Google, or the source token's expiration if
-Google omits the lifetime. Changing the Polaris cache lifetime (`STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS`)
-does not shorten the lifetime of a credential a client already holds.
+To shorten the lifetime of new AWS STS sessions, Azure SAS tokens, or Cloudflare R2 temporary
+credentials, lower `STORAGE_CREDENTIAL_DURATION_SECONDS` within the provider's supported range.
+If credential caching is enabled, keep `STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS` strictly below
+`STORAGE_CREDENTIAL_DURATION_SECONDS`. Changing the cache duration has no effect on credentials
+that clients already hold.
+
+GCS ignores the credential duration setting. With service account impersonation, Polaris requests
+one hour for the source token. The downscoped token uses the lifetime returned by Google, or the
+source token's expiration if Google omits the lifetime.
 
 ## When delegation cannot be satisfied
 
