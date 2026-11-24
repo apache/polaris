@@ -104,6 +104,16 @@ dependencies {
     exclude("io.dropwizard.metrics", "metrics-core")
   }
 
+  constraints {
+    implementation(libs.zookeeper) {
+      because(
+        "Hadoop 3.5.0 (via ranger-plugins-cred) brings in zookeeper 3.8.6, which is flagged by" +
+          " scanners; 3.8.7 is the fix release on the same 3.8.x line. ZooKeeper is required for" +
+          " Ranger's SolrCloud audit mode (audit.destination.solr.zookeepers)",
+      )
+    }
+  }
+
   implementation(libs.commons.lang3)
   implementation(libs.guava)
 
