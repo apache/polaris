@@ -96,7 +96,8 @@ Generates the JSON Schema from model classes.
 ./gradlew :polaris-extensions-auth-opa:generateOpaSchema
 ```
 
-**Output**: `extensions/auth/opa/opa-input-schema.json`
+**Output**: `extensions/auth/opa/opa-input-schema.json` and
+`extensions/auth/opa/opa-batch-input-schema.json`
 
 ### `validateOpaSchema`
 Validates that committed schema matches the code.
@@ -111,6 +112,9 @@ Validates that committed schema matches the code.
 
 The generated `opa-input-schema.json` documents the structure of authorization requests sent from Polaris to OPA.
 
+The generated `opa-batch-input-schema.json` documents the structure of the batch request, which carries
+many questions for one actor in a single call. It is only used when a batch policy URI is configured. Batching exists to reduce the number of HTTP calls to OPA, which speeds up large lists.
+
 ## Model Classes Reference
 
 | Class | Purpose | Key Fields |
@@ -120,6 +124,9 @@ The generated `opa-input-schema.json` documents the structure of authorization r
 | `Actor` | Principal information | `principal`, `roles` |
 | `Resource` | Resources being accessed | `targets`, `secondaries` |
 | `ResourceEntity` | Individual resource | `type`, `name`, `parents` |
+| `OpaBatchRequest` | Top-level wrapper for a batch call | `input` |
+| `OpaBatchAuthorizationInput` | Many questions for one actor | `actor`, `context`, `requests` |
+| `OpaBatchQuery` | One question in a batch | `id`, `action`, `resource` |
 | `Context` | Request metadata | `request_id`, `realm`, `properties` |
 
 See the [model package README](src/main/java/org/apache/polaris/extension/auth/opa/model/README.md) for detailed usage examples.

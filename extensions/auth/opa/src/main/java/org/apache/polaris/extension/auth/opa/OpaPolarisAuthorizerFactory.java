@@ -106,6 +106,8 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
 
     return new OpaPolarisAuthorizer(
         policyUri,
+        opaConfig.batchPolicyUri().orElse(null),
+        opaConfig.maxBatchSize(),
         httpClient,
         objectMapper,
         bearerTokenProvider,

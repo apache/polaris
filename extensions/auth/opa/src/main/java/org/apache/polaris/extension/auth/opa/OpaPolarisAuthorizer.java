@@ -18,9 +18,11 @@
  */
 package org.apache.polaris.extension.auth.opa;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -38,6 +40,7 @@ import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.polaris.core.auth.AuthorizationBatchRequest;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -60,6 +63,9 @@ import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
 import org.apache.polaris.extension.auth.opa.model.ImmutableContext;
 import org.apache.polaris.extension.auth.opa.model.ImmutableOpaAuthorizationInput;
+import org.apache.polaris.extension.auth.opa.model.ImmutableOpaBatchAuthorizationInput;
+import org.apache.polaris.extension.auth.opa.model.ImmutableOpaBatchQuery;
+import org.apache.polaris.extension.auth.opa.model.ImmutableOpaBatchRequest;
 import org.apache.polaris.extension.auth.opa.model.ImmutableOpaRequest;
 import org.apache.polaris.extension.auth.opa.model.ImmutableResource;
 import org.apache.polaris.extension.auth.opa.model.ImmutableResourceEntity;
@@ -85,6 +91,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpaPolarisAuthorizer.class);
 
   private final URI policyUri;
+  private final @Nullable URI batchPolicyUri;
+  private final int maxBatchSize;
   private final BearerTokenProvider tokenProvider;
   private final CloseableHttpClient httpClient;
   private final ObjectMapper objectMapper;
@@ -97,6 +105,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    *
    * @param policyUri The required URI for the OPA endpoint. For example, {@code
    *     https://opa.example.com/v1/polaris/allow}.
+   * @param batchPolicyUri The optional URI of the OPA batch rule. When {@code null}, batch requests
+   *     are answered with one call per question to {@code policyUri}.
+   * @param maxBatchSize The maximum number of questions sent to OPA in one batch call.
    * @param httpClient Apache HttpClient (required, injected by CDI). SSL configuration should be
    *     handled by the CDI producer.
    * @param objectMapper Jackson ObjectMapper for JSON serialization (required). Shared across
@@ -111,6 +122,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    */
   public OpaPolarisAuthorizer(
       @NonNull URI policyUri,
+      @Nullable URI batchPolicyUri,
+      int maxBatchSize,
       @NonNull CloseableHttpClient httpClient,
       @NonNull ObjectMapper objectMapper,
       @Nullable BearerTokenProvider tokenProvider,
@@ -119,12 +132,35 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       @NonNull Map<String, String> contextProperties) {
 
     this.policyUri = policyUri;
+    this.batchPolicyUri = batchPolicyUri;
+    this.maxBatchSize = maxBatchSize;
     this.tokenProvider = tokenProvider;
     this.httpClient = httpClient;
     this.objectMapper = objectMapper;
     this.requestId = requestId;
     this.realm = realm;
     this.contextProperties = contextProperties;
+  }
+
+  /** Creates an authorizer without batch support: batch requests use one call per question. */
+  public OpaPolarisAuthorizer(
+      @NonNull URI policyUri,
+      @NonNull CloseableHttpClient httpClient,
+      @NonNull ObjectMapper objectMapper,
+      @Nullable BearerTokenProvider tokenProvider,
+      @Nullable String requestId,
+      @NonNull String realm,
+      @NonNull Map<String, String> contextProperties) {
+    this(
+        policyUri,
+        null,
+        Integer.parseInt(OpaAuthorizationConfig.DEFAULT_MAX_BATCH_SIZE),
+        httpClient,
+        objectMapper,
+        tokenProvider,
+        requestId,
+        realm,
+        contextProperties);
   }
 
   /**
@@ -146,38 +182,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     for (AuthorizationIntent intent : request.intents()) {
       PolarisAuthorizableOperation operation = intent.operation();
-      List<ResourceEntity> targets;
-      List<ResourceEntity> secondaries;
-      switch (intent) {
-        case TargetlessAuthorizationIntent ignored -> {
-          targets = List.of();
-          secondaries = List.of();
-        }
-        case SingleTargetAuthorizationIntent singleTargetIntent -> {
-          targets = toResourceEntitiesFromSecurable(singleTargetIntent.target());
-          secondaries = List.of();
-        }
-        case RenameAuthorizationIntent renameIntent -> {
-          targets = toResourceEntitiesFromSecurable(renameIntent.from());
-          secondaries = toResourceEntitiesFromSecurable(renameIntent.to());
-        }
-        case PolicyAttachmentAuthorizationIntent policyAttachmentIntent -> {
-          targets = toResourceEntitiesFromSecurable(policyAttachmentIntent.policy());
-          secondaries = toResourceEntitiesFromSecurable(policyAttachmentIntent.attachedTo());
-        }
-        case RoleAssignmentAuthorizationIntent roleAssignmentIntent -> {
-          targets = toResourceEntitiesFromSecurable(roleAssignmentIntent.role());
-          secondaries = toResourceEntitiesFromSecurable(roleAssignmentIntent.assignee());
-        }
-        case PrivilegeGrantAuthorizationIntent privilegeGrantIntent -> {
-          targets = toResourceEntitiesFromSecurable(privilegeGrantIntent.grantTarget());
-          secondaries = toResourceEntitiesFromSecurable(privilegeGrantIntent.grantee());
-        }
-        case RootPrivilegeGrantAuthorizationIntent rootPrivilegeGrantIntent -> {
-          targets = List.of();
-          secondaries = toResourceEntitiesFromSecurable(rootPrivilegeGrantIntent.grantee());
-        }
-      }
+      IntentResources resources = toResources(intent);
+      List<ResourceEntity> targets = resources.targets();
+      List<ResourceEntity> secondaries = resources.secondaries();
       boolean allowed =
           queryOpa(
               buildOpaAuthorizationInput(request.principal(), operation, targets, secondaries));
@@ -197,6 +204,30 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   /**
+   * Authorizes every intent independently. With a batch policy URI configured, the intents are sent
+   * to OPA in chunks of at most {@code maxBatchSize}, one HTTP call per chunk. Without one, this
+   * falls back to one call per intent.
+   *
+   * <p>Any problem with a batch call fails the whole batch: a missing, extra or non-boolean answer
+   * is never treated as a deny, so a misconfigured policy cannot silently hide entities.
+   */
+  @Override
+  public @NonNull List<AuthorizationDecision> authorize(
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationBatchRequest batch) {
+    if (batchPolicyUri == null || batch.intents().isEmpty()) {
+      return PolarisAuthorizer.super.authorize(authzState, batch);
+    }
+    ImmutableActor actor = buildActor(batch.principal());
+    ImmutableContext context = buildContext();
+    List<AuthorizationDecision> decisions = new ArrayList<>(batch.intents().size());
+    int chunkIndex = 0;
+    for (List<AuthorizationIntent> chunk : Lists.partition(batch.intents(), maxBatchSize)) {
+      decisions.addAll(queryOpaBatch(batch.principal(), actor, context, chunk, chunkIndex++));
+    }
+    return List.copyOf(decisions);
+  }
+
+  /**
    * Sends an authorization query to the OPA server and parses the response.
    *
    * <p>Builds the OPA input JSON, sends it via HTTP POST, and checks the 'allow' field in the
@@ -209,27 +240,35 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    */
   private boolean queryOpa(ImmutableOpaAuthorizationInput input) {
     try {
-      String inputJson = buildOpaInputJson(input);
-
-      // Create HTTP POST request using Apache HttpComponents
-      HttpPost httpPost = new HttpPost(policyUri);
-      httpPost.setHeader("Content-Type", "application/json");
-
-      // Add bearer token authentication if provided
-      if (tokenProvider != null) {
-        String token = tokenProvider.getToken();
-        if (token != null && !token.isEmpty()) {
-          httpPost.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
-        }
-      }
-
-      httpPost.setEntity(new StringEntity(inputJson, ContentType.APPLICATION_JSON));
-
-      // Execute request
-      return httpClientExecute(httpPost, this::queryOpaCheckResponse);
+      return postJson(policyUri, buildOpaInputJson(input), this::queryOpaCheckResponse);
     } catch (HttpException | IOException e) {
       throw new RuntimeException("OPA query failed", e);
     }
+  }
+
+  /**
+   * POSTs a JSON body to OPA, adding the bearer token when one is configured, and handles the
+   * response with {@code responseHandler}.
+   */
+  private <T> T postJson(
+      URI uri, String json, HttpClientResponseHandler<? extends T> responseHandler)
+      throws HttpException, IOException {
+    // Create HTTP POST request using Apache HttpComponents
+    HttpPost httpPost = new HttpPost(uri);
+    httpPost.setHeader("Content-Type", "application/json");
+
+    // Add bearer token authentication if provided
+    if (tokenProvider != null) {
+      String token = tokenProvider.getToken();
+      if (token != null && !token.isEmpty()) {
+        httpPost.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+      }
+    }
+
+    httpPost.setEntity(new StringEntity(json, ContentType.APPLICATION_JSON));
+
+    // Execute request
+    return httpClientExecute(httpPost, responseHandler);
   }
 
   @VisibleForTesting
@@ -255,6 +294,122 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     }
     ObjectNode respNode = (ObjectNode) objectMapper.readTree(responseBody);
     return respNode.path("result").path("allow").asBoolean(false);
+  }
+
+  /**
+   * Asks OPA's batch rule about one chunk of intents. Questions are identified by their index in
+   * the chunk, and the response maps each of those IDs to a boolean.
+   */
+  private List<AuthorizationDecision> queryOpaBatch(
+      PolarisPrincipal principal,
+      ImmutableActor actor,
+      ImmutableContext context,
+      List<AuthorizationIntent> chunk,
+      int chunkIndex) {
+    var input = ImmutableOpaBatchAuthorizationInput.builder().actor(actor).context(context);
+    for (int i = 0; i < chunk.size(); i++) {
+      input.addRequests(buildOpaBatchQuery(String.valueOf(i), chunk.get(i)));
+    }
+
+    try {
+      String json =
+          objectMapper.writeValueAsString(
+              ImmutableOpaBatchRequest.builder().input(input.build()).build());
+      JsonNode result = postJson(batchPolicyUri, json, this::queryOpaBatchCheckResponse);
+      List<AuthorizationDecision> decisions = toDecisions(result, chunk.size());
+      LOGGER.debug(
+          "OPA batch chunk={} size={} denied={} realm={} requestId={}",
+          chunkIndex,
+          chunk.size(),
+          decisions.stream().filter(d -> !d.isAllowed()).count(),
+          realm,
+          requestId);
+      return decisions;
+    } catch (HttpException | IOException | RuntimeException e) {
+      LOGGER.warn(
+          "OPA batch query failed for principal={} chunk={} size={} realm={} requestId={}: {}",
+          principal.getName(),
+          chunkIndex,
+          chunk.size(),
+          realm,
+          requestId,
+          e.getMessage());
+      throw new RuntimeException("OPA batch query failed: " + e.getMessage(), e);
+    }
+  }
+
+  private JsonNode queryOpaBatchCheckResponse(ClassicHttpResponse response) throws IOException {
+    int statusCode = response.getCode();
+    if (statusCode != 200) {
+      throw new IOException("unexpected HTTP status " + statusCode);
+    }
+    try {
+      return objectMapper.readTree(EntityUtils.toString(response.getEntity()));
+    } catch (ParseException e) {
+      throw new IOException("failed to read the response", e);
+    }
+  }
+
+  /**
+   * Maps the {@code result} of a batch response to one decision per question, in question order.
+   * Every ID {@code 0..size-1} must be present with a JSON boolean, and no other IDs may appear.
+   */
+  private static List<AuthorizationDecision> toDecisions(JsonNode response, int size) {
+    JsonNode result = response.path("result");
+    if (!result.isObject()) {
+      throw new IllegalStateException(
+          "the response has no 'result' object; is the batch rule defined?");
+    }
+    List<AuthorizationDecision> decisions = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      JsonNode answer = result.get(String.valueOf(i));
+      if (answer == null) {
+        throw new IllegalStateException("no answer for question " + i);
+      }
+      if (!answer.isBoolean()) {
+        throw new IllegalStateException("the answer for question " + i + " is not a boolean");
+      }
+      decisions.add(
+          answer.booleanValue()
+              ? AuthorizationDecision.allow()
+              : AuthorizationDecision.deny("OPA denied authorization"));
+    }
+    if (result.size() != size) {
+      throw new IllegalStateException(
+          "expected " + size + " answers but the response has " + result.size());
+    }
+    return decisions;
+  }
+
+  /** The resource entities an intent acts on: its primary targets and its secondary entities. */
+  private record IntentResources(List<ResourceEntity> targets, List<ResourceEntity> secondaries) {}
+
+  private IntentResources toResources(AuthorizationIntent intent) {
+    return switch (intent) {
+      case TargetlessAuthorizationIntent ignored -> new IntentResources(List.of(), List.of());
+      case SingleTargetAuthorizationIntent singleTargetIntent ->
+          new IntentResources(
+              toResourceEntitiesFromSecurable(singleTargetIntent.target()), List.of());
+      case RenameAuthorizationIntent renameIntent ->
+          new IntentResources(
+              toResourceEntitiesFromSecurable(renameIntent.from()),
+              toResourceEntitiesFromSecurable(renameIntent.to()));
+      case PolicyAttachmentAuthorizationIntent policyAttachmentIntent ->
+          new IntentResources(
+              toResourceEntitiesFromSecurable(policyAttachmentIntent.policy()),
+              toResourceEntitiesFromSecurable(policyAttachmentIntent.attachedTo()));
+      case RoleAssignmentAuthorizationIntent roleAssignmentIntent ->
+          new IntentResources(
+              toResourceEntitiesFromSecurable(roleAssignmentIntent.role()),
+              toResourceEntitiesFromSecurable(roleAssignmentIntent.assignee()));
+      case PrivilegeGrantAuthorizationIntent privilegeGrantIntent ->
+          new IntentResources(
+              toResourceEntitiesFromSecurable(privilegeGrantIntent.grantTarget()),
+              toResourceEntitiesFromSecurable(privilegeGrantIntent.grantee()));
+      case RootPrivilegeGrantAuthorizationIntent rootPrivilegeGrantIntent ->
+          new IntentResources(
+              List.of(), toResourceEntitiesFromSecurable(rootPrivilegeGrantIntent.grantee()));
+    };
   }
 
   /**
@@ -289,6 +444,15 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
         .action(op.name())
         .resource(buildResource(targets, secondaries))
         .context(buildContext())
+        .build();
+  }
+
+  private ImmutableOpaBatchQuery buildOpaBatchQuery(String id, AuthorizationIntent intent) {
+    IntentResources resources = toResources(intent);
+    return ImmutableOpaBatchQuery.builder()
+        .id(id)
+        .action(intent.operation().name())
+        .resource(buildResource(resources.targets(), resources.secondaries()))
         .build();
   }
 

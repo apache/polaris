@@ -115,6 +115,8 @@ Restart the Polaris service to apply the configuration.
 |----------|----------|---------|-------------|
 | `polaris.authorization.type` | Yes | `internal` | Set to `opa` to enable OPA authorization |
 | `polaris.authorization.opa.policy-uri` | Yes | - | Full URI to the OPA policy decision endpoint (must be http or https) |
+| `polaris.authorization.opa.batch-policy-uri` | No | - | Full URI to the OPA batch policy decision endpoint, for example `http://<opa-host>:8181/v1/data/polaris/authz/batch_allow` (must be http or https). When not set, Polaris asks OPA one question per call. Set it to cut the number of OPA calls when you use entity-level list filtering. See [Batch Authorization](#batch-authorization) |
+| `polaris.authorization.opa.max-batch-size` | No | `100` | Maximum number of questions sent to OPA in one batch call. Larger batches are split into several calls, so this also caps the work OPA does in one call. Must be at least 1 |
 
 ### HTTP Configuration
 
@@ -434,6 +436,127 @@ allow if {
 {{< alert info "Best Practice" >}}
 **Explicit Allow Lists for Data Operations Only**: The example above uses an explicit allow-list approach where only catalog, namespace, and table operations are permitted. Policy and grant operations (like `CREATE_POLICY`) are automatically denied by the `default allow := false` since they're not in any allow rule. This ensures privilege management remains within Polaris's native authorization system, and new operations added in future Polaris versions will be denied by default until you explicitly allow them.
 {{< /alert >}}
+
+### Listing and Entity-Level Filtering
+
+When the catalog feature `ENABLE_ENTITY_LEVEL_LIST_FILTERING` is on, a list request (list namespaces, tables or views) works in two steps:
+
+1. Polaris first asks OPA about the container-level `LIST_*` action. If OPA allows it, the whole list is returned and nothing else is asked.
+2. If OPA denies it, Polaris asks one more question for every candidate entity, using the actions `LIST_NAMESPACE`, `LIST_TABLE` and `LIST_VIEW`. Only the entities OPA allows are returned.
+
+Your policy should handle these three actions explicitly. With `default allow := false`, a policy that does not mention them hides every entity in the list.
+
+### Batch Authorization
+
+By default, Polaris sends one HTTP request to OPA for each question. A list of 1,000 candidate entities therefore costs 1,000 round trips, and the list can be as slow as 1,000 times the latency of one call. With batch authorization, Polaris sends many questions for the same caller in one call, so the same list takes 10 calls at the default batch size of 100. The main reason to use it is performance: if you turn on entity-level list filtering and your catalogs have large namespaces, enable batch authorization too.
+
+Batch authorization is off by default. To turn it on, point Polaris at a batch rule:
+
+```properties
+polaris.authorization.opa.policy-uri=http://<opa-host>:8181/v1/data/polaris/authz
+polaris.authorization.opa.batch-policy-uri=http://<opa-host>:8181/v1/data/polaris/authz/batch_allow
+polaris.authorization.opa.max-batch-size=100
+```
+
+Note that `batch-policy-uri` points at the rule itself (`.../batch_allow`), while `policy-uri` points at the package (`.../authz`).
+
+#### Batch Rule
+
+The batch rule can reuse your existing `allow` rule, so you keep one set of policies:
+
+```rego
+package polaris.authz
+
+default allow := false
+
+batch_allow[r.id] := decision if {
+    some r in input.requests
+    decision := allow with input as {
+        "actor": input.actor,
+        "context": input.context,
+        "action": r.action,
+        "resource": r.resource,
+    }
+}
+```
+
+`default allow := false` is required. Without it, `allow` is undefined for a denied question, the matching answer is missing from `batch_allow`, and Polaris fails the whole request.
+
+#### Batch Input
+
+Polaris sends the actor and the context once, followed by the list of questions:
+
+```json
+{
+  "actor": {
+    "principal": "user@example.com",
+    "roles": ["role1"],
+    "attributes": {"polaris.user.department": "finance"}
+  },
+  "context": {"request_id": "uuid", "realm": "my_realm"},
+  "requests": [
+    {
+      "id": "0",
+      "action": "LIST_TABLE",
+      "resource": {
+        "targets": [
+          {
+            "type": "TABLE",
+            "name": "orders",
+            "parents": [
+              {"type": "CATALOG", "name": "my_catalog"},
+              {"type": "NAMESPACE", "name": "sales"}
+            ]
+          }
+        ],
+        "secondaries": []
+      }
+    },
+    {
+      "id": "1",
+      "action": "LIST_TABLE",
+      "resource": {
+        "targets": [
+          {
+            "type": "TABLE",
+            "name": "customers",
+            "parents": [
+              {"type": "CATALOG", "name": "my_catalog"},
+              {"type": "NAMESPACE", "name": "sales"}
+            ]
+          }
+        ],
+        "secondaries": []
+      }
+    }
+  ]
+}
+```
+
+Each question has an `id`, an `action` and a `resource`. The `action` and `resource` have the same shape as in the single-question input above. The JSON schema of this input is in `opa-batch-input-schema.json` in the OPA extension.
+
+#### Batch Output
+
+The rule returns an object that maps each `id` to `true` or `false`:
+
+```json
+{"result": {"0": true, "1": false}}
+```
+
+Polaris matches answers to questions by `id`, not by position. Every `id` it sent must have a boolean answer, and no other `id` may appear.
+
+#### Failure Behavior
+
+If a batch call fails, Polaris fails the whole request with HTTP 500. It never treats a failed batch as a silent deny, because that would hide entities from the list without anyone noticing. A batch call fails when:
+
+- OPA cannot be reached or the request times out
+- OPA returns an HTTP status other than 200
+- the response is not JSON, or has no `result` object (for example, the batch rule does not exist)
+- an `id` is missing, unknown or answered with something other than `true` or `false`
+
+#### Batch Size
+
+When a list has more than `max-batch-size` candidates, Polaris splits it into chunks and sends them one after another. Every chunk carries the same actor and request ID. If any chunk fails, the whole request fails.
 
 ### Testing Policies
 

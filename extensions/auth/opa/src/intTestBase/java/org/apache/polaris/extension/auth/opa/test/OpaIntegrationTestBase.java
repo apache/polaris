@@ -28,6 +28,7 @@ import io.restassured.http.ContentType;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
@@ -198,7 +199,18 @@ public abstract class OpaIntegrationTestBase {
 
   protected String createFileCatalog(
       String token, String catalogName, String baseLocation, List<String> allowedLocations) {
+    return createFileCatalog(token, catalogName, baseLocation, allowedLocations, Map.of());
+  }
+
+  protected String createFileCatalog(
+      String token,
+      String catalogName,
+      String baseLocation,
+      List<String> allowedLocations,
+      Map<String, String> extraProperties) {
     // Create a File Catalog to use for testing
+    Map<String, String> properties = new HashMap<>(extraProperties);
+    properties.put("default-base-location", baseLocation);
     Map<String, Object> body =
         Map.of(
             "type",
@@ -206,7 +218,7 @@ public abstract class OpaIntegrationTestBase {
             "name",
             catalogName,
             "properties",
-            Map.of("default-base-location", baseLocation),
+            properties,
             "storageConfigInfo",
             Map.of("storageType", "FILE", "allowedLocations", allowedLocations));
 

@@ -33,7 +33,10 @@ Run the Gradle task to regenerate the schema:
 ./gradlew :polaris-extensions-auth-opa:generateOpaSchema
 ```
 
-The schema will be generated at: `extensions/auth/opa/opa-input-schema.json`
+This writes two schemas:
+
+- `extensions/auth/opa/opa-input-schema.json`: one authorization question
+- `extensions/auth/opa/opa-batch-input-schema.json`: many questions for one actor in one call
 
 ## Model Classes
 
@@ -69,6 +72,27 @@ Request metadata:
 - `realm`: Realm identifier (allows OPA policies to scope decisions by realm)
 - `properties`: Operator-defined static properties from
   `polaris.authorization.opa.context-properties.*` (empty when unconfigured)
+
+## Batch Model Classes
+
+Used when `polaris.authorization.opa.batch-policy-uri` is configured. One batch call replaces many
+single-question calls, which makes large lists faster. They reuse `Actor`, `Context` and `Resource`
+from above.
+
+### OpaBatchRequest
+Top-level wrapper sent to the OPA batch rule containing the input.
+
+### OpaBatchAuthorizationInput
+Many questions for one actor:
+- `actor`: Who is making the requests (sent once)
+- `context`: Request metadata (sent once)
+- `requests`: The list of questions
+
+### OpaBatchQuery
+One question in a batch:
+- `id`: Identifies the question. The batch rule returns its answers keyed by this ID
+- `action`: What the actor wants to do
+- `resource`: What they want to access
 
 ## Schema Evolution
 
