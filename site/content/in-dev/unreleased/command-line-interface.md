@@ -1721,24 +1721,32 @@ polaris setup apply setup-config.yaml
 
 #### export
 
-`polaris setup export` writes principals, roles, catalogs, and other resources as YAML.
-You can use that YAML with `polaris setup apply`.
+`polaris setup export` saves principals, roles, catalogs, and other Polaris resources as YAML.
+Use `polaris setup apply` to restore those resources or migrate them to another Polaris deployment.
 
 Each exported policy has a `name` and `namespace`, so policies in different namespaces can share a name.
-The export omits policy attachments. Before running `setup apply`, add an `attach` list to each
-policy you want to reattach. For example, this field attaches a policy to the `sales.orders` table.
+The export omits policy attachments. Before running `polaris setup apply`, add an `attach` list
+to each policy you want to reattach. This example shows the `policies` section of a catalog
+with a policy attached to the `sales.orders` table.
 
 ```yaml
-attach:
-  - type: table-like
-    path: sales.orders
+policies:
+  - name: retention
+    namespace: [sales]
+    type: system.snapshot-expiry
+    content: '{"version":"2025-02-03","enable":true}'
+    attach:
+      - type: table-like
+        path: sales.orders
+        parameters:
+          owner: analytics
 ```
 
-For a `namespace` or `table-like` target, separate the names in `path` with periods. For a
-`catalog` target, omit `path`. If the original attachment had parameters, include them in a
-`parameters` mapping on that list entry.
+Include `parameters` only if the original attachment had them. For a `namespace` or `table-like`
+target, separate the names in `path` with periods. For a `catalog` target, omit `path`.
 
-`setup apply` can also read older YAML files exported by Polaris 1.4.0 through 1.7.0 that use policy names as keys.
+`polaris setup apply` can also read older YAML files exported by Polaris 1.4.0 through 1.7.0
+that use policy names as keys.
 In that format, policy names must be unique within each catalog.
 
 Add `--include-tables-and-views` to export Iceberg table and view registrations from internal catalogs.
