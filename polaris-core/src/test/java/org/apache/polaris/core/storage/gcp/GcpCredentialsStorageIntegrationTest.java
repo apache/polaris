@@ -676,6 +676,14 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         Arguments.of(
             Set.of("gs://b1/wh/ns/tbl", "gs://b1/wh2/d1/d2/data"),
             Map.of("b1", Set.of("wh/ns/", "wh2/d1/d2/"))),
+        // A shared ancestor is dropped while each of its subtrees keeps its own parent.
+        Arguments.of(
+            Set.of("gs://b1/a/t", "gs://b1/a/b/t", "gs://b1/a/c/t"),
+            Map.of("b1", Set.of("a/b/", "a/c/"))),
+        // Sibling folders that only share a string prefix are not ancestors of each other.
+        Arguments.of(
+            Set.of("gs://b1/a/b/t", "gs://b1/a/b-x/t", "gs://b1/a/bc/t"),
+            Map.of("b1", Set.of("a/b/", "a/b-x/", "a/bc/"))),
         Arguments.of(
             Set.of("gs://b1/x/t", "gs://b2/y/z/t"),
             Map.of("b1", Set.of("x/"), "b2", Set.of("y/z/"))),

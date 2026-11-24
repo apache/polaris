@@ -452,9 +452,10 @@ public class GcpCredentialsStorageIntegration
    * rename is authorized by the same permission on its destination. Creating the parents here keeps
    * the token's folder access inside its write locations, as on buckets without HNS.
    *
-   * <p>Failures never fail the vend: they leave the token unchanged, and only the first write under
-   * a still-missing parent fails. A bucket without HNS rejects the call with 409, or with 403 when
-   * the identity lacks {@code storage.folders.create}.
+   * <p>Failures never fail the vend: they leave the token unchanged, and writes under a
+   * still-missing parent fail until it exists. Creation is tried again whenever new credentials are
+   * generated. A bucket without HNS rejects the call with 409, or with 403 when the identity lacks
+   * {@code storage.folders.create}.
    */
   private static void createParentFolders(
       Set<String> writeLocations,
@@ -510,9 +511,10 @@ public class GcpCredentialsStorageIntegration
       String bucket, String folder, String reason, Exception cause) {
     String message =
         "Could not create parent folder {} in GCS bucket {} ({}). If the bucket has hierarchical"
-            + " namespace enabled, the first write under this folder fails until the identity"
-            + " Polaris downscopes from has storage.folders.create on the bucket. Buckets without"
-            + " hierarchical namespace are not affected.";
+            + " namespace enabled, writes under this folder fail until it exists. Polaris tries again"
+            + " whenever it generates new credentials, which needs storage.folders.create on the"
+            + " bucket for the identity it downscopes from. Buckets without hierarchical namespace"
+            + " are not affected.";
     if (BUCKETS_WITH_FOLDER_WARNING.add(bucket)) {
       LOGGER.warn(message, folder, bucket, reason, cause);
     } else {
@@ -522,13 +524,15 @@ public class GcpCredentialsStorageIntegration
 
   /**
    * Returns, per bucket, the parent folder of each write location: {@code a/b/tbl/} gives {@code
-   * a/b/}. Bucket-root and single-segment locations have no parent. A parent that is a prefix of
+   * a/b/}. Bucket-root and single-segment locations have no parent. A parent that is an ancestor of
    * another parent in the same bucket is dropped, because creating the deeper one recursively also
-   * creates it.
+   * creates it. A bucket can still have several parents when its write locations are in different
+   * subtrees: {@code gs://b/ns/db/tbl/} with a {@code write.data.path} of {@code
+   * gs://b/other/data/} gives {@code ns/db/} and {@code other/}.
    */
   @VisibleForTesting
   static Map<String, Set<String>> parentFoldersToCreate(Set<String> writeLocations) {
-    Map<String, Set<String>> parentsByBucket = new TreeMap<>();
+    Map<String, TreeSet<String>> parentsByBucket = new TreeMap<>();
     for (String location : writeLocations) {
       StorageUri uri = StorageUri.parse(location);
       String path = ensureTrailingSlash(trimLeadingSlash(uri.rawPath()));
@@ -539,15 +543,18 @@ public class GcpCredentialsStorageIntegration
             .add(path.substring(0, parentEnd + 1));
       }
     }
-    Map<String, Set<String>> deepestParents = new TreeMap<>();
+    // In sorted order a folder's descendants directly follow it, so a parent is an ancestor of
+    // another parent exactly when the next parent starts with it.
+    Map<String, Set<String>> leafParents = new TreeMap<>();
     parentsByBucket.forEach((bucket, parents) -> {
       for (String parent : parents) {
-        if (parents.stream().noneMatch(p -> p.length() > parent.length() && p.startsWith(parent))) {
-          deepestParents.computeIfAbsent(bucket, key -> new TreeSet<>()).add(parent);
+        String next = parents.higher(parent);
+        if (next == null || !next.startsWith(parent)) {
+          leafParents.computeIfAbsent(bucket, key -> new TreeSet<>()).add(parent);
         }
       }
     });
-    return deepestParents;
+    return leafParents;
   }
 
   private static String convertToString(CredentialAccessBoundary accessBoundary) {
