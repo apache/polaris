@@ -484,6 +484,21 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
     assertThat(persistence.lookupEntity(callCtx, CATALOG, 30L, TYPE)).isNull();
   }
 
+  @Test
+  void writeEntitiesCreateWithSomeAlreadyPresentFailsWithoutPartialWrites() {
+    // One entity already exists under its own id; the other is new. A prior batch could only have
+    // landed all or none, so a partially-present batch is a conflict: fail as a whole and do not
+    // write the new one, rather than completing the batch.
+    persistence.writeEntity(callCtx, entity(10L, PARENT, "a", 1), false, null);
+
+    assertThatThrownBy(() ->
+            persistence.writeEntities(
+                callCtx, List.of(entity(10L, PARENT, "a", 1), entity(20L, PARENT, "b", 1)), null))
+        .isInstanceOf(EntityAlreadyExistsException.class);
+    // The new entity did not land.
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 20L, TYPE)).isNull();
+  }
+
   private static PolarisBaseEntity entity(long id, long parentId, String name, int version) {
     return new PolarisBaseEntity.Builder()
         .id(id)

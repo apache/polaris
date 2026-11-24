@@ -126,7 +126,12 @@ public class DynamoDbBasePersistence implements BasePersistence {
   /** DynamoDB's limit on items per {@code TransactGetItems} request. */
   private static final int MAX_TRANSACT_GET_ITEMS = 100;
 
-  /** DynamoDB's limit on actions in one {@code TransactWriteItems} request. */
+  /**
+   * DynamoDB's limit on actions in one {@code TransactWriteItems} request.
+   *
+   * @see <a
+   *     href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html">TransactWriteItems</a>
+   */
   private static final int MAX_TRANSACT_WRITE_ITEMS = 100;
 
   /** Actions a create writes per entity: the entity item, its name sentinel, its child record. */
@@ -390,9 +395,12 @@ public class DynamoDbBasePersistence implements BasePersistence {
    * <p>DynamoDB caps a transaction at {@value #MAX_TRANSACT_WRITE_ITEMS} actions, so a create batch
    * is limited to {@value #MAX_TRANSACT_WRITE_ITEMS}/{@value #CREATE_ACTIONS_PER_ENTITY} entities
    * and an update batch to {@value #MAX_TRANSACT_WRITE_ITEMS}; a larger batch is rejected with
-   * {@link IllegalArgumentException}. A failed transaction is translated exactly as the matching
-   * single write: a name collision to {@link EntityAlreadyExistsException}, any other conflict to
-   * {@link RetryOnConcurrencyException}.
+   * {@link IllegalArgumentException}. A cancelled create batch is resolved as a whole (see {@link
+   * #resolveCreateConflict}): a full replay of an already-committed batch is an idempotent success,
+   * a name owned by a different id or a partially-existing batch fails with {@link
+   * EntityAlreadyExistsException}, and an otherwise conflicting batch retries with {@link
+   * RetryOnConcurrencyException}. A cancelled update batch names the stale entity and throws {@link
+   * RetryOnConcurrencyException}.
    */
   @Override
   public void writeEntities(
@@ -426,63 +434,74 @@ public class DynamoDbBasePersistence implements BasePersistence {
               + MAX_TRANSACT_WRITE_ITEMS
               + "-action transaction limit");
     }
-    List<PolarisBaseEntity> remaining = entities;
-    while (!remaining.isEmpty()) {
-      List<TransactWriteItem> items = new ArrayList<>(remaining.size() * CREATE_ACTIONS_PER_ENTITY);
-      for (PolarisBaseEntity entity : remaining) {
-        items.add(putIfAbsent(EntityItem.toItem(realmId, entity)));
-        items.add(putIfAbsent(sentinelItem(entity)));
-        items.add(putIfAbsent(childItem(entity)));
-      }
-      List<TransactWriteItem> batch = items;
-      try {
-        client.transactWriteItems(b -> b.transactItems(batch));
-        return;
-      } catch (TransactionCanceledException e) {
-        if (!onlyConflicts(e)) {
-          throw e;
-        }
-        // Classify each entity that failed its condition. An entity already present under its own
-        // id is an idempotent create-retry (it already landed) and is dropped, as JDBC and the
-        // transactional backend skip a same-id entity in writeEntities; a name taken by a
-        // different id is a real collision. DynamoDB is all-or-nothing, so nothing in this attempt
-        // persisted: drop the idempotent ones and re-run the transaction with the rest.
-        List<PolarisBaseEntity> retry = new ArrayList<>(remaining.size());
-        for (int i = 0; i < remaining.size(); i++) {
-          PolarisBaseEntity entity = remaining.get(i);
-          boolean failed =
-              conditionFailedAt(e, i * CREATE_ACTIONS_PER_ENTITY) // the entity's id
-                  || conditionFailedAt(e, i * CREATE_ACTIONS_PER_ENTITY + 1); // its name sentinel
-          if (!failed) {
-            retry.add(entity);
-            continue;
-          }
-          PolarisBaseEntity existing =
-              lookupEntityByName(
-                  callCtx,
-                  entity.getCatalogId(),
-                  entity.getParentId(),
-                  entity.getTypeCode(),
-                  entity.getName());
-          if (existing != null && existing.getId() != entity.getId()) {
-            throw new EntityAlreadyExistsException(existing, e);
-          }
-          // existing == same id: already created (idempotent retry) -> drop it.
-          // existing == null: this entity lost a race on its id with no resolvable name -> retry
-          // it.
-          if (existing == null) {
-            retry.add(entity);
-          }
-        }
-        if (retry.size() == remaining.size()) {
-          // Nothing was resolved as an idempotent drop, so re-running would just spin: a genuine
-          // concurrent write is in flight. Let the manager retry the whole operation.
-          throw new RetryOnConcurrencyException(
-              e, "Create of %s entities conflicted with a concurrent write", remaining.size());
-        }
-        remaining = retry;
-      }
+    List<TransactWriteItem> items = new ArrayList<>(entities.size() * CREATE_ACTIONS_PER_ENTITY);
+    for (PolarisBaseEntity entity : entities) {
+      items.add(putIfAbsent(EntityItem.toItem(realmId, entity)));
+      items.add(putIfAbsent(sentinelItem(entity)));
+      items.add(putIfAbsent(childItem(entity)));
     }
+    try {
+      client.transactWriteItems(b -> b.transactItems(items));
+    } catch (TransactionCanceledException e) {
+      if (!onlyConflicts(e)) {
+        throw e;
+      }
+      resolveCreateConflict(callCtx, entities, e);
+    }
+  }
+
+  /**
+   * Resolves a cancelled create batch at the batch level, keeping the write all-or-nothing. One
+   * {@code TransactWriteItems} is atomic, so a prior attempt of this batch created every entity or
+   * none; this never writes only part of a batch. The batch is classified as a whole:
+   *
+   * <ul>
+   *   <li>a name owned by a <em>different</em> id is a real collision -&gt; {@link
+   *       EntityAlreadyExistsException};
+   *   <li>every entity already present under its own id -&gt; the batch already landed, so this is
+   *       an idempotent retry and returns without writing;
+   *   <li>some present and some not -&gt; writing only the missing ones would land a partial batch,
+   *       so fail with {@link EntityAlreadyExistsException} instead;
+   *   <li>none present -&gt; a concurrent write cancelled the transaction -&gt; {@link
+   *       RetryOnConcurrencyException} so the manager retries the whole batch.
+   * </ul>
+   */
+  private void resolveCreateConflict(
+      PolarisCallContext callCtx,
+      List<PolarisBaseEntity> entities,
+      TransactionCanceledException e) {
+    PolarisBaseEntity alreadyCreated = null;
+    int alreadyCreatedCount = 0;
+    for (PolarisBaseEntity entity : entities) {
+      PolarisBaseEntity existing =
+          lookupEntityByName(
+              callCtx,
+              entity.getCatalogId(),
+              entity.getParentId(),
+              entity.getTypeCode(),
+              entity.getName());
+      if (existing == null) {
+        continue;
+      }
+      if (existing.getId() != entity.getId()) {
+        // The name is held by a different entity: a real collision, not an idempotent retry.
+        throw new EntityAlreadyExistsException(existing, e);
+      }
+      alreadyCreated = existing;
+      alreadyCreatedCount++;
+    }
+    if (alreadyCreatedCount == entities.size()) {
+      // The whole batch already landed in a prior attempt: an idempotent retry, nothing to write.
+      return;
+    }
+    if (alreadyCreatedCount > 0) {
+      // Some entities already exist and some do not. Writing only the missing ones would land a
+      // partial batch, breaking all-or-nothing, so fail with a conflict instead.
+      throw new EntityAlreadyExistsException(alreadyCreated, e);
+    }
+    // Nothing from this batch exists, so a concurrent write cancelled it: retry the whole batch.
+    throw new RetryOnConcurrencyException(
+        e, "Create of %s entities conflicted with a concurrent write", entities.size());
   }
 
   private void updateEntities(
