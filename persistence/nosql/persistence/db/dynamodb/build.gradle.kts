@@ -59,10 +59,7 @@ dependencies {
     "org.apache.polaris.server-test-runner:polaris-server-test-runner",
   )
   dynamoDbStartupActionImplementation(project(":polaris-floci-aws-testcontainer"))
-  dynamoDbStartupActionRuntimeOnly(platform(libs.quarkus.bom))
-  dynamoDbStartupActionRuntimeOnly("org.jboss.slf4j:slf4j-jboss-logmanager")
-  // The SLF4J binding declares LogManager as provided, so include it explicitly.
-  dynamoDbStartupActionRuntimeOnly("org.jboss.logmanager:jboss-logmanager")
+  dynamoDbStartupActionRuntimeOnly(libs.slf4j.jdk14)
 
   implementation(project(":polaris-persistence-nosql-api"))
   implementation(project(":polaris-persistence-nosql-impl"))

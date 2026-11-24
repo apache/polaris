@@ -82,10 +82,7 @@ dependencies {
 
   sparkStartupActionCompileOnly("org.apache.polaris.server-test-runner:polaris-server-test-runner")
   sparkStartupActionImplementation(project(":polaris-rustfs-testcontainer"))
-  sparkStartupActionRuntimeOnly(platform(libs.quarkus.bom))
-  sparkStartupActionRuntimeOnly("org.jboss.slf4j:slf4j-jboss-logmanager")
-  // The SLF4J binding declares LogManager as provided, so include it explicitly.
-  sparkStartupActionRuntimeOnly("org.jboss.logmanager:jboss-logmanager")
+  sparkStartupActionRuntimeOnly(libs.slf4j.jdk14)
 }
 
 @Suppress("UnstableApiUsage")
