@@ -823,7 +823,7 @@ paths:
         backward-incompatible way.
 
         List the storage configurations of a catalog. The catalog's own `storageConfigInfo` is not
-        listed.
+        listed. Its snapshots are (see StorageConfiguration).
 
         With `referenced` set to false, only the storage configurations that are not in use are
         listed: those that deleteStorageConfiguration would not refuse at the time of the listing. With
@@ -917,12 +917,12 @@ paths:
         backward-incompatible way.
 
         Delete a storage configuration. The deletion is refused while the storage configuration is in
-        use, that is, while any storage mapping references it or any existing Iceberg table, view or
-        generic table was created on it. An object keeps its storage configuration for as long as it
-        exists, so a storage configuration used by existing objects can only be deleted after they are
-        dropped. Dropping a namespace or table does not remove its storage mapping; use
-        removeStorageMapping. To find the storage configurations that are not in use, list them with
-        `referenced` set to false. Deleting the catalog deletes its storage configurations and
+        use, that is, while any storage mapping, explicit or automatic, references it. Every Iceberg
+        table and view created on a storage configuration has a mapping to it for as long as it
+        exists, so a storage configuration used by existing tables or views can only be deleted after
+        they are dropped. Dropping a namespace or table does not remove its explicit storage mapping;
+        use removeStorageMapping. To find the storage configurations that are not in use, list them
+        with `referenced` set to false. Deleting the catalog deletes its storage configurations and
         storage mappings.
       responses:
         204:
@@ -943,18 +943,21 @@ paths:
         **Beta:** The storage mapping API is under active development and may change in a
         backward-incompatible way.
 
-        List storage mappings. A storage mapping says that the namespace or table with a given fully
-        qualified name uses a given storage configuration (see StorageMappingTarget).
+        List storage mappings. A storage mapping says that the namespace, table or view with a given
+        fully qualified name uses a given storage configuration (see StorageMappingTarget). By
+        default, only explicit mappings are listed. With `includeAutomatic` set to true, automatic
+        mappings are listed too (see StorageMapping.origin).
 
         Mappings are listed one level at a time, like namespaces: with `namespace`, the mappings of the
-        namespaces and tables directly inside it; without it, the mappings of the top-level
+        namespaces, tables and views directly inside it; without it, the mappings of the top-level
         namespaces. Results only include the mappings the caller is authorized to see, so this listing
         never shows a name to a caller who can't list it.
 
         With `storageConfigurationName` instead, all the mappings to that storage configuration are
         listed, at any level of the catalog. This answers which names use a storage configuration,
-        for example before deleting it. It is restricted to callers who are authorized to see all the
-        mappings of the catalog.
+        for example before deleting it; with `includeAutomatic`, it includes every table and view
+        created on it. It is restricted to callers who are authorized to see all the mappings of the
+        catalog.
         Setting both `namespace` and `storageConfigurationName` is a bad request (400).
 
         A mapping whose namespace or table does not exist is listed too, with `targetExists` set to
@@ -993,10 +996,19 @@ paths:
           in: query
           required: false
           description: >-
-            If set, only list the mappings whose target namespace or table exists (true) or does not
-            exist (false). If not set, list both.
+            If set, only list the mappings whose target namespace, table or view exists (true) or does
+            not exist (false). If not set, list both.
           schema:
             type: boolean
+        - name: includeAutomatic
+          in: query
+          required: false
+          description: >-
+            If true, also list automatic mappings (see StorageMapping.origin). By default, only
+            explicit mappings are listed.
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: A page of storage mappings
@@ -1019,18 +1031,33 @@ paths:
         Map the fully qualified name of a namespace or table to a storage configuration. The parent
         namespace of the target must exist.
         - A table mapping can only be created while the table does not exist, and only if the name has
-          no mapping yet.
+          no explicit mapping yet.
         - A namespace mapping can be created whether or not the namespace exists. If the namespace
           already has a mapping, it is replaced.
 
-        A namespace or table created under a mapped name is created on the mapped storage
-        configuration. This applies to creates through the Iceberg REST API (including a staged create
-        and `registerTable`) and through the Polaris catalog API. Anything created inside a namespace
-        without a mapping of its own (a namespace, an Iceberg table, a view or a generic table) is
-        created on the storage configuration of the namespace: the mapping of the nearest enclosing
-        namespace that has one, as it is at the time of the create (for a staged create, at staging),
-        or else the catalog's own `storageConfigInfo`. Only namespaces and Iceberg tables can have a
-        mapping of their own.
+        Storage mappings are where Polaris records which storage configuration a namespace, table or
+        view uses. A mapping is explicit or automatic (see StorageMapping.origin). This operation
+        creates explicit mappings, and so do createNamespaceOnStorageConfiguration and
+        createTableOnStorageConfiguration in the Polaris catalog API. Only namespaces and Iceberg
+        tables can have an explicit mapping, so a target of type `view` is a bad request.
+
+        A namespace, Iceberg table or view is created on the first of these that applies, through the
+        Iceberg REST API (including a staged create and `registerTable`) and through the Polaris
+        catalog API:
+        1. the storage configuration of the explicit mapping of its own name (namespaces and Iceberg
+           tables only);
+        2. the storage configuration of the mapping of the nearest enclosing namespace that has one,
+           as it is at the time of the create (for a staged create, at staging);
+        3. the catalog's own `storageConfigInfo`. Once a storage configuration has been created in
+           the catalog, an Iceberg table or view is created on a snapshot of it instead (see
+           StorageConfiguration).
+
+        In cases 2 and 3, once a storage configuration has been created in the catalog, the server
+        records an automatic mapping from the name of the new Iceberg table or view to the storage
+        configuration it was created on. Namespaces never get an automatic mapping, so a namespace
+        mapping keeps applying to what is created inside the namespace later. A generic table is
+        created on the storage configuration of case 2, or else on the catalog's own
+        `storageConfigInfo`.
 
         Being created on a storage configuration means that:
         - the location is checked against that storage configuration's `allowedLocations`;
@@ -1050,29 +1077,32 @@ paths:
         staged create is older than a limit the server sets. This does not apply while the catalog has
         no storage configurations.
 
-        An Iceberg table, view or generic table keeps the storage configuration it was created on for
-        as long as it exists. A namespace mapping is a default for what is created afterwards:
-        creating, replacing or removing it does not change the storage configuration of any existing
-        table, view or generic table, inside the namespace or below it, and does not move any
-        existing namespace. A table mapping is never changed while its table exists: it can't be
-        created for an existing table, and it can't be removed from one.
+        An Iceberg table or view keeps the storage configuration it was created on for as long as it
+        exists. A namespace mapping is a default for what is created afterwards: creating, replacing
+        or removing it does not change the storage configuration of any existing table or view,
+        inside the namespace or below it, and does not move any existing namespace. The mapping of an
+        existing table or view is never changed: an explicit table mapping can't be created for an
+        existing table or removed from one, and automatic mappings are only created and removed by
+        the server.
 
         A rename does not change the storage configuration of a table or view, and does not move it.
-        A table with a mapping of its own takes it along: after the rename, the new name is mapped and
-        the old name is not. If the new name of a table has a mapping, the rename is refused unless
-        that mapping names the storage configuration the table uses. Otherwise, a table or view can
-        be renamed into any namespace.
+        Its mapping, explicit or automatic, moves with it: after the rename, the new name is mapped and
+        the old name is not. If the new name of a table has an explicit mapping, the rename is refused
+        unless that mapping names the storage configuration the table uses. Otherwise, a table or view
+        can be renamed into any namespace.
 
-        Storage configurations are compared by identity, not by content: two storage configurations,
-        or a storage configuration and the catalog's own `storageConfigInfo`, are always different.
+        Storage configurations are compared by identity, not by content: two storage configurations
+        are different even if their settings are the same, and the catalog's own `storageConfigInfo`
+        is different from every storage configuration, including its snapshots.
 
-        A storage mapping stays when its namespace or table is dropped, so a namespace or table created
-        again under the same name uses the same storage configuration. Dropping a namespace does NOT
-        remove the mappings inside it. They remain, with `targetExists` set to false, until they are
+        An explicit storage mapping stays when its namespace or table is dropped, so a namespace or
+        table created again under the same name uses the same storage configuration. An automatic
+        mapping is removed when its table or view is dropped. Dropping a namespace does NOT remove the
+        explicit mappings inside it. They remain, with `targetExists` set to false, until they are
         removed with removeStorageMapping.
 
-        A rename moves a mapping only along with the table it belongs to, so it can't be used to
-        create a table mapping for a name that has none or to remove one.
+        A rename moves a mapping only along with the table or view it belongs to, so it can't be used
+        to create a table mapping for a name that has none or to remove one.
       requestBody:
         required: true
         content:
@@ -1089,7 +1119,7 @@ paths:
         404:
           description: "The catalog, the parent namespace or the storage configuration does not exist"
         409:
-          description: "The request conflicts with the current state of the catalog, for example the target table already exists, or a storage mapping already exists for the target table"
+          description: "The request conflicts with the current state of the catalog, for example the target table already exists, or an explicit storage mapping already exists for the target table"
 
   /catalogs/{catalogName}/storage-mappings/remove:
     parameters:
@@ -1100,10 +1130,13 @@ paths:
         **Beta:** The storage mapping API is under active development and may change in a
         backward-incompatible way.
 
-        Remove the storage mapping of a namespace or table.
+        Remove the explicit storage mapping of a namespace or table.
         - A table mapping can only be removed while the table does not exist; drop the table first.
         - A namespace mapping can be removed whether or not the namespace exists. Whatever was
           already created in the namespace keeps its storage configuration.
+
+        Automatic mappings are removed by the server when their table or view is dropped, so a target
+        of type `view` is a bad request.
 
         The parent namespace of the target need not exist, so this also removes the mappings left
         behind inside a dropped namespace. Afterwards, a namespace or table created under the name,
@@ -1954,10 +1987,19 @@ components:
         use a storage configuration through storage mappings (see createStorageMapping).
 
         A storage configuration is immutable: there is no update operation. To change settings,
-        create a new storage configuration and map namespaces and tables to it. Existing tables, views
-        and generic tables keep the storage configuration they were created on. This does not apply to
-        the catalog's own `storageConfigInfo`, which can still be changed with updateCatalog; the
-        objects that use it follow those changes, as before.
+        create a new storage configuration and map namespaces and tables to it. Existing tables and
+        views keep the storage configuration they were created on.
+
+        Once a storage configuration has been created in a catalog, an Iceberg table or view created
+        on the catalog's own `storageConfigInfo` is created on a snapshot of it instead: a storage
+        configuration that the server creates with the settings `storageConfigInfo` has at that
+        moment, and reuses for later creates while those settings are the same. A snapshot has no
+        `baseLocation`, and its name starts with an underscore (`_`). Otherwise, a snapshot is
+        listed, read, mapped and deleted like any other storage configuration. The catalog's own
+        `storageConfigInfo` can still be changed with updateCatalog. A change applies to what is
+        created afterwards, and to the tables and views created before the catalog had a storage
+        configuration, which have no mapping and follow `storageConfigInfo` as before. It does not
+        apply to the tables and views created on an earlier snapshot.
 
         The `allowedLocations` of a storage configuration must not overlap the locations of another
         catalog or of another catalog's storage configurations, unless
@@ -1998,7 +2040,10 @@ components:
           type: string
           pattern: '^[a-zA-Z0-9_-]{1,128}$'
           description: >-
-            The name of the storage configuration, unique within its catalog. Case sensitive.
+            The name of the storage configuration, unique within its catalog. Case sensitive. Names
+            that start with an underscore (`_`) are reserved for snapshots of the catalog's
+            `storageConfigInfo` (see StorageConfiguration); creating a storage configuration with
+            such a name is a bad request.
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
           description: >-
@@ -2042,13 +2087,16 @@ components:
 
     StorageMappingTarget:
       type: object
-      description: The namespace or table a storage mapping applies to.
+      description: >-
+        The namespace, table or view a storage mapping applies to. Only automatic mappings have a
+        view as their target (see StorageMapping.origin).
       properties:
         type:
           type: string
           enum:
             - namespace
             - table
+            - view
           example: table
         path:
           type: array
@@ -2057,7 +2105,7 @@ components:
             type: string
           description: |
             The fully qualified name of the target, from the top-level namespace down to the target
-            itself. For a table, the last element is the table name, so the path has at least two
+            itself. For a table or view, the last element is its name, so the path has at least two
             elements.
           example: ["finance", "ledger"]
       required:
@@ -2066,7 +2114,7 @@ components:
 
     StorageMapping:
       type: object
-      description: A storage mapping from the fully qualified name of a namespace or table to a storage configuration.
+      description: A storage mapping from the fully qualified name of a namespace, table or view to a storage configuration.
       properties:
         target:
           $ref: "#/components/schemas/StorageMappingTarget"
@@ -2074,12 +2122,25 @@ components:
           type: string
           pattern: '^[a-zA-Z0-9_-]{1,128}$'
           description: The name of the storage configuration the target is mapped to.
+        origin:
+          type: string
+          enum:
+            - explicit
+            - automatic
+          description: |
+            How the mapping was created.
+            - `explicit`: by createStorageMapping, or by a create on a storage configuration in the
+              Polaris catalog API. It stays when its target is dropped.
+            - `automatic`: by the server, for an Iceberg table or view created without an explicit
+              mapping of its own. It names the storage configuration the table or view was created
+              on, and it is removed when the table or view is dropped (see createStorageMapping).
         targetExists:
           type: boolean
-          description: Whether the target namespace or table currently exists.
+          description: Whether the target namespace, table or view currently exists.
       required:
         - target
         - storageConfigurationName
+        - origin
         - targetExists
 
     StorageMappings:

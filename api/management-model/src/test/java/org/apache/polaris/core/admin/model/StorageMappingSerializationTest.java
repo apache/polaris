@@ -45,6 +45,7 @@ public class StorageMappingSerializationTest {
             new StorageMappingTarget(
                 StorageMappingTarget.TypeEnum.TABLE, List.of("finance", "ledger")),
             "finance",
+            StorageMapping.OriginEnum.EXPLICIT,
             false);
 
     String json = mapper.writeValueAsString(mapping);
@@ -53,6 +54,7 @@ public class StorageMappingSerializationTest {
         .isEqualTo(
             "{\"target\":{\"type\":\"table\",\"path\":[\"finance\",\"ledger\"]},"
                 + "\"storageConfigurationName\":\"finance\","
+                + "\"origin\":\"explicit\","
                 + "\"targetExists\":false}");
     assertThat(mapper.readValue(json, StorageMapping.class))
         .usingRecursiveComparison()
@@ -90,12 +92,20 @@ public class StorageMappingSerializationTest {
             new StorageMappingTarget(
                 StorageMappingTarget.TypeEnum.TABLE, List.of("finance", "old")),
             "finance",
+            StorageMapping.OriginEnum.EXPLICIT,
             false);
+    StorageMapping view =
+        new StorageMapping(
+            new StorageMappingTarget(
+                StorageMappingTarget.TypeEnum.VIEW, List.of("finance", "summary")),
+            "_default-1",
+            StorageMapping.OriginEnum.AUTOMATIC,
+            true);
 
     assertThat(mapper.writeValueAsString(new StorageMappings(List.of())))
         .isEqualTo("{\"storageMappings\":[]}");
 
-    StorageMappings page = new StorageMappings(List.of(dropped), "token-1");
+    StorageMappings page = new StorageMappings(List.of(dropped, view), "token-1");
     String json = mapper.writeValueAsString(page);
 
     assertThat(json)
@@ -103,7 +113,12 @@ public class StorageMappingSerializationTest {
             "{\"storageMappings\":[{"
                 + "\"target\":{\"type\":\"table\",\"path\":[\"finance\",\"old\"]},"
                 + "\"storageConfigurationName\":\"finance\","
-                + "\"targetExists\":false}],"
+                + "\"origin\":\"explicit\","
+                + "\"targetExists\":false},{"
+                + "\"target\":{\"type\":\"view\",\"path\":[\"finance\",\"summary\"]},"
+                + "\"storageConfigurationName\":\"_default-1\","
+                + "\"origin\":\"automatic\","
+                + "\"targetExists\":true}],"
                 + "\"nextPageToken\":\"token-1\"}");
     assertThat(mapper.readValue(json, StorageMappings.class))
         .usingRecursiveComparison()
@@ -122,9 +137,9 @@ public class StorageMappingSerializationTest {
   public void testUnknownTargetTypeIsRejected() {
     assertThatThrownBy(() ->
             mapper.readValue(
-                "{\"type\":\"view\",\"path\":[\"finance\",\"v\"]}", StorageMappingTarget.class))
+                "{\"type\":\"function\",\"path\":[\"finance\",\"f\"]}", StorageMappingTarget.class))
         .isInstanceOf(InvalidFormatException.class)
-        .hasMessageContaining("view");
+        .hasMessageContaining("function");
   }
 
   @Test
