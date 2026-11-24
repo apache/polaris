@@ -44,6 +44,7 @@ import static org.apache.polaris.persistence.nosql.metastore.ContentIdentifier.i
 import static org.apache.polaris.persistence.nosql.metastore.indexaccess.IndexUtils.hasChildren;
 import static org.apache.polaris.persistence.nosql.metastore.mutation.MutationResults.newMutableMutationResults;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -96,7 +97,12 @@ public record MutationAttempt(
       PolarisBaseEntity entity,
       Optional<PolarisPrincipalSecrets> currentSecrets,
       ObjBase originalObj) {
-    return mapToObj(entity, currentSecrets)
+    return objForChangeComparison(mapToObj(entity, currentSecrets), originalObj);
+  }
+
+  private static ObjBase objForChangeComparison(
+      ObjBase.Builder<?, ?> entityObjBuilder, ObjBase originalObj) {
+    return entityObjBuilder
         .updateTimestamp(originalObj.updateTimestamp())
         .id(originalObj.id())
         .numParts(originalObj.numParts())
@@ -237,20 +243,19 @@ public record MutationAttempt(
             var numCatalogRoles =
                 catalogRolesAccess
                     .nameIndex()
-                    .map(
-                        idx -> {
-                          var iter = idx.iterator();
-                          var cnt = 0;
-                          if (iter.hasNext()) {
-                            iter.next();
-                            cnt++;
-                          }
-                          if (iter.hasNext()) {
-                            iter.next();
-                            cnt++;
-                          }
-                          return cnt;
-                        })
+                    .map(idx -> {
+                      var iter = idx.iterator();
+                      var cnt = 0;
+                      if (iter.hasNext()) {
+                        iter.next();
+                        cnt++;
+                      }
+                      if (iter.hasNext()) {
+                        iter.next();
+                        cnt++;
+                      }
+                      return cnt;
+                    })
                     .orElse(0);
 
             // If we have 2, we cannot drop the catalog.
@@ -269,28 +274,27 @@ public record MutationAttempt(
           case POLICY ->
               memoizedIndexedAccess
                   .referenceHead(POLICY_MAPPINGS_REF_NAME, PolicyMappingsObj.class)
-                  .map(
-                      policyMappingsObj -> {
-                        var index =
-                            policyMappingsObj
-                                .policyMappings()
-                                .indexForRead(persistence, POLICY_MAPPING_SERIALIZER);
+                  .map(policyMappingsObj -> {
+                    var index =
+                        policyMappingsObj
+                            .policyMappings()
+                            .indexForRead(persistence, POLICY_MAPPING_SERIALIZER);
 
-                        var prefixKey = policyIndexPrefixKey((PolicyObj) originalObj, entity);
+                    var prefixKey = policyIndexPrefixKey((PolicyObj) originalObj, entity);
 
-                        var iter = index.iterator(prefixKey, prefixKey, false);
+                    var iter = index.iterator(prefixKey, prefixKey, false);
 
-                        if (iter.hasNext() && !update.cleanup()) {
-                          mutationResults.dropResult(POLICY_HAS_MAPPINGS);
-                          return false;
-                        }
+                    if (iter.hasNext() && !update.cleanup()) {
+                      mutationResults.dropResult(POLICY_HAS_MAPPINGS);
+                      return false;
+                    }
 
-                        // Policy-mapping cleanup happens as a separate maintenance workflow,
-                        // because entity drops and policy-mappings updates cannot be made atomic
-                        // across multiple refs in the NoSQL model.
+                    // Policy-mapping cleanup happens as a separate maintenance workflow,
+                    // because entity drops and policy-mappings updates cannot be made atomic
+                    // across multiple refs in the NoSQL model.
 
-                        return true;
-                      })
+                    return true;
+                  })
                   .orElse(true);
           default -> true;
         };
@@ -405,10 +409,15 @@ public record MutationAttempt(
     } else {
       // no rename/move
 
-      var unchangedCompareObj = objForChangeComparison(entity, currentSecrets, originalObj);
+      var entityObjBuilder = mapToObj(entity, currentSecrets);
+      var unchangedCompareObj = objForChangeComparison(entityObjBuilder, originalObj);
       if (!unchangedCompareObj.equals(originalObj)) {
         var entityObj =
-            mapToObj(entity, currentSecrets)
+            entityObjBuilder
+                // objForChangeComparison overrides createTimestamp and numParts; restore their
+                // mapped values before writing. The other overridden fields are assigned below.
+                .createTimestamp(Instant.ofEpochMilli(entity.getCreateTimestamp()))
+                .numParts(1)
                 .id(persistence.generateId())
                 .updateTimestamp(now)
                 .entityVersion(originalObj.entityVersion() + 1)

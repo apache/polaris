@@ -216,7 +216,13 @@ record NoSqlMetaStoreManager(
       @NonNull PolarisEntityType entityType,
       @NonNull PolarisEntitySubType entitySubType,
       @NonNull String name) {
-    return readEntityByName(ms(callCtx), catalogPath, entityType, name);
+    var result = readEntityByName(ms(callCtx), catalogPath, entityType, name);
+    if (result.isSuccess()
+        && entitySubType != PolarisEntitySubType.ANY_SUBTYPE
+        && result.getEntity().getSubTypeCode() != entitySubType.getCode()) {
+      return new EntityResult(ENTITY_NOT_FOUND, null);
+    }
+    return result;
   }
 
   EntityResult readEntityByName(
@@ -537,23 +543,21 @@ record NoSqlMetaStoreManager(
 
     availableTasks
         .items()
-        .forEach(
-            task -> {
-              var newTask = new PolarisBaseEntity.Builder(task);
-              var properties = PolarisObjectMapperUtil.deserializeProperties(task.getProperties());
-              properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
-              properties.put(
-                  PolarisTaskConstants.LAST_ATTEMPT_START_TIME, String.valueOf(clock.millis()));
-              properties.put(
-                  PolarisTaskConstants.ATTEMPT_COUNT,
-                  String.valueOf(
-                      Integer.parseInt(
-                              properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
-                          + 1));
-              newTask.entityVersion(task.getEntityVersion() + 1);
-              newTask.properties(PolarisObjectMapperUtil.serializeProperties(properties));
-              ms.updateEntity(newTask.build());
-            });
+        .forEach(task -> {
+          var newTask = new PolarisBaseEntity.Builder(task);
+          var properties = PolarisObjectMapperUtil.deserializeProperties(task.getProperties());
+          properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
+          properties.put(
+              PolarisTaskConstants.LAST_ATTEMPT_START_TIME, String.valueOf(clock.millis()));
+          properties.put(
+              PolarisTaskConstants.ATTEMPT_COUNT,
+              String.valueOf(
+                  Integer.parseInt(properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
+                      + 1));
+          newTask.entityVersion(task.getEntityVersion() + 1);
+          newTask.properties(PolarisObjectMapperUtil.serializeProperties(properties));
+          ms.updateEntity(newTask.build());
+        });
     return new EntitiesResult(Page.fromItems(availableTasks.items()));
   }
 

@@ -127,16 +127,14 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> grantRequiresManageGrants() {
     return authzTestsBuilder("grantPrivilegeOnSemanticModelToRole")
-        .action(
-            () ->
-                caller()
-                    .grantPrivilegeOnSemanticModelToRole(
-                        CATALOG_NAME, CATALOG_ROLE2, MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ))
-        .cleanupAction(
-            () ->
-                newRootAdminService()
-                    .revokePrivilegeOnSemanticModelFromRole(
-                        CATALOG_NAME, CATALOG_ROLE2, MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ))
+        .action(() ->
+            caller()
+                .grantPrivilegeOnSemanticModelToRole(
+                    CATALOG_NAME, CATALOG_ROLE2, MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ))
+        .cleanupAction(() ->
+            newRootAdminService()
+                .revokePrivilegeOnSemanticModelFromRole(
+                    CATALOG_NAME, CATALOG_ROLE2, MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ))
         .shouldPassWith(PolarisPrivilege.SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
@@ -145,19 +143,15 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> revokeRequiresManageGrantsOnModelAndRole() {
     return authzTestsBuilder("revokePrivilegeOnSemanticModelFromRole")
-        .action(
-            () -> {
-              assertSuccess(
-                  newRootAdminService()
-                      .grantPrivilegeOnSemanticModelToRole(
-                          CATALOG_NAME,
-                          CATALOG_ROLE2,
-                          MODEL,
-                          PolarisPrivilege.SEMANTIC_MODEL_READ));
-              caller()
-                  .revokePrivilegeOnSemanticModelFromRole(
-                      CATALOG_NAME, CATALOG_ROLE2, MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ);
-            })
+        .action(() -> {
+          assertSuccess(
+              newRootAdminService()
+                  .grantPrivilegeOnSemanticModelToRole(
+                      CATALOG_NAME, CATALOG_ROLE2, MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ));
+          caller()
+              .revokePrivilegeOnSemanticModelFromRole(
+                  CATALOG_NAME, CATALOG_ROLE2, MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ);
+        })
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .shouldPassWith(
             PolarisPrivilege.SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE,
@@ -178,14 +172,10 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
         caller()
             .grantPrivilegeOnSemanticModelToRole(
                 CATALOG_NAME, CATALOG_ROLE2, MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ));
-    assertThatThrownBy(
-            () ->
-                caller()
-                    .grantPrivilegeOnSemanticModelToRole(
-                        CATALOG_NAME,
-                        CATALOG_ROLE2,
-                        OTHER_MODEL,
-                        PolarisPrivilege.SEMANTIC_MODEL_READ))
+    assertThatThrownBy(() ->
+            caller()
+                .grantPrivilegeOnSemanticModelToRole(
+                    CATALOG_NAME, CATALOG_ROLE2, OTHER_MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ))
         .isInstanceOf(ForbiddenException.class);
   }
 
@@ -208,31 +198,27 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
     // An external authorizer can authorize by resource name even when resolution fails.
     PolarisAuthorizer authorizer = externalAuthorizer(AuthorizationDecision.allow());
     PolarisAdminService service = caller(authorizer);
-    assertThatThrownBy(
-            () ->
-                service.grantPrivilegeOnSemanticModelToRole(
-                    CATALOG_NAME,
-                    CATALOG_ROLE2,
-                    TableIdentifier.of(NS1, "missing"),
-                    PolarisPrivilege.SEMANTIC_MODEL_READ))
+    assertThatThrownBy(() ->
+            service.grantPrivilegeOnSemanticModelToRole(
+                CATALOG_NAME,
+                CATALOG_ROLE2,
+                TableIdentifier.of(NS1, "missing"),
+                PolarisPrivilege.SEMANTIC_MODEL_READ))
         .isInstanceOf(NoSuchSemanticModelException.class);
-    assertThatThrownBy(
-            () ->
-                service.grantPrivilegeOnSemanticModelToRole(
-                    CATALOG_NAME, "missing-role", MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ))
+    assertThatThrownBy(() ->
+            service.grantPrivilegeOnSemanticModelToRole(
+                CATALOG_NAME, "missing-role", MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ))
         .isInstanceOf(NotFoundException.class);
-    assertThatThrownBy(
-            () ->
-                service.grantPrivilegeOnSemanticModelToRole(
-                    "missing-catalog", CATALOG_ROLE2, MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ))
+    assertThatThrownBy(() ->
+            service.grantPrivilegeOnSemanticModelToRole(
+                "missing-catalog", CATALOG_ROLE2, MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ))
         .isInstanceOf(NotFoundException.class);
-    assertThatThrownBy(
-            () ->
-                service.grantPrivilegeOnSemanticModelToRole(
-                    CATALOG_NAME,
-                    CATALOG_ROLE2,
-                    TableIdentifier.of("missing-ns", "model"),
-                    PolarisPrivilege.SEMANTIC_MODEL_READ))
+    assertThatThrownBy(() ->
+            service.grantPrivilegeOnSemanticModelToRole(
+                CATALOG_NAME,
+                CATALOG_ROLE2,
+                TableIdentifier.of("missing-ns", "model"),
+                PolarisPrivilege.SEMANTIC_MODEL_READ))
         .isInstanceOf(NoSuchSemanticModelException.class);
     verify(authorizer, times(4)).authorize(any(), any(AuthorizationRequest.class));
     assertThat(newRootAdminService().listGrantsForCatalogRole(CATALOG_NAME, CATALOG_ROLE2))
@@ -241,22 +227,18 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
 
   static Stream<Arguments> grantOperationTargets() {
     return Stream.of(false, true)
-        .flatMap(
-            revoke ->
-                Stream.of(
-                    Arguments.of(revoke, CATALOG_NAME, CATALOG_ROLE2, MODEL),
-                    Arguments.of(revoke, "missing-catalog", CATALOG_ROLE2, MODEL),
-                    Arguments.of(revoke, CATALOG_NAME, "missing-role", MODEL),
-                    Arguments.of(
-                        revoke,
-                        CATALOG_NAME,
-                        CATALOG_ROLE2,
-                        TableIdentifier.of("missing-ns", "model")),
-                    Arguments.of(
-                        revoke,
-                        CATALOG_NAME,
-                        CATALOG_ROLE2,
-                        TableIdentifier.of(NS1, "missing-model"))));
+        .flatMap(revoke ->
+            Stream.of(
+                Arguments.of(revoke, CATALOG_NAME, CATALOG_ROLE2, MODEL),
+                Arguments.of(revoke, "missing-catalog", CATALOG_ROLE2, MODEL),
+                Arguments.of(revoke, CATALOG_NAME, "missing-role", MODEL),
+                Arguments.of(
+                    revoke, CATALOG_NAME, CATALOG_ROLE2, TableIdentifier.of("missing-ns", "model")),
+                Arguments.of(
+                    revoke,
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    TableIdentifier.of(NS1, "missing-model"))));
   }
 
   @ParameterizedTest
@@ -284,26 +266,24 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
     Stream<GrantResource> inheritedGrants =
         Stream.of(PolarisPrivilege.values())
             .filter(privilege -> privilege.name().startsWith("SEMANTIC_MODEL_"))
-            .flatMap(
-                privilege ->
-                    Stream.of(
-                        new NamespaceGrant(
-                            List.of(NS1.levels()),
-                            NamespacePrivilege.valueOf(privilege.name()),
-                            GrantResource.TypeEnum.NAMESPACE),
-                        new CatalogGrant(
-                            CatalogPrivilege.valueOf(privilege.name()),
-                            GrantResource.TypeEnum.CATALOG)));
+            .flatMap(privilege ->
+                Stream.of(
+                    new NamespaceGrant(
+                        List.of(NS1.levels()),
+                        NamespacePrivilege.valueOf(privilege.name()),
+                        GrantResource.TypeEnum.NAMESPACE),
+                    new CatalogGrant(
+                        CatalogPrivilege.valueOf(privilege.name()),
+                        GrantResource.TypeEnum.CATALOG)));
     return Stream.concat(
         inheritedGrants,
         Stream.of(SemanticModelPrivilege.values())
-            .map(
-                privilege ->
-                    new SemanticModelGrant(
-                        List.of(NS1.levels()),
-                        MODEL.name(),
-                        privilege,
-                        GrantResource.TypeEnum.SEMANTIC_MODEL)));
+            .map(privilege ->
+                new SemanticModelGrant(
+                    List.of(NS1.levels()),
+                    MODEL.name(),
+                    privilege,
+                    GrantResource.TypeEnum.SEMANTIC_MODEL)));
   }
 
   @ParameterizedTest

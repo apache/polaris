@@ -25,12 +25,12 @@ import static org.apache.polaris.persistence.nosql.api.backend.PersistId.persist
 import static org.apache.polaris.persistence.nosql.api.backend.PersistId.persistIdPart0;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjSerializationHelper.contextualReader;
+import static org.apache.polaris.persistence.nosql.api.obj.ObjSerializationHelper.readersFor;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjTypes.objTypeById;
 import static tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 import static tools.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
 
 import com.google.common.primitives.Ints;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Array;
@@ -66,6 +66,7 @@ import org.apache.polaris.persistence.nosql.impl.indexes.IndexesProvider;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectReader;
 import tools.jackson.databind.ObjectWriter;
 import tools.jackson.databind.util.ByteBufferBackedInputStream;
 import tools.jackson.dataformat.smile.SmileMapper;
@@ -82,6 +83,7 @@ public final class PersistenceImplementation implements Persistence {
           .disable(FAIL_ON_UNKNOWN_PROPERTIES)
           .enable(DEFAULT_VIEW_INCLUSION)
           .build();
+  private static final ClassValue<ObjectReader> OBJ_READERS = readersFor(SMILE_MAPPER);
   private static final ObjectWriter OBJ_WRITER =
       SMILE_MAPPER.writer().withView(Obj.StorageView.class);
 
@@ -268,28 +270,37 @@ public final class PersistenceImplementation implements Persistence {
         }
       }
       var fetchedObjTypeId = f.type();
+      if (numParts == 1) {
+        r[i] =
+            deserializeObj(
+                fetchedObjTypeId,
+                id.id(),
+                numParts,
+                f.serialized(),
+                f.versionToken(),
+                f.createdAtMicros(),
+                clazz);
+        continue;
+      }
       try (var in =
-          numParts == 1
-              ? new ByteArrayInputStream(f.serialized())
-              : new MultiByteArrayInputStream(
-                  IntStream.range(0, numParts)
-                      .mapToObj(
-                          p -> {
-                            var part = fetched.get(persistId(id.id(), p));
-                            checkState(
-                                part != null,
-                                "Part #%s of %s of object %s does not exist in the database",
-                                p,
-                                numParts,
-                                id);
-                            checkState(
-                                fetchedObjTypeId.equals(part.type()),
-                                "Object type mismatch, expected '%s', got '%s'",
-                                fetchedObjTypeId,
-                                part.type());
-                            return part.serialized();
-                          })
-                      .toList())) {
+          new MultiByteArrayInputStream(
+              IntStream.range(0, numParts)
+                  .mapToObj(p -> {
+                    var part = fetched.get(persistId(id.id(), p));
+                    checkState(
+                        part != null,
+                        "Part #%s of %s of object %s does not exist in the database",
+                        p,
+                        numParts,
+                        id);
+                    checkState(
+                        fetchedObjTypeId.equals(part.type()),
+                        "Object type mismatch, expected '%s', got '%s'",
+                        fetchedObjTypeId,
+                        part.type());
+                    return part.serialized();
+                  })
+                  .toList())) {
         r[i] =
             deserializeObj(
                 fetchedObjTypeId,
@@ -543,7 +554,7 @@ public final class PersistenceImplementation implements Persistence {
     if (binary == null) {
       return null;
     }
-    return SMILE_MAPPER.readValue(binary, clazz);
+    return OBJ_READERS.get(clazz).readValue(binary);
   }
 
   /** Deserialize a byte array into an object of the given type, consumes the {@link ByteBuffer}. */
@@ -551,7 +562,7 @@ public final class PersistenceImplementation implements Persistence {
     if (binary == null) {
       return null;
     }
-    return SMILE_MAPPER.readValue(new ByteBufferBackedInputStream(binary), clazz);
+    return OBJ_READERS.get(clazz).readValue(new ByteBufferBackedInputStream(binary));
   }
 
   public static byte[] serialize(Object o) {
@@ -574,6 +585,27 @@ public final class PersistenceImplementation implements Persistence {
       long createdAtMicros,
       @NonNull Class<T> clazz)
       throws IOException {
+    return objReader(type, id, partNum, versionToken, createdAtMicros, clazz).readValue(in);
+  }
+
+  public static <T> T deserializeObj(
+      String type,
+      long id,
+      int partNum,
+      byte[] bytes,
+      String versionToken,
+      long createdAtMicros,
+      @NonNull Class<T> clazz) {
+    return objReader(type, id, partNum, versionToken, createdAtMicros, clazz).readValue(bytes);
+  }
+
+  private static ObjectReader objReader(
+      String type,
+      long id,
+      int partNum,
+      String versionToken,
+      long createdAtMicros,
+      Class<?> clazz) {
     var objType = objTypeById(type);
     var typeClass = objType.targetClass();
     checkArgument(
@@ -586,12 +618,8 @@ public final class PersistenceImplementation implements Persistence {
         clazz,
         ObjType.class.getName());
 
-    var obj =
-        contextualReader(SMILE_MAPPER, objType, id, partNum, versionToken, createdAtMicros)
-            .readValue(in);
-    @SuppressWarnings("unchecked")
-    var r = (T) obj;
-    return r;
+    return contextualReader(
+        OBJ_READERS.get(typeClass), objType, id, partNum, versionToken, createdAtMicros);
   }
 
   @Override

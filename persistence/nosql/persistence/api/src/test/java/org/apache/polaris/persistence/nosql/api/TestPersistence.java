@@ -85,18 +85,16 @@ public class TestPersistence {
   @Test
   public void bucketizedBulkFetchSizeMustBePositive() {
     soft.assertThatIllegalStateException()
-        .isThrownBy(
-            () ->
-                PersistenceParams.BuildablePersistenceParams.builder()
-                    .bucketizedBulkFetchSize(0)
-                    .build())
+        .isThrownBy(() ->
+            PersistenceParams.BuildablePersistenceParams.builder()
+                .bucketizedBulkFetchSize(0)
+                .build())
         .withMessage("bucketizedBulkFetchSize must be positive");
     soft.assertThatIllegalStateException()
-        .isThrownBy(
-            () ->
-                PersistenceParams.BuildablePersistenceParams.builder()
-                    .bucketizedBulkFetchSize(-1)
-                    .build())
+        .isThrownBy(() ->
+            PersistenceParams.BuildablePersistenceParams.builder()
+                .bucketizedBulkFetchSize(-1)
+                .build())
         .withMessage("bucketizedBulkFetchSize must be positive");
   }
 }

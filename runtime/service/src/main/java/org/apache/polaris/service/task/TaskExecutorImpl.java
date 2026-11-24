@@ -194,7 +194,7 @@ public class TaskExecutorImpl implements TaskExecutor {
             },
             executor)
         .exceptionallyComposeAsync(
-            (t) -> {
+            t -> {
               if (previousError != null) {
                 t.addSuppressed(previousError);
               }

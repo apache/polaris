@@ -61,13 +61,12 @@ class DefaultRealmContextResolverTest {
   @Test
   void headerPresentFailure() {
     DefaultRealmContextResolver resolver = new DefaultRealmContextResolver(config);
-    assertThatThrownBy(
-            () ->
-                resolver
-                    .resolveRealmContext(
-                        "requestURL", "method", "path", Map.of("Polaris-Header", "realm3"))
-                    .toCompletableFuture()
-                    .join())
+    assertThatThrownBy(() ->
+            resolver
+                .resolveRealmContext(
+                    "requestURL", "method", "path", Map.of("Polaris-Header", "realm3"))
+                .toCompletableFuture()
+                .join())
         .rootCause()
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unknown realm: realm3");
@@ -89,12 +88,11 @@ class DefaultRealmContextResolverTest {
   void headerNotPresentFailure() {
     when(config.requireHeader()).thenReturn(true);
     DefaultRealmContextResolver resolver = new DefaultRealmContextResolver(config);
-    assertThatThrownBy(
-            () ->
-                resolver
-                    .resolveRealmContext("requestURL", "method", "path", Map.of())
-                    .toCompletableFuture()
-                    .join())
+    assertThatThrownBy(() ->
+            resolver
+                .resolveRealmContext("requestURL", "method", "path", Map.of())
+                .toCompletableFuture()
+                .join())
         .rootCause()
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Missing required realm header: Polaris-Header");

@@ -90,40 +90,36 @@ public class TestCatalogMapping extends BaseTestMapping {
           @Override
           public Stream<MappingSample> typeVariations(MappingSample base) {
             return storageVariations(this::objBuilder, base)
-                .flatMap(
-                    b ->
-                        Stream.of(
-                            b,
-                            //
-                            new MappingSample(
-                                objBuilder()
-                                    .from(b.obj())
-                                    .catalogType(CatalogType.EXTERNAL)
-                                    .build(),
-                                entityWithInternalProperty(
-                                    b.entity(), CATALOG_TYPE_PROPERTY, "EXTERNAL")),
-                            //
-                            new MappingSample(
-                                objBuilder()
-                                    .from(b.obj())
-                                    .defaultBaseLocation("s3://foo/bar/baz/")
-                                    .build(),
+                .flatMap(b ->
+                    Stream.of(
+                        b,
+                        //
+                        new MappingSample(
+                            objBuilder().from(b.obj()).catalogType(CatalogType.EXTERNAL).build(),
+                            entityWithInternalProperty(
+                                b.entity(), CATALOG_TYPE_PROPERTY, "EXTERNAL")),
+                        //
+                        new MappingSample(
+                            objBuilder()
+                                .from(b.obj())
+                                .defaultBaseLocation("s3://foo/bar/baz/")
+                                .build(),
+                            entityWithProperty(
+                                b.entity(), DEFAULT_BASE_LOCATION_KEY, "s3://foo/bar/baz/")),
+                        //
+                        new MappingSample(
+                            objBuilder()
+                                .from(b.obj())
+                                .catalogType(CatalogType.EXTERNAL)
+                                .defaultBaseLocation("s3://foo/bar/baz/")
+                                .build(),
+                            entityWithInternalProperty(
                                 entityWithProperty(
-                                    b.entity(), DEFAULT_BASE_LOCATION_KEY, "s3://foo/bar/baz/")),
-                            //
-                            new MappingSample(
-                                objBuilder()
-                                    .from(b.obj())
-                                    .catalogType(CatalogType.EXTERNAL)
-                                    .defaultBaseLocation("s3://foo/bar/baz/")
-                                    .build(),
-                                entityWithInternalProperty(
-                                    entityWithProperty(
-                                        b.entity(), DEFAULT_BASE_LOCATION_KEY, "s3://foo/bar/baz/"),
-                                    CATALOG_TYPE_PROPERTY,
-                                    "EXTERNAL"))
-                            //
-                            ));
+                                    b.entity(), DEFAULT_BASE_LOCATION_KEY, "s3://foo/bar/baz/"),
+                                CATALOG_TYPE_PROPERTY,
+                                "EXTERNAL"))
+                        //
+                        ));
           }
         });
   }

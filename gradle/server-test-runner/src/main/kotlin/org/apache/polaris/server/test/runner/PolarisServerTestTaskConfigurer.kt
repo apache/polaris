@@ -19,6 +19,7 @@
 package org.apache.polaris.server.test.runner
 
 import java.io.File
+import java.net.URL
 import java.net.URLClassLoader
 import org.apache.polaris.server.test.runner.spi.PolarisServerStartupAction
 import org.apache.polaris.server.test.runner.spi.PolarisServerStartupContext
@@ -130,6 +131,22 @@ private class DefaultPolarisServerStartupContext(
   override fun getEnvironment(): MutableMap<String, String> = environment
 }
 
+// Share the SPI's class identity without exposing Gradle's plugin dependencies or resources.
+// A parent-first loader with the plugin loader as parent can mask action dependencies, e.g.
+// Commons Lang from Jandex can break the Commons Compress used by Testcontainers.
+internal class StartupActionClassLoader(urls: Array<URL>) :
+  URLClassLoader(
+    urls,
+    object : ClassLoader(getPlatformClassLoader()) {
+      override fun loadClass(name: String, resolve: Boolean): Class<*> =
+        when (name) {
+          PolarisServerStartupAction::class.java.name -> PolarisServerStartupAction::class.java
+          PolarisServerStartupContext::class.java.name -> PolarisServerStartupContext::class.java
+          else -> super.loadClass(name, resolve)
+        }
+    },
+  )
+
 private class IsolatedPolarisServerStartupAction(
   private val classLoader: URLClassLoader,
   private val delegate: PolarisServerStartupAction,
@@ -148,7 +165,7 @@ private class IsolatedPolarisServerStartupAction(
       environment: MutableMap<String, String>,
     ): IsolatedPolarisServerStartupAction {
       val urls = classpath.map { it.toURI().toURL() }.toTypedArray()
-      val classLoader = URLClassLoader(urls, PolarisServerStartupAction::class.java.classLoader)
+      val classLoader = StartupActionClassLoader(urls)
       val action =
         try {
           withContextClassLoader(classLoader) {

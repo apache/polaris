@@ -76,10 +76,9 @@ class MetadataFileCleanupTest {
             Map.of(TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED, "true"));
     TableMetadata baseMetadata = withMetadataLog(newMetadata, badFile);
 
-    assertThatCode(
-            () ->
-                new MetadataFileCleanup(io, baseMetadata, newMetadata, Set.of(TABLE_LOCATION))
-                    .deleteRemovedMetadataFiles())
+    assertThatCode(() ->
+            new MetadataFileCleanup(io, baseMetadata, newMetadata, Set.of(TABLE_LOCATION))
+                .deleteRemovedMetadataFiles())
         .doesNotThrowAnyException();
   }
 

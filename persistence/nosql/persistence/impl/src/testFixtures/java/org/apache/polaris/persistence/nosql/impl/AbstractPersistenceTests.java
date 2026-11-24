@@ -76,16 +76,15 @@ public abstract class AbstractPersistenceTests {
     soft.assertThatThrownBy(() -> persistence().fetchReference(refName))
         .isInstanceOf(ReferenceNotFoundException.class)
         .hasMessage(refName);
-    soft.assertThatThrownBy(
-            () ->
-                persistence()
-                    .updateReferencePointer(
-                        Reference.builder()
-                            .name(refName)
-                            .createdAtMicros(123L)
-                            .previousPointers()
-                            .build(),
-                        objRef("type", 123L, 1)))
+    soft.assertThatThrownBy(() ->
+            persistence()
+                .updateReferencePointer(
+                    Reference.builder()
+                        .name(refName)
+                        .createdAtMicros(123L)
+                        .previousPointers()
+                        .build(),
+                    objRef("type", 123L, 1)))
         .isInstanceOf(ReferenceNotFoundException.class)
         .hasMessage(refName);
 
@@ -335,33 +334,27 @@ public abstract class AbstractPersistenceTests {
 
     var id1final = id1;
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                persistence()
-                    .fetch(objRef(id1final.type(), id1final.id(), 0), AnotherTestObj.class))
+        .isThrownBy(() ->
+            persistence().fetch(objRef(id1final.type(), id1final.id(), 0), AnotherTestObj.class))
         .withMessageStartingWith(
             "Mismatch between persisted object type 'test-simple' (interface org.apache.polaris.persistence.nosql.api.obj.SimpleTestObj) and deserialized interface org.apache.polaris.persistence.nosql.api.obj.AnotherTestObj.");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                persistence()
-                    .fetch(
-                        objRef(AnotherTestObj.TYPE.id(), id1final.id(), 0), AnotherTestObj.class))
+        .isThrownBy(() ->
+            persistence()
+                .fetch(objRef(AnotherTestObj.TYPE.id(), id1final.id(), 0), AnotherTestObj.class))
         .withMessageStartingWith(
             "Mismatch between persisted object type 'test-simple' (interface org.apache.polaris.persistence.nosql.api.obj.SimpleTestObj) and deserialized interface org.apache.polaris.persistence.nosql.api.obj.AnotherTestObj.");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                persistence()
-                    .fetchMany(AnotherTestObj.class, objRef(id1final.type(), id1final.id(), 0)))
+        .isThrownBy(() ->
+            persistence()
+                .fetchMany(AnotherTestObj.class, objRef(id1final.type(), id1final.id(), 0)))
         .withMessageStartingWith(
             "Mismatch between persisted object type 'test-simple' (interface org.apache.polaris.persistence.nosql.api.obj.SimpleTestObj) and deserialized interface org.apache.polaris.persistence.nosql.api.obj.AnotherTestObj.");
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                persistence()
-                    .fetchMany(
-                        AnotherTestObj.class, objRef(AnotherTestObj.TYPE.id(), id1final.id(), 0)))
+        .isThrownBy(() ->
+            persistence()
+                .fetchMany(
+                    AnotherTestObj.class, objRef(AnotherTestObj.TYPE.id(), id1final.id(), 0)))
         .withMessageStartingWith(
             "Mismatch between persisted object type 'test-simple' (interface org.apache.polaris.persistence.nosql.api.obj.SimpleTestObj) and deserialized interface org.apache.polaris.persistence.nosql.api.obj.AnotherTestObj.");
 
@@ -574,11 +567,9 @@ public abstract class AbstractPersistenceTests {
     requireNonNull(obj2);
 
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                persistence()
-                    .conditionalInsert(
-                        (VersionedTestObj) obj1.withNumParts(0), VersionedTestObj.class))
+        .isThrownBy(() ->
+            persistence()
+                .conditionalInsert((VersionedTestObj) obj1.withNumParts(0), VersionedTestObj.class))
         .withMessage("'obj' must have 'numParts' == 1");
 
     soft.assertThat(

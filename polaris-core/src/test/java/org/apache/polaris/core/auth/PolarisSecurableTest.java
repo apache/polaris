@@ -77,11 +77,10 @@ public class PolarisSecurableTest {
 
   @Test
   void securableRejectsRootInPath() {
-    assertThatThrownBy(
-            () ->
-                PolarisSecurable.of(
-                    new PathSegment(PolarisEntityType.ROOT, "root"),
-                    new PathSegment(PolarisEntityType.CATALOG, "catalogA")))
+    assertThatThrownBy(() ->
+            PolarisSecurable.of(
+                new PathSegment(PolarisEntityType.ROOT, "root"),
+                new PathSegment(PolarisEntityType.CATALOG, "catalogA")))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("must not include ROOT");
   }
@@ -95,34 +94,31 @@ public class PolarisSecurableTest {
 
   @Test
   void securableRejectsInvalidInChainParentHierarchy() {
-    assertThatThrownBy(
-            () ->
-                PolarisSecurable.of(
-                    new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
-                    new PathSegment(PolarisEntityType.TABLE_LIKE, "table1"),
-                    new PathSegment(PolarisEntityType.NAMESPACE, "ns1")))
+    assertThatThrownBy(() ->
+            PolarisSecurable.of(
+                new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
+                new PathSegment(PolarisEntityType.TABLE_LIKE, "table1"),
+                new PathSegment(PolarisEntityType.NAMESPACE, "ns1")))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("must follow declared parent hierarchy");
   }
 
   @Test
   void securableRejectsPathThatDoesNotStartWithTopLevelEntity() {
-    assertThatThrownBy(
-            () ->
-                PolarisSecurable.of(
-                    new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
-                    new PathSegment(PolarisEntityType.TABLE_LIKE, "table1")))
+    assertThatThrownBy(() ->
+            PolarisSecurable.of(
+                new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
+                new PathSegment(PolarisEntityType.TABLE_LIKE, "table1")))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("must start with a top-level entity");
   }
 
   @Test
   void topLevelSecurableRejectsParents() {
-    assertThatThrownBy(
-            () ->
-                PolarisSecurable.of(
-                    new PathSegment(PolarisEntityType.CATALOG, "catalogParent"),
-                    new PathSegment(PolarisEntityType.CATALOG, "catalogA")))
+    assertThatThrownBy(() ->
+            PolarisSecurable.of(
+                new PathSegment(PolarisEntityType.CATALOG, "catalogParent"),
+                new PathSegment(PolarisEntityType.CATALOG, "catalogA")))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("must not declare parents");
   }

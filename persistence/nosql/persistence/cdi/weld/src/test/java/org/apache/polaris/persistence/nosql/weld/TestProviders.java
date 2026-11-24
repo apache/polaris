@@ -53,21 +53,20 @@ public class TestProviders {
     soft.assertThat(systemPersistence.realmId()).isEqualTo(SYSTEM_REALM_ID);
 
     var requestScopedRunner = weld.select(RequestScopedRunner.class).get();
-    requestScopedRunner.runWithRequestContext(
-        () -> {
-          var builder1 = weld.select(RealmPersistenceFactory.class).get();
-          var persistence1 = builder1.newBuilder().realmId("my-realm").build();
-          soft.assertThat(persistence1.realmId()).isEqualTo("my-realm");
+    requestScopedRunner.runWithRequestContext(() -> {
+      var builder1 = weld.select(RealmPersistenceFactory.class).get();
+      var persistence1 = builder1.newBuilder().realmId("my-realm").build();
+      soft.assertThat(persistence1.realmId()).isEqualTo("my-realm");
 
-          var builder2 = weld.select(RealmPersistenceFactory.class).get();
-          var persistence2 = builder2.newBuilder().realmId("other-realm").build();
-          soft.assertThat(persistence2.realmId()).isEqualTo("other-realm");
+      var builder2 = weld.select(RealmPersistenceFactory.class).get();
+      var persistence2 = builder2.newBuilder().realmId("other-realm").build();
+      soft.assertThat(persistence2.realmId()).isEqualTo("other-realm");
 
-          // Trigger IdGenerator "activation"
-          persistence1.generateId();
+      // Trigger IdGenerator "activation"
+      persistence1.generateId();
 
-          // Trigger IdGenerator "activation"
-          persistence2.generateId();
-        });
+      // Trigger IdGenerator "activation"
+      persistence2.generateId();
+    });
   }
 }

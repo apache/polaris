@@ -155,14 +155,13 @@ public abstract class PrincipalMutations<RESULT> implements PrincipalsChangeComm
       principal.clientId().map(IndexKey::key).ifPresent(byClientId::remove);
       updatedPrincipal
           .clientId()
-          .ifPresent(
-              clientId -> {
-                var clientIdKey = IndexKey.key(clientId);
-                if (!byClientId.put(clientIdKey, updatedPrincipalObjRef)) {
-                  throw new AlreadyExistsException(
-                      String.format("Client ID already in use: %s", clientId));
-                }
-              });
+          .ifPresent(clientId -> {
+            var clientIdKey = IndexKey.key(clientId);
+            if (!byClientId.put(clientIdKey, updatedPrincipalObjRef)) {
+              throw new AlreadyExistsException(
+                  String.format("Client ID already in use: %s", clientId));
+            }
+          });
 
       state.writeOrReplace("principal", updatedPrincipal);
 

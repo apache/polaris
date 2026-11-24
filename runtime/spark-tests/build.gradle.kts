@@ -31,8 +31,10 @@ plugins {
 
 val intTestJvmVersion = 21
 val sparkStartupAction = sourceSets.create("sparkStartupAction")
-val sparkStartupActionCompileOnly = configurations["sparkStartupActionCompileOnly"]
-val sparkStartupActionImplementation = configurations["sparkStartupActionImplementation"]
+val sparkStartupActionCompileOnly = configurations[sparkStartupAction.compileOnlyConfigurationName]
+val sparkStartupActionRuntimeOnly = configurations[sparkStartupAction.runtimeOnlyConfigurationName]
+val sparkStartupActionImplementation =
+  configurations[sparkStartupAction.implementationConfigurationName]
 val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
 val localPolarisServer = files(provider { quarkusBuild.get().fastJar.resolve("quarkus-run.jar") })
 
@@ -80,6 +82,7 @@ dependencies {
 
   sparkStartupActionCompileOnly("org.apache.polaris.server-test-runner:polaris-server-test-runner")
   sparkStartupActionImplementation(project(":polaris-rustfs-testcontainer"))
+  sparkStartupActionRuntimeOnly(libs.slf4j.jdk14)
 }
 
 @Suppress("UnstableApiUsage")
@@ -109,6 +112,7 @@ fun Test.configureSparkIntegrationTestTask(
   storageAccessKey: String? = null,
   storageSecretKey: String? = null,
   withHiveRustfsStartupAction: Boolean = false,
+  enforceCatalogConfigAuthorization: Boolean = false,
 ) {
   environment("AWS_REGION", providers.environmentVariable("AWS_REGION").getOrElse("us-west-2"))
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
@@ -168,6 +172,8 @@ fun Test.configureSparkIntegrationTestTask(
         "polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"" to
           skipCredentialSubscoping.toString(),
         "polaris.features.\"ENABLE_CATALOG_FEDERATION\"" to "true",
+        "polaris.features.\"ENFORCE_CATALOG_CONFIG_AUTHORIZATION\"" to
+          enforceCatalogConfigAuthorization.toString(),
         "polaris.features.\"SUPPORTED_CATALOG_CONNECTION_TYPES\"" to "[\"ICEBERG_REST\",\"HIVE\"]",
         "polaris.features.\"SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES\"" to
           "[\"IMPLICIT\",\"OAUTH\"]",
@@ -212,6 +218,7 @@ testing {
             skipCredentialSubscoping = false,
             storageAccessKey = "test-ak-123-catalog-federation",
             storageSecretKey = "test-sk-123-catalog-federation",
+            enforceCatalogConfigAuthorization = true,
           )
         }
       }
@@ -230,6 +237,7 @@ testing {
             storageAccessKey = "test-ak-123-hive-federation",
             storageSecretKey = "test-sk-123-hive-federation",
             withHiveRustfsStartupAction = true,
+            enforceCatalogConfigAuthorization = true,
           )
         }
       }

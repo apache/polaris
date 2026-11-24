@@ -195,19 +195,17 @@ public class SparkCatalogTest {
     catalogConfigWithImpl.put(CATALOG_IMPL, "org.apache.iceberg.inmemory.InMemoryCatalog");
     catalogConfigWithImpl.put("cache-enabled", "false");
     SparkCatalog testCatalog = new SparkCatalog();
-    assertThatThrownBy(
-            () ->
-                testCatalog.validateAndResolveCatalogOptions(
-                    new CaseInsensitiveStringMap(catalogConfigWithImpl)))
+    assertThatThrownBy(() ->
+            testCatalog.validateAndResolveCatalogOptions(
+                new CaseInsensitiveStringMap(catalogConfigWithImpl)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Customized catalog implementation is not supported and not needed");
 
     Map<String, String> catalogConfigInvalidType = Maps.newHashMap();
     catalogConfigInvalidType.put(CatalogUtil.ICEBERG_CATALOG_TYPE, "hive");
-    assertThatThrownBy(
-            () ->
-                testCatalog.validateAndResolveCatalogOptions(
-                    new CaseInsensitiveStringMap(catalogConfigInvalidType)))
+    assertThatThrownBy(() ->
+            testCatalog.validateAndResolveCatalogOptions(
+                new CaseInsensitiveStringMap(catalogConfigInvalidType)))
         .isInstanceOf(IllegalArgumentException.class);
 
     CaseInsensitiveStringMap resolvedMap =
@@ -324,14 +322,21 @@ public class SparkCatalogTest {
             () -> catalog.stageReplace(identifier, defaultSchema, new Transform[0], properties))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("CTAS and RTAS");
-    assertThatThrownBy(
-            () ->
-                catalog.stageCreateOrReplace(
-                    identifier, defaultSchema, new Transform[0], properties))
+    assertThatThrownBy(() ->
+            catalog.stageCreateOrReplace(identifier, defaultSchema, new Transform[0], properties))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("CTAS and RTAS");
 
     assertThat(catalog.listTables(defaultNS)).isEmpty();
+  }
+
+  @Test
+  void testLoadUnknownProcedure() {
+    assertThatThrownBy(
+            () -> catalog.loadProcedure(Identifier.of(new String[] {"system"}, "unknown_proc")))
+        .hasMessageContaining("not found");
+    assertThatThrownBy(() -> catalog.loadProcedure(Identifier.of(defaultNS, "expire_snapshots")))
+        .hasMessageContaining("not found");
   }
 
   @Test
@@ -701,10 +706,9 @@ public class SparkCatalogTest {
       deltaProps.put(TableCatalog.PROP_LOCATION, "file:///tmp/delta/path/to/table/test-delta/");
       Mockito.when(deltaTable.properties()).thenReturn(deltaProps);
       mockedStaticDSV2
-          .when(
-              () ->
-                  DataSourceV2Utils.getTableFromProvider(
-                      Mockito.eq(deltaProvider), Mockito.any(), Mockito.any()))
+          .when(() ->
+              DataSourceV2Utils.getTableFromProvider(
+                  Mockito.eq(deltaProvider), Mockito.any(), Mockito.any()))
           .thenReturn(deltaTable);
 
       Table delta =
@@ -720,10 +724,9 @@ public class SparkCatalogTest {
       V1Table csvTable = Mockito.mock(V1Table.class);
       Mockito.when(csvTable.properties()).thenReturn(csvProps);
       mockedStaticDSV2
-          .when(
-              () ->
-                  DataSourceV2Utils.getTableFromProvider(
-                      Mockito.eq(csvProvider), Mockito.any(), Mockito.any()))
+          .when(() ->
+              DataSourceV2Utils.getTableFromProvider(
+                  Mockito.eq(csvProvider), Mockito.any(), Mockito.any()))
           .thenReturn(csvTable);
       assertThatThrownBy(
               () -> catalog.alterTable(csvIdent, TableChange.setProperty("csv_key", "scv_value")))
@@ -913,10 +916,9 @@ public class SparkCatalogTest {
               .when(() -> DataSource.lookupDataSourceV2(Mockito.eq(format), Mockito.any()))
               .thenReturn(Option.apply(provider));
           mockedStaticDSV2
-              .when(
-                  () ->
-                      DataSourceV2Utils.getTableFromProvider(
-                          Mockito.eq(provider), Mockito.any(), Mockito.any()))
+              .when(() ->
+                  DataSourceV2Utils.getTableFromProvider(
+                      Mockito.eq(provider), Mockito.any(), Mockito.any()))
               .thenReturn(table);
           mockedStaticUtils
               .when(() -> PolarisCatalogUtils.loadV2SparkTable(Mockito.any()))

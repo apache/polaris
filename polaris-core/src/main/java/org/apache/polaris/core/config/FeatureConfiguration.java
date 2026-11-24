@@ -83,13 +83,14 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "so upgrades do not 403 bootstrap. On a 200 the response still includes catalog "
                   + "properties (defaults) as it does today. Enable after granting CATALOG_READ_CONFIG "
                   + "(or catalog-level content privileges) and after updating Ranger/OPA policies "
-                  + "for GET_CATALOG_CONFIG. Ranger currently maps GET_CATALOG_CONFIG to the existing "
-                  + "catalog-properties-read access type; do not enable this flag for Ranger until a "
-                  + "dedicated catalog-config-read access type exists (or accept that coarse mapping). "
-                  + "This flag is temporary. The default will not flip until client-facing catalog "
-                  + "configuration is defined. A production-readiness warning is emitted while the "
-                  + "flag remains false only when using the internal Polaris authorizer"
-                  + "(`polaris.authorization.type=internal`).")
+                  + "for GET_CATALOG_CONFIG. Ranger maps GET_CATALOG_CONFIG to catalog-config-read; "
+                  + "catalog-properties-read implies catalog-config-read. Ranger operators must "
+                  + "re-import polaris-ranger-servicedef.json (PUT the service definition) so the "
+                  + "new access type exists in Ranger Admin; a Polaris upgrade does not update "
+                  + "Ranger Admin. This flag is temporary. The default will not flip until "
+                  + "client-facing catalog configuration is defined. A production-readiness warning "
+                  + "is emitted while the flag remains false only when using the internal Polaris "
+                  + "authorizer (`polaris.authorization.type=internal`).")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
@@ -303,9 +304,10 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_SETTING_S3_ENDPOINTS")
           .description(
-              "If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints.\n"
+              "If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints, "
+                  + "and SigV4 connection configurations to set a custom STS endpoint used for credential vending.\n"
                   + "If set to false, Polaris will not accept catalog create and update requests that contain \n"
-                  + "S3 endpoint properties.")
+                  + "S3 endpoint properties, or catalog create requests that set a SigV4 connection STS endpoint.")
           .defaultValue(true)
           .buildFeatureConfiguration();
 
@@ -439,7 +441,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .description(
                   "The credential vending mechanisms an S3 catalog in this realm may name explicitly. Names\n"
                       + "are case-sensitive and must match a mechanism's identifier exactly, for example STS.\n"
-                      + "Apache Polaris supports STS, which is STS AssumeRole. A catalog that\n"
+                      + "Apache Polaris supports STS, which is STS AssumeRole, and R2_LOCAL_SIGNING, which\n"
+                      + "the Cloudflare R2 storage extension provides. A catalog that\n"
                       + "leaves credentialVendingMechanism empty uses the server's default mechanism and is\n"
                       + "always allowed. Realm-level only; catalog properties cannot widen it. Enforced at\n"
                       + "catalog create and update, and when the server builds the storage integration that\n"
@@ -857,9 +860,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("RESOLVE_CREDENTIALS_BY_STORAGE_NAME")
           .description(
-              "If set to true, resolve AWS credentials based on the storageName field "
+              "If set to true, resolve AWS and Azure credentials based on the storageName field "
                   + "of the storage configuration. "
-                  + "When disabled, the default AWS credentials are used for all storages.")
+                  + "When disabled, the default credentials are used for all storages.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 

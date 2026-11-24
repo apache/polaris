@@ -89,26 +89,25 @@ public class ExceptionMapperTest {
 
     verify(JBOSS_LOGGER)
         .logRaw(
-            assertArg(
-                record -> {
-                  assertThat(record.getLevel()).isEqualTo(level);
+            assertArg(record -> {
+              assertThat(record.getLevel()).isEqualTo(level);
 
-                  String message = record.getMessage();
-                  if (message == null) {
-                    return;
-                  }
+              String message = record.getMessage();
+              if (message == null) {
+                return;
+              }
 
-                  Throwable error = record.getThrown();
-                  if (error == null) {
-                    return;
-                  }
+              Throwable error = record.getThrown();
+              if (error == null) {
+                return;
+              }
 
-                  assertThat(
-                          Optional.ofNullable(error.getCause())
-                              .map(Throwable::getMessage)
-                              .orElse(message))
-                      .contains(CAUSE);
-                }));
+              assertThat(
+                      Optional.ofNullable(error.getCause())
+                          .map(Throwable::getMessage)
+                          .orElse(message))
+                  .contains(CAUSE);
+            }));
   }
 
   @Test

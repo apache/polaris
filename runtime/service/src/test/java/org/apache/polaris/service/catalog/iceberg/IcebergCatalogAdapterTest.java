@@ -308,14 +308,13 @@ public class IcebergCatalogAdapterTest {
   void testCreateNamespaceRejectsMissingNamespace(String json) throws IOException {
     CreateNamespaceRequest request = createNamespaceRequest(json);
     Assertions.assertThat(request.namespace()).isNull();
-    Assertions.assertThatThrownBy(
-            () ->
-                catalogAdapter.createNamespace(
-                    FEDERATED_CATALOG_NAME,
-                    request,
-                    null,
-                    testServices.realmContext(),
-                    testServices.securityContext()))
+    Assertions.assertThatThrownBy(() ->
+            catalogAdapter.createNamespace(
+                FEDERATED_CATALOG_NAME,
+                request,
+                null,
+                testServices.realmContext(),
+                testServices.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("namespace");
   }
@@ -418,27 +417,25 @@ public class IcebergCatalogAdapterTest {
         inMemoryCatalog.createTable(TableIdentifier.of("ns0", "table" + i), new Schema());
       }
 
-      Assertions.assertThatThrownBy(
-              () ->
-                  catalogAdapter.listNamespaces(
-                      FEDERATED_CATALOG_NAME,
-                      null,
-                      null,
-                      null,
-                      testServices.realmContext(),
-                      testServices.securityContext()))
+      Assertions.assertThatThrownBy(() ->
+              catalogAdapter.listNamespaces(
+                  FEDERATED_CATALOG_NAME,
+                  null,
+                  null,
+                  null,
+                  testServices.realmContext(),
+                  testServices.securityContext()))
           .isInstanceOf(BadRequestException.class)
           .hasMessageContaining("100");
 
-      Assertions.assertThatThrownBy(
-              () ->
-                  catalogAdapter.listTables(
-                      FEDERATED_CATALOG_NAME,
-                      "ns0",
-                      null,
-                      null,
-                      testServices.realmContext(),
-                      testServices.securityContext()))
+      Assertions.assertThatThrownBy(() ->
+              catalogAdapter.listTables(
+                  FEDERATED_CATALOG_NAME,
+                  "ns0",
+                  null,
+                  null,
+                  testServices.realmContext(),
+                  testServices.securityContext()))
           .isInstanceOf(BadRequestException.class)
           .hasMessageContaining("100");
 

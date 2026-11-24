@@ -54,9 +54,8 @@ class RootCredentialsSetTest {
 
   @Test
   void duplicateRealm() {
-    assertThatThrownBy(
-            () ->
-                RootCredentialsSet.fromString("realm1,client1a,secret1a;realm1,client1b,secret1b"))
+    assertThatThrownBy(() ->
+            RootCredentialsSet.fromString("realm1,client1a,secret1a;realm1,client1b,secret1b"))
         .hasMessage("Duplicate realm: realm1");
   }
 

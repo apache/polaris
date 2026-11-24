@@ -97,6 +97,11 @@ public class StorageConfigurationTest {
       }
 
       @Override
+      public AzureStorageConfig azure() {
+        return mock(AzureStorageConfig.class);
+      }
+
+      @Override
       public Optional<String> gcpAccessToken() {
         return Optional.of(TEST_GCP_TOKEN);
       }
@@ -173,6 +178,11 @@ public class StorageConfigurationTest {
             return Map.of();
           }
         };
+      }
+
+      @Override
+      public AzureStorageConfig azure() {
+        return mock(AzureStorageConfig.class);
       }
 
       @Override
@@ -264,6 +274,11 @@ public class StorageConfigurationTest {
                 });
           }
         };
+      }
+
+      @Override
+      public AzureStorageConfig azure() {
+        return mock(AzureStorageConfig.class);
       }
 
       @Override

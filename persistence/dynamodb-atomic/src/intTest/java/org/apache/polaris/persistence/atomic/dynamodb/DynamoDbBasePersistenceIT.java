@@ -36,6 +36,7 @@ import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
 class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
 
@@ -126,10 +127,8 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
             () -> persistence.writeEntity(callCtx, withVersion(v1, 3, 1, Map.of()), false, v1))
         .isInstanceOf(RetryOnConcurrencyException.class);
     PolarisBaseEntity staleGrants = withVersion(v2, 2, 1, Map.of());
-    assertThatThrownBy(
-            () ->
-                persistence.writeEntity(
-                    callCtx, withVersion(v2, 3, 2, Map.of()), false, staleGrants))
+    assertThatThrownBy(() ->
+            persistence.writeEntity(callCtx, withVersion(v2, 3, 2, Map.of()), false, staleGrants))
         .isInstanceOf(RetryOnConcurrencyException.class);
 
     assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isEqualTo(v2);
@@ -146,6 +145,7 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
             EntityAlreadyExistsException.class,
             e -> assertThat(e.getExistingEntity().getId()).isEqualTo(10L));
     assertThat(persistence.lookupEntity(callCtx, CATALOG, 11L, TYPE)).isNull();
+    assertThat(childRecordExists(PARENT, 11L)).isFalse();
   }
 
   @Test
@@ -206,6 +206,22 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
   }
 
   @Test
+  void reParentOntoATakenNameLeavesTheChildRecordUnderTheOldParent() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    PolarisBaseEntity takenInNewParent = entity(11L, PARENT + 1, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    persistence.writeEntity(callCtx, takenInNewParent, false, null);
+
+    // Re-parent sales into PARENT+1, where the name "sales" is already taken: rejected, nothing
+    // lands. The child record stays under the old parent and does not appear under the new one.
+    assertThatThrownBy(() ->
+            persistence.writeEntity(callCtx, renamed(sales, PARENT + 1, "sales"), true, sales))
+        .isInstanceOf(EntityAlreadyExistsException.class);
+    assertThat(childRecordExists(PARENT, 10L)).isTrue();
+    assertThat(childRecordExists(PARENT + 1, 10L)).isFalse();
+  }
+
+  @Test
   void nameChangedFlagWithUnchangedNameIsAPlainUpdate() {
     PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
     persistence.writeEntity(callCtx, sales, false, null);
@@ -253,6 +269,7 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
 
     assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isNull();
     assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales")).isNull();
+    assertThat(childRecordExists(PARENT, 10L)).isFalse();
   }
 
   @Test
@@ -269,6 +286,57 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
     assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "revenue")).isNull();
     assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales"))
         .isEqualTo(newSales);
+  }
+
+  @Test
+  void createWritesAChildRecord() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+
+    assertThat(childRecordExists(PARENT, 10L)).isTrue();
+  }
+
+  @Test
+  void reParentMovesTheChildRecord() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    PolarisBaseEntity moved = renamed(sales, PARENT + 1, "sales");
+    persistence.writeEntity(callCtx, moved, true, sales);
+
+    assertThat(childRecordExists(PARENT, 10L)).isFalse();
+    assertThat(childRecordExists(PARENT + 1, 10L)).isTrue();
+  }
+
+  @Test
+  void renameWithoutReParentKeepsTheChildRecord() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    persistence.writeEntity(callCtx, renamed(sales, PARENT, "revenue"), true, sales);
+
+    // The child record is keyed by parent coordinates and id, not name, so it stays put.
+    assertThat(childRecordExists(PARENT, 10L)).isTrue();
+  }
+
+  @Test
+  void deleteRemovesTheChildRecord() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+
+    persistence.deleteEntity(callCtx, sales);
+
+    assertThat(childRecordExists(PARENT, 10L)).isFalse();
+  }
+
+  /** Strongly consistent read of a base-table child record, as a future listing would do. */
+  private boolean childRecordExists(long parentId, long id) {
+    int subType = PolarisEntitySubType.NULL_SUBTYPE.getCode();
+    Map<String, AttributeValue> key =
+        Map.of(
+            DynamoDbLayout.PK,
+                AttributeValue.fromS(
+                    DynamoDbLayout.childPk("realm1", CATALOG, parentId, TYPE, subType)),
+            DynamoDbLayout.SK, AttributeValue.fromS(DynamoDbLayout.childSk(id)));
+    return client.getItem(b -> b.tableName(table).key(key).consistentRead(true)).hasItem();
   }
 
   private static PolarisBaseEntity entity(long id, long parentId, String name, int version) {

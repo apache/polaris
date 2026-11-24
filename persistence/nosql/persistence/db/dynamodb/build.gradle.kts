@@ -47,9 +47,11 @@ val quarkusRuntimeElements =
 
 val dynamoDbStartupAction = sourceSets.create("dynamoDbStartupAction")
 val dynamoDbStartupActionCompileOnly =
-  configurations.getByName(dynamoDbStartupAction.compileOnlyConfigurationName)
+  configurations[dynamoDbStartupAction.compileOnlyConfigurationName]
+val dynamoDbStartupActionRuntimeOnly =
+  configurations[dynamoDbStartupAction.runtimeOnlyConfigurationName]
 val dynamoDbStartupActionImplementation =
-  configurations.getByName(dynamoDbStartupAction.implementationConfigurationName)
+  configurations[dynamoDbStartupAction.implementationConfigurationName]
 
 dependencies {
   polarisServer(project(path = ":polaris-server", configuration = "quarkusRunner"))
@@ -57,6 +59,7 @@ dependencies {
     "org.apache.polaris.server-test-runner:polaris-server-test-runner",
   )
   dynamoDbStartupActionImplementation(project(":polaris-floci-aws-testcontainer"))
+  dynamoDbStartupActionRuntimeOnly(libs.slf4j.jdk14)
 
   implementation(project(":polaris-persistence-nosql-api"))
   implementation(project(":polaris-persistence-nosql-impl"))

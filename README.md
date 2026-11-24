@@ -75,7 +75,6 @@ The repository is organized into the following groups of Gradle modules. Each le
   - `polaris-floci-aws-testcontainer`, `polaris-floci-az-testcontainer`, `polaris-floci-gcp-testcontainer`,
     `polaris-rustfs-testcontainer`, `polaris-hms-testcontainer` - test containers
   - `polaris-config-docs-{annotations,generator,site}` - reference-doc generation
-  - `aggregated-license-report` - aggregated license report
 - **Tests**
   - [`polaris-tests`](./integration-tests/README.md) - normative integration tests, reusable downstream
 

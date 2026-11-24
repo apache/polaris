@@ -20,7 +20,6 @@ package org.apache.polaris.core.persistence.cache;
 
 import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
-import org.checkerframework.checker.index.qual.NonNegative;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -53,7 +52,7 @@ public final class EntityWeigher implements Weigher<Long, ResolvedPolarisEntity>
    * @return The weight of the entity
    */
   @Override
-  public @NonNegative int weigh(@NonNull Long key, ResolvedPolarisEntity value) {
+  public int weigh(@NonNull Long key, ResolvedPolarisEntity value) {
     long weight =
         APPROXIMATE_ENTITY_OVERHEAD
             + ((long) value.getEntity().getName().length() * APPROXIMATE_BYTES_PER_CHAR)

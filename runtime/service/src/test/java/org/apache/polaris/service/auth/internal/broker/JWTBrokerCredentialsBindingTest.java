@@ -245,14 +245,13 @@ public class JWTBrokerCredentialsBindingTest {
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
         .thenThrow(new RuntimeException("simulated metastore outage"));
 
-    assertThatThrownBy(
-            () ->
-                broker.generateFromToken(
-                    TokenType.ACCESS_TOKEN,
-                    original.getAccessToken(),
-                    TokenRequestValidator.TOKEN_EXCHANGE,
-                    SCOPE,
-                    TokenType.ACCESS_TOKEN))
+    assertThatThrownBy(() ->
+            broker.generateFromToken(
+                TokenType.ACCESS_TOKEN,
+                original.getAccessToken(),
+                TokenRequestValidator.TOKEN_EXCHANGE,
+                SCOPE,
+                TokenType.ACCESS_TOKEN))
         .isInstanceOfSatisfying(
             PolarisServiceUnavailableException.class,
             e -> {

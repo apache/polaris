@@ -33,12 +33,9 @@ import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.A_PU
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.A_SUB_TYPE_CODE;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.A_TO_PURGE_TIMESTAMP;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.A_TYPE_CODE;
-import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.GSI1_PK;
-import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.GSI1_SK;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.PK;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK_ENTITY;
-import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.byNameGsiPk;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.entityPk;
 
 import java.util.HashMap;
@@ -50,8 +47,8 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 /**
  * Maps a {@link PolarisBaseEntity} to and from its DynamoDB "entity item" representation.
  *
- * <p>The item is keyed by {@code PK = realmId#id}, {@code SK = "ENTITY"}, and carries the by-name
- * GSI keys so a parent's children can be listed.
+ * <p>The item is keyed by {@code PK = realmId#id}, {@code SK = "ENTITY"}. A parent's children are
+ * listed through the separate child records, not through this item.
  */
 public final class EntityItem {
 
@@ -78,12 +75,6 @@ public final class EntityItem {
     item.put(A_LAST_UPDATE_TIMESTAMP, numberAttr(e.getLastUpdateTimestamp()));
     item.put(A_PROPERTIES, mapAttr(e.getPropertiesAsMap()));
     item.put(A_INTERNAL_PROPERTIES, mapAttr(e.getInternalPropertiesAsMap()));
-
-    // by-name GSI keys (sparse: only entity items carry them) -> serve "list children".
-    item.put(
-        GSI1_PK,
-        stringAttr(byNameGsiPk(realmId, e.getCatalogId(), e.getParentId(), e.getTypeCode())));
-    item.put(GSI1_SK, stringAttr(e.getName()));
     return Map.copyOf(item);
   }
 

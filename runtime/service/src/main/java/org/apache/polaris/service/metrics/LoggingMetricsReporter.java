@@ -47,14 +47,13 @@ public class LoggingMetricsReporter implements IcebergMetricsReporter {
 
   /** Creates a new LoggingMetricsReporter that logs metrics to the class logger. */
   public LoggingMetricsReporter() {
-    this(
-        envelope ->
-            LOGGER.info(
-                "{}.{} (ts={}): {}",
-                envelope.catalogName(),
-                envelope.table(),
-                envelope.receivedTimestamp(),
-                envelope.report()));
+    this(envelope ->
+        LOGGER.info(
+            "{}.{} (ts={}): {}",
+            envelope.catalogName(),
+            envelope.table(),
+            envelope.receivedTimestamp(),
+            envelope.report()));
   }
 
   @VisibleForTesting

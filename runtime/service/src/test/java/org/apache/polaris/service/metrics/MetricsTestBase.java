@@ -91,12 +91,11 @@ public abstract class MetricsTestBase {
     AtomicReference<Map<String, MetricFamily>> value = new AtomicReference<>();
     Awaitility.await()
         .atMost(Duration.ofMinutes(2))
-        .untilAsserted(
-            () -> {
-              value.set(platformMetricsApi.fetchMetrics());
-              assertThat(value.get()).containsKey(API_METRIC_NAME);
-              assertThat(value.get()).containsKey(HTTP_METRIC_NAME);
-            });
+        .untilAsserted(() -> {
+          value.set(platformMetricsApi.fetchMetrics());
+          assertThat(value.get()).containsKey(API_METRIC_NAME);
+          assertThat(value.get()).containsKey(HTTP_METRIC_NAME);
+        });
     return value.get();
   }
 
@@ -106,54 +105,48 @@ public abstract class MetricsTestBase {
     Map<String, MetricFamily> allMetrics = fetchMetrics();
     assertThat(allMetrics).containsKey(API_METRIC_NAME);
     assertThat(allMetrics.get(API_METRIC_NAME).getMetrics())
-        .satisfiesOnlyOnce(
-            metric -> {
-              assertThat(metric.getLabels())
-                  .contains(
-                      Map.entry("application", "Polaris"),
-                      Map.entry("environment", "prod"),
-                      Map.entry(
-                          "realm_id",
-                          metricsConfiguration.realmIdTag().enableInApiMetrics()
-                              ? polarisEndpoints.realmId()
-                              : ""),
-                      Map.entry(
-                          "principal",
-                          metricsConfiguration.userPrincipalTag().enableInApiMetrics()
-                              ? "root"
-                              : ""),
-                      Map.entry(
-                          "class", "org.apache.polaris.service.admin.api.PolarisPrincipalsApi"),
-                      Map.entry("exception", "none"),
-                      Map.entry("method", "getPrincipal"));
-              assertThat(metric)
-                  .asInstanceOf(type(Summary.class))
-                  .extracting(Summary::getSampleCount)
-                  .isEqualTo(1L);
-            });
+        .satisfiesOnlyOnce(metric -> {
+          assertThat(metric.getLabels())
+              .contains(
+                  Map.entry("application", "Polaris"),
+                  Map.entry("environment", "prod"),
+                  Map.entry(
+                      "realm_id",
+                      metricsConfiguration.realmIdTag().enableInApiMetrics()
+                          ? polarisEndpoints.realmId()
+                          : ""),
+                  Map.entry(
+                      "principal",
+                      metricsConfiguration.userPrincipalTag().enableInApiMetrics() ? "root" : ""),
+                  Map.entry("class", "org.apache.polaris.service.admin.api.PolarisPrincipalsApi"),
+                  Map.entry("exception", "none"),
+                  Map.entry("method", "getPrincipal"));
+          assertThat(metric)
+              .asInstanceOf(type(Summary.class))
+              .extracting(Summary::getSampleCount)
+              .isEqualTo(1L);
+        });
     assertThat(allMetrics).containsKey(HTTP_METRIC_NAME);
     assertThat(allMetrics.get(HTTP_METRIC_NAME).getMetrics())
-        .satisfiesOnlyOnce(
-            metric -> {
-              assertThat(metric.getLabels())
-                  .contains(
-                      Map.entry("application", "Polaris"),
-                      Map.entry("environment", "prod"),
-                      Map.entry("method", "GET"),
-                      Map.entry("outcome", "SUCCESS"),
-                      Map.entry("status", "200"),
-                      Map.entry("uri", "/api/management/v1/principals/{principalName}"));
-              if (metricsConfiguration.realmIdTag().enableInHttpMetrics()) {
-                assertThat(metric.getLabels())
-                    .containsEntry("realm_id", polarisEndpoints.realmId());
-              } else {
-                assertThat(metric.getLabels()).doesNotContainKey("realm_id");
-              }
-              assertThat(metric)
-                  .asInstanceOf(type(Summary.class))
-                  .extracting(Summary::getSampleCount)
-                  .isEqualTo(1L);
-            });
+        .satisfiesOnlyOnce(metric -> {
+          assertThat(metric.getLabels())
+              .contains(
+                  Map.entry("application", "Polaris"),
+                  Map.entry("environment", "prod"),
+                  Map.entry("method", "GET"),
+                  Map.entry("outcome", "SUCCESS"),
+                  Map.entry("status", "200"),
+                  Map.entry("uri", "/api/management/v1/principals/{principalName}"));
+          if (metricsConfiguration.realmIdTag().enableInHttpMetrics()) {
+            assertThat(metric.getLabels()).containsEntry("realm_id", polarisEndpoints.realmId());
+          } else {
+            assertThat(metric.getLabels()).doesNotContainKey("realm_id");
+          }
+          assertThat(metric)
+              .asInstanceOf(type(Summary.class))
+              .extracting(Summary::getSampleCount)
+              .isEqualTo(1L);
+        });
   }
 
   @Test
@@ -162,53 +155,47 @@ public abstract class MetricsTestBase {
     Map<String, MetricFamily> allMetrics = fetchMetrics();
     assertThat(allMetrics).containsKey(API_METRIC_NAME);
     assertThat(allMetrics.get(API_METRIC_NAME).getMetrics())
-        .satisfiesOnlyOnce(
-            metric -> {
-              assertThat(metric.getLabels())
-                  .contains(
-                      Map.entry("application", "Polaris"),
-                      Map.entry("environment", "prod"),
-                      Map.entry(
-                          "realm_id",
-                          metricsConfiguration.realmIdTag().enableInApiMetrics()
-                              ? polarisEndpoints.realmId()
-                              : ""),
-                      Map.entry(
-                          "principal",
-                          metricsConfiguration.userPrincipalTag().enableInApiMetrics()
-                              ? "root"
-                              : ""),
-                      Map.entry(
-                          "class", "org.apache.polaris.service.admin.api.PolarisPrincipalsApi"),
-                      Map.entry("exception", "NotFoundException"),
-                      Map.entry("method", "getPrincipal"));
-              assertThat(metric)
-                  .asInstanceOf(type(Summary.class))
-                  .extracting(Summary::getSampleCount)
-                  .isEqualTo(1L);
-            });
+        .satisfiesOnlyOnce(metric -> {
+          assertThat(metric.getLabels())
+              .contains(
+                  Map.entry("application", "Polaris"),
+                  Map.entry("environment", "prod"),
+                  Map.entry(
+                      "realm_id",
+                      metricsConfiguration.realmIdTag().enableInApiMetrics()
+                          ? polarisEndpoints.realmId()
+                          : ""),
+                  Map.entry(
+                      "principal",
+                      metricsConfiguration.userPrincipalTag().enableInApiMetrics() ? "root" : ""),
+                  Map.entry("class", "org.apache.polaris.service.admin.api.PolarisPrincipalsApi"),
+                  Map.entry("exception", "NotFoundException"),
+                  Map.entry("method", "getPrincipal"));
+          assertThat(metric)
+              .asInstanceOf(type(Summary.class))
+              .extracting(Summary::getSampleCount)
+              .isEqualTo(1L);
+        });
     assertThat(allMetrics.get(HTTP_METRIC_NAME).getMetrics())
-        .satisfiesOnlyOnce(
-            metric -> {
-              assertThat(metric.getLabels())
-                  .contains(
-                      Map.entry("application", "Polaris"),
-                      Map.entry("environment", "prod"),
-                      Map.entry("method", "GET"),
-                      Map.entry("outcome", "CLIENT_ERROR"),
-                      Map.entry("status", "404"),
-                      Map.entry("uri", "/api/management/v1/principals/{principalName}"));
-              if (metricsConfiguration.realmIdTag().enableInHttpMetrics()) {
-                assertThat(metric.getLabels())
-                    .containsEntry("realm_id", polarisEndpoints.realmId());
-              } else {
-                assertThat(metric.getLabels()).doesNotContainKey("realm_id");
-              }
-              assertThat(metric)
-                  .asInstanceOf(type(Summary.class))
-                  .extracting(Summary::getSampleCount)
-                  .isEqualTo(1L);
-            });
+        .satisfiesOnlyOnce(metric -> {
+          assertThat(metric.getLabels())
+              .contains(
+                  Map.entry("application", "Polaris"),
+                  Map.entry("environment", "prod"),
+                  Map.entry("method", "GET"),
+                  Map.entry("outcome", "CLIENT_ERROR"),
+                  Map.entry("status", "404"),
+                  Map.entry("uri", "/api/management/v1/principals/{principalName}"));
+          if (metricsConfiguration.realmIdTag().enableInHttpMetrics()) {
+            assertThat(metric.getLabels()).containsEntry("realm_id", polarisEndpoints.realmId());
+          } else {
+            assertThat(metric.getLabels()).doesNotContainKey("realm_id");
+          }
+          assertThat(metric)
+              .asInstanceOf(type(Summary.class))
+              .extracting(Summary::getSampleCount)
+              .isEqualTo(1L);
+        });
   }
 
   private int sendRequest(String principalName) {

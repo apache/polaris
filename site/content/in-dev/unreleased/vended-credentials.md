@@ -79,6 +79,10 @@ endpoint URL in the properties listed above (one per storage type). Iceberg clie
 the Iceberg REST credential-refresh protocol can call this endpoint to obtain fresh credentials
 before the current ones expire, avoiding the need to re-load the table.
 
+The endpoint is only returned together with credentials: a response that carries no vended
+credentials, for example because the request included `none` or because the storage configuration
+does not vend credentials, does not contain it.
+
 ## When delegation cannot be satisfied
 
 `X-Iceberg-Access-Delegation` tells Polaris which access mechanisms the client supports. If the

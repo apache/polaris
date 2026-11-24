@@ -232,6 +232,30 @@ class TestPoliciesCommand(CLITestBase):
             )
             self.assertEqual(kwargs["update_policy_request"].current_policy_version, 1)
 
+    def test_policy_create_requires_policy_type(self) -> None:
+        mock_client = self.build_mock_client()
+        with patch(
+            "builtins.open",
+            unittest.mock.mock_open(read_data='{"version": "2025-02-03"}'),
+        ):
+            self.check_exception(
+                lambda: self.mock_execute(
+                    mock_client,
+                    [
+                        "policies",
+                        "create",
+                        "my-policy",
+                        "--catalog",
+                        "my-catalog",
+                        "--namespace",
+                        "ns1",
+                        "--policy-file",
+                        "dummy.json",
+                    ],
+                ),
+                "Missing required argument: --policy-type",
+            )
+
     @patch("apache_polaris.cli.command.policies.PolicyAPI")
     def test_policy_create(self, mock_policy_api_class: MagicMock) -> None:
         mock_client = self.build_mock_client()

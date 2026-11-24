@@ -45,7 +45,31 @@ class DynamoDbLayoutTest {
   }
 
   @Test
-  void byNameGsiPkCombinesParentCoordinates() {
-    assertThat(DynamoDbLayout.byNameGsiPk("realm1", 7L, 3L, 2)).isEqualTo("realm1#7#3#2");
+  void childPkCombinesParentCoordinatesAndSubtype() {
+    assertThat(DynamoDbLayout.childPk("realm1", 7L, 3L, 2, 0)).isEqualTo("realm1#7#3#2#0");
+    assertThat(DynamoDbLayout.childPk("realm1", 7L, 3L, 1, 2)).isEqualTo("realm1#7#3#1#2");
+  }
+
+  @Test
+  void childSkPrefixesAndPadsTheIdToNineteenDigits() {
+    assertThat(DynamoDbLayout.childSk(0L)).isEqualTo("CHILD#0000000000000000000");
+    assertThat(DynamoDbLayout.childSk(42L)).isEqualTo("CHILD#0000000000000000042");
+    assertThat(DynamoDbLayout.childSk(Long.MAX_VALUE)).isEqualTo("CHILD#9223372036854775807");
+  }
+
+  @Test
+  void childSkSortsInNumericOrder() {
+    // Unpadded, "30" would sort after "200".
+    assertThat(DynamoDbLayout.childSk(30L)).isLessThan(DynamoDbLayout.childSk(200L));
+    assertThat(DynamoDbLayout.childSk(200L)).isLessThan(DynamoDbLayout.childSk(Long.MAX_VALUE));
+  }
+
+  @Test
+  void childSkStaysApartFromEntityAndNameMarkers() {
+    // The CHILD# prefix keeps child records from colliding with the ENTITY and NAME items that
+    // may share a partition key.
+    assertThat(DynamoDbLayout.childSk(42L)).startsWith(DynamoDbLayout.SK_CHILD_PREFIX);
+    assertThat(DynamoDbLayout.childSk(42L)).isNotEqualTo(DynamoDbLayout.SK_ENTITY);
+    assertThat(DynamoDbLayout.childSk(42L)).isNotEqualTo(DynamoDbLayout.SK_NAME);
   }
 }

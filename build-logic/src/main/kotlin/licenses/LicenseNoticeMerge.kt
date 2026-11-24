@@ -35,6 +35,12 @@ import org.gradle.work.DisableCachingByDefault
 @DisableCachingByDefault(because = "not worth caching")
 abstract class LicenseNoticeMerge @Inject constructor(objectFactory: ObjectFactory) :
   DefaultTask() {
+  private companion object {
+    const val LICENSE_MENTION_PREFIX = "* Maven group:artifact IDs: "
+    const val SEPARATOR =
+      "--------------------------------------------------------------------------------"
+  }
+
   @get:OutputDirectory
   val mergedLicenseNotice: DirectoryProperty =
     objectFactory
@@ -59,21 +65,21 @@ abstract class LicenseNoticeMerge @Inject constructor(objectFactory: ObjectFacto
     mergedLicenseNotice.file("LICENSE").get().asFile.writer().use { writer ->
       writer.write(licenseHeaderFile.get().asFile.readText())
       licenseBlocks.forEach { block ->
-        writer.write("\n${LicenseFileValidation.SEPARATOR}\n\n")
+        writer.write("\n$SEPARATOR\n\n")
         writer.write("${block.header}\n\n")
         writer.write("${block.dependencies.joinToString("\n")}\n\n")
         writer.write("${block.suffix}\n")
       }
-      writer.write("\n${LicenseFileValidation.SEPARATOR}\n")
+      writer.write("\n$SEPARATOR\n")
     }
 
     mergedLicenseNotice.file("NOTICE").get().asFile.writer().use { writer ->
       writer.write(noticeHeaderFile.get().asFile.readText())
       noticeBlocks.forEach { block ->
-        writer.write("\n${LicenseFileValidation.SEPARATOR}\n\n")
+        writer.write("\n$SEPARATOR\n\n")
         writer.write("${block}\n\n")
       }
-      writer.write("\n${LicenseFileValidation.SEPARATOR}\n")
+      writer.write("\n$SEPARATOR\n")
     }
   }
 
@@ -86,7 +92,7 @@ abstract class LicenseNoticeMerge @Inject constructor(objectFactory: ObjectFacto
         .flatMap { it ->
           val license = it.resolve("LICENSE").readText()
           license
-            .split("\n${LicenseFileValidation.SEPARATOR}\n")
+            .split("\n$SEPARATOR\n")
             .map { it.trim() }
             .filterIndexed { i, s -> i > 0 && !s.isBlank() }
             .map {
@@ -102,7 +108,7 @@ abstract class LicenseNoticeMerge @Inject constructor(objectFactory: ObjectFacto
               val suffix = StringBuilder()
               while (iter.hasNext()) {
                 val ln = iter.next().trim()
-                if (ln.startsWith(LicenseFileValidation.LICENSE_MENTION_PREFIX)) {
+                if (ln.startsWith(LICENSE_MENTION_PREFIX)) {
                   dependencies.add(ln)
                 } else {
                   suffix.append(ln).append("\n")
@@ -142,7 +148,7 @@ abstract class LicenseNoticeMerge @Inject constructor(objectFactory: ObjectFacto
         it
           .resolve("NOTICE")
           .readText()
-          .split("\n${LicenseFileValidation.SEPARATOR}\n")
+          .split("\n$SEPARATOR\n")
           .map { it.trim() }
           .drop(1)
           .filter { it.isNotBlank() }

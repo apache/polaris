@@ -117,12 +117,11 @@ public class SimpleBenchmark {
     return param.persistence.writeMany(
         ImmutableObj.class,
         IntStream.range(0, 20)
-            .mapToObj(
-                x ->
-                    ImmutableImmutableObj.builder()
-                        .id(param.persistence.generateId())
-                        .value(param.payload)
-                        .build())
+            .mapToObj(x ->
+                ImmutableImmutableObj.builder()
+                    .id(param.persistence.generateId())
+                    .value(param.payload)
+                    .build())
             .toArray(ImmutableObj[]::new));
   }
 }

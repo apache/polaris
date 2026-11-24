@@ -266,137 +266,131 @@ public abstract class PolarisAuthzTestsFactory {
     return DynamicContainer.dynamicContainer(
         operationName() + " positive tests",
         sufficientPrivilegeSets().stream()
-            .map(
-                privilegeSet -> {
-                  List<DynamicTest> tests = new ArrayList<>();
+            .map(privilegeSet -> {
+              List<DynamicTest> tests = new ArrayList<>();
 
-                  // Success test with sufficient privileges
+              // Success test with sufficient privileges
+              tests.add(
+                  DynamicTest.dynamicTest(
+                      operationName() + " should succeed with " + formatPrivilegeSet(privilegeSet),
+                      () -> {
+                        for (PolarisPrivilege privilege : privilegeSet) {
+                          assertThat(grantAction().apply(privilege).isSuccess())
+                              .describedAs("Expected success after granting '%s'", privilege)
+                              .isTrue();
+                        }
+
+                        Runnable authzAction =
+                            useFreshRequestContext()
+                                ? () -> runInFreshRequestContext(action())
+                                : action();
+                        assertThatCode(() -> authzAction.run())
+                            .describedAs(
+                                "Expected success with sufficient privileges '%s'", privilegeSet)
+                            .doesNotThrowAnyException();
+
+                        Runnable cleanup =
+                            useFreshRequestContext()
+                                ? () -> runInFreshRequestContext(cleanupAction().orElse(() -> {}))
+                                : cleanupAction().orElse(() -> {});
+                        assertThatCode(() -> cleanup.run())
+                            .describedAs(
+                                "Cleanup action with sufficient privileges '%s'", privilegeSet)
+                            .doesNotThrowAnyException();
+                      }));
+
+              // "Knockout" tests with one privilege revoked, for multi-privilege sets
+              if (privilegeSet.size() > 1) {
+                for (PolarisPrivilege privilege : privilegeSet) {
                   tests.add(
                       DynamicTest.dynamicTest(
-                          operationName()
-                              + " should succeed with "
-                              + formatPrivilegeSet(privilegeSet),
+                          operationName() + " should fail without " + privilege.name(),
                           () -> {
-                            for (PolarisPrivilege privilege : privilegeSet) {
-                              assertThat(grantAction().apply(privilege).isSuccess())
-                                  .describedAs("Expected success after granting '%s'", privilege)
-                                  .isTrue();
-                            }
-
-                            Runnable authzAction =
-                                useFreshRequestContext()
-                                    ? () -> runInFreshRequestContext(action())
-                                    : action();
-                            assertThatCode(() -> authzAction.run())
-                                .describedAs(
-                                    "Expected success with sufficient privileges '%s'",
-                                    privilegeSet)
-                                .doesNotThrowAnyException();
-
-                            Runnable cleanup =
-                                useFreshRequestContext()
-                                    ? () ->
-                                        runInFreshRequestContext(cleanupAction().orElse(() -> {}))
-                                    : cleanupAction().orElse(() -> {});
-                            assertThatCode(() -> cleanup.run())
-                                .describedAs(
-                                    "Cleanup action with sufficient privileges '%s'", privilegeSet)
-                                .doesNotThrowAnyException();
-                          }));
-
-                  // "Knockout" tests with one privilege revoked, for multi-privilege sets
-                  if (privilegeSet.size() > 1) {
-                    for (PolarisPrivilege privilege : privilegeSet) {
-                      tests.add(
-                          DynamicTest.dynamicTest(
-                              operationName() + " should fail without " + privilege.name(),
-                              () -> {
-                                assertThat(revokeAction().apply(privilege).isSuccess())
-                                    .describedAs("Expected success after revoking '%s'", privilege)
-                                    .isTrue();
-                                Runnable authzAction =
-                                    useFreshRequestContext()
-                                        ? () -> runInFreshRequestContext(action())
-                                        : action();
-                                assertThatThrownBy(
-                                        () -> authzAction.run(),
-                                        "Expected ForbiddenException after revoking sufficient privilege '%s' from set '%s'",
-                                        privilege,
-                                        privilegeSet)
-                                    .isInstanceOf(ForbiddenException.class)
-                                    .hasMessageContaining(principalName())
-                                    .hasMessageContaining("is not authorized");
-                                assertThat(grantAction().apply(privilege).isSuccess())
-                                    .describedAs("Expected success after granting '%s'", privilege)
-                                    .isTrue();
-                              }));
-                    }
-                  }
-
-                  // Failure test with all sufficient privileges revoked
-                  tests.add(
-                      DynamicTest.dynamicTest(
-                          operationName() + " should fail with all sufficient privileges revoked",
-                          () -> {
-                            for (PolarisPrivilege privilege : privilegeSet) {
-                              assertThat(revokeAction().apply(privilege).isSuccess())
-                                  .describedAs("Expected success after revoking '%s'", privilege)
-                                  .isTrue();
-                            }
+                            assertThat(revokeAction().apply(privilege).isSuccess())
+                                .describedAs("Expected success after revoking '%s'", privilege)
+                                .isTrue();
                             Runnable authzAction =
                                 useFreshRequestContext()
                                     ? () -> runInFreshRequestContext(action())
                                     : action();
                             assertThatThrownBy(
                                     () -> authzAction.run(),
-                                    "Expected ForbiddenException after revoking all sufficient privileges '%s'",
+                                    "Expected ForbiddenException after revoking sufficient privilege '%s' from set '%s'",
+                                    privilege,
                                     privilegeSet)
                                 .isInstanceOf(ForbiddenException.class)
                                 .hasMessageContaining(principalName())
                                 .hasMessageContaining("is not authorized");
+                            assertThat(grantAction().apply(privilege).isSuccess())
+                                .describedAs("Expected success after granting '%s'", privilege)
+                                .isTrue();
                           }));
+                }
+              }
 
-                  return DynamicContainer.dynamicContainer(
-                      operationName() + " with " + formatPrivilegeSet(privilegeSet), tests);
-                }));
+              // Failure test with all sufficient privileges revoked
+              tests.add(
+                  DynamicTest.dynamicTest(
+                      operationName() + " should fail with all sufficient privileges revoked",
+                      () -> {
+                        for (PolarisPrivilege privilege : privilegeSet) {
+                          assertThat(revokeAction().apply(privilege).isSuccess())
+                              .describedAs("Expected success after revoking '%s'", privilege)
+                              .isTrue();
+                        }
+                        Runnable authzAction =
+                            useFreshRequestContext()
+                                ? () -> runInFreshRequestContext(action())
+                                : action();
+                        assertThatThrownBy(
+                                () -> authzAction.run(),
+                                "Expected ForbiddenException after revoking all sufficient privileges '%s'",
+                                privilegeSet)
+                            .isInstanceOf(ForbiddenException.class)
+                            .hasMessageContaining(principalName())
+                            .hasMessageContaining("is not authorized");
+                      }));
+
+              return DynamicContainer.dynamicContainer(
+                  operationName() + " with " + formatPrivilegeSet(privilegeSet), tests);
+            }));
   }
 
   private DynamicNode buildNegativeTests() {
     return DynamicContainer.dynamicContainer(
         operationName() + " negative tests",
         insufficientPrivilegeSets().stream()
-            .map(
-                privilegeSet ->
-                    DynamicTest.dynamicTest(
-                        operationName() + " should fail with " + formatPrivilegeSet(privilegeSet),
-                        () -> {
-                          try {
-                            for (PolarisPrivilege privilege : privilegeSet) {
-                              assertThat(grantAction().apply(privilege).isSuccess())
-                                  .describedAs("Expected success after granting '%s'", privilege)
-                                  .isTrue();
-                            }
-                            Runnable authzAction =
-                                useFreshRequestContext()
-                                    ? () -> runInFreshRequestContext(action())
-                                    : action();
+            .map(privilegeSet ->
+                DynamicTest.dynamicTest(
+                    operationName() + " should fail with " + formatPrivilegeSet(privilegeSet),
+                    () -> {
+                      try {
+                        for (PolarisPrivilege privilege : privilegeSet) {
+                          assertThat(grantAction().apply(privilege).isSuccess())
+                              .describedAs("Expected success after granting '%s'", privilege)
+                              .isTrue();
+                        }
+                        Runnable authzAction =
+                            useFreshRequestContext()
+                                ? () -> runInFreshRequestContext(action())
+                                : action();
 
-                            assertThatThrownBy(
-                                    () -> authzAction.run(),
-                                    "Expected ForbiddenException with insufficient privilege set '%s'",
-                                    privilegeSet)
-                                .isInstanceOf(ForbiddenException.class)
-                                .hasMessageContaining(principalName())
-                                .hasMessageContaining("is not authorized");
+                        assertThatThrownBy(
+                                () -> authzAction.run(),
+                                "Expected ForbiddenException with insufficient privilege set '%s'",
+                                privilegeSet)
+                            .isInstanceOf(ForbiddenException.class)
+                            .hasMessageContaining(principalName())
+                            .hasMessageContaining("is not authorized");
 
-                          } finally {
-                            for (PolarisPrivilege privilege : privilegeSet) {
-                              assertThat(revokeAction().apply(privilege).isSuccess())
-                                  .describedAs("Expected success after revoking '%s'", privilege)
-                                  .isTrue();
-                            }
-                          }
-                        })));
+                      } finally {
+                        for (PolarisPrivilege privilege : privilegeSet) {
+                          assertThat(revokeAction().apply(privilege).isSuccess())
+                              .describedAs("Expected success after revoking '%s'", privilege)
+                              .isTrue();
+                        }
+                      }
+                    })));
   }
 
   private static String formatPrivilegeSet(Set<PolarisPrivilege> privilegeSet) {

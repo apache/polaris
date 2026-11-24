@@ -112,11 +112,10 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
 
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
     return authzTestsBuilder("createGenericTable")
-        .action(
-            () ->
-                newWrapper(Set.of(PRINCIPAL_ROLE1))
-                    .createGenericTable(
-                        newtable, "format", "file:///tmp/authz/ns2/newtable", "doc", Map.of()))
+        .action(() ->
+            newWrapper(Set.of(PRINCIPAL_ROLE1))
+                .createGenericTable(
+                    newtable, "format", "file:///tmp/authz/ns2/newtable", "doc", Map.of()))
         .cleanupAction(() -> newWrapper(Set.of(PRINCIPAL_ROLE2)).dropGenericTable(newtable))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
@@ -166,15 +165,14 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
 
     return authzTestsBuilder("dropGenericTable")
         .action(() -> newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC))
-        .cleanupAction(
-            () ->
-                newWrapper(Set.of(PRINCIPAL_ROLE2))
-                    .createGenericTable(
-                        TABLE_NS1_1_GENERIC,
-                        "format",
-                        "file:///tmp/authz/ns1/layer1_table_generic",
-                        "doc",
-                        Map.of()))
+        .cleanupAction(() ->
+            newWrapper(Set.of(PRINCIPAL_ROLE2))
+                .createGenericTable(
+                    TABLE_NS1_1_GENERIC,
+                    "format",
+                    "file:///tmp/authz/ns1/layer1_table_generic",
+                    "doc",
+                    Map.of()))
         .shouldPassWith(PolarisPrivilege.TABLE_DROP)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -185,27 +183,25 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
   private PolarisAuthzTestsFactory.Builder tableLevelAuthzTestsBuilder(
       String operationName, TableIdentifier tableId) {
     return authzTestsBuilder(operationName)
-        .grantAction(
-            priv ->
-                newRootAdminService()
-                    .grantPrivilegeOnTableToRole(CATALOG_NAME, CATALOG_ROLE1, tableId, priv))
-        .revokeAction(
-            priv -> {
-              PrivilegeResult res =
-                  newRootAdminService()
-                      .revokePrivilegeOnTableFromRole(CATALOG_NAME, CATALOG_ROLE1, tableId, priv);
-              // After table drop + recreate, grants on the old entity no longer exist on the
-              // new entity. Only treat GRANT_NOT_FOUND or ENTITY_NOT_FOUND as acceptable —
-              // any other failure should propagate to avoid masking real errors.
-              if (!res.isSuccess()) {
-                BaseResult.ReturnStatus status = res.getReturnStatus();
-                if (status == BaseResult.ReturnStatus.GRANT_NOT_FOUND
-                    || status == BaseResult.ReturnStatus.ENTITY_NOT_FOUND) {
-                  return new PrivilegeResult(new PolarisGrantRecord());
-                }
-              }
-              return res;
-            });
+        .grantAction(priv ->
+            newRootAdminService()
+                .grantPrivilegeOnTableToRole(CATALOG_NAME, CATALOG_ROLE1, tableId, priv))
+        .revokeAction(priv -> {
+          PrivilegeResult res =
+              newRootAdminService()
+                  .revokePrivilegeOnTableFromRole(CATALOG_NAME, CATALOG_ROLE1, tableId, priv);
+          // After table drop + recreate, grants on the old entity no longer exist on the
+          // new entity. Only treat GRANT_NOT_FOUND or ENTITY_NOT_FOUND as acceptable —
+          // any other failure should propagate to avoid masking real errors.
+          if (!res.isSuccess()) {
+            BaseResult.ReturnStatus status = res.getReturnStatus();
+            if (status == BaseResult.ReturnStatus.GRANT_NOT_FOUND
+                || status == BaseResult.ReturnStatus.ENTITY_NOT_FOUND) {
+              return new PrivilegeResult(new PolarisGrantRecord());
+            }
+          }
+          return res;
+        });
   }
 
   /**
@@ -222,15 +218,14 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
 
     return tableLevelAuthzTestsBuilder("dropGenericTableWithTableLevelGrant", TABLE_NS1_1_GENERIC)
         .action(() -> newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC))
-        .cleanupAction(
-            () ->
-                newWrapper(Set.of(PRINCIPAL_ROLE2))
-                    .createGenericTable(
-                        TABLE_NS1_1_GENERIC,
-                        "format",
-                        "file:///tmp/authz/ns1/layer1_table_generic",
-                        "doc",
-                        Map.of()))
+        .cleanupAction(() ->
+            newWrapper(Set.of(PRINCIPAL_ROLE2))
+                .createGenericTable(
+                    TABLE_NS1_1_GENERIC,
+                    "format",
+                    "file:///tmp/authz/ns1/layer1_table_generic",
+                    "doc",
+                    Map.of()))
         .shouldPassWith(PolarisPrivilege.TABLE_DROP)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)

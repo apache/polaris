@@ -213,10 +213,18 @@ jobs:
           docker buildx inspect
 
       - name: Set up Java
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '21.0.13+9'
+
+      - name: Check Docker image dependency licenses
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          exec_process ./gradlew :polaris-server:checkDistributionLicenses :polaris-admin:checkDistributionLicenses \
+            -Dquarkus.container-image.build=false \
+            -Dquarkus.container-image.push=false
 
       - name: Log in to Docker Hub
         if: env.DRY_RUN == '0'
@@ -307,6 +315,7 @@ jobs:
               -name "*.tar.gz" -o \
               -name "*.tgz" -o \
               -name "*.zip" -o \
+              -name "polaris-build-environment-*.json" -o \
               -name "*.asc" -o \
               -name "*.sha512" -o \
               -name "*.prov" \

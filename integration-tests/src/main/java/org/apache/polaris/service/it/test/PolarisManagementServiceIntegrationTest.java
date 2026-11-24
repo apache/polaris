@@ -1585,12 +1585,10 @@ public class PolarisManagementServiceIntegrationTest {
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .extracting(CatalogRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(CatalogRole.class))
-          .satisfiesExactly(
-              cr ->
-                  assertThat(cr)
-                      .returns(
-                          PolarisEntityConstants.getNameOfCatalogAdminRole(),
-                          CatalogRole::getName));
+          .satisfiesExactly(cr ->
+              assertThat(cr)
+                  .returns(
+                      PolarisEntityConstants.getNameOfCatalogAdminRole(), CatalogRole::getName));
     }
 
     UpdateCatalogRoleRequest updateRequest =
@@ -2100,10 +2098,8 @@ public class PolarisManagementServiceIntegrationTest {
 
     // The grant should appear exactly once.
     assertThat(managementApi.listGrants(catalogName, catalogRoleName).getGrants())
-        .filteredOn(
-            g ->
-                g instanceof CatalogGrant cg
-                    && cg.getPrivilege() == CatalogPrivilege.TABLE_WRITE_DATA)
+        .filteredOn(g ->
+            g instanceof CatalogGrant cg && cg.getPrivilege() == CatalogPrivilege.TABLE_WRITE_DATA)
         .hasSize(1);
   }
 
@@ -2127,18 +2123,16 @@ public class PolarisManagementServiceIntegrationTest {
 
     managementApi.addGrant(catalogName, catalogRoleName, grant);
     assertThat(managementApi.listGrants(catalogName, catalogRoleName).getGrants())
-        .filteredOn(
-            g ->
-                g instanceof CatalogGrant cg
-                    && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS)
+        .filteredOn(g ->
+            g instanceof CatalogGrant cg
+                && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS)
         .hasSize(1);
 
     managementApi.revokeGrant(catalogName, catalogRoleName, grant);
     assertThat(managementApi.listGrants(catalogName, catalogRoleName).getGrants())
-        .noneMatch(
-            g ->
-                g instanceof CatalogGrant cg
-                    && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS);
+        .noneMatch(g ->
+            g instanceof CatalogGrant cg
+                && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS);
   }
 
   @Test
@@ -2426,14 +2420,12 @@ public class PolarisManagementServiceIntegrationTest {
         .atMost(Duration.ofSeconds(20))
         .pollDelay(Duration.ofSeconds(1))
         .pollInterval(Duration.ofSeconds(1))
-        .untilAsserted(
-            () -> {
-              try (Response response =
-                  client.managementApi(newToken).request("v1/principals").get()) {
-                assertThat(response)
-                    .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
-              }
-            });
+        .untilAsserted(() -> {
+          try (Response response = client.managementApi(newToken).request("v1/principals").get()) {
+            assertThat(response)
+                .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
+          }
+        });
   }
 
   @Test

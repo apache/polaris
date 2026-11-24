@@ -145,16 +145,15 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testUpdatePolicyPrivileges() {
     return authzTestsBuilder("updatePolicy")
-        .action(
-            () ->
-                newHandler()
-                    .updatePolicy(
-                        POLICY_NS1_1,
-                        UpdatePolicyRequest.builder()
-                            .setCurrentPolicyVersion(0)
-                            .setDescription("test_policy")
-                            .setContent("{\"enable\": false}")
-                            .build()))
+        .action(() ->
+            newHandler()
+                .updatePolicy(
+                    POLICY_NS1_1,
+                    UpdatePolicyRequest.builder()
+                        .setCurrentPolicyVersion(0)
+                        .setDescription("test_policy")
+                        .setContent("{\"enable\": false}")
+                        .build()))
         .shouldPassWith(PolarisPrivilege.POLICY_WRITE)
         .shouldPassWith(PolarisPrivilege.POLICY_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -183,10 +182,9 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
     return authzTestsBuilder("dropPolicy")
         .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).dropPolicy(POLICY_NS1_1, true))
-        .cleanupAction(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE2))
-                    .createPolicy(POLICY_NS1_1.namespace(), createPolicyRequest))
+        .cleanupAction(() ->
+            newHandler(Set.of(PRINCIPAL_ROLE2))
+                .createPolicy(POLICY_NS1_1.namespace(), createPolicyRequest))
         .shouldPassWith(PolarisPrivilege.POLICY_DROP)
         .shouldPassWith(PolarisPrivilege.POLICY_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -216,12 +214,10 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         DetachPolicyRequest.builder().setTarget(catalogTarget).build();
 
     return authzTestsBuilder("attachPolicyToCatalog")
-        .action(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest))
-        .cleanupAction(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest))
+        .action(() ->
+            newHandler(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest))
+        .cleanupAction(() ->
+            newHandler(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest))
         .shouldPassWith(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.CATALOG_ATTACH_POLICY)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -254,12 +250,10 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         DetachPolicyRequest.builder().setTarget(namespaceTarget).build();
 
     return authzTestsBuilder("attachPolicyToNamespace")
-        .action(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest))
-        .cleanupAction(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest))
+        .action(() ->
+            newHandler(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest))
+        .cleanupAction(() ->
+            newHandler(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest))
         .shouldPassWith(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.NAMESPACE_ATTACH_POLICY)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -292,12 +286,10 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         DetachPolicyRequest.builder().setTarget(tableTarget).build();
 
     return authzTestsBuilder("attachPolicyToTable")
-        .action(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest))
-        .cleanupAction(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest))
+        .action(() ->
+            newHandler(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest))
+        .cleanupAction(() ->
+            newHandler(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest))
         .shouldPassWith(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.TABLE_ATTACH_POLICY)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -336,12 +328,10 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     newHandler(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest);
 
     return authzTestsBuilder("detachPolicyFromCatalog")
-        .action(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest))
-        .cleanupAction(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest))
+        .action(() ->
+            newHandler(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest))
+        .cleanupAction(() ->
+            newHandler(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest))
         .shouldPassWith(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.CATALOG_DETACH_POLICY)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -384,12 +374,10 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     newHandler(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest);
 
     return authzTestsBuilder("detachPolicyFromNamespace")
-        .action(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest))
-        .cleanupAction(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest))
+        .action(() ->
+            newHandler(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest))
+        .cleanupAction(() ->
+            newHandler(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest))
         .shouldPassWith(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.NAMESPACE_DETACH_POLICY)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -432,12 +420,10 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     newHandler(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest);
 
     return authzTestsBuilder("detachPolicyFromTable")
-        .action(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest))
-        .cleanupAction(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest))
+        .action(() ->
+            newHandler(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest))
+        .cleanupAction(() ->
+            newHandler(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest))
         .shouldPassWith(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.TABLE_DETACH_POLICY)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -482,10 +468,8 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testGetApplicablePoliciesOnTablePrivileges() {
     return authzTestsBuilder("getApplicablePoliciesOnTable")
-        .action(
-            () ->
-                newHandler()
-                    .getApplicablePolicies(TABLE_NS1_1.namespace(), TABLE_NS1_1.name(), null))
+        .action(() ->
+            newHandler().getApplicablePolicies(TABLE_NS1_1.namespace(), TABLE_NS1_1.name(), null))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)

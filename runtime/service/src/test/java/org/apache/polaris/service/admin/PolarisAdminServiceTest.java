@@ -50,9 +50,12 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
+import org.apache.polaris.core.admin.model.HadoopConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.ImplicitAuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
+import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -65,7 +68,10 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
+import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
+import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -103,6 +109,7 @@ import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -161,11 +168,84 @@ public class PolarisAdminServiceTest {
             authenticatedPrincipal,
             authorizer,
             reservedProperties,
-            vendingMechanisms);
+            vendingMechanisms,
+            new CatalogConfigValidators(List.of(new SigV4CatalogValidator(realmConfig))));
   }
 
   protected static void assertSuccess(BaseResult result) {
     Assertions.assertThat(result.isSuccess()).isTrue();
+  }
+
+  @Test
+  void testCreateExternalCatalogWithoutUriIsRejected() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogCreate(secretReference);
+    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES))
+        .thenReturn(List.of("ICEBERG_REST"));
+    ConnectionConfigInfo withoutUri =
+        IcebergRestConnectionConfigInfo.builder(
+                ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setRemoteCatalogName("remote-catalog")
+            .setAuthenticationParameters(
+                OAuthClientCredentialsParameters.builder(
+                        AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
+                    .setClientId("client-id")
+                    .setClientSecret("client-secret")
+                    .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+                    .build())
+            .build();
+    Catalog catalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName("external-catalog")
+            .setProperties(CatalogProperties.builder("s3://bucket/path/to/data").build())
+            .setStorageConfigInfo(createAwsStorageConfig())
+            .setConnectionConfigInfo(withoutUri)
+            .build();
+
+    assertThatThrownBy(() -> adminService.createCatalog(new CreateCatalogRequest(catalog)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("uri is required for ICEBERG_REST connections");
+
+    verify(metaStoreManager, never()).createCatalog(any(), any(), any());
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testCreateHadoopCatalogWithoutUri() {
+    setupExternalCatalogCreate(null, AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT);
+    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES))
+        .thenReturn(List.of("ICEBERG_REST", "HADOOP"));
+    when(metaStoreManager.createCatalog(any(), any(), any()))
+        .thenReturn(
+            new CreateCatalogResult(createBaseCatalog("hadoop-catalog"), createBaseCatalogRole()));
+    ConnectionConfigInfo withoutUri =
+        HadoopConnectionConfigInfo.builder(ConnectionConfigInfo.ConnectionTypeEnum.HADOOP)
+            .setWarehouse("s3://bucket/path/to/data")
+            .setAuthenticationParameters(
+                ImplicitAuthenticationParameters.builder(
+                        AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT)
+                    .build())
+            .build();
+    Catalog catalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName("hadoop-catalog")
+            .setProperties(CatalogProperties.builder("s3://bucket/path/to/data").build())
+            .setStorageConfigInfo(createAwsStorageConfig())
+            .setConnectionConfigInfo(withoutUri)
+            .build();
+
+    adminService.createCatalog(new CreateCatalogRequest(catalog));
+
+    ArgumentCaptor<CatalogEntity> entity = ArgumentCaptor.forClass(CatalogEntity.class);
+    verify(metaStoreManager).createCatalog(any(), entity.capture(), any());
+    ConnectionConfigInfoDpo connectionConfig = entity.getValue().getConnectionConfigInfoDpo();
+    assertThat(connectionConfig).isInstanceOf(HadoopConnectionConfigInfoDpo.class);
+    assertThat(connectionConfig.getUri()).isNull();
+    assertThat(((HadoopConnectionConfigInfoDpo) connectionConfig).getWarehouse())
+        .isEqualTo("s3://bucket/path/to/data");
   }
 
   @Test
@@ -176,9 +256,8 @@ public class PolarisAdminServiceTest {
     when(metaStoreManager.createCatalog(any(), any(), any()))
         .thenReturn(new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null));
 
-    assertThatThrownBy(
-            () ->
-                adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog())))
+    assertThatThrownBy(() ->
+            adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog())))
         .isInstanceOf(AlreadyExistsException.class);
 
     verify(userSecretsManager).deleteSecret(secretReference);
@@ -193,9 +272,8 @@ public class PolarisAdminServiceTest {
     when(metaStoreManager.createCatalog(any(), any(), any()))
         .thenReturn(new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null));
 
-    assertThatThrownBy(
-            () ->
-                adminService.createCatalog(new CreateCatalogRequest(createExternalBearerCatalog())))
+    assertThatThrownBy(() ->
+            adminService.createCatalog(new CreateCatalogRequest(createExternalBearerCatalog())))
         .isInstanceOf(AlreadyExistsException.class);
 
     verify(userSecretsManager).deleteSecret(secretReference);
@@ -212,9 +290,8 @@ public class PolarisAdminServiceTest {
     when(metaStoreManager.createCatalog(any(), any(), any())).thenReturn(resultWithError);
     doThrow(new RuntimeException("cleanup failed")).when(userSecretsManager).deleteSecret(any());
 
-    assertThatThrownBy(
-            () ->
-                adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog())))
+    assertThatThrownBy(() ->
+            adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog())))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage(
             String.format(
@@ -239,6 +316,43 @@ public class PolarisAdminServiceTest {
     adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog()));
 
     verify(userSecretsManager, never()).deleteSecret(any());
+  }
+
+  @Test
+  void testCreateCatalogWithSigV4StorageNameRequiresResolveByStorageName() {
+    setupExternalCatalogCreate(null, AuthenticationParameters.AuthenticationTypeEnum.SIGV4);
+    when(realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME))
+        .thenReturn(false);
+
+    assertThatThrownBy(() ->
+            adminService.createCatalog(
+                new CreateCatalogRequest(createExternalSigV4StorageNameCatalog())))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key());
+    verify(metaStoreManager, never()).createCatalog(any(), any(), any());
+  }
+
+  @Test
+  void testCreateCatalogWithSigV4StorageNameStoresOnlyTheName() {
+    setupExternalCatalogCreate(null, AuthenticationParameters.AuthenticationTypeEnum.SIGV4);
+    when(realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME))
+        .thenReturn(true);
+    ArgumentCaptor<PolarisBaseEntity> captor = ArgumentCaptor.forClass(PolarisBaseEntity.class);
+    when(metaStoreManager.createCatalog(any(), captor.capture(), any()))
+        .thenReturn(
+            new CreateCatalogResult(
+                createBaseCatalog("external-catalog"), createBaseCatalogRole()));
+
+    adminService.createCatalog(new CreateCatalogRequest(createExternalSigV4StorageNameCatalog()));
+
+    SigV4AuthenticationParametersDpo authParams =
+        (SigV4AuthenticationParametersDpo)
+            CatalogEntity.of(captor.getValue())
+                .getConnectionConfigInfoDpo()
+                .getAuthenticationParameters();
+    assertThat(authParams.getStorageName()).isEqualTo("sigv4-catalog");
+    assertThat(authParams.getRoleArn()).isNull();
+    verify(userSecretsManager, never()).writeSecret(any(), any());
   }
 
   private static CreateCatalogRequest secondMechanismCatalogRequest() {
@@ -460,10 +574,9 @@ public class PolarisAdminServiceTest {
             eq(ResolvedPathKey.of(List.of(namespace.levels()), PolarisEntityType.NAMESPACE))))
         .thenReturn(null);
 
-    assertThatThrownBy(
-            () ->
-                adminService.grantPrivilegeOnNamespaceToRole(
-                    catalogName, catalogRoleName, namespace, privilege))
+    assertThatThrownBy(() ->
+            adminService.grantPrivilegeOnNamespaceToRole(
+                catalogName, catalogRoleName, namespace, privilege))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("Namespace " + namespace + " not found");
   }
@@ -504,10 +617,9 @@ public class PolarisAdminServiceTest {
     when(resolvedPathWrapper.isFullyResolvedNamespace(eq(catalogName), eq(namespace)))
         .thenReturn(false);
 
-    assertThatThrownBy(
-            () ->
-                adminService.grantPrivilegeOnNamespaceToRole(
-                    catalogName, catalogRoleName, namespace, privilege))
+    assertThatThrownBy(() ->
+            adminService.grantPrivilegeOnNamespaceToRole(
+                catalogName, catalogRoleName, namespace, privilege))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("Namespace " + namespace + " not found");
   }
@@ -558,10 +670,9 @@ public class PolarisAdminServiceTest {
             eq(ResolvedPathKey.of(List.of(namespace.levels()), PolarisEntityType.NAMESPACE))))
         .thenReturn(null);
 
-    assertThatThrownBy(
-            () ->
-                adminService.revokePrivilegeOnNamespaceFromRole(
-                    catalogName, catalogRoleName, namespace, privilege))
+    assertThatThrownBy(() ->
+            adminService.revokePrivilegeOnNamespaceFromRole(
+                catalogName, catalogRoleName, namespace, privilege))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("Namespace " + namespace + " not found");
   }
@@ -596,10 +707,9 @@ public class PolarisAdminServiceTest {
     when(resolvedPathWrapper.isFullyResolvedNamespace(eq(catalogName), eq(namespace)))
         .thenReturn(false);
 
-    assertThatThrownBy(
-            () ->
-                adminService.revokePrivilegeOnNamespaceFromRole(
-                    catalogName, catalogRoleName, namespace, privilege))
+    assertThatThrownBy(() ->
+            adminService.revokePrivilegeOnNamespaceFromRole(
+                catalogName, catalogRoleName, namespace, privilege))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("Namespace " + namespace + " not found");
   }
@@ -705,10 +815,9 @@ public class PolarisAdminServiceTest {
         .thenReturn(unresolvedWrapper);
 
     // Should throw NotFoundException because feature is disabled and it's passthrough facade
-    assertThatThrownBy(
-            () ->
-                adminService.grantPrivilegeOnNamespaceToRole(
-                    catalogName, catalogRoleName, namespace, privilege))
+    assertThatThrownBy(() ->
+            adminService.grantPrivilegeOnNamespaceToRole(
+                catalogName, catalogRoleName, namespace, privilege))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("Namespace " + namespace + " not found");
   }
@@ -759,10 +868,9 @@ public class PolarisAdminServiceTest {
             eq(ResolvedPathKey.of(List.of("org-ns", "team-ns"), PolarisEntityType.NAMESPACE))))
         .thenReturn(partialPathWrapper);
 
-    assertThatThrownBy(
-            () ->
-                adminService.grantPrivilegeOnNamespaceToRole(
-                    catalogName, catalogRoleName, namespace, privilege))
+    assertThatThrownBy(() ->
+            adminService.grantPrivilegeOnNamespaceToRole(
+                catalogName, catalogRoleName, namespace, privilege))
         .isInstanceOf(RuntimeException.class)
         .hasMessage(
             "Failed to create or find namespace entity 'team-ns' in federated catalog 'test-catalog'");
@@ -973,10 +1081,9 @@ public class PolarisAdminServiceTest {
         .thenReturn(null);
 
     // Should throw NoSuchTableException because feature is disabled
-    assertThatThrownBy(
-            () ->
-                adminService.grantPrivilegeOnTableToRole(
-                    catalogName, catalogRoleName, identifier, privilege))
+    assertThatThrownBy(() ->
+            adminService.grantPrivilegeOnTableToRole(
+                catalogName, catalogRoleName, identifier, privilege))
         .isInstanceOf(NoSuchTableException.class)
         .hasMessageContaining("Table does not exist");
   }
@@ -1034,10 +1141,9 @@ public class PolarisAdminServiceTest {
     when(resolutionManifest.getPassthroughResolvedPath(eq(ResolvedPathKey.ofTableLike(identifier))))
         .thenReturn(null);
 
-    assertThatThrownBy(
-            () ->
-                adminService.grantPrivilegeOnTableToRole(
-                    catalogName, catalogRoleName, identifier, privilege))
+    assertThatThrownBy(() ->
+            adminService.grantPrivilegeOnTableToRole(
+                catalogName, catalogRoleName, identifier, privilege))
         .isInstanceOf(RuntimeException.class)
         .hasMessage(
             "Failed to create or find table entity 'test-table' in federated catalog 'test-catalog'");
@@ -1104,6 +1210,29 @@ public class PolarisAdminServiceTest {
                     .setClientId("client-id")
                     .setClientSecret("client-secret")
                     .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+                    .build())
+            .build();
+
+    return ExternalCatalog.builder()
+        .setType(Catalog.TypeEnum.EXTERNAL)
+        .setName("external-catalog")
+        .setProperties(CatalogProperties.builder("s3://bucket/path/to/data").build())
+        .setStorageConfigInfo(createAwsStorageConfig())
+        .setConnectionConfigInfo(connectionConfigInfo)
+        .build();
+  }
+
+  private Catalog createExternalSigV4StorageNameCatalog() {
+    ConnectionConfigInfo connectionConfigInfo =
+        IcebergRestConnectionConfigInfo.builder(
+                ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://example.com/polaris/api/catalog")
+            .setRemoteCatalogName("remote-catalog")
+            .setAuthenticationParameters(
+                SigV4AuthenticationParameters.builder()
+                    .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.SIGV4)
+                    .setStorageName("sigv4-catalog")
+                    .setSigningRegion("us-east-1")
                     .build())
             .build();
 

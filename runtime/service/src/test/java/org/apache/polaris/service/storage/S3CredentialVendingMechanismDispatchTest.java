@@ -163,10 +163,8 @@ class S3CredentialVendingMechanismDispatchTest {
     PolarisStorageIntegrationProviderImpl provider =
         provider(rc, Map.of("STS", testStsMechanism(rc), "TEST_MECHANISM", testMechanism));
 
-    assertThatThrownBy(
-            () ->
-                provider.getStorageIntegration(
-                    List.of(catalog(rc, withMechanism("TEST_MECHANISM")))))
+    assertThatThrownBy(() ->
+            provider.getStorageIntegration(List.of(catalog(rc, withMechanism("TEST_MECHANISM")))))
         .isInstanceOf(ValidationException.class)
         .hasMessage("S3 credential vending mechanism TEST_MECHANISM is not enabled in this realm");
     assertThat(factoryCalls).hasValue(0);

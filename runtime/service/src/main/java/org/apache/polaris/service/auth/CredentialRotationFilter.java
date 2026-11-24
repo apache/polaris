@@ -82,10 +82,8 @@ public class CredentialRotationFilter {
         .getAttributes()
         .getOptional(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY)
         .map(PrincipalEntity::getInternalPropertiesAsMap)
-        .map(
-            map ->
-                map.containsKey(
-                    PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE))
+        .map(map ->
+            map.containsKey(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE))
         .orElse(false);
   }
 }

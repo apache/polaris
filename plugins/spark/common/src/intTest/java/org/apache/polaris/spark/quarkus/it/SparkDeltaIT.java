@@ -179,6 +179,34 @@ public class SparkDeltaIT extends SparkIntegrationBase {
   }
 
   @Test
+  public void testDmlOperations() {
+    String deltatb = getTableNameWithRandomSuffix();
+    sql(
+        "CREATE TABLE %s (id INT, name STRING) USING DELTA LOCATION '%s'",
+        deltatb, getTableLocation(deltatb));
+    sql("INSERT INTO %s VALUES (1, 'anna'), (2, 'bob'), (3, 'carl')", deltatb);
+
+    // UPDATE is not covered: with IcebergSparkSessionExtensions loaded, Iceberg's row lineage
+    // rewrite rule fails with a scala.MatchError on any non-Iceberg V2 table, including Delta
+    // tables in spark_catalog.
+    sql("DELETE FROM %s WHERE id = 3", deltatb);
+    assertThat(sql("SELECT * FROM %s ORDER BY id", deltatb))
+        .containsExactly(new Object[] {1, "anna"}, new Object[] {2, "bob"});
+
+    sql(
+        "MERGE INTO %s t USING (SELECT 2 AS id, 'bobby' AS name UNION ALL SELECT 4, 'dan') s "
+            + "ON t.id = s.id "
+            + "WHEN MATCHED THEN UPDATE SET t.name = s.name "
+            + "WHEN NOT MATCHED THEN INSERT *",
+        deltatb);
+    assertThat(sql("SELECT * FROM %s ORDER BY id", deltatb))
+        .containsExactly(
+            new Object[] {1, "anna"}, new Object[] {2, "bobby"}, new Object[] {4, "dan"});
+
+    sql("DROP TABLE %s", deltatb);
+  }
+
+  @Test
   public void testUnsupportedAlterTableOperations() {
     String deltatb = getTableNameWithRandomSuffix();
     sql(

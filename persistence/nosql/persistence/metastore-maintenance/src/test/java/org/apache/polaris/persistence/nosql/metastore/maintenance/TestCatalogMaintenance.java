@@ -276,13 +276,12 @@ public class TestCatalogMaintenance {
             .toList()
             .stream()
             .collect(Collectors.toMap(identity(), persistence::fetchReference));
-    currentReferenceHeads.forEach(
-        (n, r) -> {
-          var initial = initialReferenceHeads.get(r.name()).pointer().orElseThrow();
-          if (!initial.equals(r.pointer().orElseThrow())) {
-            assertThat(persistence.updateReferencePointer(r, initial)).describedAs(n).isPresent();
-          }
-        });
+    currentReferenceHeads.forEach((n, r) -> {
+      var initial = initialReferenceHeads.get(r.name()).pointer().orElseThrow();
+      if (!initial.equals(r.pointer().orElseThrow())) {
+        assertThat(persistence.updateReferencePointer(r, initial)).describedAs(n).isPresent();
+      }
+    });
 
     var runInformation =
         maintenance.performMaintenance(
@@ -306,13 +305,12 @@ public class TestCatalogMaintenance {
             Optional.of(0L));
 
     // Revert the references to the "real" state
-    initialReferenceHeads.forEach(
-        (n, r) -> {
-          var real = currentReferenceHeads.get(r.name()).pointer().orElseThrow();
-          if (!real.equals(r.pointer().orElseThrow())) {
-            assertThat(persistence.updateReferencePointer(r, real)).describedAs(n).isPresent();
-          }
-        });
+    initialReferenceHeads.forEach((n, r) -> {
+      var real = currentReferenceHeads.get(r.name()).pointer().orElseThrow();
+      if (!real.equals(r.pointer().orElseThrow())) {
+        assertThat(persistence.updateReferencePointer(r, real)).describedAs(n).isPresent();
+      }
+    });
 
     checkEntities("real state within grace", entities);
 
@@ -487,11 +485,10 @@ public class TestCatalogMaintenance {
     assertThat(liveMappingsBeforeCleanup.isSuccess()).isTrue();
     assertThat(liveMappingsBeforeCleanup.getPolicyMappingRecords())
         .singleElement()
-        .satisfies(
-            mapping -> {
-              assertThat(mapping.getTargetCatalogId()).isEqualTo(liveTable.getCatalogId());
-              assertThat(mapping.getTargetId()).isEqualTo(liveTable.getId());
-            });
+        .satisfies(mapping -> {
+          assertThat(mapping.getTargetCatalogId()).isEqualTo(liveTable.getCatalogId());
+          assertThat(mapping.getTargetId()).isEqualTo(liveTable.getId());
+        });
 
     assertThat(runMaintenance().success()).isTrue();
 
@@ -503,11 +500,10 @@ public class TestCatalogMaintenance {
     assertThat(liveMappingsAfterCleanup.isSuccess()).isTrue();
     assertThat(liveMappingsAfterCleanup.getPolicyMappingRecords())
         .singleElement()
-        .satisfies(
-            mapping -> {
-              assertThat(mapping.getTargetCatalogId()).isEqualTo(liveTable.getCatalogId());
-              assertThat(mapping.getTargetId()).isEqualTo(liveTable.getId());
-            });
+        .satisfies(mapping -> {
+          assertThat(mapping.getTargetCatalogId()).isEqualTo(liveTable.getCatalogId());
+          assertThat(mapping.getTargetId()).isEqualTo(liveTable.getId());
+        });
   }
 
   @Test
@@ -673,11 +669,8 @@ public class TestCatalogMaintenance {
     return persistence
         .fetchReferenceHead(
             format(CATALOG_STATE_REF_NAME_PATTERN, catalogId), CatalogStateObj.class)
-        .map(
-            catalogState ->
-                catalogState.nameToObjRef().stripes().stream()
-                    .map(stripe -> stripe.segment())
-                    .toList())
+        .map(catalogState ->
+            catalogState.nameToObjRef().stripes().stream().map(stripe -> stripe.segment()).toList())
         .orElseGet(List::of);
   }
 
@@ -685,33 +678,29 @@ public class TestCatalogMaintenance {
       Persistence persistence, long policyCatalogId, long policyId) {
     return persistence
         .fetchReferenceHead(POLICY_MAPPINGS_REF_NAME, PolicyMappingsObj.class)
-        .map(
-            policyMappingsObj -> {
-              var count = 0L;
-              for (var elem :
-                  policyMappingsObj
-                      .policyMappings()
-                      .indexForRead(persistence, POLICY_MAPPING_SERIALIZER)) {
-                var key = PolicyMappingsObj.PolicyMappingKey.fromIndexKey(elem.key());
-                if (key.policyCatalogId() == policyCatalogId && key.policyId() == policyId) {
-                  count++;
-                }
-              }
-              return count;
-            })
+        .map(policyMappingsObj -> {
+          var count = 0L;
+          for (var elem :
+              policyMappingsObj
+                  .policyMappings()
+                  .indexForRead(persistence, POLICY_MAPPING_SERIALIZER)) {
+            var key = PolicyMappingsObj.PolicyMappingKey.fromIndexKey(elem.key());
+            if (key.policyCatalogId() == policyCatalogId && key.policyId() == policyId) {
+              count++;
+            }
+          }
+          return count;
+        })
         .orElse(0L);
   }
 
   private static long countGrantAclHeads(Persistence persistence, List<String> aclNames) {
     return persistence
         .fetchReferenceHead(REALM_GRANTS_REF_NAME, RealmGrantsObj.class)
-        .map(
-            grantsObj -> {
-              var index = grantsObj.acls().indexForRead(persistence, OBJ_REF_SERIALIZER);
-              return aclNames.stream()
-                  .filter(aclName -> index.contains(IndexKey.key(aclName)))
-                  .count();
-            })
+        .map(grantsObj -> {
+          var index = grantsObj.acls().indexForRead(persistence, OBJ_REF_SERIALIZER);
+          return aclNames.stream().filter(aclName -> index.contains(IndexKey.key(aclName))).count();
+        })
         .orElse(0L);
   }
 
@@ -726,23 +715,22 @@ public class TestCatalogMaintenance {
   private static List<String> grantAclRoleIds(Persistence persistence, String aclName) {
     return persistence
         .fetchReferenceHead(REALM_GRANTS_REF_NAME, RealmGrantsObj.class)
-        .map(
-            grantsObj -> {
-              var index = grantsObj.acls().indexForRead(persistence, OBJ_REF_SERIALIZER);
-              var aclRef = index.get(IndexKey.key(aclName));
-              if (aclRef == null) {
-                return List.<String>of();
-              }
+        .map(grantsObj -> {
+          var index = grantsObj.acls().indexForRead(persistence, OBJ_REF_SERIALIZER);
+          var aclRef = index.get(IndexKey.key(aclName));
+          if (aclRef == null) {
+            return List.<String>of();
+          }
 
-              var aclObj = persistence.fetch(aclRef, AclObj.class);
-              if (aclObj == null) {
-                return List.<String>of();
-              }
+          var aclObj = persistence.fetch(aclRef, AclObj.class);
+          if (aclObj == null) {
+            return List.<String>of();
+          }
 
-              var roleIds = new ArrayList<String>();
-              aclObj.acl().forEach((roleId, entry) -> roleIds.add(roleId));
-              return roleIds;
-            })
+          var roleIds = new ArrayList<String>();
+          aclObj.acl().forEach((roleId, entry) -> roleIds.add(roleId));
+          return roleIds;
+        })
         .orElseGet(List::of);
   }
 

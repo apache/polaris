@@ -117,11 +117,10 @@ public class S3CredentialVendingMechanisms {
         .filter(Identifier.class::isInstance)
         .map(qualifier -> ((Identifier) qualifier).value())
         .findFirst()
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "S3 credential vending mechanism bean "
-                        + bean.getBeanClass().getName()
-                        + " has no @Identifier"));
+        .orElseThrow(() ->
+            new IllegalStateException(
+                "S3 credential vending mechanism bean "
+                    + bean.getBeanClass().getName()
+                    + " has no @Identifier"));
   }
 }

@@ -171,8 +171,9 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
 
   @Override
   public long constructId(long timestamp, long sequence, long nodeId) {
+    // timestampMax - 1 is reserved for system IDs
     checkArgument(
-        (timestamp & (timestampMax - 1)) != timestampMax - 1,
+        timestamp >= 0 && timestamp < timestampMax - 1,
         "timestamp argument %s out of range",
         timestamp);
     checkArgument(

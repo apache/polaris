@@ -269,12 +269,10 @@ class JdbcBasePersistenceImplTest {
     RetryOnConcurrencyException expected = new RetryOnConcurrencyException("concurrency conflict");
 
     assertThatExceptionOfType(RetryOnConcurrencyException.class)
-        .isThrownBy(
-            () ->
-                datasourceOperations.withRetries(
-                    () -> {
-                      throw expected;
-                    }))
+        .isThrownBy(() ->
+            datasourceOperations.withRetries(() -> {
+              throw expected;
+            }))
         .isSameAs(expected);
   }
 
@@ -291,12 +289,10 @@ class JdbcBasePersistenceImplTest {
     EntityAlreadyExistsException expected = new EntityAlreadyExistsException(existing);
 
     assertThatExceptionOfType(EntityAlreadyExistsException.class)
-        .isThrownBy(
-            () ->
-                datasourceOperations.withRetries(
-                    () -> {
-                      throw expected;
-                    }))
+        .isThrownBy(() ->
+            datasourceOperations.withRetries(() -> {
+              throw expected;
+            }))
         .isSameAs(expected);
   }
 

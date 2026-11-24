@@ -66,9 +66,8 @@ public class SymmetricKeyJWTBrokerFactory implements TokenBrokerFactory {
                   config
                       .tokenBroker()
                       .symmetricKey()
-                      .orElseThrow(
-                          () ->
-                              new IllegalStateException("Symmetric key configuration is missing"));
+                      .orElseThrow(() ->
+                          new IllegalStateException("Symmetric key configuration is missing"));
               String secret = symmetricKeyConfiguration.secret().orElse(null);
               Path file = symmetricKeyConfiguration.file().orElse(null);
               checkState(secret != null || file != null, "Either file or secret must be set");

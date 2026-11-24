@@ -132,6 +132,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -223,11 +224,10 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       if (shouldBeDeleted) {
         Awaitility.await()
             .atMost(Duration.ofSeconds(20))
-            .untilAsserted(
-                () ->
-                    assertThat(fileIO.newInputFile(metadataLocation).exists())
-                        .as("View metadata file should be deleted when purge is enabled")
-                        .isFalse());
+            .untilAsserted(() ->
+                assertThat(fileIO.newInputFile(metadataLocation).exists())
+                    .as("View metadata file should be deleted when purge is enabled")
+                    .isFalse());
       } else {
         assertThat(fileIO.newInputFile(metadataLocation).exists())
             .as("View metadata file should remain when purge is disabled")
@@ -720,12 +720,11 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         .asInstanceOf(InstanceOfAssertFactories.type(BaseTable.class))
         .returns(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override", BaseTable::location);
 
-    Assertions.assertThatThrownBy(
-            () ->
-                restCatalog
-                    .buildTable(TableIdentifier.of(Namespace.of("ns1", "ns1a"), "tbl2"), SCHEMA)
-                    .withLocation(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override")
-                    .create())
+    Assertions.assertThatThrownBy(() ->
+            restCatalog
+                .buildTable(TableIdentifier.of(Namespace.of("ns1", "ns1a"), "tbl2"), SCHEMA)
+                .withLocation(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override")
+                .create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("because it conflicts with existing table or namespace");
   }
@@ -746,12 +745,11 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
             catalogBaseLocation + "/ns1/ns1a-override"));
 
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("ns1", "ns1a"), "tbl1");
-    assertThatThrownBy(
-            () ->
-                restCatalog
-                    .buildTable(tableIdentifier, SCHEMA)
-                    .withLocation(catalogBaseLocation + "/ns1/ns1a/tbl1-override")
-                    .create())
+    assertThatThrownBy(() ->
+            restCatalog
+                .buildTable(tableIdentifier, SCHEMA)
+                .withLocation(catalogBaseLocation + "/ns1/ns1a/tbl1-override")
+                .create())
         .isInstanceOf(ForbiddenException.class);
   }
 
@@ -1044,10 +1042,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         restCatalog.registerTable(TableIdentifier.of(ns, "my_table"), fileLocation);
 
         // Now attempt to register again with overwrite=true — must be rejected with 400
-        assertThatThrownBy(
-                () ->
-                    restCatalog.registerTable(
-                        TableIdentifier.of(ns, "my_table"), fileLocation, true))
+        assertThatThrownBy(() ->
+                restCatalog.registerTable(TableIdentifier.of(ns, "my_table"), fileLocation, true))
             .isInstanceOf(BadRequestException.class)
             .hasMessageContaining(
                 "Register table overwrite is only supported for internal Polaris catalogs");
@@ -1166,10 +1162,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       try {
-        assertThatThrownBy(
-                () ->
-                    restCatalog.registerTable(
-                        TableIdentifier.of(ns1, "my_table"), fileLocation, false))
+        assertThatThrownBy(() ->
+                restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation, false))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("is not enabled for this external catalog")
             .hasMessageContaining(
@@ -1258,10 +1252,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       try {
-        assertThatThrownBy(
-                () ->
-                    restCatalog.registerTable(
-                        TableIdentifier.of(ns1, "my_table"), fileLocation, true))
+        assertThatThrownBy(() ->
+                restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation, true))
             .isInstanceOf(BadRequestException.class)
             .hasMessageContaining(
                 "Register table overwrite is only supported for internal Polaris catalogs");
@@ -1856,6 +1848,35 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @Test
+  public void testCreateAndUpdateViewWithCustomMetadataLocation() {
+    TableIdentifier identifier = TableIdentifier.of("custom_metadata", "view");
+    catalog().createNamespace(identifier.namespace());
+    String metadataPath =
+        getStorageConfigInfo().getAllowedLocations().getFirst()
+            + "/view-metadata-"
+            + UUID.randomUUID();
+    var view =
+        catalog()
+            .buildView(identifier)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(identifier.namespace())
+            .withQuery("spark", "select 1")
+            .withProperty("write.metadata.path", metadataPath)
+            .create();
+    assertThat(
+            URI.create(((BaseView) view).operations().current().metadataFileLocation())
+                .resolve("."))
+        .isEqualTo(URI.create(metadataPath + "/"));
+    String updatedPath = metadataPath + "-updated";
+    view.updateProperties().set("write.metadata.path", updatedPath).commit();
+    var updated = catalog().loadView(identifier);
+    assertThat(
+            URI.create(((BaseView) updated).operations().current().metadataFileLocation())
+                .resolve("."))
+        .isEqualTo(URI.create(updatedPath + "/"));
+  }
+
+  @Test
   public void testViewExistsStatus() {
     String tableName = "tbl1";
     String viewName = "view1";
@@ -1916,16 +1937,24 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  public void testDropViewWithPurge(boolean purgeViewMetadataOnDrop) {
+  @CsvSource({"true,false", "false,false", "true,true", "false,true"})
+  public void testDropViewWithPurge(boolean purgeViewMetadataOnDrop, boolean customMetadataPath) {
     restCatalog.createNamespace(Namespace.of("ns1"));
     TableIdentifier id = TableIdentifier.of(Namespace.of("ns1"), "view1");
-    restCatalog
-        .buildView(id)
-        .withSchema(SCHEMA)
-        .withDefaultNamespace(Namespace.of("ns1"))
-        .withQuery("spark", VIEW_QUERY)
-        .create();
+    var builder =
+        restCatalog
+            .buildView(id)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(Namespace.of("ns1"))
+            .withQuery("spark", VIEW_QUERY);
+    if (customMetadataPath) {
+      builder.withProperty(
+          "write.metadata.path",
+          getStorageConfigInfo().getAllowedLocations().getFirst()
+              + "/purge-view-metadata-"
+              + UUID.randomUUID());
+    }
+    builder.create();
 
     String metadataLocation =
         ((BaseView) restCatalog.loadView(id)).operations().current().metadataFileLocation();
@@ -2130,10 +2159,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
       List<TableGrant> tableGrants =
           Arrays.stream(TablePrivilege.values())
-              .map(
-                  p -> {
-                    return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
-                  })
+              .map(p -> {
+                return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
+              })
               .toList();
 
       tableGrants.forEach(g -> managementApi.addGrant(currentCatalogName, "catalogrole1", g));
@@ -2156,23 +2184,21 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
       Stream<TableGrant> tableGrants =
           Arrays.stream(TablePrivilege.values())
-              .map(
-                  p -> {
-                    return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
-                  });
+              .map(p -> {
+                return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
+              });
 
-      tableGrants.forEach(
-          g -> {
-            try (Response response =
-                managementApi
-                    .request(
-                        "v1/catalogs/{cat}/catalog-roles/{role}/grants",
-                        Map.of("cat", currentCatalogName, "role", "catalogrole1"))
-                    .put(Entity.json(g))) {
+      tableGrants.forEach(g -> {
+        try (Response response =
+            managementApi
+                .request(
+                    "v1/catalogs/{cat}/catalog-roles/{role}/grants",
+                    Map.of("cat", currentCatalogName, "role", "catalogrole1"))
+                .put(Entity.json(g))) {
 
-              assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
-            }
-          });
+          assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+        }
+      });
     } finally {
       genericTableApi.purge(currentCatalogName, namespace);
     }

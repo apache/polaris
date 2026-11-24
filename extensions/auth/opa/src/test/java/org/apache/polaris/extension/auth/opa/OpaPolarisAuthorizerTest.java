@@ -105,7 +105,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm");
+              "test-realm",
+              Map.of());
 
       PolarisPrincipal principal =
           PolarisPrincipal.of(
@@ -122,18 +123,17 @@ public class OpaPolarisAuthorizerTest {
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
       assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              principal,
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.LOAD_VIEW,
-                                  List.of(target),
-                                  List.of(secondary))))
-                      .throwIfDenied());
+          .isThrownBy(() ->
+              authorizer
+                  .authorize(
+                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                      new AuthorizationRequest(
+                          principal,
+                          authorizationIntents(
+                              PolarisAuthorizableOperation.LOAD_VIEW,
+                              List.of(target),
+                              List.of(secondary))))
+                  .throwIfDenied());
 
       // Parse and verify JSON structure from captured request
       ObjectMapper mapper = JsonMapper.builder().build();
@@ -180,7 +180,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "prod-realm");
+              "prod-realm",
+              Map.of());
 
       // Set up a realistic principal
       PolarisPrincipal principal =
@@ -236,18 +237,15 @@ public class OpaPolarisAuthorizerTest {
       PolarisResolvedPathWrapper tablePath = new PolarisResolvedPathWrapper(resolvedPath);
 
       assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              principal,
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.LOAD_TABLE,
-                                  List.of(tablePath),
-                                  null)))
-                      .throwIfDenied());
+          .isThrownBy(() ->
+              authorizer
+                  .authorize(
+                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                      new AuthorizationRequest(
+                          principal,
+                          authorizationIntents(
+                              PolarisAuthorizableOperation.LOAD_TABLE, List.of(tablePath), null)))
+                  .throwIfDenied());
 
       // Parse and verify the complete JSON structure
       ObjectMapper mapper = JsonMapper.builder().build();
@@ -325,7 +323,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "analytics-realm");
+              "analytics-realm",
+              Map.of());
 
       // Set up a realistic principal
       PolarisPrincipal principal =
@@ -392,18 +391,15 @@ public class OpaPolarisAuthorizerTest {
       PolarisResolvedPathWrapper tablePath = new PolarisResolvedPathWrapper(resolvedPath);
 
       assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              principal,
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.LOAD_TABLE,
-                                  List.of(tablePath),
-                                  null)))
-                      .throwIfDenied());
+          .isThrownBy(() ->
+              authorizer
+                  .authorize(
+                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                      new AuthorizationRequest(
+                          principal,
+                          authorizationIntents(
+                              PolarisAuthorizableOperation.LOAD_TABLE, List.of(tablePath), null)))
+                  .throwIfDenied());
 
       // Parse and verify the complete JSON structure
       ObjectMapper mapper = JsonMapper.builder().build();
@@ -502,7 +498,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm");
+              "test-realm",
+              Map.of());
 
       PolarisPrincipal principal =
           PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
@@ -511,18 +508,17 @@ public class OpaPolarisAuthorizerTest {
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
       assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              principal,
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.CREATE_CATALOG,
-                                  List.of(target),
-                                  List.of(secondary))))
-                      .throwIfDenied());
+          .isThrownBy(() ->
+              authorizer
+                  .authorize(
+                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                      new AuthorizationRequest(
+                          principal,
+                          authorizationIntents(
+                              PolarisAuthorizableOperation.CREATE_CATALOG,
+                              List.of(target),
+                              List.of(secondary))))
+                  .throwIfDenied());
 
       // Test multiple targets
       PolarisResolvedPathWrapper target1 = new PolarisResolvedPathWrapper(List.of());
@@ -531,16 +527,15 @@ public class OpaPolarisAuthorizerTest {
       List<PolarisResolvedPathWrapper> secondaries = List.of();
 
       assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              principal,
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.LOAD_VIEW, targets, secondaries)))
-                      .throwIfDenied());
+          .isThrownBy(() ->
+              authorizer
+                  .authorize(
+                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                      new AuthorizationRequest(
+                          principal,
+                          authorizationIntents(
+                              PolarisAuthorizableOperation.LOAD_VIEW, targets, secondaries)))
+                  .throwIfDenied());
     } finally {
       server.stop(0);
     }
@@ -558,7 +553,8 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             tokenProvider,
             null,
-            "test-realm");
+            "test-realm",
+            Map.of());
 
     assertThat(authorizer).isNotNull();
   }
@@ -579,7 +575,8 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             tokenProvider,
             null,
-            "test-realm") {
+            "test-realm",
+            Map.of()) {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -598,19 +595,18 @@ public class OpaPolarisAuthorizerTest {
     PolarisResolvedPathWrapper target = null;
     PolarisResolvedPathWrapper secondary = null;
     assertThatNoException()
-        .isThrownBy(
-            () -> {
-              authorizer
-                  .authorize(
-                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                      new AuthorizationRequest(
-                          mockPrincipal,
-                          authorizationIntents(
-                              mockOperation,
-                              target == null ? null : List.of(target),
-                              secondary == null ? null : List.of(secondary))))
-                  .throwIfDenied();
-            });
+        .isThrownBy(() -> {
+          authorizer
+              .authorize(
+                  new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                  new AuthorizationRequest(
+                      mockPrincipal,
+                      authorizationIntents(
+                          mockOperation,
+                          target == null ? null : List.of(target),
+                          secondary == null ? null : List.of(secondary))))
+              .throwIfDenied();
+        });
   }
 
   @Test
@@ -632,7 +628,8 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             tokenProvider,
             null,
-            "test-realm") {
+            "test-realm",
+            Map.of()) {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -654,19 +651,18 @@ public class OpaPolarisAuthorizerTest {
 
     // Execute authorization (should not throw since we mocked allow=true)
     assertThatNoException()
-        .isThrownBy(
-            () -> {
-              authorizer
-                  .authorize(
-                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                      new AuthorizationRequest(
-                          mockPrincipal,
-                          authorizationIntents(
-                              mockOperation,
-                              target == null ? null : List.of(target),
-                              secondary == null ? null : List.of(secondary))))
-                  .throwIfDenied();
-            });
+        .isThrownBy(() -> {
+          authorizer
+              .authorize(
+                  new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                  new AuthorizationRequest(
+                      mockPrincipal,
+                      authorizationIntents(
+                          mockOperation,
+                          target == null ? null : List.of(target),
+                          secondary == null ? null : List.of(secondary))))
+              .throwIfDenied();
+        });
   }
 
   @Test
@@ -678,7 +674,8 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "test-realm");
+            "test-realm",
+            Map.of());
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(resolutionManifest);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role-1"));
@@ -707,7 +704,8 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "test-realm") {
+            "test-realm",
+            Map.of()) {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -757,7 +755,8 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "test-realm") {
+            "test-realm",
+            Map.of()) {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -800,7 +799,8 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "catalog-realm") {
+            "catalog-realm",
+            Map.of()) {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -909,7 +909,8 @@ public class OpaPolarisAuthorizerTest {
         JsonMapper.builder().build(),
         null,
         null,
-        "test-realm") {
+        "test-realm",
+        Map.of()) {
       @Override
       <T> T httpClientExecute(
           ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -942,7 +943,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm");
+              "test-realm",
+              Map.of());
 
       PolarisEntity rootEntity =
           new PolarisEntity.Builder()
@@ -964,23 +966,21 @@ public class OpaPolarisAuthorizerTest {
               .build();
 
       assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              PolarisPrincipal.of(
-                                  "root", AttributeMap.EMPTY, Set.of("service_admin")),
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.GET_CATALOG,
-                                  List.of(
-                                      new PolarisResolvedPathWrapper(
-                                          List.of(
-                                              createResolvedEntity(rootEntity),
-                                              createResolvedEntity(catalogEntity)))),
-                                  null)))
-                      .throwIfDenied());
+          .isThrownBy(() ->
+              authorizer
+                  .authorize(
+                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                      new AuthorizationRequest(
+                          PolarisPrincipal.of("root", AttributeMap.EMPTY, Set.of("service_admin")),
+                          authorizationIntents(
+                              PolarisAuthorizableOperation.GET_CATALOG,
+                              List.of(
+                                  new PolarisResolvedPathWrapper(
+                                      List.of(
+                                          createResolvedEntity(rootEntity),
+                                          createResolvedEntity(catalogEntity)))),
+                              null)))
+                  .throwIfDenied());
 
       ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
@@ -1016,7 +1016,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm");
+              "test-realm",
+              Map.of());
 
       PolarisEntity rootEntity =
           new PolarisEntity.Builder()
@@ -1029,21 +1030,19 @@ public class OpaPolarisAuthorizerTest {
               .build();
 
       assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              PolarisPrincipal.of(
-                                  "root", AttributeMap.EMPTY, Set.of("service_admin")),
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.LIST_CATALOGS,
-                                  List.of(
-                                      new PolarisResolvedPathWrapper(
-                                          List.of(createResolvedEntity(rootEntity)))),
-                                  null)))
-                      .throwIfDenied());
+          .isThrownBy(() ->
+              authorizer
+                  .authorize(
+                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                      new AuthorizationRequest(
+                          PolarisPrincipal.of("root", AttributeMap.EMPTY, Set.of("service_admin")),
+                          authorizationIntents(
+                              PolarisAuthorizableOperation.LIST_CATALOGS,
+                              List.of(
+                                  new PolarisResolvedPathWrapper(
+                                      List.of(createResolvedEntity(rootEntity)))),
+                              null)))
+                  .throwIfDenied());
 
       ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
@@ -1086,7 +1085,8 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "test-realm") {
+            "test-realm",
+            Map.of()) {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -1153,7 +1153,8 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "test-realm") {
+            "test-realm",
+            Map.of()) {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -1241,7 +1242,8 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null,
             null,
-            "test-realm") {
+            "test-realm",
+            Map.of()) {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -1282,22 +1284,22 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "explicit-realm");
+              "explicit-realm",
+              Map.of());
 
       PolarisPrincipal principal =
           PolarisPrincipal.of("eve", AttributeMap.EMPTY, Set.of("auditor"));
 
       assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              principal,
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.GET_CATALOG, null, null)))
-                      .throwIfDenied());
+          .isThrownBy(() ->
+              authorizer
+                  .authorize(
+                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                      new AuthorizationRequest(
+                          principal,
+                          authorizationIntents(
+                              PolarisAuthorizableOperation.GET_CATALOG, null, null)))
+                  .throwIfDenied());
 
       ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
@@ -1325,7 +1327,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "tenant-xyz");
+              "tenant-xyz",
+              Map.of());
 
       PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
       AuthorizationState authzState = new AuthorizationState(resolutionManifest);
@@ -1339,6 +1342,77 @@ public class OpaPolarisAuthorizerTest {
       ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
       assertThat(root.path("input").path("context").get("realm").asText()).isEqualTo("tenant-xyz");
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void serializesContextProperties() throws Exception {
+    JsonNode context =
+        authorizeAndCaptureContext(Map.of("group", "example-group", "my_key", "a", "myKey", "b"));
+
+    JsonNode properties = context.path("properties");
+    assertThat(properties.isObject()).isTrue();
+    assertThat(properties.properties())
+        .extracting(Map.Entry::getKey)
+        .containsExactlyInAnyOrder("group", "my_key", "myKey");
+    assertThat(properties.path("group").asText()).isEqualTo("example-group");
+    assertThat(properties.path("my_key").asText()).isEqualTo("a");
+    assertThat(properties.path("myKey").asText()).isEqualTo("b");
+  }
+
+  @Test
+  void serializesEmptyContextPropertiesWhenUnconfigured() throws Exception {
+    JsonNode context = authorizeAndCaptureContext(Map.of());
+
+    assertThat(context.has("properties")).isTrue();
+    assertThat(context.path("properties").isObject()).isTrue();
+    assertThat(context.path("properties").isEmpty()).isTrue();
+  }
+
+  @Test
+  void contextPropertiesDoNotOverrideReservedContextFields() throws Exception {
+    JsonNode context =
+        authorizeAndCaptureContext(Map.of("request_id", "spoofed-id", "realm", "spoofed-realm"));
+
+    assertThat(context.path("request_id").asText()).isEqualTo("req-123");
+    assertThat(context.path("realm").asText()).isEqualTo("test-realm");
+    assertThat(context.path("properties").path("request_id").asText()).isEqualTo("spoofed-id");
+    assertThat(context.path("properties").path("realm").asText()).isEqualTo("spoofed-realm");
+  }
+
+  private JsonNode authorizeAndCaptureContext(Map<String, String> contextProperties)
+      throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      URI policyUri =
+          URI.create(
+              "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
+      OpaPolarisAuthorizer authorizer =
+          new OpaPolarisAuthorizer(
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              "req-123",
+              "test-realm",
+              contextProperties);
+
+      PolarisPrincipal principal =
+          PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
+      AuthorizationRequest request = requestWithCatalogTarget(principal);
+      AuthorizationState authzState = new AuthorizationState(mock(PolarisResolutionManifest.class));
+
+      authorizer.authorize(authzState, request).throwIfDenied();
+
+      return JsonMapper.builder()
+          .build()
+          .readTree(capturedRequestBody[0])
+          .path("input")
+          .path("context");
     } finally {
       server.stop(0);
     }
@@ -1360,7 +1434,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               "test-id",
-              "test-realm");
+              "test-realm",
+              Map.of());
 
       PolarisPrincipal principal =
           PolarisPrincipal.of("eve", AttributeMap.EMPTY, Set.of("auditor"));
@@ -1368,18 +1443,17 @@ public class OpaPolarisAuthorizerTest {
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
       assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              principal,
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.LOAD_VIEW,
-                                  List.of(target),
-                                  List.of(secondary))))
-                      .throwIfDenied());
+          .isThrownBy(() ->
+              authorizer
+                  .authorize(
+                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                      new AuthorizationRequest(
+                          principal,
+                          authorizationIntents(
+                              PolarisAuthorizableOperation.LOAD_VIEW,
+                              List.of(target),
+                              List.of(secondary))))
+                  .throwIfDenied());
 
       ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
@@ -1405,7 +1479,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm");
+              "test-realm",
+              Map.of());
 
       PolarisPrincipal principal =
           PolarisPrincipal.of("eve", AttributeMap.EMPTY, Set.of("auditor"));
@@ -1413,18 +1488,17 @@ public class OpaPolarisAuthorizerTest {
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
       assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              principal,
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.LOAD_VIEW,
-                                  List.of(target),
-                                  List.of(secondary))))
-                      .throwIfDenied());
+          .isThrownBy(() ->
+              authorizer
+                  .authorize(
+                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                      new AuthorizationRequest(
+                          principal,
+                          authorizationIntents(
+                              PolarisAuthorizableOperation.LOAD_VIEW,
+                              List.of(target),
+                              List.of(secondary))))
+                  .throwIfDenied());
 
       ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
@@ -1451,7 +1525,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm");
+              "test-realm",
+              Map.of());
 
       PolarisPrincipal principal =
           PolarisPrincipal.of(
@@ -1477,18 +1552,17 @@ public class OpaPolarisAuthorizerTest {
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
       assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              principal,
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.LOAD_VIEW,
-                                  List.of(target),
-                                  List.of(secondary))))
-                      .throwIfDenied());
+          .isThrownBy(() ->
+              authorizer
+                  .authorize(
+                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                      new AuthorizationRequest(
+                          principal,
+                          authorizationIntents(
+                              PolarisAuthorizableOperation.LOAD_VIEW,
+                              List.of(target),
+                              List.of(secondary))))
+                  .throwIfDenied());
 
       ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
@@ -1523,7 +1597,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm");
+              "test-realm",
+              Map.of());
 
       PolarisPrincipal principal =
           PolarisPrincipal.of(
@@ -1540,18 +1615,17 @@ public class OpaPolarisAuthorizerTest {
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
       assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              principal,
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.LOAD_VIEW,
-                                  List.of(target),
-                                  List.of(secondary))))
-                      .throwIfDenied());
+          .isThrownBy(() ->
+              authorizer
+                  .authorize(
+                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                      new AuthorizationRequest(
+                          principal,
+                          authorizationIntents(
+                              PolarisAuthorizableOperation.LOAD_VIEW,
+                              List.of(target),
+                              List.of(secondary))))
+                  .throwIfDenied());
 
       ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
@@ -1584,7 +1658,8 @@ public class OpaPolarisAuthorizerTest {
               JsonMapper.builder().build(),
               null,
               null,
-              "test-realm");
+              "test-realm",
+              Map.of());
 
       PrincipalEntity entity =
           new PrincipalEntity.Builder()
@@ -1604,18 +1679,17 @@ public class OpaPolarisAuthorizerTest {
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
       assertThatNoException()
-          .isThrownBy(
-              () ->
-                  authorizer
-                      .authorize(
-                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                          new AuthorizationRequest(
-                              principal,
-                              authorizationIntents(
-                                  PolarisAuthorizableOperation.LOAD_VIEW,
-                                  List.of(target),
-                                  List.of(secondary))))
-                      .throwIfDenied());
+          .isThrownBy(() ->
+              authorizer
+                  .authorize(
+                      new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                      new AuthorizationRequest(
+                          principal,
+                          authorizationIntents(
+                              PolarisAuthorizableOperation.LOAD_VIEW,
+                              List.of(target),
+                              List.of(secondary))))
+                  .throwIfDenied());
 
       ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);

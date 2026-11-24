@@ -147,13 +147,12 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
       assertThat(testMechanism.calls()).isNotEmpty();
       int callsAfterVending = testMechanism.calls().size();
       assertThat(testMechanism.calls())
-          .allSatisfy(
-              call -> {
-                assertThat(call.storageConfig().getCredentialVendingMechanism())
-                    .isEqualTo(RecordingThirdCredentialVendingMechanism.ID);
-                assertThat(call.storageConfig().getAllowedLocations())
-                    .containsExactly("s3://bucket/base/" + catalog + "/");
-              });
+          .allSatisfy(call -> {
+            assertThat(call.storageConfig().getCredentialVendingMechanism())
+                .isEqualTo(RecordingThirdCredentialVendingMechanism.ID);
+            assertThat(call.storageConfig().getAllowedLocations())
+                .containsExactly("s3://bucket/base/" + catalog + "/");
+          });
 
       // A realm where TEST_MECHANISM is not allowlisted: creation itself is refused with "not
       // enabled", at PolarisAdminService's allowlist-only gate, and the mechanism is never
