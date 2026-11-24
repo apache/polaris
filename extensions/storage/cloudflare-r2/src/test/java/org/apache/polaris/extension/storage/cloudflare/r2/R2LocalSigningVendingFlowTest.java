@@ -237,4 +237,18 @@ class R2LocalSigningVendingFlowTest {
     assertThat(loaded.config().keySet()).containsAll(CREDENTIAL_KEYS);
     assertThat(loaded.credentials().size()).isEqualTo(1);
   }
+
+  /** {@code kmsUnavailable=true} does not change vending: the integration never reads the flag. */
+  @Test
+  void aCatalogWithKmsUnavailableTrueStillVendsCredentials() {
+    TestServices svc = services(Map.of(), FIXED_TOKEN);
+    String cat = "r2nokms";
+    createStructuredTable(
+        svc, cat, r2Config(List.of(BASE + "/" + cat)).setKmsUnavailable(true).build());
+
+    LoadTableResponse loaded = loadTable(svc, cat, "ns", "t1", "vended-credentials");
+
+    assertThat(loaded.config().keySet()).containsAll(CREDENTIAL_KEYS);
+    assertThat(loaded.credentials().size()).isEqualTo(1);
+  }
 }

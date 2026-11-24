@@ -100,7 +100,7 @@ public class R2LocalSigningCredentialVendingMechanism implements S3CredentialVen
    * <ol>
    *   <li>The endpoint is an R2 endpoint ({@link CloudflareR2Endpoint#parse}).
    *   <li>{@code pathStyleAccess} is true and {@code region} is {@code auto}.
-   *   <li>The STS and KMS fields are absent.
+   *   <li>The STS fields and the KMS key fields are absent, and {@code stsUnavailable} is not true.
    *   <li>No allowed location holds an empty path segment.
    *   <li>A parent token resolves for the config.
    * </ol>
@@ -120,7 +120,7 @@ public class R2LocalSigningCredentialVendingMechanism implements S3CredentialVen
 
   /**
    * The extension requires {@code pathStyleAccess=true} and {@code region=auto}. {@link #validate}
-   * applies the rule at create and update, and the integration applies it again at vend time.
+   * and {@link CloudflareR2CredentialsStorageIntegration#compute} both call this method.
    */
   static void requirePathStyleAndAutoRegion(AwsStorageConfigurationInfo config) {
     if (!Boolean.TRUE.equals(config.getPathStyleAccess())) {
@@ -132,9 +132,10 @@ public class R2LocalSigningCredentialVendingMechanism implements S3CredentialVen
   }
 
   /**
-   * An R2 catalog has no role, no STS, and no KMS. A true {@code stsUnavailable} would also make
-   * the access delegation resolver fall back to remote signing. The Python CLI sends false for both
-   * flags by default, so false is accepted.
+   * An R2 catalog has no role, no STS, and no KMS, so the fields that configure them must be
+   * absent. A true {@code stsUnavailable} is refused, because it makes the access delegation
+   * resolver fall back to remote signing. False is accepted, because the Python CLI sends it by
+   * default. {@code kmsUnavailable} is accepted with any value: the integration never reads it.
    *
    * <p>The management API cannot set {@code userArn}, {@code currentKmsKey}, or {@code
    * allowedKmsKeys} on the stored config: core does not copy {@code userArn} from the request, and
@@ -150,18 +151,13 @@ public class R2LocalSigningCredentialVendingMechanism implements S3CredentialVen
     requireAbsent("stsEndpoint", updated.getStsEndpoint());
     requireNotTrue("stsUnavailable", updated.getStsUnavailable());
     requireAbsent("endpointInternal", updated.getEndpointInternal());
-    requireNotTrue("kmsUnavailable", updated.getKmsUnavailable());
     requireAbsent("currentKmsKey", updated.getCurrentKmsKey());
     requireAbsentList("allowedKmsKeys", updated.getAllowedKmsKeys());
     requireAbsentList(ENCRYPTION_KEY_FIELDS, updated.getEncryptionKeys());
     requireAbsentList("decryptionKeys", updated.getDecryptionKeys());
   }
 
-  /**
-   * An allowed location must not contain an empty path segment. The module refuses such a location
-   * at create and update (allowed locations) and at vend time (grant locations, in the storage
-   * integration). The rule sees only the allowed locations of the config.
-   */
+  /** Applies {@link #requireNoEmptyPathSegment} to each allowed location of the config. */
   private static void requireNoEmptyPathSegments(AwsStorageConfigurationInfo updated) {
     for (String location : updated.getAllowedLocations()) {
       requireNoEmptyPathSegment("allowed location", location);
@@ -170,9 +166,10 @@ public class R2LocalSigningCredentialVendingMechanism implements S3CredentialVen
 
   /**
    * Refuses a location with an empty path segment, which is {@code //} anywhere after the bucket,
-   * including right after it. {@code description} names the kind of location in the message: {@code
-   * "allowed location"} at create and update, and {@code "location"} at vend time. Both sites call
-   * this method, so the two messages use one wording.
+   * including right after it. {@link #validate} calls this method for the allowed locations at
+   * create and update, and {@link CloudflareR2CredentialsStorageIntegration#normalizedPrefixes}
+   * calls it for the grant locations at vend time. {@code description} names the kind of location
+   * in the message: {@code "allowed location"} or {@code "location"}.
    */
   static void requireNoEmptyPathSegment(String description, String location) {
     String path = location.substring(location.indexOf("://") + 3);
