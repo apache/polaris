@@ -19,7 +19,6 @@
 
 package org.apache.polaris.persistence.nosql.metastore;
 
-import static org.apache.polaris.persistence.nosql.api.index.IndexKey.key;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
@@ -30,7 +29,6 @@ import java.util.OptionalInt;
 import java.util.stream.Stream;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
@@ -52,54 +50,48 @@ public class TestNoSqlPaginationToken {
 
   @ParameterizedTest
   @MethodSource("tokens")
-  public void serializationRoundtripSmile(ObjRef containerObjRef, IndexKey indexKey) {
-    var token = NoSqlPaginationToken.paginationToken(containerObjRef, indexKey);
+  public void serializationRoundtripSmile(ObjRef containerObjRef, long entityId) {
+    var token = NoSqlPaginationToken.paginationToken(containerObjRef, entityId);
     var expectedContainerObjRefBytes = containerObjRef.toBytes();
-    var expectedKeyBytes = bytes(indexKey.asByteBuffer());
 
     var serialized = SMILE_MAPPER.writerFor(NoSqlPaginationToken.class).writeValueAsBytes(token);
     var jsonNode = SMILE_MAPPER.readTree(serialized);
-    soft.assertThat(jsonNode.asObject().propertyNames()).containsExactlyInAnyOrder("t", "c", "k");
+    soft.assertThat(jsonNode.asObject().propertyNames()).containsExactlyInAnyOrder("t", "c", "i");
     soft.assertThat(jsonNode.path("t").asString()).isEqualTo(NoSqlPaginationToken.ID);
     soft.assertThat(jsonNode.path("c").asString())
         .isEqualTo(Base64.getEncoder().encodeToString(expectedContainerObjRefBytes));
-    soft.assertThat(jsonNode.path("k").asString())
-        .isEqualTo(Base64.getEncoder().encodeToString(expectedKeyBytes));
+    soft.assertThat(jsonNode.path("i").asLong()).isEqualTo(entityId);
     assertRoundTrip(
         SMILE_MAPPER.readValue(serialized, NoSqlPaginationToken.class),
         containerObjRef,
-        indexKey,
-        expectedContainerObjRefBytes,
-        expectedKeyBytes);
+        entityId,
+        expectedContainerObjRefBytes);
   }
 
   @ParameterizedTest
   @MethodSource("tokens")
-  public void serializationRoundtripJson(ObjRef containerObjRef, IndexKey indexKey) {
-    var token = NoSqlPaginationToken.paginationToken(containerObjRef, indexKey);
+  public void serializationRoundtripJson(ObjRef containerObjRef, long entityId) {
+    var token = NoSqlPaginationToken.paginationToken(containerObjRef, entityId);
     var expectedContainerObjRefBytes = containerObjRef.toBytes();
-    var expectedKeyBytes = bytes(indexKey.asByteBuffer());
 
     var serialized = JSON_MAPPER.writerFor(NoSqlPaginationToken.class).writeValueAsString(token);
     var jsonNode = JSON_MAPPER.readTree(serialized);
-    soft.assertThat(jsonNode.asObject().propertyNames()).containsExactlyInAnyOrder("t", "c", "k");
+    soft.assertThat(jsonNode.asObject().propertyNames()).containsExactlyInAnyOrder("t", "c", "i");
     soft.assertThat(jsonNode.path("t").asString()).isEqualTo(NoSqlPaginationToken.ID);
     soft.assertThat(jsonNode.path("c").asString())
         .isEqualTo(Base64.getEncoder().encodeToString(expectedContainerObjRefBytes));
-    soft.assertThat(jsonNode.path("k").asString())
-        .isEqualTo(Base64.getEncoder().encodeToString(expectedKeyBytes));
+    soft.assertThat(jsonNode.path("i").asLong()).isEqualTo(entityId);
     assertRoundTrip(
         JSON_MAPPER.readValue(serialized, NoSqlPaginationToken.class),
         containerObjRef,
-        indexKey,
-        expectedContainerObjRefBytes,
-        expectedKeyBytes);
+        entityId,
+        expectedContainerObjRefBytes);
   }
 
   @ParameterizedTest
   @MethodSource("tokens")
-  public void tokenSurvivesPageTokenRoundTrip(ObjRef containerObjRef, IndexKey indexKey) {
-    var token = NoSqlPaginationToken.paginationToken(containerObjRef, indexKey);
+  public void tokenSurvivesPageTokenRoundTrip(ObjRef containerObjRef, long entityId) {
+    var token = NoSqlPaginationToken.paginationToken(containerObjRef, entityId);
     var request = PageToken.fromLimit(10);
     var page = Page.page(request, List.of("item"), token);
 
@@ -109,34 +101,31 @@ public class TestNoSqlPaginationToken {
     soft.assertThat(roundTripped.valueAs(NoSqlPaginationToken.class))
         .hasValueSatisfying(value -> {
           soft.assertThat(value.containerObjRef()).isEqualTo(containerObjRef);
-          soft.assertThat(value.key()).isEqualTo(indexKey);
+          soft.assertThat(value.entityId()).isEqualTo(entityId);
           soft.assertThat(bytes(value.containerObjRefBytes()))
               .containsExactly(containerObjRef.toBytes());
-          soft.assertThat(bytes(value.keyBytes())).containsExactly(bytes(indexKey.asByteBuffer()));
         });
   }
 
   private static Stream<Arguments> tokens() {
     return Stream.of(
-        arguments(objRef("foo", 123L, 1), key("abc")),
-        arguments(objRef("foo", Long.MAX_VALUE, 5), key("A\u0001B")),
-        arguments(objRef("bar", Long.MIN_VALUE, 3), key("A\u0001B\u0002C")),
-        arguments(objRef("baz", 0L, 1), key("foo\u0000\u0001\u0002\u0000bar")),
-        arguments(objRef("qux", 0x1234567890abcdefL, 2), key(Long.MIN_VALUE)),
-        arguments(objRef("max", Long.MAX_VALUE, 7), key(Long.MAX_VALUE)));
+        arguments(objRef("foo", 123L, 1), 1L),
+        arguments(objRef("foo", Long.MAX_VALUE, 5), 0L),
+        arguments(objRef("bar", Long.MIN_VALUE, 3), -1L),
+        arguments(objRef("baz", 0L, 1), 0x1234567890abcdefL),
+        arguments(objRef("qux", 0x1234567890abcdefL, 2), Long.MIN_VALUE),
+        arguments(objRef("max", Long.MAX_VALUE, 7), Long.MAX_VALUE));
   }
 
   private void assertRoundTrip(
       NoSqlPaginationToken actual,
       ObjRef expectedContainerObjRef,
-      IndexKey expectedIndexKey,
-      byte[] expectedContainerObjRefBytes,
-      byte[] expectedKeyBytes) {
+      long expectedEntityId,
+      byte[] expectedContainerObjRefBytes) {
     soft.assertThat(actual.containerObjRef()).isEqualTo(expectedContainerObjRef);
-    soft.assertThat(actual.key()).isEqualTo(expectedIndexKey);
+    soft.assertThat(actual.entityId()).isEqualTo(expectedEntityId);
     soft.assertThat(bytes(actual.containerObjRefBytes()))
         .containsExactly(expectedContainerObjRefBytes);
-    soft.assertThat(bytes(actual.keyBytes())).containsExactly(expectedKeyBytes);
   }
 
   private static byte[] bytes(ByteBuffer buffer) {

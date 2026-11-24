@@ -869,7 +869,6 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence implements SupportsCat
     }
 
     var paginationToken = pageToken.valueAs(NoSqlPaginationToken.class);
-    var pageTokenOffset = paginationToken.map(NoSqlPaginationToken::key);
 
     var catalogContent = isCatalogContent(entityType);
     var access =
@@ -882,6 +881,13 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence implements SupportsCat
     if (paginationToken.isPresent() && access.refObj().isEmpty()) {
       throw new IllegalArgumentException("Invalid or expired NoSQL pagination token");
     }
+    // The token references the container state it was issued for, so the entity is still there.
+    var pageTokenOffset =
+        paginationToken.map(token ->
+            access
+                .nameKeyById(token.entityId())
+                .orElseThrow(() ->
+                    new IllegalArgumentException("Invalid or expired NoSQL pagination token")));
     var nameIndex = access.nameIndex().orElse(null);
 
     if (nameIndex == null) {
@@ -1033,7 +1039,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence implements SupportsCat
 
       if (result.size() == limit) {
         return NoSqlPaginationToken.paginationToken(
-            ObjRef.objRef(access.refObj().orElseThrow()), fetchBuffer.get(i).key());
+            ObjRef.objRef(access.refObj().orElseThrow()), obj.stableId());
       }
 
       result.add(transformed);
