@@ -395,10 +395,10 @@ The maximum weight for the entity cache. Weights approximate the size in bytes o
 
 ##### `polaris.features."GCS_HNS_PARENT_FOLDER_CREATION_ENABLED"`
 
-When true, before vending GCS write credentials Polaris creates the missing parent folders of each write location, using the identity it downscopes from. Buckets with hierarchical namespace (HNS) need this, because vended credentials get no access to folders outside their write locations. Polaris does not detect HNS, so the request is sent for every GCS bucket; buckets without HNS reject it, and a failure never blocks vending. Applies to the whole realm: when false, writes to HNS buckets fail until the parent folders exist, so they must be created by other means.
+When true, before vending GCS write credentials Polaris creates the missing parent folders of each write location, using the identity it downscopes from. Buckets with hierarchical namespace (HNS) need this, because vended credentials get no access to folders outside their write locations. Polaris does not detect HNS, so the request is sent for every GCS bucket; buckets without HNS reject it, and a failure never blocks vending. Applies to the whole realm. Off by default: enable it when catalogs in the realm write to HNS buckets, otherwise those writes fail until the parent folders exist.
 
 - **Type:** `Boolean`
-- **Default:** `true`
+- **Default:** `false`
 
 ---
 

@@ -710,7 +710,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     List<String> requests = new ArrayList<>();
     vend(
         toGrants(readLocations, Set.of(), writeLocations),
-        EMPTY_REALM_CONFIG,
+        FOLDER_CREATION_ENABLED,
         folderTransport(requests, status));
     return requests;
   }
@@ -803,6 +803,16 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @Test
+  public void testParentFolderCreationIsOffByDefault() {
+    List<String> requests = new ArrayList<>();
+    vend(
+        toGrants(Set.of(), Set.of(), Set.of("gs://bucket/ns/tbl")),
+        EMPTY_REALM_CONFIG,
+        folderTransport(requests, 200));
+    assertThat(requests).isEmpty();
+  }
+
+  @Test
   public void testParentFolderCreationCanBeDisabled() {
     List<String> requests = new ArrayList<>();
     vend(
@@ -822,7 +832,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       // vend() asserts that the token is still returned.
       vend(
           toGrants(Set.of(), Set.of(), Set.of("gs://bucket/ns/tbl")),
-          EMPTY_REALM_CONFIG,
+          FOLDER_CREATION_ENABLED,
           failingFactory);
       assertThat(logs.events())
           .filteredOn(event -> event.getLevel() == Level.WARN)
@@ -846,13 +856,13 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         PolarisStorageActions.READ,
                         PolarisStorageActions.LIST,
                         PolarisStorageActions.DELETE))),
-            EMPTY_REALM_CONFIG,
+            FOLDER_CREATION_ENABLED,
             folderTransport(cleanupRequests, 200));
     List<String> allRequests = new ArrayList<>();
     CredentialAccessBoundary allBoundary =
         vend(
             List.of(new LocationGrant(Set.of(location), Set.of(PolarisStorageActions.ALL))),
-            EMPTY_REALM_CONFIG,
+            FOLDER_CREATION_ENABLED,
             folderTransport(allRequests, 200));
 
     assertThat(cleanupRequests).isEmpty();
@@ -946,6 +956,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     assertThat(matches).hasSize(1);
     return matches.get(0).path("availabilityCondition").path("expression").asString();
   }
+
+  private static final RealmConfig FOLDER_CREATION_ENABLED =
+      configWith(Map.of("GCS_HNS_PARENT_FOLDER_CREATION_ENABLED", "true"));
 
   private static RealmConfig configWith(Map<String, String> values) {
     RealmConfigurationSource source = (rc, name) -> values.get(name);

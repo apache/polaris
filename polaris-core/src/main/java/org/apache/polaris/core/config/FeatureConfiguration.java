@@ -248,9 +248,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "hierarchical namespace (HNS) need this, because vended credentials get no access to\n"
                   + "folders outside their write locations. Polaris does not detect HNS, so the request is\n"
                   + "sent for every GCS bucket; buckets without HNS reject it, and a failure never blocks\n"
-                  + "vending. Applies to the whole realm: when false, writes to HNS buckets fail until the\n"
-                  + "parent folders exist, so they must be created by other means.")
-          .defaultValue(true)
+                  + "vending. Applies to the whole realm. Off by default: enable it when catalogs in the\n"
+                  + "realm write to HNS buckets, otherwise those writes fail until the parent folders exist.")
+          .defaultValue(false)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> GCS_PRINCIPAL_ATTRIBUTION_ENABLED =

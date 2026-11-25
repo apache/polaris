@@ -466,7 +466,7 @@ public class GcpCredentialsStorageIntegration
    * still-missing parent fail until it exists. Creation is tried again whenever new credentials are
    * generated. A bucket without HNS rejects the call with 409, or with 403 when the identity lacks
    * {@code storage.folders.create}. Runs only when {@code GCS_HNS_PARENT_FOLDER_CREATION_ENABLED}
-   * is true.
+   * is true, which is not the default.
    */
   private static void createParentFolders(
       Set<String> writeLocations,
@@ -598,9 +598,9 @@ public class GcpCredentialsStorageIntegration
    * <p>On Hierarchical Namespace (HNS) buckets, the write rule also covers {@code folders/<path>/},
    * so folders inside a write location can be created, renamed and deleted, as directories can on
    * buckets without HNS. No folder outside the write locations is covered: the missing parent
-   * folders are created by Polaris before the token is vended, unless {@code
-   * GCS_HNS_PARENT_FOLDER_CREATION_ENABLED} is false (see {@code compute}). Buckets without HNS
-   * have no folder resources, so the folder conditions grant nothing there.
+   * folders are created by Polaris before the token is vended, when {@code
+   * GCS_HNS_PARENT_FOLDER_CREATION_ENABLED} is true (see {@code compute}). Buckets without HNS have
+   * no folder resources, so the folder conditions grant nothing there.
    */
   @VisibleForTesting
   public static CredentialAccessBoundary generateAccessBoundaryRules(
