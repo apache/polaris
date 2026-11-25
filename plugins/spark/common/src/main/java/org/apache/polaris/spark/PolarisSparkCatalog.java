@@ -58,6 +58,11 @@ public class PolarisSparkCatalog implements TableCatalog {
   /**
    * Properties of a table creation that is routed through a delegating catalog, such as the Delta
    * catalog, which drops the user table properties before calling back into this catalog.
+   *
+   * <p>The slot is per thread and shared by all instances of this class, not per catalog. This is
+   * safe because the delegating catalog calls back synchronously on the same thread, and {@link
+   * #setDelegatedCreateProperties} and {@link #clearDelegatedCreateProperties} are always paired
+   * in a {@code try}/{@code finally} around that call.
    */
   private static final ThreadLocal<Map<String, String>> DELEGATED_CREATE_PROPERTIES =
       new ThreadLocal<>();
