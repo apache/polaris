@@ -97,7 +97,7 @@ Add the following to your Polaris configuration:
 
 ```properties
 # Enable OPA authorization
-polaris.authorization.type=opa
+polaris.authorization.authorizer.type=opa
 
 # OPA server endpoint
 polaris.authorization.opa.policy-uri=http://<opa-host>:8181/v1/data/polaris/authz
@@ -113,7 +113,7 @@ Restart the Polaris service to apply the configuration.
 
 | Property | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `polaris.authorization.type` | Yes | `internal` | Set to `opa` to enable OPA authorization |
+| `polaris.authorization.authorizer.type` | Yes | `internal` | Set to `opa` to enable OPA authorization |
 | `polaris.authorization.opa.policy-uri` | Yes | - | Full URI to the OPA policy decision endpoint (must be http or https) |
 
 ### HTTP Configuration
@@ -264,6 +264,39 @@ polaris.authorization.opa.auth.bearer.file-based.jwt-expiration-buffer=PT1M
 | `polaris.authorization.opa.auth.bearer.file-based.jwt-expiration-buffer` | No | `PT1M` | Buffer time before JWT expiration to trigger refresh (ISO-8601 duration) |
 
 **JWT Auto-Refresh**: When `jwt-expiration-refresh` is enabled (default), if the token file contains a valid JWT with an `exp` claim, Polaris will automatically refresh the token shortly before it expires based on the `jwt-expiration-buffer` setting.
+
+### Multiple OPA Tenants
+
+All the `polaris.authorization.opa.*` properties above define the default OPA configuration. Additional,
+named OPA configurations ("tenants") can be defined by inserting a tenant key after the
+`polaris.authorization.opa` prefix. Each tenant is a self-contained configuration with its own
+policy URI, context properties, HTTP and authentication settings.
+
+A realm selects a tenant via the `polaris.authorization.authorizer.<realm>.tenant-key` property;
+realms that do not specify a tenant key use the default configuration:
+
+```properties
+# Default OPA configuration
+polaris.authorization.authorizer.type=opa
+polaris.authorization.opa.policy-uri=http://opa:8181/v1/data/polaris/authz
+
+# OPA configuration for realm "finance-realm"
+polaris.authorization.authorizer.finance-realm.type=opa
+polaris.authorization.authorizer.finance-realm.tenant-key=finance
+
+# OPA tenant "finance", used by realm "finance-realm"
+polaris.authorization.opa.finance.policy-uri=http://opa-finance:8181/v1/data/polaris/authz
+polaris.authorization.opa.finance.auth.type=bearer
+polaris.authorization.opa.finance.auth.bearer.static-token.value=finance-token
+```
+
+{{< alert note >}}
+Realm-specific authorizer settings do not inherit from the default realm: the `type` must be set
+explicitly for every realm that defines a `tenant-key`, otherwise Polaris fails to start.
+{{< /alert >}}
+
+The names of the default tenant's properties (`policy-uri`, `context-properties`, `auth` and `http`)
+are reserved and cannot be used as tenant keys.
 
 ## Policy Development
 

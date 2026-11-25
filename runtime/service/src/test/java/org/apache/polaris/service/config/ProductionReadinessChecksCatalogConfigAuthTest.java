@@ -18,14 +18,21 @@
  */
 package org.apache.polaris.service.config;
 
+import static org.apache.polaris.service.authz.AuthorizationConfiguration.AuthorizerConfiguration.DEFAULT_REALM_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
+import org.apache.polaris.service.authz.AuthorizationConfiguration;
+import org.apache.polaris.service.authz.AuthorizationRealmConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -112,9 +119,51 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
     verifyNoInteractions(config);
   }
 
+  @Test
+  void realmOverrideFalseWithNonInternalRealmAuthorizerReturnsOk() {
+    FeaturesConfiguration config =
+        mockConfig(
+            Map.of(FLAG_KEY, "true"),
+            Map.of("opa-realm", mockRealmOverrides(Map.of(FLAG_KEY, "false"))));
+
+    ProductionReadinessCheck result =
+        checks.checkCatalogConfigAuthorization(
+            config, authorizationConfig(Map.of(DEFAULT_REALM_KEY, "internal", "opa-realm", "opa")));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void flagUnsetWithInternalAuthorizerInOneRealmReturnsWarning() {
+    FeaturesConfiguration config = mockConfig(Map.of(), Map.of());
+
+    ProductionReadinessCheck result =
+        checks.checkCatalogConfigAuthorization(
+            config, authorizationConfig(Map.of(DEFAULT_REALM_KEY, "opa", "realm1", "internal")));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors()).hasSize(1);
+  }
+
   private static AuthorizationConfiguration authorizationConfig(String type) {
+    return authorizationConfig(Map.of(DEFAULT_REALM_KEY, type));
+  }
+
+  private static AuthorizationConfiguration authorizationConfig(Map<String, String> typesByRealm) {
+    Map<String, AuthorizationRealmConfiguration> realms = new HashMap<>();
+    typesByRealm.forEach((realm, type) -> {
+      AuthorizationRealmConfiguration realmConfig = mock(AuthorizationRealmConfiguration.class);
+      lenient().when(realmConfig.effectiveType()).thenReturn(type);
+      realms.put(realm, realmConfig);
+    });
+    // CALLS_REAL_METHODS keeps the interface's default forRealm working.
+    AuthorizationConfiguration.AuthorizerConfiguration authorizerConfig =
+        mock(
+            AuthorizationConfiguration.AuthorizerConfiguration.class,
+            withSettings().defaultAnswer(CALLS_REAL_METHODS));
+    lenient().when(authorizerConfig.realms()).thenReturn(realms);
     AuthorizationConfiguration config = mock(AuthorizationConfiguration.class);
-    when(config.type()).thenReturn(type);
+    when(config.authorizer()).thenReturn(authorizerConfig);
     return config;
   }
 

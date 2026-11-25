@@ -28,10 +28,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.apache.polaris.core.config.PolarisConfiguration;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.CatalogEntity;
 
 public class RangerTestUtils {
 
@@ -88,47 +85,46 @@ public class RangerTestUtils {
 
   public static RangerPolarisAuthorizerConfig createConfig(
       String serviceName, Map<String, String> properties) {
-    return new RangerPolarisAuthorizerConfig() {
-      @Override
-      public Optional<String> serviceName() {
-        return Optional.ofNullable(serviceName);
-      }
+    return createConfig(serviceName, properties, Map.of());
+  }
 
+  public static RangerPolarisAuthorizerConfig createConfig(
+      String serviceName,
+      Map<String, String> properties,
+      Map<String, RangerPolarisAuthorizerConfig.RangerTenantConfig> tenants) {
+    Map<String, RangerPolarisAuthorizerConfig.RangerTenantConfig> allTenants =
+        new HashMap<>(tenants);
+    if (serviceName != null) {
+      allTenants.put(
+          RangerPolarisAuthorizerConfig.DEFAULT_TENANT_KEY, () -> Optional.of(serviceName));
+    }
+    return new RangerPolarisAuthorizerConfig() {
       @Override
       public Map<String, String> properties() {
         return properties;
       }
-    };
-  }
 
-  public static RealmConfig createRealmConfig() {
-    return new RealmConfig() {
-      @SuppressWarnings({"removal"})
       @Override
-      public <T> T getConfig(String configName) {
-        return null;
-      }
-
-      @SuppressWarnings({"removal"})
-      @Override
-      public <T> T getConfig(String configName, T defaultValue) {
-        return null;
+      @SuppressWarnings("removal")
+      public Map<String, String> legacyAuthzProperties() {
+        return Map.of();
       }
 
       @Override
-      public <T> T getConfig(PolarisConfiguration<T> config) {
-        return config.defaultValue();
+      @SuppressWarnings("removal")
+      public Map<String, String> legacyPluginProperties() {
+        return Map.of();
       }
 
       @Override
-      public <T> T getConfig(PolarisConfiguration<T> config, CatalogEntity catalogEntity) {
-        return config.defaultValue();
+      @SuppressWarnings("removal")
+      public Map<String, String> legacyXasecureProperties() {
+        return Map.of();
       }
 
       @Override
-      public <T> T getConfig(
-          PolarisConfiguration<T> config, Map<String, String> catalogProperties) {
-        return config.defaultValue();
+      public Map<String, RangerTenantConfig> tenants() {
+        return allTenants;
       }
     };
   }

@@ -25,18 +25,34 @@ Ranger authorizer for Polaris requires Apache Ranger version 2.8.0 or later.
 # Setup instructions
 1. Enable Ranger authorizer by setting the following property in application.properties:
 ```
-polaris.authorization.type=ranger
+polaris.authorization.authorizer.type=ranger
 ```
 
-2. Configure Ranger authorizer by setting configurations having name that start with "polaris.authorization.ranger." in application.properties, for example:
+2. Configure Ranger authorizer by setting the Ranger service name, and the Ranger properties with names prefixed by "polaris.authorization.ranger.properties." in application.properties, for example:
 ```
 polaris.authorization.ranger.service-name=dev_polaris
-polaris.authorization.ranger.authz.default.policy.source.impl=org.apache.ranger.admin.client.RangerAdminRESTClient
-polaris.authorization.ranger.authz.default.policy.rest.url=http://ranger-admin:6080
-polaris.authorization.ranger.authz.audit.destination.solr=enabled
-polaris.authorization.ranger.authz.audit.destination.solr.urls=http://solr-service:8983/solr/ranger_audits
+polaris.authorization.ranger.properties.authz.default.policy.source.impl=org.apache.ranger.admin.client.RangerAdminRESTClient
+polaris.authorization.ranger.properties.authz.default.policy.rest.url=http://ranger-admin:6080
+polaris.authorization.ranger.properties.authz.audit.destination.solr=enabled
+polaris.authorization.ranger.properties.authz.audit.destination.solr.urls=http://solr-service:8983/solr/ranger_audits
 
 ```
+
+   Ranger properties set directly under "polaris.authorization.ranger.authz.",
+   "polaris.authorization.ranger.plugin." or "polaris.authorization.ranger.xasecure." (e.g.
+   `polaris.authorization.ranger.authz.default.policy.rest.url`) are deprecated, but still supported;
+   when a property is set both ways, the "polaris.authorization.ranger.properties." one wins.
+
+   The Ranger authorizer can also be configured per realm, using a different Ranger service for
+   each realm. Define a named "tenant" with its own service name, then select it for a realm via
+   the realm's authorizer `tenant-key` (Ranger connection properties remain shared across tenants):
+```
+polaris.authorization.authorizer.realm1.type=ranger
+polaris.authorization.authorizer.realm1.tenant-key=tenant1
+polaris.authorization.ranger.tenant1.service-name=realm1_polaris
+```
+   The names `service-name`, `properties`, `authz`, `plugin` and `xasecure` are reserved and cannot be
+   used as tenant keys.
 
 3. Register the Polaris service type with Ranger Admin using the service definition shipped at
    `src/main/resources/polaris-ranger-servicedef.json` (packaged as `polaris-ranger-servicedef.json`

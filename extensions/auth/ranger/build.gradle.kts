@@ -184,13 +184,13 @@ testing {
               systemProperties.putAll(
                 mapOf(
                   "quarkus.log.file.path" to logsDir.resolve("polaris.log").absolutePath,
-                  "polaris.authorization.type" to "ranger",
+                  "polaris.authorization.authorizer.type" to "ranger",
                   "polaris.authorization.ranger.service-name" to "dev_polaris",
-                  "polaris.authorization.ranger.authz.default.policy.source.impl" to
+                  "polaris.authorization.ranger.properties.authz.default.policy.source.impl" to
                     "org.apache.ranger.admin.client.LocalFolderPolicySource",
-                  "polaris.authorization.ranger.authz.default.enable.implicit.userstore.enricher" to
+                  "polaris.authorization.ranger.properties.authz.default.enable.implicit.userstore.enricher" to
                     "true",
-                  "polaris.authorization.ranger.authz.default.policy.source.local_folder.path" to
+                  "polaris.authorization.ranger.properties.authz.default.policy.source.local_folder.path" to
                     policyDir.get().asFile.absolutePath,
                   "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"" to "[\"FILE\"]",
                   "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"" to "true",

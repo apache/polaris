@@ -50,7 +50,6 @@ import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
 import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.extension.auth.opa.token.FileBearerTokenProvider;
@@ -64,11 +63,10 @@ public class OpaPolarisAuthorizerFactoryTest {
 
   @Test
   public void testFactoryWithStaticTokenConfiguration() {
-    // Build configuration for static token
     OpaAuthorizationConfig opaConfig =
-        ImmutableOpaAuthorizationConfig.builder()
-            .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
-            .auth(
+        defaultConfig(
+            tenantConfig(
+                URI.create("http://localhost:8181/v1/data/polaris/authz/allow"),
                 ImmutableAuthenticationConfig.builder()
                     .type(OpaAuthorizationConfig.AuthenticationType.BEARER)
                     .bearer(
@@ -78,13 +76,8 @@ public class OpaPolarisAuthorizerFactoryTest {
                                     .value("static-token-value")
                                     .build())
                             .build())
-                    .build())
-            .http(
-                ImmutableHttpConfig.builder()
-                    .timeout(Duration.ofSeconds(2))
-                    .verifySsl(true)
-                    .build())
-            .build();
+                    .build(),
+                defaultHttp()));
 
     try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
       RealmContext realmContext = () -> "test-realm";
@@ -92,9 +85,8 @@ public class OpaPolarisAuthorizerFactoryTest {
           new OpaPolarisAuthorizerFactory(
               opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
-      // Create authorizer
-      RealmConfig realmConfig = mock(RealmConfig.class);
-      OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
+      factory.initialize();
+      OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(null);
 
       assertThat(authorizer).isNotNull();
     }
@@ -102,16 +94,14 @@ public class OpaPolarisAuthorizerFactoryTest {
 
   @Test
   public void testFactoryWithFileBasedTokenConfiguration() throws IOException {
-    // Create a temporary token file
     Path tokenFile = tempDir.resolve("bearer-token.txt");
     String tokenValue = "file-based-token-value";
     Files.writeString(tokenFile, tokenValue);
 
-    // Build configuration for file-based token
     OpaAuthorizationConfig opaConfig =
-        ImmutableOpaAuthorizationConfig.builder()
-            .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
-            .auth(
+        defaultConfig(
+            tenantConfig(
+                URI.create("http://localhost:8181/v1/data/polaris/authz/allow"),
                 ImmutableAuthenticationConfig.builder()
                     .type(OpaAuthorizationConfig.AuthenticationType.BEARER)
                     .bearer(
@@ -124,13 +114,8 @@ public class OpaPolarisAuthorizerFactoryTest {
                                     .jwtExpirationBuffer(Duration.ofMinutes(1))
                                     .build())
                             .build())
-                    .build())
-            .http(
-                ImmutableHttpConfig.builder()
-                    .timeout(Duration.ofSeconds(2))
-                    .verifySsl(true)
-                    .build())
-            .build();
+                    .build(),
+                defaultHttp()));
 
     try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
       RealmContext realmContext = () -> "test-realm";
@@ -138,13 +123,11 @@ public class OpaPolarisAuthorizerFactoryTest {
           new OpaPolarisAuthorizerFactory(
               opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
-      // Create authorizer
-      RealmConfig realmConfig = mock(RealmConfig.class);
-      OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
+      factory.initialize();
+      OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(null);
 
       assertThat(authorizer).isNotNull();
 
-      // Also verify that the token provider actually reads from the file
       try (FileBearerTokenProvider provider =
           new FileBearerTokenProvider(
               tokenFile,
@@ -164,20 +147,14 @@ public class OpaPolarisAuthorizerFactoryTest {
 
   @Test
   public void testFactoryWithNoTokenConfiguration() {
-    // Build configuration with no authentication
     OpaAuthorizationConfig opaConfig =
-        ImmutableOpaAuthorizationConfig.builder()
-            .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
-            .auth(
+        defaultConfig(
+            tenantConfig(
+                URI.create("http://localhost:8181/v1/data/polaris/authz/allow"),
                 ImmutableAuthenticationConfig.builder()
                     .type(OpaAuthorizationConfig.AuthenticationType.NONE)
-                    .build())
-            .http(
-                ImmutableHttpConfig.builder()
-                    .timeout(Duration.ofSeconds(2))
-                    .verifySsl(true)
-                    .build())
-            .build();
+                    .build(),
+                defaultHttp()));
 
     try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
       RealmContext realmContext = () -> "test-realm";
@@ -185,9 +162,8 @@ public class OpaPolarisAuthorizerFactoryTest {
           new OpaPolarisAuthorizerFactory(
               opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
-      // Create authorizer
-      RealmConfig realmConfig = mock(RealmConfig.class);
-      OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
+      factory.initialize();
+      OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(null);
 
       assertThat(authorizer).isNotNull();
     }
@@ -200,22 +176,16 @@ public class OpaPolarisAuthorizerFactoryTest {
     HttpServer server = createServerWithRequestCapture(capturedRequestBody);
     try {
       OpaAuthorizationConfig opaConfig =
-          ImmutableOpaAuthorizationConfig.builder()
-              .policyUri(
+          defaultConfig(
+              tenantConfig(
                   URI.create(
                       "http://localhost:"
                           + server.getAddress().getPort()
-                          + "/v1/data/polaris/allow"))
-              .auth(
+                          + "/v1/data/polaris/allow"),
                   ImmutableAuthenticationConfig.builder()
                       .type(OpaAuthorizationConfig.AuthenticationType.NONE)
-                      .build())
-              .http(
-                  ImmutableHttpConfig.builder()
-                      .timeout(Duration.ofSeconds(2))
-                      .verifySsl(true)
-                      .build())
-              .build();
+                      .build(),
+                  defaultHttp()));
 
       try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
         RealmContext realmContext = () -> "factory-realm";
@@ -224,8 +194,7 @@ public class OpaPolarisAuthorizerFactoryTest {
                 opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
         factory.initialize();
-        OpaPolarisAuthorizer authorizer =
-            (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
+        OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(null);
 
         PolarisPrincipal principal =
             PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
@@ -259,23 +228,20 @@ public class OpaPolarisAuthorizerFactoryTest {
     HttpServer server = createServerWithRequestCapture(capturedRequestBody);
     try {
       OpaAuthorizationConfig opaConfig =
-          ImmutableOpaAuthorizationConfig.builder()
-              .policyUri(
-                  URI.create(
-                      "http://localhost:"
-                          + server.getAddress().getPort()
-                          + "/v1/data/polaris/allow"))
-              .contextProperties(Map.of("group", "example-group", "tier", "qa"))
-              .auth(
-                  ImmutableAuthenticationConfig.builder()
-                      .type(OpaAuthorizationConfig.AuthenticationType.NONE)
-                      .build())
-              .http(
-                  ImmutableHttpConfig.builder()
-                      .timeout(Duration.ofSeconds(2))
-                      .verifySsl(true)
-                      .build())
-              .build();
+          defaultConfig(
+              ImmutableOpaAuthorizationTenantConfig.builder()
+                  .policyUri(
+                      URI.create(
+                          "http://localhost:"
+                              + server.getAddress().getPort()
+                              + "/v1/data/polaris/allow"))
+                  .contextProperties(Map.of("group", "example-group", "tier", "qa"))
+                  .auth(
+                      ImmutableAuthenticationConfig.builder()
+                          .type(OpaAuthorizationConfig.AuthenticationType.NONE)
+                          .build())
+                  .http(defaultHttp())
+                  .build());
 
       try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
         OpaPolarisAuthorizerFactory factory =
@@ -284,8 +250,7 @@ public class OpaPolarisAuthorizerFactoryTest {
 
         factory.initialize();
         try {
-          OpaPolarisAuthorizer authorizer =
-              (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
+          OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(null);
 
           PolarisPrincipal principal =
               PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
@@ -325,22 +290,16 @@ public class OpaPolarisAuthorizerFactoryTest {
     HttpServer server = createServerWithRequestCapture(capturedRequestBody);
     try {
       OpaAuthorizationConfig opaConfig =
-          ImmutableOpaAuthorizationConfig.builder()
-              .policyUri(
+          defaultConfig(
+              tenantConfig(
                   URI.create(
                       "http://localhost:"
                           + server.getAddress().getPort()
-                          + "/v1/data/polaris/allow"))
-              .auth(
+                          + "/v1/data/polaris/allow"),
                   ImmutableAuthenticationConfig.builder()
                       .type(OpaAuthorizationConfig.AuthenticationType.NONE)
-                      .build())
-              .http(
-                  ImmutableHttpConfig.builder()
-                      .timeout(Duration.ofSeconds(2))
-                      .verifySsl(true)
-                      .build())
-              .build();
+                      .build(),
+                  defaultHttp()));
 
       try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
         RealmContext realmContext = () -> "realm-b";
@@ -349,8 +308,7 @@ public class OpaPolarisAuthorizerFactoryTest {
                 opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
         factory.initialize();
-        OpaPolarisAuthorizer authorizer =
-            (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
+        OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(null);
 
         PolarisPrincipal principal =
             PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
@@ -383,22 +341,16 @@ public class OpaPolarisAuthorizerFactoryTest {
     HttpServer server = createServerWithRequestCapture(capturedRequestBody);
     try {
       OpaAuthorizationConfig opaConfig =
-          ImmutableOpaAuthorizationConfig.builder()
-              .policyUri(
+          defaultConfig(
+              tenantConfig(
                   URI.create(
                       "http://localhost:"
                           + server.getAddress().getPort()
-                          + "/v1/data/polaris/allow"))
-              .auth(
+                          + "/v1/data/polaris/allow"),
                   ImmutableAuthenticationConfig.builder()
                       .type(OpaAuthorizationConfig.AuthenticationType.NONE)
-                      .build())
-              .http(
-                  ImmutableHttpConfig.builder()
-                      .timeout(Duration.ofSeconds(2))
-                      .verifySsl(true)
-                      .build())
-              .build();
+                      .build(),
+                  defaultHttp()));
 
       try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
         RealmContext realmContext = () -> "test-realm";
@@ -411,8 +363,7 @@ public class OpaPolarisAuthorizerFactoryTest {
                 realmContext);
         factory.initialize();
 
-        RealmConfig realmConfig = mock(RealmConfig.class);
-        OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
+        OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(null);
 
         PolarisPrincipal principal =
             PolarisPrincipal.of(
@@ -449,25 +400,17 @@ public class OpaPolarisAuthorizerFactoryTest {
     HttpServer server = createServerWithRequestCapture(capturedRequestBody);
     try {
       OpaAuthorizationConfig opaConfig =
-          ImmutableOpaAuthorizationConfig.builder()
-              .policyUri(
+          defaultConfig(
+              tenantConfig(
                   URI.create(
                       "http://localhost:"
                           + server.getAddress().getPort()
-                          + "/v1/data/polaris/allow"))
-              .auth(
+                          + "/v1/data/polaris/allow"),
                   ImmutableAuthenticationConfig.builder()
                       .type(OpaAuthorizationConfig.AuthenticationType.NONE)
-                      .build())
-              .http(
-                  ImmutableHttpConfig.builder()
-                      .timeout(Duration.ofSeconds(2))
-                      .verifySsl(true)
-                      .build())
-              .build();
+                      .build(),
+                  defaultHttp()));
 
-      // Simulates the CDI proxy resolving to a different value on each request, the way the real
-      // RequestIdSupplier does via CurrentRequestManager.
       AtomicInteger requestCounter = new AtomicInteger();
       try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
         RealmContext realmContext = () -> "test-realm";
@@ -481,7 +424,6 @@ public class OpaPolarisAuthorizerFactoryTest {
 
         factory.initialize();
 
-        RealmConfig realmConfig = mock(RealmConfig.class);
         PolarisPrincipal principal =
             PolarisPrincipal.of(
                 "eve",
@@ -491,7 +433,7 @@ public class OpaPolarisAuthorizerFactoryTest {
                 Set.of("auditor"));
         // First "request": factory.create() is called fresh, as it would be for each incoming
         // HTTP request via the @RequestScoped PolarisAuthorizer producer.
-        OpaPolarisAuthorizer firstAuthorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
+        OpaPolarisAuthorizer firstAuthorizer = (OpaPolarisAuthorizer) factory.create(null);
         assertThatNoException()
             .isThrownBy(() ->
                 firstAuthorizer
@@ -508,7 +450,7 @@ public class OpaPolarisAuthorizerFactoryTest {
 
         // Second "request": a new authorizer is created against the same long-lived factory,
         // and must pick up a distinct, freshly-resolved request ID rather than reusing the first.
-        OpaPolarisAuthorizer secondAuthorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
+        OpaPolarisAuthorizer secondAuthorizer = (OpaPolarisAuthorizer) factory.create(null);
         assertThatNoException()
             .isThrownBy(() ->
                 secondAuthorizer
@@ -532,19 +474,17 @@ public class OpaPolarisAuthorizerFactoryTest {
   public void testInitializeFailsWhenTrustStorePathIsInvalid() {
     Path missingTrustStore = tempDir.resolve("does-not-exist.jks");
     OpaAuthorizationConfig opaConfig =
-        ImmutableOpaAuthorizationConfig.builder()
-            .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
-            .auth(
+        defaultConfig(
+            tenantConfig(
+                URI.create("http://localhost:8181/v1/data/polaris/authz/allow"),
                 ImmutableAuthenticationConfig.builder()
                     .type(OpaAuthorizationConfig.AuthenticationType.NONE)
-                    .build())
-            .http(
+                    .build(),
                 ImmutableHttpConfig.builder()
                     .timeout(Duration.ofSeconds(2))
                     .verifySsl(true)
                     .trustStorePath(missingTrustStore)
-                    .build())
-            .build();
+                    .build()));
 
     try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
       OpaPolarisAuthorizerFactory factory =
@@ -554,6 +494,45 @@ public class OpaPolarisAuthorizerFactoryTest {
       assertThatThrownBy(factory::initialize)
           .isInstanceOf(IllegalStateException.class)
           .hasMessageContaining("Failed to create HTTP client for OPA communication");
+    }
+  }
+
+  @Test
+  public void testFactoryWithNamedTenant() {
+    OpaAuthorizationConfig.AuthenticationConfig noAuth =
+        ImmutableAuthenticationConfig.builder()
+            .type(OpaAuthorizationConfig.AuthenticationType.NONE)
+            .build();
+    OpaAuthorizationConfig opaConfig =
+        ImmutableOpaAuthorizationConfig.builder()
+            .putTenant(
+                "tenant1",
+                tenantConfig(
+                    URI.create("http://opa-tenant1:8181/v1/data/polaris/authz/allow"),
+                    noAuth,
+                    defaultHttp()))
+            .build();
+
+    try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+      OpaPolarisAuthorizerFactory factory =
+          new OpaPolarisAuthorizerFactory(
+              opaConfig, Clock.systemUTC(), asyncExec, () -> null, () -> "test-realm");
+      factory.initialize();
+
+      assertThat(factory.create("tenant1")).isNotNull();
+      assertThatThrownBy(() -> factory.create("unknown"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("No OPA configuration found for tenant key: unknown");
+      // no default tenant configured
+      assertThatThrownBy(() -> factory.create(null))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("No OPA configuration found for tenant key");
+      for (String reserved : OpaAuthorizationConfig.RESERVED_TENANT_KEYS) {
+        assertThatThrownBy(() -> factory.create(reserved))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("'" + reserved + "' is a reserved name");
+      }
+      factory.cleanup();
     }
   }
 
@@ -578,5 +557,27 @@ public class OpaPolarisAuthorizerFactoryTest {
         });
     server.start();
     return server;
+  }
+
+  private static OpaAuthorizationConfig.OpaAuthorizationTenantConfig tenantConfig(
+      URI policyUri,
+      OpaAuthorizationConfig.AuthenticationConfig auth,
+      OpaAuthorizationConfig.HttpConfig http) {
+    return ImmutableOpaAuthorizationTenantConfig.builder()
+        .policyUri(policyUri)
+        .auth(auth)
+        .http(http)
+        .build();
+  }
+
+  private static OpaAuthorizationConfig defaultConfig(
+      OpaAuthorizationConfig.OpaAuthorizationTenantConfig tenant) {
+    return ImmutableOpaAuthorizationConfig.builder()
+        .putTenant(OpaAuthorizationConfig.DEFAULT_TENANT_KEY, tenant)
+        .build();
+  }
+
+  private static OpaAuthorizationConfig.HttpConfig defaultHttp() {
+    return ImmutableHttpConfig.builder().timeout(Duration.ofSeconds(2)).verifySsl(true).build();
   }
 }

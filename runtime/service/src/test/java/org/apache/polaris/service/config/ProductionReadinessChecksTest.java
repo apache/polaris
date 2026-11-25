@@ -37,6 +37,8 @@ import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.CredentialMode;
 import org.apache.polaris.service.auth.external.OidcConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
+import org.apache.polaris.service.authz.AuthorizationConfiguration;
+import org.apache.polaris.service.authz.AuthorizationRealmConfiguration;
 import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
@@ -352,8 +354,20 @@ class ProductionReadinessChecksTest {
   }
 
   private static AuthorizationConfiguration authorizationConfig(String type) {
+    AuthorizationRealmConfiguration realmConfig = mock(AuthorizationRealmConfiguration.class);
+    lenient().when(realmConfig.effectiveType()).thenReturn(type);
+    // CALLS_REAL_METHODS keeps the interface's default forRealm working.
+    AuthorizationConfiguration.AuthorizerConfiguration authorizerConfig =
+        mock(
+            AuthorizationConfiguration.AuthorizerConfiguration.class,
+            withSettings().defaultAnswer(CALLS_REAL_METHODS));
+    lenient()
+        .when(authorizerConfig.realms())
+        .thenReturn(
+            Map.of(
+                AuthorizationConfiguration.AuthorizerConfiguration.DEFAULT_REALM_KEY, realmConfig));
     AuthorizationConfiguration config = mock(AuthorizationConfiguration.class);
-    lenient().when(config.type()).thenReturn(type);
+    lenient().when(config.authorizer()).thenReturn(authorizerConfig);
     return config;
   }
 
@@ -362,7 +376,9 @@ class ProductionReadinessChecksTest {
     AuthenticationRealmConfiguration realmConfig = mock(AuthenticationRealmConfiguration.class);
     lenient().when(realmConfig.type()).thenReturn(type);
     lenient().when(realmConfig.credentialMode()).thenReturn(mode);
-    AuthenticationConfiguration config = mock(AuthenticationConfiguration.class);
+    // CALLS_REAL_METHODS keeps the interface's default forRealm working.
+    AuthenticationConfiguration config =
+        mock(AuthenticationConfiguration.class, withSettings().defaultAnswer(CALLS_REAL_METHODS));
     lenient()
         .when(config.realms())
         .thenReturn(Map.of(AuthenticationConfiguration.DEFAULT_REALM_KEY, realmConfig));

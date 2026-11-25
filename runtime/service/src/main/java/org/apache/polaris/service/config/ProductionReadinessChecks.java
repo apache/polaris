@@ -31,6 +31,8 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
@@ -43,6 +45,7 @@ import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBro
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.CredentialMode;
 import org.apache.polaris.service.auth.external.OidcConfiguration;
+import org.apache.polaris.service.authz.AuthorizationConfiguration;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.context.DefaultRealmContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
@@ -223,18 +226,18 @@ public class ProductionReadinessChecks {
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizationConfiguration authorizationConfiguration) {
     List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
-    if (authorizationConfiguration.type().equals("internal")) {
-      authenticationConfiguration
-          .realms()
-          .forEach((realm, config) -> {
-            if (config.credentialMode() == CredentialMode.EXTERNAL) {
-              errors.add(
-                  Error.ofSevere(
-                      "Setting principal mode to EXTERNAL when the authorizer is the default (internal) is not allowed.",
-                      "polaris.authentication.%scredential-mode"
-                          .formatted(authRealmSegment(realm))));
-            }
-          });
+    AuthorizationConfiguration.AuthorizerConfiguration authorizerConfiguration =
+        authorizationConfiguration.authorizer();
+    Set<String> realms = new TreeSet<>(authenticationConfiguration.realms().keySet());
+    realms.addAll(authorizerConfiguration.realms().keySet());
+    for (String realm : realms) {
+      if (authenticationConfiguration.forRealm(realm).credentialMode() == CredentialMode.EXTERNAL
+          && authorizerConfiguration.forRealm(realm).effectiveType().equals("internal")) {
+        errors.add(
+            Error.ofSevere(
+                "Setting principal mode to EXTERNAL when the authorizer is the default (internal) is not allowed.",
+                "polaris.authentication.%scredential-mode".formatted(authRealmSegment(realm))));
+      }
     }
     return ProductionReadinessCheck.of(errors);
   }
@@ -507,7 +510,10 @@ public class ProductionReadinessChecks {
   public ProductionReadinessCheck checkCatalogConfigAuthorization(
       FeaturesConfiguration featureConfiguration,
       AuthorizationConfiguration authorizationConfiguration) {
-    if (!authorizationConfiguration.type().equals("internal")) {
+    AuthorizationConfiguration.AuthorizerConfiguration authorizerConfiguration =
+        authorizationConfiguration.authorizer();
+    if (authorizerConfiguration.realms().values().stream()
+        .noneMatch(realmConfig -> realmConfig.effectiveType().equals("internal"))) {
       return ProductionReadinessCheck.OK;
     }
     var flag = FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION;
@@ -525,7 +531,9 @@ public class ProductionReadinessChecks {
         .realmOverrides()
         .forEach((realmId, overrides) -> {
           String value = overrides.overrides().get(flag.key());
-          if (value != null && !Boolean.parseBoolean(value)) {
+          if (value != null
+              && !Boolean.parseBoolean(value)
+              && authorizerConfiguration.forRealm(realmId).effectiveType().equals("internal")) {
             errors.add(
                 Error.of(
                     message,

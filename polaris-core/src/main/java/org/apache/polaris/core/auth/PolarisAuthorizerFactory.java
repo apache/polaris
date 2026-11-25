@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.core.auth;
 
-import org.apache.polaris.core.config.RealmConfig;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Factory interface for creating PolarisAuthorizer instances.
@@ -29,10 +29,14 @@ import org.apache.polaris.core.config.RealmConfig;
 public interface PolarisAuthorizerFactory {
 
   /**
-   * Creates a PolarisAuthorizer instance with the given realm configuration.
+   * Creates a PolarisAuthorizer instance for the current request.
    *
-   * @param realmConfig the realm configuration
+   * <p>Implementations that need request-scoped data, such as the {@link
+   * org.apache.polaris.core.config.RealmConfig} of the current realm, can obtain it via CDI.
+   *
+   * @param tenantKey the authorizer tenant key identifying which authorizer configuration to use,
+   *     or {@code null} to use the default configuration
    * @return a configured PolarisAuthorizer instance
    */
-  PolarisAuthorizer create(RealmConfig realmConfig);
+  PolarisAuthorizer create(@Nullable String tenantKey);
 }

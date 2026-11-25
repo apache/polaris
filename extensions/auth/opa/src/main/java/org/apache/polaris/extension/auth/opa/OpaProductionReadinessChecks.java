@@ -22,7 +22,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
+import java.util.Map;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
 
@@ -30,27 +30,39 @@ import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
 public class OpaProductionReadinessChecks {
 
   @Produces
-  public ProductionReadinessCheck checkOpaAuthorization(
-      PolarisAuthorizerFactory authorizerFactory) {
-    if (authorizerFactory instanceof OpaPolarisAuthorizerFactory opaFactory) {
-      OpaAuthorizationConfig config = opaFactory.getConfig();
+  public ProductionReadinessCheck checkOpaAuthorization(OpaAuthorizationConfig opaConfig) {
+    List<Error> errors = new ArrayList<>();
+    boolean anyOpaConfigured = false;
 
-      List<Error> errors = new ArrayList<>();
+    for (Map.Entry<String, OpaAuthorizationConfig.OpaAuthorizationTenantConfig> entry :
+        opaConfig.tenants().entrySet()) {
+      OpaAuthorizationConfig.OpaAuthorizationTenantConfig tenantConfig = entry.getValue();
+      if (tenantConfig.policyUri().isEmpty()) {
+        continue;
+      }
+      anyOpaConfigured = true;
 
-      errors.add(
-          Error.of(
-              "OPA authorization is currently a Beta feature and is not a stable release. Breaking changes may be introduced in future versions. Use with caution in production environments.",
-              "polaris.authorization.type"));
-
-      if (!config.http().verifySsl()) {
+      if (!tenantConfig.http().verifySsl()) {
+        String tenantKey = entry.getKey();
+        String propPrefix =
+            OpaAuthorizationConfig.DEFAULT_TENANT_KEY.equals(tenantKey)
+                ? "polaris.authorization.opa"
+                : "polaris.authorization.opa." + tenantKey;
         errors.add(
             Error.ofSevere(
                 "SSL certificate verification is disabled for OPA communication. This exposes the service to man-in-the-middle attacks and other severe security risks.",
-                "polaris.authorization.opa.http.verify-ssl"));
+                propPrefix + ".http.verify-ssl"));
       }
-
-      return ProductionReadinessCheck.of(errors);
     }
-    return ProductionReadinessCheck.OK;
+
+    if (anyOpaConfigured) {
+      errors.add(
+          0,
+          Error.of(
+              "OPA authorization is currently a Beta feature and is not a stable release. Breaking changes may be introduced in future versions. Use with caution in production environments.",
+              "polaris.authorization.authorizer.type"));
+    }
+
+    return ProductionReadinessCheck.of(errors);
   }
 }

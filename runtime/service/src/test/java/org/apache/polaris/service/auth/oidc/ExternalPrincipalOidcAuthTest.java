@@ -52,7 +52,7 @@ public class ExternalPrincipalOidcAuthTest extends AbstractOidcAuthTest {
     @ApplicationScoped
     @Identifier("test")
     public PolarisAuthorizerFactory getAuthorizerFactory() {
-      return realmConfig -> new TestPolarisAuthorizer();
+      return tenantKey -> new TestPolarisAuthorizer();
     }
   }
 

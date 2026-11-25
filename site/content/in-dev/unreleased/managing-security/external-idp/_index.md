@@ -242,7 +242,7 @@ requirements, both enforced at startup (the service refuses to boot otherwise):
    Configure a different authorizer (for example, OPA):
 
    ```properties
-   polaris.authorization.type=opa
+   polaris.authorization.authorizer.type=opa
    ```
 
 ### Example JWT Mappings 

@@ -66,10 +66,41 @@ Apache Polaris currently supports the following external PDP integrations:
 To enable external PDP integration, set the following configuration property:
 
 ```properties
-polaris.authorization.type=<pdp-type>
+polaris.authorization.authorizer.type=<pdp-type>
 ```
 
 Where `<pdp-type>` is the identifier for the PDP implementation (e.g., `opa`). The default value is `internal`.
+
+{{< alert note >}}
+The `polaris.authorization.type` property used in previous releases is deprecated, but is still
+honored when `polaris.authorization.authorizer.type` is not set.
+{{< /alert >}}
+
+### Per-realm Configuration
+
+The authorizer can be overridden for individual realms, using the same pattern as the
+authenticator configuration:
+
+```properties
+# Default authorizer for all realms
+polaris.authorization.authorizer.type=internal
+
+# Realm "realm1" uses OPA with the default OPA configuration
+polaris.authorization.authorizer.realm1.type=opa
+
+# Realm "realm2" uses OPA with the OPA configuration named "tenant2"
+polaris.authorization.authorizer.realm2.type=opa
+polaris.authorization.authorizer.realm2.tenant-key=tenant2
+```
+
+The optional `tenant-key` property selects a named configuration ("authorizer tenant") defined in
+the PDP-specific configuration. When it is absent, the PDP's default configuration is used. Refer to
+the specific PDP documentation for how to define named configurations, e.g.
+[OPA tenants]({{< relref "opa.md#multiple-opa-tenants" >}}).
+
+A realm that sets a `tenant-key` must also set its `type`. Polaris validates the authorizer
+configuration of every realm listed in `polaris.realm-context.realms` at startup, and fails to start
+if a realm refers to an unknown authorizer type or tenant key.
 
 See the specific PDP documentation for detailed configuration options:
 

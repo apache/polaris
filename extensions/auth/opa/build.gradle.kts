@@ -72,6 +72,7 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-api")
 
   compileOnly(project(":polaris-immutables"))
+  compileOnly(project(":polaris-config-docs-annotations"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   compileOnly(libs.jspecify)
@@ -240,7 +241,7 @@ fun Test.configureOpaTestTask(
     systemProperties.putAll(
       mapOf(
         "quarkus.log.file.path" to logsDir.resolve("polaris.log").absolutePath,
-        "polaris.authorization.type" to "opa",
+        "polaris.authorization.authorizer.type" to "opa",
         "polaris.authorization.opa.auth.type" to "bearer",
         "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"" to "[\"FILE\"]",
         "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"" to "true",

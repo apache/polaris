@@ -17,4 +17,4 @@
 # under the License.
 #
 
-org.apache.polaris.service.events.FallbackEventListenerTypeConfigInterceptor
+org.apache.polaris.service.config.LegacyConfigInterceptor
