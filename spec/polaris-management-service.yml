@@ -132,8 +132,8 @@ paths:
         Delete an existing catalog. A catalog can only be deleted when it contains no namespaces and
         has no catalog roles other than `catalog_admin`. Deleting the catalog also deletes its
         `catalog_admin` role, its storage configurations and its storage mappings. Storage mappings
-        don't prevent the deletion, because a storage mapping remains after its namespace or table is
-        dropped.
+        don't prevent the deletion, because a mapping can remain after its namespace is dropped, or
+        exist for a table that was never created.
       responses:
         204:
           description: "Success, no content"
@@ -920,9 +920,9 @@ paths:
         use, that is, while any storage mapping, explicit or automatic, references it. Every Iceberg
         table and view created on a storage configuration has a mapping to it for as long as it
         exists, so a storage configuration used by existing tables or views can only be deleted after
-        they are dropped. Dropping a table or view removes its mapping, but dropping a namespace does not
-        remove its explicit storage mapping; use removeStorageMapping. To find the storage configurations that are not in use, list them
-        with `referenced` set to false. Deleting the catalog deletes its storage configurations and
+        they are dropped. Dropping a table or view removes its mapping, but dropping a namespace does
+        not remove its explicit storage mapping; use removeStorageMapping. To find the storage
+        configurations that are not in use, list them with `referenced` set to false. Deleting the catalog deletes its storage configurations and
         storage mappings.
       responses:
         204:
@@ -961,7 +961,8 @@ paths:
         Setting both `namespace` and `storageConfigurationName` is a bad request (400).
 
         A mapping whose namespace or table does not exist is listed too, with `targetExists` set to
-        false: a mapping created ahead of its target, or one whose target has been dropped. With the
+        false: a mapping created ahead of its target, or one left behind when its namespace was dropped.
+        With the
         `targetExists` filter, only the mappings whose target exists (true) or does not exist (false)
         are listed. Listing with `namespace` requires that namespace to exist, so the mappings left
         behind by a dropped namespace are found with `storageConfigurationName`. A client removes the
@@ -1035,8 +1036,9 @@ paths:
         - A namespace mapping can be created whether or not the namespace exists. If the namespace
           already has a mapping, it is replaced.
 
-        Storage mappings are where Polaris records which storage configuration a table or view uses,
-        and which one a namespace gives to what is created inside it. A mapping is explicit or
+        Storage configurations and mappings apply to INTERNAL catalogs only. Storage mappings are
+        where Polaris records which storage configuration a table or view uses, and which one a
+        namespace gives to what is created inside it. A mapping is explicit or
         automatic (see StorageMapping.origin). This operation creates explicit mappings, and so do
         createNamespaceOnStorageConfiguration and createTableOnStorageConfiguration in the Polaris
         catalog API, and the table property below. Only namespaces and Iceberg tables can have an
@@ -1062,8 +1064,8 @@ paths:
         3. the catalog's own `storageConfigInfo`. An Iceberg table or view is created on a snapshot of
            it instead (see StorageConfiguration).
 
-        In cases 2 and 3, the server records an automatic mapping from the name of the new Iceberg table or view to the storage
-        configuration it was created on. Namespaces never get an automatic mapping, so a namespace
+        In cases 2 and 3, the server records an automatic mapping from the name of the new Iceberg
+        table or view to the storage configuration it was created on. Namespaces never get an automatic mapping, so a namespace
         mapping keeps applying to what is created inside the namespace later. A generic table is
         created on the storage configuration of case 2, or else on the catalog's own
         `storageConfigInfo`.
@@ -1082,8 +1084,9 @@ paths:
         table's name; the mapping is not listed before the commit. Creating, replacing or removing a
         namespace mapping, or changing the catalog's own `storageConfigInfo`, between staging and
         commit does not change the storage configuration of the staged table. The commit is refused
-        with 409 if by then the table's name has an explicit mapping to a different storage
-        configuration (compared by identity, see below), if the name had an explicit mapping at staging and it has been removed, if the storage
+        with 409 unless the explicit mapping of the table's name is the same as it was at staging:
+        either the name had none then and has none now, or it has a mapping to the same storage
+        configuration (compared by identity, see below) both times. It is also refused if the storage
         configuration chosen at staging has been deleted, or if the server can't match the commit to
         its staging.
         Several staged creates of the same name can be in progress at once, each with its own storage
