@@ -150,8 +150,26 @@ jobs:
       - name: Set up helm-docs
         if: env.rc_number == '0'
         run: |
-          go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+          HELM_DOCS_VERSION=1.14.2
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64|amd64)
+              ARCH=x86_64
+              SHA256=a8cf72ada34fad93285ba2a452b38bdc5bd52cc9a571236244ec31022928d6cc
+              ;;
+            aarch64|arm64)
+              ARCH=arm64
+              SHA256=c3787212332386dcd122debef7848feb165aa701467ae3e3442df7638f3ac4e4
+              ;;
+            *)
+              echo "Unsupported architecture: $ARCH" >&2
+              exit 1
+              ;;
+          esac
+          curl -fsSL --retry 3 -o helm-docs.tar.gz "https://github.com/norwoodj/helm-docs/releases/download/v${HELM_DOCS_VERSION}/helm-docs_${HELM_DOCS_VERSION}_Linux_${ARCH}.tar.gz"
+          echo "${SHA256}  helm-docs.tar.gz" | sha256sum -c -
+          sudo tar -xzf helm-docs.tar.gz -C /usr/local/bin helm-docs
+          rm helm-docs.tar.gz
 
       - name: Update project versions
         if: env.rc_number == '0'

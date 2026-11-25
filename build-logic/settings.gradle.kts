@@ -17,6 +17,13 @@
  * under the License.
  */
 
+pluginManagement {
+  repositories {
+    mavenCentral() // prefer Maven Central, in case Gradle's repo has issues
+    gradlePluginPortal()
+  }
+}
+
 dependencyResolutionManagement {
   versionCatalogs {
     create("baselibs") { from(files("../gradle/baselibs.versions.toml")) }
