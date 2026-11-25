@@ -226,7 +226,11 @@ public class GcpCredentialsStorageIntegration
   protected StorageCredentialCacheKey buildCacheKey(
       @NonNull List<LocationGrant> grants, @NonNull CredentialVendingContext context) {
     return buildCacheKey(
-        readLocations(grants), listLocations(grants), writeLocations(grants), context);
+        readLocations(grants),
+        listLocations(grants),
+        writeLocations(grants),
+        parentFolderLocations(grants),
+        context);
   }
 
   @Override
@@ -255,6 +259,14 @@ public class GcpCredentialsStorageIntegration
         PolarisStorageActions.ALL);
   }
 
+  /**
+   * Write locations whose missing parent folders Polaris creates: those granted WRITE or ALL. A
+   * DELETE grant without WRITE, as requested by file cleanup tasks, needs no new folders.
+   */
+  private static Set<String> parentFolderLocations(List<LocationGrant> grants) {
+    return locationsFor(grants, PolarisStorageActions.WRITE, PolarisStorageActions.ALL);
+  }
+
   private static Set<String> locationsFor(
       List<LocationGrant> grants, PolarisStorageActions... wantedActions) {
     Set<PolarisStorageActions> wanted = Set.of(wantedActions);
@@ -268,6 +280,7 @@ public class GcpCredentialsStorageIntegration
       @NonNull Set<String> readLocations,
       @NonNull Set<String> listLocations,
       @NonNull Set<String> writeLocations,
+      @NonNull Set<String> parentFolderLocations,
       @NonNull CredentialVendingContext context) {
     // Principal attribution makes the vended token per-principal, so the principal must
     // participate in cache identity; otherwise it is left empty to preserve cross-principal cache
@@ -297,6 +310,7 @@ public class GcpCredentialsStorageIntegration
         readLocations,
         listLocations,
         writeLocations,
+        parentFolderLocations,
         principalName,
         sourceCredentials,
         transportFactory,
@@ -347,7 +361,7 @@ public class GcpCredentialsStorageIntegration
     }
 
     if (key.realmConfig().getConfig(FeatureConfiguration.GCS_HNS_PARENT_FOLDER_CREATION_ENABLED)) {
-      createParentFolders(writeLocations, credentialsToDownscope, transportFactory);
+      createParentFolders(key.parentFolderLocations(), credentialsToDownscope, transportFactory);
     }
 
     // If expires_in missing, use source credential's expire time, which require another api call to

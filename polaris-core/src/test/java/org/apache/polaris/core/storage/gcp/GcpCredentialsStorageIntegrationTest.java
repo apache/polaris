@@ -832,6 +832,37 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @Test
+  public void testDeleteWithoutWriteCreatesNoFolders() {
+    // File cleanup tasks read and delete files but never write, so their credentials must not
+    // create folders. They get the same access boundary as an ALL grant.
+    String location = "gs://bucket/ns/tbl";
+    List<String> cleanupRequests = new ArrayList<>();
+    CredentialAccessBoundary cleanupBoundary =
+        vend(
+            List.of(
+                new LocationGrant(
+                    Set.of(location),
+                    Set.of(
+                        PolarisStorageActions.READ,
+                        PolarisStorageActions.LIST,
+                        PolarisStorageActions.DELETE))),
+            EMPTY_REALM_CONFIG,
+            folderTransport(cleanupRequests, 200));
+    List<String> allRequests = new ArrayList<>();
+    CredentialAccessBoundary allBoundary =
+        vend(
+            List.of(new LocationGrant(Set.of(location), Set.of(PolarisStorageActions.ALL))),
+            EMPTY_REALM_CONFIG,
+            folderTransport(allRequests, 200));
+
+    assertThat(cleanupRequests).isEmpty();
+    // Stage-create requests ALL and writes data, so ALL still creates the parent folders.
+    assertThat(allRequests).hasSize(1);
+    assertThat(MAPPER.convertValue(cleanupBoundary, JsonNode.class))
+        .isEqualTo(MAPPER.convertValue(allBoundary, JsonNode.class));
+  }
+
+  @Test
   public void testReadOnlyVendCreatesNoFolders() {
     assertThat(vendAndRecordFolderRequests(Set.of("gs://bucket/ns/tbl"), Set.of(), 200)).isEmpty();
   }
