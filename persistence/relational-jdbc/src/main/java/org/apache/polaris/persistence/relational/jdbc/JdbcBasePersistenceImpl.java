@@ -255,20 +255,33 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
    * Maps a uniqueness violation on an entity write to the exception the metastore manager expects.
    *
    * <p>On insert this is either the primary key or the unique constraint on (realm_id, catalog_id,
-   * parent_id, type_code, name); on update it is always the name constraint. With SERIALIZABLE
-   * isolation the conflicting entity may not be visible, so the lookup can return null. A same-id
-   * idempotent retry cannot be told apart from a name collision then, so this reports a concurrency
-   * conflict rather than fabricating the entity being written.
+   * parent_id, type_code, name). With SERIALIZABLE isolation the conflicting entity may not be
+   * visible, so the lookup can return null. A same-id idempotent retry cannot be told apart from a
+   * name collision then, so this reports a concurrency conflict rather than fabricating the entity
+   * being written.
+   *
+   * <p>On update the primary key does not change, so this is always the name constraint. A null
+   * lookup there means the conflicting entity is no longer visible, for example because it was
+   * dropped or renamed before the lookup ran, so the write can be retried.
+   *
+   * <p>If the lookup itself fails, its exception is returned with the uniqueness violation attached
+   * as suppressed.
    */
   private RuntimeException uniquenessViolation(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity, SQLException e) {
-    PolarisBaseEntity existingEntity =
-        lookupEntityByName(
-            callCtx,
-            entity.getCatalogId(),
-            entity.getParentId(),
-            entity.getTypeCode(),
-            entity.getName());
+    PolarisBaseEntity existingEntity;
+    try {
+      existingEntity =
+          lookupEntityByName(
+              callCtx,
+              entity.getCatalogId(),
+              entity.getParentId(),
+              entity.getTypeCode(),
+              entity.getName());
+    } catch (RuntimeException lookupFailure) {
+      lookupFailure.addSuppressed(e);
+      return lookupFailure;
+    }
     if (existingEntity != null) {
       return new EntityAlreadyExistsException(existingEntity, e);
     }

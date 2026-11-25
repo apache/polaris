@@ -212,4 +212,36 @@ public class AtomicOperationMetaStoreManagerTest {
     assertThat(result.getReturnStatus())
         .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
   }
+
+  @Test
+  public void testRenameMapsNameConflictToResultStatus() {
+    PolarisBaseEntity current =
+        new PolarisBaseEntity.Builder(buildEntity(1, 1))
+            .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+            .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
+            .name("my_table")
+            .build();
+    PolarisEntity renamed =
+        new PolarisEntity(new PolarisBaseEntity.Builder(current).name("my_view").build());
+    PolarisBaseEntity existing =
+        new PolarisBaseEntity.Builder(current)
+            .id(ENTITY_ID + 1)
+            .subTypeCode(PolarisEntitySubType.ICEBERG_VIEW.getCode())
+            .name("my_view")
+            .build();
+
+    // The pre-check finds the name free, then another writer claims it before the write.
+    when(metaStore.lookupEntity(any(), anyLong(), anyLong(), anyInt())).thenReturn(current);
+    when(metaStore.lookupEntityIdAndSubTypeByName(
+            any(), anyLong(), anyLong(), anyInt(), anyString()))
+        .thenReturn(null);
+    doThrow(new EntityAlreadyExistsException(existing))
+        .when(metaStore)
+        .writeEntity(any(), any(), anyBoolean(), any());
+
+    EntityResult result = manager.renameEntity(callCtx, null, current, null, renamed);
+
+    assertThat(result.getReturnStatus()).isEqualTo(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS);
+    assertThat(result.getAlreadyExistsEntitySubType()).isEqualTo(PolarisEntitySubType.ICEBERG_VIEW);
+  }
 }
