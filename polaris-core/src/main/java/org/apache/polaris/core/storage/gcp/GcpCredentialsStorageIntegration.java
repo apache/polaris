@@ -21,11 +21,11 @@ package org.apache.polaris.core.storage.gcp;
 import static org.apache.polaris.core.storage.StorageLocation.ensureTrailingSlash;
 import static org.apache.polaris.core.storage.StorageLocation.trimLeadingSlash;
 
-import com.google.api.client.http.ByteArrayContent;
-import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestFactory;
 import com.google.api.client.http.HttpResponse;
+import com.google.api.client.http.HttpResponseException;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.services.storage.Storage;
+import com.google.api.services.storage.model.Folder;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
@@ -36,7 +36,6 @@ import com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest;
 import com.google.cloud.iam.credentials.v1.GenerateAccessTokenResponse;
 import com.google.cloud.iam.credentials.v1.IamCredentialsClient;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.net.UrlEscapers;
 import com.google.protobuf.Duration;
 import com.google.protobuf.Timestamp;
 import java.io.IOException;
@@ -53,7 +52,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.StructuredLogKeys;
@@ -90,11 +88,7 @@ public class GcpCredentialsStorageIntegration
 
   private static final ObjectMapper OBJECT_MAPPER = JsonMapper.shared();
 
-  private static final String GCS_JSON_API_BUCKETS = "https://storage.googleapis.com/storage/v1/b/";
   private static final int FOLDER_CREATE_TIMEOUT_MS = 5_000;
-  // A bucket without hierarchical namespace rejects folder creation with 403 when the caller lacks
-  // storage.folders.create, so the failure is logged at WARN only once per bucket.
-  private static final Set<String> BUCKETS_WITH_FOLDER_WARNING = ConcurrentHashMap.newKeySet();
 
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;
@@ -352,7 +346,9 @@ public class GcpCredentialsStorageIntegration
       throw new RuntimeException("Unable to fetch access credentials " + e.getMessage());
     }
 
-    createParentFolders(writeLocations, credentialsToDownscope, transportFactory);
+    if (key.realmConfig().getConfig(FeatureConfiguration.GCS_HNS_PARENT_FOLDER_CREATION_ENABLED)) {
+      createParentFolders(writeLocations, credentialsToDownscope, transportFactory);
+    }
 
     // If expires_in missing, use source credential's expire time, which require another api call to
     // get.
@@ -455,46 +451,55 @@ public class GcpCredentialsStorageIntegration
    * <p>Failures never fail the vend: they leave the token unchanged, and writes under a
    * still-missing parent fail until it exists. Creation is tried again whenever new credentials are
    * generated. A bucket without HNS rejects the call with 409, or with 403 when the identity lacks
-   * {@code storage.folders.create}.
+   * {@code storage.folders.create}. Runs only when {@code GCS_HNS_PARENT_FOLDER_CREATION_ENABLED}
+   * is true.
    */
   private static void createParentFolders(
       Set<String> writeLocations,
       GoogleCredentials credentials,
       HttpTransportFactory transportFactory) {
-    Map<String, Set<String>> parentFolders = parentFoldersToCreate(writeLocations);
-    if (parentFolders.isEmpty()) {
-      return;
-    }
-    HttpRequestFactory requestFactory =
-        transportFactory.create().createRequestFactory(new HttpCredentialsAdapter(credentials));
-    parentFolders.forEach((bucket, folders) ->
-        folders.forEach(folder -> createFolder(requestFactory, bucket, folder)));
+    parentFoldersToCreate(writeLocations)
+        .forEach((bucket, folders) ->
+            folders.forEach(folder -> createFolder(transportFactory, credentials, bucket, folder)));
   }
 
   private static void createFolder(
-      HttpRequestFactory requestFactory, String bucket, String folder) {
+      HttpTransportFactory transportFactory,
+      GoogleCredentials credentials,
+      String bucket,
+      String folder) {
+    // The client is built inside the try, so that a failure to build it is logged like a failed
+    // request and does not fail the vend.
     try {
-      GenericUrl url =
-          new GenericUrl(
-              GCS_JSON_API_BUCKETS
-                  + UrlEscapers.urlPathSegmentEscaper().escape(bucket)
-                  + "/folders");
-      url.set("recursive", true);
-      HttpRequest request =
-          requestFactory
-              .buildPostRequest(
-                  url,
-                  ByteArrayContent.fromString(
-                      "application/json", OBJECT_MAPPER.writeValueAsString(Map.of("name", folder))))
-              .setConnectTimeout(FOLDER_CREATE_TIMEOUT_MS)
-              .setReadTimeout(FOLDER_CREATE_TIMEOUT_MS)
-              .setThrowExceptionOnExecuteError(false);
-      HttpResponse response = request.execute();
+      HttpCredentialsAdapter credentialsAdapter = new HttpCredentialsAdapter(credentials);
+      Storage storage =
+          new Storage.Builder(
+                  transportFactory.create(),
+                  GsonFactory.getDefaultInstance(),
+                  request -> {
+                    credentialsAdapter.initialize(request);
+                    request
+                        .setConnectTimeout(FOLDER_CREATE_TIMEOUT_MS)
+                        .setReadTimeout(FOLDER_CREATE_TIMEOUT_MS);
+                  })
+              .setApplicationName("Apache Polaris")
+              .build();
       int status;
       try {
-        status = response.getStatusCode();
-      } finally {
-        response.disconnect();
+        HttpResponse response =
+            storage
+                .folders()
+                .insert(bucket, new Folder().setName(folder))
+                .setRecursive(true)
+                .setDisableGZipContent(true)
+                .executeUnparsed();
+        try {
+          status = response.getStatusCode();
+        } finally {
+          response.disconnect();
+        }
+      } catch (HttpResponseException e) {
+        status = e.getStatusCode();
       }
       // 409: the folder already exists, or the bucket has no hierarchical namespace.
       if (status == 200 || status == 409) {
@@ -509,17 +514,18 @@ public class GcpCredentialsStorageIntegration
 
   private static void warnFolderNotCreated(
       String bucket, String folder, String reason, Exception cause) {
-    String message =
+    // Logged on every failure: a bucket without hierarchical namespace also answers 403 here when
+    // the identity lacks storage.folders.create, and that repeats on each credential generation.
+    LOGGER.warn(
         "Could not create parent folder {} in GCS bucket {} ({}). If the bucket has hierarchical"
             + " namespace enabled, writes under this folder fail until it exists. Polaris tries again"
             + " whenever it generates new credentials, which needs storage.folders.create on the"
             + " bucket for the identity it downscopes from. Buckets without hierarchical namespace"
-            + " are not affected.";
-    if (BUCKETS_WITH_FOLDER_WARNING.add(bucket)) {
-      LOGGER.warn(message, folder, bucket, reason, cause);
-    } else {
-      LOGGER.debug(message, folder, bucket, reason, cause);
-    }
+            + " are not affected.",
+        folder,
+        bucket,
+        reason,
+        cause);
   }
 
   /**
@@ -578,8 +584,9 @@ public class GcpCredentialsStorageIntegration
    * <p>On Hierarchical Namespace (HNS) buckets, the write rule also covers {@code folders/<path>/},
    * so folders inside a write location can be created, renamed and deleted, as directories can on
    * buckets without HNS. No folder outside the write locations is covered: the missing parent
-   * folders are created by Polaris before the token is vended (see {@code compute}). Buckets
-   * without HNS have no folder resources, so the folder conditions grant nothing there.
+   * folders are created by Polaris before the token is vended, unless {@code
+   * GCS_HNS_PARENT_FOLDER_CREATION_ENABLED} is false (see {@code compute}). Buckets without HNS
+   * have no folder resources, so the folder conditions grant nothing there.
    */
   @VisibleForTesting
   public static CredentialAccessBoundary generateAccessBoundaryRules(

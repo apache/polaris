@@ -22,6 +22,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -83,6 +87,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
+import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -703,6 +708,19 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   private static List<String> vendAndRecordFolderRequests(
       Set<String> readLocations, Set<String> writeLocations, int status) {
     List<String> requests = new ArrayList<>();
+    vend(
+        toGrants(readLocations, Set.of(), writeLocations),
+        EMPTY_REALM_CONFIG,
+        folderTransport(requests, status));
+    return requests;
+  }
+
+  /**
+   * A transport factory whose requests are recorded in {@code requests} as "method url body
+   * authorization" and answered with {@code status}; a negative status throws an {@link
+   * IOException} instead.
+   */
+  private static HttpTransportFactory folderTransport(List<String> requests, int status) {
     MockHttpTransport transport =
         new MockHttpTransport() {
           @Override
@@ -726,6 +744,15 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             };
           }
         };
+    return () -> transport;
+  }
+
+  /**
+   * Vends {@code grants} with service account impersonation and a stubbed downscoping call, and
+   * returns the access boundary the token was downscoped with.
+   */
+  private static CredentialAccessBoundary vend(
+      List<LocationGrant> grants, RealmConfig realmConfig, HttpTransportFactory transportFactory) {
     GoogleCredentials sourceCredentials = Mockito.mock(GoogleCredentials.class);
     Mockito.when(sourceCredentials.createScoped(Mockito.any(String.class)))
         .thenReturn(sourceCredentials);
@@ -739,6 +766,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         .setSeconds(System.currentTimeMillis() / 1000 + 3600)
                         .build())
                 .build());
+    AtomicReference<CredentialAccessBoundary> boundary = new AtomicReference<>();
     GcpCredentialOps credentialOps =
         new GcpCredentialOps() {
           @Override
@@ -748,6 +776,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
           @Override
           public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
+            boundary.set(credentials.getCredentialAccessBoundary());
             return new AccessToken("downscoped-token", new Date());
           }
         };
@@ -758,14 +787,11 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     StorageAccessConfig accessConfig =
         new GcpCredentialsStorageIntegration(
-                sourceCredentials, () -> transport, config, EMPTY_REALM_CONFIG, credentialOps)
-            .getStorageAccessConfig(
-                toGrants(readLocations, Set.of(), writeLocations),
-                Optional.empty(),
-                CredentialVendingContext.empty());
+                sourceCredentials, transportFactory, config, realmConfig, credentialOps)
+            .getStorageAccessConfig(grants, Optional.empty(), CredentialVendingContext.empty());
     assertThat(accessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN))
         .isEqualTo("downscoped-token");
-    return requests;
+    return boundary.get();
   }
 
   @Test
@@ -774,6 +800,35 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .containsExactly(
             "POST https://storage.googleapis.com/storage/v1/b/bucket/folders?recursive=true"
                 + " {\"name\":\"ns/\"} [Bearer impersonated-token]");
+  }
+
+  @Test
+  public void testParentFolderCreationCanBeDisabled() {
+    List<String> requests = new ArrayList<>();
+    vend(
+        toGrants(Set.of(), Set.of(), Set.of("gs://bucket/ns/tbl")),
+        configWith(Map.of("GCS_HNS_PARENT_FOLDER_CREATION_ENABLED", "false")),
+        folderTransport(requests, 200));
+    assertThat(requests).isEmpty();
+  }
+
+  @Test
+  public void testFolderClientFailureDoesNotFailTheVend() {
+    HttpTransportFactory failingFactory =
+        () -> {
+          throw new IllegalStateException("no transport");
+        };
+    try (LogCapture logs = new LogCapture()) {
+      // vend() asserts that the token is still returned.
+      vend(
+          toGrants(Set.of(), Set.of(), Set.of("gs://bucket/ns/tbl")),
+          EMPTY_REALM_CONFIG,
+          failingFactory);
+      assertThat(logs.events())
+          .filteredOn(event -> event.getLevel() == Level.WARN)
+          .singleElement()
+          .satisfies(event -> assertThat(event.getFormattedMessage()).contains("ns/", "bucket"));
+    }
   }
 
   @Test
@@ -788,6 +843,48 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     // hierarchical namespace. -1: transport failure. The token is returned in every case.
     assertThat(vendAndRecordFolderRequests(Set.of(), Set.of("gs://bucket/ns/tbl"), status))
         .hasSize(1);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"200, 0", "409, 0", "403, 2", "500, 2", "-1, 2"})
+  public void testEveryFailedFolderCreationLogsAWarning(int status, int expectedWarnings) {
+    // Two vends against the same bucket: a failure is logged every time, not once per bucket.
+    try (LogCapture logs = new LogCapture()) {
+      for (int i = 0; i < 2; i++) {
+        vendAndRecordFolderRequests(Set.of(), Set.of("gs://bucket/ns/tbl"), status);
+      }
+      assertThat(logs.events())
+          .filteredOn(event -> event.getLevel() == Level.WARN)
+          .hasSize(expectedWarnings);
+    }
+  }
+
+  /**
+   * Captures the log events of {@link GcpCredentialsStorageIntegration} at DEBUG and above while it
+   * is open. Use it in a try-with-resources block, which restores the logger.
+   */
+  private static final class LogCapture implements AutoCloseable {
+    private final Logger logger =
+        (Logger) LoggerFactory.getLogger(GcpCredentialsStorageIntegration.class);
+    private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    private final Level original = logger.getLevel();
+
+    LogCapture() {
+      appender.start();
+      logger.setLevel(Level.DEBUG);
+      logger.addAppender(appender);
+    }
+
+    List<ILoggingEvent> events() {
+      return List.copyOf(appender.list);
+    }
+
+    @Override
+    public void close() {
+      logger.detachAppender(appender);
+      appender.stop();
+      logger.setLevel(original);
+    }
   }
 
   private static String expressionAt(JsonNode parsedRules, int ruleIndex) {

@@ -239,6 +239,20 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .defaultValue(List.<String>of())
               .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> GCS_HNS_PARENT_FOLDER_CREATION_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("GCS_HNS_PARENT_FOLDER_CREATION_ENABLED")
+          .description(
+              "When true, before vending GCS write credentials Polaris creates the missing parent\n"
+                  + "folders of each write location, using the identity it downscopes from. Buckets with\n"
+                  + "hierarchical namespace (HNS) need this, because vended credentials get no access to\n"
+                  + "folders outside their write locations. Polaris does not detect HNS, so the request is\n"
+                  + "sent for every GCS bucket; buckets without HNS reject it, and a failure never blocks\n"
+                  + "vending. Applies to the whole realm: when false, writes to HNS buckets fail until the\n"
+                  + "parent folders exist, so they must be created by other means.")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> GCS_PRINCIPAL_ATTRIBUTION_ENABLED =
       PolarisConfiguration.<Boolean>builder()
           .key("GCS_PRINCIPAL_ATTRIBUTION_ENABLED")
