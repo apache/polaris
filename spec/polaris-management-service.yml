@@ -2011,7 +2011,9 @@ components:
         snapshot of it instead: a storage configuration that the server creates with the settings
         `storageConfigInfo` has at that moment, and reuses for later creates while those settings are
         the same. A snapshot has no `baseLocation` (the catalog's `default-base-location` takes its
-        place, see baseLocation), and its name starts with an underscore (`_`). Otherwise, a
+        place, see baseLocation), and its name starts with an underscore (`_`). A snapshot uses
+        `storageName` the way the catalog's own `storageConfigInfo` does, not as described below
+        for other storage configurations, and it is not checked when it is made. Otherwise, a
         snapshot is listed, read, mapped and deleted like any other storage configuration. The
         catalog's own `storageConfigInfo` can still be changed with updateCatalog. A change applies to
         what is created afterwards, and to the tables and views that were created before snapshots
@@ -2033,8 +2035,8 @@ components:
         For S3, Azure and GCS, `storageConfigInfo.storageName` selects the server-side credentials Polaris
         authenticates with for this storage configuration, so several storage configurations can reuse
         the same credentials by name. A storage configuration always honors it, even on a server that
-        doesn't use the `storageName` of a catalog's own `storageConfigInfo`. These credentials are
-        configured on the server and are never sent through this API. Without `storageName`, Polaris
+        doesn't use the `storageName` of a catalog's own `storageConfigInfo`, except for a snapshot
+        (see above). These credentials are configured on the server and are never sent through this API. Without `storageName`, Polaris
         uses the server's default credentials for the `storageType`, not the `storageName` of the
         catalog's `storageConfigInfo`. Creating a storage configuration fails (400) if the server can't
         resolve `storageName` to credentials for the `storageType`. The error doesn't say why, and no
