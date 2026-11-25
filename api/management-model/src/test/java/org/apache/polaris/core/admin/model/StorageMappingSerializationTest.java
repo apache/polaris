@@ -87,7 +87,7 @@ public class StorageMappingSerializationTest {
 
   @Test
   public void testListJsonFormat() {
-    StorageMapping dropped =
+    StorageMapping pending =
         new StorageMapping(
             new StorageMappingTarget(
                 StorageMappingTarget.TypeEnum.TABLE, List.of("finance", "old")),
@@ -105,7 +105,7 @@ public class StorageMappingSerializationTest {
     assertThat(mapper.writeValueAsString(new StorageMappings(List.of())))
         .isEqualTo("{\"storageMappings\":[]}");
 
-    StorageMappings page = new StorageMappings(List.of(dropped, view), "token-1");
+    StorageMappings page = new StorageMappings(List.of(pending, view), "token-1");
     String json = mapper.writeValueAsString(page);
 
     assertThat(json)
